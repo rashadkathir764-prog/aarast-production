@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-06-02 - Phase 2 Health Smoke Baseline
+
+- Added a Node-based health smoke script for `GET /health`.
+- Added backend `smoke` and `smoke:health` package scripts.
+- Kept Phase 2 limited to the existing health endpoint; no product modules, tests, migrations, Flutter/mobile files, Docker/Dokploy files, deployment scripts, or business logic were added.
+
 ## 2026-06-02 - Phase 1 Backend Foundation
 
 - Added the minimal NestJS backend foundation in `backend/` with a basic `GET /health` endpoint.

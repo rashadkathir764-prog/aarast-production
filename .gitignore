@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+
+# Build and test output
+dist/
+build/
+coverage/
+
+# Flutter and Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+
+# Editor and IDE settings
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Docker/runtime local data for later phases
+.docker-data/
+docker-data/
+runtime-data/
+tmp/
+temp/

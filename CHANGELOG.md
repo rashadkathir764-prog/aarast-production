@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-02 - Phase 1 Backend Foundation
+
+- Added the minimal NestJS backend foundation in `backend/` with a basic `GET /health` endpoint.
+- Verified `npm install`, `npm run check`, `npm run build`, `npm audit` with 0 vulnerabilities, and `GET /health`.
+- Committed the backend foundation as `b67246438c4537af91d5445d05507dc569a07885` on `phase/1-backend-foundation`.
+- Confirmed no product modules, Flutter/mobile app, migrations, Docker/Dokploy files, deployment scripts, payment/FinTech/AI/chat logic, marketplace logic, or confirmed booking logic were created.
+
 ## 2026-06-01 - Docs Foundation
 
 - Created/updated the root Markdown documentation foundation for Aarast / اعّرست, including `DEPLOYMENT_PLAN.md`.

@@ -1,6 +1,25 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 Auth Foundation
+
+- Implemented minimal Auth foundation: `AuthModule`, `AuthService`, `AuthController`, `JwtStrategy`, `JwtAuthGuard`, `CurrentUser` decorator, `RegisterDto`, `LoginDto`, and `SafeUser` mapper.
+- Endpoints: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`.
+- Registration accepts `name`, `phone`, optional `email`, and `password`; hashes password with bcryptjs; creates User with default `USER` role and `ACTIVE` status.
+- Login is phone-first, validates password hash, rejects disabled users.
+- `GET /auth/me` requires a valid JWT and returns safe current user.
+- `passwordHash` is never returned in any API response — confirmed by 3 explicit smoke checks.
+- Added `ValidationPipe` globally in `main.ts` for DTO validation.
+- Updated `backend/.env.example` with `JWT_SECRET` placeholder.
+- Added `scripts/smoke/auth-smoke.js` with 15 checks covering register, login, wrong-password rejection, unauthenticated /me, and authenticated /me.
+- Added `smoke:auth` package script; updated `smoke` to run both `smoke:health` and `smoke:auth`.
+- Dependencies added: `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcryptjs`, `class-validator`, `class-transformer`, `@types/passport-jwt`, `@types/bcryptjs`.
+- `backend/.env` created locally (untracked, gitignored); `JWT_SECRET` not committed.
+- No new Prisma migrations were created or needed; existing User model is sufficient.
+- Verified: `npm install` PASS, `prisma:generate` PASS, `npm run check` PASS, `npm run build` PASS, `npm audit` 0 vulnerabilities, `GET /health` PASS, `npm run smoke:health` PASS, `npm run smoke:auth` 15/15 PASS.
+- Confirmed no WeddingPlan, Budget, Expenses, Debts, Installments, Tasks, Sharing, Marketplace, AI, FinTech, Payments, Chat, refresh tokens, Flutter/mobile files, Docker/Dokploy files, deployment scripts, or business logic outside Auth foundation were created.
+
 ## 2026-06-02 - Phase 3 User Model Migration Created
+
 
 - Created and applied real Prisma migration `20260602181910_init_user_model` for the User model.
 - Migration scope: `UserRole` enum, `UserStatus` enum, `User` table only — no other tables.

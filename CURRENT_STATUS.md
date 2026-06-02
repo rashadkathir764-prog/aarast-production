@@ -10,46 +10,39 @@
 
 ## Last Completed Task
 
-- Task: User model Prisma migration merged into `main` and verified
-- Current HEAD: `f4500f33ab609ec2e72ef48ba3d178de30232d43`
-- Branch merged: `phase/3-local-db-user-migration` → `main` (fast-forward)
-- Migration name: `20260602181910_init_user_model`
-- Migration path: `backend/prisma/migrations/20260602181910_init_user_model/migration.sql`
-- Migration scope: `UserRole` enum, `UserStatus` enum, `User` table only
-- Local development database: `aarast_dev` on `localhost:5433` (Docker container `aarast-db`)
-- Prisma version: `6.19.3` (local install, not global)
-- DATABASE_URL: configured locally in untracked `backend/.env` (not committed)
+- Task: Auth foundation implemented in worktree `phase/3-auth-foundation`
+- Worktree: `D:\projects\aarast-worktrees\phase-3-auth-foundation`
+- Branch: `phase/3-auth-foundation`
+- Endpoints added: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
+- Dependencies added: `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcryptjs`, `class-validator`, `class-transformer`, plus dev types
+- `backend/.env` created locally (untracked, gitignored, not committed); `JWT_SECRET` not committed
+- No new Prisma migrations needed; existing User model is sufficient
 
-## Checks Passed From Main
+## Checks Passed From Worktree (phase/3-auth-foundation)
 
 - `npm install`: PASS, 0 vulnerabilities
-- `prisma format`: PASS
-- `prisma validate`: PASS, schema is valid
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
-- `prisma migrate dev --name init_user_model`: PASS (applied on `aarast_dev` in worktree)
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
 - `GET /health` on port `3115`: PASS
 - `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3115`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3115`: PASS (15/15 checks)
+- `passwordHash` not exposed in any response: PASS (3 explicit checks)
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step: Auth foundation.
-- Do not create Auth, Users API/module, or WeddingPlan before explicit approval.
-- Auth foundation work must begin in a dedicated worktree on a new branch.
-- Planned MVP User shape: `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`.
-- Initial roles: `USER`, `ADMIN`, `PROVIDER`; `PROVIDER` is reserved for later provider flows and must not implement provider logic now.
-- Initial statuses: `ACTIVE`, `DISABLED`.
+- Next pending step: merge `phase/3-auth-foundation` into `main` after review.
+- After merge: Ownership context is the next approved step before WeddingPlan.
 - Approved next implementation order:
   1. ✅ Prisma + PostgreSQL foundation
   2. ✅ User model
   3. ✅ User migration
-  4. Auth foundation
+  4. ✅ Auth foundation
   5. Ownership context
   6. WeddingPlan module
-- WeddingPlan implementation is blocked until Auth and ownership context readiness are handled.
+- WeddingPlan implementation is blocked until ownership context readiness is handled.
 - Do not use a mock-auth shortcut for WeddingPlan ownership.
 - Do not create product modules until implementation is explicitly approved.
 

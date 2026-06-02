@@ -5,18 +5,18 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-user-prisma-model`
-- Current branch: `phase/3-user-prisma-model`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: User Prisma model implementation completed in worktree
-- Base main HEAD: `9c35c0ce34dae59ca4df00010784dc57412c874d`
+- Task: User Prisma model implementation merged into `main` and verified
+- Current HEAD: `d895535fbbdf6833317557a0c5acd60415bd31c8`
 - Minimal User model design status: implemented in Prisma schema
 - Prisma schema status: contains `UserRole`, `UserStatus`, and `User` only
-- Prisma migrations status: migration blocked because `DATABASE_URL` is not configured in this worktree
+- Prisma migrations status: migration pending because local `DATABASE_URL` / database is not configured
 
-## Checks Passed In Current Worktree
+## Checks Passed From Main
 
 - `npm run check`: PASS
 - `npm run build`: PASS
@@ -26,13 +26,14 @@
 - `npx prisma format`: PASS
 - `npx prisma validate`: PASS
 - `npx prisma migrate dev --name init_user_model --create-only`: FAIL, blocked by missing `DATABASE_URL`
-- `GET /health` on port `3111`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3111`: PASS
+- `GET /health` on port `3113`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3113`: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Current pending step is pre-merge review for the User Prisma model implementation.
+- Next pending step is local database configuration / User migration planning, not Auth yet.
+- User Prisma model worktree may be removed after verification.
 - Do not create Auth, Users API/module, or WeddingPlan before the approved next phase.
 - Planned MVP User shape: `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`.
 - Initial roles: `USER`, `ADMIN`, `PROVIDER`; `PROVIDER` is reserved for later provider flows and must not implement provider logic now.
@@ -58,7 +59,7 @@
 
 ## Known Issues
 
-- User Prisma model migration was not created because local `DATABASE_URL` is not configured.
+- User Prisma model migration is still pending because local `DATABASE_URL` / database is not configured.
 - No database migrations have been created or run.
 - User Prisma model is implemented without relations, provider profile fields, refresh tokens, or WeddingPlan relation.
 - Phase 3 WeddingPlan implementation still depends on User, Auth, and ownership context readiness.

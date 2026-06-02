@@ -5,14 +5,14 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-user-model`
-- Current branch: `phase/3-user-model`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: Prisma/PostgreSQL foundation merged into `main` and verified
-- Current HEAD: `a0d9b4b8b9f7682b00e014113dce7dce047c11c9`
-- Prisma/PostgreSQL foundation status: merged and verified from main
+- Task: User model design alignment merged into `main`
+- Current HEAD: `e7056074adfb44aa1d7f281e5193e27cc6a10668`
+- Minimal User model design status: approved
 - Prisma schema status: empty PostgreSQL datasource with no models
 - Prisma migrations status: no migrations exist
 
@@ -30,7 +30,8 @@
 ## Current Pending Step
 
 - Phase 3 User Model worktree exists at `D:\projects\aarast-worktrees\phase-3-user-model`.
-- Current task is User model design alignment only.
+- Next pending step is removing the User model design worktree after approval.
+- After cleanup, create a new worktree for User Prisma model implementation.
 - Planned MVP User shape: `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`.
 - Initial roles: `USER`, `ADMIN`, `PROVIDER`; `PROVIDER` is reserved for later provider flows and must not implement provider logic now.
 - Initial statuses: `ACTIVE`, `DISABLED`.
@@ -56,7 +57,8 @@
 ## Known Issues
 
 - Prisma schema intentionally has no models yet.
-- User model design is not yet implemented in Prisma.
+- User model worktree still exists and may be removed after approval.
+- User model design is approved but not yet implemented in Prisma.
 - No database migrations have been created or run.
 - Phase 3 WeddingPlan implementation still depends on User, Auth, and ownership context readiness.
 - Production migration and Docker/Dokploy work are outside the current Prisma/PostgreSQL foundation task.

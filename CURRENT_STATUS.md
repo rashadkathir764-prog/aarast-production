@@ -5,48 +5,47 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-wedding-plan-model`
-- Current branch: `phase/3-wedding-plan-model`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: WeddingPlan Prisma model and migration implemented in worktree
-- Base main HEAD: `94279f5cd850312f24ef867c72c3f36b07a41fd4`
+- Task: WeddingPlan Prisma model and migration merged into `main` and verified
+- Current HEAD after merge: `040dabcd7ef0dde3f89ca8849f3923b14b10422c`
 - Migration created and applied: `20260602200934_add_wedding_plan_model`
 - Migration path: `backend/prisma/migrations/20260602200934_add_wedding_plan_model/migration.sql`
 - Prisma additions: `WeddingPlanStatus` enum, `WeddingPlan` model, `User.weddingPlans` relation, and `WeddingPlan.owner` relation
-- WeddingPlan API/controller/service/module were not created
-- No Budget, Expenses, Debts, Installments, Tasks, Sharing, product modules, or Flutter/mobile files were created
-- `backend/.env` was not created in this worktree; runtime verification used process environment variables only
+- WeddingPlan API/controller/service/module are not implemented yet
+- Budget, Expenses, Debts, Installments, Tasks, and Sharing are not implemented yet
+- `backend/.env` remains local, ignored, and untracked; secrets were not committed
 
-## Checks Passed From WeddingPlan Model Worktree
+## Checks Passed From Main
 
 - `npm install`: PASS, 0 vulnerabilities
 - `npx prisma format`: PASS
 - `npx prisma validate`: PASS after providing `DATABASE_URL` through process environment
-- `npx prisma migrate dev --name add_wedding_plan_model`: PASS
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3121`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3121`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3121`: PASS (21/21 checks)
+- `GET /health` on port `3123`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3123`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3123`: PASS (21/21 checks)
 - Migration SQL scope check: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step: pre-merge review for WeddingPlan Prisma model and migration; do not merge until approved.
-- WeddingPlan model worktree must remain in place until review/merge/cleanup approval.
+- Next pending step: WeddingPlan API slice.
+- WeddingPlan model worktree may be removed after cleanup approval.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
   3. Complete: User migration
   4. Complete: Auth foundation
   5. Complete: Ownership context
-  6. Current: WeddingPlan Prisma model and migration
-  7. Next after merge approval: WeddingPlan API planning/implementation
+  6. Complete: WeddingPlan Prisma model and migration
+  7. Next: WeddingPlan API planning/implementation
 - Do not start Budget, Expenses, Debts, Installments, Tasks, or Sharing before the WeddingPlan module.
 - Do not create product modules until implementation is explicitly approved.
 

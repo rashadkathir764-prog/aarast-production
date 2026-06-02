@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 Prisma/PostgreSQL Foundation
+
+- Added Prisma/PostgreSQL foundation with an empty Prisma schema, PostgreSQL datasource, Prisma client generation, and neutral NestJS Prisma infrastructure.
+- Added placeholder-only `DATABASE_URL` documentation in `backend/.env.example`.
+- Verified `npm install`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit` with 0 vulnerabilities, `GET /health`, and `npm run smoke:health`.
+- Confirmed no Prisma models, migrations, product modules, Auth/User/WeddingPlan logic, Flutter/mobile files, Docker/Dokploy files, deployment scripts, or business logic were created.
+
 ## 2026-06-02 - Phase 3 Persistence/Auth Readiness Planning
 
 - Documented the approved readiness order: Prisma + PostgreSQL foundation, User model, Auth foundation, ownership context, then WeddingPlan module.

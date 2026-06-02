@@ -7,6 +7,7 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "prisma:generate": "prisma generate",
     "smoke": "npm run smoke:health",
     "smoke:health": "node scripts/smoke/health-smoke.js",
     "start": "node dist/main.js",
@@ -16,11 +17,13 @@
     "@nestjs/common": "^11.1.24",
     "@nestjs/core": "^11.1.24",
     "@nestjs/platform-express": "^11.1.24",
+    "@prisma/client": "^6.19.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
+    "prisma": "^6.19.3",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"

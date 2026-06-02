@@ -13,6 +13,8 @@
 | Do not implement confirmed bookings, deposits, payment status, payment processing, loans, credit, financing flows, or FinTech features in MVP. | Accepted | These flows require later validation, privacy review, legal review, operational readiness, and explicit approval before implementation. |
 | Financial data is private by default. | Accepted | Expenses, debts, installments, attachments, and private tasks must not be visible to shared members unless permissions explicitly allow it. |
 | Early provider/service features are planning references and quote/lead flows only. | Accepted | The MVP must not become marketplace-first, paid booking, confirmed reservation, or deposit-driven. |
+| Phase 3 readiness order is Prisma + PostgreSQL, User, Auth, ownership context, then WeddingPlan. | Accepted | WeddingPlan ownership must be backed by persistence and real authenticated user context before domain implementation begins. |
+| Do not use mock-auth shortcuts for WeddingPlan ownership. | Accepted | Ownership and privacy behavior must not be validated against fake or temporary identity assumptions. |
 | Docs Foundation is documentation-only. | Accepted | The current phase may create or update Markdown files only and must not create app code, backend modules, Flutter screens, tests, migrations, Docker files, or deployment configs. |
 | Use Docker for local service isolation and reproducible runtime environments. | Accepted | Docker is an operations decision for consistent local services and runtime behavior; it is not an implementation task in the current documentation phase. |
 | Use Dokploy for later VPS deployment and operations. | Accepted | Dokploy is a later deployment and operations decision; no Dokploy configuration is created in the current documentation phase. |
@@ -29,3 +31,5 @@
 - Exact Docker/Dokploy implementation files and deployment sequence.
 - Permission model details for shared members.
 - Attachment storage implementation.
+- Exact persistence package/setup sequence.
+- Auth token/session implementation details.

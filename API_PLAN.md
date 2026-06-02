@@ -7,6 +7,8 @@ This document describes planned API modules and endpoints at a high level only. 
 - Keep response formats consistent.
 - Protect private wedding-plan and financial data by ownership and sharing rules.
 - WeddingPlan APIs require persistence and authenticated ownership before implementation.
+- API readiness order is Prisma + PostgreSQL foundation, User model, Auth foundation, ownership context, then WeddingPlan APIs.
+- Do not use mock-auth shortcuts for WeddingPlan ownership.
 - Keep admin-only operations separated from public/customer flows.
 - Smoke test critical modules before expanding scope.
 - Treat marketplace APIs as supporting the Wedding Financial OS, not replacing it.
@@ -32,7 +34,7 @@ This document describes planned API modules and endpoints at a high level only. 
 
 | Module | Planned API Surface |
 | --- | --- |
-| Wedding Plans | First Wedding Financial OS domain API after persistence and authenticated ownership are ready. Initial shape is limited to owner, title, city, wedding date, estimated budget, currency, status, and timestamps. |
+| Wedding Plans | First Wedding Financial OS domain API after Prisma + PostgreSQL, User model, Auth foundation, and ownership context are ready. Initial shape is limited to owner, title, city, wedding date, estimated budget, currency, status, and timestamps. |
 | Budget Categories | Define planned budget groups and target amounts. |
 | Expenses | Add, update, list, and summarize wedding expenses. |
 | Debts | Track owed amounts, creditors, due dates, and status. |

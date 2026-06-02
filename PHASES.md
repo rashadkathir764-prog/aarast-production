@@ -81,6 +81,7 @@ Goal: Build the core backend MVP for wedding financial planning before marketpla
 Scope:
 - Backend persistence readiness needed for WeddingPlan data.
 - Authenticated user context needed for WeddingPlan ownership.
+- Readiness order: Prisma + PostgreSQL foundation, User model, Auth foundation, ownership context, then WeddingPlan module.
 - WeddingPlan.
 - BudgetCategory.
 - Expense.
@@ -99,6 +100,9 @@ Expected output:
 
 Acceptance criteria:
 - Phase 3 begins with persistence and authenticated ownership readiness before implementing the WeddingPlan module.
+- Persistence/Auth readiness follows the approved order: Prisma + PostgreSQL foundation first, User model second, Auth foundation third, ownership context fourth, and WeddingPlan after those prerequisites.
+- WeddingPlan ownership must use real authenticated user context; no mock-auth shortcut is accepted for ownership behavior.
+- Production migrations, Docker, Docker Compose, Dokploy, and deployment configuration are outside the Persistence/Auth readiness planning task.
 - WeddingPlan is the first Wedding Financial OS domain module after those prerequisites are in place.
 - The first WeddingPlan slice is limited to owner, title, city, wedding date, estimated budget, currency, status, and timestamps.
 - SharedMember, BudgetCategory, Expense, Debt, Installment, and Task are not part of the first WeddingPlan slice.

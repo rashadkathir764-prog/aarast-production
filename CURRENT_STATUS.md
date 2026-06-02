@@ -5,8 +5,8 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-3-persistence-auth-readiness`
+- Current branch: `phase/3-persistence-auth-readiness`
 
 ## Last Completed Task
 
@@ -26,9 +26,11 @@
 
 ## Current Pending Step
 
-- Phase 3 WeddingPlan worktree exists at `D:\projects\aarast-worktrees\phase-3-wedding-plan`.
-- Next pending step is Persistence/Auth readiness planning, not WeddingPlan implementation yet.
+- Phase 3 Persistence/Auth readiness worktree exists at `D:\projects\aarast-worktrees\phase-3-persistence-auth-readiness`.
+- Current task is Persistence/Auth readiness planning only.
+- Approved readiness order is Prisma + PostgreSQL foundation first, User model second, Auth foundation third, ownership context fourth, and WeddingPlan module after those prerequisites.
 - WeddingPlan implementation is blocked until persistence and authenticated ownership readiness are handled.
+- Do not use a mock-auth shortcut for WeddingPlan ownership.
 - Do not create product modules until implementation is explicitly approved.
 
 ## Forbidden Scope Reminders
@@ -41,7 +43,8 @@
 
 ## Known Issues
 
-- Phase 3 worktree still exists and may be removed after approval.
+- Main has not yet merged the Phase 3 Persistence/Auth readiness planning branch.
 - Phase 3 WeddingPlan implementation depends on persistence and authenticated user ownership readiness.
+- Production migration and Docker/Dokploy work are outside the current readiness planning task.
 - `backend/node_modules/` is generated and ignored.
 - `backend/dist/` is generated and ignored.

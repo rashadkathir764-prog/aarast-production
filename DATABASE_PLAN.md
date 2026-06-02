@@ -34,11 +34,14 @@ This document describes planned entities at a planning level only. It does not d
 
 - WeddingPlan is the center of the MVP data model.
 - WeddingPlan implementation depends on database persistence and an authenticated user context.
+- Persistence/Auth readiness order is Prisma + PostgreSQL foundation first, User model second, Auth foundation third, ownership context fourth, and WeddingPlan module after those prerequisites.
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
 - Every WeddingPlan must have clear ownership.
+- WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Shared access must be permission-based, not full access by default.
 - Financial data such as expenses, debts, and installments must be private by default.
 - SharedMember, BudgetCategory, Expense, Debt, Installment, and Task are later slices and must not be bundled into the first WeddingPlan slice.
 - Marketplace entities support planning and quote/lead context; they must not replace the financial planning core.
 - No payment, deposit, confirmed booking, loan, credit, or financing data should be added until explicitly approved in a later phase.
+- Production migrations and Docker/Dokploy deployment work are outside the Persistence/Auth readiness planning task.
 - Database migrations are outside the Docs Foundation task.

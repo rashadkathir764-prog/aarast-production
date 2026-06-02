@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 Persistence/Auth Readiness Planning
+
+- Documented the approved readiness order: Prisma + PostgreSQL foundation, User model, Auth foundation, ownership context, then WeddingPlan module.
+- Clarified that WeddingPlan ownership must not use a mock-auth shortcut.
+- Clarified that production migrations and Docker/Dokploy deployment work are outside this planning task.
+- Confirmed this entry is documentation-only; no code, dependencies, tests, migrations, backend modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, or business logic were created.
+
 ## 2026-06-02 - Phase 3 WeddingPlan Design Alignment
 
 - Clarified that WeddingPlan implementation depends on backend persistence and authenticated ownership readiness.

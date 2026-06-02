@@ -5,29 +5,28 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-user-migration`
-- Current branch: `phase/3-user-migration`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: User migration attempt completed in worktree
-- Base main HEAD: `d6050b8089f471f56629a2b00046c08143d34b43`
+- Task: User migration blocked status merged into `main` and verified
+- Current HEAD: `3933cb3b4a46dbf006caef5a6121faae9fbd47c2`
 - Minimal User model design status: implemented in Prisma schema
 - Prisma schema status: contains `UserRole`, `UserStatus`, and `User` only
-- Prisma migrations status: blocked because local PostgreSQL/DATABASE_URL is not usable in this worktree
+- Prisma migrations status: blocked because local PostgreSQL/DATABASE_URL is not usable
 
-## Checks Passed In Current Worktree
+## Checks Passed From Main
 
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
 - `npm install`: PASS, 0 vulnerabilities
 - `npm run prisma:generate`: PASS
-- `npx prisma format`: PASS
 - `npx prisma validate`: PASS
 - `npx prisma migrate dev --name init_user_model`: FAIL, blocked by unusable local PostgreSQL/DATABASE_URL
-- `GET /health` on port `3114`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3114`: PASS
+- `GET /health` on port `3115`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3115`: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
@@ -35,7 +34,7 @@
 - Next pending step is configure local PostgreSQL/DATABASE_URL before retrying User migration.
 - Auth foundation is not next until the User migration is created and verified.
 - Do not create Auth, Users API/module, or WeddingPlan before the approved next phase.
-- Do not create Auth, Users API/module, or WeddingPlan before the approved next phase.
+- User migration worktree may be removed after verification.
 - Planned MVP User shape: `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`.
 - Initial roles: `USER`, `ADMIN`, `PROVIDER`; `PROVIDER` is reserved for later provider flows and must not implement provider logic now.
 - Initial statuses: `ACTIVE`, `DISABLED`.

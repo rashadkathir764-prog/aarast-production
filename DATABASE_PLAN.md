@@ -20,7 +20,7 @@ This document describes planned entities at a planning level only. It does not d
 
 | Entity | Purpose |
 | --- | --- |
-| WeddingPlan | The main planning record for a wedding. It depends on persistence and authenticated ownership. The first planned slice includes `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
+| WeddingPlan | The main planning record for a wedding. The Prisma model is implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`; API implementation is still pending. |
 | BudgetCategory | Groups planned spending, such as hall, gold, furniture, clothing, photography, salon, transport, food, or gifts. |
 | Expense | Records actual or expected payments tied to the wedding plan and optionally a budget category or provider. |
 | Debt | Tracks money owed for wedding-related obligations. |
@@ -38,6 +38,7 @@ This document describes planned entities at a planning level only. It does not d
 - User model design comes before Auth foundation and must stay limited to the minimal MVP identity shape.
 - User model design is documentation-only until explicitly approved for Prisma schema implementation; no Prisma model or migration belongs to this design-alignment task.
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
+- WeddingPlan Prisma model implementation is limited to the owner relation and approved scalar fields; no SharedMember, BudgetCategory, Expense, Debt, Installment, or Task relations are implemented yet.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.

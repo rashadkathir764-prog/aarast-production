@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 WeddingPlan Prisma Model
+
+- Added `WeddingPlanStatus` enum and `WeddingPlan` Prisma model with the approved owner, title, city, wedding date, estimated budget, currency, status, and timestamp fields.
+- Added `User.weddingPlans` relation and `WeddingPlan.owner` relation through `ownerUserId`.
+- Created and applied real Prisma migration `20260602200934_add_wedding_plan_model`.
+- Migration SQL creates only `WeddingPlanStatus`, `WeddingPlan`, and the foreign key to `User`.
+- Verified `npm install`, `npx prisma format`, `npx prisma validate`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, and `npm run smoke:auth`.
+- Confirmed no WeddingPlan API/controller/service/module, Budget, Expenses, Debts, Installments, Tasks, Sharing, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, `prisma db push`, fake migrations, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic were created.
+
 ## 2026-06-02 - Phase 3 Ownership Context Foundation
 
 - Added a generic authenticated-user shape and ownership context service for future private modules.

@@ -5,45 +5,44 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-budget-expense-backend`
-- Current branch: `phase/3-budget-expense-backend`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: Budget + Expense backend slice implemented and verified in worktree
-- Base main HEAD: `d7a6a5b7cfdd84236df49b9160b1de1882c8ca67`
+- Task: Budget + Expense backend slice merged into main and verified
+- Main merge HEAD: `08dd876908a3105953b308b06d7444263ed51e7a`
 - Prisma additions: `ExpenseStatus`, `BudgetCategory`, `Expense`, and WeddingPlan relations for budget categories and expenses
 - Migration created and applied: `20260602211007_add_budget_expense_models`
 - BudgetCategory endpoints available: `POST /wedding-plans/:weddingPlanId/budget-categories`, `GET /wedding-plans/:weddingPlanId/budget-categories`, `PATCH /budget-categories/:id`, `DELETE /budget-categories/:id`
 - Expense endpoints available: `POST /wedding-plans/:weddingPlanId/expenses`, `GET /wedding-plans/:weddingPlanId/expenses`, `GET /wedding-plans/:weddingPlanId/expenses/summary`, `PATCH /expenses/:id`, `DELETE /expenses/:id`
 - All BudgetCategory and Expense endpoints require JWT authentication and owner access to the parent WeddingPlan.
+- `smoke:budget-expense` passed from main.
 - Debts, Installments, Tasks, and Sharing are not implemented yet.
 - Flutter/mobile work has not started.
-- `backend/.env` was not created in this worktree; runtime verification used process environment variables only.
+- `backend/.env` is untracked and gitignored; runtime verification used process environment variables only.
 
-## Checks Passed From Budget + Expense Worktree
+## Checks Passed From Main
 
 - `npm install`: PASS, 0 vulnerabilities
 - `npx prisma format`: PASS
 - `npx prisma validate`: PASS
-- `npx prisma migrate dev --name add_budget_expense_models`: PASS
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3128`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3128`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3128`: PASS (21/21 checks)
-- `npm run smoke:wedding-plan` with `SMOKE_BASE_URL=http://127.0.0.1:3128`: PASS (27/27 checks)
-- `npm run smoke:budget-expense` with `SMOKE_BASE_URL=http://127.0.0.1:3128`: PASS (48/48 checks)
+- `GET /health` on port `3136`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3136`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3136`: PASS (21/21 checks)
+- `npm run smoke:wedding-plan` with `SMOKE_BASE_URL=http://127.0.0.1:3136`: PASS (27/27 checks)
+- `npm run smoke:budget-expense` with `SMOKE_BASE_URL=http://127.0.0.1:3136`: PASS (48/48 checks)
 - Migration SQL scope check: PASS
 - passwordHash not exposed in auth, WeddingPlan, or Budget + Expense smoke responses: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step after merge: Debt + Installment backend slice.
-- Budget + Expense worktree must remain in place until review/merge/cleanup approval.
+- Next pending step: Debt + Installment backend slice.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -52,8 +51,8 @@
   5. Complete: Ownership context
   6. Complete: WeddingPlan Prisma model and migration
   7. Complete: WeddingPlan API slice
-  8. Current: Budget + Expense backend slice
-  9. Next after merge approval: Debt + Installment backend slice
+  8. Complete: Budget + Expense backend slice
+  9. Next: Debt + Installment backend slice
 - Do not start Tasks, Sharing, Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Flutter/mobile files until the active phase explicitly asks for Flutter work.
 

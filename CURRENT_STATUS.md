@@ -10,31 +10,30 @@
 
 ## Last Completed Task
 
-- Task: Auth foundation implemented in worktree `phase/3-auth-foundation`
-- Worktree: `D:\projects\aarast-worktrees\phase-3-auth-foundation`
-- Branch: `phase/3-auth-foundation`
-- Endpoints added: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
+- Task: Auth Foundation merged into `main` and verified
+- Current HEAD: `800058fedc68cf8e32c17bd8e10c50ae67f84a6e`
+- Auth endpoints available: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
 - Dependencies added: `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcryptjs`, `class-validator`, `class-transformer`, plus dev types
 - `backend/.env` created locally (untracked, gitignored, not committed); `JWT_SECRET` not committed
 - No new Prisma migrations needed; existing User model is sufficient
 
-## Checks Passed From Worktree (phase/3-auth-foundation)
+## Checks Passed From Main
 
 - `npm install`: PASS, 0 vulnerabilities
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3115`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3115`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3115`: PASS (15/15 checks)
+- `GET /health` on port `3117`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3117`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3117`: PASS (15/15 checks)
 - `passwordHash` not exposed in any response: PASS (3 explicit checks)
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step: merge `phase/3-auth-foundation` into `main` after review.
-- After merge: Ownership context is the next approved step before WeddingPlan.
+- Next pending step: Ownership Context, not WeddingPlan yet.
+- Auth Foundation worktree may be removed after verification.
 - Approved next implementation order:
   1. ✅ Prisma + PostgreSQL foundation
   2. ✅ User model

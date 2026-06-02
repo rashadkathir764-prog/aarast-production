@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 WeddingPlan Design Alignment
+
+- Clarified that WeddingPlan implementation depends on backend persistence and authenticated ownership readiness.
+- Kept WeddingPlan as the first Wedding Financial OS domain module after prerequisites.
+- Documented the first planned WeddingPlan slice and confirmed SharedMember, Budget, Expenses, Debts, Installments, and Tasks are later slices.
+- Confirmed this entry is documentation-only; no code, dependencies, tests, migrations, backend modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, or business logic were created.
+
 ## 2026-06-02 - Phase 2 Health Smoke Baseline
 
 - Added a Node-based health smoke script for `GET /health`.

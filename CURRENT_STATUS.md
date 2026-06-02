@@ -5,13 +5,13 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-3-wedding-plan`
+- Current branch: `phase/3-wedding-plan`
 
 ## Last Completed Task
 
 - Task: Phase 2 Health Smoke Baseline merged into `main`
-- Last commit hash: `1721db01999f01f17cdd8e425719f3bdf93096b4`
+- Last main commit hash: `78d4c2ae19e35ddabb620bd9a40edee9b8d93c9a`
 - Merge result: fast-forward from `phase/2-smoke-baseline`
 - Health smoke baseline status: complete
 
@@ -26,9 +26,10 @@
 
 ## Current Pending Step
 
-- Remove the completed Phase 2 worktree after approval.
-- Plan the next phase after worktree cleanup.
-- Do not create product modules until the next phase is explicitly approved.
+- Phase 3 WeddingPlan worktree exists at `D:\projects\aarast-worktrees\phase-3-wedding-plan`.
+- Current task is Phase 3 technical design alignment only.
+- Clarify persistence and authenticated ownership prerequisites before WeddingPlan implementation.
+- Do not create product modules until implementation is explicitly approved.
 
 ## Forbidden Scope Reminders
 
@@ -40,6 +41,7 @@
 
 ## Known Issues
 
-- `phase/2-smoke-baseline` worktree still exists at `D:\projects\aarast-worktrees\phase-2-smoke-baseline` and may be removed later after approval.
+- Main has not yet merged the Phase 3 design-alignment branch.
+- Phase 3 WeddingPlan implementation depends on persistence and authenticated user ownership readiness.
 - `backend/node_modules/` is generated and ignored.
 - `backend/dist/` is generated and ignored.

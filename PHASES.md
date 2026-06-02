@@ -79,6 +79,8 @@ Acceptance criteria:
 Goal: Build the core backend MVP for wedding financial planning before marketplace expansion.
 
 Scope:
+- Backend persistence readiness needed for WeddingPlan data.
+- Authenticated user context needed for WeddingPlan ownership.
 - WeddingPlan.
 - BudgetCategory.
 - Expense.
@@ -96,6 +98,10 @@ Expected output:
 - Shared members can collaborate according to permissions and privacy boundaries.
 
 Acceptance criteria:
+- Phase 3 begins with persistence and authenticated ownership readiness before implementing the WeddingPlan module.
+- WeddingPlan is the first Wedding Financial OS domain module after those prerequisites are in place.
+- The first WeddingPlan slice is limited to owner, title, city, wedding date, estimated budget, currency, status, and timestamps.
+- SharedMember, BudgetCategory, Expense, Debt, Installment, and Task are not part of the first WeddingPlan slice.
 - WeddingPlan, BudgetCategory, Expense, Debt, Installment, Task, SharedMember, due dates, permissions, and privacy-aware access pass smoke checks.
 - Ownership and authorization tests cover private wedding-plan data.
 - Sensitive financial details, debts, installments, and private tasks are not exposed to the wrong shared members.

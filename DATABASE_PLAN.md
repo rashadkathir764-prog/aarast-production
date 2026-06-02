@@ -20,7 +20,7 @@ This document describes planned entities at a planning level only. It does not d
 
 | Entity | Purpose |
 | --- | --- |
-| WeddingPlan | The main planning record for a wedding, owned or shared by users. |
+| WeddingPlan | The main planning record for a wedding. It depends on persistence and authenticated ownership. The first planned slice includes `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
 | BudgetCategory | Groups planned spending, such as hall, gold, furniture, clothing, photography, salon, transport, food, or gifts. |
 | Expense | Records actual or expected payments tied to the wedding plan and optionally a budget category or provider. |
 | Debt | Tracks money owed for wedding-related obligations. |
@@ -33,9 +33,12 @@ This document describes planned entities at a planning level only. It does not d
 ## Planning Principles
 
 - WeddingPlan is the center of the MVP data model.
+- WeddingPlan implementation depends on database persistence and an authenticated user context.
+- WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
 - Every WeddingPlan must have clear ownership.
 - Shared access must be permission-based, not full access by default.
 - Financial data such as expenses, debts, and installments must be private by default.
+- SharedMember, BudgetCategory, Expense, Debt, Installment, and Task are later slices and must not be bundled into the first WeddingPlan slice.
 - Marketplace entities support planning and quote/lead context; they must not replace the financial planning core.
 - No payment, deposit, confirmed booking, loan, credit, or financing data should be added until explicitly approved in a later phase.
 - Database migrations are outside the Docs Foundation task.

@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 User Model Migration Created
+
+- Created and applied real Prisma migration `20260602181910_init_user_model` for the User model.
+- Migration scope: `UserRole` enum, `UserStatus` enum, `User` table only — no other tables.
+- Database: `aarast_dev` (fresh database created in `aarast-db` Docker container on port `5433`).
+- Prisma version: `6.19.3` (local install) — global Prisma 7.x was intentionally bypassed to preserve project versioning.
+- `aarast` database preserved intact; `aarast_dev` created as a clean isolated dev database.
+- `backend/.env` created locally (untracked, gitignored); not committed.
+- Verified `prisma format`, `prisma validate`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit` with 0 vulnerabilities, `GET /health`, and `npm run smoke:health` — all PASS.
+- Confirmed no Auth, Users API/module, WeddingPlan, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic were created.
+
 ## 2026-06-02 - Phase 3 User Migration Attempt
 
 - Attempted to create the real User model Prisma migration `init_user_model`.

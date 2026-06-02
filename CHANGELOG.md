@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 Ownership Context Foundation
+
+- Added a generic authenticated-user shape and ownership context service for future private modules.
+- Kept ownership checks generic: compare authenticated user id to resource `ownerUserId`; no WeddingPlan or private resource API was created.
+- Updated auth context typing so `CurrentUser` and JWT validation use a safe authenticated-user shape.
+- Extended `smoke:auth` to verify `/auth/me` preserves the authenticated user's id and role consistently; auth smoke now has 21 checks.
+- Documented the ownerUserId access pattern in API/database planning and decisions.
+- Verified `npm install`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, and `npm run smoke:auth`.
+- Confirmed no WeddingPlan, product modules, Prisma models, migrations, Flutter/mobile files, Docker/Dokploy files, deployment scripts, refresh tokens, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic outside ownership/auth context were created.
+
 ## 2026-06-02 - Phase 3 Auth Foundation
 
 - Implemented minimal Auth foundation: `AuthModule`, `AuthService`, `AuthController`, `JwtStrategy`, `JwtAuthGuard`, `CurrentUser` decorator, `RegisterDto`, `LoginDto`, and `SafeUser` mapper.

@@ -1,4 +1,4 @@
-import { User } from '@prisma/client';
+import { AuthenticatedUser } from './authenticated-user.interface';
 
 export interface SafeUser {
   id: string;
@@ -11,7 +11,11 @@ export interface SafeUser {
   updatedAt: Date;
 }
 
-export function toSafeUser(user: User): SafeUser {
+export function toSafeUser(user: AuthenticatedUser): SafeUser {
+  return toAuthenticatedUser(user);
+}
+
+export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser {
   return {
     id: user.id,
     name: user.name,

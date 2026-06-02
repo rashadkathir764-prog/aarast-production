@@ -9,6 +9,7 @@ This document describes planned API modules and endpoints at a high level only. 
 - WeddingPlan APIs require persistence and authenticated ownership before implementation.
 - API readiness order is Prisma + PostgreSQL foundation, User model, Auth foundation, ownership context, then WeddingPlan APIs.
 - Do not use mock-auth shortcuts for WeddingPlan ownership.
+- Private owner-scoped APIs must compare the authenticated user id with the resource `ownerUserId` before returning or mutating private data.
 - Keep admin-only operations separated from public/customer flows.
 - Smoke test critical modules before expanding scope.
 - Treat marketplace APIs as supporting the Wedding Financial OS, not replacing it.

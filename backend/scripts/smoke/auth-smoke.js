@@ -67,6 +67,7 @@ async function run() {
 
   // 1. Register
   let registerToken = null;
+  let registeredUser = null;
   {
     const res = await request('POST', '/auth/register', {
       name: 'Smoke User',
@@ -79,11 +80,15 @@ async function run() {
     check('register does not expose passwordHash', !('passwordHash' in (res.body?.user ?? {})));
     check('register user has id', typeof res.body?.user?.id === 'string');
     check('register user has name', res.body?.user?.name === 'Smoke User');
+    check('register user has USER role', res.body?.user?.role === 'USER');
+    check('register user has ACTIVE status', res.body?.user?.status === 'ACTIVE');
+    registeredUser = res.body?.user;
     registerToken = res.body?.accessToken;
   }
 
   // 2. Login
   let loginToken = null;
+  let loginUser = null;
   {
     const res = await request('POST', '/auth/login', {
       phone: TEST_PHONE,
@@ -93,6 +98,9 @@ async function run() {
     check('login returns accessToken', typeof res.body?.accessToken === 'string');
     check('login returns user object', typeof res.body?.user === 'object');
     check('login does not expose passwordHash', !('passwordHash' in (res.body?.user ?? {})));
+    check('login user id matches registered user', res.body?.user?.id === registeredUser?.id);
+    check('login user role matches registered user', res.body?.user?.role === registeredUser?.role);
+    loginUser = res.body?.user;
     loginToken = res.body?.accessToken;
   }
 
@@ -118,6 +126,8 @@ async function run() {
     check('GET /auth/me with token - HTTP 200', res.status === 200);
     check('GET /auth/me does not expose passwordHash', !('passwordHash' in (res.body ?? {})));
     check('GET /auth/me returns correct phone', res.body?.phone === TEST_PHONE);
+    check('GET /auth/me user id matches login user', res.body?.id === loginUser?.id);
+    check('GET /auth/me role matches login user', res.body?.role === loginUser?.role);
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

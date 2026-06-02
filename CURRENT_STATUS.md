@@ -5,35 +5,37 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-3-ownership-context`
+- Current branch: `phase/3-ownership-context`
 
 ## Last Completed Task
 
-- Task: Auth Foundation merged into `main` and verified
-- Current HEAD: `800058fedc68cf8e32c17bd8e10c50ae67f84a6e`
+- Task: Ownership Context foundation implemented and verified in worktree
+- Base main HEAD: `a2b24fd7b76e0b772cc2764ce74b170f42cf0806`
 - Auth endpoints available: `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
-- Dependencies added: `@nestjs/jwt`, `@nestjs/passport`, `passport`, `passport-jwt`, `bcryptjs`, `class-validator`, `class-transformer`, plus dev types
-- `backend/.env` created locally (untracked, gitignored, not committed); `JWT_SECRET` not committed
-- No new Prisma migrations needed; existing User model is sufficient
+- Ownership utilities added: `AuthenticatedUser` interface and generic `OwnershipContextService`.
+- Ownership rule: future private resources should compare authenticated user id to resource `ownerUserId`.
+- `backend/.env` was not created in this worktree; runtime verification used process environment variables only.
+- No new Prisma models or migrations were created.
 
-## Checks Passed From Main
+## Checks Passed From Ownership Worktree
 
 - `npm install`: PASS, 0 vulnerabilities
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3117`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3117`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3117`: PASS (15/15 checks)
+- `GET /health` on port `3118`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3118`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3118`: PASS (21/21 checks)
+- `/auth/me` returns the authenticated user's id and role consistently: PASS
 - `passwordHash` not exposed in any response: PASS (3 explicit checks)
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step: Ownership Context, not WeddingPlan yet.
-- Auth Foundation worktree may be removed after verification.
+- Next pending step: pre-merge review for Ownership Context foundation; do not merge until approved.
+- Ownership Context worktree must remain in place until review/merge/cleanup approval.
 - Approved next implementation order:
   1. ✅ Prisma + PostgreSQL foundation
   2. ✅ User model
@@ -41,7 +43,7 @@
   4. ✅ Auth foundation
   5. Ownership context
   6. WeddingPlan module
-- WeddingPlan implementation is blocked until ownership context readiness is handled.
+- WeddingPlan implementation is still blocked until Ownership Context is merged and verified on `main`.
 - Do not use a mock-auth shortcut for WeddingPlan ownership.
 - Do not create product modules until implementation is explicitly approved.
 

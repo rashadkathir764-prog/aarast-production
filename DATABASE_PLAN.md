@@ -40,6 +40,7 @@ This document describes planned entities at a planning level only. It does not d
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
+- Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
 - Financial data such as expenses, debts, and installments must be private by default.
 - SharedMember, BudgetCategory, Expense, Debt, Installment, and Task are later slices and must not be bundled into the first WeddingPlan slice.

@@ -5,31 +5,34 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-prisma-postgres-foundation`
-- Current branch: `phase/3-prisma-postgres-foundation`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: Prisma/PostgreSQL foundation completed in worktree
-- Base main HEAD: `27a0c7d09b4d795d65d0d73970c907c502fc2977`
-- Prisma/PostgreSQL foundation status: complete, pending commit and merge
+- Task: Prisma/PostgreSQL foundation merged into `main` and verified
+- Current HEAD: `a0d9b4b8b9f7682b00e014113dce7dce047c11c9`
+- Prisma/PostgreSQL foundation status: merged and verified from main
 - Prisma schema status: empty PostgreSQL datasource with no models
+- Prisma migrations status: no migrations exist
 
 ## Checks Passed From Main
 
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
+- `npm install`: PASS, 0 vulnerabilities
 - `npm run prisma:generate`: PASS
-- `GET /health` on port `3108`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3108`: PASS
+- `GET /health` on port `3110`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3110`: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Commit the Prisma/PostgreSQL foundation after review.
-- Do not run migrations or add Prisma models in this slice.
-- Next implementation step after merge is User model planning/implementation in a separate approved task.
+- Prisma/PostgreSQL foundation worktree still exists at `D:\projects\aarast-worktrees\phase-3-prisma-postgres-foundation`.
+- Next pending step is removing the Prisma worktree after approval.
+- After cleanup, create a new worktree for User model planning/implementation.
+- Do not run migrations or add Prisma models until explicitly approved.
 - Approved next implementation order:
   1. Prisma + PostgreSQL foundation
   2. User model

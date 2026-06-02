@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 User Migration Attempt
+
+- Attempted to create the real User model Prisma migration `init_user_model`.
+- Confirmed no fake migration was created; `backend/prisma/migrations/` still does not exist.
+- Migration is blocked because the local PostgreSQL/DATABASE_URL setup is not usable from this worktree.
+- Verified `npx prisma format`, `npx prisma validate`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit` with 0 vulnerabilities, `GET /health`, and `npm run smoke:health`.
+- Confirmed no Auth, Users API/module, WeddingPlan, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic were created.
+
 ## 2026-06-02 - Phase 3 User Prisma Model
 
 - Added `UserRole` and `UserStatus` enums and the minimal MVP `User` Prisma model.

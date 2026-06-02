@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-03 - Phase 3 Debt + Installment Backend Slice
+
+- Added `DebtStatus`, `InstallmentStatus`, `Debt`, and `Installment` Prisma schema support with a real migration `20260602215807_add_debt_installment_models`.
+- Implemented protected Debt endpoints under WeddingPlan ownership: create, list, summary, update, and delete.
+- Implemented protected Installment endpoints under Debt/WeddingPlan ownership: create, list, due list, update, and delete.
+- Added `backend/scripts/smoke/debt-installment-smoke.js` and `smoke:debt-installment` package script.
+- Verified `npm install`, `npx prisma format`, `npx prisma validate`, `npx prisma migrate dev --name add_debt_installment_models`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, `npm run smoke:auth`, `npm run smoke:wedding-plan`, `npm run smoke:budget-expense`, and `npm run smoke:debt-installment`.
+- Documented that Tasks, Sharing, and Flutter/mobile work are not implemented yet.
+- Confirmed no Tasks, Sharing, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, `prisma db push`, fake migrations, refresh tokens, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic outside Debt + Installment slice were created.
+
 ## 2026-06-03 - Phase 3 Budget + Expense Backend Slice
 
 - Added `ExpenseStatus`, `BudgetCategory`, and `Expense` Prisma schema support with a real migration `20260602211007_add_budget_expense_models`.

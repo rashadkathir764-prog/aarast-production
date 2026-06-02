@@ -29,6 +29,20 @@ enum ExpenseStatus {
   CANCELLED
 }
 
+enum DebtStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
 model User {
   id           String        @id @default(cuid())
   name         String
@@ -56,6 +70,7 @@ model WeddingPlan {
   owner            User              @relation(fields: [ownerUserId], references: [id])
   budgetCategories BudgetCategory[]
   expenses         Expense[]
+  debts            Debt[]
 }
 
 model BudgetCategory {
@@ -82,4 +97,33 @@ model Expense {
   updatedAt        DateTime        @updatedAt
   weddingPlan      WeddingPlan     @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
   budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+}
+
+model Debt {
+  id            String        @id @default(cuid())
+  weddingPlanId String
+  creditorName  String
+  title         String
+  totalAmount   Decimal       @db.Decimal(14, 2)
+  paidAmount    Decimal       @default(0) @db.Decimal(14, 2)
+  dueDate       DateTime?
+  status        DebtStatus    @default(OPEN)
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  weddingPlan   WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  installments  Installment[]
+}
+
+model Installment {
+  id        String            @id @default(cuid())
+  debtId    String
+  amount    Decimal           @db.Decimal(14, 2)
+  dueDate   DateTime?
+  paidAt    DateTime?
+  status    InstallmentStatus @default(PENDING)
+  note      String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  debt      Debt              @relation(fields: [debtId], references: [id], onDelete: Cascade)
 }

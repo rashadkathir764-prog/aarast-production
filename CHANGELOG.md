@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 User Model Design Alignment
+
+- Documented the minimal MVP User model shape: `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`.
+- Clarified that phone is important for Yemen-first usage and `passwordHash` must store hashed passwords only, never plaintext passwords.
+- Defined initial roles as `USER`, `ADMIN`, and `PROVIDER`, with `PROVIDER` reserved for later provider flows only.
+- Defined initial statuses as `ACTIVE` and `DISABLED`.
+- Confirmed this task is design-only; no Prisma models, migrations, Auth, backend modules, dependencies, tests, Flutter/mobile files, Docker/Dokploy files, deployment scripts, or business logic were created.
+
 ## 2026-06-02 - Phase 3 Prisma/PostgreSQL Foundation
 
 - Added Prisma/PostgreSQL foundation with an empty Prisma schema, PostgreSQL datasource, Prisma client generation, and neutral NestJS Prisma infrastructure.

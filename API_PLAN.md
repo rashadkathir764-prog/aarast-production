@@ -18,8 +18,8 @@ This document describes planned API modules and endpoints at a high level only. 
 
 | Module | Planned API Surface |
 | --- | --- |
-| Auth | Register, login, refresh session, logout, current user. |
-| Users | Profile reads and safe profile updates. |
+| Auth | Future Auth foundation after the User model exists; register, login, refresh session, logout, and current-user behavior must not be implemented during User model design alignment. |
+| Users | Planned around the minimal MVP User shape: `id`, `name`, `phone`, `email`, `role`, `status`, `createdAt`, and `updatedAt`. `passwordHash` is storage-only and must never be returned by APIs. Phone is important for Yemen-first usage. |
 | Cities | List active Yemen cities and admin city management. |
 | Categories | List active service categories and admin category management. |
 | Providers | Public provider listing/details and provider profile management. |

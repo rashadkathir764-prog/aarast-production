@@ -6,7 +6,7 @@ This document describes planned entities at a planning level only. It does not d
 
 | Entity | Purpose |
 | --- | --- |
-| User | Represents a person using Aarast, such as groom, bride, family member, provider, or admin. |
+| User | Represents a person using Aarast, such as groom, bride, family member, provider, or admin. The MVP User shape is planned as `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`. `phone` is important for Yemen-first usage. `passwordHash` must store hashed passwords only, never plaintext passwords. Initial roles are `USER`, `ADMIN`, and `PROVIDER`; `PROVIDER` is reserved for later provider flows and must not implement provider logic now. Initial statuses are `ACTIVE` and `DISABLED`. |
 | Provider | Represents a vendor or business that offers wedding-related services. |
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
 | Category | Groups services into discoverable wedding-service categories. |
@@ -35,6 +35,8 @@ This document describes planned entities at a planning level only. It does not d
 - WeddingPlan is the center of the MVP data model.
 - WeddingPlan implementation depends on database persistence and an authenticated user context.
 - Persistence/Auth readiness order is Prisma + PostgreSQL foundation first, User model second, Auth foundation third, ownership context fourth, and WeddingPlan module after those prerequisites.
+- User model design comes before Auth foundation and must stay limited to the minimal MVP identity shape.
+- User model design is documentation-only until explicitly approved for Prisma schema implementation; no Prisma model or migration belongs to this design-alignment task.
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 User Prisma Model
+
+- Added `UserRole` and `UserStatus` enums and the minimal MVP `User` Prisma model.
+- Kept the User model limited to approved identity fields with no relations, provider profile fields, refresh tokens, or WeddingPlan relation.
+- Attempted local migration `init_user_model`; migration was blocked because `DATABASE_URL` is not configured in this worktree.
+- Verified `npx prisma format`, `npx prisma validate`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit` with 0 vulnerabilities, `GET /health`, and `npm run smoke:health`.
+- Confirmed no Auth, Users API/module, WeddingPlan, product modules, migrations, Flutter/mobile files, Docker/Dokploy files, deployment scripts, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic were created.
+
 ## 2026-06-02 - Phase 3 User Model Design Alignment
 
 - Documented the minimal MVP User model shape: `id`, `name`, `phone`, `email`, `passwordHash`, `role`, `status`, `createdAt`, and `updatedAt`.

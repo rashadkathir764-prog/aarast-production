@@ -5,15 +5,15 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-persistence-auth-readiness`
-- Current branch: `phase/3-persistence-auth-readiness`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: Phase 3 WeddingPlan design alignment merged into `main`
-- Current HEAD: `e54f6ba287e690ddb7f1f3f0a5996dbecafbc8f4`
-- Merge result: fast-forward from `phase/3-wedding-plan`
-- Design alignment status: complete
+- Task: Persistence/Auth readiness planning merged into `main`
+- Current HEAD: `e4cc6bea81186b455069269b67da49525a7e72fb`
+- Merge result: fast-forward from `phase/3-persistence-auth-readiness`
+- Readiness planning status: complete
 
 ## Checks Passed From Main
 
@@ -26,9 +26,15 @@
 
 ## Current Pending Step
 
-- Phase 3 Persistence/Auth readiness worktree exists at `D:\projects\aarast-worktrees\phase-3-persistence-auth-readiness`.
-- Current task is Persistence/Auth readiness planning only.
-- Approved readiness order is Prisma + PostgreSQL foundation first, User model second, Auth foundation third, ownership context fourth, and WeddingPlan module after those prerequisites.
+- Phase 3 Persistence/Auth readiness worktree still exists at `D:\projects\aarast-worktrees\phase-3-persistence-auth-readiness`.
+- Next pending step is removing the readiness worktree after approval.
+- After cleanup, create a new worktree for Prisma/PostgreSQL foundation.
+- Approved next implementation order:
+  1. Prisma + PostgreSQL foundation
+  2. User model
+  3. Auth foundation
+  4. Ownership context
+  5. WeddingPlan module
 - WeddingPlan implementation is blocked until persistence and authenticated ownership readiness are handled.
 - Do not use a mock-auth shortcut for WeddingPlan ownership.
 - Do not create product modules until implementation is explicitly approved.
@@ -43,7 +49,7 @@
 
 ## Known Issues
 
-- Main has not yet merged the Phase 3 Persistence/Auth readiness planning branch.
+- Readiness worktree still exists and may be removed after approval.
 - Phase 3 WeddingPlan implementation depends on persistence and authenticated user ownership readiness.
 - Production migration and Docker/Dokploy work are outside the current readiness planning task.
 - `backend/node_modules/` is generated and ignored.

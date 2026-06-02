@@ -11,6 +11,7 @@
     "smoke": "npm run smoke:health && npm run smoke:auth",
     "smoke:health": "node scripts/smoke/health-smoke.js",
     "smoke:auth": "node scripts/smoke/auth-smoke.js",
+    "smoke:wedding-plan": "node scripts/smoke/wedding-plan-smoke.js",
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts"
   },

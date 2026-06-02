@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-02 - Phase 3 WeddingPlan API Slice
+
+- Implemented protected WeddingPlan API slice with `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`.
+- Added `WeddingPlansModule`, `WeddingPlansService`, `WeddingPlansController`, `CreateWeddingPlanDto`, and `UpdateWeddingPlanDto`.
+- All WeddingPlan routes require JWT and use authenticated ownership context before returning or mutating plans.
+- Added `backend/scripts/smoke/wedding-plan-smoke.js` and `smoke:wedding-plan` package script.
+- Verified `npm install`, `npx prisma validate`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, `npm run smoke:auth`, and `npm run smoke:wedding-plan`.
+- Confirmed `passwordHash` is not returned and no Budget, Expenses, Debts, Installments, Tasks, Sharing, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, new Prisma models, new migrations, `prisma db push`, fake migrations, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic outside WeddingPlan API slice were created.
+
 ## 2026-06-02 - Phase 3 WeddingPlan Prisma Model
 
 - Added `WeddingPlanStatus` enum and `WeddingPlan` Prisma model with the approved owner, title, city, wedding date, estimated budget, currency, status, and timestamp fields.

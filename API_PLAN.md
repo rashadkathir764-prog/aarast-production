@@ -35,7 +35,7 @@ This document describes planned API modules and endpoints at a high level only. 
 
 | Module | Planned API Surface |
 | --- | --- |
-| Wedding Plans | First Wedding Financial OS domain API after Prisma + PostgreSQL, User model, Auth foundation, and ownership context are ready. The Prisma model exists, but WeddingPlan controller, service, module, and endpoints are not implemented yet. Initial shape is limited to owner, title, city, wedding date, estimated budget, currency, status, and timestamps. |
+| Wedding Plans | Implemented protected MVP endpoints: `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`. All routes require JWT and owner checks. No DELETE endpoint, sharing, budget, expense, debt, installment, or task APIs are implemented yet. |
 | Budget Categories | Define planned budget groups and target amounts. |
 | Expenses | Add, update, list, and summarize wedding expenses. |
 | Debts | Track owed amounts, creditors, due dates, and status. |

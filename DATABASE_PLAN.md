@@ -21,8 +21,8 @@ This document describes planned entities at a planning level only. It does not d
 | Entity | Purpose |
 | --- | --- |
 | WeddingPlan | The main planning record for a wedding. The Prisma model is implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`; API implementation is still pending. |
-| BudgetCategory | Groups planned spending, such as hall, gold, furniture, clothing, photography, salon, transport, food, or gifts. |
-| Expense | Records actual or expected payments tied to the wedding plan and optionally a budget category or provider. |
+| BudgetCategory | Implemented for owner-scoped WeddingPlan budget groups, with optional target amounts and links to expenses. |
+| Expense | Implemented for owner-scoped WeddingPlan spending records with amount, status, optional date, optional note, and optional BudgetCategory link. |
 | Debt | Tracks money owed for wedding-related obligations. |
 | Installment | Tracks scheduled payments for a debt, package, service, or other wedding obligation. |
 | Task | Tracks planning work, responsibility, due dates, and completion status. |
@@ -38,13 +38,13 @@ This document describes planned entities at a planning level only. It does not d
 - User model design comes before Auth foundation and must stay limited to the minimal MVP identity shape.
 - User model design is documentation-only until explicitly approved for Prisma schema implementation; no Prisma model or migration belongs to this design-alignment task.
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
-- WeddingPlan Prisma model implementation is limited to the owner relation and approved scalar fields; no SharedMember, BudgetCategory, Expense, Debt, Installment, or Task relations are implemented yet.
+- WeddingPlan now has implemented BudgetCategory and Expense relations; SharedMember, Debt, Installment, and Task relations are not implemented yet.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
 - Financial data such as expenses, debts, and installments must be private by default.
-- SharedMember, BudgetCategory, Expense, Debt, Installment, and Task are later slices and must not be bundled into the first WeddingPlan slice.
+- SharedMember, Debt, Installment, and Task are later slices and are not part of the Budget + Expense backend slice.
 - Marketplace entities support planning and quote/lead context; they must not replace the financial planning core.
 - No payment, deposit, confirmed booking, loan, credit, or financing data should be added until explicitly approved in a later phase.
 - Production migrations and Docker/Dokploy deployment work are outside the Persistence/Auth readiness planning task.

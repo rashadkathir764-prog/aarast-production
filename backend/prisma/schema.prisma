@@ -23,6 +23,12 @@ enum WeddingPlanStatus {
   ARCHIVED
 }
 
+enum ExpenseStatus {
+  PLANNED
+  PAID
+  CANCELLED
+}
+
 model User {
   id           String        @id @default(cuid())
   name         String
@@ -37,15 +43,43 @@ model User {
 }
 
 model WeddingPlan {
-  id              String            @id @default(cuid())
-  ownerUserId     String
-  title           String
-  city            String?
-  weddingDate     DateTime?
-  estimatedBudget Decimal?          @db.Decimal(14, 2)
-  currency        String            @default("YER")
-  status          WeddingPlanStatus @default(PLANNING)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  owner           User              @relation(fields: [ownerUserId], references: [id])
+  id               String            @id @default(cuid())
+  ownerUserId      String
+  title            String
+  city             String?
+  weddingDate      DateTime?
+  estimatedBudget  Decimal?          @db.Decimal(14, 2)
+  currency         String            @default("YER")
+  status           WeddingPlanStatus @default(PLANNING)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  owner            User              @relation(fields: [ownerUserId], references: [id])
+  budgetCategories BudgetCategory[]
+  expenses         Expense[]
+}
+
+model BudgetCategory {
+  id            String      @id @default(cuid())
+  weddingPlanId String
+  name          String
+  targetAmount  Decimal?    @db.Decimal(14, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  expenses      Expense[]
+}
+
+model Expense {
+  id               String          @id @default(cuid())
+  weddingPlanId    String
+  budgetCategoryId String?
+  title            String
+  amount           Decimal         @db.Decimal(14, 2)
+  status           ExpenseStatus   @default(PAID)
+  expenseDate      DateTime?
+  note             String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  weddingPlan      WeddingPlan     @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
 }

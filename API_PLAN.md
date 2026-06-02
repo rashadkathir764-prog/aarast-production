@@ -36,8 +36,8 @@ This document describes planned API modules and endpoints at a high level only. 
 | Module | Planned API Surface |
 | --- | --- |
 | Wedding Plans | Implemented protected MVP endpoints: `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`. All routes require JWT and owner checks. No DELETE endpoint, sharing, budget, expense, debt, installment, or task APIs are implemented yet. |
-| Budget Categories | Define planned budget groups and target amounts. |
-| Expenses | Add, update, list, and summarize wedding expenses. |
+| Budget Categories | Implemented protected owner-scoped endpoints to create/list categories under a WeddingPlan, update a category, and delete a category. |
+| Expenses | Implemented protected owner-scoped endpoints to create/list expenses under a WeddingPlan, view a simple summary, update an expense, and delete an expense. |
 | Debts | Track owed amounts, creditors, due dates, and status. |
 | Installments | Track scheduled payments and payment status. |
 | Tasks | Create, assign, complete, and filter wedding tasks. |

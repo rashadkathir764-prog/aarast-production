@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-03 - Phase 3 Budget + Expense Backend Slice
+
+- Added `ExpenseStatus`, `BudgetCategory`, and `Expense` Prisma schema support with a real migration `20260602211007_add_budget_expense_models`.
+- Implemented protected BudgetCategory endpoints under WeddingPlan ownership: create, list, update, and delete.
+- Implemented protected Expense endpoints under WeddingPlan ownership: create, list, summary, update, and delete.
+- Added `backend/scripts/smoke/budget-expense-smoke.js` and `smoke:budget-expense` package script.
+- Verified `npm install`, `npx prisma format`, `npx prisma validate`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, `npm run smoke:auth`, `npm run smoke:wedding-plan`, and `npm run smoke:budget-expense`.
+- Documented that Debts, Installments, Tasks, Sharing, and Flutter/mobile work are not implemented yet.
+- Confirmed no Debts, Installments, Tasks, Sharing, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, `prisma db push`, fake migrations, refresh tokens, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic outside Budget + Expense slice were created.
+
 ## 2026-06-02 - Phase 3 WeddingPlan API Slice
 
 - Implemented protected WeddingPlan API slice with `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`.

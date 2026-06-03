@@ -5,45 +5,48 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-3-task-timeline-backend`
+- Current branch: `phase/3-task-timeline-backend`
 
 ## Last Completed Task
 
-- Task: Debt + Installment backend slice merged into main and verified
-- Main merge HEAD: `493deff9f6f991fbdee275f8261f7937ac0d4c4b`
-- Prisma additions: `DebtStatus`, `InstallmentStatus`, `Debt`, `Installment`, and WeddingPlan relation for debts
-- Migration created and applied: `20260602215807_add_debt_installment_models`
-- Debt endpoints available: `POST /wedding-plans/:weddingPlanId/debts`, `GET /wedding-plans/:weddingPlanId/debts`, `GET /wedding-plans/:weddingPlanId/debts/summary`, `PATCH /debts/:id`, `DELETE /debts/:id`
-- Installment endpoints available: `POST /debts/:debtId/installments`, `GET /debts/:debtId/installments`, `GET /wedding-plans/:weddingPlanId/installments/due`, `PATCH /installments/:id`, `DELETE /installments/:id`
-- All Debt and Installment endpoints require JWT authentication and owner access to the parent WeddingPlan.
-- `smoke:debt-installment` passed from main.
-- Tasks and Sharing are not implemented yet.
+- Task: Task + Timeline backend slice implemented and verified in worktree
+- Base main HEAD: `6072ddb6f0c795448d9f9c3cced4166fe38e548f`
+- Prisma additions: `WeddingTaskStatus`, `WeddingTaskPriority`, `WeddingTask`, and WeddingPlan relation for tasks
+- Migration created and applied: `20260603205638_add_task_timeline_model`
+- Task endpoints available: `POST /wedding-plans/:weddingPlanId/tasks`, `GET /wedding-plans/:weddingPlanId/tasks`, `PATCH /tasks/:id`, `DELETE /tasks/:id`
+- Timeline endpoint available: `GET /wedding-plans/:weddingPlanId/timeline`
+- All Task and Timeline endpoints require JWT authentication and owner access to the parent WeddingPlan.
+- `smoke:task-timeline` passed from the worktree.
+- Sharing is not implemented yet.
 - Flutter/mobile work has not started.
 - `backend/.env` is untracked and gitignored; runtime verification used process environment variables only.
 
-## Checks Passed From Main
+## Checks Passed From Task + Timeline Worktree
 
 - `npm install`: PASS, 0 vulnerabilities
 - `npx prisma format`: PASS
 - `npx prisma validate`: PASS
+- `npx prisma migrate dev --name add_task_timeline_model`: PASS
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3139`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3139`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3139`: PASS (21/21 checks)
-- `npm run smoke:wedding-plan` with `SMOKE_BASE_URL=http://127.0.0.1:3139`: PASS (27/27 checks)
-- `npm run smoke:budget-expense` with `SMOKE_BASE_URL=http://127.0.0.1:3139`: PASS (48/48 checks)
-- `npm run smoke:debt-installment` with `SMOKE_BASE_URL=http://127.0.0.1:3139`: PASS (56/56 checks)
+- `GET /health` on port `3140`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3140`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3140`: PASS (21/21 checks)
+- `npm run smoke:wedding-plan` with `SMOKE_BASE_URL=http://127.0.0.1:3140`: PASS (27/27 checks)
+- `npm run smoke:budget-expense` with `SMOKE_BASE_URL=http://127.0.0.1:3140`: PASS (48/48 checks)
+- `npm run smoke:debt-installment` with `SMOKE_BASE_URL=http://127.0.0.1:3140`: PASS (56/56 checks)
+- `npm run smoke:task-timeline` with `SMOKE_BASE_URL=http://127.0.0.1:3140`: PASS (43/43 checks)
 - Migration SQL scope check: PASS
-- passwordHash not exposed in auth, WeddingPlan, Budget + Expense, or Debt + Installment smoke responses: PASS
+- passwordHash not exposed in auth, WeddingPlan, Budget + Expense, Debt + Installment, or Task + Timeline smoke responses: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step: Task + Timeline backend slice.
+- Next pending step after merge: Sharing / Permissions backend slice.
+- Task + Timeline worktree must remain in place until review/merge/cleanup approval.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -54,7 +57,8 @@
   7. Complete: WeddingPlan API slice
   8. Complete: Budget + Expense backend slice
   9. Complete: Debt + Installment backend slice
-  10. Next: Task + Timeline backend slice
+  10. Current: Task + Timeline backend slice
+  11. Next after merge approval: Sharing / Permissions backend slice
 - Do not start Sharing, Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Flutter/mobile files until the active phase explicitly asks for Flutter work.
 
@@ -67,7 +71,7 @@
 
 ## Forbidden Scope Reminders
 
-- Do not create Tasks, Sharing, Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
+- Do not create Sharing, Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Flutter/mobile screens or folders.
 - Do not create Dockerfiles, docker-compose files, Dokploy config, or deployment scripts.
 - Do not run `prisma db push`.

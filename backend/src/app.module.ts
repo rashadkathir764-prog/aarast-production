@@ -7,6 +7,8 @@ import { BudgetCategoriesModule } from './budget-categories/budget-categories.mo
 import { ExpensesModule } from './expenses/expenses.module';
 import { DebtsModule } from './debts/debts.module';
 import { InstallmentsModule } from './installments/installments.module';
+import { TasksModule } from './tasks/tasks.module';
+import { TimelineModule } from './timeline/timeline.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { InstallmentsModule } from './installments/installments.module';
     ExpensesModule,
     DebtsModule,
     InstallmentsModule,
+    TasksModule,
+    TimelineModule,
   ],
   controllers: [HealthController],
 })

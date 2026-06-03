@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-03 - Phase 3 Task + Timeline Backend Slice
+
+- Added `WeddingTaskStatus`, `WeddingTaskPriority`, and `WeddingTask` Prisma schema support with a real migration `20260603205638_add_task_timeline_model`.
+- Implemented protected Task endpoints under WeddingPlan ownership: create, list, update, and delete.
+- Implemented protected Timeline endpoint under WeddingPlan ownership with wedding date, upcoming tasks, due debts, and due installments.
+- Added `backend/scripts/smoke/task-timeline-smoke.js` and `smoke:task-timeline` package script.
+- Verified `npm install`, `npx prisma format`, `npx prisma validate`, `npx prisma migrate dev --name add_task_timeline_model`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, `npm run smoke:auth`, `npm run smoke:wedding-plan`, `npm run smoke:budget-expense`, `npm run smoke:debt-installment`, and `npm run smoke:task-timeline`.
+- Documented that Sharing and Flutter/mobile work are not implemented yet.
+- Confirmed no Sharing, product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, `prisma db push`, fake migrations, refresh tokens, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic outside Task + Timeline slice were created.
+
 ## 2026-06-03 - Phase 3 Debt + Installment Backend Slice
 
 - Added `DebtStatus`, `InstallmentStatus`, `Debt`, and `Installment` Prisma schema support with a real migration `20260602215807_add_debt_installment_models`.

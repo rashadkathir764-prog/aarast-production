@@ -43,6 +43,19 @@ enum InstallmentStatus {
   CANCELLED
 }
 
+enum WeddingTaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum WeddingTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model User {
   id           String        @id @default(cuid())
   name         String
@@ -71,6 +84,7 @@ model WeddingPlan {
   budgetCategories BudgetCategory[]
   expenses         Expense[]
   debts            Debt[]
+  tasks            WeddingTask[]
 }
 
 model BudgetCategory {
@@ -126,4 +140,17 @@ model Installment {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   debt      Debt              @relation(fields: [debtId], references: [id], onDelete: Cascade)
+}
+
+model WeddingTask {
+  id            String              @id @default(cuid())
+  weddingPlanId String
+  title         String
+  description   String?
+  dueDate       DateTime?
+  status        WeddingTaskStatus   @default(TODO)
+  priority      WeddingTaskPriority @default(MEDIUM)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  weddingPlan   WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
 }

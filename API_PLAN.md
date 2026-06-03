@@ -35,16 +35,16 @@ This document describes planned API modules and endpoints at a high level only. 
 
 | Module | Planned API Surface |
 | --- | --- |
-| Wedding Plans | Implemented protected MVP endpoints: `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`. All routes require JWT and owner checks. No DELETE endpoint or sharing APIs are implemented yet. |
+| Wedding Plans | Implemented protected MVP endpoints: `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`. All routes require JWT. Owners have full access; shared members can read basic plan info, while update/archive requires `MANAGER`. No DELETE endpoint is implemented yet. |
 | Budget Categories | Implemented protected owner-scoped endpoints to create/list categories under a WeddingPlan, update a category, and delete a category. |
 | Expenses | Implemented protected owner-scoped endpoints to create/list expenses under a WeddingPlan, view a simple summary, update an expense, and delete an expense. |
 | Debts | Implemented protected owner-scoped endpoints to create/list debts under a WeddingPlan, view a simple debt summary, update a debt, and delete a debt. |
 | Installments | Implemented protected owner-scoped endpoints to create/list installments under a Debt, view pending/overdue installments due for a WeddingPlan, update an installment, and delete an installment. |
-| Tasks | Implemented protected owner-scoped endpoints to create/list tasks under a WeddingPlan, update a task, and delete a task. |
-| Sharing | Invite shared members and manage access levels. |
+| Tasks | Implemented protected endpoints to create/list tasks under a WeddingPlan, update a task, and delete a task. Owners have full access; shared members can list tasks, while task create/update/delete requires `canManageTasks` or `MANAGER`. |
+| Sharing | Implemented protected endpoints: `POST /wedding-plans/:weddingPlanId/shared-members`, `GET /wedding-plans/:weddingPlanId/shared-members`, `PATCH /shared-members/:id`, `DELETE /shared-members/:id`, and `GET /shared/wedding-plans`. Owners manage shared members; shared users can list plans shared with them. |
 | Quote Requests | Create non-binding requests for pricing or package details tied to a plan, category, service, or package; these are not purchase orders or confirmed bookings. |
 | Attachments | Future/planned upload or reference APIs for receipts, agreements, quote files, and supporting images tied to expenses, debts, installments, or quote requests. This is planning-level only and not implementation in this documentation phase. |
-| Timeline | Implemented protected owner-scoped WeddingPlan timeline endpoint with wedding date, upcoming tasks, due debts, and due installments. Quote requests and booking leads are not implemented yet. |
+| Timeline | Implemented protected WeddingPlan timeline endpoint with wedding date, upcoming tasks, due debts, and due installments. Owners can view all; shared members can view task timeline items while financial due items remain hidden unless debt permissions allow them. Quote requests and booking leads are not implemented yet. |
 
 ## Future Modules
 

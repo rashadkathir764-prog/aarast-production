@@ -9,6 +9,7 @@ import { DebtsModule } from './debts/debts.module';
 import { InstallmentsModule } from './installments/installments.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TimelineModule } from './timeline/timeline.module';
+import { SharingModule } from './sharing/sharing.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { TimelineModule } from './timeline/timeline.module';
     InstallmentsModule,
     TasksModule,
     TimelineModule,
+    SharingModule,
   ],
   controllers: [HealthController],
 })

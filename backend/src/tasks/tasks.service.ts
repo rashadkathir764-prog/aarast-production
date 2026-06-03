@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { WeddingPlan, WeddingTask, WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
+import { WeddingTask, WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { OwnershipContextService } from '../auth/ownership-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../sharing/permission.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
@@ -22,7 +22,7 @@ export interface TaskResponse {
 export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ownershipContext: OwnershipContextService,
+    private readonly permissions: PermissionService,
   ) {}
 
   async create(
@@ -30,7 +30,7 @@ export class TasksService {
     weddingPlanId: string,
     dto: CreateTaskDto,
   ): Promise<TaskResponse> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissions.assertTaskManageable(weddingPlanId, currentUser);
 
     const task = await this.prisma.weddingTask.create({
       data: {
@@ -50,7 +50,7 @@ export class TasksService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<TaskResponse[]> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
 
     const tasks = await this.prisma.weddingTask.findMany({
       where: { weddingPlanId },
@@ -65,7 +65,8 @@ export class TasksService {
     id: string,
     dto: UpdateTaskDto,
   ): Promise<TaskResponse> {
-    await this.findOwnedTaskOrThrow(currentUser, id);
+    const existing = await this.findTaskOrThrow(id);
+    await this.permissions.assertTaskManageable(existing.weddingPlanId, currentUser);
 
     const task = await this.prisma.weddingTask.update({
       where: { id },
@@ -91,13 +92,13 @@ export class TasksService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<{ id: string; deleted: true }> {
-    await this.findOwnedTaskOrThrow(currentUser, id);
+    const existing = await this.findTaskOrThrow(id);
+    await this.permissions.assertTaskManageable(existing.weddingPlanId, currentUser);
     await this.prisma.weddingTask.delete({ where: { id } });
     return { id, deleted: true };
   }
 
-  private async findOwnedTaskOrThrow(
-    currentUser: AuthenticatedUser,
+  private async findTaskOrThrow(
     id: string,
   ): Promise<WeddingTask> {
     const task = await this.prisma.weddingTask.findUnique({ where: { id } });
@@ -106,23 +107,7 @@ export class TasksService {
       throw new NotFoundException('Task not found');
     }
 
-    await this.findOwnedWeddingPlanOrThrow(currentUser, task.weddingPlanId);
     return task;
-  }
-
-  private async findOwnedWeddingPlanOrThrow(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-  ): Promise<WeddingPlan> {
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
-
-    if (!plan || !this.ownershipContext.isOwner(currentUser, plan.ownerUserId)) {
-      throw new NotFoundException('Wedding plan not found');
-    }
-
-    return plan;
   }
 
   private requiredText(value: string, field: string): string {

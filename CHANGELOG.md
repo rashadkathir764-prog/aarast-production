@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-04 - Phase 3 Sharing / Permissions Backend Slice
+
+- Added `SharedMemberRole` and `SharedMember` Prisma schema support with a real migration `20260603212938_add_shared_members_permissions`.
+- Implemented protected Sharing endpoints for adding, listing, updating, removing shared members, and listing wedding plans shared with the current user.
+- Added a generic permission service for plan ownership, shared plan readability, task management, and financial visibility checks.
+- Integrated shared read access for WeddingPlan, task visibility and task management permissions, and permission-aware timeline financial visibility.
+- Kept financial endpoints owner-only in this slice; financial privacy remains protected by default.
+- Added `backend/scripts/smoke/sharing-smoke.js` and `smoke:sharing` package script.
+- Verified `npm install`, `npx prisma format`, `npx prisma validate`, `npx prisma migrate dev --name add_shared_members_permissions`, `npm run prisma:generate`, `npm run check`, `npm run build`, `npm audit`, `GET /health`, `npm run smoke:health`, `npm run smoke:auth`, `npm run smoke:wedding-plan`, `npm run smoke:budget-expense`, `npm run smoke:debt-installment`, `npm run smoke:task-timeline`, and `npm run smoke:sharing`.
+- Confirmed no product modules, Flutter/mobile files, Docker/Dokploy files, deployment scripts, `prisma db push`, fake migrations, refresh tokens, payment/FinTech/AI/chat/marketplace, confirmed booking logic, or business logic outside Sharing / Permissions slice were created.
+
 ## 2026-06-03 - Phase 3 Task + Timeline Backend Slice
 
 - Added `WeddingTaskStatus`, `WeddingTaskPriority`, and `WeddingTask` Prisma schema support with a real migration `20260603205638_add_task_timeline_model`.

@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { WeddingPlan, WeddingPlanStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { OwnershipContextService } from '../auth/ownership-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService, PlanAccessContext } from '../sharing/permission.service';
 import { CreateWeddingPlanDto } from './dto/create-wedding-plan.dto';
 import { UpdateWeddingPlanDto } from './dto/update-wedding-plan.dto';
 
@@ -23,7 +23,7 @@ export interface WeddingPlanResponse {
 export class WeddingPlansService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ownershipContext: OwnershipContextService,
+    private readonly permissions: PermissionService,
   ) {}
 
   async create(
@@ -57,8 +57,8 @@ export class WeddingPlansService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<WeddingPlanResponse> {
-    const plan = await this.findOwnedPlanOrThrow(currentUser, id);
-    return this.toResponse(plan);
+    const context = await this.permissions.assertPlanReadable(id, currentUser);
+    return this.toResponse(context.plan, context);
   }
 
   async update(
@@ -66,7 +66,7 @@ export class WeddingPlansService {
     id: string,
     dto: UpdateWeddingPlanDto,
   ): Promise<WeddingPlanResponse> {
-    await this.findOwnedPlanOrThrow(currentUser, id);
+    await this.permissions.assertPlanManageable(id, currentUser);
 
     const plan = await this.prisma.weddingPlan.update({
       where: { id },
@@ -94,7 +94,7 @@ export class WeddingPlansService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<WeddingPlanResponse> {
-    await this.findOwnedPlanOrThrow(currentUser, id);
+    await this.permissions.assertPlanManageable(id, currentUser);
 
     const plan = await this.prisma.weddingPlan.update({
       where: { id },
@@ -102,19 +102,6 @@ export class WeddingPlansService {
     });
 
     return this.toResponse(plan);
-  }
-
-  private async findOwnedPlanOrThrow(
-    currentUser: AuthenticatedUser,
-    id: string,
-  ): Promise<WeddingPlan> {
-    const plan = await this.prisma.weddingPlan.findUnique({ where: { id } });
-
-    if (!plan || !this.ownershipContext.isOwner(currentUser, plan.ownerUserId)) {
-      throw new NotFoundException('Wedding plan not found');
-    }
-
-    return plan;
   }
 
   private requiredText(value: string, field: string): string {
@@ -151,14 +138,20 @@ export class WeddingPlansService {
     return normalized;
   }
 
-  private toResponse(plan: WeddingPlan): WeddingPlanResponse {
+  private toResponse(
+    plan: WeddingPlan,
+    context?: PlanAccessContext,
+  ): WeddingPlanResponse {
+    const canViewBudget =
+      !context || this.permissions.canReadFinancial(context, 'budget');
+
     return {
       id: plan.id,
       ownerUserId: plan.ownerUserId,
       title: plan.title,
       city: plan.city,
       weddingDate: plan.weddingDate,
-      estimatedBudget: plan.estimatedBudget?.toString() ?? null,
+      estimatedBudget: canViewBudget ? plan.estimatedBudget?.toString() ?? null : null,
       currency: plan.currency,
       status: plan.status,
       createdAt: plan.createdAt,

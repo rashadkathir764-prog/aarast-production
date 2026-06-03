@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   Debt,
   DebtStatus,
@@ -9,8 +9,8 @@ import {
   WeddingTaskStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { OwnershipContextService } from '../auth/ownership-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../sharing/permission.service';
 
 export interface TimelineTaskResponse {
   id: string;
@@ -52,14 +52,18 @@ export interface TimelineResponse {
 export class TimelineService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ownershipContext: OwnershipContextService,
+    private readonly permissions: PermissionService,
   ) {}
 
   async getForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<TimelineResponse> {
-    const plan = await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    const canViewDebts = this.permissions.canReadFinancial(context, 'debts');
 
     const [tasks, debts, installments] = await Promise.all([
       this.prisma.weddingTask.findMany({
@@ -70,47 +74,36 @@ export class TimelineService {
         },
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
       }),
-      this.prisma.debt.findMany({
-        where: {
-          weddingPlanId,
-          dueDate: { not: null },
-          status: { in: [DebtStatus.OPEN, DebtStatus.PARTIALLY_PAID] },
-        },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
-      }),
-      this.prisma.installment.findMany({
-        where: {
-          dueDate: { not: null },
-          status: { in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE] },
-          debt: { weddingPlanId },
-        },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
-      }),
+      canViewDebts
+        ? this.prisma.debt.findMany({
+            where: {
+              weddingPlanId,
+              dueDate: { not: null },
+              status: { in: [DebtStatus.OPEN, DebtStatus.PARTIALLY_PAID] },
+            },
+            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+          })
+        : Promise.resolve([]),
+      canViewDebts
+        ? this.prisma.installment.findMany({
+            where: {
+              dueDate: { not: null },
+              status: { in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE] },
+              debt: { weddingPlanId },
+            },
+            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+          })
+        : Promise.resolve([]),
     ]);
 
     return {
-      weddingDate: plan.weddingDate,
+      weddingDate: context.plan.weddingDate,
       upcomingTasks: tasks.map((task) => this.toTaskResponse(task)),
       dueDebts: debts.map((debt) => this.toDebtResponse(debt)),
       dueInstallments: installments.map((installment) =>
         this.toInstallmentResponse(installment),
       ),
     };
-  }
-
-  private async findOwnedWeddingPlanOrThrow(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-  ): Promise<WeddingPlan> {
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
-
-    if (!plan || !this.ownershipContext.isOwner(currentUser, plan.ownerUserId)) {
-      throw new NotFoundException('Wedding plan not found');
-    }
-
-    return plan;
   }
 
   private toTaskResponse(task: WeddingTask): TimelineTaskResponse {

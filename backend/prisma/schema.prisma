@@ -56,17 +56,24 @@ enum WeddingTaskPriority {
   HIGH
 }
 
+enum SharedMemberRole {
+  VIEWER
+  CONTRIBUTOR
+  MANAGER
+}
+
 model User {
-  id           String        @id @default(cuid())
-  name         String
-  phone        String?       @unique
-  email        String?       @unique
-  passwordHash String
-  role         UserRole      @default(USER)
-  status       UserStatus    @default(ACTIVE)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  weddingPlans WeddingPlan[]
+  id                 String         @id @default(cuid())
+  name               String
+  phone              String?        @unique
+  email              String?        @unique
+  passwordHash       String
+  role               UserRole       @default(USER)
+  status             UserStatus     @default(ACTIVE)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  weddingPlans       WeddingPlan[]
+  sharedWeddingPlans SharedMember[]
 }
 
 model WeddingPlan {
@@ -85,6 +92,7 @@ model WeddingPlan {
   expenses         Expense[]
   debts            Debt[]
   tasks            WeddingTask[]
+  sharedMembers    SharedMember[]
 }
 
 model BudgetCategory {
@@ -153,4 +161,22 @@ model WeddingTask {
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt
   weddingPlan   WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+}
+
+model SharedMember {
+  id                        String           @id @default(cuid())
+  weddingPlanId             String
+  userId                    String
+  role                      SharedMemberRole @default(VIEWER)
+  canViewBudget             Boolean          @default(false)
+  canViewExpenses           Boolean          @default(false)
+  canViewDebts              Boolean          @default(false)
+  canManageTasks            Boolean          @default(false)
+  canManageFinancialRecords Boolean          @default(false)
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  weddingPlan               WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([weddingPlanId, userId])
 }

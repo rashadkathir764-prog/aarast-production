@@ -5,49 +5,48 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-3-sharing-permissions-backend`
-- Current branch: `phase/3-sharing-permissions-backend`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: Sharing / Permissions backend slice implemented and verified in worktree
-- Base main HEAD: `b87c3032a388fb600587b4cd6696ed0f9e8c78ff`
+- Task: Sharing / Permissions backend slice merged into main and verified
+- Current HEAD after merge: `22617cd47b7241de098528c3c61906dd13069670`
 - Prisma additions: `SharedMemberRole`, `SharedMember`, `WeddingPlan.sharedMembers`, and `User.sharedWeddingPlans`
 - Migration created and applied: `20260603212938_add_shared_members_permissions`
 - Sharing endpoints available: `POST /wedding-plans/:weddingPlanId/shared-members`, `GET /wedding-plans/:weddingPlanId/shared-members`, `PATCH /shared-members/:id`, `DELETE /shared-members/:id`, and `GET /shared/wedding-plans`
 - Shared members can read basic shared plan info and list tasks; task creation/update/delete requires `canManageTasks` or `MANAGER`.
 - Timeline access is permission-aware: shared members can see tasks, while due debts/installments remain hidden unless debt permissions allow them.
 - Financial endpoints remain owner-only in this slice; financial privacy remains protected by default.
-- `smoke:sharing` passed from the worktree.
+- `smoke:sharing` passed from main.
 - Flutter/mobile work has not started.
 - `backend/.env` is untracked and gitignored; runtime verification used process environment variables only.
 
-## Checks Passed From Sharing / Permissions Worktree
+## Checks Passed From Main After Sharing / Permissions Merge
 
 - `npm install`: PASS, 0 vulnerabilities
 - `npx prisma format`: PASS
 - `npx prisma validate`: PASS
-- `npx prisma migrate dev --name add_shared_members_permissions`: PASS
 - `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
 - `npm run check`: PASS
 - `npm run build`: PASS
 - `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3144`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS (21/21 checks)
-- `npm run smoke:wedding-plan` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS (27/27 checks)
-- `npm run smoke:budget-expense` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS (48/48 checks)
-- `npm run smoke:debt-installment` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS (56/56 checks)
-- `npm run smoke:task-timeline` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS (43/43 checks)
-- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3144`: PASS (57/57 checks)
+- `GET /health` on port `3147`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS (21/21 checks)
+- `npm run smoke:wedding-plan` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS (27/27 checks)
+- `npm run smoke:budget-expense` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS (48/48 checks)
+- `npm run smoke:debt-installment` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS (56/56 checks)
+- `npm run smoke:task-timeline` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS (43/43 checks)
+- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3147`: PASS (57/57 checks)
 - Migration SQL scope check: PASS
 - passwordHash not exposed in auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, or Sharing smoke responses: PASS
 - Forbidden scope check: PASS
 
 ## Current Pending Step
 
-- Next pending step after merge: Backend Regression + API Contract Freeze.
-- Sharing / Permissions worktree must remain in place until review/merge/cleanup approval.
+- Next pending step: cleanup of the completed Sharing / Permissions worktree, then Backend Regression + API Contract Freeze.
+- Sharing / Permissions worktree still exists and may be removed after approval.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -59,8 +58,8 @@
   8. Complete: Budget + Expense backend slice
   9. Complete: Debt + Installment backend slice
   10. Complete: Task + Timeline backend slice
-  11. Current: Sharing / Permissions backend slice
-  12. Next after merge: Backend Regression + API Contract Freeze
+  11. Complete: Sharing / Permissions backend slice
+  12. Next: Backend Regression + API Contract Freeze
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Flutter/mobile files until the active phase explicitly asks for Flutter work.
 

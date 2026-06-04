@@ -34,9 +34,10 @@ Financial data such as expenses, debts, installments, attachments, and private t
 - [Agent Rules](AGENTS.md)
 - [Decisions](DECISIONS.md)
 - [Changelog](CHANGELOG.md)
+- [Mobile README](mobile/README.md)
 
 ## Current Project Status
 
-Current phase: Docs Foundation.
+Current phase: Flutter MVP Start.
 
-This phase defines the product direction, MVP scope, phased delivery plan, planned data model, planned API surface, deployment direction, testing approach, smoke-test expectations, Git worktree workflow, and AI-agent guardrails. Docs Foundation is documentation-only: no code, tests, Git actions, Docker/Dokploy files, Flutter screens, backend modules, dependencies, migrations, or business logic are part of this phase.
+The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work has started with a mobile foundation and Auth flow only. WeddingPlan, dashboard, financial screens, marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.

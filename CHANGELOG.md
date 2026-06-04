@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-04 - Flutter Auth Foundation
+
+- Created `mobile/` as the Flutter app foundation for Aarast / اعّرست.
+- Added Arabic-first RTL app theme, routing, Dio API client, shared-preferences auth storage, and Provider-based auth state.
+- Implemented Splash, Login, Register, and Home placeholder screens wired to the frozen backend Auth contract.
+- Added `mobile/README.md` with run instructions, API base URL location, implemented scope, and exclusions.
+- Verified `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.
+- Confirmed backend code, backend API contract, Prisma models, migrations, WeddingPlan/dashboard/financial screens, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-04 - Backend Regression And API Contract Freeze
 
 - Added `API_CONTRACT.md` as the frozen MVP backend API contract for Flutter integration.

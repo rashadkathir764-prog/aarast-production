@@ -5,21 +5,32 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-auth-foundation`
+- Current branch: `phase/4-flutter-auth-foundation`
 
 ## Last Completed Task
 
-- Task: Backend Regression + API Contract Freeze merged into main and verified
-- Main HEAD after merge: `d2a580f6a153cb0b98a8e9b271f3997849a64f0d`
+- Task: Flutter Auth Foundation implemented for review
+- Base main HEAD: `4f8a187cab4271908a8ec51aea8116b42efa35fd`
 - API contract file: `API_CONTRACT.md`
-- Backend regression command added: `npm run smoke:all`
-- Backend MVP core API is ready for Flutter MVP integration.
-- Core API modules covered: Health, Auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, and Sharing / Permissions.
-- Financial privacy remains protected by ownership and sharing permissions.
-- Flutter/mobile work has not started.
+- Flutter app path: `mobile/`
+- API base URL location: `mobile/lib/core/config/api_config.dart`
+- Auth endpoints wired: `POST /auth/register`, `POST /auth/login`, and `GET /auth/me`
+- Screens implemented: Splash, Login, Register, and Home placeholder.
+- Backend API contract remains unchanged.
+- WeddingPlan, dashboard, budget, expenses, debts, installments, tasks, sharing, and timeline screens are not implemented yet.
 - Deployment, Docker, and Dokploy implementation are still not started.
-- `backend/.env` is untracked and gitignored; runtime verification used process environment variables only.
+- `backend/.env` remains untracked and gitignored.
+
+## Checks Passed From Flutter Auth Worktree
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Auth contract check: PASS, Flutter client uses `/auth/register`, `/auth/login`, `/auth/me`, and Bearer token authorization.
+- Emulator/device requirement: not required for this verification.
+- Forbidden scope check: PASS
 
 ## Checks Passed From Backend Regression Worktree
 
@@ -58,7 +69,7 @@
 
 ## Current Pending Step
 
-- Next pending step: Flutter MVP Start.
+- Next pending step after merge: Flutter WeddingPlan + Dashboard foundation.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -72,9 +83,10 @@
   10. Complete: Task + Timeline backend slice
   11. Complete: Sharing / Permissions backend slice
   12. Complete: Backend Regression + API Contract Freeze
-  13. Next: Flutter MVP Start
+  13. Current: Flutter Auth Foundation
+  14. Next after merge: Flutter WeddingPlan + Dashboard foundation
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
-- Do not create Flutter/mobile files until the active phase explicitly asks for Flutter work.
+- Do not create WeddingPlan/dashboard/financial screens until the active phase explicitly asks for them.
 
 ## Database Context
 
@@ -99,3 +111,4 @@
 - Production migration and Docker/Dokploy work are outside the current task scope.
 - `backend/node_modules/` is generated and ignored.
 - `backend/dist/` is generated and ignored.
+- `mobile/build/`, `mobile/.dart_tool/`, and Flutter platform ephemeral files are generated and ignored.

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
@@ -112,10 +114,7 @@ class _DashboardContent extends StatelessWidget {
       children: [
         _HeaderCard(plan: currentPlan),
         const SizedBox(height: 14),
-        const _ComingSoonCard(
-          title: 'الميزانية والمصاريف',
-          icon: Icons.account_balance_wallet,
-        ),
+        _FinanceNavigationCard(weddingPlanId: currentPlan.id),
         const _ComingSoonCard(title: 'الديون والأقساط', icon: Icons.payments),
         const _ComingSoonCard(
           title: 'المهام والجدول الزمني',
@@ -176,6 +175,60 @@ class _HeaderCard extends StatelessWidget {
               value: plan.status == 'ARCHIVED' ? 'مؤرشفة' : 'قيد التخطيط',
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FinanceNavigationCard extends StatelessWidget {
+  const _FinanceNavigationCard({required this.weddingPlanId});
+
+  final String weddingPlanId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => context.go(AppRouter.finance(weddingPlanId)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppTheme.warmGold.withAlpha(45),
+                  child: const Icon(
+                    Icons.account_balance_wallet,
+                    color: AppTheme.deepBurgundy,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'الميزانية والمصاريف',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w800),
+                        textAlign: TextAlign.right,
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'تابع تصنيفات الميزانية والمصاريف المرتبطة بالخطة',
+                        textAlign: TextAlign.right,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.chevron_left),
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -40,4 +40,4 @@ Financial data such as expenses, debts, installments, attachments, and private t
 
 Current phase: Flutter MVP Start.
 
-The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work has started with a mobile foundation and Auth flow only. WeddingPlan, dashboard, financial screens, marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.
+The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, dashboard foundation, and Budget + Expense mobile screens. Debt, installment, task, sharing, marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.

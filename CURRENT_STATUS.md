@@ -5,8 +5,35 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-budget-expense`
+- Current branch: `phase/4-flutter-budget-expense`
+
+## Current Task Status
+
+- Task: Flutter Budget + Expense screens implemented in the Phase 4 worktree and pending pre-merge review.
+- Base main HEAD before this worktree: `cfe9381b80e5a3f5ec80c5ee9a1e172018ba002c`
+- Flutter app path: `mobile/`
+- Finance feature path: `mobile/lib/features/finance/`
+- Budget + Expense routes added:
+  - `/wedding-plans/:id/finance`
+  - `/wedding-plans/:id/budget-categories/create`
+  - `/wedding-plans/:id/expenses/create`
+- BudgetCategory endpoints wired: `POST /wedding-plans/:weddingPlanId/budget-categories`, `GET /wedding-plans/:weddingPlanId/budget-categories`, `PATCH /budget-categories/:id`, and `DELETE /budget-categories/:id`.
+- Expense endpoints wired: `POST /wedding-plans/:weddingPlanId/expenses`, `GET /wedding-plans/:weddingPlanId/expenses`, `GET /wedding-plans/:weddingPlanId/expenses/summary`, `PATCH /expenses/:id`, and `DELETE /expenses/:id`.
+- WeddingPlan Dashboard now links the budget/expense card to the finance screen.
+- Debt, installment, task, sharing, and timeline mobile screens are not implemented yet.
+- Backend API contract remains unchanged.
+- Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
+## Checks Passed From Flutter Budget + Expense Worktree
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Emulator/device requirement: not required for this verification.
+- Backend code unchanged by this phase: PASS
+- Forbidden scope check: PASS
 
 ## Last Completed Task
 
@@ -113,7 +140,8 @@
 
 ## Current Pending Step
 
-- Next pending step after merge: Flutter Budget + Expense screens.
+- Next pending step: pre-merge review and merge for Flutter Budget + Expense screens.
+- Next planned mobile step after merge: Flutter Debt + Installment screens.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -129,9 +157,10 @@
   12. Complete: Backend Regression + API Contract Freeze
   13. Complete: Flutter Auth Foundation
   14. Complete: Flutter WeddingPlan + Dashboard foundation
-  15. Next: Flutter Budget + Expense screens
+  15. Current: Flutter Budget + Expense screens
+  16. Next after merge: Flutter Debt + Installment screens
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
-- Do not create Budget/Expense/Debt/Installment/Task/Sharing mobile screens until the active phase explicitly asks for them.
+- Do not create Debt/Installment/Task/Sharing mobile screens until the active phase explicitly asks for them.
 
 ## Database Context
 
@@ -143,7 +172,7 @@
 ## Forbidden Scope Reminders
 
 - Do not create Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
-- Do not create Flutter/mobile screens or folders.
+- Do not create additional out-of-scope Flutter/mobile screens or folders.
 - Do not create Dockerfiles, docker-compose files, Dokploy config, or deployment scripts.
 - Do not run `prisma db push`.
 - Do not add payment, deposit, loan, credit, financing, AI, or internal chat logic.

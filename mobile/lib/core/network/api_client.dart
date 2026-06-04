@@ -80,6 +80,15 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> deleteJson(String path) async {
+    try {
+      final response = await dio.delete<Object?>(path);
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Map<String, dynamic> _asJsonMap(Object? data) {
     if (data is Map<String, dynamic>) {
       return data;

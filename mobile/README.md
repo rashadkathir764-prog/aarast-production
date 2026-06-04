@@ -18,11 +18,14 @@ Flutter mobile foundation for Aarast / اعّرست.
   - My WeddingPlans
   - Create WeddingPlan
   - WeddingPlan Dashboard
+  - Budget + Expense overview
+  - Create Budget Category
+  - Create Expense
 
 ## What Is Not Implemented Yet
 
-- Budget, expenses, debts, installments, tasks, sharing, or timeline screens.
-- Financial dashboard cards are placeholders only.
+- Debt, installment, task, sharing, or timeline screens.
+- Debt, installment, task, and sharing dashboard cards are placeholders only.
 - Marketplace, payment, deposit, AI, FinTech, chat, or confirmed booking flows.
 - Backend API changes.
 - Docker, Dokploy, or deployment configuration.
@@ -61,6 +64,21 @@ WeddingPlan endpoints are wired to:
 - `PATCH /wedding-plans/:id`
 - `PATCH /wedding-plans/:id/archive`
 
+BudgetCategory endpoints are wired to:
+
+- `POST /wedding-plans/:weddingPlanId/budget-categories`
+- `GET /wedding-plans/:weddingPlanId/budget-categories`
+- `PATCH /budget-categories/:id`
+- `DELETE /budget-categories/:id`
+
+Expense endpoints are wired to:
+
+- `POST /wedding-plans/:weddingPlanId/expenses`
+- `GET /wedding-plans/:weddingPlanId/expenses`
+- `GET /wedding-plans/:weddingPlanId/expenses/summary`
+- `PATCH /expenses/:id`
+- `DELETE /expenses/:id`
+
 Protected requests send the token as:
 
 ```text
@@ -97,7 +115,6 @@ flutter build web --debug
 ## Notes
 
 - The backend API contract remains unchanged.
-- This phase implements mobile WeddingPlan + Dashboard foundation only.
-- Financial screens are placeholders only.
-- Budget/Expense/Debt/Installment/Task/Sharing mobile screens are not implemented yet.
-- The next planned mobile step after merge is Flutter Budget + Expense screens.
+- This phase implements Flutter Budget + Expense screens only.
+- Debt/Installment/Task/Sharing mobile screens are not implemented yet.
+- The next planned mobile step after merge is Flutter Debt + Installment screens.

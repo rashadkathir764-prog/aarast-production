@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/finance/screens/budget_expense_screen.dart';
+import '../../features/finance/screens/create_budget_category_screen.dart';
+import '../../features/finance/screens/create_expense_screen.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
@@ -20,6 +23,18 @@ class AppRouter {
 
   static String weddingPlanDashboard(String id) {
     return '/wedding-plans/$id/dashboard';
+  }
+
+  static String finance(String id) {
+    return '/wedding-plans/$id/finance';
+  }
+
+  static String createBudgetCategory(String id) {
+    return '/wedding-plans/$id/budget-categories/create';
+  }
+
+  static String createExpense(String id) {
+    return '/wedding-plans/$id/expenses/create';
   }
 
   static GoRouter create() {
@@ -49,6 +64,27 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
             return WeddingPlanDashboardScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/finance',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return BudgetExpenseScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/budget-categories/create',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return CreateBudgetCategoryScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/expenses/create',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return CreateExpenseScreen(weddingPlanId: id);
           },
         ),
       ],

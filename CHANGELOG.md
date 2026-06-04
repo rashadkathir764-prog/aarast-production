@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-04 - Flutter Budget + Expense Screens
+
+- Added Flutter Budget + Expense mobile screens under `mobile/lib/features/finance/`.
+- Wired BudgetCategory and Expense API clients to the existing backend contract without changing backend APIs.
+- Added finance routes for `/wedding-plans/:id/finance`, `/wedding-plans/:id/budget-categories/create`, and `/wedding-plans/:id/expenses/create`.
+- Replaced the WeddingPlan Dashboard budget/expense placeholder with a real navigation card.
+- Kept Debt, Installment, Task, Sharing, Marketplace, payment, AI/FinTech, chat, and confirmed booking mobile flows out of scope.
+- Verified `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.
+- Confirmed backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-04 - Flutter WeddingPlan And Dashboard Foundation
 
 - Added Flutter WeddingPlan model, API client, and Provider-based state under `mobile/lib/features/wedding_plans/`.

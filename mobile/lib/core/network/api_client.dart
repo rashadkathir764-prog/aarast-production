@@ -43,12 +43,37 @@ class ApiClient {
     }
   }
 
+  Future<List<dynamic>> getJsonList(String path) async {
+    try {
+      final response = await dio.get<Object?>(path);
+      final data = response.data;
+      if (data is List) {
+        return data;
+      }
+      throw const ApiException('استجابة غير متوقعة من الخادم.');
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Future<Map<String, dynamic>> postJson(
     String path,
     Map<String, dynamic> data,
   ) async {
     try {
       final response = await dio.post<Object?>(path, data: data);
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
+  Future<Map<String, dynamic>> patchJson(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await dio.patch<Object?>(path, data: data);
       return _asJsonMap(response.data);
     } on DioException catch (error) {
       throw ApiException.fromDio(error);

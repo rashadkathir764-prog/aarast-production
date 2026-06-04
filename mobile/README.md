@@ -15,12 +15,14 @@ Flutter mobile foundation for Aarast / اعّرست.
   - Login
   - Register
   - Home placeholder
+  - My WeddingPlans
+  - Create WeddingPlan
+  - WeddingPlan Dashboard
 
 ## What Is Not Implemented Yet
 
-- WeddingPlan screens.
-- Dashboard.
 - Budget, expenses, debts, installments, tasks, sharing, or timeline screens.
+- Financial dashboard cards are placeholders only.
 - Marketplace, payment, deposit, AI, FinTech, chat, or confirmed booking flows.
 - Backend API changes.
 - Docker, Dokploy, or deployment configuration.
@@ -50,6 +52,14 @@ The current backend has no global `/api` prefix. Auth endpoints are wired to:
 - `POST /auth/register`
 - `POST /auth/login`
 - `GET /auth/me`
+
+WeddingPlan endpoints are wired to:
+
+- `POST /wedding-plans`
+- `GET /wedding-plans/my`
+- `GET /wedding-plans/:id`
+- `PATCH /wedding-plans/:id`
+- `PATCH /wedding-plans/:id/archive`
 
 Protected requests send the token as:
 
@@ -87,5 +97,7 @@ flutter build web --debug
 ## Notes
 
 - The backend API contract remains unchanged.
-- This phase implements mobile auth foundation only.
-- The next planned mobile step after merge is Flutter WeddingPlan + Dashboard foundation.
+- This phase implements mobile WeddingPlan + Dashboard foundation only.
+- Financial screens are placeholders only.
+- Budget/Expense/Debt/Installment/Task/Sharing mobile screens are not implemented yet.
+- The next planned mobile step after merge is Flutter Budget + Expense screens.

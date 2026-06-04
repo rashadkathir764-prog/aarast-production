@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-04 - Flutter WeddingPlan And Dashboard Foundation
+
+- Added Flutter WeddingPlan model, API client, and Provider-based state under `mobile/lib/features/wedding_plans/`.
+- Implemented My WeddingPlans, Create WeddingPlan, and WeddingPlan Dashboard screens using the frozen backend API contract.
+- Added routes for `/wedding-plans`, `/wedding-plans/create`, and `/wedding-plans/:id/dashboard`.
+- Updated Home to link clearly to WeddingPlan planning.
+- Kept budget, expense, debt, installment, task, sharing, and timeline mobile screens as dashboard placeholders only.
+- Verified `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.
+- Confirmed backend code, backend API contract, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-04 - Flutter Auth Foundation
 
 - Created `mobile/` as the Flutter app foundation for Aarast / اعّرست.

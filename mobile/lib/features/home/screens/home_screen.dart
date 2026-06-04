@@ -63,8 +63,14 @@ class HomeScreen extends StatelessWidget {
                       ],
                       const SizedBox(height: 16),
                       const Text(
-                        'هذه شاشة مؤقتة لتأكيد جاهزية تسجيل الدخول فقط. شاشة لوحة التحكم وخطة الزواج ستأتي في المرحلة التالية.',
+                        'ابدأ من خطط الزفاف لإعداد الخطة الأساسية ثم متابعة لوحة الخطة.',
                         textAlign: TextAlign.right,
+                      ),
+                      const SizedBox(height: 18),
+                      ElevatedButton.icon(
+                        onPressed: () => context.go(AppRouter.weddingPlans),
+                        icon: const Icon(Icons.favorite),
+                        label: const Text('خطط الزفاف'),
                       ),
                     ],
                   ),

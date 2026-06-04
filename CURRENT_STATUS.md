@@ -5,23 +5,36 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-wedding-plan-dashboard`
+- Current branch: `phase/4-flutter-wedding-plan-dashboard`
 
 ## Last Completed Task
 
-- Task: Flutter Auth Foundation merged into main and verified
-- Main HEAD after Flutter Auth merge: `b91231e00d75531e178e65c79d7a1c18e19161f7`
+- Task: Flutter WeddingPlan + Dashboard Foundation implemented for review
+- Base main HEAD: `54ab4477a98f035141cd4bf1fa3ef2d302553c6f`
 - API contract file: `API_CONTRACT.md`
 - Flutter app path: `mobile/`
 - API base URL location: `mobile/lib/core/config/api_config.dart`
 - Auth endpoints wired: `POST /auth/register`, `POST /auth/login`, and `GET /auth/me`
-- Screens implemented: Splash, Login, Register, and Home placeholder.
+- WeddingPlan endpoints wired: `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`.
+- Screens implemented: Splash, Login, Register, Home placeholder, My WeddingPlans, Create WeddingPlan, and WeddingPlan Dashboard.
 - Backend API contract remains unchanged.
-- Financial screens are not implemented yet.
-- WeddingPlan, dashboard, budget, expenses, debts, installments, tasks, sharing, and timeline screens are not implemented yet.
+- Financial screens are placeholders only.
+- Budget, expense, debt, installment, task, sharing, and timeline mobile screens are not implemented yet.
 - Deployment, Docker, and Dokploy implementation are still not started.
 - `backend/.env` remains untracked and gitignored.
+
+## Checks Passed From Flutter WeddingPlan Dashboard Worktree
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Auth flow preservation check: PASS
+- WeddingPlan route/client check: PASS, Flutter client uses `/wedding-plans`, `/wedding-plans/my`, `/wedding-plans/:id`, `/wedding-plans/:id/archive`, and Bearer token authorization through the existing API client.
+- Emulator/device requirement: not required for this verification.
+- Backend code unchanged by this phase: PASS
+- Forbidden scope check: PASS
 
 ## Checks Passed From Flutter Auth Worktree
 
@@ -83,7 +96,7 @@
 
 ## Current Pending Step
 
-- Next pending step after merge: Flutter WeddingPlan + Dashboard foundation.
+- Next pending step after merge: Flutter Budget + Expense screens.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -98,9 +111,10 @@
   11. Complete: Sharing / Permissions backend slice
   12. Complete: Backend Regression + API Contract Freeze
   13. Complete: Flutter Auth Foundation
-  14. Next: Flutter WeddingPlan + Dashboard foundation
+  14. Current: Flutter WeddingPlan + Dashboard foundation
+  15. Next after merge: Flutter Budget + Expense screens
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
-- Do not create WeddingPlan/dashboard/financial screens until the active phase explicitly asks for them.
+- Do not create Budget/Expense/Debt/Installment/Task/Sharing mobile screens until the active phase explicitly asks for them.
 
 ## Database Context
 

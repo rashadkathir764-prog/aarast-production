@@ -10,10 +10,11 @@
 
 ## Last Completed Task
 
-- Task: Backend regression completed and MVP API contract frozen for Flutter integration
-- Base main HEAD: `64b2003d7bdddd3246b83bae5caf815626265a63`
+- Task: Backend Regression + API Contract Freeze merged into main and verified
+- Main HEAD after merge: `d2a580f6a153cb0b98a8e9b271f3997849a64f0d`
 - API contract file: `API_CONTRACT.md`
 - Backend regression command added: `npm run smoke:all`
+- Backend MVP core API is ready for Flutter MVP integration.
 - Core API modules covered: Health, Auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, and Sharing / Permissions.
 - Financial privacy remains protected by ownership and sharing permissions.
 - Flutter/mobile work has not started.
@@ -42,10 +43,22 @@
 - passwordHash not exposed in auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, or Sharing smoke responses: PASS
 - Forbidden scope check: PASS
 
+## Checks Passed From Main After Merge
+
+- `npm install`: PASS, 0 vulnerabilities
+- `npx prisma validate`: PASS
+- `npm run prisma:generate`: PASS, Prisma Client v6.19.3 generated
+- `npm run check`: PASS
+- `npm run build`: PASS
+- `npm audit`: PASS, 0 vulnerabilities
+- `GET /health` on port `3152`: PASS
+- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3152`: PASS
+- `backend/.env` remains untracked and gitignored.
+- Forbidden scope check: PASS
+
 ## Current Pending Step
 
-- Next pending step after merge: Flutter MVP integration.
-- Backend Regression + API Contract Freeze worktree must remain in place until review/merge/cleanup approval.
+- Next pending step: Flutter MVP Start.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -58,8 +71,8 @@
   9. Complete: Debt + Installment backend slice
   10. Complete: Task + Timeline backend slice
   11. Complete: Sharing / Permissions backend slice
-  12. Current: Backend Regression + API Contract Freeze
-  13. Next after merge: Flutter MVP integration
+  12. Complete: Backend Regression + API Contract Freeze
+  13. Next: Flutter MVP Start
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Flutter/mobile files until the active phase explicitly asks for Flutter work.
 

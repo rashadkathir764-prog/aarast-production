@@ -5,49 +5,34 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-mvp-regression-qa`
+- Current branch: `phase/4-flutter-mvp-regression-qa`
 
 ## Current Task Status
 
-- Task: Flutter Sharing screens merged into main and verified.
-- Main HEAD after Flutter Sharing merge: `384f62d264f0ec12c73b691676a71f7f5084c8a9`
+- Task: Flutter MVP Regression + Manual QA Plan completed in worktree and pending pre-merge review.
+- Main HEAD before Flutter MVP regression worktree: `adfcef7dab9e3d146ac4c842762d4e219f633bed`
 - Flutter app path: `mobile/`
-- Sharing feature path: `mobile/lib/features/sharing/`
-- Sharing screens available:
-  - Sharing overview
-  - Add Shared Member
-  - Edit Shared Member
-  - Shared WeddingPlans
-- Sharing routes added:
-  - `/wedding-plans/:id/sharing`
-  - `/wedding-plans/:id/sharing/add`
-  - `/shared-members/:id/edit`
-  - `/shared/wedding-plans`
-- Sharing endpoints wired: `POST /wedding-plans/:weddingPlanId/shared-members`, `GET /wedding-plans/:weddingPlanId/shared-members`, `PATCH /shared-members/:id`, `DELETE /shared-members/:id`, and `GET /shared/wedding-plans`.
-- WeddingPlan Dashboard now links the sharing card to the Sharing screen.
-- Home now links to plans shared with the current user.
+- Manual QA plan: `MOBILE_QA_PLAN.md`
 - Core Flutter MVP screens are now implemented.
 - Backend API contract remains unchanged.
+- Route audit passed for auth, WeddingPlan, dashboard, finance, debt/installment, task/timeline, and sharing routes.
+- Backend contract sanity check passed against `API_CONTRACT.md`.
+- No mobile code fix was needed during regression.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
 
-## Checks Passed From Main After Flutter Sharing Merge
+## Checks Passed From Flutter MVP Regression Worktree
 
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
 - `flutter test`: PASS
 - `flutter build web --debug`: PASS
-- Sharing feature exists: PASS
-- Sharing overview screen exists: PASS
-- Add Shared Member screen exists: PASS
-- Edit Shared Member screen exists: PASS
-- Shared WeddingPlans screen exists: PASS
-- Routes are wired: PASS
-- WeddingPlan Dashboard links to Sharing: PASS
-- Home links to shared plans: PASS
+- Route audit: PASS
+- Backend API contract sanity check: PASS
 - Core Flutter MVP screens are now implemented: PASS
+- Mobile code fix needed: NO
 - Emulator/device requirement: not required for this verification.
-- Backend code unchanged by this phase: PASS
+- Backend code unchanged by this regression task: PASS
 - Forbidden scope check: PASS
 
 ## Last Completed Task
@@ -155,7 +140,8 @@
 
 ## Current Pending Step
 
-- Next pending step: Flutter MVP Regression + Manual QA plan.
+- Next pending step: pre-merge review and merge for Flutter MVP Regression + Manual QA Plan.
+- Next step after merge: hands-on mobile QA run and bug-fix pass.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -175,7 +161,8 @@
   16. Complete: Flutter Debt + Installment screens
   17. Complete: Flutter Task + Timeline screens
   18. Complete: Flutter Sharing screens
-  19. Next: Flutter MVP Regression + Manual QA plan
+  19. Current: Flutter MVP Regression + Manual QA Plan
+  20. Next after merge: hands-on QA run and bug-fix pass
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

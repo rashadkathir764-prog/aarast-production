@@ -158,6 +158,6 @@ flutter build web --debug
 ## Notes
 
 - The backend API contract remains unchanged.
-- This phase implements Flutter Sharing screens only.
 - Core Flutter MVP screens are now implemented.
-- The next planned mobile step after merge is Flutter MVP Regression + Manual QA plan.
+- `../MOBILE_QA_PLAN.md` contains the Arabic-first manual QA checklist for hands-on validation.
+- The next planned step after merge is a hands-on QA run and bug-fix pass.

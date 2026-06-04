@@ -30,6 +30,7 @@ Financial data such as expenses, debts, installments, attachments, and private t
 - [Testing Plan](TESTING_PLAN.md)
 - [Smoke Tests](SMOKE_TESTS.md)
 - [Deployment Plan](DEPLOYMENT_PLAN.md)
+- [Mobile QA Plan](MOBILE_QA_PLAN.md)
 - [Git Worktree Guide](GIT_WORKTREE_GUIDE.md)
 - [Agent Rules](AGENTS.md)
 - [Decisions](DECISIONS.md)
@@ -40,4 +41,4 @@ Financial data such as expenses, debts, installments, attachments, and private t
 
 Current phase: Flutter MVP Start.
 
-The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, dashboard foundation, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.
+The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, dashboard foundation, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. Flutter MVP regression passed, `MOBILE_QA_PLAN.md` exists for hands-on QA, and the next step is a manual QA run plus bug-fix pass. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.

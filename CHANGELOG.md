@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-05 - Flutter MVP Regression And Manual QA Plan
+
+- Regression-verified the Flutter MVP with `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.
+- Audited Flutter routes for Auth, WeddingPlan, Finance, Debts, Tasks, Timeline, and Sharing screens.
+- Checked mobile API clients against the frozen `API_CONTRACT.md`.
+- Added `MOBILE_QA_PLAN.md` with an Arabic-first manual QA checklist for hands-on backend/mobile validation.
+- Documented that the next step after merge is a hands-on QA run and bug-fix pass.
+- Confirmed no new mobile features, backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created.
+
 ## 2026-06-04 - Flutter Sharing Screens
 
 - Added Flutter Sharing mobile screens under `mobile/lib/features/sharing/`.

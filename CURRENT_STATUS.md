@@ -5,16 +5,17 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-mvp-regression-qa`
-- Current branch: `phase/4-flutter-mvp-regression-qa`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Current Task Status
 
-- Task: Flutter MVP Regression + Manual QA Plan completed in worktree and pending pre-merge review.
-- Main HEAD before Flutter MVP regression worktree: `adfcef7dab9e3d146ac4c842762d4e219f633bed`
+- Task: Flutter MVP Regression + Manual QA Plan merged into main and verified.
+- Current HEAD after Flutter MVP QA merge: `7c0bdbeba5261af3f28f08fd1926169bfefa7ddd`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Core Flutter MVP screens are now implemented.
+- Core Flutter MVP is ready for hands-on QA.
 - Backend API contract remains unchanged.
 - Route audit passed for auth, WeddingPlan, dashboard, finance, debt/installment, task/timeline, and sharing routes.
 - Backend contract sanity check passed against `API_CONTRACT.md`.
@@ -33,6 +34,18 @@
 - Mobile code fix needed: NO
 - Emulator/device requirement: not required for this verification.
 - Backend code unchanged by this regression task: PASS
+- Forbidden scope check: PASS
+
+## Checks Passed From Main After Flutter MVP QA Merge
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- `MOBILE_QA_PLAN.md` exists: PASS
+- Flutter MVP QA documentation exists: PASS
+- Backend code unchanged by this phase: PASS
+- No new mobile features were added by this phase: PASS
 - Forbidden scope check: PASS
 
 ## Last Completed Task
@@ -140,8 +153,7 @@
 
 ## Current Pending Step
 
-- Next pending step: pre-merge review and merge for Flutter MVP Regression + Manual QA Plan.
-- Next step after merge: hands-on mobile QA run and bug-fix pass.
+- Next pending step: hands-on mobile QA run and bug-fix pass.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -161,8 +173,8 @@
   16. Complete: Flutter Debt + Installment screens
   17. Complete: Flutter Task + Timeline screens
   18. Complete: Flutter Sharing screens
-  19. Current: Flutter MVP Regression + Manual QA Plan
-  20. Next after merge: hands-on QA run and bug-fix pass
+  19. Complete: Flutter MVP Regression + Manual QA Plan
+  20. Next: hands-on QA run and bug-fix pass
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

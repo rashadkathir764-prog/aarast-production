@@ -2,6 +2,8 @@
 
 This document describes planned API modules and endpoints at a high level only. It does not implement endpoints or define final route contracts.
 
+The frozen MVP backend API contract for Flutter integration is documented in `API_CONTRACT.md`.
+
 ## API Principles
 
 - Keep response formats consistent.

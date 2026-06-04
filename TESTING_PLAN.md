@@ -12,6 +12,8 @@ Smoke tests are the first priority. They confirm that the most important units s
 
 Smoke API tests should come before large feature expansion because they protect the project from building new work on unstable foundations.
 
+The backend MVP regression command is `npm run smoke:all` from `backend/`. It runs the current health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, and Sharing smoke scripts in sequence.
+
 No smoke-test code is created during the Docs Foundation phase.
 
 ## Unit Tests

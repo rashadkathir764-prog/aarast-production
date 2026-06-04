@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-04 - Backend Regression And API Contract Freeze
+
+- Added `API_CONTRACT.md` as the frozen MVP backend API contract for Flutter integration.
+- Added `backend/scripts/smoke/all-smoke.js` and `smoke:all` to run all backend MVP smoke scripts in sequence.
+- Regression-verified health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, and Sharing / Permissions smoke coverage.
+- Documented that backend MVP core API is ready for Flutter MVP integration after this phase is merged.
+- Confirmed deployment/Docker/Dokploy, marketplace, payment, AI/FinTech, chat, confirmed booking, deposit, provider, vendor, and Flutter implementation are still not started in this phase.
+
 ## 2026-06-04 - Phase 3 Sharing / Permissions Backend Slice
 
 - Added `SharedMemberRole` and `SharedMember` Prisma schema support with a real migration `20260603212938_add_shared_members_permissions`.

@@ -16,6 +16,7 @@
     "smoke:debt-installment": "node scripts/smoke/debt-installment-smoke.js",
     "smoke:task-timeline": "node scripts/smoke/task-timeline-smoke.js",
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
+    "smoke:all": "node scripts/smoke/all-smoke.js",
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts"
   },

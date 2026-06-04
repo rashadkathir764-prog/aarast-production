@@ -39,6 +39,7 @@ Smoke tests should verify:
 
 ## MVP Smoke-Test Boundaries
 
+- `smoke:all` is the backend MVP regression smoke command. It runs health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, and Sharing smoke scripts in sequence.
 - Smoke tests must not validate payment processing, deposit confirmation, loan, credit, financing, or confirmed booking behavior in the MVP.
 - Future Wedding Financial OS smoke tests must verify that private financial data is not exposed to shared members unless permissions allow it.
 - This document is documentation only; no smoke-test code is created in this phase.

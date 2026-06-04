@@ -26,6 +26,7 @@ Financial data such as expenses, debts, installments, attachments, and private t
 - [Phases](PHASES.md)
 - [Database Plan](DATABASE_PLAN.md)
 - [API Plan](API_PLAN.md)
+- [API Contract](API_CONTRACT.md)
 - [Testing Plan](TESTING_PLAN.md)
 - [Smoke Tests](SMOKE_TESTS.md)
 - [Deployment Plan](DEPLOYMENT_PLAN.md)

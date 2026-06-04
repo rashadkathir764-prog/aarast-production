@@ -5,13 +5,13 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-debt-installment`
-- Current branch: `phase/4-flutter-debt-installment`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Current Task Status
 
-- Task: Flutter Debt + Installment screens implemented in the Phase 4 worktree and pending pre-merge review.
-- Base main HEAD before this worktree: `601145cf40dad0cac9c26837dc6d13c596d1d552`
+- Task: Flutter Debt + Installment screens merged into main and verified.
+- Main HEAD after Flutter Debt + Installment merge: `70974869e3a013eae78ee52bb65284ea883ce4fa`
 - Flutter app path: `mobile/`
 - Debt feature path: `mobile/lib/features/debts/`
 - Debt + Installment screens available:
@@ -31,7 +31,7 @@
 - Backend API contract remains unchanged.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
 
-## Checks Passed From Flutter Debt + Installment Worktree
+## Checks Passed From Main After Flutter Debt + Installment Merge
 
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
@@ -156,8 +156,7 @@
 
 ## Current Pending Step
 
-- Next pending step: pre-merge review and merge for Flutter Debt + Installment screens.
-- Next planned mobile step after merge: Flutter Task + Timeline screens.
+- Next pending step: Flutter Task + Timeline screens.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -174,8 +173,8 @@
   13. Complete: Flutter Auth Foundation
   14. Complete: Flutter WeddingPlan + Dashboard foundation
   15. Complete: Flutter Budget + Expense screens
-  16. Current: Flutter Debt + Installment screens
-  17. Next after merge: Flutter Task + Timeline screens
+  16. Complete: Flutter Debt + Installment screens
+  17. Next: Flutter Task + Timeline screens
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Task/Sharing mobile screens until the active phase explicitly asks for them.
 

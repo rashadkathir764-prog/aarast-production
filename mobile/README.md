@@ -25,11 +25,13 @@ Flutter mobile foundation for Aarast / اعّرست.
   - Create Debt
   - Debt Details
   - Create Installment
+  - Task + Timeline overview
+  - Create Task
 
 ## What Is Not Implemented Yet
 
-- Task, sharing, or timeline screens.
-- Task and sharing dashboard cards are placeholders only.
+- Sharing screens.
+- Sharing dashboard card is a placeholder only.
 - Marketplace, payment, deposit, AI, FinTech, chat, or confirmed booking flows.
 - Backend API changes.
 - Docker, Dokploy, or deployment configuration.
@@ -99,6 +101,17 @@ Installment endpoints are wired to:
 - `PATCH /installments/:id`
 - `DELETE /installments/:id`
 
+Task endpoints are wired to:
+
+- `POST /wedding-plans/:weddingPlanId/tasks`
+- `GET /wedding-plans/:weddingPlanId/tasks`
+- `PATCH /tasks/:id`
+- `DELETE /tasks/:id`
+
+Timeline endpoint is wired to:
+
+- `GET /wedding-plans/:weddingPlanId/timeline`
+
 Protected requests send the token as:
 
 ```text
@@ -135,6 +148,6 @@ flutter build web --debug
 ## Notes
 
 - The backend API contract remains unchanged.
-- This phase implements Flutter Debt + Installment screens only.
-- Task/Sharing mobile screens are not implemented yet.
-- The next planned mobile step after merge is Flutter Task + Timeline screens.
+- This phase implements Flutter Task + Timeline screens only.
+- Sharing mobile screens are not implemented yet.
+- The next planned mobile step after merge is Flutter Sharing screens.

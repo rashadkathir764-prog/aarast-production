@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-04 - Flutter Task + Timeline Screens
+
+- Added Flutter Task + Timeline mobile screens under `mobile/lib/features/tasks/`.
+- Wired Task and Timeline API clients to the existing frozen backend API contract without changing backend APIs.
+- Added routes for `/wedding-plans/:id/tasks`, `/wedding-plans/:id/tasks/create`, and `/wedding-plans/:id/timeline`.
+- Replaced the WeddingPlan Dashboard task/timeline placeholder with a real navigation card.
+- Kept Sharing, Marketplace, payment, AI/FinTech, chat, and confirmed booking mobile flows out of scope.
+- Verified `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.
+- Confirmed backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-04 - Flutter Debt + Installment Screens
 
 - Added Flutter Debt + Installment mobile screens under `mobile/lib/features/debts/`.

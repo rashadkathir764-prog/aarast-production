@@ -11,6 +11,8 @@ import 'features/debts/data/debt_installment_api.dart';
 import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
 import 'features/finance/providers/finance_provider.dart';
+import 'features/tasks/data/task_timeline_api.dart';
+import 'features/tasks/providers/task_timeline_provider.dart';
 import 'features/wedding_plans/data/wedding_plans_api.dart';
 import 'features/wedding_plans/providers/wedding_plans_provider.dart';
 
@@ -24,6 +26,7 @@ Future<void> main() async {
   final weddingPlansApi = WeddingPlansApi(apiClient);
   final budgetExpenseApi = BudgetExpenseApi(apiClient);
   final debtInstallmentApi = DebtInstallmentApi(apiClient);
+  final taskTimelineApi = TaskTimelineApi(apiClient);
 
   runApp(
     MultiProvider(
@@ -34,6 +37,7 @@ Future<void> main() async {
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
         Provider<DebtInstallmentApi>.value(value: debtInstallmentApi),
+        Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         ChangeNotifierProvider(
           create: (_) => AuthController(authRepository)..restoreSession(),
         ),
@@ -45,6 +49,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => DebtInstallmentProvider(debtInstallmentApi),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => TaskTimelineProvider(taskTimelineApi),
         ),
       ],
       child: const AarastApp(),

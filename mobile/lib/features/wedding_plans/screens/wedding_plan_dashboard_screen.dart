@@ -126,9 +126,11 @@ class _DashboardContent extends StatelessWidget {
           icon: Icons.payments,
           onTap: () => context.go(AppRouter.debts(currentPlan.id)),
         ),
-        const _ComingSoonCard(
+        _DashboardNavigationCard(
           title: 'المهام والجدول الزمني',
+          subtitle: 'تابع المهام، تواريخ الاستحقاق، والتنبيهات القريبة',
           icon: Icons.checklist,
+          onTap: () => context.go(AppRouter.tasks(currentPlan.id)),
         ),
         const _ComingSoonCard(title: 'المشاركة والصلاحيات', icon: Icons.group),
       ],

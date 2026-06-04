@@ -11,6 +11,8 @@ import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/tasks/screens/create_task_screen.dart';
+import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
@@ -55,6 +57,18 @@ class AppRouter {
 
   static String createInstallment(String debtId) {
     return '/debts/$debtId/installments/create';
+  }
+
+  static String tasks(String id) {
+    return '/wedding-plans/$id/tasks';
+  }
+
+  static String createTask(String id) {
+    return '/wedding-plans/$id/tasks/create';
+  }
+
+  static String timeline(String id) {
+    return '/wedding-plans/$id/timeline';
   }
 
   static GoRouter create() {
@@ -133,6 +147,27 @@ class AppRouter {
           builder: (context, state) {
             final debtId = state.pathParameters['debtId'] ?? '';
             return CreateInstallmentScreen(debtId: debtId);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/tasks',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return TaskTimelineScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/tasks/create',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return CreateTaskScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/timeline',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return TaskTimelineScreen(weddingPlanId: id);
           },
         ),
       ],

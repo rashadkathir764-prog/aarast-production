@@ -5,48 +5,43 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-task-timeline`
+- Current branch: `phase/4-flutter-task-timeline`
 
 ## Current Task Status
 
-- Task: Flutter Debt + Installment screens merged into main and verified.
-- Main HEAD after Flutter Debt + Installment merge: `70974869e3a013eae78ee52bb65284ea883ce4fa`
+- Task: Flutter Task + Timeline screens implemented, verified, and committed in the Phase 4 worktree.
+- Main HEAD before Flutter Task + Timeline worktree: `8af2f3a27d2949424b0fbeaf3ea0536f4483c2b1`
 - Flutter app path: `mobile/`
-- Debt feature path: `mobile/lib/features/debts/`
-- Debt + Installment screens available:
-  - Debt + Installment overview
-  - Create Debt
-  - Debt Details
-  - Create Installment
-- Debt + Installment routes added:
-  - `/wedding-plans/:id/debts`
-  - `/wedding-plans/:id/debts/create`
-  - `/debts/:debtId`
-  - `/debts/:debtId/installments/create`
-- Debt endpoints wired: `POST /wedding-plans/:weddingPlanId/debts`, `GET /wedding-plans/:weddingPlanId/debts`, `GET /wedding-plans/:weddingPlanId/debts/summary`, `PATCH /debts/:id`, and `DELETE /debts/:id`.
-- Installment endpoints wired: `POST /debts/:debtId/installments`, `GET /debts/:debtId/installments`, `GET /wedding-plans/:weddingPlanId/installments/due`, `PATCH /installments/:id`, and `DELETE /installments/:id`.
-- WeddingPlan Dashboard now links the debt/installment card to the Debt + Installment screen.
-- Task, sharing, and timeline mobile screens are not implemented yet.
+- Task feature path: `mobile/lib/features/tasks/`
+- Task + Timeline screens available:
+  - Task + Timeline overview
+  - Create Task
+- Task + Timeline routes added:
+  - `/wedding-plans/:id/tasks`
+  - `/wedding-plans/:id/tasks/create`
+  - `/wedding-plans/:id/timeline`
+- Task endpoints wired: `POST /wedding-plans/:weddingPlanId/tasks`, `GET /wedding-plans/:weddingPlanId/tasks`, `PATCH /tasks/:id`, and `DELETE /tasks/:id`.
+- Timeline endpoint wired: `GET /wedding-plans/:weddingPlanId/timeline`.
+- WeddingPlan Dashboard now links the task/timeline card to the Task + Timeline screen.
+- Sharing mobile screens are not implemented yet.
 - Backend API contract remains unchanged.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
 
-## Checks Passed From Main After Flutter Debt + Installment Merge
+## Checks Passed From Flutter Task + Timeline Worktree
 
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
 - `flutter test`: PASS
 - `flutter build web --debug`: PASS
-- Debt + Installment feature exists: PASS
-- Debt + Installment overview screen exists: PASS
-- Create Debt screen exists: PASS
-- Debt Details screen exists: PASS
-- Create Installment screen exists: PASS
-- Debt summary UI exists: PASS
-- Due installments UI exists: PASS
+- Task + Timeline feature exists: PASS
+- Task + Timeline overview screen exists: PASS
+- Create Task screen exists: PASS
+- Timeline summary UI exists: PASS
+- Timeline due sections exist: PASS
 - Routes are wired: PASS
-- WeddingPlan Dashboard links to Debt + Installment: PASS
-- Task and sharing mobile screens are not implemented yet: PASS
+- WeddingPlan Dashboard links to Task + Timeline: PASS
+- Sharing mobile screens are not implemented yet: PASS
 - Emulator/device requirement: not required for this verification.
 - Backend code unchanged by this phase: PASS
 - Forbidden scope check: PASS
@@ -156,7 +151,7 @@
 
 ## Current Pending Step
 
-- Next pending step: Flutter Task + Timeline screens.
+- Next pending step: pre-merge review and merge for Flutter Task + Timeline screens; after merge, Flutter Sharing screens.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -174,9 +169,10 @@
   14. Complete: Flutter WeddingPlan + Dashboard foundation
   15. Complete: Flutter Budget + Expense screens
   16. Complete: Flutter Debt + Installment screens
-  17. Next: Flutter Task + Timeline screens
+  17. Current: Flutter Task + Timeline screens
+  18. Next after merge: Flutter Sharing screens
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
-- Do not create Task/Sharing mobile screens until the active phase explicitly asks for them.
+- Do not create Sharing mobile screens until the active phase explicitly asks for them.
 
 ## Database Context
 

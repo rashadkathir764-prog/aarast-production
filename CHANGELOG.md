@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-04 - Flutter Debt + Installment Screens
+
+- Added Flutter Debt + Installment mobile screens under `mobile/lib/features/debts/`.
+- Wired Debt and Installment API clients to the existing frozen backend API contract without changing backend APIs.
+- Added routes for `/wedding-plans/:id/debts`, `/wedding-plans/:id/debts/create`, `/debts/:debtId`, and `/debts/:debtId/installments/create`.
+- Replaced the WeddingPlan Dashboard debt/installment placeholder with a real navigation card.
+- Kept Task, Sharing, Marketplace, payment, AI/FinTech, chat, and confirmed booking mobile flows out of scope.
+- Verified `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.
+- Confirmed backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-04 - Flutter Budget + Expense Screens
 
 - Added Flutter Budget + Expense mobile screens under `mobile/lib/features/finance/`.

@@ -21,11 +21,15 @@ Flutter mobile foundation for Aarast / اعّرست.
   - Budget + Expense overview
   - Create Budget Category
   - Create Expense
+  - Debt + Installment overview
+  - Create Debt
+  - Debt Details
+  - Create Installment
 
 ## What Is Not Implemented Yet
 
-- Debt, installment, task, sharing, or timeline screens.
-- Debt, installment, task, and sharing dashboard cards are placeholders only.
+- Task, sharing, or timeline screens.
+- Task and sharing dashboard cards are placeholders only.
 - Marketplace, payment, deposit, AI, FinTech, chat, or confirmed booking flows.
 - Backend API changes.
 - Docker, Dokploy, or deployment configuration.
@@ -79,6 +83,22 @@ Expense endpoints are wired to:
 - `PATCH /expenses/:id`
 - `DELETE /expenses/:id`
 
+Debt endpoints are wired to:
+
+- `POST /wedding-plans/:weddingPlanId/debts`
+- `GET /wedding-plans/:weddingPlanId/debts`
+- `GET /wedding-plans/:weddingPlanId/debts/summary`
+- `PATCH /debts/:id`
+- `DELETE /debts/:id`
+
+Installment endpoints are wired to:
+
+- `POST /debts/:debtId/installments`
+- `GET /debts/:debtId/installments`
+- `GET /wedding-plans/:weddingPlanId/installments/due`
+- `PATCH /installments/:id`
+- `DELETE /installments/:id`
+
 Protected requests send the token as:
 
 ```text
@@ -115,6 +135,6 @@ flutter build web --debug
 ## Notes
 
 - The backend API contract remains unchanged.
-- This phase implements Flutter Budget + Expense screens only.
-- Debt/Installment/Task/Sharing mobile screens are not implemented yet.
-- The next planned mobile step after merge is Flutter Debt + Installment screens.
+- This phase implements Flutter Debt + Installment screens only.
+- Task/Sharing mobile screens are not implemented yet.
+- The next planned mobile step after merge is Flutter Task + Timeline screens.

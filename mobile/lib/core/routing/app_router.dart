@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/debts/screens/create_debt_screen.dart';
+import '../../features/debts/screens/create_installment_screen.dart';
+import '../../features/debts/screens/debt_details_screen.dart';
+import '../../features/debts/screens/debt_installment_screen.dart';
 import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
@@ -35,6 +39,22 @@ class AppRouter {
 
   static String createExpense(String id) {
     return '/wedding-plans/$id/expenses/create';
+  }
+
+  static String debts(String id) {
+    return '/wedding-plans/$id/debts';
+  }
+
+  static String createDebt(String id) {
+    return '/wedding-plans/$id/debts/create';
+  }
+
+  static String debtDetails(String debtId) {
+    return '/debts/$debtId';
+  }
+
+  static String createInstallment(String debtId) {
+    return '/debts/$debtId/installments/create';
   }
 
   static GoRouter create() {
@@ -85,6 +105,34 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
             return CreateExpenseScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/debts',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return DebtInstallmentScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/debts/create',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return CreateDebtScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/debts/:debtId',
+          builder: (context, state) {
+            final debtId = state.pathParameters['debtId'] ?? '';
+            return DebtDetailsScreen(debtId: debtId);
+          },
+        ),
+        GoRoute(
+          path: '/debts/:debtId/installments/create',
+          builder: (context, state) {
+            final debtId = state.pathParameters['debtId'] ?? '';
+            return CreateInstallmentScreen(debtId: debtId);
           },
         ),
       ],

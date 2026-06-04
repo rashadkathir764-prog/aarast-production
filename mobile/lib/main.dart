@@ -7,6 +7,8 @@ import 'core/network/api_client.dart';
 import 'core/storage/auth_storage.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
+import 'features/debts/data/debt_installment_api.dart';
+import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
 import 'features/finance/providers/finance_provider.dart';
 import 'features/wedding_plans/data/wedding_plans_api.dart';
@@ -21,6 +23,7 @@ Future<void> main() async {
   final authRepository = AuthRepository(apiClient, authStorage);
   final weddingPlansApi = WeddingPlansApi(apiClient);
   final budgetExpenseApi = BudgetExpenseApi(apiClient);
+  final debtInstallmentApi = DebtInstallmentApi(apiClient);
 
   runApp(
     MultiProvider(
@@ -30,6 +33,7 @@ Future<void> main() async {
         Provider<AuthRepository>.value(value: authRepository),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
+        Provider<DebtInstallmentApi>.value(value: debtInstallmentApi),
         ChangeNotifierProvider(
           create: (_) => AuthController(authRepository)..restoreSession(),
         ),
@@ -38,6 +42,9 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => FinanceProvider(budgetExpenseApi),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DebtInstallmentProvider(debtInstallmentApi),
         ),
       ],
       child: const AarastApp(),

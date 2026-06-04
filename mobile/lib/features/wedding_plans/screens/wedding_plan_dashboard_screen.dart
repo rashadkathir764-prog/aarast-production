@@ -114,8 +114,18 @@ class _DashboardContent extends StatelessWidget {
       children: [
         _HeaderCard(plan: currentPlan),
         const SizedBox(height: 14),
-        _FinanceNavigationCard(weddingPlanId: currentPlan.id),
-        const _ComingSoonCard(title: 'الديون والأقساط', icon: Icons.payments),
+        _DashboardNavigationCard(
+          title: 'الميزانية والمصاريف',
+          subtitle: 'تابع تصنيفات الميزانية والمصاريف المرتبطة بالخطة',
+          icon: Icons.account_balance_wallet,
+          onTap: () => context.go(AppRouter.finance(currentPlan.id)),
+        ),
+        _DashboardNavigationCard(
+          title: 'الديون والأقساط',
+          subtitle: 'تابع الديون، المدفوعات، والأقساط المستحقة',
+          icon: Icons.payments,
+          onTap: () => context.go(AppRouter.debts(currentPlan.id)),
+        ),
         const _ComingSoonCard(
           title: 'المهام والجدول الزمني',
           icon: Icons.checklist,
@@ -181,10 +191,18 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
-class _FinanceNavigationCard extends StatelessWidget {
-  const _FinanceNavigationCard({required this.weddingPlanId});
+class _DashboardNavigationCard extends StatelessWidget {
+  const _DashboardNavigationCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
 
-  final String weddingPlanId;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -193,17 +211,14 @@ class _FinanceNavigationCard extends StatelessWidget {
       child: Card(
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: () => context.go(AppRouter.finance(weddingPlanId)),
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 CircleAvatar(
                   backgroundColor: AppTheme.warmGold.withAlpha(45),
-                  child: const Icon(
-                    Icons.account_balance_wallet,
-                    color: AppTheme.deepBurgundy,
-                  ),
+                  child: Icon(icon, color: AppTheme.deepBurgundy),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -211,16 +226,13 @@ class _FinanceNavigationCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'الميزانية والمصاريف',
+                        title,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w800),
                         textAlign: TextAlign.right,
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'تابع تصنيفات الميزانية والمصاريف المرتبطة بالخطة',
-                        textAlign: TextAlign.right,
-                      ),
+                      Text(subtitle, textAlign: TextAlign.right),
                     ],
                   ),
                 ),
@@ -267,10 +279,7 @@ class _ComingSoonCard extends StatelessWidget {
                       textAlign: TextAlign.right,
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'سيتم تنفيذها في المراحل القادمة',
-                      textAlign: TextAlign.right,
-                    ),
+                    const Text('قريبا', textAlign: TextAlign.right),
                   ],
                 ),
               ),

@@ -5,43 +5,47 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-sharing`
+- Current branch: `phase/4-flutter-sharing`
 
 ## Current Task Status
 
-- Task: Flutter Task + Timeline screens merged into main and verified.
-- Main HEAD after Flutter Task + Timeline merge: `4e7f395e1efdefb35cfb18510aa37b85fa5a4d4a`
+- Task: Flutter Sharing screens implemented, verified, and committed in the Phase 4 worktree.
+- Main HEAD before Flutter Sharing worktree: `492d76cf8ea83746a12658361bd0cd80e3439d28`
 - Flutter app path: `mobile/`
-- Task feature path: `mobile/lib/features/tasks/`
-- Task + Timeline screens available:
-  - Task + Timeline overview
-  - Create Task
-- Task + Timeline routes added:
-  - `/wedding-plans/:id/tasks`
-  - `/wedding-plans/:id/tasks/create`
-  - `/wedding-plans/:id/timeline`
-- Task endpoints wired: `POST /wedding-plans/:weddingPlanId/tasks`, `GET /wedding-plans/:weddingPlanId/tasks`, `PATCH /tasks/:id`, and `DELETE /tasks/:id`.
-- Timeline endpoint wired: `GET /wedding-plans/:weddingPlanId/timeline`.
-- WeddingPlan Dashboard now links the task/timeline card to the Task + Timeline screen.
-- Sharing mobile screens are not implemented yet.
+- Sharing feature path: `mobile/lib/features/sharing/`
+- Sharing screens available:
+  - Sharing overview
+  - Add Shared Member
+  - Edit Shared Member
+  - Shared WeddingPlans
+- Sharing routes added:
+  - `/wedding-plans/:id/sharing`
+  - `/wedding-plans/:id/sharing/add`
+  - `/shared-members/:id/edit`
+  - `/shared/wedding-plans`
+- Sharing endpoints wired: `POST /wedding-plans/:weddingPlanId/shared-members`, `GET /wedding-plans/:weddingPlanId/shared-members`, `PATCH /shared-members/:id`, `DELETE /shared-members/:id`, and `GET /shared/wedding-plans`.
+- WeddingPlan Dashboard now links the sharing card to the Sharing screen.
+- Home now links to plans shared with the current user.
+- Core Flutter MVP screens are now implemented.
 - Backend API contract remains unchanged.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
 
-## Checks Passed From Main After Flutter Task + Timeline Merge
+## Checks Passed From Flutter Sharing Worktree
 
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
 - `flutter test`: PASS
 - `flutter build web --debug`: PASS
-- Task + Timeline feature exists: PASS
-- Task + Timeline overview screen exists: PASS
-- Create Task screen exists: PASS
-- Timeline summary UI exists: PASS
-- Timeline due sections exist: PASS
+- Sharing feature exists: PASS
+- Sharing overview screen exists: PASS
+- Add Shared Member screen exists: PASS
+- Edit Shared Member screen exists: PASS
+- Shared WeddingPlans screen exists: PASS
 - Routes are wired: PASS
-- WeddingPlan Dashboard links to Task + Timeline: PASS
-- Sharing mobile screens are not implemented yet: PASS
+- WeddingPlan Dashboard links to Sharing: PASS
+- Home links to shared plans: PASS
+- Core Flutter MVP screens are now implemented: PASS
 - Emulator/device requirement: not required for this verification.
 - Backend code unchanged by this phase: PASS
 - Forbidden scope check: PASS
@@ -151,7 +155,7 @@
 
 ## Current Pending Step
 
-- Next pending step: Flutter Sharing screens.
+- Next pending step: pre-merge review and merge for Flutter Sharing screens; after merge, Flutter MVP Regression + Manual QA plan.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -170,9 +174,10 @@
   15. Complete: Flutter Budget + Expense screens
   16. Complete: Flutter Debt + Installment screens
   17. Complete: Flutter Task + Timeline screens
-  18. Next: Flutter Sharing screens
+  18. Current: Flutter Sharing screens
+  19. Next after merge: Flutter MVP Regression + Manual QA plan
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
-- Do not create Sharing mobile screens until the active phase explicitly asks for them.
+- Do not create additional mobile screens until the active phase explicitly asks for them.
 
 ## Database Context
 

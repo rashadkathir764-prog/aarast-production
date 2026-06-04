@@ -30,8 +30,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: ListView(
             children: [
               Card(
                 child: Padding(
@@ -73,6 +72,47 @@ class HomeScreen extends StatelessWidget {
                         label: const Text('خطط الزفاف'),
                       ),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => context.go(AppRouter.sharedWeddingPlans),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppTheme.warmGold.withAlpha(45),
+                          child: const Icon(
+                            Icons.groups,
+                            color: AppTheme.deepBurgundy,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                'الخطط المشتركة معي',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                                textAlign: TextAlign.right,
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'اعرض الخطط التي منحك أصحابها صلاحية الوصول إليها.',
+                                textAlign: TextAlign.right,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.chevron_left),
+                      ],
+                    ),
                   ),
                 ),
               ),

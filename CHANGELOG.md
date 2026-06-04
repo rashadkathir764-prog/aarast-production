@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-04 - Flutter Sharing Screens
+
+- Added Flutter Sharing mobile screens under `mobile/lib/features/sharing/`.
+- Wired Sharing API clients to the existing frozen backend API contract without changing backend APIs.
+- Added routes for `/wedding-plans/:id/sharing`, `/wedding-plans/:id/sharing/add`, `/shared-members/:id/edit`, and `/shared/wedding-plans`.
+- Replaced the WeddingPlan Dashboard sharing placeholder with a real navigation card and added a Home entry for shared plans.
+- Added privacy-first permission labels for budget, expenses, debts, task management, and financial record management.
+- Kept Marketplace, payment, AI/FinTech, chat, and confirmed booking mobile flows out of scope.
+- Confirmed backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-04 - Flutter Task + Timeline Screens
 
 - Added Flutter Task + Timeline mobile screens under `mobile/lib/features/tasks/`.

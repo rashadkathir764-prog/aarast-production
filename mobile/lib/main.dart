@@ -11,6 +11,8 @@ import 'features/debts/data/debt_installment_api.dart';
 import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
 import 'features/finance/providers/finance_provider.dart';
+import 'features/sharing/data/sharing_api.dart';
+import 'features/sharing/providers/sharing_provider.dart';
 import 'features/tasks/data/task_timeline_api.dart';
 import 'features/tasks/providers/task_timeline_provider.dart';
 import 'features/wedding_plans/data/wedding_plans_api.dart';
@@ -27,6 +29,7 @@ Future<void> main() async {
   final budgetExpenseApi = BudgetExpenseApi(apiClient);
   final debtInstallmentApi = DebtInstallmentApi(apiClient);
   final taskTimelineApi = TaskTimelineApi(apiClient);
+  final sharingApi = SharingApi(apiClient);
 
   runApp(
     MultiProvider(
@@ -38,6 +41,7 @@ Future<void> main() async {
         Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
         Provider<DebtInstallmentApi>.value(value: debtInstallmentApi),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
+        Provider<SharingApi>.value(value: sharingApi),
         ChangeNotifierProvider(
           create: (_) => AuthController(authRepository)..restoreSession(),
         ),
@@ -53,6 +57,7 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => TaskTimelineProvider(taskTimelineApi),
         ),
+        ChangeNotifierProvider(create: (_) => SharingProvider(sharingApi)),
       ],
       child: const AarastApp(),
     ),

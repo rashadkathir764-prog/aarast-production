@@ -11,6 +11,10 @@ import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/sharing/screens/add_shared_member_screen.dart';
+import '../../features/sharing/screens/edit_shared_member_screen.dart';
+import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
+import '../../features/sharing/screens/sharing_screen.dart';
 import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
@@ -70,6 +74,20 @@ class AppRouter {
   static String timeline(String id) {
     return '/wedding-plans/$id/timeline';
   }
+
+  static String sharing(String id) {
+    return '/wedding-plans/$id/sharing';
+  }
+
+  static String addSharedMember(String id) {
+    return '/wedding-plans/$id/sharing/add';
+  }
+
+  static String editSharedMember(String id) {
+    return '/shared-members/$id/edit';
+  }
+
+  static const sharedWeddingPlans = '/shared/wedding-plans';
 
   static GoRouter create() {
     return GoRouter(
@@ -169,6 +187,31 @@ class AppRouter {
             final id = state.pathParameters['id'] ?? '';
             return TaskTimelineScreen(weddingPlanId: id);
           },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/sharing',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return SharingScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/sharing/add',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return AddSharedMemberScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/shared-members/:id/edit',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return EditSharedMemberScreen(sharedMemberId: id);
+          },
+        ),
+        GoRoute(
+          path: sharedWeddingPlans,
+          builder: (context, state) => const SharedWeddingPlansScreen(),
         ),
       ],
     );

@@ -132,7 +132,12 @@ class _DashboardContent extends StatelessWidget {
           icon: Icons.checklist,
           onTap: () => context.go(AppRouter.tasks(currentPlan.id)),
         ),
-        const _ComingSoonCard(title: 'المشاركة والصلاحيات', icon: Icons.group),
+        _DashboardNavigationCard(
+          title: 'المشاركة والصلاحيات',
+          subtitle: 'أدر أعضاء الخطة وحدد صلاحياتهم بخصوصية مالية واضحة',
+          icon: Icons.group,
+          onTap: () => context.go(AppRouter.sharing(currentPlan.id)),
+        ),
       ],
     );
   }
@@ -242,50 +247,6 @@ class _DashboardNavigationCard extends StatelessWidget {
                 const Icon(Icons.chevron_left),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ComingSoonCard extends StatelessWidget {
-  const _ComingSoonCard({required this.title, required this.icon});
-
-  final String title;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: AppTheme.warmGold.withAlpha(45),
-                child: Icon(icon, color: AppTheme.deepBurgundy),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                      textAlign: TextAlign.right,
-                    ),
-                    const SizedBox(height: 4),
-                    const Text('قريبا', textAlign: TextAlign.right),
-                  ],
-                ),
-              ),
-            ],
           ),
         ),
       ),

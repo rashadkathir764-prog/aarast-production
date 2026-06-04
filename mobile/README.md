@@ -27,11 +27,13 @@ Flutter mobile foundation for Aarast / اعّرست.
   - Create Installment
   - Task + Timeline overview
   - Create Task
+  - Sharing overview
+  - Add Shared Member
+  - Edit Shared Member
+  - Shared WeddingPlans
 
 ## What Is Not Implemented Yet
 
-- Sharing screens.
-- Sharing dashboard card is a placeholder only.
 - Marketplace, payment, deposit, AI, FinTech, chat, or confirmed booking flows.
 - Backend API changes.
 - Docker, Dokploy, or deployment configuration.
@@ -112,6 +114,14 @@ Timeline endpoint is wired to:
 
 - `GET /wedding-plans/:weddingPlanId/timeline`
 
+Sharing endpoints are wired to:
+
+- `POST /wedding-plans/:weddingPlanId/shared-members`
+- `GET /wedding-plans/:weddingPlanId/shared-members`
+- `PATCH /shared-members/:id`
+- `DELETE /shared-members/:id`
+- `GET /shared/wedding-plans`
+
 Protected requests send the token as:
 
 ```text
@@ -148,6 +158,6 @@ flutter build web --debug
 ## Notes
 
 - The backend API contract remains unchanged.
-- This phase implements Flutter Task + Timeline screens only.
-- Sharing mobile screens are not implemented yet.
-- The next planned mobile step after merge is Flutter Sharing screens.
+- This phase implements Flutter Sharing screens only.
+- Core Flutter MVP screens are now implemented.
+- The next planned mobile step after merge is Flutter MVP Regression + Manual QA plan.

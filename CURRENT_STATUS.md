@@ -5,19 +5,20 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-auth-foundation`
-- Current branch: `phase/4-flutter-auth-foundation`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Last Completed Task
 
-- Task: Flutter Auth Foundation implemented for review
-- Base main HEAD: `4f8a187cab4271908a8ec51aea8116b42efa35fd`
+- Task: Flutter Auth Foundation merged into main and verified
+- Main HEAD after Flutter Auth merge: `b91231e00d75531e178e65c79d7a1c18e19161f7`
 - API contract file: `API_CONTRACT.md`
 - Flutter app path: `mobile/`
 - API base URL location: `mobile/lib/core/config/api_config.dart`
 - Auth endpoints wired: `POST /auth/register`, `POST /auth/login`, and `GET /auth/me`
 - Screens implemented: Splash, Login, Register, and Home placeholder.
 - Backend API contract remains unchanged.
+- Financial screens are not implemented yet.
 - WeddingPlan, dashboard, budget, expenses, debts, installments, tasks, sharing, and timeline screens are not implemented yet.
 - Deployment, Docker, and Dokploy implementation are still not started.
 - `backend/.env` remains untracked and gitignored.
@@ -30,6 +31,19 @@
 - `flutter build web --debug`: PASS
 - Auth contract check: PASS, Flutter client uses `/auth/register`, `/auth/login`, `/auth/me`, and Bearer token authorization.
 - Emulator/device requirement: not required for this verification.
+- Forbidden scope check: PASS
+
+## Checks Passed From Main After Flutter Auth Merge
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- `mobile/` project exists: PASS
+- API base URL config exists: PASS
+- Auth endpoints wired and Bearer token support present: PASS
+- Backend code unchanged by this phase: PASS
+- WeddingPlan, dashboard, and financial mobile screens are not implemented yet: PASS
 - Forbidden scope check: PASS
 
 ## Checks Passed From Backend Regression Worktree
@@ -83,8 +97,8 @@
   10. Complete: Task + Timeline backend slice
   11. Complete: Sharing / Permissions backend slice
   12. Complete: Backend Regression + API Contract Freeze
-  13. Current: Flutter Auth Foundation
-  14. Next after merge: Flutter WeddingPlan + Dashboard foundation
+  13. Complete: Flutter Auth Foundation
+  14. Next: Flutter WeddingPlan + Dashboard foundation
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create WeddingPlan/dashboard/financial screens until the active phase explicitly asks for them.
 

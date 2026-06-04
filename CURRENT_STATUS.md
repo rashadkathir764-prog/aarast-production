@@ -5,13 +5,13 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-4-flutter-task-timeline`
-- Current branch: `phase/4-flutter-task-timeline`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Current Task Status
 
-- Task: Flutter Task + Timeline screens implemented, verified, and committed in the Phase 4 worktree.
-- Main HEAD before Flutter Task + Timeline worktree: `8af2f3a27d2949424b0fbeaf3ea0536f4483c2b1`
+- Task: Flutter Task + Timeline screens merged into main and verified.
+- Main HEAD after Flutter Task + Timeline merge: `4e7f395e1efdefb35cfb18510aa37b85fa5a4d4a`
 - Flutter app path: `mobile/`
 - Task feature path: `mobile/lib/features/tasks/`
 - Task + Timeline screens available:
@@ -28,7 +28,7 @@
 - Backend API contract remains unchanged.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
 
-## Checks Passed From Flutter Task + Timeline Worktree
+## Checks Passed From Main After Flutter Task + Timeline Merge
 
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
@@ -151,7 +151,7 @@
 
 ## Current Pending Step
 
-- Next pending step: pre-merge review and merge for Flutter Task + Timeline screens; after merge, Flutter Sharing screens.
+- Next pending step: Flutter Sharing screens.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -169,8 +169,8 @@
   14. Complete: Flutter WeddingPlan + Dashboard foundation
   15. Complete: Flutter Budget + Expense screens
   16. Complete: Flutter Debt + Installment screens
-  17. Current: Flutter Task + Timeline screens
-  18. Next after merge: Flutter Sharing screens
+  17. Complete: Flutter Task + Timeline screens
+  18. Next: Flutter Sharing screens
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create Sharing mobile screens until the active phase explicitly asks for them.
 

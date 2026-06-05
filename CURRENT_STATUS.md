@@ -10,17 +10,40 @@
 
 ## Current Task Status
 
-- Task: Flutter MVP Regression + Manual QA Plan merged into main and verified.
-- Current HEAD after Flutter MVP QA merge: `7c0bdbeba5261af3f28f08fd1926169bfefa7ddd`
+- Task: Hands-on MVP QA run passed and documented.
+- Current HEAD before manual QA documentation: `d19e97649117f6ff1e8acbfb553700518d1de3a5`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
+- Manual QA report: `MANUAL_QA_REPORT.md`
 - Core Flutter MVP screens are now implemented.
-- Core Flutter MVP is ready for hands-on QA.
+- Hands-on MVP QA run passed for the main MVP flows.
+- Core MVP is ready for the first bug-fix polish pass.
 - Backend API contract remains unchanged.
 - Route audit passed for auth, WeddingPlan, dashboard, finance, debt/installment, task/timeline, and sharing routes.
 - Backend contract sanity check passed against `API_CONTRACT.md`.
 - No mobile code fix was needed during regression.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
+## Hands-On MVP QA Passed
+
+- Auth register/login/logout: PASS
+- Create WeddingPlan: PASS
+- Open WeddingPlan Dashboard: PASS
+- Create Budget Category: PASS
+- Create Expense: PASS
+- Expense summary updated: PASS
+- Create Debt: PASS
+- Create Installment: PASS
+- Debt summary/details updated: PASS
+- Create Task: PASS
+- Timeline summary updated: PASS
+- Add shared member: PASS
+- Shared member can access shared plan: PASS
+- Shared member with `canManageTasks` can create task: PASS
+- Final verdict: MVP core flow PASS
+- Known QA notes are recorded in `MANUAL_QA_REPORT.md`.
+- No deployment has started.
+- Marketplace, payments, deposits, AI/FinTech, chat, and confirmed booking features are not part of the MVP.
 
 ## Checks Passed From Flutter MVP Regression Worktree
 
@@ -153,7 +176,7 @@
 
 ## Current Pending Step
 
-- Next pending step: hands-on mobile QA run and bug-fix pass.
+- Next pending step: first bug-fix polish pass.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -174,7 +197,8 @@
   17. Complete: Flutter Task + Timeline screens
   18. Complete: Flutter Sharing screens
   19. Complete: Flutter MVP Regression + Manual QA Plan
-  20. Next: hands-on QA run and bug-fix pass
+  20. Complete: hands-on QA run
+  21. Next: bug-fix polish pass
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

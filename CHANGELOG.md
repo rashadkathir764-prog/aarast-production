@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-05 - Hands-On MVP QA
+
+- Recorded `MANUAL_QA_REPORT.md` for the successful hands-on MVP QA run.
+- Confirmed manual QA passed for Auth, WeddingPlan, Dashboard, Budget + Expense, Debt + Installment, Task + Timeline, and Sharing flows.
+- Documented known QA notes for sharing by technical `userId` and financial navigation visibility for shared users.
+- Confirmed the next recommended step is a bug-fix polish pass, then deployment planning.
+- Confirmed no backend code, Flutter feature code, backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created or modified by this QA documentation update.
+
 ## 2026-06-05 - Flutter MVP Regression And Manual QA Plan
 
 - Regression-verified the Flutter MVP with `flutter pub get`, `flutter analyze`, `flutter test`, and `flutter build web --debug`.

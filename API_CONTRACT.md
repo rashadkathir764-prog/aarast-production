@@ -254,7 +254,7 @@ Create shared member request:
 
 ```json
 {
-  "userId": "shared_user_id",
+  "phone": "+967700000000",
   "role": "VIEWER",
   "canViewBudget": false,
   "canViewExpenses": false,
@@ -263,6 +263,8 @@ Create shared member request:
   "canManageFinancialRecords": false
 }
 ```
+
+The create route accepts either `phone` or `userId`. Flutter uses `phone` so owners can add an already-registered user by phone number. Existing `userId` request support is preserved for compatibility. Requests that provide both `userId` and `phone` are rejected with `400`.
 
 Shared member response:
 
@@ -282,7 +284,7 @@ Shared member response:
 }
 ```
 
-Only the owner can add, list, update, or remove shared members for a WeddingPlan. The owner cannot add themselves as a shared member, and duplicate members are rejected.
+Only the owner can add, list, update, or remove shared members for a WeddingPlan. The owner cannot add themselves as a shared member, unknown phone numbers are rejected without auto-creating users, and duplicate members are rejected.
 
 ## Error Behavior
 

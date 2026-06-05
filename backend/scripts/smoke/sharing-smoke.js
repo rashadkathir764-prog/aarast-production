@@ -12,6 +12,7 @@ const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3144';
 const timestamp = Date.now();
 const OWNER_PHONE = `+9676${timestamp.toString().slice(-7)}`;
 const SHARED_PHONE = `+9677${timestamp.toString().slice(-7)}`;
+const SHARED_BY_PHONE = `+9678${timestamp.toString().slice(-7)}`;
 const TEST_PASSWORD = 'SmokeTest123!';
 
 let passed = 0;
@@ -83,12 +84,15 @@ async function run() {
   console.log(`Target: ${BASE_URL}`);
   console.log(`Owner phone: ${OWNER_PHONE}`);
   console.log(`Shared phone: ${SHARED_PHONE}\n`);
+  console.log(`Shared-by-phone: ${SHARED_BY_PHONE}\n`);
 
   let ownerToken = null;
   let sharedToken = null;
   let sharedUserId = null;
+  let sharedByPhoneToken = null;
   let weddingPlanId = null;
   let sharedMemberId = null;
+  let sharedByPhoneMemberId = null;
   let taskId = null;
 
   {
@@ -107,6 +111,14 @@ async function run() {
     check('shared user register does not expose passwordHash', !hasPasswordHash(shared.body));
     sharedToken = shared.token;
     sharedUserId = shared.user?.id;
+  }
+
+  {
+    const shared = await register('Sharing Smoke Phone Member', SHARED_BY_PHONE);
+    check('shared-by-phone user register - HTTP 201', shared.status === 201);
+    check('shared-by-phone user register returns token', typeof shared.token === 'string');
+    check('shared-by-phone user register does not expose passwordHash', !hasPasswordHash(shared.body));
+    sharedByPhoneToken = shared.token;
   }
 
   {
@@ -142,9 +154,36 @@ async function run() {
   }
 
   {
+    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+      phone: SHARED_BY_PHONE,
+      role: 'VIEWER',
+      canViewBudget: false,
+      canViewExpenses: false,
+      canViewDebts: false,
+      canManageTasks: false,
+      canManageFinancialRecords: false,
+    }, ownerToken);
+    check('owner adds shared member by phone - HTTP 201', res.status === 201);
+    check('phone-added shared member has id', typeof res.body?.id === 'string');
+    check('phone-added shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);
+    check('phone-added shared member response does not expose passwordHash', !hasPasswordHash(res.body));
+    sharedByPhoneMemberId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+      userId: sharedUserId,
+      phone: SHARED_BY_PHONE,
+      role: 'VIEWER',
+    }, ownerToken);
+    check('owner cannot provide both userId and phone', res.status === 400);
+  }
+
+  {
     const res = await request('GET', `/wedding-plans/${weddingPlanId}/shared-members`, null, ownerToken);
     check('owner lists shared members - HTTP 200', res.status === 200);
     check('shared member list includes member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedMemberId));
+    check('shared member list includes phone-added member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedByPhoneMemberId));
     check('shared member list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
@@ -155,6 +194,13 @@ async function run() {
     check('shared plan list includes role', Array.isArray(res.body) && res.body.some((plan) => plan.sharedMember?.role === 'VIEWER'));
     check('shared plan list does not expose owner object', !JSON.stringify(res.body).includes('"owner"'));
     check('shared plan list does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('GET', '/shared/wedding-plans', null, sharedByPhoneToken);
+    check('phone-added shared user lists shared wedding plans - HTTP 200', res.status === 200);
+    check('phone-added shared plan list includes plan', Array.isArray(res.body) && res.body.some((plan) => plan.id === weddingPlanId));
+    check('phone-added shared plan list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
@@ -245,6 +291,13 @@ async function run() {
     check('owner removes shared member - HTTP 200', res.status === 200);
     check('removed shared member id returned', res.body?.id === sharedMemberId);
     check('remove shared member response does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('DELETE', `/shared-members/${sharedByPhoneMemberId}`, null, ownerToken);
+    check('owner removes phone-added shared member - HTTP 200', res.status === 200);
+    check('removed phone-added shared member id returned', res.body?.id === sharedByPhoneMemberId);
+    check('remove phone-added shared member response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {

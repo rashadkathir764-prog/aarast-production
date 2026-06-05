@@ -4,7 +4,13 @@ import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-valid
 export class CreateSharedMemberDto {
   @IsString()
   @IsNotEmpty()
-  userId!: string;
+  @IsOptional()
+  userId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @IsOptional()
+  phone?: string;
 
   @IsEnum(SharedMemberRole)
   @IsOptional()

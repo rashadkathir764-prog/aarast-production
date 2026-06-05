@@ -19,7 +19,7 @@ class SharingApi {
 
   Future<SharedMember> createSharedMember({
     required String weddingPlanId,
-    required String userId,
+    required String phone,
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
@@ -29,7 +29,7 @@ class SharingApi {
   }) async {
     final json = await _apiClient
         .postJson('/wedding-plans/$weddingPlanId/shared-members', {
-          'userId': userId.trim(),
+          'phone': phone.trim(),
           'role': role,
           'canViewBudget': canViewBudget,
           'canViewExpenses': canViewExpenses,

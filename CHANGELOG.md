@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-05 - Bug-Fix Polish Pass 2
+
+- Allowed owners to add shared members by registered phone number from Flutter.
+- Preserved existing `userId`-based Sharing API support for compatibility.
+- Rejected create-share requests that provide both `userId` and `phone`.
+- Added sharing smoke coverage for adding a shared member by phone.
+- Confirmed no Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, confirmed booking logic, secrets, or unrelated features were created.
+
 ## 2026-06-05 - Bug-Fix Polish Pass 1
 
 - Fixed Flutter WeddingPlan Dashboard financial navigation privacy UX for shared users.

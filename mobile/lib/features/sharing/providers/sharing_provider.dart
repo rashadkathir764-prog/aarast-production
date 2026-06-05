@@ -72,7 +72,7 @@ class SharingProvider extends ChangeNotifier {
 
   Future<bool> createMember({
     required String weddingPlanId,
-    required String userId,
+    required String phone,
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
@@ -87,7 +87,7 @@ class SharingProvider extends ChangeNotifier {
     try {
       final member = await _api.createSharedMember(
         weddingPlanId: weddingPlanId,
-        userId: userId,
+        phone: phone,
         role: role,
         canViewBudget: canViewBudget,
         canViewExpenses: canViewExpenses,

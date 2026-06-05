@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SharedMember, SharedMemberRole, WeddingPlan } from '@prisma/client';
+import { SharedMember, SharedMemberRole, User, WeddingPlan } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSharedMemberDto } from './dto/create-shared-member.dto';
@@ -48,15 +48,11 @@ export class SharingService {
     dto: CreateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
     const plan = await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
-    const userId = this.requiredText(dto.userId, 'userId');
+    const user = await this.findTargetUser(dto);
+    const userId = user.id;
 
     if (userId === plan.ownerUserId) {
       throw new BadRequestException('Owner cannot be added as a shared member');
-    }
-
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      throw new BadRequestException('userId must reference an existing user');
     }
 
     const existing = await this.prisma.sharedMember.findUnique({
@@ -159,12 +155,36 @@ export class SharingService {
     return member;
   }
 
-  private requiredText(value: string, field: string): string {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      throw new BadRequestException(`${field} must not be empty`);
+  private async findTargetUser(dto: CreateSharedMemberDto): Promise<User> {
+    const userId = dto.userId?.trim();
+    const phone = dto.phone?.trim();
+
+    if (userId && phone) {
+      throw new BadRequestException('Provide either userId or phone, not both');
     }
-    return trimmed;
+
+    if (!userId && !phone) {
+      throw new BadRequestException('Provide either userId or phone');
+    }
+
+    let user: User | null;
+    if (userId) {
+      user = await this.prisma.user.findUnique({ where: { id: userId } });
+    } else if (phone) {
+      user = await this.prisma.user.findUnique({ where: { phone } });
+    } else {
+      user = null;
+    }
+
+    if (!user) {
+      throw new BadRequestException(
+        phone
+          ? 'No registered user found for this phone'
+          : 'userId must reference an existing user',
+      );
+    }
+
+    return user;
   }
 
   private toMemberResponse(member: SharedMember): SharedMemberResponse {

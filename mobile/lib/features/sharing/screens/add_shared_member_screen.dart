@@ -16,7 +16,7 @@ class AddSharedMemberScreen extends StatefulWidget {
 
 class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _userIdController = TextEditingController();
+  final _phoneController = TextEditingController();
   String _role = 'VIEWER';
   bool _canViewBudget = false;
   bool _canViewExpenses = false;
@@ -26,7 +26,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   @override
   void dispose() {
-    _userIdController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -48,15 +48,16 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                   const _PrivacyHint(),
                   const SizedBox(height: 12),
                   TextFormField(
-                    controller: _userIdController,
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
                     textAlign: TextAlign.right,
                     decoration: const InputDecoration(
-                      labelText: 'معرف المستخدم',
-                      helperText: 'أدخل userId للعضو المراد إضافته.',
+                      labelText: 'رقم هاتف العضو',
+                      helperText: 'أدخل رقم هاتف مستخدم مسجل في التطبيق',
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'معرف المستخدم مطلوب';
+                        return 'رقم هاتف العضو مطلوب';
                       }
                       return null;
                     },
@@ -122,7 +123,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     final provider = context.read<SharingProvider>();
     final created = await provider.createMember(
       weddingPlanId: widget.weddingPlanId,
-      userId: _userIdController.text,
+      phone: _phoneController.text,
       role: _role,
       canViewBudget: _canViewBudget,
       canViewExpenses: _canViewExpenses,

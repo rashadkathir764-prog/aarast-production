@@ -5,14 +5,15 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-polish-share-by-phone`
+- Current branch: `phase/4-polish-share-by-phone`
 
 ## Current Task Status
 
-- Task: Bug-fix Polish Pass 1 merged into main and verified.
+- Task: Bug-fix Polish Pass 2 implemented in worktree and pending pre-merge review.
 - Main HEAD before bug-fix polish worktree: `98c4bac7462876e50556f1d43b623b9daa3001fd`
 - Current main HEAD after bug-fix polish merge: `32d01da97084e6ec38ccf991f399bad87b19de82`
+- Main HEAD before bug-fix polish pass 2 worktree: `0c2dd3370b5ad3b2ab88df214e86be114ee98fe1`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
@@ -28,7 +29,14 @@
 - Route audit passed for auth, WeddingPlan, dashboard, finance, debt/installment, task/timeline, and sharing routes.
 - Backend contract sanity check passed against `API_CONTRACT.md`.
 - Backend permissions were not weakened.
-- Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+- Polish Pass 1 did not change backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, or confirmed booking logic.
+- Bug-fix polish pass 2 target: add shared members by registered phone number instead of requiring technical `userId` in Flutter.
+- Sharing API now accepts either `phone` or `userId` for create shared member requests.
+- Existing `userId`-based API support is preserved for compatibility.
+- Requests that provide both `userId` and `phone` are rejected.
+- Unknown phone numbers are rejected and users are not auto-created.
+- Backend changes in Polish Pass 2 are limited to Sharing create DTO/service behavior and Sharing smoke coverage.
+- No Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, confirmed booking logic, secrets, or unrelated features were created.
 
 ## Checks Passed From Main After Shared Navigation Polish Merge
 
@@ -39,6 +47,25 @@
 - Shared financial navigation privacy polish is merged into main: PASS
 - Backend code unchanged by this phase: PASS
 - No backend APIs, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
+
+## Checks Passed From Share-By-Phone Polish Worktree
+
+- `npm install`: PASS, 0 vulnerabilities
+- `npm run prisma:generate`: PASS
+- `npm run check`: PASS after local Prisma Client generation
+- `npm run build`: PASS
+- `npm audit`: PASS, 0 vulnerabilities
+- `GET /health` on port `3160`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3160`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3160`: PASS
+- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3160`: PASS, including add shared member by phone
+- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3160`: PASS
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- `backend/.env` remains untracked and was not committed.
+- Forbidden scope check: PASS
 
 ## Hands-On MVP QA Passed
 
@@ -192,7 +219,7 @@
 
 ## Current Pending Step
 
-- Next pending step: Bug-fix Polish Pass 2 planning, especially adding shared members by phone/search instead of technical userId.
+- Next pending step: pre-merge review and merge for Bug-fix Polish Pass 2.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -215,7 +242,8 @@
   19. Complete: Flutter MVP Regression + Manual QA Plan
   20. Complete: hands-on QA run
   21. Complete: Bug-fix Polish Pass 1 - shared financial navigation privacy
-  22. Next: continue polish, especially shared-member phone/search
+  22. Current: Bug-fix Polish Pass 2 - add shared members by phone
+  23. Next after merge: continue polish or prepare deployment planning after approval
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

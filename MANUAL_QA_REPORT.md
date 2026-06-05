@@ -33,7 +33,7 @@
 
 ## Known QA Notes
 
-- Sharing add member currently requires technical `userId`; future improvement should allow phone/search.
+- Sharing add member now supports registered phone numbers. Future improvement: add user search/lookup assistance instead of manual phone entry.
 
 ## Resolved In Bug-Fix Polish Pass 1
 
@@ -48,10 +48,17 @@
 - Shared viewer without financial permissions should not get direct financial navigation from the dashboard.
 - Shared user with `canManageTasks` should still be able to use task/timeline navigation.
 
+## Resolved In Bug-Fix Polish Pass 2
+
+- Owners can add shared members by phone number from the Flutter sharing screen.
+- The backend still preserves existing `userId` support for compatibility.
+- The backend rejects requests that provide both `userId` and `phone`.
+- Unknown phone numbers are rejected; users are not auto-created.
+
 ## Final Verdict
 
 MVP core flow PASS.
 
 ## Next Recommended Step
 
-Continue the bug-fix polish pass for remaining UX issues, especially adding shared members by phone/search instead of technical `userId`, then prepare deployment planning.
+Continue the bug-fix polish pass for remaining UX issues, especially better user lookup/search around sharing, then prepare deployment planning.

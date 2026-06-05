@@ -19,7 +19,7 @@ class SharedMember {
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
       userId: json['userId'].toString(),
-      user: _sharedMemberUserOrNull(json['user']),
+      user: _sharedMemberUserOrNull(json),
       role: json['role']?.toString() ?? 'VIEWER',
       canViewBudget: json['canViewBudget'] == true,
       canViewExpenses: json['canViewExpenses'] == true,
@@ -103,10 +103,22 @@ class SharedMemberUser {
   final String? phone;
 }
 
-SharedMemberUser? _sharedMemberUserOrNull(Object? value) {
-  if (value is Map) {
-    return SharedMemberUser.fromJson(Map<String, dynamic>.from(value));
+SharedMemberUser? _sharedMemberUserOrNull(Map<String, dynamic> json) {
+  final userValue = json['user'];
+  if (userValue is Map) {
+    return SharedMemberUser.fromJson(Map<String, dynamic>.from(userValue));
   }
+
+  final name = json['userName'] ?? json['memberName'];
+  final phone = json['userPhone'] ?? json['memberPhone'];
+  if (name != null || phone != null) {
+    return SharedMemberUser(
+      id: json['userId']?.toString() ?? '',
+      name: name?.toString() ?? '',
+      phone: phone?.toString(),
+    );
+  }
+
   return null;
 }
 

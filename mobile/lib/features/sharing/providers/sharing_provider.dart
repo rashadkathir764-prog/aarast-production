@@ -196,6 +196,13 @@ String _sharingErrorMessage(
   String fallback = 'تعذر تنفيذ طلب المشاركة. تحقق من البيانات والصلاحيات.',
 }) {
   final normalized = message.trim();
+  if (normalized.contains('User is already shared on this wedding plan')) {
+    return 'هذا العضو مضاف مسبقاً إلى هذه الخطة';
+  }
+  if (normalized.contains('No registered user found for this phone')) {
+    return 'لا يوجد مستخدم مسجل بهذا الرقم';
+  }
+
   return switch (normalized) {
     'User is already shared on this wedding plan' =>
       'هذا العضو مضاف مسبقاً إلى هذه الخطة',

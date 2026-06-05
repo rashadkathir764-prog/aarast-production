@@ -5,15 +5,16 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-4-polish-share-by-phone`
-- Current branch: `phase/4-polish-share-by-phone`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Current Task Status
 
-- Task: Bug-fix Polish Pass 2 implemented in worktree and pending pre-merge review.
+- Task: Bug-fix Polish Pass 2 merged into main and verified.
 - Main HEAD before bug-fix polish worktree: `98c4bac7462876e50556f1d43b623b9daa3001fd`
 - Current main HEAD after bug-fix polish merge: `32d01da97084e6ec38ccf991f399bad87b19de82`
 - Main HEAD before bug-fix polish pass 2 worktree: `0c2dd3370b5ad3b2ab88df214e86be114ee98fe1`
+- Current main HEAD after bug-fix polish pass 2 merge: `73f1636a530a17167c02de4cec441fc3626dfa0a`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
@@ -64,6 +65,27 @@
 - `flutter analyze`: PASS
 - `flutter test`: PASS
 - `flutter build web --debug`: PASS
+- `backend/.env` remains untracked and was not committed.
+- Forbidden scope check: PASS
+
+## Checks Passed From Main After Share-By-Phone Polish Merge
+
+- `npm install`: PASS, 0 vulnerabilities
+- `npm run prisma:generate`: PASS after stopping an old local `node dist/main.js` process that was locking the Prisma engine DLL
+- `npm run check`: PASS
+- `npm run build`: PASS
+- `npm audit`: PASS, 0 vulnerabilities
+- `GET /health` on port `3162`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3162`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3162`: PASS
+- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3162`: PASS, including add shared member by phone
+- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3162`: PASS
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Shared members can now be added by phone from Flutter: PASS
+- Existing `userId` API support remains available: PASS
 - `backend/.env` remains untracked and was not committed.
 - Forbidden scope check: PASS
 
@@ -219,7 +241,7 @@
 
 ## Current Pending Step
 
-- Next pending step: pre-merge review and merge for Bug-fix Polish Pass 2.
+- Next pending step: final local QA rerun for sharing-by-phone.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -242,8 +264,8 @@
   19. Complete: Flutter MVP Regression + Manual QA Plan
   20. Complete: hands-on QA run
   21. Complete: Bug-fix Polish Pass 1 - shared financial navigation privacy
-  22. Current: Bug-fix Polish Pass 2 - add shared members by phone
-  23. Next after merge: continue polish or prepare deployment planning after approval
+  22. Complete: Bug-fix Polish Pass 2 - add shared members by phone
+  23. Next: final local QA rerun for sharing-by-phone
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

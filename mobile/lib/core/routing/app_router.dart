@@ -15,6 +15,7 @@ import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
 import '../../features/sharing/screens/sharing_screen.dart';
+import '../../features/sharing/models/shared_member.dart';
 import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
@@ -115,7 +116,13 @@ class AppRouter {
           path: '/wedding-plans/:id/dashboard',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return WeddingPlanDashboardScreen(weddingPlanId: id);
+            final sharedMember = state.extra is SharedMember
+                ? state.extra! as SharedMember
+                : null;
+            return WeddingPlanDashboardScreen(
+              weddingPlanId: id,
+              sharedMember: sharedMember,
+            );
           },
         ),
         GoRoute(

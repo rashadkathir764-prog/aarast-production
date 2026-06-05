@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-05 - Bug-Fix Polish Pass 1
+
+- Fixed Flutter WeddingPlan Dashboard financial navigation privacy UX for shared users.
+- Shared users without financial permissions now see locked/disabled financial cards instead of direct finance or debt navigation.
+- Shared users with budget, expense, debt, or financial-record permissions can access the relevant financial dashboard cards.
+- Owner dashboard access remains unchanged and still shows finance, debt, task, and sharing navigation.
+- Confirmed backend permissions, backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
 ## 2026-06-05 - Hands-On MVP QA
 
 - Recorded `MANUAL_QA_REPORT.md` for the successful hands-on MVP QA run.

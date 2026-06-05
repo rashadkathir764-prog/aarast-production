@@ -34,7 +34,19 @@
 ## Known QA Notes
 
 - Sharing add member currently requires technical `userId`; future improvement should allow phone/search.
-- Financial navigation cards are visible to shared users even without financial permissions; future improvement should hide or lock them based on permissions.
+
+## Resolved In Bug-Fix Polish Pass 1
+
+- Financial navigation cards for shared users now respect shared permissions on the WeddingPlan Dashboard.
+- Shared users without financial permissions see locked/disabled financial cards with a clear permission message.
+- Shared users with relevant financial permissions can access the matching finance or debt/installment navigation.
+- Backend permissions were unchanged.
+
+## Manual Sanity Notes For Bug-Fix Polish Pass 1
+
+- Owner dashboard should still show finance, debt/installment, task/timeline, and sharing cards.
+- Shared viewer without financial permissions should not get direct financial navigation from the dashboard.
+- Shared user with `canManageTasks` should still be able to use task/timeline navigation.
 
 ## Final Verdict
 
@@ -42,4 +54,4 @@ MVP core flow PASS.
 
 ## Next Recommended Step
 
-Bug-fix polish pass, then prepare deployment planning.
+Continue the bug-fix polish pass for remaining UX issues, especially adding shared members by phone/search instead of technical `userId`, then prepare deployment planning.

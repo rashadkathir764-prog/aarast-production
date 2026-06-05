@@ -273,6 +273,11 @@ Shared member response:
   "id": "shared_member_id",
   "weddingPlanId": "plan_id",
   "userId": "shared_user_id",
+  "user": {
+    "id": "shared_user_id",
+    "name": "Shared Member Name",
+    "phone": "+967700000000"
+  },
   "role": "VIEWER",
   "canViewBudget": false,
   "canViewExpenses": false,
@@ -283,6 +288,8 @@ Shared member response:
   "updatedAt": "2026-06-04T00:00:00.000Z"
 }
 ```
+
+The `user` object is safe display data only. It must not include `passwordHash`, refresh tokens, email, role, status, or a full user object.
 
 Only the owner can add, list, update, or remove shared members for a WeddingPlan. The owner cannot add themselves as a shared member, unknown phone numbers are rejected without auto-creating users, and duplicate members are rejected.
 

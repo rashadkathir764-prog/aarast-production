@@ -55,10 +55,16 @@
 - The backend rejects requests that provide both `userId` and `phone`.
 - Unknown phone numbers are rejected; users are not auto-created.
 
+## Resolved In Bug-Fix Polish Pass 3
+
+- Sharing member cards now show safe member name and phone instead of the technical `userId`.
+- Common sharing errors are displayed in Arabic, including duplicate member and unknown phone cases.
+- `passwordHash`, refresh tokens, secrets, and full user objects remain protected.
+
 ## Final Verdict
 
 MVP core flow PASS.
 
 ## Next Recommended Step
 
-Continue the bug-fix polish pass for remaining UX issues, especially better user lookup/search around sharing, then prepare deployment planning.
+Run a final local QA pass for sharing display and share-by-phone, then prepare deployment planning when approved.

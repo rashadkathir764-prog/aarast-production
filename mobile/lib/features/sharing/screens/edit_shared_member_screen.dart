@@ -50,6 +50,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     if (!_initialized) {
       _syncFromMember(member);
     }
+    final subtitle = member.displaySubtitle;
 
     return Scaffold(
       appBar: AppBar(title: const Text('تعديل عضو المشاركة')),
@@ -60,9 +61,22 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Text(
-                  'العضو: ${member.userId}',
-                  textAlign: TextAlign.right,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'العضو: ${member.displayName}',
+                      textAlign: TextAlign.right,
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),

@@ -15,6 +15,7 @@ export interface SharedMemberResponse {
   id: string;
   weddingPlanId: string;
   userId: string;
+  user?: SafeSharedMemberUser;
   role: SharedMemberRole;
   canViewBudget: boolean;
   canViewExpenses: boolean;
@@ -23,6 +24,12 @@ export interface SharedMemberResponse {
   canManageFinancialRecords: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface SafeSharedMemberUser {
+  id: string;
+  name: string;
+  phone: string | null;
 }
 
 export interface SharedWeddingPlanResponse {
@@ -73,6 +80,7 @@ export class SharingService {
         canManageTasks: dto.canManageTasks ?? false,
         canManageFinancialRecords: dto.canManageFinancialRecords ?? false,
       },
+      include: { user: { select: { id: true, name: true, phone: true } } },
     });
 
     return this.toMemberResponse(member);
@@ -86,6 +94,7 @@ export class SharingService {
 
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
+      include: { user: { select: { id: true, name: true, phone: true } } },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -118,6 +127,7 @@ export class SharingService {
           ? { canManageFinancialRecords: dto.canManageFinancialRecords }
           : {}),
       },
+      include: { user: { select: { id: true, name: true, phone: true } } },
     });
 
     return this.toMemberResponse(member);
@@ -138,7 +148,10 @@ export class SharingService {
   ): Promise<SharedWeddingPlanResponse[]> {
     const members = await this.prisma.sharedMember.findMany({
       where: { userId: currentUser.id },
-      include: { weddingPlan: true },
+      include: {
+        weddingPlan: true,
+        user: { select: { id: true, name: true, phone: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -187,11 +200,14 @@ export class SharingService {
     return user;
   }
 
-  private toMemberResponse(member: SharedMember): SharedMemberResponse {
+  private toMemberResponse(
+    member: SharedMember & { user?: SafeSharedMemberUser },
+  ): SharedMemberResponse {
     return {
       id: member.id,
       weddingPlanId: member.weddingPlanId,
       userId: member.userId,
+      ...(member.user ? { user: member.user } : {}),
       role: member.role,
       canViewBudget: member.canViewBudget,
       canViewExpenses: member.canViewExpenses,

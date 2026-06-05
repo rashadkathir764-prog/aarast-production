@@ -17,6 +17,7 @@ class SharedMemberCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final permissionLabels = member.permissionLabels;
+    final subtitle = member.displaySubtitle;
 
     return Card(
       child: InkWell(
@@ -36,14 +37,29 @@ class SharedMemberCard extends StatelessWidget {
                   const Spacer(),
                   Expanded(
                     flex: 3,
-                    child: Text(
-                      member.userId,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.deepBurgundy,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      textAlign: TextAlign.right,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          member.displayName,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppTheme.deepBurgundy,
+                                fontWeight: FontWeight.w800,
+                              ),
+                          textAlign: TextAlign.right,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            textAlign: TextAlign.right,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ],

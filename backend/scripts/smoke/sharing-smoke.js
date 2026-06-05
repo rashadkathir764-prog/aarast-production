@@ -65,6 +65,13 @@ function hasPasswordHash(value) {
   return JSON.stringify(value).includes('passwordHash');
 }
 
+function hasOnlySafeSharedUserFields(member) {
+  const user = member?.user;
+  if (!user || typeof user !== 'object') return false;
+  const keys = Object.keys(user).sort();
+  return JSON.stringify(keys) === JSON.stringify(['id', 'name', 'phone']);
+}
+
 async function register(name, phone) {
   const res = await request('POST', '/auth/register', {
     name,
@@ -149,6 +156,9 @@ async function run() {
     check('shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);
     check('shared member role is VIEWER', res.body?.role === 'VIEWER');
     check('shared member has no financial permissions', res.body?.canViewExpenses === false && res.body?.canViewDebts === false);
+    check('shared member response includes safe user name', res.body?.user?.name === 'Sharing Smoke Member');
+    check('shared member response includes safe user phone', res.body?.user?.phone === SHARED_PHONE);
+    check('shared member response user fields are safe', hasOnlySafeSharedUserFields(res.body));
     check('shared member response does not expose passwordHash', !hasPasswordHash(res.body));
     sharedMemberId = res.body?.id;
   }
@@ -166,6 +176,9 @@ async function run() {
     check('owner adds shared member by phone - HTTP 201', res.status === 201);
     check('phone-added shared member has id', typeof res.body?.id === 'string');
     check('phone-added shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);
+    check('phone-added shared member includes safe user name', res.body?.user?.name === 'Sharing Smoke Phone Member');
+    check('phone-added shared member includes safe user phone', res.body?.user?.phone === SHARED_BY_PHONE);
+    check('phone-added shared member user fields are safe', hasOnlySafeSharedUserFields(res.body));
     check('phone-added shared member response does not expose passwordHash', !hasPasswordHash(res.body));
     sharedByPhoneMemberId = res.body?.id;
   }
@@ -184,6 +197,8 @@ async function run() {
     check('owner lists shared members - HTTP 200', res.status === 200);
     check('shared member list includes member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedMemberId));
     check('shared member list includes phone-added member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedByPhoneMemberId));
+    check('shared member list includes safe user display data', Array.isArray(res.body) && res.body.some((member) => member.user?.name === 'Sharing Smoke Member' && member.user?.phone === SHARED_PHONE));
+    check('shared member list safe user fields only', Array.isArray(res.body) && res.body.every(hasOnlySafeSharedUserFields));
     check('shared member list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
@@ -193,6 +208,7 @@ async function run() {
     check('shared plan list includes plan', Array.isArray(res.body) && res.body.some((plan) => plan.id === weddingPlanId));
     check('shared plan list includes role', Array.isArray(res.body) && res.body.some((plan) => plan.sharedMember?.role === 'VIEWER'));
     check('shared plan list does not expose owner object', !JSON.stringify(res.body).includes('"owner"'));
+    check('shared plan list includes safe member display data', Array.isArray(res.body) && res.body.some((plan) => plan.sharedMember?.user?.phone === SHARED_PHONE));
     check('shared plan list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

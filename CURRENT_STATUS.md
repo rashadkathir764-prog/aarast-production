@@ -5,16 +5,17 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-polish-sharing-display-arabic-errors`
+- Current branch: `phase/4-polish-sharing-display-arabic-errors`
 
 ## Current Task Status
 
-- Task: Bug-fix Polish Pass 2 merged into main and verified.
+- Task: Bug-fix Polish Pass 3 implemented in worktree and pending pre-merge review.
 - Main HEAD before bug-fix polish worktree: `98c4bac7462876e50556f1d43b623b9daa3001fd`
 - Current main HEAD after bug-fix polish merge: `32d01da97084e6ec38ccf991f399bad87b19de82`
 - Main HEAD before bug-fix polish pass 2 worktree: `0c2dd3370b5ad3b2ab88df214e86be114ee98fe1`
 - Current main HEAD after bug-fix polish pass 2 merge: `73f1636a530a17167c02de4cec441fc3626dfa0a`
+- Main HEAD before bug-fix polish pass 3 worktree: `92c5eaac37e9afb21e98c214c64006af21305c83`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
@@ -38,6 +39,30 @@
 - Unknown phone numbers are rejected and users are not auto-created.
 - Backend changes in Polish Pass 2 are limited to Sharing create DTO/service behavior and Sharing smoke coverage.
 - No Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, confirmed booking logic, secrets, or unrelated features were created.
+- Bug-fix polish pass 3 target: show shared member name/phone instead of technical `userId` in Sharing UI.
+- Sharing responses now include safe member display data: `user.id`, `user.name`, and `user.phone` only.
+- Flutter Sharing cards and edit screen use member name/phone when available, with `userId` kept as fallback only.
+- Common Sharing errors are mapped to Arabic in Flutter UI.
+- `passwordHash`, refresh tokens, secrets, full user objects, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not created or exposed.
+
+## Checks Passed From Sharing Display And Arabic Errors Worktree
+
+- `npm install`: PASS, 0 vulnerabilities
+- `npm run prisma:generate`: PASS
+- `npm run check`: PASS after local Prisma Client rebuild/generation
+- `npm run build`: PASS
+- `npm audit`: PASS, 0 vulnerabilities
+- `GET /health` on port `3163`: PASS
+- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3163`: PASS
+- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3163`: PASS
+- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3163`: PASS, including safe member name/phone display data and sensitive-field checks
+- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3163`: PASS
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- `backend/.env` remains untracked and was not committed.
+- Forbidden scope check: PASS
 
 ## Checks Passed From Main After Shared Navigation Polish Merge
 
@@ -241,7 +266,7 @@
 
 ## Current Pending Step
 
-- Next pending step: final local QA rerun for sharing-by-phone.
+- Next pending step: pre-merge review and merge for Bug-fix Polish Pass 3.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -265,7 +290,8 @@
   20. Complete: hands-on QA run
   21. Complete: Bug-fix Polish Pass 1 - shared financial navigation privacy
   22. Complete: Bug-fix Polish Pass 2 - add shared members by phone
-  23. Next: final local QA rerun for sharing-by-phone
+  23. Current: Bug-fix Polish Pass 3 - shared member display and Arabic sharing errors
+  24. Next after merge: final local QA rerun for sharing display and share-by-phone
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

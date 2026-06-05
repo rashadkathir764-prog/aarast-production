@@ -3,6 +3,7 @@ class SharedMember {
     required this.id,
     required this.weddingPlanId,
     required this.userId,
+    this.user,
     required this.role,
     required this.canViewBudget,
     required this.canViewExpenses,
@@ -18,6 +19,7 @@ class SharedMember {
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
       userId: json['userId'].toString(),
+      user: _sharedMemberUserOrNull(json['user']),
       role: json['role']?.toString() ?? 'VIEWER',
       canViewBudget: json['canViewBudget'] == true,
       canViewExpenses: json['canViewExpenses'] == true,
@@ -32,6 +34,7 @@ class SharedMember {
   final String id;
   final String weddingPlanId;
   final String userId;
+  final SharedMemberUser? user;
   final String role;
   final bool canViewBudget;
   final bool canViewExpenses;
@@ -47,6 +50,28 @@ class SharedMember {
       canViewDebts ||
       canManageFinancialRecords;
 
+  String get displayName {
+    final name = user?.name.trim();
+    if (name != null && name.isNotEmpty) {
+      return name;
+    }
+
+    final phone = user?.phone?.trim();
+    if (phone != null && phone.isNotEmpty) {
+      return phone;
+    }
+
+    return userId;
+  }
+
+  String? get displaySubtitle {
+    final phone = user?.phone?.trim();
+    if (phone != null && phone.isNotEmpty && phone != displayName) {
+      return phone;
+    }
+    return user == null ? 'معرف داخلي: $userId' : null;
+  }
+
   List<String> get permissionLabels {
     final labels = <String>[];
     if (canViewBudget) labels.add('يمكنه رؤية الميزانية');
@@ -56,6 +81,33 @@ class SharedMember {
     if (canManageFinancialRecords) labels.add('يمكنه إدارة السجلات المالية');
     return labels;
   }
+}
+
+class SharedMemberUser {
+  const SharedMemberUser({
+    required this.id,
+    required this.name,
+    required this.phone,
+  });
+
+  factory SharedMemberUser.fromJson(Map<String, dynamic> json) {
+    return SharedMemberUser(
+      id: json['id'].toString(),
+      name: json['name']?.toString() ?? '',
+      phone: json['phone']?.toString(),
+    );
+  }
+
+  final String id;
+  final String name;
+  final String? phone;
+}
+
+SharedMemberUser? _sharedMemberUserOrNull(Object? value) {
+  if (value is Map) {
+    return SharedMemberUser.fromJson(Map<String, dynamic>.from(value));
+  }
+  return null;
 }
 
 DateTime? _dateTimeOrNull(Object? value) {

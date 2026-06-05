@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-06-05 - Bug-Fix Polish Pass 3
+
+- Improved Sharing member display so cards show safe member name and phone instead of the technical `userId`.
+- Added safe shared-user display data to Sharing responses: `id`, `name`, and `phone` only.
+- Translated common Sharing errors in Flutter UI, including duplicate member and unknown phone cases.
+- Confirmed `passwordHash`, refresh tokens, secrets, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not created or exposed.
+
 ## 2026-06-05 - Bug-Fix Polish Pass 2
 
 - Allowed owners to add shared members by registered phone number from Flutter.

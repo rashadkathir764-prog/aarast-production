@@ -35,7 +35,7 @@ class SharingProvider extends ChangeNotifier {
         _selectedMember = _findMember(_selectedMember!.id);
       }
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _sharingErrorMessage(error.message);
     } catch (_) {
       _errorMessage = 'تعذر تحميل أعضاء المشاركة.';
     } finally {
@@ -52,7 +52,7 @@ class SharingProvider extends ChangeNotifier {
     try {
       _sharedPlans = await _api.getSharedWeddingPlans();
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _sharingErrorMessage(error.message);
     } catch (_) {
       _errorMessage = 'تعذر تحميل الخطط المشتركة معك.';
     } finally {
@@ -99,7 +99,10 @@ class SharingProvider extends ChangeNotifier {
       _selectedMember = member;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _sharingErrorMessage(
+        error.message,
+        fallback: 'تعذر إضافة عضو المشاركة. تحقق من رقم الهاتف والصلاحيات.',
+      );
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إضافة عضو المشاركة.';
@@ -138,7 +141,7 @@ class SharingProvider extends ChangeNotifier {
       _selectedMember = member;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _sharingErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث صلاحيات العضو.';
@@ -162,7 +165,7 @@ class SharingProvider extends ChangeNotifier {
       }
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _sharingErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إزالة عضو المشاركة.';
@@ -186,4 +189,29 @@ class SharingProvider extends ChangeNotifier {
     }
     return null;
   }
+}
+
+String _sharingErrorMessage(
+  String message, {
+  String fallback = 'تعذر تنفيذ طلب المشاركة. تحقق من البيانات والصلاحيات.',
+}) {
+  final normalized = message.trim();
+  return switch (normalized) {
+    'User is already shared on this wedding plan' =>
+      'هذا العضو مضاف مسبقاً إلى هذه الخطة',
+    'No registered user found for this phone' =>
+      'لا يوجد مستخدم مسجل بهذا الرقم',
+    'Provide either userId or phone, not both' =>
+      'أدخل رقم الهاتف فقط ولا ترسل معرف المستخدم معه.',
+    'Provide either userId or phone' => 'رقم هاتف العضو مطلوب.',
+    'Owner cannot be added as a shared member' =>
+      'لا يمكن إضافة صاحب الخطة كعضو مشاركة.',
+    'userId must reference an existing user' =>
+      'لا يوجد مستخدم مسجل بهذا المعرف.',
+    'Shared member not found' => 'لم يتم العثور على عضو المشاركة.',
+    _ when normalized.contains('not found') => fallback,
+    _ when normalized.contains('must') => fallback,
+    _ when normalized.contains('Bad Request') => fallback,
+    _ => normalized.isEmpty ? fallback : normalized,
+  };
 }

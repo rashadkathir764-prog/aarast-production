@@ -5,13 +5,14 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast-worktrees\phase-4-polish-shared-financial-navigation`
-- Current branch: `phase/4-polish-shared-financial-navigation`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `main`
 
 ## Current Task Status
 
-- Task: Bug-fix Polish Pass 1 implemented in worktree and pending pre-merge review.
+- Task: Bug-fix Polish Pass 1 merged into main and verified.
 - Main HEAD before bug-fix polish worktree: `98c4bac7462876e50556f1d43b623b9daa3001fd`
+- Current main HEAD after bug-fix polish merge: `32d01da97084e6ec38ccf991f399bad87b19de82`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
@@ -28,6 +29,16 @@
 - Backend contract sanity check passed against `API_CONTRACT.md`.
 - Backend permissions were not weakened.
 - Backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not changed or created.
+
+## Checks Passed From Main After Shared Navigation Polish Merge
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Shared financial navigation privacy polish is merged into main: PASS
+- Backend code unchanged by this phase: PASS
+- No backend APIs, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
 
 ## Hands-On MVP QA Passed
 
@@ -181,7 +192,7 @@
 
 ## Current Pending Step
 
-- Next pending step: pre-merge review and merge for Bug-fix Polish Pass 1.
+- Next pending step: Bug-fix Polish Pass 2 planning, especially adding shared members by phone/search instead of technical userId.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -203,8 +214,8 @@
   18. Complete: Flutter Sharing screens
   19. Complete: Flutter MVP Regression + Manual QA Plan
   20. Complete: hands-on QA run
-  21. Current: Bug-fix Polish Pass 1 - shared financial navigation privacy
-  22. Next after merge: continue polish, especially shared-member phone/search
+  21. Complete: Bug-fix Polish Pass 1 - shared financial navigation privacy
+  22. Next: continue polish, especially shared-member phone/search
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

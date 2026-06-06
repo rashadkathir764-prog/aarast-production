@@ -27,133 +27,132 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final user = auth.user;
     final provider = context.watch<HomeDashboardProvider>();
 
-    return Scaffold(
-      backgroundColor: AppTheme.ivory,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => provider.loadDashboard(),
-          color: AppTheme.deepBurgundy,
-          child: CustomScrollView(
-            slivers: [
-              // Top App Header
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: AppTheme.warmGold.withAlpha(50),
-                        child: const Icon(Icons.person, color: AppTheme.deepBurgundy),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  'أهلاً ${user?.name ?? ''}',
-                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                        color: AppTheme.deepBurgundy,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Text('👋', style: TextStyle(fontSize: 18)),
-                              ],
-                            ),
-                            const Text(
-                              'هذه لمحة سريعة عن تجهيزات زفافك',
-                              style: TextStyle(color: Colors.black54, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.black54),
-                        onPressed: () async {
-                          await context.read<AuthController>().logout();
-                          if (context.mounted) context.go(AppRouter.login);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final isDesktop = width >= 1000;
+        final horizontalPadding = width < 700 ? 16.0 : 28.0;
 
-              // Loading State or Dashboard Content
-              if (provider.isLoading && provider.primaryPlan == null)
-                const SliverFillRemaining(
-                  child: HomeLoadingSkeleton(),
-                )
-              else if (provider.errorMessage != null && provider.primaryPlan == null)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(provider.errorMessage!),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => provider.loadDashboard(),
-                          child: const Text('إعادة المحاولة'),
+        return Scaffold(
+          backgroundColor: AppTheme.ivory,
+          bottomNavigationBar: isDesktop
+              ? null
+              : HomeBottomNavigation(
+                  provider: provider,
+                  onNeedPlan: () => _showNeedPlanSnackBar(context),
+                ),
+          body: SafeArea(
+            child: RefreshIndicator(
+              color: AppTheme.deepBurgundy,
+              onRefresh: () => provider.loadDashboard(),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 1120),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            horizontalPadding,
+                            18,
+                            horizontalPadding,
+                            isDesktop ? 34 : 92,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              HomeTopHeader(
+                                userName: auth.user?.name,
+                                isDesktop: isDesktop,
+                                onLogout: () async {
+                                  await context.read<AuthController>().logout();
+                                  if (context.mounted) {
+                                    context.go(AppRouter.login);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 18),
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child:
+                                    provider.isLoading &&
+                                        provider.primaryPlan == null
+                                    ? const HomeLoadingSkeleton()
+                                    : _HomeDashboardBody(
+                                        provider: provider,
+                                        isDesktop: isDesktop,
+                                        onNeedPlan: () =>
+                                            _showNeedPlanSnackBar(context),
+                                      ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                )
-              else
-                SliverList(
-                  delegate: SliverChildListDelegate([
-                    HomeCommandHero(provider: provider),
-                    const SizedBox(height: 24),
-                    if (provider.primaryPlan != null) ...[
-                      HomeMetricGrid(provider: provider),
-                      const SizedBox(height: 24),
-                      HomeQuickActions(provider: provider),
-                      const SizedBox(height: 24),
-                      HomeAlertsCard(provider: provider),
-                      const SizedBox(height: 24),
-                      HomeMembersCard(provider: provider),
-                      const SizedBox(height: 24),
-                    ] else ...[
-                      HomeQuickActions(provider: provider),
-                      const SizedBox(height: 24),
-                    ],
-                    HomeSharedPlansCard(provider: provider),
-                    const SizedBox(height: 40), // Bottom padding
-                  ]),
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
-      // Bottom Navigation placeholder to match visual reference if needed
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        selectedItemColor: AppTheme.deepBurgundy,
-        unselectedItemColor: Colors.black54,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'الخطط'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_circle, color: AppTheme.deepBurgundy, size: 36), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: 'المهام'),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'المزيد'),
+        );
+      },
+    );
+  }
+
+  void _showNeedPlanSnackBar(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('أنشئ خطة أولاً')));
+  }
+}
+
+class _HomeDashboardBody extends StatelessWidget {
+  const _HomeDashboardBody({
+    required this.provider,
+    required this.isDesktop,
+    required this.onNeedPlan,
+  });
+
+  final HomeDashboardProvider provider;
+  final bool isDesktop;
+  final VoidCallback onNeedPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPlan = provider.primaryPlan != null;
+
+    return Column(
+      key: ValueKey(hasPlan ? provider.primaryPlan!.id : 'no-plan'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (provider.errorMessage != null && !hasPlan) ...[
+          HomeErrorCard(
+            message: provider.errorMessage!,
+            onRetry: provider.loadDashboard,
+          ),
+          const SizedBox(height: 16),
         ],
-        onTap: (index) {
-          if (index == 1) context.go(AppRouter.weddingPlans);
-          if (index == 3 && provider.primaryPlan != null) {
-            context.go(AppRouter.weddingPlanDashboard(provider.primaryPlan!.id));
-          }
-        },
-      ),
+        HomeCommandHero(provider: provider, isDesktop: isDesktop),
+        const SizedBox(height: 18),
+        if (hasPlan) ...[
+          HomeMetricsBudgetSection(provider: provider, isDesktop: isDesktop),
+          const SizedBox(height: 18),
+        ],
+        HomeQuickActions(
+          provider: provider,
+          isDesktop: isDesktop,
+          onNeedPlan: onNeedPlan,
+        ),
+        const SizedBox(height: 18),
+        if (hasPlan) ...[
+          HomeAlertsMembersGrid(provider: provider, isDesktop: isDesktop),
+          const SizedBox(height: 18),
+        ],
+        if (!hasPlan) ...[HomeSharedPlansCard(provider: provider)],
+      ],
     );
   }
 }

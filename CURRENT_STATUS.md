@@ -5,40 +5,36 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-home-dashboard-approved-design`
+- Current branch: `phase/4-home-dashboard-approved-design`
 
 ## Current Task Status
 
-- Task: Dashboard Command Center Redesign merged into main and verified.
-- Main HEAD before dashboard command center worktree: `2771da7462f8daef2dbe6a94dbbec804e014a783`
-- Current main HEAD after dashboard command center merge: `a821b5b3ab6ddc5227495cf02ec8b1378a2244ec`
+- Task: Home Dashboard Exact Blueprint Polish completed in the worktree and awaiting pre-merge review.
+- Current main HEAD for this branch base: `876f038c95b4dc6a5b23d924990d2214b9931a95`
+- Current branch HEAD before this polish commit: `933e8b1ef5f998e69d395817e6a89327f619e0a4`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
+
 ## Current Project Status
 
-Current phase: Home Command Center dashboard implemented.
+Current phase: Home dashboard approved-design polish.
 
 The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, Dashboard Command Center, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. 
-The Home Screen was recently redesigned as the primary command center immediately after login, matching the approved visual reference with deep burgundy/gold aesthetics, dense metric summaries, quick actions, and alerts without requiring deep navigation.
-The next step is visual QA and stakeholder review of the Home dashboard. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.tall`: PASS, 0 vulnerabilities
-- `npm run prisma:generate`: PASS after stopping an old local `node dist/main.js` process that was locking the Prisma engine DLL
-- `npm run check`: PASS
-- `npm run build`: PASS
-- `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3165`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS
-- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS, including safe member name/phone display data and sensitive-field checks
-- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS
+The Home screen has been polished to more closely match the approved Arabic dashboard reference: compact header, burgundy hero card, dense metrics and budget summary, quick actions, alerts, members, shared plans, and mobile/tablet-only bottom navigation.
+The next step is pre-merge review, not merging yet. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.
+
+## Checks Passed From Home Dashboard Exact Blueprint Polish
+
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
 - `flutter test`: PASS
 - `flutter build web --debug`: PASS
-- Shared member cards now show name/phone instead of technical `userId`: PASS
-- Common sharing errors are displayed in Arabic: PASS
-- `backend/.env` remains untracked and was not committed.
+- Home dashboard uses existing backend APIs only: PASS
+- No backend code, backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
+- No new Flutter packages were added: PASS
+- Generated Flutter platform files were restored and are not intended for commit: PASS
 - Forbidden scope check: PASS
 
 ## Checks Passed From Flutter WeddingPlan Dashboard Command Center Redesign

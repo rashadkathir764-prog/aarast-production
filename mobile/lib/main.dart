@@ -16,6 +16,7 @@ import 'features/sharing/providers/sharing_provider.dart';
 import 'features/tasks/data/task_timeline_api.dart';
 import 'features/tasks/providers/task_timeline_provider.dart';
 import 'features/wedding_plans/data/wedding_plans_api.dart';
+import 'features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'features/wedding_plans/providers/wedding_plans_provider.dart';
 
 Future<void> main() async {
@@ -47,6 +48,15 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => WeddingPlansProvider(weddingPlansApi),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DashboardSummaryProvider(
+            weddingPlansApi: weddingPlansApi,
+            budgetExpenseApi: budgetExpenseApi,
+            debtInstallmentApi: debtInstallmentApi,
+            taskTimelineApi: taskTimelineApi,
+            sharingApi: sharingApi,
+          ),
         ),
         ChangeNotifierProvider(
           create: (_) => FinanceProvider(budgetExpenseApi),

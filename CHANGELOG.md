@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-06-06 - Flutter WeddingPlan Dashboard Command Center Redesign
+
+- Redesigned the Flutter `WeddingPlanDashboardScreen` into a true command center.
+- Added new `DashboardSummaryProvider` to fetch and aggregate Plan, Expense Summary, Debt Summary, Due Installments, Tasks, and Shared Members concurrently.
+- Replaced basic navigation items with modern summary cards (`WeddingHeroSummaryCard`, `FinancialCommandCard`, `DebtInstallmentCommandCard`, `TaskTimelineCommandCard`, `QuickActionsGrid`).
+- Preserved the sharing privacy UX by displaying locked versions of financial cards to shared users without adequate permissions.
+- Kept animations subtle and restricted to built-in Flutter widgets (`TweenAnimationBuilder`, `AnimatedSwitcher`, etc.).
+- Confirmed no backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created.
+- Confirmed no new external Flutter dependencies were introduced.
+
 ## 2026-06-05 - Bug-Fix Polish Pass 3
 
 - Improved Sharing member display so cards show safe member name and phone instead of the technical `userId`.

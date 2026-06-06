@@ -43,13 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: AppTheme.warmGold.withAlpha(50),
-                        child: const Icon(Icons.person, color: AppTheme.deepBurgundy),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,12 +69,33 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.logout, color: Colors.black54),
-                        onPressed: () async {
-                          await context.read<AuthController>().logout();
-                          if (context.mounted) context.go(AppRouter.login);
-                        },
+                      Column(
+                        children: [
+                          const Text('أعرست', style: TextStyle(color: AppTheme.deepBurgundy, fontWeight: FontWeight.bold, fontSize: 16)),
+                          const Icon(Icons.diamond_outlined, color: AppTheme.warmGold, size: 24),
+                        ],
+                      ),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.notifications_none, color: AppTheme.deepBurgundy),
+                              onPressed: () {},
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                await context.read<AuthController>().logout();
+                                if (context.mounted) context.go(AppRouter.login);
+                              },
+                              child: CircleAvatar(
+                                radius: 20,
+                                backgroundColor: AppTheme.warmGold.withAlpha(50),
+                                child: const Icon(Icons.person, color: AppTheme.deepBurgundy),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -117,15 +133,38 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 24),
                       HomeQuickActions(provider: provider),
                       const SizedBox(height: 24),
-                      HomeAlertsCard(provider: provider),
-                      const SizedBox(height: 24),
-                      HomeMembersCard(provider: provider),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Right column (Members & Shared) - flex 1. In RTL, index 0 is Right.
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  HomeMembersCard(provider: provider),
+                                  const SizedBox(height: 24),
+                                  HomeSharedPlansCard(provider: provider),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            // Left column (Alerts) - flex 1
+                            Expanded(
+                              child: HomeAlertsCard(provider: provider),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 24),
                     ] else ...[
                       HomeQuickActions(provider: provider),
                       const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: HomeSharedPlansCard(provider: provider),
+                      ),
                     ],
-                    HomeSharedPlansCard(provider: provider),
                     const SizedBox(height: 40), // Bottom padding
                   ]),
                 ),
@@ -140,12 +179,22 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: Colors.black54,
         showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: 'الخطط'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_circle, color: AppTheme.deepBurgundy, size: 36), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: 'المهام'),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'المزيد'),
+        items: [
+          const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'الرئيسية'),
+          const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'الخطط'),
+          BottomNavigationBarItem(
+            icon: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: AppTheme.deepBurgundy,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 24),
+            ),
+            label: '',
+          ),
+          const BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: 'المهام'),
+          const BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'المزيد'),
         ],
         onTap: (index) {
           if (index == 1) context.go(AppRouter.weddingPlans);

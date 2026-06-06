@@ -1,10 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/home_dashboard_provider.dart';
+
+// ─── Local formatting helpers (no external package needed) ───────────────────
+
+String _formatDate(DateTime? date) {
+  if (date == null) return 'غير محدد';
+  const months = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+  ];
+  return '${date.day} ${months[date.month - 1]} ${date.year}';
+}
+
+String _formatNumber(num value) {
+  // Insert commas every 3 digits.
+  final str = value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 0);
+  final buffer = StringBuffer();
+  final digits = str.replaceAll('-', '');
+  final isNegative = value < 0;
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return isNegative ? '-${buffer.toString()}' : buffer.toString();
+}
+
 
 class HomeCommandHero extends StatelessWidget {
   const HomeCommandHero({super.key, required this.provider});
@@ -56,10 +80,7 @@ class HomeCommandHero extends StatelessWidget {
       );
     }
 
-    final dateFormat = DateFormat('dd MMMM yyyy', 'ar');
-    final dateStr = plan.weddingDate != null
-        ? dateFormat.format(plan.weddingDate!)
-        : 'غير محدد';
+    final dateStr = _formatDate(plan.weddingDate);
 
     int? daysRemaining;
     if (plan.weddingDate != null) {
@@ -259,7 +280,7 @@ class HomeMetricGrid extends StatelessWidget {
     final tasks = provider.tasks ?? [];
     final upcomingTasks = tasks.where((t) => !t.isDone).length;
 
-    final numberFormat = NumberFormat('#,###');
+    String Function(num) numberFormat = _formatNumber;
 
     final totalBudget = double.tryParse(expense?.totalPlanned ?? '0') ?? 0.0;
     final totalSpent = double.tryParse(expense?.totalPaid ?? '0') ?? 0.0;
@@ -294,7 +315,7 @@ class HomeMetricGrid extends StatelessWidget {
                         ],
                       ),
                       Text(
-                        '${numberFormat.format(totalBudget)} YER',
+                        '${numberFormat(totalBudget)} YER',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ],
@@ -323,8 +344,8 @@ class HomeMetricGrid extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _buildMiniStat('المصروف', numberFormat.format(totalSpent), AppTheme.deepBurgundy),
-                      _buildMiniStat('المتبقي', numberFormat.format(remainingBudget), Colors.grey.shade600),
+                      _buildMiniStat('المصروف', numberFormat(totalSpent), AppTheme.deepBurgundy),
+                      _buildMiniStat('المتبقي', numberFormat(remainingBudget), Colors.grey.shade600),
                     ],
                   ),
                 ],
@@ -340,8 +361,8 @@ class HomeMetricGrid extends StatelessWidget {
                   context,
                   icon: Icons.money_off,
                   title: 'الديون',
-                  value: numberFormat.format(debt?.totalDebt ?? 0),
-                  subtitle: 'متبقي: ${numberFormat.format(debt?.remainingDebt ?? 0)}',
+                  value: numberFormat(double.tryParse(debt?.totalDebt ?? '0') ?? 0),
+                  subtitle: 'متبقي: ${numberFormat(double.tryParse(debt?.remainingDebt ?? '0') ?? 0)}',
                 ),
               ),
               const SizedBox(width: 12),
@@ -520,7 +541,7 @@ class HomeAlertsCard extends StatelessWidget {
     if (provider.primaryPlan == null) return const SizedBox.shrink();
 
     final alerts = <Widget>[];
-    final numberFormat = NumberFormat('#,###');
+    final String Function(num) numberFormat = _formatNumber;
 
     // Due Installment Alert
     final installments = provider.dueInstallments ?? [];
@@ -529,7 +550,7 @@ class HomeAlertsCard extends StatelessWidget {
       alerts.add(_buildAlertItem(
         icon: Icons.warning_amber_rounded,
         title: 'قسط قريب الاستحقاق',
-        message: 'لديك قسط بقيمة ${numberFormat.format(closest.amount)} YER يستحق قريباً.',
+        message: 'لديك قسط بقيمة ${numberFormat(double.tryParse(closest.amount) ?? 0)} YER يستحق قريباً.',
         color: Colors.red.shade100,
         iconColor: Colors.red.shade700,
       ));

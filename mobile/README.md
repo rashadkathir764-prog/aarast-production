@@ -128,7 +128,34 @@ Protected requests send the token as:
 Authorization: Bearer <accessToken>
 ```
 
-## Run
+## Local Development
+
+### Fixed Ports
+
+All manual QA uses fixed ports. Smoke tests may use temporary ports, but manual QA always targets port 3000.
+
+| Service      | Port    | Notes                                          |
+|--------------|---------|------------------------------------------------|
+| Backend API  | 3000    | `http://127.0.0.1:3000`                        |
+| Flutter Web  | dynamic | Chrome assigns dynamically; API points to 3000 |
+| PostgreSQL   | 5433    | `aarast-db` Docker container                   |
+
+### Quick Start
+
+Run from the project root (`D:\projects\aarast`):
+
+```powershell
+# Terminal 1: Start backend on port 3000
+.\scripts\dev\start-backend.ps1
+
+# Terminal 2: Start Flutter web, API -> http://127.0.0.1:3000
+.\scripts\dev\start-flutter-web.ps1
+
+# If port 3000 is blocked
+.\scripts\dev\stop-port-3000.ps1
+```
+
+### Manual Flutter Commands
 
 Install dependencies:
 
@@ -136,10 +163,10 @@ Install dependencies:
 flutter pub get
 ```
 
-Run the app:
+Run on Chrome (API points to port 3000):
 
 ```bash
-flutter run
+flutter run -d chrome --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3000
 ```
 
 Analyze and test:
@@ -155,9 +182,13 @@ Optional lightweight web build check:
 flutter build web --debug
 ```
 
+> **Note**: Smoke tests may use temporary safe ports (e.g. 3148, 3160).
+> Manual QA must always use port 3000.
+
 ## Notes
 
 - The backend API contract remains unchanged.
-- Core Flutter MVP screens are now implemented.
+- Core Flutter MVP screens are implemented.
+- WeddingPlan Dashboard is fully redesigned as a command center (DashboardSummaryProvider + command cards).
 - `../MOBILE_QA_PLAN.md` contains the Arabic-first manual QA checklist for hands-on validation.
-- The next planned step after merge is a hands-on QA run and bug-fix pass.
+- The next step is visual QA and stakeholder review of the new dashboard.

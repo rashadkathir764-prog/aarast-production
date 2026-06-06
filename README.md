@@ -15,6 +15,34 @@ Aarast / اعّرست is a Yemen-focused mobile app for people planning marriage
 
 Docker and Dokploy are part of the planned operations stack, but no Dockerfile, docker-compose file, or Dokploy configuration has been created in the current documentation phase.
 
+## Local Development Ports
+
+All manual QA must use the following fixed ports. Smoke tests may use temporary safe ports, but manual QA always targets port 3000.
+
+| Service      | Port | Notes                                      |
+|--------------|------|-----------------------------------------|
+| Backend API  | 3000 | `http://127.0.0.1:3000`                 |
+| Flutter Web  | dynamic | Chrome assigns dynamically; API points to 3000 |
+| PostgreSQL   | 5433 | `aarast-db` Docker container            |
+
+### Quick Start Scripts
+
+Scripts are in `scripts/dev/`. Run from the project root (`D:\projects\aarast`):
+
+```powershell
+# 1. Start backend on port 3000
+.\scripts\dev\start-backend.ps1
+
+# 2. Start Flutter web (in a new terminal), API -> 127.0.0.1:3000
+.\scripts\dev\start-flutter-web.ps1
+
+# 3. Free port 3000 if something is blocking it
+.\scripts\dev\stop-port-3000.ps1
+```
+
+> **Note**: Smoke tests may use temporary safe ports (e.g. 3148, 3160) to avoid conflicts.
+> Manual QA must always use port 3000.
+
 ## Privacy
 
 Financial data such as expenses, debts, installments, attachments, and private tasks is private by default and shared only by explicit permissions.
@@ -40,6 +68,6 @@ Financial data such as expenses, debts, installments, attachments, and private t
 
 ## Current Project Status
 
-Current phase: Flutter MVP QA.
+Current phase: Dashboard Command Center redesign merged and verified.
 
-The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, dashboard foundation, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. Flutter MVP regression passed, `MOBILE_QA_PLAN.md` exists, and `MANUAL_QA_REPORT.md` records a successful hands-on MVP QA run. The next step is a bug-fix polish pass. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.
+The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, Dashboard Command Center, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. The WeddingPlan Dashboard was redesigned as a full command center showing live financial, debt, task, and sharing summaries with modern Flutter widgets. The next step is visual QA and stakeholder review of the new dashboard. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.

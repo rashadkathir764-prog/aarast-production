@@ -10,41 +10,20 @@
 
 ## Current Task Status
 
-- Task: Bug-fix Polish Pass 3 merged into main and verified.
-- Main HEAD before bug-fix polish worktree: `98c4bac7462876e50556f1d43b623b9daa3001fd`
-- Current main HEAD after bug-fix polish merge: `32d01da97084e6ec38ccf991f399bad87b19de82`
-- Main HEAD before bug-fix polish pass 2 worktree: `0c2dd3370b5ad3b2ab88df214e86be114ee98fe1`
-- Current main HEAD after bug-fix polish pass 2 merge: `73f1636a530a17167c02de4cec441fc3626dfa0a`
-- Main HEAD before bug-fix polish pass 3 worktree: `92c5eaac37e9afb21e98c214c64006af21305c83`
-- Current main HEAD after bug-fix polish pass 3 merge: `9a5964582d21616f0d37f3d5c12a60ad08496239`
+- Task: Dashboard Command Center Redesign merged into main and verified.
+- Main HEAD before dashboard command center worktree: `2771da7462f8daef2dbe6a94dbbec804e014a783`
+- Current main HEAD after dashboard command center merge: `a821b5b3ab6ddc5227495cf02ec8b1378a2244ec`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
-- Core Flutter MVP screens are now implemented.
-- Hands-on MVP QA run passed for the main MVP flows.
-- Bug-fix polish target: shared user financial navigation privacy on the WeddingPlan Dashboard.
-- Chosen UX behavior: locked/disabled financial dashboard cards for shared users without matching permissions.
-- Owner dashboard access remains unchanged.
-- Shared users with matching financial permissions can access the relevant financial cards.
-- Shared users with task access can still use task/timeline navigation.
-- Sharing management remains owner-only in the dashboard UX.
-- Backend API contract remains unchanged.
-- Route audit passed for auth, WeddingPlan, dashboard, finance, debt/installment, task/timeline, and sharing routes.
-- Backend contract sanity check passed against `API_CONTRACT.md`.
-- Backend permissions were not weakened.
-- Polish Pass 1 did not change backend code, Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, or confirmed booking logic.
-- Bug-fix polish pass 2 target: add shared members by registered phone number instead of requiring technical `userId` in Flutter.
-- Sharing API now accepts either `phone` or `userId` for create shared member requests.
-- Existing `userId`-based API support is preserved for compatibility.
-- Requests that provide both `userId` and `phone` are rejected.
-- Unknown phone numbers are rejected and users are not auto-created.
-- Backend changes in Polish Pass 2 are limited to Sharing create DTO/service behavior and Sharing smoke coverage.
-- No Prisma models, migrations, Docker/Dokploy files, deployment scripts, marketplace, payments, AI/FinTech, chat, confirmed booking logic, secrets, or unrelated features were created.
-- Bug-fix polish pass 3 target: show shared member name/phone instead of technical `userId` in Sharing UI.
-- Sharing responses now include safe member display data: `user.id`, `user.name`, and `user.phone` only.
-- Flutter Sharing cards and edit screen use member name/phone when available, with `userId` kept as fallback only.
-- Common Sharing errors are mapped to Arabic in Flutter UI.
-- `passwordHash`, refresh tokens, secrets, full user objects, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, and confirmed booking logic were not created or exposed.
+- Dashboard Command Center redesign is merged into main.
+- WeddingPlanDashboardScreen is fully redesigned as a command center.
+- DashboardSummaryProvider aggregates plan, expense, debt, installment, task, and sharing data concurrently.
+- Modern Flutter command center cards are live: WeddingHeroSummaryCard, FinancialCommandCard, DebtInstallmentCommandCard, TaskTimelineCommandCard, QuickActionsGrid, SharingMiniCard, LockedDashboardCard.
+- Shared user permission and locked-card behavior is preserved.
+- No new Flutter packages were added.
+- Backend API unchanged.
+- Next step: visual QA and stakeholder review of the new dashboard.
 
 ## Checks Passed From Main After Sharing Display And Arabic Errors Merge
 
@@ -78,6 +57,21 @@
 - Backend code unchanged: PASS
 - Flutter widgets used are built-in (no extra chart/animation packages): PASS
 - Shared financial card locking behavior preserved: PASS
+- Forbidden scope check: PASS
+
+## Checks Passed From Main After Dashboard Command Center Merge
+
+- `flutter pub get`: PASS
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Dashboard Command Center redesign merged into main: PASS
+- DashboardSummaryProvider exists in main: PASS
+- dashboard_command_cards.dart exists in main: PASS
+- WeddingPlanDashboardScreen uses new command center layout: PASS
+- Backend code unchanged by this phase: PASS
+- No new backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
+- No new Flutter packages were added: PASS
 - Forbidden scope check: PASS
 
 ## Checks Passed From Sharing Display And Arabic Errors Worktree
@@ -327,7 +321,8 @@
   22. Complete: Bug-fix Polish Pass 2 - add shared members by phone
   23. Complete: Bug-fix Polish Pass 3 - shared member display and Arabic sharing errors
   24. Complete: final local QA rerun for sharing display and Arabic sharing errors
-  25. Current: Flutter WeddingPlan Dashboard Command Center Redesign
+  25. Complete: Flutter WeddingPlan Dashboard Command Center Redesign
+  26. Current: Visual QA and stakeholder review of the new dashboard
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

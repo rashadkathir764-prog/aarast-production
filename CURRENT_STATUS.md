@@ -16,18 +16,13 @@
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
-- Dashboard Command Center redesign is merged into main.
-- WeddingPlanDashboardScreen is fully redesigned as a command center.
-- DashboardSummaryProvider aggregates plan, expense, debt, installment, task, and sharing data concurrently.
-- Modern Flutter command center cards are live: WeddingHeroSummaryCard, FinancialCommandCard, DebtInstallmentCommandCard, TaskTimelineCommandCard, QuickActionsGrid, SharingMiniCard, LockedDashboardCard.
-- Shared user permission and locked-card behavior is preserved.
-- No new Flutter packages were added.
-- Backend API unchanged.
-- Next step: visual QA and stakeholder review of the new dashboard.
+## Current Project Status
 
-## Checks Passed From Main After Sharing Display And Arabic Errors Merge
+Current phase: Home Command Center dashboard implemented.
 
-- `npm install`: PASS, 0 vulnerabilities
+The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, Dashboard Command Center, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. 
+The Home Screen was recently redesigned as the primary command center immediately after login, matching the approved visual reference with deep burgundy/gold aesthetics, dense metric summaries, quick actions, and alerts without requiring deep navigation.
+The next step is visual QA and stakeholder review of the Home dashboard. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.tall`: PASS, 0 vulnerabilities
 - `npm run prisma:generate`: PASS after stopping an old local `node dist/main.js` process that was locking the Prisma engine DLL
 - `npm run check`: PASS
 - `npm run build`: PASS

@@ -11,6 +11,30 @@ class AppTheme {
   static const mediumGray = Color(0xFF757575);
   static const danger = Color(0xFFD32F2F);
 
+  // ---- Aarast Dashboard design palette (from Claude Design handoff) ----
+  static const dMaroon = Color(0xFF6E0E2C);
+  static const dMaroon2 = Color(0xFF5B0A24);
+  static const dMaroonDeep = Color(0xFF4A0A1E);
+  static const dMaroonBright = Color(0xFF7A1232);
+  static const dGold = Color(0xFFC5A25A);
+  static const dGold2 = Color(0xFFD8BE86);
+  static const dGoldDeep = Color(0xFFA9863F);
+  static const dBg = Color(0xFFEFEAE4);
+  static const dCard = Color(0xFFFBF9F6);
+  static const dCard2 = Color(0xFFFFFFFF);
+  static const dInk = Color(0xFF3C2B2F);
+  static const dInkSoft = Color(0xFF6C5A5D);
+  static const dMuted = Color(0xFFA89C9C);
+  static const dLine = Color(0xFFECE5E0);
+  static const dGreen = Color(0xFF4F9A43);
+  static const dGreenBg = Color(0xFFE9F1E4);
+  static const dOrange = Color(0xFFD6892C);
+  static const dBlue = Color(0xFF3F6FB0);
+  static const dBlueBg = Color(0xFFE6EDF6);
+  static const dPinkBg = Color(0xFFF6E1E1);
+  static const dCreamBg = Color(0xFFF4ECDD);
+  static const dTrack = Color(0xFFCDC6C4);
+
   static ThemeData light() {
     final baseTheme = ThemeData(
       useMaterial3: true,

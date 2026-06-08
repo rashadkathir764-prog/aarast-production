@@ -40,7 +40,7 @@ class _WeddingPlanDashboardScreenState
   /// laid out at this width and uniformly scaled to the viewport via [FittedBox],
   /// so every size matches the maquette on any screen. Height is intrinsic (no
   /// fixed height) so the content can never RenderFlex-overflow.
-  static const double _dashboardDesignWidth = 843;
+  static const double _dashboardDesignWidth = 680;
 
   @override
   void initState() {
@@ -222,16 +222,11 @@ class _WeddingPlanDashboardScreenState
             _sharedNotice(activeMember),
             const SizedBox(height: 16),
           ],
-          // Row 1 — compact stats (right) + budget summary (left).
+          // Row 1 — budget summary (right) + compact stats (left).
           _padded(
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 9,
-                  child: _buildMiniStats(provider, plan, canOpenDebts),
-                ),
-                const SizedBox(width: 16),
                 Expanded(
                   flex: 11,
                   child: canOpenFinance
@@ -240,6 +235,11 @@ class _WeddingPlanDashboardScreenState
                           title: 'ملخص الميزانية',
                           icon: Icons.savings_outlined,
                         ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 9,
+                  child: _buildMiniStats(provider, plan, canOpenDebts),
                 ),
               ],
             ),

@@ -79,50 +79,56 @@ class DashboardTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          // Greeting (start / right in RTL)
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'أهلاً ${userName.split(' ').first} 👋',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.dMaroon,
-                    height: 1.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Greeting (start / right in RTL)
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'أهلاً ${userName.split(' ').first} 👋',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.dMaroon,
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'هذه لمحة سريعة عن تجهيزات زفافك',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                const Text(
-                  'هذه لمحة سريعة عن تجهيزات زفافك',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: AppTheme.dInkSoft,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+              ),
+              // Action icons (end / left in RTL)
+              _IconButton(
+                icon: Icons.notifications_none_rounded,
+                onTap: onNotifications,
+                showDot: hasNotificationDot,
+              ),
+              const SizedBox(width: 10),
+              _IconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
+            ],
           ),
-          const SizedBox(width: 10),
-          const _BrandMark(),
-          const SizedBox(width: 10),
-          // Action icons (end / left in RTL)
-          _IconButton(
-            icon: Icons.notifications_none_rounded,
-            onTap: onNotifications,
-            showDot: hasNotificationDot,
+          // Centered Brand Mark
+          const Positioned(
+            child: _BrandMark(),
           ),
-          const SizedBox(width: 10),
-          _IconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
         ],
       ),
     );
@@ -334,9 +340,9 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.45),
-            blurRadius: 34,
-            offset: const Offset(0, 16),
+            color: AppTheme.dMaroonDeep.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -1568,9 +1574,9 @@ class DashboardBottomNav extends StatelessWidget {
         border: const Border(top: BorderSide(color: Color(0xFFF1ECE6))),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.18),
-            blurRadius: 26,
-            offset: const Offset(0, -8),
+            color: AppTheme.dMaroonDeep.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -1588,30 +1594,30 @@ class DashboardBottomNav extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _NavItem(
-                      icon: Icons.grid_view_rounded,
-                      label: 'المزيد',
-                      active: activeIndex == 0,
-                      onTap: onMore,
+                      icon: Icons.home_rounded,
+                      label: 'الرئيسية',
+                      active: activeIndex == 4,
+                      onTap: onHome,
+                      spark: true,
                     ),
-                    _NavItem(
-                      icon: Icons.check_circle_outline_rounded,
-                      label: 'المهام',
-                      active: activeIndex == 1,
-                      onTap: onTasks,
-                    ),
-                    const SizedBox(width: 64),
                     _NavItem(
                       icon: Icons.event_note_rounded,
                       label: 'الخطط',
                       active: activeIndex == 3,
                       onTap: onPlans,
                     ),
+                    const SizedBox(width: 90),
                     _NavItem(
-                      icon: Icons.home_rounded,
-                      label: 'الرئيسية',
-                      active: activeIndex == 4,
-                      onTap: onHome,
-                      spark: true,
+                      icon: Icons.check_circle_outline_rounded,
+                      label: 'المهام',
+                      active: activeIndex == 1,
+                      onTap: onTasks,
+                    ),
+                    _NavItem(
+                      icon: Icons.grid_view_rounded,
+                      label: 'المزيد',
+                      active: activeIndex == 0,
+                      onTap: onMore,
                     ),
                   ],
                 ),
@@ -1632,9 +1638,9 @@ class DashboardBottomNav extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.dMaroon.withValues(alpha: 0.55),
-                          blurRadius: 22,
-                          offset: const Offset(0, 10),
+                          color: AppTheme.dMaroon.withValues(alpha: 0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
@@ -1939,9 +1945,9 @@ class _DashCard extends StatelessWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.14),
-            blurRadius: 26,
-            offset: const Offset(0, 10),
+            color: AppTheme.dMaroonDeep.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),

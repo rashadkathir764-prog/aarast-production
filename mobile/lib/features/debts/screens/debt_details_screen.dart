@@ -86,7 +86,7 @@ class _DebtDetailsContent extends StatelessWidget {
           const _MissingDebtContextCard(),
         const SizedBox(height: 12),
         ElevatedButton.icon(
-          onPressed: () => context.go(AppRouter.createInstallment(debtId)),
+          onPressed: () => context.push(AppRouter.createInstallment(debtId)),
           icon: const Icon(Icons.add),
           label: const Text('إضافة قسط'),
         ),

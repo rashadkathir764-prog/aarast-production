@@ -17,11 +17,17 @@ class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
     required this.weddingPlanId,
     this.sharedMember,
+    this.embedded = false,
     super.key,
   });
 
   final String weddingPlanId;
   final SharedMember? sharedMember;
+
+  /// When hosted inside the [MainShell] tab stack, the shell owns the bottom
+  /// navigation, so the screen hides its own and lets detail pages push over
+  /// the persistent shell.
+  final bool embedded;
 
   @override
   State<WeddingPlanDashboardScreen> createState() =>
@@ -30,13 +36,19 @@ class WeddingPlanDashboardScreen extends StatefulWidget {
 
 class _WeddingPlanDashboardScreenState
     extends State<WeddingPlanDashboardScreen> {
+  /// Fixed design width of the reference dashboard handoff. The whole canvas is
+  /// laid out at this width and uniformly scaled to the viewport via [FittedBox],
+  /// so every size matches the maquette on any screen. Height is intrinsic (no
+  /// fixed height) so the content can never RenderFlex-overflow.
+  static const double _dashboardDesignWidth = 843;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardSummaryProvider>().loadDashboard(
-            widget.weddingPlanId,
-          );
+        widget.weddingPlanId,
+      );
     });
   }
 
@@ -46,8 +58,8 @@ class _WeddingPlanDashboardScreenState
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<DashboardSummaryProvider>().loadDashboard(
-              widget.weddingPlanId,
-            );
+          widget.weddingPlanId,
+        );
       });
     }
   }
@@ -76,7 +88,9 @@ class _WeddingPlanDashboardScreenState
         textDirection: TextDirection.rtl,
         child: Scaffold(
           backgroundColor: AppTheme.dBg,
-          bottomNavigationBar: _buildBottomNav(provider),
+          bottomNavigationBar: widget.embedded
+              ? null
+              : _buildBottomNav(provider),
           body: SafeArea(
             bottom: false,
             child: RefreshIndicator(
@@ -162,77 +176,158 @@ class _WeddingPlanDashboardScreenState
     final isOwner = auth.user?.id == plan.ownerUserId;
     final activeMember = isOwner ? null : _resolveMember(provider, auth);
 
-    final canOpenFinance = isOwner ||
+    final canOpenFinance =
+        isOwner ||
         activeMember?.canViewBudget == true ||
         activeMember?.canViewExpenses == true ||
         activeMember?.canManageFinancialRecords == true;
-    final canOpenDebts = isOwner ||
+    final canOpenDebts =
+        isOwner ||
         activeMember?.canViewDebts == true ||
         activeMember?.canManageFinancialRecords == true;
     final canOpenSharing = isOwner;
 
-    return ListView(
+    final participantsColumn = canOpenSharing
+        ? ParticipantsCard(
+            participants: _buildParticipants(provider),
+            count: provider.sharedMembers?.length ?? 0,
+            onAddMember: () => context.push(AppRouter.sharing(plan.id)),
+          )
+        : const LockedSectionCard(
+            title: 'المشاركون في الخطة',
+            icon: Icons.groups_rounded,
+          );
+
+    return _scaledDashboardCanvas(
       key: const ValueKey('content'),
-      padding: const EdgeInsets.only(bottom: 28),
-      children: [
-        DashboardTopBar(
-          userName: auth.user?.name ?? 'ضيف',
-          onProfile: () => _openAccountSheet(auth),
-          onNotifications: () => _comingSoon('مركز التنبيهات قيد الإعداد'),
-        ),
-        DashboardHeroCard(
-          title: plan.title,
-          statusLabel: plan.status == 'ARCHIVED' ? 'مؤرشفة' : 'قيد التخطيط',
-          tasksDone: _tasksDone(provider),
-          tasksTotal: _tasksTotal(provider),
-          city: plan.city,
-          weddingDate: plan.weddingDate,
-        ),
-        const SizedBox(height: 18),
-        if (!isOwner && activeMember != null) ...[
-          _sharedNotice(activeMember),
-          const SizedBox(height: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DashboardTopBar(
+            userName: auth.user?.name ?? 'ضيف',
+            onProfile: () => _openAccountSheet(auth),
+            onNotifications: () => _comingSoon('مركز التنبيهات قيد الإعداد'),
+          ),
+          DashboardHeroCard(
+            title: plan.title,
+            statusLabel: plan.status == 'ARCHIVED' ? 'مؤرشفة' : 'قيد التخطيط',
+            tasksDone: _tasksDone(provider),
+            tasksTotal: _tasksTotal(provider),
+            city: plan.city,
+            weddingDate: plan.weddingDate,
+          ),
+          const SizedBox(height: 18),
+          if (!isOwner && activeMember != null) ...[
+            _sharedNotice(activeMember),
+            const SizedBox(height: 16),
+          ],
+          // Row 1 — compact stats (right) + budget summary (left).
+          _padded(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 9,
+                  child: _buildMiniStats(provider, plan, canOpenDebts),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 11,
+                  child: canOpenFinance
+                      ? _buildBudgetCard(provider, plan, canOpenDebts)
+                      : const LockedSectionCard(
+                          title: 'ملخص الميزانية',
+                          icon: Icons.savings_outlined,
+                        ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          _padded(
+            _buildQuickActions(
+              plan,
+              canOpenFinance,
+              canOpenDebts,
+              canOpenSharing,
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Row 2 — participants + shared plans (right) · important alerts (left).
+          _padded(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      participantsColumn,
+                      const SizedBox(height: 16),
+                      SharedPlansCard(
+                        onOpen: () =>
+                            context.push(AppRouter.sharedWeddingPlans),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: AlertsCard(
+                    alerts: _buildAlerts(
+                      provider,
+                      plan,
+                      canOpenFinance,
+                      canOpenDebts,
+                    ),
+                    onViewAll: () => context.push(AppRouter.tasks(plan.id)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
         ],
-        _padded(_buildMiniStats(provider, plan, canOpenDebts)),
-        const SizedBox(height: 16),
-        _padded(
-          canOpenFinance
-              ? _buildBudgetCard(provider, plan, canOpenDebts)
-              : const LockedSectionCard(
-                  title: 'ملخص الميزانية',
-                  icon: Icons.savings_outlined,
-                ),
-        ),
-        const SizedBox(height: 16),
-        _padded(_buildQuickActions(plan, canOpenFinance, canOpenDebts, canOpenSharing)),
-        const SizedBox(height: 16),
-        _padded(AlertsCard(
-          alerts: _buildAlerts(provider, plan, canOpenFinance, canOpenDebts),
-          onViewAll: () => _comingSoon('مركز التنبيهات قيد الإعداد'),
-        )),
-        const SizedBox(height: 16),
-        _padded(
-          canOpenSharing
-              ? ParticipantsCard(
-                  participants: _buildParticipants(provider),
-                  count: provider.sharedMembers?.length ?? 0,
-                  onAddMember: () => context.go(AppRouter.sharing(plan.id)),
-                )
-              : const LockedSectionCard(
-                  title: 'المشاركون في الخطة',
-                  icon: Icons.groups_rounded,
-                ),
-        ),
-        const SizedBox(height: 16),
-        _padded(SharedPlansCard(
-          onOpen: () => context.go(AppRouter.sharedWeddingPlans),
-        )),
-      ],
+      ),
     );
   }
 
-  Widget _padded(Widget child) =>
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: child);
+  Widget _scaledDashboardCanvas({required Key key, required Widget child}) {
+    // Lay the whole dashboard out at the fixed design width and let height be
+    // intrinsic, then uniformly down-scale to the viewport. BoxFit.contain on a
+    // width-bounded / height-unbounded box scales by viewportWidth / designWidth,
+    // so the maquette renders identically (just smaller) on every size and the
+    // inner Column can never overflow.
+    return LayoutBuilder(
+      key: key,
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: _dashboardDesignWidth,
+              ),
+              child: FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: _dashboardDesignWidth,
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _padded(Widget child) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: child,
+  );
 
   SharedMember? _resolveMember(
     DashboardSummaryProvider provider,
@@ -259,16 +354,16 @@ class _WeddingPlanDashboardScreenState
 
   // ---- Derived data -------------------------------------------------------
 
-  List<WeddingTask> _allTasks(DashboardSummaryProvider p) => p.tasks ?? const [];
+  List<WeddingTask> _allTasks(DashboardSummaryProvider p) =>
+      p.tasks ?? const [];
   int _tasksTotal(DashboardSummaryProvider p) => _allTasks(p).length;
   int _tasksDone(DashboardSummaryProvider p) =>
       _allTasks(p).where((t) => t.isDone).length;
 
   WeddingTask? _nearestTask(DashboardSummaryProvider p) {
-    final pending = _allTasks(p)
-        .where((t) => !t.isDone && t.dueDate != null)
-        .toList()
-      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+    final pending =
+        _allTasks(p).where((t) => !t.isDone && t.dueDate != null).toList()
+          ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
     return pending.isEmpty ? null : pending.first;
   }
 
@@ -334,7 +429,9 @@ class _WeddingPlanDashboardScreenState
       iconColor: AppTheme.dMaroon,
       iconBg: AppTheme.dPinkBg,
       title: 'الديون',
-      bigValue: debt != null ? dashFormatMoney(dashParseAmount(debt.totalDebt)) : '0',
+      bigValue: debt != null
+          ? dashFormatMoney(dashParseAmount(debt.totalDebt))
+          : '0',
       unit: plan.currency,
       locked: !canOpenDebts,
       subLabel: 'المتبقي',
@@ -365,12 +462,24 @@ class _WeddingPlanDashboardScreenState
   ) {
     final total = dashParseAmount(plan.estimatedBudget);
     final spent = dashParseAmount(provider.expenseSummary?.totalPaid);
-    final obligations =
-        canOpenDebts ? dashParseAmount(provider.debtSummary?.remainingDebt) : 0.0;
+    final obligations = canOpenDebts
+        ? dashParseAmount(provider.debtSummary?.remainingDebt)
+        : 0.0;
+    final debtsTotal = canOpenDebts
+        ? dashParseAmount(provider.debtSummary?.totalDebt)
+        : 0.0;
+    final upcomingInstallments = canOpenDebts
+        ? (provider.dueInstallments ?? const <Installment>[]).fold<double>(
+            0,
+            (sum, inst) => sum + dashParseAmount(inst.amount),
+          )
+        : 0.0;
     return BudgetSummaryCard(
       total: total,
       spent: spent,
       obligations: obligations,
+      debtsTotal: debtsTotal,
+      upcomingInstallments: upcomingInstallments,
       currency: plan.currency,
     );
   }
@@ -388,35 +497,41 @@ class _WeddingPlanDashboardScreenState
           label: 'إضافة مصروف',
           color: AppTheme.dMaroon,
           bg: AppTheme.dPinkBg,
-          onTap: canOpenFinance ? () => context.go(AppRouter.finance(plan.id)) : null,
+          onTap: canOpenFinance
+              ? () => context.push(AppRouter.finance(plan.id))
+              : null,
         ),
         QuickAction(
           icon: Icons.credit_card_rounded,
           label: 'إضافة دين',
           color: AppTheme.dMaroon,
           bg: AppTheme.dPinkBg,
-          onTap: canOpenDebts ? () => context.go(AppRouter.debts(plan.id)) : null,
+          onTap: canOpenDebts
+              ? () => context.push(AppRouter.debts(plan.id))
+              : null,
         ),
         QuickAction(
           icon: Icons.check_circle_outline_rounded,
           label: 'إضافة مهمة',
           color: AppTheme.dGreen,
           bg: AppTheme.dGreenBg,
-          onTap: () => context.go(AppRouter.tasks(plan.id)),
+          onTap: () => context.push(AppRouter.tasks(plan.id)),
         ),
         QuickAction(
           icon: Icons.person_add_alt_1_rounded,
           label: 'إضافة عضو',
           color: AppTheme.dBlue,
           bg: AppTheme.dBlueBg,
-          onTap: canOpenSharing ? () => context.go(AppRouter.sharing(plan.id)) : null,
+          onTap: canOpenSharing
+              ? () => context.push(AppRouter.sharing(plan.id))
+              : null,
         ),
         QuickAction(
           icon: Icons.post_add_rounded,
           label: 'خطة جديدة',
           color: AppTheme.dGoldDeep,
           bg: AppTheme.dCreamBg,
-          onTap: () => context.go(AppRouter.createWeddingPlan),
+          onTap: () => context.push(AppRouter.createWeddingPlan),
         ),
       ],
     );
@@ -438,12 +553,14 @@ class _WeddingPlanDashboardScreenState
           .inDays
           .clamp(0, 9999);
       final amount = dashFormatMoney(dashParseAmount(installment.amount));
-      alerts.add(DashboardAlert(
-        title: 'قسط قريب الاستحقاق',
-        body: 'لديك قسط بقيمة $amount ${plan.currency} يستحق خلال $days أيام',
-        icon: Icons.calendar_today_outlined,
-        tone: AlertTone.pink,
-      ));
+      alerts.add(
+        DashboardAlert(
+          title: 'قسط قريب الاستحقاق',
+          body: 'لديك قسط بقيمة $amount ${plan.currency} يستحق خلال $days أيام',
+          icon: Icons.calendar_today_outlined,
+          tone: AlertTone.pink,
+        ),
+      );
     }
 
     // 2) High spending against budget
@@ -452,12 +569,14 @@ class _WeddingPlanDashboardScreenState
     if (canOpenFinance && total > 0) {
       final pct = (spent / total * 100).round();
       if (pct >= 80) {
-        alerts.add(DashboardAlert(
-          title: 'مصروفات مرتفعة',
-          body: 'لقد وصلت المصروفات إلى $pct% من إجمالي الميزانية',
-          icon: Icons.trending_up_rounded,
-          tone: AlertTone.cream,
-        ));
+        alerts.add(
+          DashboardAlert(
+            title: 'مصروفات مرتفعة',
+            body: 'لقد وصلت المصروفات إلى $pct% من إجمالي الميزانية',
+            icon: Icons.trending_up_rounded,
+            tone: AlertTone.cream,
+          ),
+        );
       }
     }
 
@@ -466,12 +585,14 @@ class _WeddingPlanDashboardScreenState
     if (task != null && task.dueDate != null) {
       final days = task.dueDate!.difference(DateTime.now()).inDays;
       if (days <= 7) {
-        alerts.add(DashboardAlert(
-          title: 'مهمة قريبة',
-          body: '${task.title} بتاريخ ${dashFormatArDate(task.dueDate!)}',
-          icon: Icons.checklist_rounded,
-          tone: AlertTone.green,
-        ));
+        alerts.add(
+          DashboardAlert(
+            title: 'مهمة قريبة',
+            body: '${task.title} بتاريخ ${dashFormatArDate(task.dueDate!)}',
+            icon: Icons.checklist_rounded,
+            tone: AlertTone.green,
+          ),
+        );
       }
     }
 
@@ -502,22 +623,34 @@ class _WeddingPlanDashboardScreenState
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        Widget tile(IconData icon, Color color, Color bg, String label, String route) {
+        Widget tile(
+          IconData icon,
+          Color color,
+          Color bg,
+          String label,
+          String route,
+        ) {
           return ListTile(
             onTap: () {
               Navigator.of(sheetContext).pop();
-              context.go(route);
+              context.push(route);
             },
             leading: Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(13)),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(13),
+              ),
               child: Icon(icon, color: color, size: 22),
             ),
             title: Text(
               label,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.dInk),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.dInk,
+              ),
             ),
           );
         }
@@ -553,14 +686,34 @@ class _WeddingPlanDashboardScreenState
                       ),
                     ),
                   ),
-                  tile(Icons.account_balance_wallet_outlined, AppTheme.dMaroon,
-                      AppTheme.dPinkBg, 'إضافة مصروف', AppRouter.finance(plan.id)),
-                  tile(Icons.credit_card_rounded, AppTheme.dMaroon, AppTheme.dPinkBg,
-                      'إضافة دين', AppRouter.debts(plan.id)),
-                  tile(Icons.check_circle_outline_rounded, AppTheme.dGreen,
-                      AppTheme.dGreenBg, 'إضافة مهمة', AppRouter.tasks(plan.id)),
-                  tile(Icons.post_add_rounded, AppTheme.dGoldDeep, AppTheme.dCreamBg,
-                      'خطة جديدة', AppRouter.createWeddingPlan),
+                  tile(
+                    Icons.account_balance_wallet_outlined,
+                    AppTheme.dMaroon,
+                    AppTheme.dPinkBg,
+                    'إضافة مصروف',
+                    AppRouter.finance(plan.id),
+                  ),
+                  tile(
+                    Icons.credit_card_rounded,
+                    AppTheme.dMaroon,
+                    AppTheme.dPinkBg,
+                    'إضافة دين',
+                    AppRouter.debts(plan.id),
+                  ),
+                  tile(
+                    Icons.check_circle_outline_rounded,
+                    AppTheme.dGreen,
+                    AppTheme.dGreenBg,
+                    'إضافة مهمة',
+                    AppRouter.tasks(plan.id),
+                  ),
+                  tile(
+                    Icons.post_add_rounded,
+                    AppTheme.dGoldDeep,
+                    AppTheme.dCreamBg,
+                    'خطة جديدة',
+                    AppRouter.createWeddingPlan,
+                  ),
                 ],
               ),
             ),

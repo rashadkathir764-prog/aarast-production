@@ -197,7 +197,11 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
     );
 
     if (debt != null && mounted) {
-      context.go(AppRouter.debts(widget.weddingPlanId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.debts(widget.weddingPlanId));
+      }
     }
   }
 }

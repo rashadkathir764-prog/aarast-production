@@ -100,7 +100,7 @@ class _DebtInstallmentContent extends StatelessWidget {
         DueInstallmentsCard(installments: provider.dueInstallments),
         const SizedBox(height: 12),
         ElevatedButton.icon(
-          onPressed: () => context.go(AppRouter.createDebt(weddingPlanId)),
+          onPressed: () => context.push(AppRouter.createDebt(weddingPlanId)),
           icon: const Icon(Icons.add),
           label: const Text('إضافة دين'),
         ),
@@ -129,7 +129,7 @@ class _DebtInstallmentContent extends StatelessWidget {
     Debt debt,
   ) {
     provider.selectDebt(debt);
-    context.go(AppRouter.debtDetails(debt.id));
+    context.push(AppRouter.debtDetails(debt.id));
   }
 }
 

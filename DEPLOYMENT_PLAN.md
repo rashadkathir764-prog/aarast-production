@@ -1,6 +1,6 @@
 # Deployment Plan
 
-This document is planning-only. It does not create Dockerfiles, docker-compose files, Dokploy configuration, deployment scripts, or runtime infrastructure.
+This document started as planning-only. Local Docker runtime files now exist for the approved backend and PostgreSQL development setup. Dokploy, production deployment scripts, and VPS runtime infrastructure are still not configured.
 
 ## Prerequisites
 
@@ -8,7 +8,18 @@ Deployment work must not begin until the correct Git repository root is confirme
 
 ## Local Environment Isolation
 
-Docker will be used for local environment isolation and reproducible runtime environments. The goal is to keep project services predictable across development machines and avoid accidental reliance on unrelated local services.
+Docker is used for local backend and PostgreSQL isolation through:
+
+- `docker-compose.yml`
+- `backend/Dockerfile`
+- `backend/.dockerignore`
+
+The local Compose setup runs:
+
+- `aarast-db` on host port `5433` and container port `5432`.
+- `aarast-backend` on host port `3115` and container port `3000`.
+
+The backend container runs `prisma migrate deploy` before starting the NestJS API.
 
 ## VPS Deployment Direction
 
@@ -39,9 +50,11 @@ During Docs Foundation:
 - No deployment scripts should be created unless explicitly requested.
 - No application code, backend modules, Flutter screens, package installs, or migrations should be added.
 
+The local Docker backend and database files were created after an explicit deployment request, not as part of the original Docs Foundation scope.
+
 ## Deferral Rule
 
-Deployment is deferred until the backend and mobile MVP foundations are clearer. Docker and Dokploy implementation should happen only in a later deployment-readiness phase after the Wedding Financial OS MVP foundation is stable enough to deploy and verify.
+Production deployment remains deferred until the backend and mobile MVP foundations are clearer. Dokploy implementation should happen only in a later deployment-readiness phase after the Wedding Financial OS MVP foundation is stable enough to deploy and verify.
 
 ## Production Deployment Requirements
 

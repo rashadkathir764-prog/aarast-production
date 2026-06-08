@@ -192,7 +192,11 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
     );
 
     if (created && mounted) {
-      context.go(AppRouter.debtDetails(widget.debtId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.debtDetails(widget.debtId));
+      }
     }
   }
 }

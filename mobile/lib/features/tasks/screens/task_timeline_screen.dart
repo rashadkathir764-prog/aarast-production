@@ -101,7 +101,7 @@ class _TaskTimelineContent extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: provider.isSubmitting
               ? null
-              : () => context.go(AppRouter.createTask(weddingPlanId)),
+              : () => context.push(AppRouter.createTask(weddingPlanId)),
           icon: const Icon(Icons.add),
           label: const Text('إضافة مهمة'),
         ),

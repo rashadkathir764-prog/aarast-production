@@ -10,7 +10,7 @@ import '../../features/debts/screens/debt_installment_screen.dart';
 import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
-import '../../features/home/screens/home_screen.dart';
+import '../../features/shell/main_shell.dart';
 import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
@@ -103,7 +103,7 @@ class AppRouter {
           path: register,
           builder: (context, state) => const RegisterScreen(),
         ),
-        GoRoute(path: home, builder: (context, state) => const HomeScreen()),
+        GoRoute(path: home, builder: (context, state) => const MainShell()),
         GoRoute(
           path: weddingPlans,
           builder: (context, state) => const MyWeddingPlansScreen(),

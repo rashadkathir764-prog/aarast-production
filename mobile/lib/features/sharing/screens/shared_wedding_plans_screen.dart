@@ -102,7 +102,7 @@ class _SharedPlansContent extends StatelessWidget {
         for (final plan in provider.sharedPlans)
           SharedPlanCard(
             plan: plan,
-            onTap: () => context.go(
+            onTap: () => context.push(
               AppRouter.weddingPlanDashboard(plan.id),
               extra: plan.sharedMember,
             ),

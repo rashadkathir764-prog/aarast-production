@@ -10,20 +10,29 @@
 
 ## Current Task Status
 
-- Task: Dashboard Command Center Redesign merged into main and verified.
-- Main HEAD before dashboard command center worktree: `2771da7462f8daef2dbe6a94dbbec804e014a783`
-- Current main HEAD after dashboard command center merge: `a821b5b3ab6ddc5227495cf02ec8b1378a2244ec`
+- Task: Dashboard Proportional Scaling + Navigation Fix implemented locally and verified.
+- Current main HEAD before this uncommitted workflow: `0b6624c`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
-- Dashboard Command Center redesign is merged into main.
-- WeddingPlanDashboardScreen is fully redesigned as a command center.
-- DashboardSummaryProvider aggregates plan, expense, debt, installment, task, and sharing data concurrently.
-- Modern Flutter command center cards are live: WeddingHeroSummaryCard, FinancialCommandCard, DebtInstallmentCommandCard, TaskTimelineCommandCard, QuickActionsGrid, SharingMiniCard, LockedDashboardCard.
+- `/home` now routes to `MainShell`, which keeps a persistent bottom navigation with `IndexedStack` tabs for Home, Tasks, Plans, and More.
+- `WeddingPlanDashboardScreen` supports embedded shell mode and wraps the dashboard body in a proportional `AspectRatio` + `FittedBox` canvas.
+- Detail/create navigation from dashboard-adjacent MVP screens now uses `push` where a back path should be preserved; successful form saves pop back when possible.
 - Shared user permission and locked-card behavior is preserved.
 - No new Flutter packages were added.
 - Backend API unchanged.
-- Next step: visual QA and stakeholder review of the new dashboard.
+- Changes are local and uncommitted.
+- Next step: authenticated visual QA of the dashboard shell with real backend data.
+
+## Checks Passed From Dashboard Scaling And Navigation Fix
+
+- `flutter analyze`: PASS
+- `flutter test`: PASS
+- `flutter build web --debug`: PASS
+- Static local web load at `http://127.0.0.1:8091`: PASS
+- Browser viewport smoke checks at `360x740`, `430x932`, and `1024x768`: PASS, no console errors observed on initial app load.
+- Backend code unchanged by this phase: PASS
+- No backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
 
 ## Checks Passed From Main After Sharing Display And Arabic Errors Merge
 
@@ -295,7 +304,7 @@
 
 ## Current Pending Step
 
-- Next pending step: final local QA rerun for sharing display and Arabic sharing errors.
+- Next pending step: authenticated visual QA and stakeholder review of the dashboard shell with backend data.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -322,7 +331,8 @@
   23. Complete: Bug-fix Polish Pass 3 - shared member display and Arabic sharing errors
   24. Complete: final local QA rerun for sharing display and Arabic sharing errors
   25. Complete: Flutter WeddingPlan Dashboard Command Center Redesign
-  26. Current: Visual QA and stakeholder review of the new dashboard
+  26. Complete: Dashboard proportional scaling and navigation fix
+  27. Current: Authenticated visual QA and stakeholder review of the dashboard shell
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

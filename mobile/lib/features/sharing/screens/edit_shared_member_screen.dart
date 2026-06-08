@@ -200,7 +200,11 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     }
 
     if (updated) {
-      context.go(AppRouter.sharing(member.weddingPlanId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.sharing(member.weddingPlanId));
+      }
     }
   }
 
@@ -239,7 +243,11 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     }
 
     if (removed) {
-      context.go(AppRouter.sharing(member.weddingPlanId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.sharing(member.weddingPlanId));
+      }
     }
   }
 }

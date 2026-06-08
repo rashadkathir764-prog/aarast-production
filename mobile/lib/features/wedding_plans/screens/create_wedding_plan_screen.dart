@@ -173,7 +173,11 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
     );
 
     if (plan != null && mounted) {
-      context.go(AppRouter.weddingPlanDashboard(plan.id));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.home);
+      }
     }
   }
 }

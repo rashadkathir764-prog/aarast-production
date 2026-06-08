@@ -137,7 +137,11 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     }
 
     if (created) {
-      context.go(AppRouter.sharing(widget.weddingPlanId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.sharing(widget.weddingPlanId));
+      }
     }
   }
 }

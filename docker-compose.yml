@@ -1,0 +1,52 @@
+name: aarast
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: aarast-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aarast
+      POSTGRES_USER: aarast
+      POSTGRES_PASSWORD: aarast_dev_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - aarast_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aarast -d aarast"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: aarast-backend:local
+    container_name: aarast-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://aarast:aarast_dev_password@db:5432/aarast?schema=public
+      JWT_SECRET: aarast-local-dev-secret-change-me
+    ports:
+      - "3115:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  aarast_db_data:

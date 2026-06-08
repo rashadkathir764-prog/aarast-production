@@ -126,7 +126,11 @@ class _CreateBudgetCategoryScreenState
     );
 
     if (created && mounted) {
-      context.go(AppRouter.finance(widget.weddingPlanId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.finance(widget.weddingPlanId));
+      }
     }
   }
 }

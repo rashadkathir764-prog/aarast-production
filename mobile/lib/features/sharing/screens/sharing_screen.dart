@@ -94,7 +94,7 @@ class _SharingContent extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: provider.isSubmitting
               ? null
-              : () => context.go(AppRouter.addSharedMember(weddingPlanId)),
+              : () => context.push(AppRouter.addSharedMember(weddingPlanId)),
           icon: const Icon(Icons.person_add),
           label: const Text('إضافة عضو'),
         ),
@@ -125,7 +125,7 @@ class _SharingContent extends StatelessWidget {
             member: member,
             onTap: () {
               provider.selectMember(member);
-              context.go(AppRouter.editSharedMember(member.id));
+              context.push(AppRouter.editSharedMember(member.id));
             },
           ),
       ],

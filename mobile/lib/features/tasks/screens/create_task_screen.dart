@@ -173,7 +173,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     }
 
     if (created) {
-      context.go(AppRouter.tasks(widget.weddingPlanId));
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go(AppRouter.tasks(widget.weddingPlanId));
+      }
     }
   }
 }

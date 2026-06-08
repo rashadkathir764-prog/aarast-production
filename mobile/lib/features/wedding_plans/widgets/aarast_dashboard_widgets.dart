@@ -622,6 +622,8 @@ class BudgetSummaryCard extends StatelessWidget {
     required this.total,
     required this.spent,
     required this.obligations,
+    required this.debtsTotal,
+    required this.upcomingInstallments,
     required this.currency,
     super.key,
   });
@@ -629,6 +631,8 @@ class BudgetSummaryCard extends StatelessWidget {
   final double total;
   final double spent;
   final double obligations;
+  final double debtsTotal;
+  final double upcomingInstallments;
   final String currency;
 
   @override
@@ -642,28 +646,69 @@ class BudgetSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SectionHeader(
-            title: 'ملخص الميزانية',
-            icon: Icons.savings_outlined,
-            iconColor: AppTheme.dGoldDeep,
-            iconBg: AppTheme.dCreamBg,
+          // Header: title + icon on the right, total on the left (RTL).
+          Row(
+            children: [
+              const _SectionIcon(
+                icon: Icons.savings_outlined,
+                color: AppTheme.dGoldDeep,
+                bg: AppTheme.dCreamBg,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'ملخص الميزانية',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.dInk,
+                ),
+              ),
+              const Spacer(),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: _Num(
+                    '${dashFormatMoney(total)} $currency',
+                    align: TextAlign.left,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.dInk,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          _Num(
-            '${dashFormatMoney(total)} $currency',
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.w800,
-              color: AppTheme.dInk,
-            ),
-          ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
+          // Body: stat list (right) · donut (center) · legend (left) — RTL order.
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _budgetStat(
+                      'الديون',
+                      '${dashFormatMoney(debtsTotal)} $currency',
+                    ),
+                    _budgetStat(
+                      'الأقساط القادمة',
+                      '${dashFormatMoney(upcomingInstallments)} $currency',
+                    ),
+                    _budgetStat(
+                      'الميزانية الكلية',
+                      dashFormatMoney(total),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
               SizedBox(
-                width: 132,
-                height: 132,
+                width: 126,
+                height: 126,
                 child: CustomPaint(
                   painter: _SegmentDonutPainter(
                     segments: [
@@ -674,7 +719,7 @@ class BudgetSummaryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -701,6 +746,40 @@ class BudgetSummaryCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Right-hand stat: dim label above an LTR value (debts / installments / total).
+  Widget _budgetStat(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            label,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.dInkSoft,
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: _Num(
+              value,
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.dInk,
+              ),
+            ),
           ),
         ],
       ),

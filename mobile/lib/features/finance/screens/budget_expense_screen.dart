@@ -102,7 +102,7 @@ class _FinanceContent extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () =>
-                    context.go(AppRouter.createBudgetCategory(weddingPlanId)),
+                    context.push(AppRouter.createBudgetCategory(weddingPlanId)),
                 icon: const Icon(Icons.add),
                 label: const Text('تصنيف جديد'),
               ),
@@ -111,7 +111,7 @@ class _FinanceContent extends StatelessWidget {
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () =>
-                    context.go(AppRouter.createExpense(weddingPlanId)),
+                    context.push(AppRouter.createExpense(weddingPlanId)),
                 icon: const Icon(Icons.add),
                 label: const Text('مصروف جديد'),
               ),

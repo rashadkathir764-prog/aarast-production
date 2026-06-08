@@ -8,7 +8,11 @@ import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
 
 class MyWeddingPlansScreen extends StatefulWidget {
-  const MyWeddingPlansScreen({super.key});
+  const MyWeddingPlansScreen({this.onSelectPlan, super.key});
+
+  /// When provided (e.g. hosted inside the shell's "الخطط" tab), tapping a plan
+  /// selects it for the shell instead of navigating to a standalone dashboard.
+  final void Function(String planId)? onSelectPlan;
 
   @override
   State<MyWeddingPlansScreen> createState() => _MyWeddingPlansScreenState();
@@ -30,7 +34,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('خطط الزفاف')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go(AppRouter.createWeddingPlan),
+        onPressed: () => context.push(AppRouter.createWeddingPlan),
         backgroundColor: AppTheme.deepBurgundy,
         foregroundColor: Colors.white,
         label: const Text('إنشاء خطة زفاف'),
@@ -41,7 +45,10 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
           onRefresh: weddingPlans.loadMyWeddingPlans,
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: _PlansContent(weddingPlans: weddingPlans),
+            child: _PlansContent(
+              weddingPlans: weddingPlans,
+              onSelectPlan: widget.onSelectPlan,
+            ),
           ),
         ),
       ),
@@ -50,9 +57,10 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
 }
 
 class _PlansContent extends StatelessWidget {
-  const _PlansContent({required this.weddingPlans});
+  const _PlansContent({required this.weddingPlans, this.onSelectPlan});
 
   final WeddingPlansProvider weddingPlans;
+  final void Function(String planId)? onSelectPlan;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +110,7 @@ class _PlansContent extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: () => context.go(AppRouter.createWeddingPlan),
+                    onPressed: () => context.push(AppRouter.createWeddingPlan),
                     child: const Text('إنشاء خطة زفاف'),
                   ),
                 ],
@@ -118,23 +126,26 @@ class _PlansContent extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final plan = weddingPlans.plans[index];
-        return _WeddingPlanCard(plan: plan);
+        return _WeddingPlanCard(plan: plan, onSelectPlan: onSelectPlan);
       },
     );
   }
 }
 
 class _WeddingPlanCard extends StatelessWidget {
-  const _WeddingPlanCard({required this.plan});
+  const _WeddingPlanCard({required this.plan, this.onSelectPlan});
 
   final WeddingPlan plan;
+  final void Function(String planId)? onSelectPlan;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go(AppRouter.weddingPlanDashboard(plan.id)),
+        onTap: () => onSelectPlan != null
+            ? onSelectPlan!(plan.id)
+            : context.go(AppRouter.weddingPlanDashboard(plan.id)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

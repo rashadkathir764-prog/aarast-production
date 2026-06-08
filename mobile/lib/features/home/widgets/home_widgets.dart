@@ -72,13 +72,11 @@ String _roleLabel(String role) {
 class HomeTopHeader extends StatelessWidget {
   const HomeTopHeader({
     required this.userName,
-    required this.isDesktop,
     required this.onLogout,
     super.key,
   });
 
   final String? userName;
-  final bool isDesktop;
   final Future<void> Function() onLogout;
 
   @override
@@ -98,7 +96,7 @@ class HomeTopHeader extends StatelessWidget {
               tooltip: 'الحساب',
               onTap: onLogout,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _RoundIconButton(
               icon: Icons.notifications_none,
               tooltip: 'التنبيهات',
@@ -123,8 +121,8 @@ class HomeTopHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 SizedBox(
-                  width: isDesktop ? 82 : 70,
-                  height: isDesktop ? 54 : 46,
+                  width: 62,
+                  height: 44,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -132,32 +130,29 @@ class HomeTopHeader extends StatelessWidget {
                         left: 11,
                         top: 17,
                         child: _RingMark(
-                          size: isDesktop ? 31 : 27,
+                          size: 24,
                           color: AppTheme.deepBurgundy,
                         ),
                       ),
                       Positioned(
                         right: 13,
                         top: 16,
-                        child: _RingMark(
-                          size: isDesktop ? 30 : 26,
-                          color: AppTheme.warmGold,
-                        ),
+                        child: _RingMark(size: 24, color: AppTheme.warmGold),
                       ),
                       Positioned(
                         top: 6,
-                        right: isDesktop ? 8 : 7,
+                        right: 7,
                         child: Icon(
                           Icons.diamond_outlined,
                           color: AppTheme.warmGold,
-                          size: isDesktop ? 20 : 17,
+                          size: 16,
                         ),
                       ),
                       Text(
                         'ع',
                         style: TextStyle(
                           color: AppTheme.deepBurgundy,
-                          fontSize: isDesktop ? 50 : 42,
+                          fontSize: 40,
                           fontWeight: FontWeight.w900,
                           height: 0.9,
                         ),
@@ -170,7 +165,7 @@ class HomeTopHeader extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: isDesktop ? 360 : 210,
+          width: 150,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -182,7 +177,7 @@ class HomeTopHeader extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: AppTheme.deepBurgundy,
                   fontWeight: FontWeight.w900,
-                  fontSize: isDesktop ? 29 : 21,
+                  fontSize: 19,
                 ),
               ),
               const SizedBox(height: 4),
@@ -244,8 +239,8 @@ class _RoundIconButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
         child: Container(
-          width: 44,
-          height: 44,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
@@ -284,14 +279,9 @@ class _RoundIconButton extends StatelessWidget {
 }
 
 class HomeCommandHero extends StatelessWidget {
-  const HomeCommandHero({
-    required this.provider,
-    required this.isDesktop,
-    super.key,
-  });
+  const HomeCommandHero({required this.provider, super.key});
 
   final HomeDashboardProvider provider;
-  final bool isDesktop;
 
   @override
   Widget build(BuildContext context) {
@@ -341,68 +331,41 @@ class HomeCommandHero extends StatelessWidget {
         ? 'أضف مهام الزفاف لقياس نسبة التجهيز'
         : '$completedTasks من $totalTasks مهام مكتملة';
 
-    final heroContent = isDesktop
-        ? Row(
-            textDirection: TextDirection.ltr,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _HeroProgress(
+    final heroContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _HeroPlanInfo(
+          title: plan.title,
+          city: plan.city,
+          weddingDate: plan.weddingDate,
+          planId: plan.id,
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          textDirection: TextDirection.rtl,
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 14,
+          runSpacing: 14,
+          children: [
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 170, maxWidth: 250),
+              child: _HeroCenterPanel(
                 progress: progress,
-                progressPct: progressPct,
-                taskProgressText: taskProgressText,
-                compact: false,
+                remainingText: _remainingText(plan.weddingDate),
+                status: plan.status,
               ),
-              const SizedBox(width: 34),
-              Expanded(
-                child: _HeroCenterPanel(
-                  progress: progress,
-                  taskProgressText: taskProgressText,
-                  remainingText: _remainingText(plan.weddingDate),
-                  status: plan.status,
-                ),
-              ),
-              const SizedBox(width: 34),
-              Expanded(
-                child: _HeroPlanInfo(
-                  title: plan.title,
-                  city: plan.city,
-                  weddingDate: plan.weddingDate,
-                  planId: plan.id,
-                ),
-              ),
-            ],
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _HeroPlanInfo(
-                title: plan.title,
-                city: plan.city,
-                weddingDate: plan.weddingDate,
-                planId: plan.id,
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: _HeroCenterPanel(
-                      progress: progress,
-                      taskProgressText: taskProgressText,
-                      remainingText: _remainingText(plan.weddingDate),
-                      status: plan.status,
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  _HeroProgress(
-                    progress: progress,
-                    progressPct: progressPct,
-                    taskProgressText: taskProgressText,
-                    compact: true,
-                  ),
-                ],
-              ),
-            ],
-          );
+            ),
+            _HeroProgress(
+              progress: progress,
+              progressPct: progressPct,
+              taskProgressText: taskProgressText,
+              compact: true,
+            ),
+          ],
+        ),
+      ],
+    );
 
     return _HeroShell(child: heroContent);
   }
@@ -471,7 +434,7 @@ class _HeroShell extends StatelessWidget {
                 size: 120,
               ),
             ),
-            Padding(padding: const EdgeInsets.all(26), child: child),
+            Padding(padding: const EdgeInsets.all(18), child: child),
           ],
         ),
       ),
@@ -519,9 +482,12 @@ class _HeroPlanInfo extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.right,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             color: Colors.white,
             fontWeight: FontWeight.w900,
+            fontSize: 21,
             letterSpacing: 0,
           ),
         ),
@@ -558,19 +524,26 @@ class _HeroMeta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 190),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(width: 6),
-        Icon(icon, color: Colors.white.withAlpha(210), size: 17),
-      ],
+          const SizedBox(width: 6),
+          Icon(icon, color: Colors.white.withAlpha(210), size: 17),
+        ],
+      ),
     );
   }
 }
@@ -578,13 +551,11 @@ class _HeroMeta extends StatelessWidget {
 class _HeroCenterPanel extends StatelessWidget {
   const _HeroCenterPanel({
     required this.progress,
-    required this.taskProgressText,
     required this.remainingText,
     required this.status,
   });
 
   final double progress;
-  final String taskProgressText;
   final String remainingText;
   final String status;
 
@@ -627,12 +598,6 @@ class _HeroCenterPanel extends StatelessWidget {
             color: AppTheme.warmGold,
             backgroundColor: Colors.white.withAlpha(45),
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          taskProgressText,
-          textAlign: TextAlign.right,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
     );
@@ -776,7 +741,7 @@ class _HeroButton extends StatelessWidget {
 class HomeMetricsBudgetSection extends StatelessWidget {
   const HomeMetricsBudgetSection({
     required this.provider,
-    required this.isDesktop,
+    this.isDesktop = false,
     super.key,
   });
 
@@ -860,15 +825,21 @@ class _MetricCards extends StatelessWidget {
       ),
     ];
 
-    return Row(
-      textDirection: TextDirection.ltr,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < cards.length; i++) ...[
-          Expanded(child: cards[i]),
-          if (i != cards.length - 1) const SizedBox(width: 10),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      reverse: true,
+      child: Row(
+        children: [
+          for (final card in cards)
+            SizedBox(
+              width: 126,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: card,
+              ),
+            ),
         ],
-      ],
+      ),
     );
   }
 }
@@ -895,20 +866,20 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: iconColor.withAlpha(20),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 25),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-          const SizedBox(height: 11),
+          const SizedBox(height: 9),
           Text(
             title,
             textAlign: TextAlign.center,
@@ -917,10 +888,10 @@ class _MetricCard extends StatelessWidget {
             style: const TextStyle(
               color: AppTheme.charcoal,
               fontWeight: FontWeight.w800,
-              fontSize: 13,
+              fontSize: 12,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             value,
             textAlign: TextAlign.center,
@@ -928,7 +899,7 @@ class _MetricCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.black,
-              fontSize: 23,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
               height: 1.05,
             ),
@@ -938,7 +909,7 @@ class _MetricCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(color: _mutedText, fontSize: 12),
           ),
-          const SizedBox(height: 11),
+          const SizedBox(height: 9),
           const Divider(height: 1, color: _cardBorder),
           const SizedBox(height: 10),
           Text(
@@ -1008,7 +979,7 @@ class _BudgetSummaryCard extends StatelessWidget {
         : 0.0;
 
     return _SurfaceCard(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1098,7 +1069,7 @@ class _BudgetSummaryCard extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: _BudgetDonut(
                   spentRatio: spentRatio,
                   debtRatio: debtRatio,
@@ -1212,8 +1183,8 @@ class _BudgetDonut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 104,
-      height: 104,
+      width: 76,
+      height: 76,
       child: CustomPaint(
         painter: _BudgetDonutPainter(
           spentRatio: spentRatio,
@@ -1227,7 +1198,7 @@ class _BudgetDonut extends StatelessWidget {
             style: const TextStyle(
               color: AppTheme.deepBurgundy,
               fontWeight: FontWeight.w900,
-              fontSize: 18,
+              fontSize: 15,
             ),
           ),
         ),
@@ -1256,7 +1227,7 @@ class _BudgetDonutPainter extends CustomPainter {
     final rect = Rect.fromCircle(center: center, radius: radius);
     final track = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 18
+      ..strokeWidth = 12
       ..strokeCap = StrokeCap.butt
       ..color = const Color(0xFFE2DED8);
 
@@ -1274,7 +1245,7 @@ class _BudgetDonutPainter extends CustomPainter {
       final sweep = math.max(0.03, segment.$1) * math.pi * 1.65;
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 18
+        ..strokeWidth = 12
         ..strokeCap = StrokeCap.butt
         ..color = segment.$2;
       canvas.drawArc(rect, start, sweep, false, paint);
@@ -1353,7 +1324,7 @@ class _SegmentedBudgetBar extends StatelessWidget {
 class HomeQuickActions extends StatelessWidget {
   const HomeQuickActions({
     required this.provider,
-    required this.isDesktop,
+    this.isDesktop = false,
     required this.onNeedPlan,
     super.key,
   });
@@ -1424,7 +1395,7 @@ class HomeQuickActions extends StatelessWidget {
               children: [
                 for (final action in actions)
                   SizedBox(
-                    width: 132,
+                    width: 126,
                     child: Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: _QuickActionCard(
@@ -1471,7 +1442,7 @@ class _QuickActionCard extends StatelessWidget {
       child: Opacity(
         opacity: action.enabled ? 1 : 0.54,
         child: Container(
-          height: 82,
+          height: 76,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -1487,15 +1458,15 @@ class _QuickActionCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(action.icon, color: action.color, size: 27),
-              const SizedBox(height: 9),
+              Icon(action.icon, color: action.color, size: 25),
+              const SizedBox(height: 7),
               Text(
                 action.label,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AppTheme.charcoal,
                   fontWeight: FontWeight.w800,
-                  fontSize: 13,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -1509,7 +1480,7 @@ class _QuickActionCard extends StatelessWidget {
 class HomeAlertsMembersGrid extends StatelessWidget {
   const HomeAlertsMembersGrid({
     required this.provider,
-    required this.isDesktop,
+    this.isDesktop = false,
     super.key,
   });
 
@@ -1576,7 +1547,7 @@ class HomeAlertsCard extends StatelessWidget {
                     ),
                   ),
                 ]
-              : alerts.take(3).toList(),
+              : alerts.take(2).toList(),
         ),
       ),
     );
@@ -1741,9 +1712,9 @@ class HomeMembersCard extends StatelessWidget {
                 ),
               )
             else
-              for (final member in members.take(3)) ...[
+              for (final member in members.take(2)) ...[
                 _MemberRow(member: member),
-                if (member != members.take(3).last) const SizedBox(height: 9),
+                if (member != members.take(2).last) const SizedBox(height: 9),
               ],
             const SizedBox(height: 8),
             Align(
@@ -2097,21 +2068,29 @@ class _SectionShell extends StatelessWidget {
         Row(
           children: [
             if (trailing != null)
-              Text(
-                trailing!,
-                style: const TextStyle(
-                  color: _mutedText,
-                  fontWeight: FontWeight.w800,
+              Flexible(
+                child: Text(
+                  trailing!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _mutedText,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            const Spacer(),
-            Text(
-              title,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                color: AppTheme.charcoal,
-                fontWeight: FontWeight.w900,
-                fontSize: 16,
+            if (trailing != null) const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+                style: const TextStyle(
+                  color: AppTheme.charcoal,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                ),
               ),
             ),
             if (titleIcon != null) ...[

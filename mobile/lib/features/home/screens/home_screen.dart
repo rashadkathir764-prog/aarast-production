@@ -32,68 +32,72 @@ class _HomeScreenState extends State<HomeScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final isDesktop = width >= 1000;
-        final horizontalPadding = width < 700 ? 16.0 : 28.0;
+        final horizontalPadding = width <= 360 ? 14.0 : 16.0;
 
         return Scaffold(
           backgroundColor: AppTheme.ivory,
-          bottomNavigationBar: isDesktop
-              ? null
-              : HomeBottomNavigation(
-                  provider: provider,
-                  onNeedPlan: () => _showNeedPlanSnackBar(context),
-                ),
           body: SafeArea(
-            child: RefreshIndicator(
-              color: AppTheme.deepBurgundy,
-              onRefresh: () => provider.loadDashboard(),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1120),
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            horizontalPadding,
-                            18,
-                            horizontalPadding,
-                            isDesktop ? 34 : 92,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              HomeTopHeader(
-                                userName: auth.user?.name,
-                                isDesktop: isDesktop,
-                                onLogout: () async {
-                                  await context.read<AuthController>().logout();
-                                  if (context.mounted) {
-                                    context.go(AppRouter.login);
-                                  }
-                                },
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Stack(
+                  children: [
+                    RefreshIndicator(
+                      color: AppTheme.deepBurgundy,
+                      onRefresh: () => provider.loadDashboard(),
+                      child: CustomScrollView(
+                        slivers: [
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                horizontalPadding,
+                                18,
+                                horizontalPadding,
+                                104,
                               ),
-                              const SizedBox(height: 18),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 220),
-                                child:
-                                    provider.isLoading &&
-                                        provider.primaryPlan == null
-                                    ? const HomeLoadingSkeleton()
-                                    : _HomeDashboardBody(
-                                        provider: provider,
-                                        isDesktop: isDesktop,
-                                        onNeedPlan: () =>
-                                            _showNeedPlanSnackBar(context),
-                                      ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  HomeTopHeader(
+                                    userName: auth.user?.name,
+                                    onLogout: () async {
+                                      await context
+                                          .read<AuthController>()
+                                          .logout();
+                                      if (context.mounted) {
+                                        context.go(AppRouter.login);
+                                      }
+                                    },
+                                  ),
+                                  const SizedBox(height: 18),
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 220),
+                                    child:
+                                        provider.isLoading &&
+                                            provider.primaryPlan == null
+                                        ? const HomeLoadingSkeleton()
+                                        : _HomeDashboardBody(
+                                            provider: provider,
+                                            onNeedPlan: () =>
+                                                _showNeedPlanSnackBar(context),
+                                          ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: HomeBottomNavigation(
+                        provider: provider,
+                        onNeedPlan: () => _showNeedPlanSnackBar(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -110,14 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _HomeDashboardBody extends StatelessWidget {
-  const _HomeDashboardBody({
-    required this.provider,
-    required this.isDesktop,
-    required this.onNeedPlan,
-  });
+  const _HomeDashboardBody({required this.provider, required this.onNeedPlan});
 
   final HomeDashboardProvider provider;
-  final bool isDesktop;
   final VoidCallback onNeedPlan;
 
   @override
@@ -135,20 +134,16 @@ class _HomeDashboardBody extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        HomeCommandHero(provider: provider, isDesktop: isDesktop),
+        HomeCommandHero(provider: provider),
         const SizedBox(height: 18),
         if (hasPlan) ...[
-          HomeMetricsBudgetSection(provider: provider, isDesktop: isDesktop),
+          HomeMetricsBudgetSection(provider: provider),
           const SizedBox(height: 18),
         ],
-        HomeQuickActions(
-          provider: provider,
-          isDesktop: isDesktop,
-          onNeedPlan: onNeedPlan,
-        ),
+        HomeQuickActions(provider: provider, onNeedPlan: onNeedPlan),
         const SizedBox(height: 18),
         if (hasPlan) ...[
-          HomeAlertsMembersGrid(provider: provider, isDesktop: isDesktop),
+          HomeAlertsMembersGrid(provider: provider),
           const SizedBox(height: 18),
         ],
         if (!hasPlan) ...[HomeSharedPlansCard(provider: provider)],

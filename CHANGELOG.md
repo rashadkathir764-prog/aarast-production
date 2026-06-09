@@ -1,13 +1,12 @@
 # Changelog
 
-## 2026-06-08 - Dashboard Scaling And Navigation Fix
+## 2026-06-07 - Home Dashboard Exact Blueprint Polish
 
-- Routed `/home` through the new Flutter `MainShell` with persistent bottom navigation and `IndexedStack` tab state.
-- Wrapped `WeddingPlanDashboardScreen` content in a proportional `AspectRatio` + `FittedBox` canvas so the dashboard keeps its composition while scaling.
-- Preserved back navigation from dashboard-adjacent MVP screens by using `push` for detail/create pages and popping successful form saves when possible.
-- Added `MoreScreen` as the shell's More tab and kept backend APIs unchanged.
-- Verified `flutter analyze`, `flutter test`, `flutter build web --debug`, and local static web load with browser viewport smoke checks.
-- Confirmed no backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created.
+- Polished the Flutter Home dashboard to more closely match the approved Arabic visual reference.
+- Tightened the wide-web layout with centered max-width content, denser card hierarchy, and no oversized desktop bottom navigation.
+- Reworked the Home hero, metrics, budget summary, quick actions, alerts, members, and shared plans sections using existing APIs only.
+- Fixed the Home budget display rule so estimated plan budget is preferred and remaining budget is not shown as negative when budget data is missing.
+- Confirmed no backend code, backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, confirmed booking logic, generated files, or new packages were created.
 
 ## 2026-06-06 - Flutter WeddingPlan Dashboard Command Center Redesign
 

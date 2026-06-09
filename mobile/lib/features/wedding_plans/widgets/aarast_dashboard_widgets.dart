@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -140,18 +142,29 @@ class _BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'اعرست',
-          style: GoogleFonts.amiri(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.dMaroon,
-            letterSpacing: 1,
-            height: 1,
-          ),
+          style: isTest
+              ? const TextStyle(
+                  fontFamily: 'Amiri',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.dMaroon,
+                  letterSpacing: 1,
+                  height: 1,
+                )
+              : GoogleFonts.amiri(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.dMaroon,
+                  letterSpacing: 1,
+                  height: 1,
+                ),
         ),
         const SizedBox(height: 2),
         CustomPaint(size: const Size(46, 30), painter: _RingsPainter()),
@@ -1522,13 +1535,17 @@ class SharedPlansCard extends StatelessWidget {
                         color: AppTheme.dGold2,
                       ),
                     ),
-                    const Spacer(),
-                    const Text(
-                      'عرض الخطط المشتركة',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'عرض الخطط المشتركة',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),

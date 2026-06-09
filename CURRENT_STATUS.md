@@ -5,54 +5,36 @@
 - Project name: Aarast / اعّرست
 - Repository root: `D:\projects\aarast`
 - Main branch: `main`
-- Current worktree path: `D:\projects\aarast`
-- Current branch: `main`
+- Current worktree path: `D:\projects\aarast-worktrees\phase-4-home-dashboard-approved-design`
+- Current branch: `phase/4-home-dashboard-approved-design`
 
 ## Current Task Status
 
-- Task: Dashboard Proportional Scaling + Navigation Fix implemented locally and verified.
-- Current main HEAD before this uncommitted workflow: `0b6624c`
+- Task: Home Dashboard Exact Blueprint Polish completed in the worktree and awaiting pre-merge review.
+- Current main HEAD for this branch base: `876f038c95b4dc6a5b23d924990d2214b9931a95`
+- Current branch HEAD before this polish commit: `933e8b1ef5f998e69d395817e6a89327f619e0a4`
 - Flutter app path: `mobile/`
 - Manual QA plan: `MOBILE_QA_PLAN.md`
 - Manual QA report: `MANUAL_QA_REPORT.md`
-- `/home` now routes to `MainShell`, which keeps a persistent bottom navigation with `IndexedStack` tabs for Home, Tasks, Plans, and More.
-- `WeddingPlanDashboardScreen` supports embedded shell mode and wraps the dashboard body in a proportional `AspectRatio` + `FittedBox` canvas.
-- Detail/create navigation from dashboard-adjacent MVP screens now uses `push` where a back path should be preserved; successful form saves pop back when possible.
-- Shared user permission and locked-card behavior is preserved.
-- No new Flutter packages were added.
-- Backend API unchanged.
-- Changes are local and uncommitted.
-- Next step: authenticated visual QA of the dashboard shell with real backend data.
 
-## Checks Passed From Dashboard Scaling And Navigation Fix
+## Current Project Status
 
-- `flutter analyze`: PASS
-- `flutter test`: PASS
-- `flutter build web --debug`: PASS
-- Static local web load at `http://127.0.0.1:8091`: PASS
-- Browser viewport smoke checks at `360x740`, `430x932`, and `1024x768`: PASS, no console errors observed on initial app load.
-- Backend code unchanged by this phase: PASS
-- No backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
+Current phase: Home dashboard approved-design polish.
 
-## Checks Passed From Main After Sharing Display And Arabic Errors Merge
+The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, Dashboard Command Center, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. 
+The Home screen has been polished to more closely match the approved Arabic dashboard reference: compact header, burgundy hero card, dense metrics and budget summary, quick actions, alerts, members, shared plans, and mobile/tablet-only bottom navigation.
+The next step is pre-merge review, not merging yet. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.
 
-- `npm install`: PASS, 0 vulnerabilities
-- `npm run prisma:generate`: PASS after stopping an old local `node dist/main.js` process that was locking the Prisma engine DLL
-- `npm run check`: PASS
-- `npm run build`: PASS
-- `npm audit`: PASS, 0 vulnerabilities
-- `GET /health` on port `3165`: PASS
-- `npm run smoke:health` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS
-- `npm run smoke:auth` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS
-- `npm run smoke:sharing` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS, including safe member name/phone display data and sensitive-field checks
-- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3165`: PASS
+## Checks Passed From Home Dashboard Exact Blueprint Polish
+
 - `flutter pub get`: PASS
 - `flutter analyze`: PASS
 - `flutter test`: PASS
 - `flutter build web --debug`: PASS
-- Shared member cards now show name/phone instead of technical `userId`: PASS
-- Common sharing errors are displayed in Arabic: PASS
-- `backend/.env` remains untracked and was not committed.
+- Home dashboard uses existing backend APIs only: PASS
+- No backend code, backend APIs, Prisma models, migrations, Docker/Dokploy files, marketplace, payments, AI/FinTech, chat, or confirmed booking logic were created: PASS
+- No new Flutter packages were added: PASS
+- Generated Flutter platform files were restored and are not intended for commit: PASS
 - Forbidden scope check: PASS
 
 ## Checks Passed From Flutter WeddingPlan Dashboard Command Center Redesign
@@ -304,7 +286,7 @@
 
 ## Current Pending Step
 
-- Next pending step: authenticated visual QA and stakeholder review of the dashboard shell with backend data.
+- Next pending step: final local QA rerun for sharing display and Arabic sharing errors.
 - Approved implementation order:
   1. Complete: Prisma + PostgreSQL foundation
   2. Complete: User model
@@ -331,8 +313,7 @@
   23. Complete: Bug-fix Polish Pass 3 - shared member display and Arabic sharing errors
   24. Complete: final local QA rerun for sharing display and Arabic sharing errors
   25. Complete: Flutter WeddingPlan Dashboard Command Center Redesign
-  26. Complete: Dashboard proportional scaling and navigation fix
-  27. Current: Authenticated visual QA and stakeholder review of the dashboard shell
+  26. Current: Visual QA and stakeholder review of the new dashboard
 - Do not start Marketplace, AI, FinTech, Payments, Chat, or confirmed booking logic without explicit approval.
 - Do not create additional mobile screens until the active phase explicitly asks for them.
 

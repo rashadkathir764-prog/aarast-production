@@ -198,7 +198,6 @@ Future<void> _pumpAt(WidgetTester tester, Size size) async {
 
 void main() {
   setUpAll(() {
-    // Tests have no network: fall back to the default font instead of fetching.
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 

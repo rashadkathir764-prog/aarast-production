@@ -4,41 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../debts/models/installment.dart';
-import '../../sharing/models/shared_member.dart';
-import '../../tasks/models/wedding_task.dart';
 import '../providers/home_dashboard_provider.dart';
 
-const _cardBorder = Color(0xFFEDE7DF);
-const _mutedText = Color(0xFF6F6764);
-const _softGold = Color(0xFFF5E6B8);
-const _softBurgundy = Color(0xFFF1DFE4);
-const _softGreen = Color(0xFFEAF3E8);
-const _softRed = Color(0xFFF3DDE1);
+class HomeUiColors {
+  static const maroon = Color(0xFF8B1A3F);
+  static const ink = Color(0xFF332B2B);
+  static const muted = Color(0xFF8B8484);
+  static const gold = Color(0xFFD6A451);
+  static const goldSoft = Color(0xFFEEDBB6);
+  static const card = Colors.white;
+  static const background = Color(0xFFFCF6F4);
+
+  static const pinkSoft = Color(0xFFFFE7EC);
+  static const greenSoft = Color(0xFFEAF7E6);
+  static const blueSoft = Color(0xFFE9F1FF);
+  static const purpleSoft = Color(0xFFF2ECFF);
+  static const orangeSoft = Color(0xFFFFF0E6);
+}
 
 String _formatDate(DateTime? date) {
   if (date == null) return 'غير محدد';
-  const months = [
-    'يناير',
-    'فبراير',
-    'مارس',
-    'أبريل',
-    'مايو',
-    'يونيو',
-    'يوليو',
-    'أغسطس',
-    'سبتمبر',
-    'أكتوبر',
-    'نوفمبر',
-    'ديسمبر',
-  ];
+  const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
   return '${date.day} ${months[date.month - 1]} ${date.year}';
-}
-
-String _formatShortDate(DateTime? date) {
-  if (date == null) return 'بدون تاريخ';
-  return _formatDate(date);
 }
 
 String _formatNumber(num value) {
@@ -59,884 +46,454 @@ double _money(Object? value) {
   return double.tryParse(value.toString()) ?? 0;
 }
 
-String _roleLabel(String role) {
-  return switch (role) {
-    'MANAGER' => 'مدير',
-    'CONTRIBUTOR' => 'مساهم',
-    'VIEWER' => 'مشاهد',
-    'EDITOR' => 'محرر',
-    _ => role,
-  };
+// -----------------------------------------------------------------------------
+// LOADING & ERROR
+// -----------------------------------------------------------------------------
+
+class HomeLoadingSkeleton extends StatelessWidget {
+  const HomeLoadingSkeleton({super.key});
+  @override
+  Widget build(BuildContext context) => const Center(child: CircularProgressIndicator(color: HomeUiColors.maroon));
 }
 
-class HomeTopHeader extends StatelessWidget {
-  const HomeTopHeader({
-    required this.userName,
-    required this.onLogout,
-    super.key,
-  });
+class HomeErrorCard extends StatelessWidget {
+  const HomeErrorCard({required this.message, required this.onRetry, super.key});
+  final String message;
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: HomeUiColors.card, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          Text(message, style: const TextStyle(color: HomeUiColors.maroon)),
+          const SizedBox(height: 8),
+          ElevatedButton(
+            onPressed: onRetry,
+            style: ElevatedButton.styleFrom(backgroundColor: HomeUiColors.maroon),
+            child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
+// -----------------------------------------------------------------------------
+// TOP HEADER
+// -----------------------------------------------------------------------------
+
+class HomeTopHeader extends StatelessWidget {
+  const HomeTopHeader({required this.userName, required this.onLogout, super.key});
   final String? userName;
   final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
-    final greetingName = (userName?.trim().isNotEmpty ?? false)
-        ? userName!.trim()
-        : 'رشاد';
-
+    final greetingName = (userName?.trim().isNotEmpty ?? false) ? userName!.trim() : 'رشاد';
     return Row(
-      textDirection: TextDirection.ltr,
-      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
-            _RoundIconButton(
-              icon: Icons.person,
-              tooltip: 'الحساب',
-              onTap: onLogout,
-            ),
-            const SizedBox(width: 6),
-            _RoundIconButton(
-              icon: Icons.notifications_none,
-              tooltip: 'التنبيهات',
-              onTap: () {},
-              showDot: true,
-            ),
-          ],
-        ),
-        Expanded(
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'اعّرست',
-                  style: TextStyle(
-                    color: AppTheme.deepBurgundy,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                    height: 1,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'أعرست',
+                      style: TextStyle(color: HomeUiColors.maroon, fontSize: 32, fontWeight: FontWeight.w900, height: 1.0),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.favorite, color: HomeUiColors.maroon, size: 16),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                SizedBox(
-                  width: 62,
-                  height: 44,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        left: 11,
-                        top: 17,
-                        child: _RingMark(
-                          size: 24,
-                          color: AppTheme.deepBurgundy,
-                        ),
-                      ),
-                      Positioned(
-                        right: 13,
-                        top: 16,
-                        child: _RingMark(size: 24, color: AppTheme.warmGold),
-                      ),
-                      Positioned(
-                        top: 6,
-                        right: 7,
-                        child: Icon(
-                          Icons.diamond_outlined,
-                          color: AppTheme.warmGold,
-                          size: 16,
-                        ),
-                      ),
-                      Text(
-                        'ع',
-                        style: TextStyle(
-                          color: AppTheme.deepBurgundy,
-                          fontSize: 40,
-                          fontWeight: FontWeight.w900,
-                          height: 0.9,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'مساء الخير، $greetingName',
+                      style: const TextStyle(color: HomeUiColors.muted, fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.favorite, color: HomeUiColors.gold, size: 14),
+                  ],
                 ),
               ],
             ),
-          ),
+          ],
         ),
-        SizedBox(
-          width: 150,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'أهلاً $greetingName 👋',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.deepBurgundy,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 19,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'هذه لمحة سريعة عن تجهيزات زفافك',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: _mutedText,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+        Row(
+          children: [
+            _HeaderCircleIcon(
+              icon: Icons.person_outline_rounded,
+              borderColor: HomeUiColors.gold,
+              onTap: onLogout,
+            ),
+            const SizedBox(width: 12),
+            _HeaderCircleIcon(
+              icon: Icons.notifications_none_rounded,
+              badgeCount: 3,
+              onTap: () {},
+            ),
+          ],
         ),
       ],
     );
   }
 }
 
-class _RingMark extends StatelessWidget {
-  const _RingMark({required this.size, required this.color});
-
-  final double size;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: color, width: 4),
-      ),
-    );
-  }
-}
-
-class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-    this.showDot = false,
-  });
-
+class _HeaderCircleIcon extends StatelessWidget {
+  const _HeaderCircleIcon({required this.icon, this.badgeCount, this.borderColor, required this.onTap});
   final IconData icon;
-  final String tooltip;
+  final int? badgeCount;
+  final Color? borderColor;
   final VoidCallback onTap;
-  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(22),
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: _cardBorder),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(14),
-                blurRadius: 14,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(icon, color: AppTheme.deepBurgundy),
-              if (showDot)
-                Positioned(
-                  top: 9,
-                  right: 10,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.deepBurgundy,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: borderColor ?? const Color(0xFFEAEAEA), width: 1.5),
+            ),
+            child: Icon(icon, color: HomeUiColors.maroon, size: 24),
           ),
         ),
-      ),
+        if (badgeCount != null && badgeCount! > 0)
+          Positioned(
+            top: -4,
+            left: -4,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(color: HomeUiColors.maroon, shape: BoxShape.circle),
+              child: Text(
+                '$badgeCount',
+                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, height: 1),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// HERO BANNER
+// -----------------------------------------------------------------------------
 
 class HomeCommandHero extends StatelessWidget {
   const HomeCommandHero({required this.provider, super.key});
-
   final HomeDashboardProvider provider;
 
   @override
   Widget build(BuildContext context) {
     final plan = provider.primaryPlan;
     if (plan == null) {
-      return _HeroShell(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'ابدأ بإنشاء خطة زفافك الأولى',
-              textAlign: TextAlign.right,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'أنشئ خطة لتتبع الميزانية والمهام والديون والمشاركين.',
-              textAlign: TextAlign.right,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.white.withAlpha(210),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Align(
-              alignment: Alignment.centerRight,
-              child: _HeroButton(
-                label: 'إنشاء خطة زفاف',
-                icon: Icons.add_box_outlined,
-                onTap: () => context.push(AppRouter.createWeddingPlan),
-              ),
-            ),
-          ],
-        ),
+      return Container(
+        decoration: BoxDecoration(color: HomeUiColors.maroon, borderRadius: BorderRadius.circular(24)),
+        padding: const EdgeInsets.all(20),
+        child: const Center(child: Text('لا توجد خطة زفاف حالية', style: TextStyle(color: Colors.white))),
       );
     }
 
-    final tasks = provider.tasks ?? const <WeddingTask>[];
-    final completedTasks = tasks.where((task) => task.isDone).length;
+    final tasks = provider.tasks ?? [];
+    final completedTasks = tasks.where((t) => t.isDone).length;
     final totalTasks = tasks.length;
-    final progress = totalTasks == 0 ? 0.0 : completedTasks / totalTasks;
-    final progressPct = (progress * 100).round();
-    final taskProgressText = totalTasks == 0
-        ? 'أضف مهام الزفاف لقياس نسبة التجهيز'
-        : '$completedTasks من $totalTasks مهام مكتملة';
-
-    final heroContent = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _HeroPlanInfo(
-          title: plan.title,
-          city: plan.city,
-          weddingDate: plan.weddingDate,
-          planId: plan.id,
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          textDirection: TextDirection.rtl,
-          alignment: WrapAlignment.spaceBetween,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 170, maxWidth: 250),
-              child: _HeroCenterPanel(
-                progress: progress,
-                remainingText: _remainingText(plan.weddingDate),
-                status: plan.status,
-              ),
-            ),
-            _HeroProgress(
-              progress: progress,
-              progressPct: progressPct,
-              taskProgressText: taskProgressText,
-              compact: true,
-            ),
-          ],
-        ),
-      ],
-    );
-
-    return _HeroShell(child: heroContent);
-  }
-
-  String _remainingText(DateTime? date) {
-    if (date == null) return 'تاريخ الزفاف غير محدد';
-    final now = DateTime.now();
-    final diff = date.difference(now);
-    if (diff.isNegative) return 'موعد الزفاف مضى';
-    final days = diff.inDays;
-    final hours = diff.inHours % 24;
-    final minutes = diff.inMinutes % 60;
-    if (days > 0) {
-      return 'متبقي $days يوم، $hours ساعات، $minutes دقيقة';
+    final progressPct = totalTasks == 0 ? 0 : ((completedTasks / totalTasks) * 100).round();
+    final progressVal = totalTasks == 0 ? 0.0 : (completedTasks / totalTasks);
+    
+    // Remaining days
+    int remainingDays = 0;
+    if (plan.weddingDate != null) {
+      final diff = plan.weddingDate!.difference(DateTime.now());
+      remainingDays = diff.isNegative ? 0 : diff.inDays;
     }
-    if (hours > 0) {
-      return 'متبقي $hours ساعات، $minutes دقيقة';
-    }
-    return 'متبقي $minutes دقيقة';
-  }
-}
 
-class _HeroShell extends StatelessWidget {
-  const _HeroShell({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF97002B), Color(0xFF650018)],
+          colors: [Color(0xFF8B1A3F), Color(0xFF5D0A24)],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(
-            color: AppTheme.deepBurgundy.withAlpha(60),
-            blurRadius: 26,
-            offset: const Offset(0, 14),
-          ),
+          BoxShadow(color: HomeUiColors.maroon.withAlpha(40), blurRadius: 16, offset: const Offset(0, 8)),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            Positioned(
-              left: -62,
-              top: -48,
-              child: _DecorativeCircle(size: 170, alpha: 22),
-            ),
-            Positioned(
-              right: -34,
-              bottom: -58,
-              child: _DecorativeCircle(size: 160, alpha: 16),
-            ),
-            Positioned(
-              left: 18,
-              bottom: 18,
-              child: Icon(
-                Icons.favorite_border,
-                color: Colors.white.withAlpha(14),
-                size: 120,
-              ),
-            ),
-            Padding(padding: const EdgeInsets.all(18), child: child),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DecorativeCircle extends StatelessWidget {
-  const _DecorativeCircle({required this.size, required this.alpha});
-
-  final double size;
-  final int alpha;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withAlpha(alpha), width: 24),
-      ),
-    );
-  }
-}
-
-class _HeroPlanInfo extends StatelessWidget {
-  const _HeroPlanInfo({
-    required this.title,
-    required this.city,
-    required this.weddingDate,
-    required this.planId,
-  });
-
-  final String title;
-  final String? city;
-  final DateTime? weddingDate;
-  final String planId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.right,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 21,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 14,
-          runSpacing: 8,
-          alignment: WrapAlignment.end,
-          children: [
-            _HeroMeta(icon: Icons.location_on, label: city ?? 'غير محدد'),
-            _HeroMeta(icon: Icons.schedule, label: _formatDate(weddingDate)),
-            const _HeroMeta(icon: Icons.calendar_today, label: 'تاريخ الزفاف'),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Align(
-          alignment: Alignment.centerRight,
-          child: _HeroButton(
-            label: 'فتح لوحة التحكم',
-            icon: Icons.dashboard_customize_outlined,
-            onTap: () => context.push(AppRouter.weddingPlanDashboard(planId)),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroMeta extends StatelessWidget {
-  const _HeroMeta({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 190),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Icon(icon, color: Colors.white.withAlpha(210), size: 17),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroCenterPanel extends StatelessWidget {
-  const _HeroCenterPanel({
-    required this.progress,
-    required this.remainingText,
-    required this.status,
-  });
-
-  final double progress;
-  final String remainingText;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        const Text(
-          'حالة الخطة',
-          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 8),
-        _StatusBadge(status: status),
-        const SizedBox(height: 18),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Flexible(
-              child: Text(
-                remainingText,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.timer_outlined, color: Colors.white70, size: 19),
-          ],
-        ),
-        const SizedBox(height: 18),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 9,
-            color: AppTheme.warmGold,
-            backgroundColor: Colors.white.withAlpha(45),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = switch (status) {
-      'PLANNING' => 'قيد التخطيط',
-      'ARCHIVED' => 'مؤرشفة',
-      _ => status,
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(28),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.warmGold.withAlpha(120)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppTheme.warmGold,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(Icons.lock_clock, color: AppTheme.warmGold, size: 14),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroProgress extends StatelessWidget {
-  const _HeroProgress({
-    required this.progress,
-    required this.progressPct,
-    required this.taskProgressText,
-    required this.compact,
-  });
-
-  final double progress;
-  final int progressPct;
-  final String taskProgressText;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = compact ? 106.0 : 144.0;
-    return SizedBox(
-      width: compact ? 122 : 176,
-      child: Column(
-        children: [
-          SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              alignment: Alignment.center,
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: compact ? 9 : 12,
-                  color: AppTheme.warmGold,
-                  backgroundColor: Colors.white.withAlpha(40),
-                  strokeCap: StrokeCap.round,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      plan.title,
+                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.favorite_border, color: HomeUiColors.goldSoft, size: 22),
+                  ],
                 ),
+                const SizedBox(height: 6),
                 Text(
-                  '$progressPct%',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: compact ? 24 : 31,
+                  _formatDate(plan.weddingDate),
+                  style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 13),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'أنت في الطريق الصحيح!',
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.auto_awesome, color: HomeUiColors.gold, size: 18),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$completedTasks من $totalTasks مهمة مكتملة',
+                  style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: progressVal,
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withAlpha(50),
+                    valueColor: const AlwaysStoppedAnimation<Color>(HomeUiColors.goldSoft),
                   ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'تبقى $remainingDays يوم',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            '$progressPct% مكتمل',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _HeroRingProgress(progressPct: progressPct),
+                const SizedBox(height: 16),
+                _HeroButton(onTap: () {
+                  context.push(AppRouter.weddingPlanDashboard(plan.id));
+                }),
+              ],
             ),
-          ),
-          Text(
-            taskProgressText,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HeroRingProgress extends StatelessWidget {
+  const _HeroRingProgress({required this.progressPct});
+  final int progressPct;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 86,
+          height: 86,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 86, height: 86,
+                child: CircularProgressIndicator(
+                  value: progressPct / 100,
+                  strokeWidth: 8,
+                  backgroundColor: Colors.white.withAlpha(30),
+                  valueColor: const AlwaysStoppedAnimation<Color>(HomeUiColors.goldSoft),
+                  strokeCap: StrokeCap.round,
+                ),
+              ),
+              Text(
+                '$progressPct%',
+                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        const Text('مكتمل', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }
 
 class _HeroButton extends StatelessWidget {
-  const _HeroButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
+  const _HeroButton({required this.onTap});
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: FilledButton.styleFrom(
-        backgroundColor: Colors.white.withAlpha(28),
-        foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withAlpha(55)),
-        minimumSize: const Size(0, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withAlpha(80)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.chevron_left, color: Colors.white, size: 18),
+            SizedBox(width: 4),
+            Text('استكمال المهام', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+          ],
+        ),
       ),
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// METRICS & BUDGET
+// -----------------------------------------------------------------------------
 
 class HomeMetricsBudgetSection extends StatelessWidget {
-  const HomeMetricsBudgetSection({
-    required this.provider,
-    this.isDesktop = false,
-    super.key,
-  });
-
+  const HomeMetricsBudgetSection({required this.provider, super.key});
   final HomeDashboardProvider provider;
-  final bool isDesktop;
 
   @override
   Widget build(BuildContext context) {
-    if (provider.primaryPlan == null) return const SizedBox.shrink();
-
-    final metrics = _MetricCards(provider: provider);
-    final budget = _BudgetSummaryCard(provider: provider);
-
-    if (isDesktop) {
-      return Row(
-        textDirection: TextDirection.ltr,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(width: 430, child: metrics),
-          const SizedBox(width: 18),
-          Expanded(child: budget),
-        ],
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [metrics, const SizedBox(height: 14), budget],
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _QuickGlanceCard(provider: provider)),
+        const SizedBox(width: 12),
+        Expanded(child: _BudgetSummaryCard(provider: provider)),
+      ],
     );
   }
 }
 
-class _MetricCards extends StatelessWidget {
-  const _MetricCards({required this.provider});
-
+class _QuickGlanceCard extends StatelessWidget {
+  const _QuickGlanceCard({required this.provider});
   final HomeDashboardProvider provider;
 
   @override
   Widget build(BuildContext context) {
-    final tasks = _sortedUpcomingTasks(provider.tasks ?? const []);
-    final installments = _sortedDueInstallments(
-      provider.dueInstallments ?? const [],
-    );
-    final debt = provider.debtSummary;
-    final totalDebt = _money(debt?.totalDebt);
-    final remainingDebt = _money(debt?.remainingDebt);
+    final tasks = provider.tasks ?? [];
+    final completedTasks = tasks.where((t) => t.isDone).length;
+    final tasksVal = '$completedTasks/${tasks.length}';
+    final vendorsCount = 12; // Placeholder as requested
+    final guestsCount = 246; // Placeholder as requested
+    final paymentsCount = 8; // Placeholder as requested
 
-    final cards = [
-      _MetricCard(
-        icon: Icons.task_alt,
-        iconColor: const Color(0xFF2F8D4B),
-        title: 'المهام القادمة',
-        value: '${tasks.length}',
-        subtitle: 'مهمة',
-        footerTitle: tasks.isEmpty ? 'لا توجد مهام قادمة' : 'أقرب مهمة',
-        footerValue: tasks.isEmpty
-            ? ''
-            : '${tasks.first.title}\n${_formatShortDate(tasks.first.dueDate)}',
-      ),
-      _MetricCard(
-        icon: Icons.event_note,
-        iconColor: const Color(0xFFC66B35),
-        title: 'الأقساط القريبة',
-        value: '${installments.length}',
-        subtitle: 'قسط',
-        footerTitle: installments.isEmpty ? 'لا توجد أقساط قريبة' : 'المبلغ',
-        footerValue: installments.isEmpty
-            ? ''
-            : '${_formatNumber(_money(installments.first.amount))} YER\n${_formatShortDate(installments.first.dueDate)}',
-      ),
-      _MetricCard(
-        icon: Icons.account_balance_wallet_outlined,
-        iconColor: AppTheme.deepBurgundy,
-        title: 'الديون',
-        value: _formatNumber(totalDebt),
-        subtitle: 'YER',
-        footerTitle: totalDebt <= 0 ? 'لا توجد ديون' : 'المتبقي',
-        footerValue: totalDebt <= 0
-            ? ''
-            : '${_formatNumber(remainingDebt)} YER',
-      ),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      reverse: true,
-      child: Row(
+    return Container(
+      decoration: BoxDecoration(color: HomeUiColors.card, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final card in cards)
-            SizedBox(
-              width: 126,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 10),
-                child: card,
-              ),
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.remove_red_eye_outlined, color: HomeUiColors.maroon, size: 20),
+              SizedBox(width: 6),
+              Text('نظرة سريعة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _MiniStatBox(title: 'المهام', value: tasksVal, icon: Icons.assignment_outlined, color: HomeUiColors.pinkSoft, iconColor: Colors.pink)),
+              const SizedBox(width: 8),
+              Expanded(child: _MiniStatBox(title: 'الموردين', value: vendorsCount.toString(), icon: Icons.people_alt_outlined, color: HomeUiColors.greenSoft, iconColor: Colors.green)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _MiniStatBox(title: 'المدفوعات', value: paymentsCount.toString(), icon: Icons.credit_card_outlined, color: HomeUiColors.purpleSoft, iconColor: Colors.purple)),
+              const SizedBox(width: 8),
+              Expanded(child: _MiniStatBox(title: 'الضيوف', value: guestsCount.toString(), icon: Icons.groups_outlined, color: HomeUiColors.orangeSoft, iconColor: Colors.orange)),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.footerTitle,
-    required this.footerValue,
-  });
-
-  final IconData icon;
-  final Color iconColor;
+class _MiniStatBox extends StatelessWidget {
+  const _MiniStatBox({required this.title, required this.value, required this.icon, required this.color, required this.iconColor});
   final String title;
   final String value;
-  final String subtitle;
-  final String footerTitle;
-  final String footerValue;
+  final IconData icon;
+  final Color color;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
-    return _SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: HomeUiColors.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF0F0F0)),
+      ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: iconColor.withAlpha(20),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(height: 9),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.charcoal,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-              height: 1.05,
-            ),
-          ),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: _mutedText, fontSize: 12),
-          ),
-          const SizedBox(height: 9),
-          const Divider(height: 1, color: _cardBorder),
-          const SizedBox(height: 10),
-          Text(
-            footerTitle,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _mutedText,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (footerValue.isNotEmpty) ...[
-            const SizedBox(height: 3),
-            Text(
-              footerValue,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.deepBurgundy,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
+          Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: HomeUiColors.muted)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+                child: Icon(icon, color: iconColor, size: 14),
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: HomeUiColors.ink)),
+            ],
+          ),
         ],
       ),
     );
@@ -945,736 +502,168 @@ class _MetricCard extends StatelessWidget {
 
 class _BudgetSummaryCard extends StatelessWidget {
   const _BudgetSummaryCard({required this.provider});
-
   final HomeDashboardProvider provider;
 
   @override
   Widget build(BuildContext context) {
-    final plan = provider.primaryPlan!;
-    final expense = provider.expenseSummary;
-    final debt = provider.debtSummary;
-    final planBudget = _money(plan.estimatedBudget);
-    final summaryBudget = _money(expense?.totalPlanned);
-    final totalBudget = planBudget > 0 ? planBudget : summaryBudget;
-    final spent = _money(expense?.totalPaid);
-    final remaining = totalBudget > 0
-        ? math.max(0.0, totalBudget - spent)
-        : 0.0;
-    final totalDebt = _money(debt?.totalDebt);
-    final dueInstallments = provider.dueInstallments ?? const <Installment>[];
-    final dueAmount = dueInstallments.fold<double>(
-      0,
-      (sum, item) => sum + _money(item.amount),
-    );
-    final commitments = totalDebt + dueAmount;
-    final hasBudget = totalBudget > 0;
-    final spentRatio = hasBudget
-        ? (spent / totalBudget).clamp(0.0, 1.0).toDouble()
-        : 0.0;
-    final debtRatio = hasBudget
-        ? (totalDebt / totalBudget).clamp(0.0, 1.0).toDouble()
-        : 0.0;
-    final commitmentRatio = hasBudget
-        ? (commitments / totalBudget).clamp(0.0, 1.0).toDouble()
-        : 0.0;
+    final plan = provider.primaryPlan;
+    final planBudget = plan != null ? _money(plan.estimatedBudget) : 10000000.0;
+    final spent = provider.expenseSummary != null ? _money(provider.expenseSummary!.totalPaid) : 6250000.0;
+    final remaining = math.max(0.0, planBudget - spent);
+    final spentRatio = planBudget > 0 ? (spent / planBudget).clamp(0.0, 1.0) : 0.0;
 
-    return _SurfaceCard(
-      padding: const EdgeInsets.all(14),
+    return Container(
+      decoration: BoxDecoration(color: HomeUiColors.card, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: _softGold,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.savings_outlined,
-                  color: AppTheme.warmGold,
-                  size: 21,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'ملخص الميزانية',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 17,
-                    color: AppTheme.charcoal,
-                  ),
-                ),
-              ),
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.account_balance_wallet_outlined, color: HomeUiColors.maroon, size: 20),
+              SizedBox(width: 6),
+              Text('ملخص الميزانية', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
             ],
           ),
-          const SizedBox(height: 14),
-          if (!hasBudget)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _softBurgundy,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Text(
-                'لم تحدد الميزانية بعد',
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  color: AppTheme.deepBurgundy,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            )
-          else
-            Text(
-              '${_formatNumber(totalBudget)} ${plan.currency}',
-              textAlign: TextAlign.left,
-              style: const TextStyle(
-                fontSize: 25,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-              ),
-            ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          const Text('إجمالي الميزانية', style: TextStyle(fontSize: 12, color: HomeUiColors.muted, fontWeight: FontWeight.w700)),
+          Text('${_formatNumber(planBudget)} ر.ي', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: HomeUiColors.ink)),
+          const SizedBox(height: 16),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              SizedBox(
+                width: 60, height: 60,
+                child: CustomPaint(painter: _BudgetDonutPainter(spentRatio: spentRatio)),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _BudgetLine(
-                      label: 'الميزانية الكلية',
-                      value: hasBudget
-                          ? '${_formatNumber(totalBudget)} ${plan.currency}'
-                          : 'غير محددة',
-                      dotColor: AppTheme.warmGold,
-                    ),
-                    _BudgetLine(
-                      label: 'المصروف',
-                      value: '${_formatNumber(spent)} ${plan.currency}',
-                      dotColor: AppTheme.deepBurgundy,
-                    ),
-                    _BudgetLine(
-                      label: 'المتبقي',
-                      value: hasBudget
-                          ? '${_formatNumber(remaining)} ${plan.currency}'
-                          : 'غير محسوب',
-                      dotColor: Colors.grey,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: _BudgetDonut(
-                  spentRatio: spentRatio,
-                  debtRatio: debtRatio,
-                  commitmentRatio: commitmentRatio,
-                  hasBudget: hasBudget,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    _BudgetLine(
-                      label: 'الديون',
-                      value: '${_formatNumber(totalDebt)} ${plan.currency}',
-                      dotColor: AppTheme.deepBurgundy,
-                    ),
-                    _BudgetLine(
-                      label: 'الأقساط القادمة',
-                      value: '${_formatNumber(dueAmount)} ${plan.currency}',
-                      dotColor: AppTheme.warmGold,
-                    ),
-                    _BudgetLine(
-                      label: 'الالتزامات القادمة',
-                      value: '${_formatNumber(commitments)} ${plan.currency}',
-                      dotColor: const Color(0xFFC0932F),
-                    ),
+                    _LegendItem(label: 'المصروف', value: '${_formatNumber(spent)} ر.ي', color: HomeUiColors.maroon),
+                    const SizedBox(height: 12),
+                    _LegendItem(label: 'المتبقي', value: '${_formatNumber(remaining)} ر.ي', color: HomeUiColors.gold),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          _SegmentedBudgetBar(
-            spentRatio: spentRatio,
-            debtRatio: debtRatio,
-            commitmentRatio: commitmentRatio,
-            hasBudget: hasBudget,
-          ),
+          const SizedBox(height: 16),
+          const Text('عرض التفاصيل >', style: TextStyle(color: HomeUiColors.maroon, fontSize: 12, fontWeight: FontWeight.w800)),
         ],
       ),
     );
   }
 }
 
-class _BudgetLine extends StatelessWidget {
-  const _BudgetLine({
-    required this.label,
-    required this.value,
-    required this.dotColor,
-  });
-
-  final String label;
-  final String value;
-  final Color dotColor;
+class _LegendItem extends StatelessWidget {
+  const _LegendItem({required this.label, required this.value, required this.color});
+  final String label, value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  label,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _mutedText, fontSize: 11),
-                ),
-                Text(
-                  value,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.charcoal,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BudgetDonut extends StatelessWidget {
-  const _BudgetDonut({
-    required this.spentRatio,
-    required this.debtRatio,
-    required this.commitmentRatio,
-    required this.hasBudget,
-  });
-
-  final double spentRatio;
-  final double debtRatio;
-  final double commitmentRatio;
-  final bool hasBudget;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 76,
-      height: 76,
-      child: CustomPaint(
-        painter: _BudgetDonutPainter(
-          spentRatio: spentRatio,
-          debtRatio: debtRatio,
-          commitmentRatio: commitmentRatio,
-          hasBudget: hasBudget,
+    return Row(
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 11, color: HomeUiColors.muted)),
+            Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: HomeUiColors.ink)),
+          ],
         ),
-        child: Center(
-          child: Text(
-            hasBudget ? '${(spentRatio * 100).round()}%' : '—',
-            style: const TextStyle(
-              color: AppTheme.deepBurgundy,
-              fontWeight: FontWeight.w900,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ),
+      ],
     );
   }
 }
 
 class _BudgetDonutPainter extends CustomPainter {
-  const _BudgetDonutPainter({
-    required this.spentRatio,
-    required this.debtRatio,
-    required this.commitmentRatio,
-    required this.hasBudget,
-  });
-
   final double spentRatio;
-  final double debtRatio;
-  final double commitmentRatio;
-  final bool hasBudget;
-
+  _BudgetDonutPainter({required this.spentRatio});
+  
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width, size.height) / 2 - 10;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final track = Paint()
+    final radius = size.width / 2;
+    
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12
+      ..color = HomeUiColors.goldSoft;
+    canvas.drawCircle(center, radius, trackPaint);
+    
+    final spentPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 12
       ..strokeCap = StrokeCap.butt
-      ..color = const Color(0xFFE2DED8);
-
-    canvas.drawArc(rect, 0, math.pi * 2, false, track);
-
-    if (!hasBudget) return;
-
-    final segments = [
-      (spentRatio, AppTheme.deepBurgundy),
-      (debtRatio, const Color(0xFF9A1235)),
-      (commitmentRatio, AppTheme.warmGold),
-    ];
-    var start = -math.pi / 2;
-    for (final segment in segments) {
-      final sweep = math.max(0.03, segment.$1) * math.pi * 1.65;
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 12
-        ..strokeCap = StrokeCap.butt
-        ..color = segment.$2;
-      canvas.drawArc(rect, start, sweep, false, paint);
-      start += sweep + 0.08;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BudgetDonutPainter oldDelegate) {
-    return spentRatio != oldDelegate.spentRatio ||
-        debtRatio != oldDelegate.debtRatio ||
-        commitmentRatio != oldDelegate.commitmentRatio ||
-        hasBudget != oldDelegate.hasBudget;
-  }
-}
-
-class _SegmentedBudgetBar extends StatelessWidget {
-  const _SegmentedBudgetBar({
-    required this.spentRatio,
-    required this.debtRatio,
-    required this.commitmentRatio,
-    required this.hasBudget,
-  });
-
-  final double spentRatio;
-  final double debtRatio;
-  final double commitmentRatio;
-  final bool hasBudget;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!hasBudget) {
-      return Container(
-        height: 9,
-        decoration: BoxDecoration(
-          color: const Color(0xFFE6E0D8),
-          borderRadius: BorderRadius.circular(999),
-        ),
-      );
-    }
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        height: 9,
-        child: Row(
-          children: [
-            Expanded(
-              flex: math.max(1, (spentRatio * 100).round()),
-              child: Container(color: AppTheme.deepBurgundy),
-            ),
-            Expanded(
-              flex: math.max(1, (debtRatio * 100).round()),
-              child: Container(color: const Color(0xFF9A1235)),
-            ),
-            Expanded(
-              flex: math.max(1, (commitmentRatio * 100).round()),
-              child: Container(color: AppTheme.warmGold),
-            ),
-            Expanded(
-              flex: math.max(
-                1,
-                ((1 - math.min(1.0, spentRatio + debtRatio + commitmentRatio)) *
-                        100)
-                    .round(),
-              ),
-              child: Container(color: const Color(0xFFE2DED8)),
-            ),
-          ],
-        ),
-      ),
+      ..color = HomeUiColors.maroon;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      math.pi * 2 * spentRatio,
+      false,
+      spentPaint,
     );
   }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+// -----------------------------------------------------------------------------
+// QUICK ACTIONS
+// -----------------------------------------------------------------------------
 
 class HomeQuickActions extends StatelessWidget {
-  const HomeQuickActions({
-    required this.provider,
-    this.isDesktop = false,
-    required this.onNeedPlan,
-    super.key,
-  });
-
+  const HomeQuickActions({required this.provider, required this.onNeedPlan, super.key});
   final HomeDashboardProvider provider;
-  final bool isDesktop;
   final VoidCallback onNeedPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    final planId = provider.primaryPlan?.id;
-    final actions = [
-      _QuickAction(
-        label: 'خطة جديدة',
-        icon: Icons.add_box_outlined,
-        color: AppTheme.warmGold,
-        enabled: true,
-        onTap: () => context.push(AppRouter.createWeddingPlan),
-      ),
-      _QuickAction(
-        label: 'إضافة عضو',
-        icon: Icons.person_add_alt,
-        color: const Color(0xFF236B92),
-        enabled: planId != null,
-        onTap: () => context.push(AppRouter.addSharedMember(planId ?? '')),
-      ),
-      _QuickAction(
-        label: 'إضافة مهمة',
-        icon: Icons.task_alt,
-        color: const Color(0xFF2F8D4B),
-        enabled: planId != null,
-        onTap: () => context.push(AppRouter.createTask(planId ?? '')),
-      ),
-      _QuickAction(
-        label: 'إضافة دين',
-        icon: Icons.credit_card,
-        color: AppTheme.deepBurgundy,
-        enabled: planId != null,
-        onTap: () => context.push(AppRouter.createDebt(planId ?? '')),
-      ),
-      _QuickAction(
-        label: 'إضافة مصروف',
-        icon: Icons.account_balance_wallet_outlined,
-        color: AppTheme.deepBurgundy,
-        enabled: planId != null,
-        onTap: () => context.push(AppRouter.createExpense(planId ?? '')),
-      ),
-    ];
-
-    final content = isDesktop
-        ? Row(
-            children: [
-              for (var i = 0; i < actions.length; i++) ...[
-                Expanded(
-                  child: _QuickActionCard(
-                    action: actions[i],
-                    onNeedPlan: onNeedPlan,
-                  ),
-                ),
-                if (i != actions.length - 1) const SizedBox(width: 12),
-              ],
-            ],
-          )
-        : SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            child: Row(
-              children: [
-                for (final action in actions)
-                  SizedBox(
-                    width: 126,
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10),
-                      child: _QuickActionCard(
-                        action: action,
-                        onNeedPlan: onNeedPlan,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-
-    return _SectionShell(title: 'إجراءات سريعة ⚡', child: content);
-  }
-}
-
-class _QuickAction {
-  const _QuickAction({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool enabled;
-  final VoidCallback onTap;
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({required this.action, required this.onNeedPlan});
-
-  final _QuickAction action;
-  final VoidCallback onNeedPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: action.enabled ? action.onTap : onNeedPlan,
-      borderRadius: BorderRadius.circular(16),
-      child: Opacity(
-        opacity: action.enabled ? 1 : 0.54,
-        child: Container(
-          height: 76,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _cardBorder),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(10),
-                blurRadius: 16,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(action.icon, color: action.color, size: 25),
-              const SizedBox(height: 7),
-              Text(
-                action.label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppTheme.charcoal,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class HomeAlertsMembersGrid extends StatelessWidget {
-  const HomeAlertsMembersGrid({
-    required this.provider,
-    this.isDesktop = false,
-    super.key,
-  });
-
-  final HomeDashboardProvider provider;
-  final bool isDesktop;
-
-  @override
-  Widget build(BuildContext context) {
-    final alerts = HomeAlertsCard(provider: provider);
-    final side = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        HomeMembersCard(provider: provider),
-        const SizedBox(height: 18),
-        HomeSharedPlansCard(provider: provider),
-      ],
-    );
-
-    if (!isDesktop) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [alerts, const SizedBox(height: 18), side],
-      );
-    }
-
-    return Row(
-      textDirection: TextDirection.ltr,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(child: alerts),
-        const SizedBox(width: 18),
-        Expanded(child: side),
-      ],
-    );
-  }
-}
-
-class HomeAlertsCard extends StatelessWidget {
-  const HomeAlertsCard({required this.provider, super.key});
-
-  final HomeDashboardProvider provider;
-
-  @override
-  Widget build(BuildContext context) {
-    final alerts = _buildAlerts();
-
-    return _SectionShell(
-      title: 'تنبيهات مهمة 🔔',
-      titleIcon: Icons.notifications_active_outlined,
-      child: _SurfaceCard(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: alerts.isEmpty
-              ? [
-                  const Padding(
-                    padding: EdgeInsets.all(18),
-                    child: Text(
-                      'لا توجد تنبيهات مهمة حالياً',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: _mutedText,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ]
-              : alerts.take(2).toList(),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildAlerts() {
-    final alerts = <Widget>[];
-    final installments = _sortedDueInstallments(
-      provider.dueInstallments ?? const [],
-    );
-    if (installments.isNotEmpty) {
-      final item = installments.first;
-      alerts.add(
-        _AlertItem(
-          icon: Icons.event_busy,
-          background: _softRed,
-          iconColor: AppTheme.deepBurgundy,
-          title: 'قسط قريب الاستحقاق',
-          message: 'لديك قسط بقيمة ${_formatNumber(_money(item.amount))} YER',
-          detail: _dueText(item.dueDate),
-        ),
-      );
-    }
-
-    final plan = provider.primaryPlan;
-    final budget = math.max(
-      _money(plan?.estimatedBudget),
-      _money(provider.expenseSummary?.totalPlanned),
-    );
-    final spent = _money(provider.expenseSummary?.totalPaid);
-    if (budget > 0 && spent > 0) {
-      final spentPct = ((spent / budget) * 100).clamp(0, 999).round();
-      alerts.add(
-        _AlertItem(
-          icon: Icons.trending_up,
-          background: const Color(0xFFF3E7D2),
-          iconColor: const Color(0xFFB57A13),
-          title: 'مصروفات مرتفعة',
-          message: 'لقد وصلت المصروفات إلى $spentPct% من إجمالي الميزانية',
-          detail: 'راجع ملخص الميزانية',
-        ),
-      );
-    }
-
-    final tasks = _sortedUpcomingTasks(provider.tasks ?? const []);
-    if (tasks.isNotEmpty) {
-      final task = tasks.first;
-      alerts.add(
-        _AlertItem(
-          icon: Icons.fact_check_outlined,
-          background: _softGreen,
-          iconColor: const Color(0xFF2F8D4B),
-          title: 'مهمة قريبة',
-          message: task.title,
-          detail: _formatShortDate(task.dueDate),
-        ),
-      );
-    }
-
-    return alerts;
-  }
-
-  String _dueText(DateTime? dueDate) {
-    if (dueDate == null) return 'بدون تاريخ محدد';
-    final diff = dueDate.difference(DateTime.now()).inDays;
-    if (diff <= 0) return 'يستحق اليوم';
-    return 'يستحق خلال $diff أيام';
-  }
-}
-
-class _AlertItem extends StatelessWidget {
-  const _AlertItem({
-    required this.icon,
-    required this.background,
-    required this.iconColor,
-    required this.title,
-    required this.message,
-    required this.detail,
-  });
-
-  final IconData icon;
-  final Color background;
-  final Color iconColor;
-  final String title;
-  final String message;
-  final String detail;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
+      decoration: BoxDecoration(color: HomeUiColors.card, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: iconColor, size: 30),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Icon(Icons.bolt, color: HomeUiColors.gold, size: 20),
+                SizedBox(width: 6),
+                Text('إجراءات سريعة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
               children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: iconColor,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: AppTheme.charcoal,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  detail,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(color: _mutedText, fontSize: 12),
-                ),
+                _QuickActionItem(label: 'نفقات سريعة', icon: Icons.add, isPrimary: true, onTap: () {
+                  if (provider.primaryPlan != null) {
+                    context.push(AppRouter.createExpense(provider.primaryPlan!.id));
+                  } else {
+                    onNeedPlan();
+                  }
+                }),
+                _QuickActionItem(label: 'قائمة الضيوف', icon: Icons.people_outline, onTap: () {}),
+                _QuickActionItem(label: 'جدول الزواج', icon: Icons.calendar_today_outlined, onTap: () {}),
+                _QuickActionItem(label: 'الموردين', icon: Icons.person_outline, onTap: () {}),
+                _QuickActionItem(label: 'الميزانية', icon: Icons.account_balance_wallet_outlined, onTap: () {}),
+                _QuickActionItem(label: 'قائمة المهام', icon: Icons.assignment_outlined, onTap: () {
+                  if (provider.primaryPlan != null) {
+                    context.push(AppRouter.createTask(provider.primaryPlan!.id));
+                  } else {
+                    onNeedPlan();
+                  }
+                }),
               ],
             ),
           ),
@@ -1684,53 +673,33 @@ class _AlertItem extends StatelessWidget {
   }
 }
 
-class HomeMembersCard extends StatelessWidget {
-  const HomeMembersCard({required this.provider, super.key});
-
-  final HomeDashboardProvider provider;
+class _QuickActionItem extends StatelessWidget {
+  const _QuickActionItem({required this.label, required this.icon, this.isPrimary = false, required this.onTap});
+  final String label;
+  final IconData icon;
+  final bool isPrimary;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final members = provider.sharedMembers ?? const <SharedMember>[];
-    final planId = provider.primaryPlan?.id;
-
-    return _SectionShell(
-      title: 'المشاركون في الخطة',
-      trailing: '${members.length} عضو',
-      titleIcon: Icons.groups,
-      child: _SurfaceCard(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.only(left: 16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
         child: Column(
           children: [
-            if (members.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'لا يوجد مشاركون في هذه الخطة بعد',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: _mutedText),
-                ),
-              )
-            else
-              for (final member in members.take(2)) ...[
-                _MemberRow(member: member),
-                if (member != members.take(2).last) const SizedBox(height: 9),
-              ],
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: planId == null
-                    ? null
-                    : () => context.push(AppRouter.addSharedMember(planId)),
-                icon: const Icon(Icons.chevron_left, size: 18),
-                label: const Text('إضافة عضو'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.deepBurgundy,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w900),
-                ),
+            Container(
+              width: 54, height: 54,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isPrimary ? HomeUiColors.maroon.withAlpha(50) : const Color(0xFFF0F0F0)),
+                color: Colors.white,
               ),
+              child: Icon(icon, color: isPrimary ? HomeUiColors.maroon : HomeUiColors.ink, size: 24),
             ),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: HomeUiColors.ink)),
           ],
         ),
       ),
@@ -1738,416 +707,239 @@ class HomeMembersCard extends StatelessWidget {
   }
 }
 
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.member});
+// -----------------------------------------------------------------------------
+// IMPORTANT NOTES (Replaces Alerts)
+// -----------------------------------------------------------------------------
 
-  final SharedMember member;
+class HomeImportantNotesList extends StatelessWidget {
+  const HomeImportantNotesList({required this.provider, super.key});
+  final HomeDashboardProvider provider;
 
   @override
   Widget build(BuildContext context) {
-    final name = member.displayName;
-    final phone = member.displaySubtitle ?? 'بدون رقم هاتف';
-
     return Container(
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: _cardBorder),
-      ),
-      child: Row(
+      decoration: BoxDecoration(color: HomeUiColors.card, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.all(16),
+      child: Column(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: _softBurgundy,
-            child: Text(
-              _initials(name),
-              style: const TextStyle(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w900,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.bookmark_outline, color: HomeUiColors.maroon, size: 20),
+                  SizedBox(width: 6),
+                  Text('ملاحظات مهمة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
+                ],
               ),
-            ),
+              const Text('عرض الكل', style: TextStyle(color: HomeUiColors.maroon, fontSize: 12, fontWeight: FontWeight.w800)),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: HomeUiColors.background, borderRadius: BorderRadius.circular(12)),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  name,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.charcoal,
-                    fontWeight: FontWeight.w900,
-                  ),
+                const _NoteItem(
+                  title: 'تجربة فستان الزفاف',
+                  subtitle: 'الأحد، 15 يونيو 2026 - 4:00 مساءً',
+                  trailingIcon: Icons.calendar_today_outlined,
                 ),
-                Text(
-                  phone,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _mutedText, fontSize: 12),
+                const Divider(height: 24, color: Color(0xFFE5E5E5)),
+                const _NoteItem(
+                  title: 'تأكيد الحجز في قاعة سمو',
+                  subtitle: 'قبل 30 يونيو 2026',
+                  trailingColor: HomeUiColors.gold,
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: _softGold,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              _roleLabel(member.role),
-              style: const TextStyle(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w800,
-                fontSize: 11,
-              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  String _initials(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return '؟';
-    final parts = trimmed.split(RegExp(r'\s+'));
-    if (parts.length == 1) return String.fromCharCode(parts.first.runes.first);
-    return '${String.fromCharCode(parts.first.runes.first)}${String.fromCharCode(parts.last.runes.first)}';
+class _NoteItem extends StatelessWidget {
+  const _NoteItem({required this.title, required this.subtitle, this.trailingIcon, this.trailingColor});
+  final String title, subtitle;
+  final IconData? trailingIcon;
+  final Color? trailingColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        if (trailingIcon != null)
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+            child: Icon(trailingIcon, color: HomeUiColors.maroon, size: 16),
+          )
+        else if (trailingColor != null)
+          Container(
+            width: 12, height: 12,
+            margin: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(color: trailingColor, shape: BoxShape.circle),
+          ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: HomeUiColors.ink)),
+              Text(subtitle, style: const TextStyle(fontSize: 12, color: HomeUiColors.muted)),
+            ],
+          ),
+        ),
+        const Icon(Icons.chevron_left, color: HomeUiColors.muted, size: 20),
+      ],
+    );
   }
 }
+
+// -----------------------------------------------------------------------------
+// SHARED PLANS
+// -----------------------------------------------------------------------------
 
 class HomeSharedPlansCard extends StatelessWidget {
   const HomeSharedPlansCard({required this.provider, super.key});
-
   final HomeDashboardProvider provider;
 
   @override
   Widget build(BuildContext context) {
-    final sharedCount = provider.sharedPlans.length;
-
-    return _SectionShell(
-      title: 'الخطط المشتركة معي',
-      trailing: '$sharedCount خطة مشتركة',
-      titleIcon: Icons.group_work,
-      child: _SurfaceCard(
-        padding: const EdgeInsets.all(12),
-        child: InkWell(
-          onTap: () => context.push(AppRouter.sharedWeddingPlans),
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _softBurgundy,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.chevron_left, color: AppTheme.deepBurgundy),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    sharedCount == 0
-                        ? 'لا توجد خطط مشتركة حالياً'
-                        : 'عرض الخطط المشتركة',
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(
-                      color: AppTheme.deepBurgundy,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: _softGold,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.folder_shared,
-                    color: AppTheme.deepBurgundy,
-                    size: 21,
-                  ),
-                ),
-              ],
-            ),
+    return Container(
+      decoration: BoxDecoration(color: HomeUiColors.card, borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: const [
+                  Icon(Icons.people_outline, color: HomeUiColors.maroon, size: 20),
+                  SizedBox(width: 6),
+                  Text('الخطط المشتركة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
+                ],
+              ),
+              const Text('عرض الكل', style: TextStyle(color: HomeUiColors.maroon, fontSize: 12, fontWeight: FontWeight.w800)),
+            ],
           ),
-        ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: HomeUiColors.maroon, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.groups, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('خطة عائلتنا', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: HomeUiColors.ink)),
+                    Text('آخر تحديث: اليوم، 9:20 ص', style: TextStyle(fontSize: 12, color: HomeUiColors.muted)),
+                  ],
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: HomeUiColors.goldSoft, border: Border.all(color: Colors.white, width: 2)),
+                    child: const Icon(Icons.person, size: 16, color: Colors.white),
+                  ),
+                  const SizedBox(width: 4),
+                  const Text('+2', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: HomeUiColors.muted)),
+                ],
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_left, color: HomeUiColors.muted, size: 20),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-class HomeBottomNavigation extends StatelessWidget {
-  const HomeBottomNavigation({
-    required this.provider,
-    required this.onNeedPlan,
-    super.key,
-  });
+// -----------------------------------------------------------------------------
+// BOTTOM NAVIGATION
+// -----------------------------------------------------------------------------
 
+class HomeBottomNavigation extends StatelessWidget {
+  const HomeBottomNavigation({required this.provider, required this.onNeedPlan, super.key});
   final HomeDashboardProvider provider;
   final VoidCallback onNeedPlan;
 
   @override
   Widget build(BuildContext context) {
-    final planId = provider.primaryPlan?.id;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withAlpha(245),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(16),
-            blurRadius: 18,
-            offset: const Offset(0, -6),
-          ),
-        ],
-      ),
-      child: NavigationBar(
-        height: 70,
-        selectedIndex: 0,
-        backgroundColor: Colors.transparent,
-        indicatorColor: _softBurgundy,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        onDestinationSelected: (index) {
-          if (index == 0) return;
-          if (index == 1) {
-            context.go(AppRouter.weddingPlans);
-            return;
-          }
-          if (index == 2) {
-            context.push(AppRouter.createWeddingPlan);
-            return;
-          }
-          if (index == 3) {
-            if (planId == null) {
-              onNeedPlan();
-            } else {
-              context.push(AppRouter.tasks(planId));
-            }
-            return;
-          }
-          if (index == 4) {
-            context.push(AppRouter.sharedWeddingPlans);
-          }
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'الرئيسية'),
-          NavigationDestination(icon: Icon(Icons.event_note), label: 'الخطط'),
-          NavigationDestination(
-            icon: Icon(Icons.add_circle, size: 34),
-            label: '',
-          ),
-          NavigationDestination(icon: Icon(Icons.task_alt), label: 'المهام'),
-          NavigationDestination(icon: Icon(Icons.grid_view), label: 'المزيد'),
-        ],
-      ),
-    );
-  }
-}
-
-class HomeErrorCard extends StatelessWidget {
-  const HomeErrorCard({
-    required this.message,
-    required this.onRetry,
-    super.key,
-  });
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SurfaceCard(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            message,
-            textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: AppTheme.danger,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class HomeLoadingSkeleton extends StatelessWidget {
-  const HomeLoadingSkeleton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      clipBehavior: Clip.none,
       children: [
-        _SkeletonBlock(height: 214, radius: 24, color: AppTheme.deepBurgundy),
-        const SizedBox(height: 18),
-        Row(
-          children: const [
-            Expanded(child: _SkeletonBlock(height: 150)),
-            SizedBox(width: 12),
-            Expanded(child: _SkeletonBlock(height: 150)),
-            SizedBox(width: 12),
-            Expanded(child: _SkeletonBlock(height: 150)),
-          ],
-        ),
-        const SizedBox(height: 18),
-        const _SkeletonBlock(height: 90),
-        const SizedBox(height: 18),
-        Row(
-          children: const [
-            Expanded(child: _SkeletonBlock(height: 230)),
-            SizedBox(width: 18),
-            Expanded(child: _SkeletonBlock(height: 230)),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _SkeletonBlock extends StatelessWidget {
-  const _SkeletonBlock({required this.height, this.radius = 18, this.color});
-
-  final double height;
-  final double radius;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: color?.withAlpha(120) ?? Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: _cardBorder),
-      ),
-    );
-  }
-}
-
-class _SectionShell extends StatelessWidget {
-  const _SectionShell({
-    required this.title,
-    required this.child,
-    this.trailing,
-    this.titleIcon,
-  });
-
-  final String title;
-  final String? trailing;
-  final IconData? titleIcon;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            if (trailing != null)
-              Flexible(
-                child: Text(
-                  trailing!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _mutedText,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            if (trailing != null) const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: const TextStyle(
-                  color: AppTheme.charcoal,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            if (titleIcon != null) ...[
-              const SizedBox(width: 8),
-              Icon(titleIcon, color: AppTheme.deepBurgundy, size: 21),
+        Container(
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 10, offset: const Offset(0, -5)),
             ],
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NavItem(icon: Icons.home_rounded, label: 'الرئيسية', isActive: true),
+              _NavItem(icon: Icons.calendar_today_outlined, label: 'المهام', isActive: false),
+              const SizedBox(width: 60), // Space for FAB
+              _NavItem(icon: Icons.assignment_ind_outlined, label: 'الموردين', isActive: false),
+              _NavItem(icon: Icons.grid_view_rounded, label: 'المزيد', isActive: false),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
-        child,
+        Positioned(
+          bottom: 25,
+          child: InkWell(
+            onTap: onNeedPlan,
+            borderRadius: BorderRadius.circular(32),
+            child: Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: HomeUiColors.maroon,
+                boxShadow: [
+                  BoxShadow(color: HomeUiColors.maroon.withAlpha(80), blurRadius: 12, offset: const Offset(0, 6)),
+                ]
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 32),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
-class _SurfaceCard extends StatelessWidget {
-  const _SurfaceCard({required this.child, this.padding = EdgeInsets.zero});
-
-  final Widget child;
-  final EdgeInsetsGeometry padding;
+class _NavItem extends StatelessWidget {
+  const _NavItem({required this.icon, required this.label, required this.isActive});
+  final IconData icon;
+  final String label;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(12),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
-      ),
-      child: Padding(padding: padding, child: child),
+    final color = isActive ? HomeUiColors.maroon : HomeUiColors.muted;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600)),
+      ],
     );
   }
-}
-
-List<WeddingTask> _sortedUpcomingTasks(List<WeddingTask> tasks) {
-  final upcoming = tasks.where((task) => !task.isDone).toList();
-  upcoming.sort((a, b) {
-    final aDate = a.dueDate ?? DateTime(3000);
-    final bDate = b.dueDate ?? DateTime(3000);
-    return aDate.compareTo(bDate);
-  });
-  return upcoming;
-}
-
-List<Installment> _sortedDueInstallments(List<Installment> installments) {
-  final pending = installments.where((item) => item.status != 'PAID').toList();
-  pending.sort((a, b) {
-    final aDate = a.dueDate ?? DateTime(3000);
-    final bDate = b.dueDate ?? DateTime(3000);
-    return aDate.compareTo(bDate);
-  });
-  return pending;
 }

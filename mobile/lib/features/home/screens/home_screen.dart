@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../providers/home_dashboard_provider.dart';
 import '../widgets/home_widgets.dart';
@@ -29,87 +28,73 @@ class _HomeScreenState extends State<HomeScreen> {
     final auth = context.watch<AuthController>();
     final provider = context.watch<HomeDashboardProvider>();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final horizontalPadding = width <= 360 ? 14.0 : 16.0;
-
-        return Scaffold(
-          backgroundColor: AppTheme.ivory,
-          body: SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Stack(
-                  children: [
-                    RefreshIndicator(
-                      color: AppTheme.deepBurgundy,
-                      onRefresh: () => provider.loadDashboard(),
-                      child: CustomScrollView(
-                        slivers: [
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                horizontalPadding,
-                                18,
-                                horizontalPadding,
-                                104,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  HomeTopHeader(
-                                    userName: auth.user?.name,
-                                    onLogout: () async {
-                                      await context
-                                          .read<AuthController>()
-                                          .logout();
-                                      if (context.mounted) {
-                                        context.go(AppRouter.login);
-                                      }
-                                    },
-                                  ),
-                                  const SizedBox(height: 18),
-                                  AnimatedSwitcher(
-                                    duration: const Duration(milliseconds: 220),
-                                    child:
-                                        provider.isLoading &&
-                                            provider.primaryPlan == null
-                                        ? const HomeLoadingSkeleton()
-                                        : _HomeDashboardBody(
-                                            provider: provider,
-                                            onNeedPlan: () =>
-                                                _showNeedPlanSnackBar(context),
-                                          ),
-                                  ),
-                                ],
-                              ),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: HomeUiColors.background,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Stack(
+                children: [
+                  RefreshIndicator(
+                    color: HomeUiColors.maroon,
+                    onRefresh: () => provider.loadDashboard(),
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                HomeTopHeader(
+                                  userName: auth.user?.name,
+                                  onLogout: () async {
+                                    await context.read<AuthController>().logout();
+                                    if (context.mounted) {
+                                      context.go(AppRouter.login);
+                                    }
+                                  },
+                                ),
+                                const SizedBox(height: 24),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 220),
+                                  child: provider.isLoading && provider.primaryPlan == null
+                                      ? const HomeLoadingSkeleton()
+                                      : _HomeDashboardBody(
+                                          provider: provider,
+                                          onNeedPlan: () => _showNeedPlanSnackBar(context),
+                                        ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: HomeBottomNavigation(
-                        provider: provider,
-                        onNeedPlan: () => _showNeedPlanSnackBar(context),
-                      ),
+                  ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: HomeBottomNavigation(
+                      provider: provider,
+                      onNeedPlan: () => _showNeedPlanSnackBar(context),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
   void _showNeedPlanSnackBar(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('أنشئ خطة أولاً')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('أنشئ خطة أولاً')),
+    );
   }
 }
 
@@ -143,10 +128,12 @@ class _HomeDashboardBody extends StatelessWidget {
         HomeQuickActions(provider: provider, onNeedPlan: onNeedPlan),
         const SizedBox(height: 18),
         if (hasPlan) ...[
-          HomeAlertsMembersGrid(provider: provider),
+          HomeImportantNotesList(provider: provider),
           const SizedBox(height: 18),
         ],
-        if (!hasPlan) ...[HomeSharedPlansCard(provider: provider)],
+        if (!hasPlan) ...[
+          HomeSharedPlansCard(provider: provider)
+        ],
       ],
     );
   }

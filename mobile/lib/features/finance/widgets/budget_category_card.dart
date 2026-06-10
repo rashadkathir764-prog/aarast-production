@@ -10,26 +10,19 @@ class BudgetCategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: AppTheme.premiumCardDecoration(),
+    return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.dMaroon.withAlpha(20),
-                shape: BoxShape.circle,
-              ),
+            CircleAvatar(
+              backgroundColor: AppTheme.warmGold.withAlpha(45),
               child: const Icon(
-                Icons.folder_outlined,
-                color: AppTheme.dMaroon,
-                size: 26,
+                Icons.account_balance_wallet,
+                color: AppTheme.deepBurgundy,
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,20 +30,15 @@ class BudgetCategoryCard extends StatelessWidget {
                   Text(
                     category.name,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w800,
                     ),
                     textAlign: TextAlign.right,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     category.hasTargetAmount
-                        ? 'الهدف المخطط: ${category.targetAmount} YER'
-                        : 'بدون مبلغ مستهدف محدد',
-                    style: TextStyle(
-                      color: category.hasTargetAmount ? AppTheme.dInkSoft : AppTheme.dMuted,
-                      fontWeight: FontWeight.w600,
-                    ),
+                        ? 'الهدف: ${category.targetAmount} YER'
+                        : 'بدون مبلغ مستهدف',
                     textAlign: TextAlign.right,
                   ),
                 ],

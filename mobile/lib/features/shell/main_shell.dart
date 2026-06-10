@@ -10,10 +10,9 @@ import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/models/wedding_plan.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
-import '../providers/screens/providers_placeholder_screen.dart';
 import '../wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
-import '../wedding_plans/widgets/new_dashboard_widgets.dart';
+import '../wedding_plans/widgets/aarast_dashboard_widgets.dart';
 
 /// App home: a persistent bottom-navigation shell whose tabs (الرئيسية / المهام
 /// / الخطط / المزيد) live in an [IndexedStack] so each keeps its state while the
@@ -99,11 +98,11 @@ class _MainShellState extends State<MainShell> {
                 const MoreScreen(),
               ],
             ),
-            bottomNavigationBar: NewDashboardBottomNav(
+            bottomNavigationBar: DashboardBottomNav(
               activeIndex: _navSlot,
               onHome: () => _setIndex(0),
               onTasks: () => _setIndex(1),
-              onVendors: () => _setIndex(2),
+              onPlans: () => _setIndex(2),
               onMore: () => _setIndex(3),
               onAdd: () => context.push(AppRouter.createWeddingPlan),
             ),
@@ -116,36 +115,31 @@ class _MainShellState extends State<MainShell> {
       data: shellTheme,
       child: Directionality(
         textDirection: TextDirection.rtl,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Scaffold(
-              backgroundColor: AppTheme.dBg,
-              body: IndexedStack(
-                index: _index,
-                children: [
-                  WeddingPlanDashboardScreen(
-                    key: ValueKey('home-$activeId'),
-                    weddingPlanId: activeId,
-                    embedded: true,
-                  ),
-                  TaskTimelineScreen(
-                    key: ValueKey('tasks-$activeId'),
-                    weddingPlanId: activeId,
-                  ),
-                  const ProvidersPlaceholderScreen(),
-                  const MoreScreen(),
-                ],
+        child: Scaffold(
+          backgroundColor: AppTheme.dBg,
+          body: IndexedStack(
+            index: _index,
+            children: [
+              WeddingPlanDashboardScreen(
+                key: ValueKey('home-$activeId'),
+                weddingPlanId: activeId,
+                embedded: true,
               ),
-              bottomNavigationBar: NewDashboardBottomNav(
-                activeIndex: _navSlot,
-                onHome: () => _setIndex(0),
-                onTasks: () => _setIndex(1),
-                onVendors: () => _setIndex(2),
-                onMore: () => _setIndex(3),
-                onAdd: () => _showQuickAdd(activeId),
+              TaskTimelineScreen(
+                key: ValueKey('tasks-$activeId'),
+                weddingPlanId: activeId,
               ),
-            ),
+              MyWeddingPlansScreen(onSelectPlan: _selectPlan),
+              const MoreScreen(),
+            ],
+          ),
+          bottomNavigationBar: DashboardBottomNav(
+            activeIndex: _navSlot,
+            onHome: () => _setIndex(0),
+            onTasks: () => _setIndex(1),
+            onPlans: () => _setIndex(2),
+            onMore: () => _setIndex(3),
+            onAdd: () => _showQuickAdd(activeId),
           ),
         ),
       ),
@@ -168,7 +162,7 @@ class _MainShellState extends State<MainShell> {
 
   Widget _fallback(WeddingPlansProvider plans, AuthController auth) {
     if (plans.isLoading && plans.plans.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.dMaroon));
+      return const DashboardSkeleton();
     }
 
     if (plans.errorMessage != null && plans.plans.isEmpty) {
@@ -197,7 +191,7 @@ class _MainShellState extends State<MainShell> {
     return ListView(
       padding: const EdgeInsets.only(bottom: 28),
       children: [
-        NewDashboardTopHeader(
+        DashboardTopBar(
           userName: auth.user?.name ?? 'ضيف',
           onProfile: () => showAccountSheet(
             context,
@@ -206,7 +200,6 @@ class _MainShellState extends State<MainShell> {
             onLogout: _logout,
           ),
           hasNotificationDot: false,
-          onNotifications: () {},
         ),
         const SizedBox(height: 40),
         Padding(

@@ -25,13 +25,6 @@ To ensure a premium feel and clear financial visibility, we use a limited color 
 - **Warning (Amber)**: `#FF8F00` (Upcoming due dates, pending payments, warnings)
 - **Danger (Red but not aggressive)**: `#D32F2F` (Overdue tasks, missed payments, destructive actions)
 
-### Dashboard Pastel Cards Colors
-- **Creamy Background**: `#FDFCF0` (The main scaffold background for the Dashboard).
-- **Pastel Green**: `#E8F5E9` (Vendors card background)
-- **Pastel Red/Pink**: `#FFEBEE` (Tasks card background)
-- **Pastel Orange**: `#FFF3E0` (Guests card background)
-- **Pastel Purple/Blue**: `#E3F2FD` (Payments card background)
-
 ## 3. Typography
 - **Primary Font**: Cairo or Tajawal (Google Fonts, excellent for modern Arabic interfaces).
 - **Direction**: Right-to-Left (RTL) exclusively.

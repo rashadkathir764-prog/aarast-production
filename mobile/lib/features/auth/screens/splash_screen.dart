@@ -24,21 +24,21 @@ class SplashScreen extends StatelessWidget {
         }
 
         return const Scaffold(
-          backgroundColor: AppTheme.dBg,
+          backgroundColor: AppTheme.ivory,
           body: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'أعرست',
+                  'اعّرست',
                   style: TextStyle(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.deepBurgundy,
                     fontSize: 34,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
                 SizedBox(height: 16),
-                CircularProgressIndicator(color: AppTheme.dMaroon),
+                CircularProgressIndicator(color: AppTheme.deepBurgundy),
               ],
             ),
           ),

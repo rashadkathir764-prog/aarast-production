@@ -19,7 +19,7 @@ class DebtSummaryCard extends StatelessWidget {
             Text(
               'ملخص الديون',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.dMaroon,
+                color: AppTheme.deepBurgundy,
                 fontWeight: FontWeight.w800,
               ),
               textAlign: TextAlign.right,
@@ -60,7 +60,7 @@ class _SummaryTile extends StatelessWidget {
       width: 150,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dGold.withAlpha(28),
+        color: AppTheme.warmGold.withAlpha(28),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -69,7 +69,7 @@ class _SummaryTile extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppTheme.dMaroon,
+              color: AppTheme.deepBurgundy,
               fontWeight: FontWeight.w800,
             ),
             textAlign: TextAlign.right,

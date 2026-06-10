@@ -8,7 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../providers/dashboard_summary_provider.dart';
-
+import '../widgets/aarast_dashboard_widgets.dart';
 import '../widgets/new_dashboard_widgets.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
@@ -85,7 +85,7 @@ class _WeddingPlanDashboardScreenState
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: DashboardUiColors.ivory,
+          backgroundColor: DashboardUiColors.background,
           bottomNavigationBar: widget.embedded
               ? null
               : _buildBottomNav(provider),
@@ -108,7 +108,6 @@ class _WeddingPlanDashboardScreenState
   Widget _buildBottomNav(DashboardSummaryProvider provider) {
     final planId = provider.plan?.id ?? widget.weddingPlanId;
     return NewDashboardBottomNav(
-      activeIndex: 0,
       onMore: () => _comingSoon('قسم "المزيد" قيد الإعداد'),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
@@ -183,14 +182,14 @@ class _WeddingPlanDashboardScreenState
             onProfile: () => _openAccountSheet(auth),
           ),
           _padded(NewDashboardHeroCard(provider: provider)),
+          const SizedBox(height: 20),
+          _padded(NewDashboardStatsBudgetRow(provider: provider)),
           const SizedBox(height: 24),
-          NewDashboardMetricsBudgetSection(provider: provider),
+          _padded(NewDashboardQuickActions(provider: provider)),
           const SizedBox(height: 24),
-          NewDashboardQuickActions(provider: provider),
+          _padded(NewDashboardAlertsList(provider: provider)),
           const SizedBox(height: 24),
-          NewDashboardAlertsMembersGrid(provider: provider),
-          const SizedBox(height: 24),
-          NewDashboardSharedPlansCard(provider: provider),
+          _padded(NewDashboardSharedPlansCard(provider: provider)),
           const SizedBox(height: 32),
         ],
       ),

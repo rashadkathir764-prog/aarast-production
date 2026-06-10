@@ -22,7 +22,7 @@
 Current phase: Home dashboard approved-design polish.
 
 The backend MVP core API is implemented, regression-verified, and documented in `API_CONTRACT.md`. Flutter work includes Auth, WeddingPlan, Dashboard Command Center, Budget + Expense screens, Debt + Installment screens, Task + Timeline screens, and Sharing screens. 
-The Home screen has been completely rebuilt to perfectly match the approved "Image 2" Arabic dashboard reference. The previous "Claude design" was removed. Features include: an elegant header, a maroon gradient hero card with a gold circular progress chart, a pastel-colored 2x2 mini stats grid, a budget donut chart, scrollable quick actions, soft alert cards, and a custom bottom navigation with an elevated central FAB (+).
+The Home screen has been polished to more closely match the approved Arabic dashboard reference: compact header, burgundy hero card, dense metrics and budget summary, quick actions, alerts, members, shared plans, and mobile/tablet-only bottom navigation.
 The next step is pre-merge review, not merging yet. Marketplace, payments, AI, chat, Docker/Dokploy deployment, and production deployment work are not part of this slice.
 
 ## Checks Passed From Home Dashboard Exact Blueprint Polish

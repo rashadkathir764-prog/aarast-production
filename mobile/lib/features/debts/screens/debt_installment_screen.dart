@@ -148,7 +148,7 @@ class _DebtSectionTitle extends StatelessWidget {
           Text(
             'قائمة الديون',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.dMaroon,
+              color: AppTheme.deepBurgundy,
               fontWeight: FontWeight.w800,
             ),
             textAlign: TextAlign.right,

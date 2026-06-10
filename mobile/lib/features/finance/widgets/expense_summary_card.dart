@@ -10,46 +10,43 @@ class ExpenseSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: AppTheme.heroDecoration(),
+    return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.account_balance_wallet, color: AppTheme.dGold, size: 24),
-                const SizedBox(width: 8),
-                Text(
-                  'ملخص المصاريف',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-                  textAlign: TextAlign.right,
-                ),
-              ],
+            Text(
+              'ملخص المصاريف',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppTheme.deepBurgundy,
+                fontWeight: FontWeight.w800,
+              ),
+              textAlign: TextAlign.right,
             ),
-            const SizedBox(height: 18),
-            Row(
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.end,
               children: [
-                Expanded(
-                  child: _SummaryChip(
-                    label: 'مدفوع',
-                    amount: summary.totalPaid,
-                    count: summary.countPaid,
-                    color: AppTheme.success,
-                  ),
+                _SummaryChip(
+                  label: 'مدفوع',
+                  amount: summary.totalPaid,
+                  count: summary.countPaid,
+                  color: Colors.green,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SummaryChip(
-                    label: 'مخطط',
-                    amount: summary.totalPlanned,
-                    count: summary.countPlanned,
-                    color: AppTheme.dGold2,
-                  ),
+                _SummaryChip(
+                  label: 'مخطط',
+                  amount: summary.totalPlanned,
+                  count: summary.countPlanned,
+                  color: AppTheme.warmGold,
+                ),
+                _SummaryChip(
+                  label: 'ملغي',
+                  amount: summary.totalCancelled,
+                  count: summary.countCancelled,
+                  color: AppTheme.mediumGray,
                 ),
               ],
             ),
@@ -76,40 +73,32 @@ class _SummaryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      width: 150,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(20),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withAlpha(40)),
+        color: color.withAlpha(28),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '$count عنصر',
-                style: const TextStyle(color: Colors.white70, fontSize: 11),
-              ),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
           Text(
-            '$amount YER',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Colors.white,
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: color == AppTheme.warmGold ? AppTheme.deepBurgundy : color,
               fontWeight: FontWeight.w800,
             ),
             textAlign: TextAlign.right,
           ),
+          const SizedBox(height: 6),
+          Text(
+            '$amount YER',
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            textAlign: TextAlign.right,
+          ),
+          Text('$count عنصر', textAlign: TextAlign.right),
         ],
       ),
     );

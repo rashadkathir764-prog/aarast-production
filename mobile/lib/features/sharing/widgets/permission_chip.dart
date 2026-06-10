@@ -15,10 +15,10 @@ class PermissionChip extends StatelessWidget {
       avatar: Icon(
         enabled ? Icons.check_circle : Icons.lock_outline,
         size: 18,
-        color: enabled ? AppTheme.dMaroon : AppTheme.mediumGray,
+        color: enabled ? AppTheme.deepBurgundy : AppTheme.mediumGray,
       ),
       backgroundColor: enabled
-          ? AppTheme.dGold.withAlpha(45)
+          ? AppTheme.warmGold.withAlpha(45)
           : Colors.grey.withAlpha(25),
       side: BorderSide.none,
       visualDensity: VisualDensity.compact,

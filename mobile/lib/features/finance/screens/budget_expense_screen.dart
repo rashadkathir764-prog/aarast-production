@@ -168,7 +168,7 @@ class _SectionTitle extends StatelessWidget {
           Text(
             title,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.dMaroon,
+              color: AppTheme.deepBurgundy,
               fontWeight: FontWeight.w800,
             ),
             textAlign: TextAlign.right,

@@ -8,58 +8,51 @@ The layout flows from top (high-level summary) to bottom (immediate actions and 
 ---
 
 ## 1. Header Section
-- **Welcome Message:** "مساء الخير، رشاد 💛" (or current user's name).
-- **Logo/Title:** "أعرسِت" displayed prominently at the top right in an elegant custom font.
-- **Notification Bell:** With a red notification dot at the top left.
-- **Profile Avatar:** User's avatar next to the notification bell.
+- **Wedding Name:** Displayed prominently at the top right.
+- **Days Remaining:** A badge or prominent text indicating countdown. Example: "باقي ٤٥ يوم" (45 days left). Uses Warm Gold for emphasis.
+- **Wedding Date:** Displayed subtly under the wedding name.
 
-## 2. Hero Card (The Progress Card)
-A premium, elevated card displaying overall completion.
-- **Background:** Deep Burgundy/Maroon subtle gradient with a light pattern.
-- **Completion Ring:** A circular progress chart (Donut) on the left side, using Gold for the filled portion and a darker maroon for the track. Inside the ring: "٪XX اكتمل".
-- **Main Text:** "خطة زفاف [اسم العريس]" on the right.
-- **Remaining Days:** "تبقى XX يوم" below the title.
-- **Action Link:** "استكمال المهام >" at the bottom left.
+## 2. Financial Summary (The "Wallet" Card)
+A premium, elevated card displaying core financials.
+- **Estimated Budget:** The total planned amount.
+- **Paid Amount:** How much has been spent so far.
+- **Remaining Amount:** The balance remaining from the budget.
+- **Visuals:** Uses Deep Burgundy background with Ivory/White text for the primary owner view to feel premium and distinct.
 
-## 3. Mini Stats Grid (نظرة سريعة)
-A 2x2 grid of small pastel-colored cards on the left side (or right, depending on layout split):
-- **Vendors (الموردين):** Soft Green background, Green icon.
-- **Tasks (المهام):** Soft Red/Pink background, Red icon.
-- **Guests (الضيوف):** Soft Orange background, Orange icon.
-- **Payments (المدفوعات):** Soft Purple/Blue background, Purple icon.
+## 3. Quick Actions (Floating or Grid)
+A horizontal scrolling list or a 2x2 grid of primary actions for fast data entry:
+- **Add Expense** (إضافة مصروف)
+- **Add Debt** (إضافة دين)
+- **Add Installment** (إضافة قسط)
+- **Add Task** (إضافة مهمة)
 
-## 4. Budget Summary (ملخص الميزانية)
-A card adjacent to the mini stats grid.
-- **Budget Donut Chart:** A half-donut or full donut chart showing "المنصرف" (Spent) vs "المتبقي" (Remaining).
-- **Colors:** Deep Burgundy for Spent, Gold for Remaining.
+## 4. Warnings and Alerts (Dynamic Banner)
+Appears only when conditions are met. Placed below the financial summary.
+- **Budget Exceeded Warning:** Red/Soft red banner indicating the user has spent more than allocated.
+- **Due Items Late:** Warning for overdue debts, installments, or critical tasks.
 
-## 5. Quick Actions (إجراءات سريعة)
-A horizontal scrolling list of circular buttons.
-- **Design:** Circular outlined buttons (border color matches the icon color), transparent background.
-- **Icons & Labels:**
-  - Add Expense (إضافة مصروف) - Maroon/Burgundy
-  - Add Debt (إضافة دين) - Deep Blue
-  - Add Installment (إضافة قسط) - Green
-  - Add Task (إضافة مهمة) - Orange
+## 5. "Due Soon" Section
+A consolidated list of urgent items coming up in the next 7-14 days.
+- **Debts Due Soon:** Highlighted with a subtle warning icon.
+- **Installments Due Soon:** Shows amount and who it is owed to.
+- **Tasks Due Soon:** High-priority checkboxes.
 
-## 6. Alerts & Notes (تنبيهات / ملاحظات)
-A vertical list of soft-colored cards.
-- **Design:** Soft gray/white background, with a colored dot indicator on the right.
-- **Content:** Title on the right, time/date on the left.
+## 6. Privacy Reminders
+- If the user is the Owner, a subtle banner or badge at the bottom or top of the financial card states: "أنت تشاهد لوحة التحكم بصلاحيات المالك. البيانات المالية مخفية عن الأعضاء." (You are viewing the dashboard as Owner. Financial data is hidden from members).
 
-## 7. Shared Plans (الخطط المشتركة)
-Shows avatars of members sharing the plan.
-- **Design:** Overlapping circular avatars.
-
-## 8. Bottom Navigation
-A clean white bottom navigation bar with a central prominent floating action button (+).
-- **Items:** Home, Vendors, (Space for FAB), Tasks, More.
-- **Active State:** Deep Burgundy icon and bold text.
-- **FAB:** A circular button with a Deep Burgundy background, elevated, positioned slightly above the bar.
+## 7. Empty Dashboard (First-Use Layout)
+When a user first creates an account and wedding plan:
+- The Financial Summary shows zeros.
+- The "Due Soon" section is replaced with an elegant onboarding illustration.
+- A prominent "Get Started" checklist appears:
+  1. Set your total budget
+  2. Add your first expense
+  3. Create your first task
+- **Vibe:** Encouraging, not overwhelming.
 
 ---
 
 ## Design Principles
-- **Clarity over Clutter:** Use spacing and pastel colors to separate information without heavy borders.
-- **Premium Feel:** The use of Burgundy, Gold, and a creamy background gives a luxurious yet calm feeling appropriate for weddings.
-- **RTL First:** All alignments are right-to-left.
+- **Clarity over Clutter:** Do not show everything at once. Use "See All" buttons for lists.
+- **No Marketplace Elements:** The MVP dashboard is strictly a Financial OS and planner. No vendor ads or bookings.
+- **Calm Finances:** Even if a user is over budget, the UI should remain elegant—no aggressive red flashing lights. Use subtle semantic colors.

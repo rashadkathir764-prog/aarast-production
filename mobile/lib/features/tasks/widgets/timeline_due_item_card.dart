@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
-
 class TimelineDueItemCard extends StatelessWidget {
   const TimelineDueItemCard({
     required this.title,
@@ -18,9 +16,7 @@ class TimelineDueItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: AppTheme.premiumCardDecoration(),
+    return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -31,19 +27,9 @@ class TimelineDueItemCard extends StatelessWidget {
                 _StatusChip(status: status),
                 const SizedBox(width: 8),
                 if (dueDate != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.dBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _formatDate(dueDate!),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.dMaroon,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                  Text(
+                    _formatDate(dueDate!),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 const Spacer(),
                 Flexible(
@@ -51,20 +37,15 @@ class TimelineDueItemCard extends StatelessWidget {
                   child: Text(
                     title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w800,
                     ),
                     textAlign: TextAlign.right,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.right,
-              style: const TextStyle(color: AppTheme.dInkSoft, fontSize: 13),
-            ),
+            const SizedBox(height: 6),
+            Text(subtitle, textAlign: TextAlign.right),
           ],
         ),
       ),
@@ -79,33 +60,10 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDone = status == 'DONE' || status == 'PARTIALLY_PAID';
-    final isWarning = status == 'OVERDUE';
-    
-    Color bg = AppTheme.dMaroon.withAlpha(20);
-    Color fg = AppTheme.dMaroon;
-    if (isDone) {
-      bg = AppTheme.success.withAlpha(30);
-      fg = AppTheme.success;
-    } else if (isWarning) {
-      bg = AppTheme.danger.withAlpha(30);
-      fg = AppTheme.danger;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        _labelForStatus(status),
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          color: fg,
-        ),
-      ),
+    return Chip(
+      label: Text(_labelForStatus(status)),
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      visualDensity: VisualDensity.compact,
     );
   }
 }

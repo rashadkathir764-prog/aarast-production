@@ -315,7 +315,7 @@ class _BrandMark extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          'أعرست',
+          'اعّرست',
           textAlign: TextAlign.center,
           style: textTheme.displaySmall?.copyWith(
             color: AppTheme.dMaroon,

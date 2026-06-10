@@ -81,14 +81,7 @@ class _DebtDetailsContent extends StatelessWidget {
     return ListView(
       children: [
         if (debt != null)
-          DebtCard(
-            debt: debt!,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('هذه الميزة قريباً! 🚀')),
-              );
-            },
-          )
+          DebtCard(debt: debt!, onTap: () {})
         else
           const _MissingDebtContextCard(),
         const SizedBox(height: 12),
@@ -109,7 +102,7 @@ class _DebtDetailsContent extends StatelessWidget {
         Text(
           'الأقساط',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.dMaroon,
+            color: AppTheme.deepBurgundy,
             fontWeight: FontWeight.w800,
           ),
           textAlign: TextAlign.right,

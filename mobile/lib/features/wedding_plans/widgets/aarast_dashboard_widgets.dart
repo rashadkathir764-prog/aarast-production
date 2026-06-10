@@ -1913,16 +1913,19 @@ class _DashboardSkeletonState extends State<DashboardSkeleton>
       opacity: Tween<double>(begin: 0.35, end: 0.75).animate(_controller),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        child: Column(
-          children: [
-            _box(180),
-            const SizedBox(height: 16),
-            _box(150),
-            const SizedBox(height: 16),
-            _box(120),
-            const SizedBox(height: 16),
-            _box(160),
-          ],
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              _box(180),
+              const SizedBox(height: 16),
+              _box(150),
+              const SizedBox(height: 16),
+              _box(120),
+              const SizedBox(height: 16),
+              _box(160),
+            ],
+          ),
         ),
       ),
     );

@@ -34,12 +34,6 @@ class WeddingPlanDashboardScreen extends StatefulWidget {
 
 class _WeddingPlanDashboardScreenState
     extends State<WeddingPlanDashboardScreen> {
-  /// Fixed design width of the reference dashboard handoff. The whole canvas is
-  /// laid out at this width and uniformly scaled to the viewport via [FittedBox],
-  /// so every size matches the maquette on any screen. Height is intrinsic (no
-  /// fixed height) so the content can never RenderFlex-overflow.
-  static const double _dashboardDesignWidth = 680;
-
   @override
   void initState() {
     super.initState();
@@ -108,6 +102,7 @@ class _WeddingPlanDashboardScreenState
   Widget _buildBottomNav(DashboardSummaryProvider provider) {
     final planId = provider.plan?.id ?? widget.weddingPlanId;
     return NewDashboardBottomNav(
+      activeIndex: 0,
       onMore: () => _comingSoon('قسم "المزيد" قيد الإعداد'),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
@@ -134,7 +129,10 @@ class _WeddingPlanDashboardScreenState
     AuthController auth,
   ) {
     if (provider.isLoading && provider.plan == null) {
-      return const DashboardSkeleton(key: ValueKey('skeleton'));
+      return ListView(
+        key: const ValueKey('skeleton'),
+        children: const [DashboardSkeleton()],
+      );
     }
 
     if (provider.errorMessage != null && provider.plan == null) {
@@ -171,59 +169,24 @@ class _WeddingPlanDashboardScreenState
       );
     }
 
-    return _scaledDashboardCanvas(
+    return ListView(
       key: const ValueKey('content'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          NewDashboardTopHeader(
-            userName: auth.user?.name ?? 'ضيف',
-            onProfile: () => _openAccountSheet(auth),
-          ),
-          _padded(NewDashboardHeroCard(provider: provider)),
-          const SizedBox(height: 20),
-          _padded(NewDashboardStatsBudgetRow(provider: provider)),
-          const SizedBox(height: 24),
-          _padded(NewDashboardQuickActions(provider: provider)),
-          const SizedBox(height: 24),
-          _padded(NewDashboardAlertsList(provider: provider)),
-          const SizedBox(height: 24),
-          _padded(NewDashboardSharedPlansCard(provider: provider)),
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _scaledDashboardCanvas({required Key key, required Widget child}) {
-    // Lay the whole dashboard out at the fixed design width and let height be
-    // intrinsic, then uniformly down-scale to the viewport. BoxFit.contain on a
-    // width-bounded / height-unbounded box scales by viewportWidth / designWidth,
-    // so the maquette renders identically (just smaller) on every size and the
-    // inner Column can never overflow.
-    return LayoutBuilder(
-      key: key,
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: _dashboardDesignWidth,
-              ),
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.topCenter,
-                child: SizedBox(
-                  width: _dashboardDesignWidth,
-                  child: child,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+      padding: const EdgeInsets.only(bottom: 32),
+      children: [
+        NewDashboardTopHeader(
+          userName: auth.user?.name ?? 'ضيف',
+          onProfile: () => _openAccountSheet(auth),
+        ),
+        _padded(NewDashboardHeroCard(provider: provider)),
+        const SizedBox(height: 20),
+        _padded(NewDashboardStatsBudgetRow(provider: provider)),
+        const SizedBox(height: 24),
+        _padded(NewDashboardQuickActions(provider: provider)),
+        const SizedBox(height: 24),
+        _padded(NewDashboardAlertsList(provider: provider)),
+        const SizedBox(height: 24),
+        _padded(NewDashboardSharedPlansCard(provider: provider)),
+      ],
     );
   }
 

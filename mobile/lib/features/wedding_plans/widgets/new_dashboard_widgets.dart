@@ -59,9 +59,37 @@ class NewDashboardTopHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // Right: Branding and Greeting
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Row(
+                children: [
+                  Text('أعرسِت', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: DashboardUiColors.primaryMaroon, fontFamily: 'Amiri', height: 1.2)),
+                  SizedBox(width: 4),
+                  Icon(Icons.favorite, color: DashboardUiColors.primaryMaroon, size: 14),
+                ],
+              ),
+              Text('مساء الخير، $firstName 💛', style: const TextStyle(fontSize: 13, color: DashboardUiColors.textDark, fontWeight: FontWeight.w600)),
+            ],
+          ),
           // Left: Icons
           Row(
             children: [
+              // Profile Avatar
+              GestureDetector(
+                onTap: onProfile,
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: DashboardUiColors.borderLight, width: 1.5),
+                  ),
+                  child: const Icon(Icons.person_outline_rounded, color: DashboardUiColors.heroGold, size: 24),
+                ),
+              ),
+              const SizedBox(width: 12),
               // Notification Bell
               Stack(
                 clipBehavior: Clip.none,
@@ -86,34 +114,6 @@ class NewDashboardTopHeader extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(width: 12),
-              // Profile Avatar
-              GestureDetector(
-                onTap: onProfile,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: DashboardUiColors.borderLight, width: 1.5),
-                  ),
-                  child: const Icon(Icons.person_outline_rounded, color: DashboardUiColors.heroGold, size: 24),
-                ),
-              ),
-            ],
-          ),
-          // Right: Branding and Greeting
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Row(
-                children: [
-                  Text('أعرسِت', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: DashboardUiColors.primaryMaroon, fontFamily: 'Amiri', height: 1.2)),
-                  SizedBox(width: 4),
-                  Icon(Icons.favorite, color: DashboardUiColors.primaryMaroon, size: 14),
-                ],
-              ),
-              Text('مساء الخير، $firstName 💛', style: const TextStyle(fontSize: 13, color: DashboardUiColors.textDark, fontWeight: FontWeight.w600)),
             ],
           ),
         ],
@@ -165,24 +165,6 @@ class NewDashboardHeroCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left: Donut Chart
-              SizedBox(
-                width: 100,
-                height: 100,
-                child: CustomPaint(
-                  painter: _HeroDonutPainter(progress: progress),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('$percent%', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
-                        const Text('مكتمل', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
               // Right: Content
               Expanded(
                 child: Column(
@@ -219,31 +201,38 @@ class NewDashboardHeroCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: 16),
+              // Left: Donut Chart
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: CustomPaint(
+                  painter: _HeroDonutPainter(progress: progress),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('$percent%', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
+                        const Text('مكتمل', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
           // Bottom Actions & Progress
           Row(
             children: [
-              // Button
-              InkWell(
-                onTap: () => context.push(AppRouter.tasks(plan.id)),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: DashboardUiColors.heroMaroonDark.withAlpha(150),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.chevron_left, color: Colors.white70, size: 16),
-                      SizedBox(width: 4),
-                      Text('استكمال المهام', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ),
+              // Countdown
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('تبقى $daysLeft يوم', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.calendar_month_outlined, color: DashboardUiColors.heroGoldLight, size: 16),
+                ],
               ),
               const SizedBox(width: 12),
               // Progress Line
@@ -261,14 +250,25 @@ class NewDashboardHeroCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Countdown
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('تبقى $daysLeft يوم', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 6),
-                  const Icon(Icons.calendar_month_outlined, color: DashboardUiColors.heroGoldLight, size: 16),
-                ],
+              // Button
+              InkWell(
+                onTap: () => context.push(AppRouter.tasks(plan.id)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: DashboardUiColors.heroMaroonDark.withAlpha(150),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('استكمال المهام', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                      SizedBox(width: 4),
+                      Icon(Icons.chevron_left, color: Colors.white70, size: 16),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -335,7 +335,70 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Right Column: Quick Glance (نظرة سريعة)
+        // Right Column: Budget
+        Expanded(
+          flex: 12,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: DashboardUiColors.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_outlined, color: DashboardUiColors.primaryMaroon, size: 18),
+                    SizedBox(width: 6),
+                    Text('ملخص الميزانية', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: DashboardUiColors.textDark)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('إجمالي الميزانية', style: TextStyle(fontSize: 11, color: DashboardUiColors.textGray)),
+                          Text(formatNumber(budgetTotal), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: DashboardUiColors.textDark), textDirection: TextDirection.ltr),
+                          const Text('ر.ي', style: TextStyle(fontSize: 10, color: DashboardUiColors.textGray)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Donut
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: CustomPaint(
+                        painter: _MiniBudgetPainter(total: budgetTotal > 0 ? budgetTotal : 1, spent: spent, remaining: remaining),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _BudgetRow(label: 'المصروف', amount: spent, color: DashboardUiColors.primaryMaroon),
+                const SizedBox(height: 8),
+                _BudgetRow(label: 'المتبقي', amount: remaining, color: DashboardUiColors.heroGoldLight),
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => context.push(AppRouter.finance(plan.id)),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.chevron_left, color: DashboardUiColors.primaryMaroon, size: 16),
+                      SizedBox(width: 4),
+                      Text('عرض التفاصيل', style: TextStyle(color: DashboardUiColors.primaryMaroon, fontSize: 11, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Left Column: Quick Glance (نظرة سريعة)
         Expanded(
           flex: 10,
           child: Container(
@@ -366,69 +429,6 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(child: _GlanceCard(title: 'المدفوعات', value: '$dueInstallments', icon: Icons.payment_outlined, iconColor: DashboardUiColors.iconPurple, bgColor: DashboardUiColors.bgPurple)),
                   ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Left Column: Budget
-        Expanded(
-          flex: 12,
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: DashboardUiColors.cardBg,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.account_balance_wallet_outlined, color: DashboardUiColors.primaryMaroon, size: 18),
-                    SizedBox(width: 6),
-                    Text('ملخص الميزانية', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: DashboardUiColors.textDark)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    // Donut
-                    SizedBox(
-                      width: 60,
-                      height: 60,
-                      child: CustomPaint(
-                        painter: _MiniBudgetPainter(total: budgetTotal > 0 ? budgetTotal : 1, spent: spent, remaining: remaining),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('إجمالي الميزانية', style: TextStyle(fontSize: 11, color: DashboardUiColors.textGray)),
-                          Text(formatNumber(budgetTotal), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: DashboardUiColors.textDark), textDirection: TextDirection.ltr),
-                          const Text('ر.ي', style: TextStyle(fontSize: 10, color: DashboardUiColors.textGray)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _BudgetRow(label: 'المصروف', amount: spent, color: DashboardUiColors.primaryMaroon),
-                const SizedBox(height: 8),
-                _BudgetRow(label: 'المتبقي', amount: remaining, color: DashboardUiColors.heroGoldLight),
-                const SizedBox(height: 12),
-                InkWell(
-                  onTap: () => context.push(AppRouter.finance(plan.id)),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.chevron_left, color: DashboardUiColors.primaryMaroon, size: 16),
-                      SizedBox(width: 4),
-                      Text('عرض التفاصيل', style: TextStyle(color: DashboardUiColors.primaryMaroon, fontSize: 11, fontWeight: FontWeight.w800)),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -547,10 +547,10 @@ class NewDashboardQuickActions extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _QuickActionCircle(icon: Icons.add, label: 'نفقات سريعة', onTap: () => context.push(AppRouter.finance(planId))),
+              _QuickActionCircle(icon: Icons.add, label: 'نفقات سريعة', onTap: () => context.push(AppRouter.createExpense(planId))),
               _QuickActionCircle(icon: Icons.groups_outlined, label: 'قائمة الضيوف', onTap: () => context.push(AppRouter.sharing(planId))),
-              _QuickActionCircle(icon: Icons.calendar_month_outlined, label: 'جدول الزواج', onTap: () {}),
-              _QuickActionCircle(icon: Icons.person_search_outlined, label: 'الموردين', onTap: () {}),
+              _QuickActionCircle(icon: Icons.calendar_month_outlined, label: 'جدول الزواج', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('قيد الإعداد')))),
+              _QuickActionCircle(icon: Icons.person_search_outlined, label: 'الموردين', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('قيد الإعداد')))),
               _QuickActionCircle(icon: Icons.account_balance_wallet_outlined, label: 'الميزانية', onTap: () => context.push(AppRouter.finance(planId))),
               _QuickActionCircle(icon: Icons.assignment_outlined, label: 'قائمة المهام', onTap: () => context.push(AppRouter.tasks(planId))),
             ],
@@ -762,6 +762,7 @@ class NewDashboardSharedPlansCard extends StatelessWidget {
 // -----------------------------------------------------------------------------
 class NewDashboardBottomNav extends StatelessWidget {
   const NewDashboardBottomNav({
+    required this.activeIndex,
     required this.onHome,
     required this.onVendors,
     required this.onAdd,
@@ -770,6 +771,7 @@ class NewDashboardBottomNav extends StatelessWidget {
     super.key,
   });
 
+  final int activeIndex;
   final VoidCallback onHome;
   final VoidCallback onVendors;
   final VoidCallback onAdd;
@@ -796,11 +798,11 @@ class NewDashboardBottomNav extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _NavItem(icon: Icons.home_filled, label: 'الرئيسية', isActive: true, onTap: onHome),
-                  _NavItem(icon: Icons.assignment_ind_outlined, label: 'الموردين', isActive: false, onTap: onVendors),
+                  _NavItem(icon: Icons.home_filled, label: 'الرئيسية', isActive: activeIndex == 0, onTap: onHome),
+                  _NavItem(icon: Icons.calendar_today_outlined, label: 'المهام', isActive: activeIndex == 1, onTap: onTasks),
                   const SizedBox(width: 56), // Space for floating button
-                  _NavItem(icon: Icons.calendar_today_outlined, label: 'المهام', isActive: false, onTap: onTasks),
-                  _NavItem(icon: Icons.grid_view_rounded, label: 'المزيد', isActive: false, onTap: onMore),
+                  _NavItem(icon: Icons.assignment_ind_outlined, label: 'الموردين', isActive: activeIndex == 2, onTap: onVendors),
+                  _NavItem(icon: Icons.grid_view_rounded, label: 'المزيد', isActive: activeIndex == 3, onTap: onMore),
                 ],
               ),
             ),

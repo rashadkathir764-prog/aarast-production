@@ -59,15 +59,17 @@ This document defines the reusable UI components for the Aarast / اعّرست m
   - **Loading:** Spinner.
 - **Flutter Implementation Notes (Later):** Custom styled `ElevatedButton` or `OutlinedButton` using semantic error colors.
 
-## 6. Financial Summary Card
-- **Purpose:** Displays high-level budget overviews (Total, Paid, Remaining).
-- **Visual Style:** Card with a subtle shadow, Deep Burgundy accents or Warm Gold borders. Clear, large typography for numbers. Dark Charcoal for labels.
-- **Arabic Label Examples:** إجمالي الميزانية (Total Budget), المتبقي (Remaining).
+## 6. Financial Summary Card (Hero & Budget)
+- **Purpose:** Displays high-level budget overviews (Total, Paid, Remaining) and overall completion.
+- **Visual Style:** 
+  - **Hero Card:** Deep Maroon/Burgundy gradient background with a Gold Donut completion chart.
+  - **Budget Card:** Donut chart separating Spent (Maroon) and Remaining (Gold).
+- **Arabic Label Examples:** إجمالي الميزانية (Total Budget), المنصرف (Spent), المتبقي (Remaining).
 - **States:**
-  - **Default:** Shows calculated numbers.
+  - **Default:** Shows calculated numbers and charts.
   - **Loading:** Shimmer effect on numbers.
   - **Error:** Displays "تعذر تحميل البيانات" (Failed to load data) with a retry icon.
-- **Flutter Implementation Notes (Later):** Custom `Card` widget. Ensure numbers are formatted with commas and currency symbols appropriate for Yemen (e.g., ر.ي).
+- **Flutter Implementation Notes (Later):** Custom `Card` widgets with `Stack` and `CircularProgressIndicator` or custom painters for donuts. Ensure numbers are formatted with commas and currency symbols appropriate for Yemen (e.g., ر.ي).
 
 ## 7. Budget Category Card
 - **Purpose:** Shows breakdown of budget by categories (e.g., Venue, Catering).

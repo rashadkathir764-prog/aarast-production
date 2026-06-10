@@ -20,7 +20,7 @@ class DueInstallmentsCard extends StatelessWidget {
             Text(
               'الأقساط المستحقة',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.deepBurgundy,
+                color: AppTheme.dMaroon,
                 fontWeight: FontWeight.w800,
               ),
               textAlign: TextAlign.right,

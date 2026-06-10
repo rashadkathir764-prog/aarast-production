@@ -219,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 18),
                             Text(
-                              'اعّرست يساعدك ترتب الميزانية، المهام، الديون، والمشاركات من مكان واحد.',
+                              'أعرست يساعدك ترتب الميزانية، المهام، الديون، والمشاركات من مكان واحد.',
                               textAlign: TextAlign.center,
                               style: textTheme.bodySmall?.copyWith(
                                 color: AppTheme.dMuted,
@@ -287,7 +287,7 @@ class _BrandMark extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          'اعّرست',
+          'أعرست',
           textAlign: TextAlign.center,
           style: textTheme.displaySmall?.copyWith(
             color: AppTheme.dMaroon,

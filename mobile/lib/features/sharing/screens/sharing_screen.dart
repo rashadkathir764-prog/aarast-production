@@ -110,7 +110,7 @@ class _SharingContent extends StatelessWidget {
         Text(
           'الأعضاء المشاركون',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.deepBurgundy,
+            color: AppTheme.dMaroon,
             fontWeight: FontWeight.w800,
           ),
           textAlign: TextAlign.right,
@@ -147,7 +147,7 @@ class _PrivacyNotice extends StatelessWidget {
             Text(
               'إدارة الخصوصية',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.deepBurgundy,
+                color: AppTheme.dMaroon,
                 fontWeight: FontWeight.w800,
               ),
               textAlign: TextAlign.right,

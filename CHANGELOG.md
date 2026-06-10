@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-06-10 - Dashboard Complete Redesign (Exact Image 2 Blueprint)
+
+- Completely rebuilt the Flutter Home dashboard to strictly match the requested elegant "Image 2" design, removing the incorrect "Claude Design" entirely.
+- Implemented `NewDashboardTopHeader` with the "أعرسِت" logo, custom greeting, and notification dot.
+- Implemented `NewDashboardHeroCard` with a maroon gradient, gold circular completion chart, and remaining days indicator.
+- Added `NewDashboardStatsBudgetRow` featuring a 2x2 grid of pastel-colored mini stats (Vendors, Tasks, Guests, Payments) and a side-by-side Budget donut chart.
+- Added a horizontally scrollable `NewDashboardQuickActions` list of circular outlined buttons.
+- Replaced the bottom navigation with `NewDashboardBottomNav` featuring a central prominent elevated FAB (+).
+- Configured the background color to a calming creamy white.
+- Verified 100% adherence to the new design and passed `flutter analyze`.
+
 ## 2026-06-07 - Home Dashboard Exact Blueprint Polish
 
 - Polished the Flutter Home dashboard to more closely match the approved Arabic visual reference.

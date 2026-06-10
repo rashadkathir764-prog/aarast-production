@@ -70,7 +70,7 @@ class _InstallmentStatusBadge extends StatelessWidget {
       'PAID' => Colors.green,
       'OVERDUE' => AppTheme.danger,
       'CANCELLED' => AppTheme.mediumGray,
-      _ => AppTheme.warmGold,
+      _ => AppTheme.dGold,
     };
 
     return Container(
@@ -82,7 +82,7 @@ class _InstallmentStatusBadge extends StatelessWidget {
       child: Text(
         installmentStatusLabel(status),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: color == AppTheme.warmGold ? AppTheme.deepBurgundy : color,
+          color: color == AppTheme.dGold ? AppTheme.dMaroon : color,
           fontWeight: FontWeight.w800,
         ),
       ),

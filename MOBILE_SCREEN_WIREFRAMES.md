@@ -36,15 +36,18 @@ This document details the layout and components of the core MVP screens. All lay
 - **Arabic Labels**: "اسم العريس" (Groom Name), "اسم العروس" (Bride Name), "تاريخ الزفاف المتوقع" (Expected Wedding Date), "الميزانية التقديرية" (Estimated Budget).
 
 ## 6. Wedding Plan Dashboard
-- **Purpose**: High-level overview of everything important.
+- **Purpose**: High-level overview of everything important with an elegant, premium look.
 - **Main Sections**:
-  - **Header**: Greeting + "X days remaining" (Countdown).
-  - **Financial Summary Card**: Estimated Budget, Paid Amount, Remaining Amount.
-  - **Alerts Section**: Debts due soon, Tasks due soon (Warning/Danger colors if overdue).
-  - **Quick Actions (Grid/Row)**: Add Expense, Add Debt, Add Task.
-- **Empty State**: Show placeholder text encouraging user to add their first expense or task.
-- **Arabic Labels**: "نظرة عامة" (Overview), "باقي على الزفاف" (Remaining to wedding), "الميزانية" (Budget), "المدفوع" (Paid), "المتبقي" (Remaining), "إضافة منصرف" (Add Expense).
-- **Implementation Note**: Ensure summary card has premium styling (Warm Gold accents).
+  - **Header**: Custom greeting (e.g., "مساء الخير، رشاد 💛") + App Logo ("أعرسِت") + Notification Bell with red dot.
+  - **Hero Card (Progress Card)**: Maroon gradient background with a Gold Donut progress chart, wedding title, remaining days, and an action link ("استكمال المهام >").
+  - **Mini Stats (نظرة سريعة)**: 2x2 grid in pastel colors (Vendors/Green, Tasks/Red, Guests/Orange, Payments/Purple).
+  - **Budget Donut (ملخص الميزانية)**: Donut chart displaying Spent vs. Remaining (Maroon/Gold).
+  - **Quick Actions (إجراءات سريعة)**: Horizontally scrollable list of circular outlined action buttons.
+  - **Alerts/Notes**: Vertical list of soft-colored note cards.
+  - **Shared Plans**: Overlapping avatars for shared members.
+  - **Bottom Navigation**: Custom white bar with an elevated central FAB (+) in maroon.
+- **Arabic Labels**: "نظرة سريعة" (Quick Glance), "ملخص الميزانية" (Budget Summary), "المنصرف" (Spent), "المتبقي" (Remaining), "إجراءات سريعة" (Quick Actions), "الموردين" (Vendors), "المهام" (Tasks).
+- **Implementation Note**: The dashboard layout strictly follows the "Image 2" visual blueprint, avoiding the deprecated "Claude Design" entirely.
 
 ## 7. Budget Overview Screen
 - **Purpose**: Detailed breakdown of the budget.

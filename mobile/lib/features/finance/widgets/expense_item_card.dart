@@ -18,50 +18,82 @@ class ExpenseItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final categoryName = _categoryName();
 
-    return Card(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: AppTheme.premiumCardDecoration(),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 _StatusBadge(status: expense.status),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     expense.title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
                     ),
                     textAlign: TextAlign.right,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${expense.amount} YER',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w800,
-              ),
-              textAlign: TextAlign.right,
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (categoryName != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.dBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      categoryName,
+                      style: const TextStyle(color: AppTheme.dMaroon, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  )
+                else
+                  const SizedBox(),
+                Text(
+                  '${expense.amount} YER',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dMaroon,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
-            if (categoryName != null) ...[
-              const SizedBox(height: 4),
-              Text('التصنيف: $categoryName', textAlign: TextAlign.right),
-            ],
-            if (expense.expenseDate != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'التاريخ: ${_formatDate(expense.expenseDate!)}',
-                textAlign: TextAlign.right,
+            if (expense.expenseDate != null || expense.hasNote) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Divider(color: AppTheme.dLine, height: 1),
               ),
-            ],
-            if (expense.hasNote) ...[
-              const SizedBox(height: 4),
-              Text(expense.note!, textAlign: TextAlign.right),
+              if (expense.expenseDate != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      _formatDate(expense.expenseDate!),
+                      style: const TextStyle(color: AppTheme.dInkSoft, fontSize: 12),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.calendar_today_outlined, size: 14, color: AppTheme.dMuted),
+                  ],
+                ),
+              if (expense.hasNote) ...[
+                const SizedBox(height: 4),
+                Text(
+                  expense.note!,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(color: AppTheme.dInkSoft, fontSize: 13),
+                ),
+              ],
             ],
           ],
         ),
@@ -93,7 +125,7 @@ class _StatusBadge extends StatelessWidget {
     final color = switch (status) {
       'PAID' => Colors.green,
       'CANCELLED' => AppTheme.mediumGray,
-      _ => AppTheme.warmGold,
+      _ => AppTheme.dGold,
     };
 
     return Container(
@@ -105,7 +137,7 @@ class _StatusBadge extends StatelessWidget {
       child: Text(
         _statusLabel(status),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: color == AppTheme.warmGold ? AppTheme.deepBurgundy : color,
+          color: color == AppTheme.dGold ? AppTheme.dMaroon : color,
           fontWeight: FontWeight.w800,
         ),
       ),

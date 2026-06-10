@@ -8,7 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../providers/dashboard_summary_provider.dart';
-import '../widgets/aarast_dashboard_widgets.dart';
+
 import '../widgets/new_dashboard_widgets.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
@@ -85,7 +85,7 @@ class _WeddingPlanDashboardScreenState
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: AppTheme.dBg,
+          backgroundColor: DashboardUiColors.ivory,
           bottomNavigationBar: widget.embedded
               ? null
               : _buildBottomNav(provider),
@@ -105,13 +105,14 @@ class _WeddingPlanDashboardScreenState
     );
   }
 
-  DashboardBottomNav _buildBottomNav(DashboardSummaryProvider provider) {
+  Widget _buildBottomNav(DashboardSummaryProvider provider) {
     final planId = provider.plan?.id ?? widget.weddingPlanId;
-    return DashboardBottomNav(
+    return NewDashboardBottomNav(
+      activeIndex: 0,
       onMore: () => _comingSoon('قسم "المزيد" قيد الإعداد'),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
-      onPlans: () => context.go(AppRouter.weddingPlans),
+      onVendors: () => _comingSoon('قسم "الموردين" قيد الإعداد'),
       onHome: () => context.go(AppRouter.home),
     );
   }
@@ -177,21 +178,20 @@ class _WeddingPlanDashboardScreenState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DashboardTopBar(
+          NewDashboardTopHeader(
             userName: auth.user?.name ?? 'ضيف',
             onProfile: () => _openAccountSheet(auth),
-            onNotifications: () => _comingSoon('مركز التنبيهات قيد الإعداد'),
           ),
           _padded(NewDashboardHeroCard(provider: provider)),
-          const SizedBox(height: 18),
-          _padded(NewDashboardMetricsBudgetSection(provider: provider)),
-          const SizedBox(height: 18),
-          _padded(NewDashboardQuickActions(provider: provider)),
-          const SizedBox(height: 18),
-          _padded(NewDashboardAlertsMembersGrid(provider: provider)),
-          const SizedBox(height: 18),
-          _padded(NewDashboardSharedPlansCard(provider: provider)),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
+          NewDashboardMetricsBudgetSection(provider: provider),
+          const SizedBox(height: 24),
+          NewDashboardQuickActions(provider: provider),
+          const SizedBox(height: 24),
+          NewDashboardAlertsMembersGrid(provider: provider),
+          const SizedBox(height: 24),
+          NewDashboardSharedPlansCard(provider: provider),
+          const SizedBox(height: 32),
         ],
       ),
     );

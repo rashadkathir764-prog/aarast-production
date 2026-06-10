@@ -49,7 +49,7 @@ class DebtCard extends StatelessWidget {
                 Text(
                   'المتبقي: ${debt.remainingAmount} YER',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.deepBurgundy,
+                    color: AppTheme.dMaroon,
                     fontWeight: FontWeight.w800,
                   ),
                   textAlign: TextAlign.right,
@@ -84,8 +84,8 @@ class _DebtStatusBadge extends StatelessWidget {
     final color = switch (status) {
       'PAID' => Colors.green,
       'CANCELLED' => AppTheme.mediumGray,
-      'PARTIALLY_PAID' => AppTheme.warmGold,
-      _ => AppTheme.deepBurgundy,
+      'PARTIALLY_PAID' => AppTheme.dGold,
+      _ => AppTheme.dMaroon,
     };
 
     return Container(
@@ -97,7 +97,7 @@ class _DebtStatusBadge extends StatelessWidget {
       child: Text(
         debtStatusLabel(status),
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: color == AppTheme.warmGold ? AppTheme.deepBurgundy : color,
+          color: color == AppTheme.dGold ? AppTheme.dMaroon : color,
           fontWeight: FontWeight.w800,
         ),
       ),

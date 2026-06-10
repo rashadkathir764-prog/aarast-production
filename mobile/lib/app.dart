@@ -18,7 +18,12 @@ class AarastApp extends StatelessWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox.shrink(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
         );
       },
     );

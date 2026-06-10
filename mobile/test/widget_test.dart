@@ -37,7 +37,7 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('اعّرست'), findsOneWidget);
+    expect(find.text('أعرست'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsAtLeastNWidgets(1));
     expect(find.text('رقم الهاتف'), findsOneWidget);
   });

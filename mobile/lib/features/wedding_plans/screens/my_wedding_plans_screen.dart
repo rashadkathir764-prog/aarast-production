@@ -35,7 +35,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
       appBar: AppBar(title: const Text('خطط الزفاف')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push(AppRouter.createWeddingPlan),
-        backgroundColor: AppTheme.deepBurgundy,
+        backgroundColor: AppTheme.dMaroon,
         foregroundColor: Colors.white,
         label: const Text('إنشاء خطة زفاف'),
         icon: const Icon(Icons.add),
@@ -196,7 +196,7 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Chip(
       label: Text(status == 'ARCHIVED' ? 'مؤرشفة' : 'قيد التخطيط'),
-      backgroundColor: AppTheme.warmGold.withAlpha(45),
+      backgroundColor: AppTheme.dGold.withAlpha(45),
       side: BorderSide.none,
     );
   }

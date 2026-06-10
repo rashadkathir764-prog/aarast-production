@@ -10,7 +10,7 @@ import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
-import '../wedding_plans/widgets/new_dashboard_widgets.dart';
+import '../wedding_plans/widgets/aarast_dashboard_widgets.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -20,7 +20,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _index = 0;
+  int _index = 4; // 4 is Home in DashboardBottomNav
   String? _activePlanId;
 
   @override
@@ -32,7 +32,7 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _onItemTapped(int index) {
-    if (_index == 0 && index == 0 && _activePlanId != null) {
+    if (_index == 4 && index == 4 && _activePlanId != null) {
       // User tapped Home while already on Home with an active plan -> Go back to plans list
       setState(() {
         _activePlanId = null;
@@ -47,7 +47,7 @@ class _MainShellState extends State<MainShell> {
   void _selectPlan(String planId) {
     setState(() {
       _activePlanId = planId;
-      _index = 0; // Go to Dashboard
+      _index = 4; // Go to Dashboard (Home)
     });
   }
 
@@ -126,16 +126,29 @@ class _MainShellState extends State<MainShell> {
       textTheme: GoogleFonts.tajawalTextTheme(theme.textTheme),
     );
 
+    // Map _index to the IndexedStack.
+    // DashboardBottomNav indices:
+    // 4: Home (Dashboard / Hub) -> IndexedStack 0
+    // 3: Plans -> IndexedStack 1
+    // 1: Tasks -> IndexedStack 2
+    // 0: More -> IndexedStack 3
+
+    int stackIndex = 0;
+    if (_index == 4) { stackIndex = 0; }
+    else if (_index == 3) { stackIndex = 1; }
+    else if (_index == 1) { stackIndex = 2; }
+    else if (_index == 0) { stackIndex = 3; }
+
     return Theme(
       data: shellTheme,
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: DashboardUiColors.background,
+          backgroundColor: AppTheme.dBg,
           body: IndexedStack(
-            index: _index,
+            index: stackIndex,
             children: [
-              // Index 0: Home (Plans Hub OR Dashboard)
+              // Index 0 (Nav 4): Home (Plans Hub OR Dashboard)
               _activePlanId != null
                   ? WeddingPlanDashboardScreen(
                       key: ValueKey('home-$_activePlanId'),
@@ -144,7 +157,10 @@ class _MainShellState extends State<MainShell> {
                     )
                   : MyWeddingPlansScreen(onSelectPlan: _selectPlan),
 
-              // Index 1: Tasks
+              // Index 1 (Nav 3): Plans
+              _buildNoPlanFallback('الخطط', isComingSoon: true),
+
+              // Index 2 (Nav 1): Tasks
               _activePlanId != null
                   ? TaskTimelineScreen(
                       key: ValueKey('tasks-$_activePlanId'),
@@ -152,20 +168,17 @@ class _MainShellState extends State<MainShell> {
                     )
                   : _buildNoPlanFallback('المهام'),
 
-              // Index 2: Vendors (Coming Soon)
-              _buildNoPlanFallback('الموردين', isComingSoon: true),
-
-              // Index 3: More
+              // Index 3 (Nav 0): More
               const MoreScreen(),
             ],
           ),
-          bottomNavigationBar: NewDashboardBottomNav(
+          bottomNavigationBar: DashboardBottomNav(
             activeIndex: _index,
-            onHome: () => _onItemTapped(0),
-            onTasks: () => _onItemTapped(1),
-            onVendors: () => _onItemTapped(2),
-            onMore: () => _onItemTapped(3),
+            onHome: () => _onItemTapped(4),
+            onPlans: () => _onItemTapped(3),
             onAdd: _showQuickAdd,
+            onTasks: () => _onItemTapped(1),
+            onMore: () => _onItemTapped(0),
           ),
         ),
       ),
@@ -174,20 +187,20 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildNoPlanFallback(String title, {bool isComingSoon = false}) {
     return Scaffold(
-      backgroundColor: DashboardUiColors.background,
+      backgroundColor: AppTheme.dBg,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(isComingSoon ? Icons.construction : Icons.info_outline,
-                size: 64, color: DashboardUiColors.textGray.withAlpha(100)),
+                size: 64, color: AppTheme.dMuted),
             const SizedBox(height: 16),
             Text(
               isComingSoon
                   ? 'قسم "$title" قيد الإعداد'
                   : 'الرجاء اختيار خطة من الرئيسية أولاً',
               style: const TextStyle(
-                  color: DashboardUiColors.textDark,
+                  color: AppTheme.dInk,
                   fontSize: 16,
                   fontWeight: FontWeight.w700),
             ),

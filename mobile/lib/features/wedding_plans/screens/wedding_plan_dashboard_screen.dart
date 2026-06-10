@@ -9,7 +9,6 @@ import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../widgets/aarast_dashboard_widgets.dart';
-import '../widgets/new_dashboard_widgets.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
@@ -79,7 +78,7 @@ class _WeddingPlanDashboardScreenState
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: DashboardUiColors.background,
+          backgroundColor: AppTheme.dBg,
           bottomNavigationBar: widget.embedded
               ? null
               : _buildBottomNav(provider),
@@ -101,13 +100,13 @@ class _WeddingPlanDashboardScreenState
 
   Widget _buildBottomNav(DashboardSummaryProvider provider) {
     final planId = provider.plan?.id ?? widget.weddingPlanId;
-    return NewDashboardBottomNav(
-      activeIndex: 0,
+    return DashboardBottomNav(
+      activeIndex: 4,
       onMore: () => _comingSoon('قسم "المزيد" قيد الإعداد'),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
-      onVendors: () => _comingSoon('قسم "الموردين" قيد الإعداد'),
-      onHome: () => context.go(AppRouter.home),
+      onPlans: () => context.go(AppRouter.home),
+      onHome: () {},
     );
   }
 
@@ -169,23 +168,111 @@ class _WeddingPlanDashboardScreenState
       );
     }
 
+    final planId = plan.id;
+    final allTasks = provider.tasks ?? [];
+    final tasksDone = allTasks.where((t) => t.isDone).length;
+    final tasksTotal = allTasks.length;
+
     return ListView(
       key: const ValueKey('content'),
       padding: const EdgeInsets.only(bottom: 32),
       children: [
-        NewDashboardTopHeader(
+        DashboardTopBar(
           userName: auth.user?.name ?? 'ضيف',
           onProfile: () => _openAccountSheet(auth),
+          onNotifications: () => _comingSoon('التنبيهات قيد الإعداد'),
         ),
-        _padded(NewDashboardHeroCard(provider: provider)),
+        DashboardHeroCard(
+          title: plan.title,
+          statusLabel: 'في الموعد',
+          tasksDone: tasksDone,
+          tasksTotal: tasksTotal,
+          city: plan.city,
+          weddingDate: plan.weddingDate,
+        ),
         const SizedBox(height: 20),
-        _padded(NewDashboardStatsBudgetRow(provider: provider)),
+        _padded(BudgetSummaryCard(
+          total: dashParseAmount(plan.estimatedBudget),
+          spent: dashParseAmount(provider.expenseSummary?.totalPaid),
+          obligations: dashParseAmount(provider.expenseSummary?.totalPlanned),
+          debtsTotal: 0, // Placeholder
+          upcomingInstallments: 0, // Placeholder
+          currency: 'ر.ي',
+        )),
+        const SizedBox(height: 14),
+        _padded(
+          Row(
+            children: [
+              Expanded(
+                child: MiniStatCard(
+                  icon: Icons.group_outlined,
+                  iconColor: AppTheme.dGoldDeep,
+                  iconBg: AppTheme.dCreamBg,
+                  title: 'الضيوف',
+                  bigValue: '124',
+                  unit: 'ضيف',
+                  subLabel: 'قيد التأكيد',
+                  subValue: '12',
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: MiniStatCard(
+                  icon: Icons.inventory_2_outlined,
+                  iconColor: AppTheme.dBlue,
+                  iconBg: AppTheme.dBlueBg,
+                  title: 'الموردين',
+                  bigValue: '4',
+                  unit: 'مورد',
+                  locked: true,
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 24),
-        _padded(NewDashboardQuickActions(provider: provider)),
+        _padded(QuickActionsCard(
+          actions: [
+            QuickAction(
+              icon: Icons.add,
+              label: 'إضافة\nمصروف',
+              color: AppTheme.dMaroon,
+              bg: AppTheme.dPinkBg,
+              onTap: () => context.push(AppRouter.createExpense(planId)),
+            ),
+            QuickAction(
+              icon: Icons.check_circle_outline,
+              label: 'إضافة\nمهمة',
+              color: AppTheme.dGreen,
+              bg: AppTheme.dGreenBg,
+              onTap: () => context.push(AppRouter.tasks(planId)), // Should navigate to create task, but use tasks as fallback
+            ),
+            QuickAction(
+              icon: Icons.credit_card,
+              label: 'الديون\nوالأقساط',
+              color: AppTheme.dGoldDeep,
+              bg: AppTheme.dCreamBg,
+              onTap: () => context.push(AppRouter.debts(planId)),
+            ),
+            QuickAction(
+              icon: Icons.groups_outlined,
+              label: 'قائمة\nالضيوف',
+              color: AppTheme.dBlue,
+              bg: AppTheme.dBlueBg,
+              onTap: () => _comingSoon('قائمة الضيوف قيد الإعداد'),
+            ),
+          ],
+        )),
         const SizedBox(height: 24),
-        _padded(NewDashboardAlertsList(provider: provider)),
+        _padded(AlertsCard(
+          alerts: const [],
+          onViewAll: () => _comingSoon('التنبيهات قيد الإعداد'),
+        )),
         const SizedBox(height: 24),
-        _padded(NewDashboardSharedPlansCard(provider: provider)),
+        _padded(SharedPlansCard(
+          subtitle: 'لا توجد خطط مشتركة',
+          onOpen: () => context.push(AppRouter.sharedWeddingPlans),
+        )),
       ],
     );
   }
@@ -194,7 +281,6 @@ class _WeddingPlanDashboardScreenState
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: child,
   );
-
 
   void _showQuickAdd(DashboardSummaryProvider provider) {
     final plan = provider.plan;

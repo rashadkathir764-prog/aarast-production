@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/aarast_dashboard_widgets.dart';
-import '../widgets/new_dashboard_widgets.dart';
+
+import '../../../core/theme/app_theme.dart';
 
 class MyWeddingPlansScreen extends StatefulWidget {
   const MyWeddingPlansScreen({this.onSelectPlan, super.key});
@@ -17,68 +18,206 @@ class MyWeddingPlansScreen extends StatefulWidget {
   State<MyWeddingPlansScreen> createState() => _MyWeddingPlansScreenState();
 }
 
-class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
-  int _selectedTab = 0; // 0 = Shared (المشتركة), 1 = Private (خططي)
+class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
+    with SingleTickerProviderStateMixin {
+  int _selectedTab = 0; // 0 = Private (خططي), 1 = Shared (المشتركة)
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..forward();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<WeddingPlansProvider>().loadMyWeddingPlans();
     });
   }
 
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   void _openAccountSheet(AuthController auth) {
-    showAccountSheet(
-      context,
-      name: auth.user?.name ?? 'مستخدم اعرست',
-      phone: auth.user?.phone,
-      onLogout: () async {
-        await context.read<AuthController>().logout();
-        if (mounted) context.go(AppRouter.login);
-      },
-    );
+    // Show account sheet or profile - placeholder for actual implementation
+    context.push('/more'); // Navigate to profile for now
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<WeddingPlansProvider>();
     final auth = context.watch<AuthController>();
+    final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: DashboardUiColors.background,
+      backgroundColor: AppTheme.dBg,
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: DashboardUiColors.primaryMaroon,
+          color: AppTheme.dMaroon,
           onRefresh: provider.loadMyWeddingPlans,
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 32),
-            children: [
-              NewDashboardTopHeader(
-                userName: auth.user?.name ?? 'ضيف',
-                onProfile: () => _openAccountSheet(auth),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'أعرسِت',
+                                style: textTheme.headlineSmall?.copyWith(
+                                  color: AppTheme.dMaroonDeep,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Amiri', // Classic touch
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.favorite, color: AppTheme.dPinkBg, size: 14),
+                            ],
+                          ),
+                          Text(
+                            'مساء الخير، ${auth.user?.name.split(' ').first ?? 'ضيف'}',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppTheme.dInkSoft,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      GestureDetector(
+                        onTap: () => _openAccountSheet(auth),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.dGold, width: 1.5),
+                            color: AppTheme.dCard,
+                          ),
+                          child: const Icon(LucideIcons.user, color: AppTheme.dMaroon, size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('خططي', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: DashboardUiColors.primaryMaroon)),
-                    Row(
-                      children: [
-                        const Icon(Icons.auto_awesome, color: DashboardUiColors.heroGold, size: 16),
-                        const SizedBox(width: 6),
-                        Text('خطط زفافك وشاركها مع من تحب', style: TextStyle(color: DashboardUiColors.textDark, fontSize: 13, fontWeight: FontWeight.w600)),
-                      ],
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'خططي',
+                        style: textTheme.headlineMedium?.copyWith(
+                          color: AppTheme.dMaroonDeep,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(LucideIcons.sparkles, color: AppTheme.dGold, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'خطط زفافك وشاركها مع من تحب',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppTheme.dInkSoft,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSegmentedControl(textTheme),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+              if (provider.isLoading && provider.plans.isEmpty)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppTheme.dMaroon),
+                  ),
+                )
+              else if (provider.errorMessage != null && provider.plans.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Text(
+                      provider.errorMessage!,
+                      style: const TextStyle(color: AppTheme.danger),
                     ),
-                    const SizedBox(height: 24),
-                    _buildSegmentedControl(),
-                    const SizedBox(height: 24),
-                    _buildPlansList(provider),
-                    const SizedBox(height: 16),
-                    _buildCreateNewPlanButton(),
-                  ],
+                  ),
+                )
+              else if (provider.plans.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Text(
+                      'لا توجد خطط زفاف بعد',
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: AppTheme.dMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final plan = provider.plans[index];
+                        final isFeatured = index == 0 && _selectedTab == 0; // Highlight the first personal plan
+
+                        return AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, child) {
+                            final delay = index * 0.1;
+                            final value = (_animationController.value - delay).clamp(0.0, 1.0);
+                            final curve = Curves.easeOutCubic.transform(value);
+                            return Transform.translate(
+                              offset: Offset(0, 30 * (1 - curve)),
+                              child: Opacity(
+                                opacity: curve,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: _PlanCard(
+                                    plan: plan,
+                                    isFeatured: isFeatured,
+                                    onTap: () {
+                                      if (widget.onSelectPlan != null) {
+                                        widget.onSelectPlan!(plan.id);
+                                      } else {
+                                        context.go(AppRouter.weddingPlanDashboard(plan.id));
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      childCount: provider.plans.length,
+                    ),
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 120), // Padding for bottom nav
+                  child: _buildCreateNewPlanButton(textTheme),
                 ),
               ),
             ],
@@ -88,31 +227,40 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
     );
   }
 
-  Widget _buildSegmentedControl() {
+  Widget _buildSegmentedControl(TextTheme textTheme) {
     return Container(
-      height: 48,
+      height: 52,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: DashboardUiColors.borderLight),
+        color: AppTheme.dCard,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        border: Border.all(color: AppTheme.dLine),
+        boxShadow: AppTheme.softShadow(opacity: 0.03),
       ),
       child: Row(
         children: [
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedTab = 0),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
-                  color: _selectedTab == 0 ? DashboardUiColors.primaryMaroon : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
+                  color: _selectedTab == 0 ? AppTheme.dMaroon : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                 ),
                 child: Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.people_alt_outlined, color: _selectedTab == 0 ? Colors.white : DashboardUiColors.textGray, size: 18),
+                      Icon(LucideIcons.user,
+                          color: _selectedTab == 0 ? Colors.white : AppTheme.dMuted, size: 18),
                       const SizedBox(width: 8),
-                      Text('المشتركة', style: TextStyle(color: _selectedTab == 0 ? Colors.white : DashboardUiColors.textGray, fontWeight: FontWeight.w700)),
+                      Text(
+                        'خططي',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: _selectedTab == 0 ? Colors.white : AppTheme.dMuted,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -122,18 +270,26 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedTab = 1),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
-                  color: _selectedTab == 1 ? DashboardUiColors.primaryMaroon : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
+                  color: _selectedTab == 1 ? AppTheme.dMaroon : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                 ),
                 child: Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.person_outline, color: _selectedTab == 1 ? Colors.white : DashboardUiColors.textGray, size: 18),
+                      Icon(LucideIcons.users,
+                          color: _selectedTab == 1 ? Colors.white : AppTheme.dMuted, size: 18),
                       const SizedBox(width: 8),
-                      Text('خططي', style: TextStyle(color: _selectedTab == 1 ? Colors.white : DashboardUiColors.textGray, fontWeight: FontWeight.w700)),
+                      Text(
+                        'المشتركة',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: _selectedTab == 1 ? Colors.white : AppTheme.dMuted,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -145,53 +301,14 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
     );
   }
 
-  Widget _buildPlansList(WeddingPlansProvider provider) {
-    if (provider.isLoading && provider.plans.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: DashboardUiColors.primaryMaroon));
-    }
-    if (provider.errorMessage != null && provider.plans.isEmpty) {
-      return Center(child: Text(provider.errorMessage!, style: const TextStyle(color: DashboardUiColors.iconRed)));
-    }
-    
-    if (provider.plans.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(child: Text('لا توجد خطط زفاف بعد', style: TextStyle(color: DashboardUiColors.textGray))),
-      );
-    }
-
-    return Column(
-      children: List.generate(provider.plans.length, (index) {
-        final plan = provider.plans[index];
-        final isFeatured = index == 0 && _selectedTab == 0;
-        
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: _PlanCard(
-            plan: plan,
-            isFeatured: isFeatured,
-            onTap: () {
-              if (widget.onSelectPlan != null) {
-                widget.onSelectPlan!(plan.id);
-              } else {
-                context.go(AppRouter.weddingPlanDashboard(plan.id));
-              }
-            },
-          ),
-        );
-      }),
-    );
-  }
-
-  Widget _buildCreateNewPlanButton() {
+  Widget _buildCreateNewPlanButton(TextTheme textTheme) {
     return GestureDetector(
       onTap: () => context.push(AppRouter.createWeddingPlan),
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: DashboardUiColors.primaryMaroon.withAlpha(20),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: DashboardUiColors.primaryMaroon.withAlpha(50), style: BorderStyle.solid),
+        decoration: AppTheme.premiumCardDecoration().copyWith(
+          color: AppTheme.dPinkBg.withAlpha(150),
+          border: Border.all(color: AppTheme.dMaroon.withAlpha(30)),
         ),
         child: Row(
           children: [
@@ -199,20 +316,39 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('إنشاء خطة جديدة', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: DashboardUiColors.primaryMaroon)),
+                  Text(
+                    'إنشاء خطة جديدة',
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.dMaroonDeep,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('ابدأ خطة زفاف جديدة وشاركها مع من تحب', style: TextStyle(fontSize: 12, color: DashboardUiColors.textGray.withAlpha(200))),
+                  Text(
+                    'ابدأ خطة زفاف جديدة وشاركها مع من تحب',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
             Container(
-              width: 48,
-              height: 48,
+              width: 54,
+              height: 54,
               decoration: const BoxDecoration(
-                color: DashboardUiColors.background,
+                color: Colors.white,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  )
+                ],
               ),
-              child: const Icon(Icons.add, color: DashboardUiColors.primaryMaroon, size: 24),
+              child: const Icon(LucideIcons.plus, color: AppTheme.dMaroon, size: 28),
             ),
           ],
         ),
@@ -230,275 +366,216 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = isFeatured ? DashboardUiColors.primaryMaroon : Colors.white;
-    final titleColor = isFeatured ? Colors.white : DashboardUiColors.primaryMaroon;
-    final subtitleColor = isFeatured ? Colors.white70 : DashboardUiColors.textGray;
-    final iconColor = isFeatured ? DashboardUiColors.heroGoldLight : DashboardUiColors.heroGold;
-    final progressBgColor = isFeatured ? DashboardUiColors.heroMaroonDark : DashboardUiColors.background;
-    final progressFillColor = isFeatured ? DashboardUiColors.heroGoldLight : DashboardUiColors.primaryMaroon;
-    final dividerColor = isFeatured ? Colors.white12 : DashboardUiColors.borderLight;
-    
-    // Mock values
+    final textTheme = Theme.of(context).textTheme;
+
+    final bgColor = isFeatured ? AppTheme.dMaroon : AppTheme.dCard;
+    final titleColor = isFeatured ? Colors.white : AppTheme.dMaroonDeep;
+    final subtitleColor = isFeatured ? Colors.white70 : AppTheme.dInkSoft;
+    final iconColor = isFeatured ? AppTheme.dGold2 : AppTheme.dGold;
+    final progressBgColor = isFeatured ? AppTheme.dMaroonDeep : AppTheme.dBg;
+    final progressFillColor = isFeatured ? AppTheme.dGold : AppTheme.dMaroon;
+    final dividerColor = isFeatured ? Colors.white12 : AppTheme.dLine;
+
+    // Mock progress data for visual effect
     final percent = isFeatured ? 62 : 28;
     final daysLeft = isFeatured ? 104 : 210;
-    final guests = isFeatured ? 12 : 8;
-    final doneTasks = isFeatured ? 16 : 7;
-    final totalTasks = isFeatured ? 26 : 25;
-    final budgetTotal = isFeatured ? '10,000,000 ر.ع' : '4,250,000 ر.ع';
     
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          gradient: isFeatured ? const LinearGradient(
-            colors: [DashboardUiColors.primaryMaroon, DashboardUiColors.heroMaroonDark],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ) : null,
-          boxShadow: [
-            BoxShadow(color: isFeatured ? DashboardUiColors.primaryMaroon.withAlpha(40) : Colors.black.withAlpha(5), blurRadius: 20, offset: const Offset(0, 10)),
-          ],
+          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+          gradient: isFeatured ? AppTheme.heroGradient : null,
+          boxShadow: isFeatured ? [
+            BoxShadow(
+              color: AppTheme.dMaroonDeep.withAlpha(60),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            )
+          ] : AppTheme.cardShadow(),
+          border: isFeatured ? null : Border.all(color: AppTheme.dLine),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Top Section
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Tags and Icons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Right Side: Title
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!isFeatured) ...[
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: DashboardUiColors.primaryMaroon.withAlpha(30), borderRadius: BorderRadius.circular(12)),
-                              child: const Icon(Icons.favorite_border, color: DashboardUiColors.primaryMaroon, size: 20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+          child: Stack(
+            children: [
+              // Decorative background shape
+              if (isFeatured)
+                Positioned(
+                  right: -40,
+                  top: -40,
+                  child: Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      color: AppTheme.dPinkBg.withAlpha(20),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              
+              Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isFeatured)
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.dPinkBg.withAlpha(100),
+                              shape: BoxShape.circle,
                             ),
-                            const SizedBox(width: 12),
-                          ],
-                          Column(
+                            child: const Icon(LucideIcons.heart, color: AppTheme.dMaroon, size: 20),
+                          ),
+                        if (!isFeatured) const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  Text(plan.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: titleColor)),
-                                  if (isFeatured) ...[
-                                    const SizedBox(width: 8),
-                                    Icon(Icons.diamond_outlined, color: iconColor, size: 18),
-                                  ],
-                                ],
+                              Text(
+                                plan.title,
+                                style: textTheme.titleLarge?.copyWith(
+                                  color: titleColor,
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Icon(isFeatured ? Icons.people_alt_outlined : Icons.person_outline, color: subtitleColor, size: 14),
+                                  Icon(isFeatured ? LucideIcons.gem : LucideIcons.mapPin,
+                                      color: iconColor, size: 14),
                                   const SizedBox(width: 4),
-                                  Text(isFeatured ? 'خطة مشتركة' : 'خطة شخصية', style: TextStyle(color: subtitleColor, fontSize: 12)),
+                                  Text(
+                                    plan.city ?? 'غير محدد',
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: subtitleColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                      // Left Side: Tag
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isFeatured ? DashboardUiColors.heroGoldLight.withAlpha(30) : DashboardUiColors.background,
-                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(isFeatured ? 'الخطة المميزة' : 'قيد التنفيذ', style: TextStyle(color: isFeatured ? DashboardUiColors.heroGoldLight : DashboardUiColors.textDark, fontSize: 10, fontWeight: FontWeight.w700)),
-                            const SizedBox(width: 4),
-                            Icon(isFeatured ? Icons.star : Icons.circle, color: isFeatured ? DashboardUiColors.heroGoldLight : DashboardUiColors.heroGold, size: 10),
-                          ],
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isFeatured ? Colors.white24 : AppTheme.dBg,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                plan.status,
+                                style: textTheme.labelSmall?.copyWith(
+                                  color: isFeatured ? Colors.white : AppTheme.dInk,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Last Update & Avatars (RTL swap: Last Update Right, Avatars Left)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Last Update (Right)
-                      Row(
-                        children: [
-                          Icon(Icons.access_time, color: subtitleColor, size: 12),
-                          const SizedBox(width: 4),
-                          Text('آخر تحديث: ${isFeatured ? 'اليوم، 9:20 م' : 'أمس، 11:45 ص'}', style: TextStyle(color: subtitleColor, fontSize: 11)),
-                        ],
-                      ),
-                      // Avatars (Left)
-                      Row(
-                        children: [
-                          if (isFeatured) ...[
-                            _buildAvatarOverlap(0, 'https://i.pravatar.cc/100?img=1', bgColor),
-                            _buildAvatarOverlap(1, 'https://i.pravatar.cc/100?img=2', bgColor),
-                            _buildAvatarOverlap(2, 'https://i.pravatar.cc/100?img=3', bgColor),
-                            Container(
-                              width: 28, height: 28,
-                              transform: Matrix4.translationValues(3 * 10.0, 0, 0),
-                              decoration: BoxDecoration(color: DashboardUiColors.primaryMaroon.withAlpha(20), shape: BoxShape.circle, border: Border.all(color: bgColor, width: 2)),
-                              child: const Center(child: Text('+4', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800))),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Progress Bar
+                    Row(
+                      children: [
+                        Icon(LucideIcons.calendarDays, color: iconColor, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$daysLeft يوم متبقية',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: subtitleColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Container(
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: progressBgColor,
+                              borderRadius: BorderRadius.circular(3),
                             ),
-                          ] else ...[
-                            _buildAvatarOverlap(0, 'https://i.pravatar.cc/100?img=4', bgColor),
-                            _buildAvatarOverlap(1, 'https://i.pravatar.cc/100?img=5', bgColor),
-                            Container(
-                              width: 28, height: 28,
-                              transform: Matrix4.translationValues(2 * 10.0, 0, 0),
-                              decoration: BoxDecoration(color: DashboardUiColors.background, shape: BoxShape.circle, border: Border.all(color: bgColor, width: 2)),
-                              child: const Center(child: Icon(Icons.add, color: DashboardUiColors.textGray, size: 14)),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Progress Bar (RTL swap: Days Right, Bar Middle, Percentage Left)
-                  Row(
-                    children: [
-                      // Days (Right)
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today_outlined, color: iconColor, size: 14),
-                          const SizedBox(width: 4),
-                          Text('$daysLeft يوم متبقية', style: TextStyle(color: subtitleColor, fontSize: 12)),
-                        ],
-                      ),
-                      const SizedBox(width: 12),
-                      // Bar (Middle)
-                      Expanded(
-                        child: Container(
-                          height: 6,
-                          decoration: BoxDecoration(color: progressBgColor, borderRadius: BorderRadius.circular(3)),
-                          child: FractionallySizedBox(
-                            alignment: Alignment.centerRight,
-                            widthFactor: percent / 100.0,
-                            child: Container(
-                              decoration: BoxDecoration(color: progressFillColor, borderRadius: BorderRadius.circular(3)),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                return Stack(
+                                  children: [
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0, end: percent / 100.0),
+                                      duration: const Duration(milliseconds: 1000),
+                                      curve: Curves.easeOutQuart,
+                                      builder: (context, value, child) {
+                                        return Container(
+                                          width: constraints.maxWidth * value,
+                                          decoration: BoxDecoration(
+                                            color: progressFillColor,
+                                            borderRadius: BorderRadius.circular(3),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Percentage (Left)
-                      Row(
-                        children: [
-                          Text('مكتمل', style: TextStyle(color: titleColor, fontSize: 12)),
-                          const SizedBox(width: 4),
-                          Text('$percent%', style: TextStyle(color: titleColor, fontSize: 16, fontWeight: FontWeight.w800), textDirection: TextDirection.ltr),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Bottom Grid (3 items)
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: dividerColor),
-                  bottom: BorderSide(color: dividerColor),
+                        const SizedBox(width: 12),
+                        Text(
+                          '$percent%',
+                          style: textTheme.titleSmall?.copyWith(
+                            color: titleColor,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.account_balance_wallet_outlined, color: iconColor, size: 16),
-                            const SizedBox(width: 4),
-                            Text(budgetTotal, style: TextStyle(color: titleColor, fontSize: 13, fontWeight: FontWeight.w800), textDirection: TextDirection.rtl),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text('الميزانية المتوقعة', style: TextStyle(color: subtitleColor, fontSize: 10)),
-                      ],
-                    ),
+              
+              // Bottom Action Area
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border(top: BorderSide(color: dividerColor)),
+                    color: isFeatured ? Colors.black12 : Colors.transparent,
                   ),
-                  Container(width: 1, height: 30, color: dividerColor),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.checklist_rtl_rounded, color: iconColor, size: 16),
-                            const SizedBox(width: 4),
-                            Text('$doneTasks/$totalTasks', style: TextStyle(color: titleColor, fontSize: 13, fontWeight: FontWeight.w800), textDirection: TextDirection.ltr),
-                          ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'إدارة الخطة',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: titleColor,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 4),
-                        Text('المهام', style: TextStyle(color: subtitleColor, fontSize: 10)),
-                      ],
-                    ),
+                      ),
+                      Icon(Icons.arrow_back_rounded, color: titleColor, size: 20),
+                    ],
                   ),
-                  Container(width: 1, height: 30, color: dividerColor),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.people_outline, color: iconColor, size: 16),
-                            const SizedBox(width: 4),
-                            Text('$guests', style: TextStyle(color: titleColor, fontSize: 13, fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text('ضيوف مدعوون', style: TextStyle(color: subtitleColor, fontSize: 10)),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-            // Footer
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  const Expanded(child: SizedBox()),
-                  Text('عرض تفاصيل الخطة', style: TextStyle(color: subtitleColor, fontSize: 12, fontWeight: FontWeight.w700)),
-                  Expanded(child: Align(alignment: Alignment.centerLeft, child: Icon(Icons.chevron_left, color: subtitleColor, size: 16))),
-                ],
-              ),
-            ),
-          ],
+              // Dummy padding to make space for the absolute positioned bottom area
+              const Padding(padding: EdgeInsets.only(bottom: 50)),
+            ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAvatarOverlap(int index, String url, Color bgColor) {
-    return Container(
-      width: 28,
-      height: 28,
-      transform: Matrix4.translationValues(index * 10.0, 0, 0),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: bgColor, width: 2),
-        image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
       ),
     );
   }

@@ -69,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'ادخل بحسابك لمتابعة تنظيم زواجك بوضوح وأناقة.',
+                              'ادخل بحسابك لمتابعة تنظيم زواجك بسهولة.',
                               textAlign: TextAlign.center,
                               style: textTheme.bodyMedium?.copyWith(
                                 color: AppTheme.dInkSoft,
@@ -265,44 +265,40 @@ class _BrandMark extends StatelessWidget {
 
     return Column(
       children: [
-        Container(
-          width: 74,
-          height: 74,
-          decoration: BoxDecoration(
-            gradient: AppTheme.heroGradient,
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.dMaroonDeep.withAlpha(45),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
+        Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Text(
+              'أعرسِت',
+              textAlign: TextAlign.center,
+              style: textTheme.displayMedium?.copyWith(
+                color: AppTheme.dMaroonDeep,
+                fontWeight: FontWeight.w900,
+                height: 1,
               ),
-            ],
-          ),
-          child: const Icon(
-            Icons.favorite_rounded,
-            color: AppTheme.dGold2,
-            size: 34,
-          ),
+            ),
+            Positioned(
+              top: -6,
+              right: -12,
+              child: Icon(
+                Icons.favorite,
+                color: AppTheme.dPinkBg,
+                size: 18,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 14),
-        Text(
-          'اعّرست',
-          textAlign: TextAlign.center,
-          style: textTheme.displaySmall?.copyWith(
-            color: AppTheme.dMaroon,
-            fontWeight: FontWeight.w900,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: 76,
-          height: 4,
-          decoration: BoxDecoration(
-            gradient: AppTheme.goldGradient,
-            borderRadius: BorderRadius.circular(99),
-          ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(width: 40, height: 1.5, color: AppTheme.dGold2),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(Icons.favorite, color: AppTheme.dGoldDeep, size: 14),
+            ),
+            Container(width: 40, height: 1.5, color: AppTheme.dGold2),
+          ],
         ),
       ],
     );

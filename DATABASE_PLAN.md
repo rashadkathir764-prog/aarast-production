@@ -49,3 +49,17 @@ This document describes planned entities at a planning level only. It does not d
 - No payment, deposit, confirmed booking, loan, credit, or financing data should be added until explicitly approved in a later phase.
 - Production migrations and Docker/Dokploy deployment work are outside the Persistence/Auth readiness planning task.
 - Database migrations are outside the Docs Foundation task.
+
+## Implemented Provider Reference Foundation
+
+The backend now includes the approved provider-reference and quote-lead foundation:
+
+- `OtpCode` for provider-agnostic local OTP request/verify flows, storing only hashed codes.
+- User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
+- `NotificationPreference` for safe default account settings.
+- `City` and `ProviderCategory` for Yemen-first marketplace filters.
+- `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
+- `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, and `BookingLead` for saved providers, reviews, quote requests, and non-paid lead context.
+- `WeddingTask` now has optional `taskCategory` and `reminderAt` fields.
+
+These models do not add payment processing, deposits, confirmed reservations, loans, credit, or financing behavior.

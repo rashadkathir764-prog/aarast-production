@@ -16,9 +16,16 @@
     "smoke:debt-installment": "node scripts/smoke/debt-installment-smoke.js",
     "smoke:task-timeline": "node scripts/smoke/task-timeline-smoke.js",
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
+    "smoke:otp-profile": "node scripts/smoke/otp-profile-smoke.js",
+    "smoke:marketplace": "node scripts/smoke/marketplace-smoke.js",
+    "smoke:provider-dashboard": "node scripts/smoke/provider-dashboard-smoke.js",
     "smoke:all": "node scripts/smoke/all-smoke.js",
+    "seed": "ts-node prisma/seed.ts",
     "start": "node dist/main.js",
     "start:dev": "ts-node -r tsconfig-paths/register src/main.ts"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.24",

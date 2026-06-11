@@ -10,6 +10,10 @@ import { InstallmentsModule } from './installments/installments.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { SharingModule } from './sharing/sharing.module';
+import { UsersModule } from './users/users.module';
+import { MarketplaceModule } from './marketplace/marketplace.module';
+import { ProviderDashboardModule } from './provider-dashboard/provider-dashboard.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -23,6 +27,10 @@ import { SharingModule } from './sharing/sharing.module';
     TasksModule,
     TimelineModule,
     SharingModule,
+    UsersModule,
+    MarketplaceModule,
+    ProviderDashboardModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
 })

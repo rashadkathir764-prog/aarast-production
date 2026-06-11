@@ -1,5 +1,34 @@
 # Current Status
 
+## Current Status Override - 2026-06-11
+
+- Repository root: `D:\projects\aarast`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `phase/frontend-rebuild-v1`
+- Task: Backend foundation for approved mobile designs, wedding financial OS support, and provider reference/quote-lead flows completed locally.
+
+Current phase: Backend provider-reference and OTP/profile foundation on `phase/frontend-rebuild-v1`.
+
+The backend MVP core API remains implemented and regression-verified. This slice adds provider-agnostic OTP, profile/settings, city/category/provider/service/package reference data, favorites, reviews, quote requests, provider-owned dashboard catalog management, optional home dashboard aggregation, task category/reminder fields, seed data, migration, and smoke scripts.
+
+This slice does not add Flutter UI changes, payment processing, deposits, paid bookings, loans, credit, financing, AI, internal chat, Docker/Dokploy changes, commits, or pushes.
+
+### Checks Passed From Backend Provider Foundation
+
+- `git status --short`: PASS before work, worktree was clean.
+- `npx prisma format`: PASS.
+- `npx prisma validate`: PASS.
+- `npx prisma migrate dev --name add_provider_marketplace_foundation --create-only`: PASS after using the Compose-local database URL.
+- `npx prisma migrate dev --name add_provider_marketplace_foundation`: PASS, applied `20260611182100_add_provider_marketplace_foundation`.
+- `npx prisma generate`: PASS after stopping the old local backend process that locked the Windows Prisma engine DLL.
+- `npm run seed`: PASS.
+- `npm run check`: PASS.
+- `npm run build`: PASS.
+- `npx prisma migrate status`: PASS, database schema is up to date.
+- `npm run smoke:all` with `SMOKE_BASE_URL=http://127.0.0.1:3129`: PASS, including health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, Sharing, OTP/Profile, Marketplace, and Provider Dashboard.
+- `git diff --check`: PASS; only line-ending warnings were reported.
+- Mobile checks were not run because no Flutter files, shared mobile API constants, or mobile models were changed.
+
 ## Project
 
 - Project name: Aarast / اعّرست

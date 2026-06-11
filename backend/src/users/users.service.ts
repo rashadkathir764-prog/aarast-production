@@ -1,0 +1,122 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
+import { NotificationPreference } from '@prisma/client';
+import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { SafeUser, toSafeUser } from '../auth/safe-user';
+import { PrismaService } from '../prisma/prisma.service';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
+
+export interface NotificationPreferenceResponse {
+  id: string;
+  userId: string;
+  pushEnabled: boolean;
+  smsEnabled: boolean;
+  whatsappEnabled: boolean;
+  emailEnabled: boolean;
+  taskRemindersEnabled: boolean;
+  paymentRemindersEnabled: boolean;
+  providerMessagesEnabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+@Injectable()
+export class UsersService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async updateMe(
+    currentUser: AuthenticatedUser,
+    dto: UpdateProfileDto,
+  ): Promise<SafeUser> {
+    const email = this.optionalText(dto.email);
+
+    if (email) {
+      const existing = await this.prisma.user.findUnique({ where: { email } });
+      if (existing && existing.id !== currentUser.id) {
+        throw new ConflictException('Email is already registered');
+      }
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: currentUser.id },
+      data: {
+        ...(dto.name !== undefined
+          ? { name: this.requiredText(dto.name, 'name') }
+          : {}),
+        ...(dto.email !== undefined ? { email } : {}),
+        ...(dto.avatarUrl !== undefined
+          ? { avatarUrl: this.optionalText(dto.avatarUrl) }
+          : {}),
+        ...(dto.locale !== undefined
+          ? { locale: this.requiredText(dto.locale, 'locale') }
+          : {}),
+      },
+    });
+
+    return toSafeUser(user);
+  }
+
+  async getSettings(
+    currentUser: AuthenticatedUser,
+  ): Promise<NotificationPreferenceResponse> {
+    const settings = await this.prisma.notificationPreference.upsert({
+      where: { userId: currentUser.id },
+      update: {},
+      create: { userId: currentUser.id },
+    });
+
+    return this.toSettingsResponse(settings);
+  }
+
+  async updateSettings(
+    currentUser: AuthenticatedUser,
+    dto: UpdateSettingsDto,
+  ): Promise<NotificationPreferenceResponse> {
+    const settings = await this.prisma.notificationPreference.upsert({
+      where: { userId: currentUser.id },
+      create: {
+        userId: currentUser.id,
+        ...dto,
+      },
+      update: dto,
+    });
+
+    return this.toSettingsResponse(settings);
+  }
+
+  private requiredText(value: string, field: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw new BadRequestException(`${field} must not be empty`);
+    }
+    return trimmed;
+  }
+
+  private optionalText(value: string | null | undefined): string | null {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  private toSettingsResponse(
+    settings: NotificationPreference,
+  ): NotificationPreferenceResponse {
+    return {
+      id: settings.id,
+      userId: settings.userId,
+      pushEnabled: settings.pushEnabled,
+      smsEnabled: settings.smsEnabled,
+      whatsappEnabled: settings.whatsappEnabled,
+      emailEnabled: settings.emailEnabled,
+      taskRemindersEnabled: settings.taskRemindersEnabled,
+      paymentRemindersEnabled: settings.paymentRemindersEnabled,
+      providerMessagesEnabled: settings.providerMessagesEnabled,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+    };
+  }
+}

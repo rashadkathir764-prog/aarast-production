@@ -95,29 +95,36 @@ class HomeTopHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Column(
+        Expanded(
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'أعرست',
-                      style: TextStyle(color: HomeUiColors.maroon, fontSize: 32, fontWeight: FontWeight.w900, height: 1.0),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.favorite, color: HomeUiColors.maroon, size: 16),
-                  ],
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'أعرست',
+                        style: TextStyle(color: HomeUiColors.maroon, fontSize: 32, fontWeight: FontWeight.w900, height: 1.0),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.favorite, color: HomeUiColors.maroon, size: 16),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'مساء الخير، $greetingName',
-                      style: const TextStyle(color: HomeUiColors.muted, fontSize: 14, fontWeight: FontWeight.w700),
+                    Flexible(
+                      child: Text(
+                        'مساء الخير، $greetingName',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: HomeUiColors.muted, fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
                     ),
                     const SizedBox(width: 6),
                     const Icon(Icons.favorite, color: HomeUiColors.gold, size: 14),
@@ -125,7 +132,6 @@ class HomeTopHeader extends StatelessWidget {
                 ),
               ],
             ),
-          ],
         ),
         Row(
           children: [
@@ -247,9 +253,13 @@ class HomeCommandHero extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      plan.title,
-                      style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                    Flexible(
+                      child: Text(
+                        plan.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     const Icon(Icons.favorite_border, color: HomeUiColors.goldSoft, size: 22),
@@ -264,9 +274,13 @@ class HomeCommandHero extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'أنت في الطريق الصحيح!',
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                    const Flexible(
+                      child: Text(
+                        'أنت في الطريق الصحيح!',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                      ),
                     ),
                     const SizedBox(width: 6),
                     const Icon(Icons.auto_awesome, color: HomeUiColors.gold, size: 18),
@@ -293,9 +307,13 @@ class HomeCommandHero extends StatelessWidget {
                   children: [
                     const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 16),
                     const SizedBox(width: 6),
-                    Text(
-                      'تبقى $remainingDays يوم',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                    Flexible(
+                      child: Text(
+                        'تبقى $remainingDays يوم',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ),
@@ -381,7 +399,7 @@ class _HeroButton extends StatelessWidget {
           children: const [
             Icon(Icons.chevron_left, color: Colors.white, size: 18),
             SizedBox(width: 4),
-            Text('استكمال المهام', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+            Flexible(child: Text('استكمال المهام', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
           ],
         ),
       ),
@@ -434,7 +452,7 @@ class _QuickGlanceCard extends StatelessWidget {
             children: const [
               Icon(Icons.remove_red_eye_outlined, color: HomeUiColors.maroon, size: 20),
               SizedBox(width: 6),
-              Text('نظرة سريعة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
+              Flexible(child: Text('نظرة سريعة', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink))),
             ],
           ),
           const SizedBox(height: 16),
@@ -491,7 +509,7 @@ class _MiniStatBox extends StatelessWidget {
                 child: Icon(icon, color: iconColor, size: 14),
               ),
               const SizedBox(width: 4),
-              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: HomeUiColors.ink)),
+              Flexible(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: HomeUiColors.ink))),
             ],
           ),
         ],
@@ -523,7 +541,7 @@ class _BudgetSummaryCard extends StatelessWidget {
             children: const [
               Icon(Icons.account_balance_wallet_outlined, color: HomeUiColors.maroon, size: 20),
               SizedBox(width: 6),
-              Text('ملخص الميزانية', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
+              Flexible(child: Text('ملخص الميزانية', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink))),
             ],
           ),
           const SizedBox(height: 16),
@@ -568,12 +586,14 @@ class _LegendItem extends StatelessWidget {
       children: [
         Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
         const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: HomeUiColors.muted)),
-            Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: HomeUiColors.ink)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: HomeUiColors.muted)),
+              Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: HomeUiColors.ink)),
+            ],
+          ),
         ),
       ],
     );
@@ -725,12 +745,15 @@ class HomeImportantNotesList extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
-                  Icon(Icons.bookmark_outline, color: HomeUiColors.maroon, size: 20),
-                  SizedBox(width: 6),
-                  Text('ملاحظات مهمة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
-                ],
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.bookmark_outline, color: HomeUiColors.maroon, size: 20),
+                    SizedBox(width: 6),
+                    Flexible(child: Text('ملاحظات مهمة', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink))),
+                  ],
+                ),
               ),
               const Text('عرض الكل', style: TextStyle(color: HomeUiColors.maroon, fontSize: 12, fontWeight: FontWeight.w800)),
             ],
@@ -817,12 +840,15 @@ class HomeSharedPlansCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: const [
-                  Icon(Icons.people_outline, color: HomeUiColors.maroon, size: 20),
-                  SizedBox(width: 6),
-                  Text('الخطط المشتركة', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink)),
-                ],
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.people_outline, color: HomeUiColors.maroon, size: 20),
+                    SizedBox(width: 6),
+                    Flexible(child: Text('الخطط المشتركة', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: HomeUiColors.ink))),
+                  ],
+                ),
               ),
               const Text('عرض الكل', style: TextStyle(color: HomeUiColors.maroon, fontSize: 12, fontWeight: FontWeight.w800)),
             ],
@@ -846,6 +872,7 @@ class HomeSharedPlansCard extends StatelessWidget {
                 ),
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 28, height: 28,
@@ -893,11 +920,11 @@ class HomeBottomNavigation extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavItem(icon: Icons.home_rounded, label: 'الرئيسية', isActive: true),
-              _NavItem(icon: Icons.calendar_today_outlined, label: 'المهام', isActive: false),
+              const Expanded(child: _NavItem(icon: Icons.home_rounded, label: 'الرئيسية', isActive: true)),
+              const Expanded(child: _NavItem(icon: Icons.calendar_today_outlined, label: 'المهام', isActive: false)),
               const SizedBox(width: 60), // Space for FAB
-              _NavItem(icon: Icons.assignment_ind_outlined, label: 'الموردين', isActive: false),
-              _NavItem(icon: Icons.grid_view_rounded, label: 'المزيد', isActive: false),
+              const Expanded(child: _NavItem(icon: Icons.assignment_ind_outlined, label: 'الموردين', isActive: false)),
+              const Expanded(child: _NavItem(icon: Icons.grid_view_rounded, label: 'المزيد', isActive: false)),
             ],
           ),
         ),
@@ -938,7 +965,7 @@ class _NavItem extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600)),
+        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: color, fontSize: 11, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600)),
       ],
     );
   }

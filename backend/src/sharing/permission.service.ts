@@ -109,10 +109,7 @@ export class PermissionService {
     if (context.isOwner) return context;
 
     const member = context.sharedMember;
-    if (
-      member?.role === SharedMemberRole.MANAGER ||
-      member?.canManageFinancialRecords
-    ) {
+    if (member?.canManageFinancialRecords) {
       return context;
     }
 
@@ -124,9 +121,9 @@ export class PermissionService {
 
     const member = context.sharedMember;
     if (!member) return false;
-    if (member.role === SharedMemberRole.MANAGER) return true;
+    if (member.canManageFinancialRecords) return true;
     if (type === 'budget') {
-      return member.canViewBudget || member.canViewExpenses || member.canViewDebts;
+      return member.canViewBudget;
     }
     if (type === 'expenses') return member.canViewExpenses;
     return member.canViewDebts;

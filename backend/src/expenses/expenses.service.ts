@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Expense, ExpenseStatus, WeddingPlan } from '@prisma/client';
+import { Expense, ExpenseStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { OwnershipContextService } from '../auth/ownership-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../sharing/permission.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 
@@ -32,7 +32,7 @@ export interface ExpenseSummaryResponse {
 export class ExpensesService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ownershipContext: OwnershipContextService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   async create(
@@ -40,7 +40,7 @@ export class ExpensesService {
     weddingPlanId: string,
     dto: CreateExpenseDto,
   ): Promise<ExpenseResponse> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissionService.assertFinancialManageable(weddingPlanId, currentUser);
     await this.assertCategoryBelongsToPlan(dto.budgetCategoryId, weddingPlanId);
 
     const expense = await this.prisma.expense.create({
@@ -62,7 +62,11 @@ export class ExpensesService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<ExpenseResponse[]> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      'expenses',
+    );
 
     const expenses = await this.prisma.expense.findMany({
       where: { weddingPlanId },
@@ -76,7 +80,11 @@ export class ExpensesService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<ExpenseSummaryResponse> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      'expenses',
+    );
 
     const expenses = await this.prisma.expense.findMany({
       where: { weddingPlanId },
@@ -120,7 +128,11 @@ export class ExpensesService {
     id: string,
     dto: UpdateExpenseDto,
   ): Promise<ExpenseResponse> {
-    const existing = await this.findOwnedExpenseOrThrow(currentUser, id);
+    const existing = await this.findExpenseOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
     if (dto.budgetCategoryId !== undefined) {
       await this.assertCategoryBelongsToPlan(
         dto.budgetCategoryId,
@@ -155,13 +167,16 @@ export class ExpensesService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<{ id: string; deleted: true }> {
-    await this.findOwnedExpenseOrThrow(currentUser, id);
+    const expense = await this.findExpenseOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      expense.weddingPlanId,
+      currentUser,
+    );
     await this.prisma.expense.delete({ where: { id } });
     return { id, deleted: true };
   }
 
-  private async findOwnedExpenseOrThrow(
-    currentUser: AuthenticatedUser,
+  private async findExpenseOrThrow(
     id: string,
   ): Promise<Expense> {
     const expense = await this.prisma.expense.findUnique({ where: { id } });
@@ -170,23 +185,7 @@ export class ExpensesService {
       throw new NotFoundException('Expense not found');
     }
 
-    await this.findOwnedWeddingPlanOrThrow(currentUser, expense.weddingPlanId);
     return expense;
-  }
-
-  private async findOwnedWeddingPlanOrThrow(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-  ): Promise<WeddingPlan> {
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
-
-    if (!plan || !this.ownershipContext.isOwner(currentUser, plan.ownerUserId)) {
-      throw new NotFoundException('Wedding plan not found');
-    }
-
-    return plan;
   }
 
   private async assertCategoryBelongsToPlan(

@@ -86,94 +86,90 @@ class DashboardTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firstName = userName.trim().isEmpty
+        ? 'ضيف'
+        : userName.trim().split(RegExp(r'\s+')).first;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
-      child: Stack(
-        alignment: Alignment.center,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Greeting (start / right in RTL)
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
                     Text(
-                      'أهلاً ${userName.split(' ').first} 👋',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
+                      'أعرسِت',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         color: AppTheme.dMaroon,
-                        height: 1.2,
+                        fontFamily: AppTheme.displayFontFamily,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'هذه لمحة سريعة عن تجهيزات زفافك',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        color: AppTheme.dInkSoft,
-                        fontWeight: FontWeight.w500,
+                    const Positioned(
+                      top: -4,
+                      right: 82,
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        size: 13,
+                        color: AppTheme.dMaroon,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ),
-              // Action icons (end / left in RTL)
-              _IconButton(
-                icon: Icons.notifications_none_rounded,
-                onTap: onNotifications,
-                showDot: hasNotificationDot,
-              ),
-              const SizedBox(width: 10),
-              _IconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
-            ],
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'مساء الخير، $firstName',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.favorite_rounded,
+                      color: AppTheme.dGoldDeep,
+                      size: 15,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          // Centered Brand Mark
-          const Positioned(child: _BrandMark()),
+          const SizedBox(width: 14),
+          _IconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
+          const SizedBox(width: 10),
+          _IconButton(
+            icon: Icons.notifications_none_rounded,
+            onTap: onNotifications,
+            badgeLabel: hasNotificationDot ? '3' : null,
+          ),
         ],
       ),
     );
   }
 }
 
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          'اعرست',
-          style: const TextStyle(
-            fontFamily: AppTheme.displayFontFamily,
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.dMaroon,
-            letterSpacing: 0,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 2),
-        CustomPaint(size: const Size(46, 30), painter: _RingsPainter()),
-      ],
-    );
-  }
-}
-
 class _IconButton extends StatelessWidget {
-  const _IconButton({required this.icon, this.onTap, this.showDot = false});
+  const _IconButton({required this.icon, this.onTap, this.badgeLabel});
 
   final IconData icon;
   final VoidCallback? onTap;
-  final bool showDot;
+  final String? badgeLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -198,17 +194,29 @@ class _IconButton extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Icon(icon, size: 22, color: AppTheme.dInkSoft),
-            if (showDot)
+            if (badgeLabel != null)
               Positioned(
-                top: 12,
-                left: 13,
+                top: 2,
+                left: 1,
                 child: Container(
-                  width: 8,
-                  height: 8,
+                  constraints: const BoxConstraints(minWidth: 18),
+                  height: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppTheme.dMaroon,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: AppTheme.dCard, width: 2),
+                  ),
+                  child: Text(
+                    badgeLabel!,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                    ),
                   ),
                 ),
               ),
@@ -217,53 +225,6 @@ class _IconButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The interlocking wedding rings + star from the brand logo.
-class _RingsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    // design coordinates are based on a 58x42 viewbox
-    final scale = size.width / 58;
-    canvas.save();
-    canvas.scale(scale);
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5;
-
-    stroke.color = AppTheme.dGold;
-    canvas.drawCircle(const Offset(22, 22), 13, stroke);
-    stroke.color = AppTheme.dMaroon;
-    canvas.drawCircle(const Offset(37, 20), 12, stroke);
-
-    // small sparkle/star in gold
-    final star = Paint()..color = AppTheme.dGold;
-    canvas.drawPath(_starPath(const Offset(37, 9), 4.5), star);
-    canvas.restore();
-  }
-
-  Path _starPath(Offset c, double r) {
-    final path = Path();
-    for (var i = 0; i < 5; i++) {
-      final outer = i * 2 * math.pi / 5 - math.pi / 2;
-      final inner = outer + math.pi / 5;
-      final ox = c.dx + r * math.cos(outer);
-      final oy = c.dy + r * math.sin(outer);
-      final ix = c.dx + (r * 0.45) * math.cos(inner);
-      final iy = c.dy + (r * 0.45) * math.sin(inner);
-      if (i == 0) {
-        path.moveTo(ox, oy);
-      } else {
-        path.lineTo(ox, oy);
-      }
-      path.lineTo(ix, iy);
-    }
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 // ============================================================================
@@ -641,6 +602,409 @@ class _ProgressDonutPainter extends CustomPainter {
 // ============================================================================
 // BUDGET SUMMARY CARD (segmented donut + breakdown)
 // ============================================================================
+
+class DashboardSnapshotRow extends StatelessWidget {
+  const DashboardSnapshotRow({
+    required this.totalBudget,
+    required this.spent,
+    required this.currency,
+    required this.tasksDone,
+    required this.tasksTotal,
+    required this.vendorCount,
+    required this.paymentCount,
+    required this.guestCount,
+    this.onBudgetTap,
+    super.key,
+  });
+
+  final double totalBudget;
+  final double spent;
+  final String currency;
+  final int tasksDone;
+  final int tasksTotal;
+  final int vendorCount;
+  final int paymentCount;
+  final int guestCount;
+  final VoidCallback? onBudgetTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final budget = _BudgetSnapshotCard(
+          totalBudget: totalBudget,
+          spent: spent,
+          currency: currency,
+          onTap: onBudgetTap,
+        );
+        final glance = _QuickGlanceSnapshotCard(
+          tasksValue: '$tasksDone/$tasksTotal',
+          vendorCount: vendorCount,
+          paymentCount: paymentCount,
+          guestCount: guestCount,
+        );
+
+        if (constraints.maxWidth < 350) {
+          return Column(children: [budget, const SizedBox(height: 14), glance]);
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: budget),
+            const SizedBox(width: 14),
+            Expanded(child: glance),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BudgetSnapshotCard extends StatelessWidget {
+  const _BudgetSnapshotCard({
+    required this.totalBudget,
+    required this.spent,
+    required this.currency,
+    this.onTap,
+  });
+
+  final double totalBudget;
+  final double spent;
+  final String currency;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = math.max(0.0, totalBudget - spent);
+    final spentRatio = totalBudget > 0
+        ? (spent / totalBudget).clamp(0.0, 1.0)
+        : 0.0;
+
+    return _DashCard(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 12),
+      borderRadius: 18,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SnapshotTitle(
+            title: 'ملخص الميزانية',
+            icon: Icons.account_balance_wallet_outlined,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'إجمالي الميزانية',
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.dInkSoft,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          _Num(
+            '${dashFormatMoney(totalBudget)} $currency',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.dInk,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              SizedBox(
+                width: 66,
+                height: 66,
+                child: CustomPaint(
+                  painter: _SnapshotDonutPainter(progress: spentRatio),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  children: [
+                    _SnapshotLegendLine(
+                      label: 'المصروف',
+                      value: '${dashFormatMoney(spent)} $currency',
+                      color: AppTheme.dMaroon,
+                    ),
+                    const SizedBox(height: 10),
+                    _SnapshotLegendLine(
+                      label: 'المتبقي',
+                      value: '${dashFormatMoney(remaining)} $currency',
+                      color: AppTheme.dGoldDeep,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _FootLink(label: 'عرض التفاصيل', onTap: onTap ?? () {}),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickGlanceSnapshotCard extends StatelessWidget {
+  const _QuickGlanceSnapshotCard({
+    required this.tasksValue,
+    required this.vendorCount,
+    required this.paymentCount,
+    required this.guestCount,
+  });
+
+  final String tasksValue;
+  final int vendorCount;
+  final int paymentCount;
+  final int guestCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashCard(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+      borderRadius: 18,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SnapshotTitle(
+            title: 'نظرة سريعة',
+            icon: Icons.visibility_outlined,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _SnapshotMiniBox(
+                  label: 'الموردين',
+                  value: '$vendorCount',
+                  icon: Icons.groups_rounded,
+                  color: AppTheme.dGreen,
+                  bg: AppTheme.dGreenBg,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SnapshotMiniBox(
+                  label: 'المهام',
+                  value: tasksValue,
+                  icon: Icons.assignment_turned_in_rounded,
+                  color: AppTheme.dMaroon,
+                  bg: AppTheme.dPinkBg,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _SnapshotMiniBox(
+                  label: 'الضيوف',
+                  value: '$guestCount',
+                  icon: Icons.people_alt_rounded,
+                  color: AppTheme.dGoldDeep,
+                  bg: AppTheme.dCreamBg,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SnapshotMiniBox(
+                  label: 'المدفوعات',
+                  value: '$paymentCount',
+                  icon: Icons.credit_card_rounded,
+                  color: AppTheme.dBlue,
+                  bg: AppTheme.dBlueBg,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnapshotTitle extends StatelessWidget {
+  const _SnapshotTitle({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.dMaroon, size: 20),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppTheme.dInk,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SnapshotLegendLine extends StatelessWidget {
+  const _SnapshotLegendLine({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.dInkSoft,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              _Num(
+                value,
+                style: const TextStyle(
+                  color: AppTheme.dInk,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SnapshotMiniBox extends StatelessWidget {
+  const _SnapshotMiniBox({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.bg,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.dCard2,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.dLine.withAlpha(180)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 7),
+          _Num(
+            value,
+            align: TextAlign.center,
+            style: const TextStyle(
+              color: AppTheme.dInk,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppTheme.dInkSoft,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnapshotDonutPainter extends CustomPainter {
+  const _SnapshotDonutPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    const stroke = 12.0;
+    final radius = (size.width - stroke) / 2;
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = AppTheme.dCreamBg;
+    final spentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.butt
+      ..color = AppTheme.dMaroon;
+
+    canvas.drawCircle(center, radius, track);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      math.pi * 2 * progress.clamp(0.0, 1.0),
+      false,
+      spentPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SnapshotDonutPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
 
 class BudgetSummaryCard extends StatelessWidget {
   const BudgetSummaryCard({
@@ -1628,20 +1992,19 @@ class DashboardBottomNav extends StatelessWidget {
                       label: 'الرئيسية',
                       active: activeIndex == 4,
                       onTap: onHome,
-                      spark: true,
                     ),
                     _NavItem(
-                      icon: Icons.event_note_rounded,
-                      label: 'الخطط',
-                      active: activeIndex == 3,
-                      onTap: onPlans,
-                    ),
-                    const SizedBox(width: 90),
-                    _NavItem(
-                      icon: Icons.check_circle_outline_rounded,
+                      icon: Icons.calendar_month_rounded,
                       label: 'المهام',
                       active: activeIndex == 1,
                       onTap: onTasks,
+                    ),
+                    const SizedBox(width: 90),
+                    _NavItem(
+                      icon: Icons.work_outline_rounded,
+                      label: 'الموردين',
+                      active: activeIndex == 3,
+                      onTap: onPlans,
                     ),
                     _NavItem(
                       icon: Icons.grid_view_rounded,
@@ -1696,14 +2059,12 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.active,
     this.onTap,
-    this.spark = false,
   });
 
   final IconData icon;
   final String label;
   final bool active;
   final VoidCallback? onTap;
-  final bool spark;
 
   @override
   Widget build(BuildContext context) {
@@ -1726,34 +2087,7 @@ class _NavItem extends StatelessWidget {
     return InkResponse(
       onTap: onTap,
       radius: 36,
-      child: SizedBox(
-        width: 60,
-        child: spark
-            ? Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.topCenter,
-                children: [
-                  content,
-                  const Positioned(
-                    top: -8,
-                    left: 2,
-                    child: Text(
-                      '✦',
-                      style: TextStyle(fontSize: 12, color: AppTheme.dGold),
-                    ),
-                  ),
-                  const Positioned(
-                    top: 4,
-                    left: -6,
-                    child: Text(
-                      '✦',
-                      style: TextStyle(fontSize: 8, color: AppTheme.dGold2),
-                    ),
-                  ),
-                ],
-              )
-            : content,
-      ),
+      child: SizedBox(width: 60, child: content),
     );
   }
 }

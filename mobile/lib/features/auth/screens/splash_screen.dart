@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_controller.dart';
+import '../providers/auth_controller.dart';
+import '../widgets/auth_wedding_widgets.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,45 +14,45 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1450),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.elasticOut,
-      ),
+    _scaleAnimation = Tween<double>(begin: 0.92, end: 1).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
+    _opacityAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.12, 1, curve: Curves.easeOut),
     );
 
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeIn),
-      ),
-    );
-
-    _animationController.forward().then((_) {
-      _checkAuthAndNavigate();
-    });
+    _animationController.forward().then((_) => _navigateWhenReady());
   }
 
-  void _checkAuthAndNavigate() {
+  Future<void> _navigateWhenReady() async {
+    if (!mounted) return;
     final auth = context.read<AuthController>();
-    if (auth.status == AuthStatus.authenticated) {
-      if (context.mounted) context.go(AppRouter.home);
-    } else {
-      if (context.mounted) context.go(AppRouter.onboarding);
+    if (auth.status == AuthStatus.checking) {
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      return _navigateWhenReady();
     }
+
+    if (!mounted) return;
+    context.go(
+      auth.status == AuthStatus.authenticated
+          ? AppRouter.home
+          : AppRouter.onboarding,
+    );
   }
 
   @override
@@ -62,101 +63,48 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: AppTheme.heroGradient,
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedBuilder(
-                animation: _animationController,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _scaleAnimation.value,
-                    child: Opacity(
-                      opacity: _opacityAnimation.value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withAlpha(50),
-                        blurRadius: 40,
-                        spreadRadius: 10,
-                      )
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.favorite_rounded,
-                      color: AppTheme.dMaroonDeep,
-                      size: 64,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: Stack(
+          children: [
+            const Positioned.fill(child: AuthWeddingBackground()),
+            SafeArea(
+              child: Center(
+                child: FadeTransition(
+                  opacity: _opacityAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const WeddingRingsBadge(size: 112),
+                        const SizedBox(height: 28),
+                        const AuthBrandMark(),
+                        const SizedBox(height: 18),
+                        Text(
+                          'خططي لزفافك بكل أناقة ووضوح',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppTheme.dInkSoft,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 42),
+                        const SizedBox(
+                          width: 34,
+                          height: 34,
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
-              AnimatedBuilder(
-                animation: _animationController,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(0, 20 * (1 - _opacityAnimation.value)),
-                    child: Opacity(
-                      opacity: _opacityAnimation.value,
-                      child: child,
-                    ),
-                  );
-                },
-                child: const Column(
-                  children: [
-                    Text(
-                      'اعّرست',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 48,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'خططي لزفافك بكل أناقة وسهولة',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 60),
-              AnimatedBuilder(
-                animation: _animationController,
-                builder: (context, child) {
-                  return Opacity(
-                    opacity: _opacityAnimation.value,
-                    child: child,
-                  );
-                },
-                child: const CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 3,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

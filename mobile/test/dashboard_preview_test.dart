@@ -1,7 +1,7 @@
 // Visual preview harness for the Aarast dashboard. Renders the real dashboard
-// widgets in the same horizontal-compact 2-column layout used by
-// WeddingPlanDashboardScreen, with mock data, and writes golden PNGs so the
-// layout/scaling can be inspected without a backend or browser.
+// widgets in the same compact snapshot layout used by WeddingPlanDashboardScreen,
+// with mock data, and writes golden PNGs so the layout/scaling can be inspected
+// without a backend or browser.
 //
 // Regenerate the images with:
 //   flutter test test/dashboard_preview_test.dart --update-goldens
@@ -34,68 +34,51 @@ Widget _scaledCanvas(Widget child) {
   );
 }
 
-Widget _miniStats() {
-  return IntrinsicHeight(
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: const [
-        Expanded(
-          child: MiniStatCard(
-            icon: Icons.assignment_turned_in_outlined,
-            iconColor: AppTheme.dGreen,
-            iconBg: AppTheme.dGreenBg,
-            title: 'المهام القادمة',
-            bigValue: '2',
-            unit: 'مهمة',
-            subLabel: 'أقرب مهمة',
-            subValue: 'تأكيد حجز القاعة',
-            subValueColor: AppTheme.dInk,
-            subSecondary: '13 يونيو 2026',
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: MiniStatCard(
-            icon: Icons.calendar_month_outlined,
-            iconColor: AppTheme.dMaroon,
-            iconBg: AppTheme.dPinkBg,
-            title: 'الأقساط القريبة',
-            bigValue: '1',
-            unit: 'قسط',
-            subLabel: 'المبلغ',
-            subValue: '100,000 YER',
-            subValueColor: AppTheme.dOrange,
-            subSecondary: '15 مايو 2026',
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: MiniStatCard(
-            icon: Icons.credit_card_rounded,
-            iconColor: AppTheme.dMaroon,
-            iconBg: AppTheme.dPinkBg,
-            title: 'الديون',
-            bigValue: '250,000',
-            unit: 'YER',
-            subLabel: 'المتبقي',
-            subValue: '200,000 YER',
-            subValueColor: AppTheme.dMaroon,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 Widget _quickActions() {
   return QuickActionsCard(
-    actions: const [
-      QuickAction(icon: Icons.account_balance_wallet_outlined, label: 'إضافة مصروف', color: AppTheme.dMaroon, bg: AppTheme.dPinkBg),
-      QuickAction(icon: Icons.credit_card_rounded, label: 'إضافة دين', color: AppTheme.dMaroon, bg: AppTheme.dPinkBg),
-      QuickAction(icon: Icons.check_circle_outline_rounded, label: 'إضافة مهمة', color: AppTheme.dGreen, bg: AppTheme.dGreenBg),
-      QuickAction(icon: Icons.person_add_alt_1_rounded, label: 'إضافة عضو', color: AppTheme.dBlue, bg: AppTheme.dBlueBg),
-      QuickAction(icon: Icons.post_add_rounded, label: 'خطة جديدة', color: AppTheme.dGoldDeep, bg: AppTheme.dCreamBg),
-    ].map((a) => QuickAction(icon: a.icon, label: a.label, color: a.color, bg: a.bg, onTap: () {})).toList(),
+    actions:
+        const [
+              QuickAction(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'إضافة مصروف',
+                color: AppTheme.dMaroon,
+                bg: AppTheme.dPinkBg,
+              ),
+              QuickAction(
+                icon: Icons.credit_card_rounded,
+                label: 'إضافة دين',
+                color: AppTheme.dMaroon,
+                bg: AppTheme.dPinkBg,
+              ),
+              QuickAction(
+                icon: Icons.check_circle_outline_rounded,
+                label: 'إضافة مهمة',
+                color: AppTheme.dGreen,
+                bg: AppTheme.dGreenBg,
+              ),
+              QuickAction(
+                icon: Icons.person_add_alt_1_rounded,
+                label: 'إضافة عضو',
+                color: AppTheme.dBlue,
+                bg: AppTheme.dBlueBg,
+              ),
+              QuickAction(
+                icon: Icons.post_add_rounded,
+                label: 'خطة جديدة',
+                color: AppTheme.dGoldDeep,
+                bg: AppTheme.dCreamBg,
+              ),
+            ]
+            .map(
+              (a) => QuickAction(
+                icon: a.icon,
+                label: a.label,
+                color: a.color,
+                bg: a.bg,
+                onTap: () {},
+              ),
+            )
+            .toList(),
   );
 }
 
@@ -104,7 +87,11 @@ Widget _content() {
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      DashboardTopBar(userName: 'رشاد', onProfile: () {}, onNotifications: () {}),
+      DashboardTopBar(
+        userName: 'رشاد',
+        onProfile: () {},
+        onNotifications: () {},
+      ),
       const DashboardHeroCard(
         title: 'خطة زفاف رشاد',
         statusLabel: 'قيد التخطيط',
@@ -115,23 +102,15 @@ Widget _content() {
       ),
       const SizedBox(height: 18),
       _padded(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 9, child: _miniStats()),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 11,
-              child: const BudgetSummaryCard(
-                total: 1000000,
-                spent: 50000,
-                obligations: 200000,
-                debtsTotal: 250000,
-                upcomingInstallments: 100000,
-                currency: 'YER',
-              ),
-            ),
-          ],
+        const DashboardSnapshotRow(
+          totalBudget: 1000000,
+          spent: 50000,
+          currency: 'YER',
+          tasksDone: 3,
+          tasksTotal: 10,
+          vendorCount: 12,
+          paymentCount: 8,
+          guestCount: 246,
         ),
       ),
       const SizedBox(height: 18),
@@ -149,8 +128,18 @@ Widget _content() {
                     count: 2,
                     onAddMember: () {},
                     participants: const [
-                      ParticipantInfo(name: 'مستخدم مشارك', roleLabel: 'مدير', isManager: true, phone: '777700001'),
-                      ParticipantInfo(name: 'أحمد علي', roleLabel: 'مساهم', isManager: false, phone: '777700002'),
+                      ParticipantInfo(
+                        name: 'مستخدم مشارك',
+                        roleLabel: 'مدير',
+                        isManager: true,
+                        phone: '777700001',
+                      ),
+                      ParticipantInfo(
+                        name: 'أحمد علي',
+                        roleLabel: 'مساهم',
+                        isManager: false,
+                        phone: '777700002',
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -163,9 +152,24 @@ Widget _content() {
               child: AlertsCard(
                 onViewAll: () {},
                 alerts: const [
-                  DashboardAlert(title: 'قسط قريب الاستحقاق', body: 'لديك قسط بقيمة 100,000 YER يستحق خلال 3 أيام', icon: Icons.calendar_today_outlined, tone: AlertTone.pink),
-                  DashboardAlert(title: 'مصروفات مرتفعة', body: 'لقد وصلت المصروفات إلى 5% من إجمالي الميزانية', icon: Icons.trending_up_rounded, tone: AlertTone.cream),
-                  DashboardAlert(title: 'مهمة قريبة', body: 'تأكيد حجز القاعة بتاريخ 13 يونيو 2026', icon: Icons.checklist_rounded, tone: AlertTone.green),
+                  DashboardAlert(
+                    title: 'قسط قريب الاستحقاق',
+                    body: 'لديك قسط بقيمة 100,000 YER يستحق خلال 3 أيام',
+                    icon: Icons.calendar_today_outlined,
+                    tone: AlertTone.pink,
+                  ),
+                  DashboardAlert(
+                    title: 'مصروفات مرتفعة',
+                    body: 'لقد وصلت المصروفات إلى 5% من إجمالي الميزانية',
+                    icon: Icons.trending_up_rounded,
+                    tone: AlertTone.cream,
+                  ),
+                  DashboardAlert(
+                    title: 'مهمة قريبة',
+                    body: 'تأكيد حجز القاعة بتاريخ 13 يونيو 2026',
+                    icon: Icons.checklist_rounded,
+                    tone: AlertTone.green,
+                  ),
                 ],
               ),
             ),

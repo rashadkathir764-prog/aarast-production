@@ -19,7 +19,9 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _index = 4; // 4 is Home in DashboardBottomNav
+  // DashboardBottomNav indices mirror the approved RTL shell:
+  // 4: الرئيسية, 1: المهام, 3: الموردين, 0: المزيد.
+  int _index = 4;
   String? _activePlanId;
 
   @override
@@ -146,7 +148,7 @@ class _MainShellState extends State<MainShell> {
                     AppTheme.dGreen,
                     AppTheme.dGreenBg,
                     'إضافة مهمة',
-                    AppRouter.tasks(_activePlanId!),
+                    AppRouter.createTask(_activePlanId!),
                   ),
                   tile(
                     Icons.post_add_rounded,
@@ -168,12 +170,7 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
 
-    // Map _index to the IndexedStack.
-    // DashboardBottomNav indices:
-    // 4: Home (Dashboard / Hub) -> IndexedStack 0
-    // 3: Plans -> IndexedStack 1
-    // 1: Tasks -> IndexedStack 2
-    // 0: More -> IndexedStack 3
+    // Map DashboardBottomNav indices to the IndexedStack.
 
     int stackIndex = 0;
     if (_index == 4) {
@@ -204,8 +201,8 @@ class _MainShellState extends State<MainShell> {
                     )
                   : MyWeddingPlansScreen(onSelectPlan: _selectPlan),
 
-              // Index 1 (Nav 3): Plans
-              _buildNoPlanFallback('الخطط', isComingSoon: true),
+              // Index 1 (Nav 3): Vendors marketplace placeholder
+              _buildNoPlanFallback('الموردين', isComingSoon: true),
 
               // Index 2 (Nav 1): Tasks
               _activePlanId != null

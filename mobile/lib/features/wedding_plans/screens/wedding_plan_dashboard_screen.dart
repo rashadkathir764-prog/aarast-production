@@ -101,7 +101,7 @@ class _WeddingPlanDashboardScreenState
       onMore: () => _comingSoon('قسم "المزيد" قيد الإعداد'),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
-      onPlans: () => context.go(AppRouter.home),
+      onPlans: () => _comingSoon('قسم "الموردين" قيد الإعداد'),
       onHome: () {},
     );
   }
@@ -168,6 +168,11 @@ class _WeddingPlanDashboardScreenState
     final allTasks = provider.tasks ?? [];
     final tasksDone = allTasks.where((t) => t.isDone).length;
     final tasksTotal = allTasks.length;
+    final totalBudget = dashParseAmount(plan.estimatedBudget);
+    final spent = dashParseAmount(provider.expenseSummary?.totalPaid);
+    final paymentCount =
+        (provider.expenseSummary?.countPaid ?? 0) +
+        (provider.expenseSummary?.countPlanned ?? 0);
 
     return ListView(
       key: const ValueKey('content'),
@@ -188,47 +193,19 @@ class _WeddingPlanDashboardScreenState
         ),
         const SizedBox(height: 20),
         _padded(
-          BudgetSummaryCard(
-            total: dashParseAmount(plan.estimatedBudget),
-            spent: dashParseAmount(provider.expenseSummary?.totalPaid),
-            obligations: dashParseAmount(provider.expenseSummary?.totalPlanned),
-            debtsTotal: 0, // Placeholder
-            upcomingInstallments: 0, // Placeholder
+          DashboardSnapshotRow(
+            totalBudget: totalBudget,
+            spent: spent,
             currency: 'ر.ي',
+            tasksDone: tasksDone,
+            tasksTotal: tasksTotal,
+            vendorCount: 12,
+            paymentCount: paymentCount,
+            guestCount: 246,
+            onBudgetTap: () => context.push(AppRouter.finance(planId)),
           ),
         ),
-        const SizedBox(height: 14),
-        _padded(
-          Row(
-            children: [
-              Expanded(
-                child: MiniStatCard(
-                  icon: Icons.group_outlined,
-                  iconColor: AppTheme.dGoldDeep,
-                  iconBg: AppTheme.dCreamBg,
-                  title: 'الضيوف',
-                  bigValue: '124',
-                  unit: 'ضيف',
-                  subLabel: 'قيد التأكيد',
-                  subValue: '12',
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: MiniStatCard(
-                  icon: Icons.inventory_2_outlined,
-                  iconColor: AppTheme.dBlue,
-                  iconBg: AppTheme.dBlueBg,
-                  title: 'الموردين',
-                  bigValue: '4',
-                  unit: 'مورد',
-                  locked: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         _padded(
           QuickActionsCard(
             actions: [
@@ -244,9 +221,7 @@ class _WeddingPlanDashboardScreenState
                 label: 'إضافة\nمهمة',
                 color: AppTheme.dGreen,
                 bg: AppTheme.dGreenBg,
-                onTap: () => context.push(
-                  AppRouter.tasks(planId),
-                ), // Should navigate to create task, but use tasks as fallback
+                onTap: () => context.push(AppRouter.createTask(planId)),
               ),
               QuickAction(
                 icon: Icons.credit_card,

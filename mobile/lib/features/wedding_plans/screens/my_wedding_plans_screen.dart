@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
+import '../widgets/aarast_dashboard_widgets.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -43,8 +44,15 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
   }
 
   void _openAccountSheet(AuthController auth) {
-    // Show account sheet or profile - placeholder for actual implementation
-    context.push('/more'); // Navigate to profile for now
+    showAccountSheet(
+      context,
+      name: auth.user?.name ?? 'مستخدم أعرسِت',
+      phone: auth.user?.phone,
+      onLogout: () async {
+        await context.read<AuthController>().logout();
+        if (mounted) context.go(AppRouter.login);
+      },
+    );
   }
 
   @override
@@ -83,7 +91,11 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(Icons.favorite, color: AppTheme.dPinkBg, size: 14),
+                              const Icon(
+                                Icons.favorite,
+                                color: AppTheme.dPinkBg,
+                                size: 14,
+                              ),
                             ],
                           ),
                           Text(
@@ -102,10 +114,17 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                           height: 44,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.dGold, width: 1.5),
+                            border: Border.all(
+                              color: AppTheme.dGold,
+                              width: 1.5,
+                            ),
                             color: AppTheme.dCard,
                           ),
-                          child: const Icon(LucideIcons.user, color: AppTheme.dMaroon, size: 20),
+                          child: const Icon(
+                            LucideIcons.user,
+                            color: AppTheme.dMaroon,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
@@ -127,7 +146,11 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                       ),
                       Row(
                         children: [
-                          const Icon(LucideIcons.sparkles, color: AppTheme.dGold, size: 16),
+                          const Icon(
+                            LucideIcons.sparkles,
+                            color: AppTheme.dGold,
+                            size: 16,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             'خطط زفافك وشاركها مع من تحب',
@@ -176,47 +199,55 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final plan = provider.plans[index];
-                        final isFeatured = index == 0 && _selectedTab == 0; // Highlight the first personal plan
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final plan = provider.plans[index];
+                      final isFeatured =
+                          index == 0 &&
+                          _selectedTab ==
+                              0; // Highlight the first personal plan
 
-                        return AnimatedBuilder(
-                          animation: _animationController,
-                          builder: (context, child) {
-                            final delay = index * 0.1;
-                            final value = (_animationController.value - delay).clamp(0.0, 1.0);
-                            final curve = Curves.easeOutCubic.transform(value);
-                            return Transform.translate(
-                              offset: Offset(0, 30 * (1 - curve)),
-                              child: Opacity(
-                                opacity: curve,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _PlanCard(
-                                    plan: plan,
-                                    isFeatured: isFeatured,
-                                    onTap: () {
-                                      if (widget.onSelectPlan != null) {
-                                        widget.onSelectPlan!(plan.id);
-                                      } else {
-                                        context.go(AppRouter.weddingPlanDashboard(plan.id));
-                                      }
-                                    },
-                                  ),
+                      return AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          final delay = index * 0.1;
+                          final value = (_animationController.value - delay)
+                              .clamp(0.0, 1.0);
+                          final curve = Curves.easeOutCubic.transform(value);
+                          return Transform.translate(
+                            offset: Offset(0, 30 * (1 - curve)),
+                            child: Opacity(
+                              opacity: curve,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: _PlanCard(
+                                  plan: plan,
+                                  isFeatured: isFeatured,
+                                  onTap: () {
+                                    if (widget.onSelectPlan != null) {
+                                      widget.onSelectPlan!(plan.id);
+                                    } else {
+                                      context.go(
+                                        AppRouter.weddingPlanDashboard(plan.id),
+                                      );
+                                    }
+                                  },
                                 ),
                               ),
-                            );
-                          },
-                        );
-                      },
-                      childCount: provider.plans.length,
-                    ),
+                            ),
+                          );
+                        },
+                      );
+                    }, childCount: provider.plans.length),
                   ),
                 ),
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 120), // Padding for bottom nav
+                  padding: const EdgeInsets.fromLTRB(
+                    20,
+                    8,
+                    20,
+                    120,
+                  ), // Padding for bottom nav
                   child: _buildCreateNewPlanButton(textTheme),
                 ),
               ),
@@ -244,20 +275,29 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
-                  color: _selectedTab == 0 ? AppTheme.dMaroon : Colors.transparent,
+                  color: _selectedTab == 0
+                      ? AppTheme.dMaroon
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                 ),
                 child: Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.user,
-                          color: _selectedTab == 0 ? Colors.white : AppTheme.dMuted, size: 18),
+                      Icon(
+                        LucideIcons.user,
+                        color: _selectedTab == 0
+                            ? Colors.white
+                            : AppTheme.dMuted,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'خططي',
                         style: textTheme.labelLarge?.copyWith(
-                          color: _selectedTab == 0 ? Colors.white : AppTheme.dMuted,
+                          color: _selectedTab == 0
+                              ? Colors.white
+                              : AppTheme.dMuted,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -273,20 +313,29 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
-                  color: _selectedTab == 1 ? AppTheme.dMaroon : Colors.transparent,
+                  color: _selectedTab == 1
+                      ? AppTheme.dMaroon
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                 ),
                 child: Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(LucideIcons.users,
-                          color: _selectedTab == 1 ? Colors.white : AppTheme.dMuted, size: 18),
+                      Icon(
+                        LucideIcons.users,
+                        color: _selectedTab == 1
+                            ? Colors.white
+                            : AppTheme.dMuted,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'المشتركة',
                         style: textTheme.labelLarge?.copyWith(
-                          color: _selectedTab == 1 ? Colors.white : AppTheme.dMuted,
+                          color: _selectedTab == 1
+                              ? Colors.white
+                              : AppTheme.dMuted,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -345,10 +394,14 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                     color: Colors.black12,
                     blurRadius: 10,
                     offset: Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
-              child: const Icon(LucideIcons.plus, color: AppTheme.dMaroon, size: 28),
+              child: const Icon(
+                LucideIcons.plus,
+                color: AppTheme.dMaroon,
+                size: 28,
+              ),
             ),
           ],
         ),
@@ -358,7 +411,11 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan, required this.isFeatured, required this.onTap});
+  const _PlanCard({
+    required this.plan,
+    required this.isFeatured,
+    required this.onTap,
+  });
 
   final WeddingPlan plan;
   final bool isFeatured;
@@ -379,7 +436,7 @@ class _PlanCard extends StatelessWidget {
     // Mock progress data for visual effect
     final percent = isFeatured ? 62 : 28;
     final daysLeft = isFeatured ? 104 : 210;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -387,13 +444,15 @@ class _PlanCard extends StatelessWidget {
           color: bgColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusXl),
           gradient: isFeatured ? AppTheme.heroGradient : null,
-          boxShadow: isFeatured ? [
-            BoxShadow(
-              color: AppTheme.dMaroonDeep.withAlpha(60),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            )
-          ] : AppTheme.cardShadow(),
+          boxShadow: isFeatured
+              ? [
+                  BoxShadow(
+                    color: AppTheme.dMaroonDeep.withAlpha(60),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ]
+              : AppTheme.cardShadow(),
           border: isFeatured ? null : Border.all(color: AppTheme.dLine),
         ),
         child: ClipRRect(
@@ -414,7 +473,7 @@ class _PlanCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(22),
                 child: Column(
@@ -431,7 +490,11 @@ class _PlanCard extends StatelessWidget {
                               color: AppTheme.dPinkBg.withAlpha(100),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(LucideIcons.heart, color: AppTheme.dMaroon, size: 20),
+                            child: const Icon(
+                              LucideIcons.heart,
+                              color: AppTheme.dMaroon,
+                              size: 20,
+                            ),
                           ),
                         if (!isFeatured) const SizedBox(width: 14),
                         Expanded(
@@ -448,8 +511,13 @@ class _PlanCard extends StatelessWidget {
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  Icon(isFeatured ? LucideIcons.gem : LucideIcons.mapPin,
-                                      color: iconColor, size: 14),
+                                  Icon(
+                                    isFeatured
+                                        ? LucideIcons.gem
+                                        : LucideIcons.mapPin,
+                                    color: iconColor,
+                                    size: 14,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     plan.city ?? 'غير محدد',
@@ -465,10 +533,15 @@ class _PlanCard extends StatelessWidget {
                         ),
                         // Status Badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: isFeatured ? Colors.white24 : AppTheme.dBg,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSm,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -476,7 +549,9 @@ class _PlanCard extends StatelessWidget {
                               Text(
                                 plan.status,
                                 style: textTheme.labelSmall?.copyWith(
-                                  color: isFeatured ? Colors.white : AppTheme.dInk,
+                                  color: isFeatured
+                                      ? Colors.white
+                                      : AppTheme.dInk,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
@@ -486,11 +561,15 @@ class _PlanCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Progress Bar
                     Row(
                       children: [
-                        Icon(LucideIcons.calendarDays, color: iconColor, size: 16),
+                        Icon(
+                          LucideIcons.calendarDays,
+                          color: iconColor,
+                          size: 16,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           '$daysLeft يوم متبقية',
@@ -512,15 +591,22 @@ class _PlanCard extends StatelessWidget {
                                 return Stack(
                                   children: [
                                     TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0, end: percent / 100.0),
-                                      duration: const Duration(milliseconds: 1000),
+                                      tween: Tween(
+                                        begin: 0,
+                                        end: percent / 100.0,
+                                      ),
+                                      duration: const Duration(
+                                        milliseconds: 1000,
+                                      ),
                                       curve: Curves.easeOutQuart,
                                       builder: (context, value, child) {
                                         return Container(
                                           width: constraints.maxWidth * value,
                                           decoration: BoxDecoration(
                                             color: progressFillColor,
-                                            borderRadius: BorderRadius.circular(3),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
                                           ),
                                         );
                                       },
@@ -544,14 +630,17 @@ class _PlanCard extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               // Bottom Action Area
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 22,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     border: Border(top: BorderSide(color: dividerColor)),
                     color: isFeatured ? Colors.black12 : Colors.transparent,
@@ -566,7 +655,11 @@ class _PlanCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      Icon(Icons.arrow_back_rounded, color: titleColor, size: 20),
+                      Icon(
+                        Icons.arrow_back_rounded,
+                        color: titleColor,
+                        size: 20,
+                      ),
                     ],
                   ),
                 ),

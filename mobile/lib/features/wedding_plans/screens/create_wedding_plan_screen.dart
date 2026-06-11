@@ -1,11 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../providers/wedding_plans_provider.dart';
 
@@ -17,8 +16,7 @@ class CreateWeddingPlanScreen extends StatefulWidget {
       _CreateWeddingPlanScreenState();
 }
 
-class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen>
-    with SingleTickerProviderStateMixin {
+class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _budgetController = TextEditingController();
@@ -27,273 +25,124 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen>
   String? _selectedCity;
   DateTime? _weddingDate;
 
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-  }
+  static const _cities = [
+    'صنعاء',
+    'عدن',
+    'تعز',
+    'الحديدة',
+    'إب',
+    'المكلا',
+    'ذمار',
+    'غير ذلك',
+  ];
 
   @override
   void dispose() {
     _titleController.dispose();
     _budgetController.dispose();
     _currencyController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
-  void _showCityPicker() {
+  Future<void> _showCityPicker() async {
     FocusScope.of(context).unfocus();
-    final cities = [
-      'صنعاء',
-      'عدن',
-      'تعز',
-      'الحديدة',
-      'إب',
-      'المكلا',
-      'ذمار',
-      'غير ذلك'
-    ];
-
-    showModalBottomSheet<void>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.6,
-            decoration: BoxDecoration(
-              color: AppTheme.dCard.withAlpha(240),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.dMaroonDeep.withAlpha(30),
-                  blurRadius: 40,
-                  offset: const Offset(0, -10),
-                )
-              ],
-            ),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppTheme.dLine,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  const AarastSectionHeader(
+                    title: 'اختاري مدينة الزفاف',
+                    icon: Icons.location_on_outlined,
+                  ),
+                  const SizedBox(height: 14),
+                  for (final city in _cities)
+                    _PickerRow(
+                      label: city,
+                      selected: city == _selectedCity,
+                      onTap: () => Navigator.of(sheetContext).pop(city),
                     ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dPinkBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(LucideIcons.mapPin, color: AppTheme.dMaroon),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'اختر مدينة الزفاف',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.dMaroonDeep,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                        itemCount: cities.length,
-                        itemBuilder: (context, index) {
-                          final city = cities[index];
-                          final isSelected = city == _selectedCity;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() => _selectedCity = city);
-                                  Navigator.pop(sheetContext);
-                                },
-                                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: isSelected ? AppTheme.dMaroon : AppTheme.dLine,
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                    color: isSelected ? AppTheme.dPinkBg.withAlpha(100) : Colors.transparent,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        city,
-                                        style: TextStyle(
-                                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                                          color: isSelected ? AppTheme.dMaroonDeep : AppTheme.dInk,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      if (isSelected)
-                                        const Icon(LucideIcons.checkCircle2, color: AppTheme.dMaroon),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
         );
       },
     );
+
+    if (selected != null) {
+      setState(() => _selectedCity = selected);
+    }
   }
 
-  void _showCalendarPicker() {
+  Future<void> _showCalendarPicker() async {
     FocusScope.of(context).unfocus();
     final now = DateTime.now();
-    DateTime tempDate = _weddingDate ?? now;
+    var tempDate = _weddingDate ?? now;
 
-    showModalBottomSheet<void>(
+    final selected = await showModalBottomSheet<DateTime>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppTheme.dCard.withAlpha(240),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.dMaroonDeep.withAlpha(30),
-                  blurRadius: 40,
-                  offset: const Offset(0, -10),
-                )
-              ],
-            ),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppTheme.dLine,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dPinkBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(LucideIcons.calendarDays, color: AppTheme.dMaroon),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'تاريخ الزفاف',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.dMaroonDeep,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: Theme.of(context).colorScheme.copyWith(
-                            primary: AppTheme.dMaroon,
-                            onPrimary: Colors.white,
-                            surface: Colors.transparent,
-                            onSurface: AppTheme.dInk,
-                          ),
-                        ),
-                        child: CalendarDatePicker(
-                          initialDate: tempDate,
-                          firstDate: DateTime(now.year - 1),
-                          lastDate: DateTime(now.year + 10),
-                          onDateChanged: (date) {
-                            tempDate = date;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.dMaroon,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                            ),
-                          ),
-                          onPressed: () {
-                            setState(() => _weddingDate = tempDate);
-                            Navigator.pop(sheetContext);
-                          },
-                          child: const Text(
-                            'تأكيد التاريخ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  const AarastSectionHeader(
+                    title: 'تاريخ الزفاف',
+                    icon: Icons.calendar_month_rounded,
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppTheme.dMaroon,
+                        onPrimary: Colors.white,
+                        surface: AppTheme.dCard2,
+                        onSurface: AppTheme.dInk,
+                      ),
+                    ),
+                    child: CalendarDatePicker(
+                      initialDate: tempDate,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 10),
+                      onDateChanged: (date) => tempDate = date,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PrimaryActionButton(
+                    label: 'تأكيد التاريخ',
+                    icon: Icons.check_rounded,
+                    onPressed: () => Navigator.of(sheetContext).pop(tempDate),
+                  ),
+                ],
               ),
             ),
           ),
         );
       },
     );
+
+    if (selected != null) {
+      setState(() => _weddingDate = selected);
+    }
   }
 
   @override
@@ -301,397 +150,515 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen>
     final provider = context.watch<WeddingPlansProvider>();
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Luxury Background Elements
-            Positioned(
-              top: -100,
-              right: -50,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.dPinkBg.withAlpha(150),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 200,
-              left: -80,
-              child: Container(
-                width: 200,
-                height: 200,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.dGold.withAlpha(20),
-                ),
-              ),
-            ),
-            
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(AppRouter.home);
-                          }
-                        },
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppTheme.dCard,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.dLine),
-                          ),
-                          child: const Icon(Icons.arrow_back_rounded, color: AppTheme.dMaroon),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'إنشاء خطة زفاف',
-                        style: textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                      child: Row(
                         children: [
-                          AnimatedBuilder(
-                            animation: _animationController,
-                            builder: (context, child) {
-                              final curve = Curves.easeOutCubic.transform(_animationController.value);
-                              return Transform.translate(
-                                offset: Offset(0, 30 * (1 - curve)),
-                                child: Opacity(
-                                  opacity: curve,
-                                  child: child,
-                                ),
-                              );
-                            },
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    gradient: AppTheme.heroGradient,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.dMaroonDeep.withAlpha(40),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 10),
-                                      )
-                                    ],
-                                  ),
-                                  child: const Icon(LucideIcons.gem, color: AppTheme.dGold2, size: 36),
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'أجمل أيام حياتك يبدأ من هنا',
-                                  textAlign: TextAlign.center,
-                                  style: textTheme.headlineSmall?.copyWith(
-                                    color: AppTheme.dMaroonDeep,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'دعنا نجهز لك خطة زفافك خطوة بخطوة بكل سهولة وأناقة',
-                                  textAlign: TextAlign.center,
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.dInkSoft,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 40),
-                              ],
-                            ),
+                          IconButton(
+                            onPressed: _goBack,
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            tooltip: 'رجوع',
                           ),
-                          
-                          _buildAnimatedField(
-                            0,
-                            TextFormField(
-                              controller: _titleController,
-                              textAlign: TextAlign.right,
-                              textInputAction: TextInputAction.next,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                              decoration: InputDecoration(
-                                labelText: 'عنوان الخطة',
-                                hintText: 'مثال: زفاف الأحلام',
-                                prefixIcon: const Icon(LucideIcons.textCursorInput),
-                                filled: true,
-                                fillColor: AppTheme.dCard,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'عنوان الخطة مطلوب';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 20),
-                          
-                          _buildAnimatedField(
-                            1,
-                            GestureDetector(
-                              onTap: _showCityPicker,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.dCard,
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  border: Border.all(
-                                    color: _selectedCity != null ? AppTheme.dMaroon : AppTheme.dLine,
-                                    width: _selectedCity != null ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(LucideIcons.mapPin, color: _selectedCity != null ? AppTheme.dMaroon : AppTheme.dMuted),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Text(
-                                        _selectedCity ?? 'المدينة (اختياري)',
-                                        style: TextStyle(
-                                          fontWeight: _selectedCity != null ? FontWeight.w800 : FontWeight.w600,
-                                          color: _selectedCity != null ? AppTheme.dInk : AppTheme.dMuted,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                    const Icon(LucideIcons.chevronDown, color: AppTheme.dMuted, size: 20),
-                                  ],
-                                ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'إنشاء خطة زفاف',
+                              style: textTheme.titleLarge?.copyWith(
+                                color: AppTheme.dMaroonDeep,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
                           ),
-                          
-                          const SizedBox(height: 20),
-                          
-                          _buildAnimatedField(
-                            2,
-                            GestureDetector(
-                              onTap: _showCalendarPicker,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.dCard,
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  border: Border.all(
-                                    color: _weddingDate != null ? AppTheme.dMaroon : AppTheme.dLine,
-                                    width: _weddingDate != null ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(LucideIcons.calendarDays, color: _weddingDate != null ? AppTheme.dMaroon : AppTheme.dMuted),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          if (_weddingDate != null)
-                                            Text(
-                                              'تاريخ الزفاف',
-                                              style: TextStyle(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: AppTheme.dInkSoft,
-                                              ),
-                                            ),
-                                          Text(
-                                            _weddingDate == null ? 'تاريخ الزفاف (اختياري)' : '${_weddingDate!.year}/${_weddingDate!.month}/${_weddingDate!.day}',
-                                            style: TextStyle(
-                                              fontWeight: _weddingDate != null ? FontWeight.w800 : FontWeight.w600,
-                                              color: _weddingDate != null ? AppTheme.dInk : AppTheme.dMuted,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const Icon(LucideIcons.calendarPlus, color: AppTheme.dMuted, size: 20),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 20),
-                          
-                          _buildAnimatedField(
-                            3,
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 3,
-                                  child: TextFormField(
-                                    controller: _budgetController,
-                                    textAlign: TextAlign.right,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    style: const TextStyle(fontWeight: FontWeight.w700),
-                                    decoration: InputDecoration(
-                                      labelText: 'الميزانية (اختياري)',
-                                      hintText: '2,500,000',
-                                      prefixIcon: const Icon(LucideIcons.wallet),
-                                      filled: true,
-                                      fillColor: AppTheme.dCard,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        borderSide: const BorderSide(color: AppTheme.dLine),
-                                      ),
-                                      enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        borderSide: const BorderSide(color: AppTheme.dLine),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  flex: 1,
-                                  child: TextFormField(
-                                    controller: _currencyController,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.dMaroonDeep),
-                                    decoration: InputDecoration(
-                                      labelText: 'العملة',
-                                      filled: true,
-                                      fillColor: AppTheme.dPinkBg,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          if (provider.errorMessage != null) ...[
-                            const SizedBox(height: 20),
-                            _buildAnimatedField(
-                              4,
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.danger.withAlpha(20),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                                  border: Border.all(color: AppTheme.danger.withAlpha(50)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        provider.errorMessage!,
-                                        style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                          
-                          const SizedBox(height: 40),
-                          
-                          _buildAnimatedField(
-                            4,
-                            PrimaryActionButton(
-                              label: 'بدء التخطيط',
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                          ),
-                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    sliver: SliverToBoxAdapter(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _CreatePlanHero(),
+                            const SizedBox(height: 18),
+                            AarastCard(
+                              padding: const EdgeInsets.all(18),
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _titleController,
+                                    textAlign: TextAlign.right,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: const InputDecoration(
+                                      labelText: 'عنوان الخطة',
+                                      hintText: 'مثال: حفلتنا الكبيرة',
+                                      prefixIcon: Icon(Icons.list_alt_rounded),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'عنوان الخطة مطلوب';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SelectorField(
+                                    label: 'المدينة (اختياري)',
+                                    value: _selectedCity ?? 'اختاري المدينة',
+                                    icon: Icons.location_on_outlined,
+                                    selected: _selectedCity != null,
+                                    onTap: _showCityPicker,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  _SelectorField(
+                                    label: 'تاريخ الزفاف',
+                                    value: _weddingDate == null
+                                        ? 'اختاري التاريخ'
+                                        : _formatDate(_weddingDate!),
+                                    icon: Icons.calendar_month_rounded,
+                                    selected: _weddingDate != null,
+                                    onTap: _showCalendarPicker,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 2,
+                                        child: TextFormField(
+                                          controller: _budgetController,
+                                          textAlign: TextAlign.right,
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          decoration: const InputDecoration(
+                                            labelText: 'الميزانية التقديرية',
+                                            hintText: '2,500,000',
+                                            prefixIcon: Icon(
+                                              Icons
+                                                  .account_balance_wallet_outlined,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      SizedBox(
+                                        width: 92,
+                                        child: TextFormField(
+                                          controller: _currencyController,
+                                          textAlign: TextAlign.center,
+                                          decoration: const InputDecoration(
+                                            labelText: 'العملة',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (provider.errorMessage != null) ...[
+                                    const SizedBox(height: 14),
+                                    AarastStatusPill(
+                                      label: provider.errorMessage!,
+                                      color: AppTheme.danger,
+                                      icon: Icons.error_outline_rounded,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _PlanPreviewCard(
+                              title: _titleController.text.trim().isEmpty
+                                  ? 'خطة زفافنا'
+                                  : _titleController.text.trim(),
+                              city: _selectedCity ?? 'غير محدد',
+                              budget: _budgetController.text.trim().isEmpty
+                                  ? '0'
+                                  : _budgetController.text.trim(),
+                            ),
+                            const SizedBox(height: 18),
+                            PrimaryActionButton(
+                              label: 'إنشاء الخطة',
+                              icon: Icons.chevron_left_rounded,
+                              isLoading: provider.isSubmitting,
+                              onPressed: _submit,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'يمكنك تعديل الخطة في أي وقت.',
+                              textAlign: TextAlign.center,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: AppTheme.dInkSoft,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildAnimatedField(int index, Widget child) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, childWidget) {
-        final delay = 0.2 + (index * 0.1);
-        final value = (_animationController.value - delay).clamp(0.0, 1.0);
-        final curve = Curves.easeOutCubic.transform(value);
-        return Transform.translate(
-          offset: Offset(0, 30 * (1 - curve)),
-          child: Opacity(
-            opacity: curve,
-            child: childWidget,
-          ),
-        );
-      },
-      child: child,
-    );
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(AppRouter.home);
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<WeddingPlansProvider>();
-
+    final budget = _budgetController.text.trim();
     final plan = await provider.createWeddingPlan(
       title: _titleController.text.trim(),
       city: _selectedCity,
       weddingDate: _weddingDate,
-      estimatedBudget: _budgetController.text.trim(),
+      estimatedBudget: budget.isEmpty ? null : budget,
       currency: _currencyController.text.trim().isEmpty
           ? 'YER'
           : _currencyController.text.trim(),
     );
 
-    if (plan != null && mounted) {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRouter.home);
-      }
-    }
+    if (plan != null && mounted) _goBack();
   }
+}
+
+class _CreatePlanHero extends StatelessWidget {
+  const _CreatePlanHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      decoration: AppTheme.heroDecoration(),
+      child: Column(
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(245),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppTheme.dGold2.withAlpha(180)),
+            ),
+            child: CustomPaint(painter: _RingsPainter()),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'ابدئي بخطة واضحة',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'دعينا نجهز تفاصيل زفافك خطوة بخطوة بكل سهولة.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withAlpha(220),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanPreviewCard extends StatelessWidget {
+  const _PlanPreviewCard({
+    required this.title,
+    required this.city,
+    required this.budget,
+  });
+
+  final String title;
+  final String city;
+  final String budget;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.dPinkBg.withAlpha(115),
+      border: Border.all(color: AppTheme.dMaroon.withAlpha(34)),
+      child: Column(
+        children: [
+          Text(
+            'ملخص خطتك',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.dMaroonDeep,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _PreviewMetric(
+                  icon: Icons.account_balance_wallet_outlined,
+                  value: budget,
+                  label: 'الميزانية',
+                ),
+              ),
+              Expanded(
+                child: _PreviewMetric(
+                  icon: Icons.checklist_rounded,
+                  value: '0',
+                  label: 'المهام',
+                ),
+              ),
+              Expanded(
+                child: _PreviewMetric(
+                  icon: Icons.location_on_outlined,
+                  value: city,
+                  label: title,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreviewMetric extends StatelessWidget {
+  const _PreviewMetric({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: AppTheme.dMaroon, size: 22),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppTheme.dInk,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.dInkSoft,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SelectorField extends StatelessWidget {
+  const _SelectorField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppTheme.dCard2,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(
+            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            width: selected ? 1.3 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                  ),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: selected ? AppTheme.dInk : AppTheme.dMuted,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppTheme.dMuted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerRow extends StatelessWidget {
+  const _PickerRow({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AarastCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+        border: Border.all(color: selected ? AppTheme.dMaroon : AppTheme.dLine),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: selected ? AppTheme.dMaroon : AppTheme.dInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 46,
+        height: 5,
+        decoration: BoxDecoration(
+          color: AppTheme.dLine,
+          borderRadius: BorderRadius.circular(99),
+        ),
+      ),
+    );
+  }
+}
+
+class _RingsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = size.width * 0.055
+      ..strokeCap = StrokeCap.round;
+    stroke.color = AppTheme.dMaroon;
+    canvas.drawCircle(
+      Offset(size.width * 0.42, size.height * 0.56),
+      size.width * 0.16,
+      stroke,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.58, size.height * 0.56),
+      size.width * 0.16,
+      stroke,
+    );
+
+    final heart = Paint()..color = AppTheme.dMaroon;
+    final path = Path()
+      ..moveTo(size.width * 0.5, size.height * 0.31)
+      ..cubicTo(
+        size.width * 0.40,
+        size.height * 0.22,
+        size.width * 0.30,
+        size.height * 0.36,
+        size.width * 0.5,
+        size.height * 0.47,
+      )
+      ..cubicTo(
+        size.width * 0.70,
+        size.height * 0.36,
+        size.width * 0.60,
+        size.height * 0.22,
+        size.width * 0.5,
+        size.height * 0.31,
+      );
+    canvas.drawPath(path, heart);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+String _formatDate(DateTime date) {
+  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
 }

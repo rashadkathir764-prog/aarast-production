@@ -1,11 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../providers/task_timeline_provider.dart';
 
@@ -18,611 +17,512 @@ class CreateTaskScreen extends StatefulWidget {
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
 }
 
-class _CreateTaskScreenState extends State<CreateTaskScreen>
-    with SingleTickerProviderStateMixin {
+class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+
   DateTime? _dueDate;
   String _priority = 'MEDIUM';
   String _category = 'GENERAL';
 
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-  }
+  static const _categories = [
+    _TaskCategory('GENERAL', 'عامة', Icons.dashboard_customize_outlined),
+    _TaskCategory('VENUE', 'القاعة', Icons.apartment_rounded),
+    _TaskCategory('CATERING', 'الضيافة', Icons.room_service_outlined),
+    _TaskCategory('ATTIRE', 'الملابس', Icons.checkroom_outlined),
+    _TaskCategory('GUESTS', 'الضيوف', Icons.groups_outlined),
+  ];
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
-  void _showCalendarPicker() {
+  Future<void> _showCalendarPicker() async {
     FocusScope.of(context).unfocus();
     final now = DateTime.now();
-    DateTime tempDate = _dueDate ?? now;
+    var tempDate = _dueDate ?? now;
 
-    showModalBottomSheet<void>(
+    final selected = await showModalBottomSheet<DateTime>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppTheme.dCard.withAlpha(240),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.dMaroonDeep.withAlpha(30),
-                  blurRadius: 40,
-                  offset: const Offset(0, -10),
-                )
-              ],
-            ),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppTheme.dLine,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dPinkBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(LucideIcons.calendarClock, color: AppTheme.dMaroon),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'تاريخ استحقاق المهمة',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.dMaroonDeep,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: Theme.of(context).colorScheme.copyWith(
-                            primary: AppTheme.dMaroon,
-                            onPrimary: Colors.white,
-                            surface: Colors.transparent,
-                            onSurface: AppTheme.dInk,
-                          ),
-                        ),
-                        child: CalendarDatePicker(
-                          initialDate: tempDate,
-                          firstDate: DateTime(now.year - 1),
-                          lastDate: DateTime(now.year + 5),
-                          onDateChanged: (date) {
-                            tempDate = date;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.dMaroon,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                            ),
-                          ),
-                          onPressed: () {
-                            setState(() => _dueDate = tempDate);
-                            Navigator.pop(sheetContext);
-                          },
-                          child: const Text(
-                            'تأكيد التاريخ',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  const AarastSectionHeader(
+                    title: 'تاريخ استحقاق المهمة',
+                    icon: Icons.event_available_rounded,
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppTheme.dMaroon,
+                        onPrimary: Colors.white,
+                        surface: AppTheme.dCard2,
+                        onSurface: AppTheme.dInk,
+                      ),
+                    ),
+                    child: CalendarDatePicker(
+                      initialDate: tempDate,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 5),
+                      onDateChanged: (date) => tempDate = date,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PrimaryActionButton(
+                    label: 'تأكيد التاريخ',
+                    icon: Icons.check_rounded,
+                    onPressed: () => Navigator.of(sheetContext).pop(tempDate),
+                  ),
+                ],
               ),
             ),
           ),
         );
       },
     );
+
+    if (selected != null) setState(() => _dueDate = selected);
   }
 
-  void _showCategoryPicker() {
+  Future<void> _showCategoryPicker() async {
     FocusScope.of(context).unfocus();
-    final categories = [
-      {'id': 'GENERAL', 'label': 'عامة', 'icon': LucideIcons.layoutGrid, 'color': AppTheme.dMuted},
-      {'id': 'VENUE', 'label': 'القاعة', 'icon': LucideIcons.building, 'color': AppTheme.dGold},
-      {'id': 'CATERING', 'label': 'الضيافة', 'icon': LucideIcons.coffee, 'color': AppTheme.dMaroon},
-      {'id': 'ATTIRE', 'label': 'الملابس', 'icon': LucideIcons.shirt, 'color': AppTheme.dPinkBg},
-      {'id': 'GUESTS', 'label': 'الضيوف', 'icon': LucideIcons.users, 'color': AppTheme.dBlue},
-    ];
-
-    showModalBottomSheet<void>(
+    final selected = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.5,
-            decoration: BoxDecoration(
-              color: AppTheme.dCard.withAlpha(240),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppTheme.dLine,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  const AarastSectionHeader(
+                    title: 'فئة المهمة',
+                    icon: Icons.sell_outlined,
+                  ),
+                  const SizedBox(height: 14),
+                  for (final category in _categories)
+                    _CategoryRow(
+                      category: category,
+                      selected: category.id == _category,
+                      onTap: () => Navigator.of(sheetContext).pop(category.id),
                     ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dPinkBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(LucideIcons.tags, color: AppTheme.dMaroon),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'فئة المهمة',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.dMaroonDeep,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                        itemCount: categories.length,
-                        itemBuilder: (context, index) {
-                          final category = categories[index];
-                          final isSelected = category['id'] == _category;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () {
-                                  setState(() => _category = category['id'] as String);
-                                  Navigator.pop(sheetContext);
-                                },
-                                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: isSelected ? AppTheme.dMaroon : AppTheme.dLine,
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                    color: isSelected ? AppTheme.dPinkBg.withAlpha(100) : Colors.transparent,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(category['icon'] as IconData, color: isSelected ? AppTheme.dMaroon : category['color'] as Color),
-                                      const SizedBox(width: 16),
-                                      Text(
-                                        category['label'] as String,
-                                        style: TextStyle(
-                                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                                          color: isSelected ? AppTheme.dMaroonDeep : AppTheme.dInk,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      if (isSelected)
-                                        const Icon(LucideIcons.checkCircle2, color: AppTheme.dMaroon),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
         );
       },
     );
+
+    if (selected != null) setState(() => _category = selected);
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
-    final textTheme = Theme.of(context).textTheme;
+    final category = _categories.firstWhere((item) => item.id == _category);
 
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // Decorative background
-            Positioned(
-              top: -80,
-              right: -80,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.dMaroon.withAlpha(15),
-                ),
-              ),
-            ),
-
-            Column(
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(AppRouter.tasks(widget.weddingPlanId));
-                          }
-                        },
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppTheme.dCard,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.dLine),
-                          ),
-                          child: const Icon(Icons.arrow_back_rounded, color: AppTheme.dMaroon),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'إضافة مهمة',
-                        style: textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                      child: Row(
                         children: [
-                          _buildAnimatedField(
-                            0,
-                            Column(
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.dPinkBg,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: AppTheme.dLine),
+                          IconButton(
+                            onPressed: _goBack,
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            tooltip: 'رجوع',
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'إضافة مهمة',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: AppTheme.dMaroonDeep,
+                                    fontWeight: FontWeight.w900,
                                   ),
-                                  child: const Icon(LucideIcons.listTodo, color: AppTheme.dMaroon, size: 36),
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'نظمي كل تفصيل بخطوة مدروسة ✨',
-                                  textAlign: TextAlign.center,
-                                  style: textTheme.bodyLarge?.copyWith(
-                                    color: AppTheme.dInkSoft,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                              ],
                             ),
                           ),
-
-                          _buildAnimatedField(
-                            1,
-                            TextFormField(
-                              controller: _titleController,
-                              textAlign: TextAlign.right,
-                              textInputAction: TextInputAction.next,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                              decoration: InputDecoration(
-                                labelText: 'عنوان المهمة',
-                                hintText: 'مثال: حجز قاعة الأفراح',
-                                prefixIcon: const Icon(LucideIcons.edit3),
-                                filled: true,
-                                fillColor: AppTheme.dCard,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'عنوان المهمة مطلوب';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 20),
-
-                          _buildAnimatedField(
-                            2,
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: _showCategoryPicker,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.dCard,
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        border: Border.all(color: AppTheme.dLine),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(LucideIcons.grid, color: AppTheme.dMuted),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'الفئة',
-                                                  style: TextStyle(
-                                                    fontSize: 10,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: AppTheme.dInkSoft,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  _categoryLabel(_category),
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.w800,
-                                                    color: AppTheme.dInk,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const Icon(LucideIcons.chevronDown, color: AppTheme.dMuted, size: 18),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: _showCalendarPicker,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.dCard,
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        border: Border.all(
-                                          color: _dueDate != null ? AppTheme.dMaroon : AppTheme.dLine,
-                                          width: _dueDate != null ? 1.5 : 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(LucideIcons.calendarDays, color: _dueDate != null ? AppTheme.dMaroon : AppTheme.dMuted),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                if (_dueDate != null)
-                                                  Text(
-                                                    'التاريخ',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: AppTheme.dInkSoft,
-                                                    ),
-                                                  ),
-                                                Text(
-                                                  _dueDate == null ? 'التاريخ (اختياري)' : '${_dueDate!.year}/${_dueDate!.month}/${_dueDate!.day}',
-                                                  style: TextStyle(
-                                                    fontWeight: _dueDate != null ? FontWeight.w800 : FontWeight.w600,
-                                                    color: _dueDate != null ? AppTheme.dInk : AppTheme.dMuted,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          _buildAnimatedField(
-                            3,
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'أولوية المهمة',
-                                  style: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.dInk,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    _buildPriorityChip('LOW', 'عادية', AppTheme.dBlue),
-                                    _buildPriorityChip('MEDIUM', 'متوسطة', AppTheme.warning),
-                                    _buildPriorityChip('HIGH', 'عاجلة', AppTheme.danger),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          _buildAnimatedField(
-                            4,
-                            TextFormField(
-                              controller: _descriptionController,
-                              textAlign: TextAlign.right,
-                              maxLines: 4,
-                              style: const TextStyle(fontWeight: FontWeight.w600),
-                              decoration: InputDecoration(
-                                labelText: 'تفاصيل المهمة (اختياري)',
-                                alignLabelWithHint: true,
-                                hintText: 'أضيفي أي ملاحظات أو تفاصيل تخص هذه المهمة...',
-                                filled: true,
-                                fillColor: AppTheme.dCard,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 32),
-
-                          _buildAnimatedField(
-                            5,
-                            PrimaryActionButton(
-                              label: 'حفظ المهمة',
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                          ),
-
-                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
                   ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    sliver: SliverToBoxAdapter(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _TaskHero(),
+                            const SizedBox(height: 18),
+                            AarastCard(
+                              padding: const EdgeInsets.all(18),
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _titleController,
+                                    textAlign: TextAlign.right,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: const InputDecoration(
+                                      labelText: 'عنوان المهمة',
+                                      hintText: 'مثال: تأكيد قائمة المدعوين',
+                                      prefixIcon: Icon(Icons.edit_note_rounded),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'عنوان المهمة مطلوب';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 14),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final categoryField = _SelectorField(
+                                        label: 'الفئة',
+                                        value: category.label,
+                                        icon: category.icon,
+                                        selected: true,
+                                        onTap: _showCategoryPicker,
+                                      );
+                                      final dateField = _SelectorField(
+                                        label: 'التاريخ',
+                                        value: _dueDate == null
+                                            ? 'اختياري'
+                                            : _formatDate(_dueDate!),
+                                        icon: Icons.calendar_month_rounded,
+                                        selected: _dueDate != null,
+                                        onTap: _showCalendarPicker,
+                                      );
+
+                                      if (constraints.maxWidth < 330) {
+                                        return Column(
+                                          children: [
+                                            categoryField,
+                                            const SizedBox(height: 12),
+                                            dateField,
+                                          ],
+                                        );
+                                      }
+
+                                      return Row(
+                                        children: [
+                                          Expanded(child: categoryField),
+                                          const SizedBox(width: 12),
+                                          Expanded(child: dateField),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 18),
+                                  const Align(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: Text(
+                                      'أولوية المهمة',
+                                      style: TextStyle(
+                                        color: AppTheme.dInk,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      _PriorityChip(
+                                        label: 'منخفضة',
+                                        icon: Icons.eco_outlined,
+                                        color: AppTheme.dGreen,
+                                        selected: _priority == 'LOW',
+                                        onTap: () {
+                                          setState(() => _priority = 'LOW');
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _PriorityChip(
+                                        label: 'متوسطة',
+                                        icon: Icons.drag_handle_rounded,
+                                        color: AppTheme.dGoldDeep,
+                                        selected: _priority == 'MEDIUM',
+                                        onTap: () {
+                                          setState(() => _priority = 'MEDIUM');
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _PriorityChip(
+                                        label: 'عاجلة',
+                                        icon: Icons.bolt_rounded,
+                                        color: AppTheme.danger,
+                                        selected: _priority == 'HIGH',
+                                        onTap: () {
+                                          setState(() => _priority = 'HIGH');
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: _descriptionController,
+                                    textAlign: TextAlign.right,
+                                    maxLines: 4,
+                                    decoration: const InputDecoration(
+                                      labelText: 'ملاحظات (اختياري)',
+                                      hintText:
+                                          'أضيفي أي تفاصيل تساعدك على تنفيذ المهمة...',
+                                      alignLabelWithHint: true,
+                                    ),
+                                  ),
+                                  if (provider.errorMessage != null) ...[
+                                    const SizedBox(height: 14),
+                                    AarastStatusPill(
+                                      label: provider.errorMessage!,
+                                      color: AppTheme.danger,
+                                      icon: Icons.error_outline_rounded,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            PrimaryActionButton(
+                              label: 'حفظ المهمة',
+                              icon: Icons.event_available_rounded,
+                              isLoading: provider.isSubmitting,
+                              onPressed: _submit,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(AppRouter.tasks(widget.weddingPlanId));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final provider = context.read<TaskTimelineProvider>();
+    final description = _descriptionController.text.trim();
+    final created = await provider.createTask(
+      weddingPlanId: widget.weddingPlanId,
+      title: _titleController.text.trim(),
+      description: description.isEmpty ? null : description,
+      dueDate: _dueDate,
+      status: 'TODO',
+      priority: _priority,
+    );
+
+    if (created && mounted) _goBack();
+  }
+}
+
+class _TaskHero extends StatelessWidget {
+  const _TaskHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.dPinkBg.withAlpha(120),
+      border: Border.all(color: AppTheme.dMaroon.withAlpha(35)),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: AppTheme.dCard2,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            ),
+            child: const Icon(
+              Icons.assignment_turned_in_outlined,
+              color: AppTheme.dMaroon,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'نظمي كل تفصيل بخطوة مدروسة',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dMaroonDeep,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'المهام الواضحة تجعل يومك أسهل وأهدأ.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectorField extends StatelessWidget {
+  const _SelectorField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.dCard2,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(
+            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                  ),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppTheme.dMuted,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildPriorityChip(String value, String label, Color color) {
-    final isSelected = _priority == value;
+class _PriorityChip extends StatelessWidget {
+  const _PriorityChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _priority = value),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
-            color: isSelected ? color.withAlpha(20) : Colors.transparent,
+            color: selected ? color.withAlpha(25) : AppTheme.dCard2,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(
-              color: isSelected ? color : AppTheme.dLine,
-              width: isSelected ? 2 : 1,
-            ),
+            border: Border.all(color: selected ? color : AppTheme.dLine),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (isSelected) ...[
-                Icon(LucideIcons.star, color: color, size: 14),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                  color: isSelected ? color : AppTheme.dMuted,
-                  fontSize: 13,
+              Icon(icon, color: selected ? color : AppTheme.dMuted, size: 16),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? color : AppTheme.dMuted,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -631,62 +531,76 @@ class _CreateTaskScreenState extends State<CreateTaskScreen>
       ),
     );
   }
+}
 
-  Widget _buildAnimatedField(int index, Widget child) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, childWidget) {
-        final delay = 0.1 + (index * 0.1);
-        final value = (_animationController.value - delay).clamp(0.0, 1.0);
-        final curve = Curves.easeOutCubic.transform(value);
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - curve)),
-          child: Opacity(
-            opacity: curve,
-            child: childWidget,
-          ),
-        );
-      },
-      child: child,
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _TaskCategory category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AarastCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+        border: Border.all(color: selected ? AppTheme.dMaroon : AppTheme.dLine),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(category.icon, color: AppTheme.dMaroon),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                category.label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: selected ? AppTheme.dMaroon : AppTheme.dInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
+          ],
+        ),
+      ),
     );
   }
+}
 
-  String _categoryLabel(String id) {
-    switch (id) {
-      case 'GENERAL': return 'عامة';
-      case 'VENUE': return 'القاعة';
-      case 'CATERING': return 'الضيافة';
-      case 'ATTIRE': return 'الملابس';
-      case 'GUESTS': return 'الضيوف';
-      default: return 'عامة';
-    }
-  }
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    final provider = context.read<TaskTimelineProvider>();
-    final created = await provider.createTask(
-      weddingPlanId: widget.weddingPlanId,
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      dueDate: _dueDate,
-      status: 'TODO',
-      priority: _priority,
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 46,
+        height: 5,
+        decoration: BoxDecoration(
+          color: AppTheme.dLine,
+          borderRadius: BorderRadius.circular(99),
+        ),
+      ),
     );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (created) {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRouter.tasks(widget.weddingPlanId));
-      }
-    }
   }
+}
+
+class _TaskCategory {
+  const _TaskCategory(this.id, this.label, this.icon);
+
+  final String id;
+  final String label;
+  final IconData icon;
+}
+
+String _formatDate(DateTime date) {
+  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
 }

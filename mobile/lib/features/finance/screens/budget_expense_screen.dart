@@ -1,14 +1,15 @@
-import 'dart:math';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../models/expense_summary.dart';
-import '../models/expense.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
+import '../models/expense.dart';
+import '../models/expense_summary.dart';
 import '../providers/finance_provider.dart';
 
 class BudgetExpenseScreen extends StatefulWidget {
@@ -20,18 +21,10 @@ class BudgetExpenseScreen extends StatefulWidget {
   State<BudgetExpenseScreen> createState() => _BudgetExpenseScreenState();
 }
 
-class _BudgetExpenseScreenState extends State<BudgetExpenseScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-
+class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..forward();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
     });
@@ -48,407 +41,556 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen>
   }
 
   @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
 
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
                 children: [
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(AppRouter.home);
-                          }
-                        },
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppTheme.dCard,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.dLine),
-                          ),
-                          child: const Icon(Icons.arrow_back_rounded, color: AppTheme.dMaroon),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: _goBack,
+                          icon: const Icon(Icons.arrow_forward_rounded),
+                          tooltip: 'رجوع',
                         ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'الميزانية والمصاريف',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => context.push(AppRouter.createBudgetCategory(widget.weddingPlanId)),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppTheme.dCard,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.dLine),
-                          ),
-                          child: const Icon(LucideIcons.folderPlus, color: AppTheme.dInk),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () => context.push(AppRouter.createExpense(widget.weddingPlanId)),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            gradient: AppTheme.heroGradient,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.dMaroonDeep.withAlpha(50),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              )
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'الميزانية والمصاريف',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: AppTheme.dMaroonDeep,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              Text(
+                                'إدارة ميزانيتك ومتابعة المدفوعات',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: AppTheme.dInkSoft,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
                             ],
                           ),
-                          child: const Icon(LucideIcons.plus, color: Colors.white),
                         ),
+                        const SizedBox(width: 10),
+                        IconButton(
+                          onPressed: () => context.push(
+                            AppRouter.createBudgetCategory(
+                              widget.weddingPlanId,
+                            ),
+                          ),
+                          icon: const Icon(Icons.create_new_folder_outlined),
+                          tooltip: 'إضافة تصنيف',
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () => context.push(
+                            AppRouter.createExpense(widget.weddingPlanId),
+                          ),
+                          icon: const Icon(Icons.add_rounded),
+                          tooltip: 'إضافة مصروف',
+                          style: IconButton.styleFrom(
+                            backgroundColor: AppTheme.dMaroon,
+                            foregroundColor: Colors.white,
+                            side: BorderSide.none,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      color: AppTheme.dMaroon,
+                      onRefresh: () =>
+                          provider.loadFinance(widget.weddingPlanId),
+                      child: _FinanceContent(
+                        provider: provider,
+                        weddingPlanId: widget.weddingPlanId,
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // Content
-            Expanded(
-              child: RefreshIndicator(
-                color: AppTheme.dMaroon,
-                onRefresh: () => provider.loadFinance(widget.weddingPlanId),
-                child: _FinanceContent(
-                  provider: provider,
-                  weddingPlanId: widget.weddingPlanId,
-                  animationController: _animationController,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(AppRouter.home);
+  }
 }
 
 class _FinanceContent extends StatelessWidget {
-  const _FinanceContent({
-    required this.provider,
-    required this.weddingPlanId,
-    required this.animationController,
-  });
+  const _FinanceContent({required this.provider, required this.weddingPlanId});
 
   final FinanceProvider provider;
   final String weddingPlanId;
-  final AnimationController animationController;
 
   @override
   Widget build(BuildContext context) {
     if (provider.isLoading &&
         provider.budgetCategories.isEmpty &&
         provider.expenses.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.dMaroon));
+      return const _FinanceLoadingState();
     }
 
     if (provider.errorMessage != null &&
         provider.budgetCategories.isEmpty &&
         provider.expenses.isEmpty) {
       return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
         children: [
-          const SizedBox(height: 120),
-          Icon(LucideIcons.alertTriangle, size: 48, color: AppTheme.danger.withAlpha(150)),
-          const SizedBox(height: 16),
-          Text(
-            provider.errorMessage!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 24),
-          Center(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.dMaroon),
+          AarastEmptyState(
+            title: 'تعذر تحميل الميزانية',
+            message: provider.errorMessage!,
+            icon: Icons.error_outline_rounded,
+            action: ElevatedButton.icon(
               onPressed: () => provider.loadFinance(weddingPlanId),
-              child: const Text('إعادة المحاولة', style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('إعادة المحاولة'),
             ),
           ),
         ],
       );
     }
 
+    final categoryRows = _buildCategoryRows(
+      provider.budgetCategories,
+      provider.expenses,
+    );
+
     return ListView(
-      padding: const EdgeInsets.only(bottom: 120),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 124),
       children: [
         if (provider.errorMessage != null) ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.danger.withAlpha(20),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                border: Border.all(color: AppTheme.danger.withAlpha(50)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      provider.errorMessage!,
-                      style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          _InlineError(message: provider.errorMessage!),
+          const SizedBox(height: 14),
         ],
-
-        _buildAnimated(0, _LuxuryPieChartSummary(summary: provider.summary, animation: animationController)),
-        const SizedBox(height: 32),
-
-        _buildAnimated(1, Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _SectionTitle(
-            title: 'المصاريف',
-            emptyMessage: 'لا توجد مصاريف بعد.',
-            isEmpty: provider.expenses.isEmpty,
-          ),
-        )),
-
-        ...provider.expenses.asMap().entries.map((entry) {
-          final index = entry.key;
-          final expense = entry.value;
-          return _buildAnimated(
-            2 + index,
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: _ExpenseItemCard(
-                expense: expense,
-                budgetCategories: provider.budgetCategories,
+        _BudgetHero(summary: provider.summary),
+        const SizedBox(height: 20),
+        AarastSectionHeader(
+          title: 'تفاصيل المصروفات حسب الفئة',
+          icon: Icons.pie_chart_outline_rounded,
+          actionLabel: 'تصنيف',
+          onAction: () =>
+              context.push(AppRouter.createBudgetCategory(weddingPlanId)),
+        ),
+        const SizedBox(height: 12),
+        if (categoryRows.isEmpty)
+          AarastEmptyState(
+            title: 'لا توجد تصنيفات بعد',
+            message: 'أضيفي تصنيفات مثل القاعة أو الضيافة لتظهر المتابعة هنا.',
+            icon: Icons.category_outlined,
+            action: OutlinedButton.icon(
+              onPressed: () =>
+                  context.push(AppRouter.createBudgetCategory(weddingPlanId)),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('إضافة تصنيف'),
+            ),
+          )
+        else
+          for (final row in categoryRows) ...[
+            _BudgetCategoryProgressRow(row: row),
+            const SizedBox(height: 10),
+          ],
+        const SizedBox(height: 18),
+        AarastSectionHeader(
+          title: 'المدفوعات والمصاريف الأخيرة',
+          icon: Icons.schedule_rounded,
+          actionLabel: 'إضافة',
+          onAction: () => context.push(AppRouter.createExpense(weddingPlanId)),
+        ),
+        const SizedBox(height: 12),
+        if (provider.expenses.isEmpty)
+          AarastEmptyState(
+            title: 'لا توجد مصاريف بعد',
+            message: 'سجلي أول مصروف لتبدأ لوحة الميزانية في قراءة الواقع.',
+            icon: Icons.receipt_long_outlined,
+            action: ElevatedButton.icon(
+              onPressed: () =>
+                  context.push(AppRouter.createExpense(weddingPlanId)),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('إضافة مصروف'),
+            ),
+          )
+        else
+          for (final expense in provider.expenses.take(8)) ...[
+            _ExpenseRow(
+              expense: expense,
+              categoryName: _categoryName(
+                provider.budgetCategories,
+                expense.budgetCategoryId,
               ),
             ),
-          );
-        }),
-
-        const SizedBox(height: 32),
-
-        _buildAnimated(provider.expenses.length + 3, Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _SectionTitle(
-            title: 'تصنيفات الميزانية',
-            emptyMessage: 'لا توجد تصنيفات بعد.',
-            isEmpty: provider.budgetCategories.isEmpty,
-          ),
-        )),
-
-        ...provider.budgetCategories.asMap().entries.map((entry) {
-          final index = entry.key;
-          final category = entry.value;
-          return _buildAnimated(
-            provider.expenses.length + 4 + index,
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: _BudgetCategoryCard(category: category),
-            ),
-          );
-        }),
+            const SizedBox(height: 10),
+          ],
+        const SizedBox(height: 14),
+        ElevatedButton.icon(
+          onPressed: () => context.push(AppRouter.createExpense(weddingPlanId)),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('إضافة مصروف'),
+        ),
       ],
-    );
-  }
-
-  Widget _buildAnimated(int index, Widget child) {
-    return AnimatedBuilder(
-      animation: animationController,
-      builder: (context, childWidget) {
-        final delay = (index * 0.1).clamp(0.0, 0.5);
-        final value = (animationController.value - delay).clamp(0.0, 1.0);
-        final curve = Curves.easeOutCubic.transform(value);
-        return Transform.translate(
-          offset: Offset(0, 30 * (1 - curve)),
-          child: Opacity(
-            opacity: curve,
-            child: childWidget,
-          ),
-        );
-      },
-      child: child,
     );
   }
 }
 
-class _LuxuryPieChartSummary extends StatelessWidget {
-  const _LuxuryPieChartSummary({
-    required this.summary,
-    required this.animation,
-  });
+class _BudgetHero extends StatelessWidget {
+  const _BudgetHero({required this.summary});
 
   final ExpenseSummary summary;
-  final Animation<double> animation;
 
   @override
   Widget build(BuildContext context) {
-    final paid = double.tryParse(summary.totalPaid) ?? 0.0;
-    final planned = double.tryParse(summary.totalPlanned) ?? 0.0;
-    final total = paid + planned;
-    
-    // Fallback if zero to avoid div by zero
-    final paidRatio = total > 0 ? paid / total : 0.0;
-    final plannedRatio = total > 0 ? planned / total : 1.0;
+    final paid = _moneyValue(summary.totalPaid);
+    final planned = _moneyValue(summary.totalPlanned);
+    final cancelled = _moneyValue(summary.totalCancelled);
+    final activeTotal = paid + planned;
+    final grandTotal = activeTotal + cancelled;
+    final paidRatio = activeTotal <= 0 ? 0.0 : paid / activeTotal;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.dLine),
-        boxShadow: AppTheme.softShadow(opacity: 0.05),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.all(20),
+      decoration: AppTheme.heroDecoration(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 355;
+          final chart = _BudgetDonut(
+            paidRatio: paidRatio,
+            label: '${(paidRatio * 100).round()}%',
+          );
+
+          final content = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                'إجمالي المصروفات',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white.withAlpha(210),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              _MoneyText(
+                grandTotal,
+                color: Colors.white,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
                 children: [
-                  const Text(
-                    'إجمالي المصاريف',
-                    style: TextStyle(
-                      color: AppTheme.dInkSoft,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                  _HeroFinanceTile(
+                    label: 'المدفوع',
+                    value: paid,
+                    color: AppTheme.dPinkBg,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${total.toStringAsFixed(0)} YER',
-                    style: const TextStyle(
-                      color: AppTheme.dMaroonDeep,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 24,
-                    ),
+                  _HeroFinanceTile(
+                    label: 'المخطط',
+                    value: planned,
+                    color: AppTheme.dGold,
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppTheme.dGold.withAlpha(20),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              if (cancelled > 0) ...[
+                const SizedBox(height: 10),
+                AarastStatusPill(
+                  label: 'ملغي: ${_formatMoney(cancelled)} ر.ي',
+                  color: Colors.white,
+                  backgroundColor: Colors.white.withAlpha(24),
+                  icon: Icons.block_rounded,
                 ),
-                child: Row(
-                  children: [
-                    const Icon(LucideIcons.pieChart, color: AppTheme.dGold2, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'الملخص',
-                      style: const TextStyle(
-                        color: AppTheme.dGoldDeep,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+              ],
+            ],
+          );
+
+          if (compact) {
+            return Column(
+              children: [chart, const SizedBox(height: 18), content],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: content),
+              const SizedBox(width: 16),
+              chart,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BudgetDonut extends StatelessWidget {
+  const _BudgetDonut({required this.paidRatio, required this.label});
+
+  final double paidRatio;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 126,
+      height: 126,
+      child: CustomPaint(
+        painter: _BudgetDonutPainter(paidRatio: paidRatio),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                'مدفوع',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white.withAlpha(205),
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          SizedBox(
-            height: 200,
-            child: Row(
+        ),
+      ),
+    );
+  }
+}
+
+class _BudgetDonutPainter extends CustomPainter {
+  const _BudgetDonutPainter({required this.paidRatio});
+
+  final double paidRatio;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 10;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final basePaint = Paint()
+      ..color = Colors.white.withAlpha(54)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 18
+      ..strokeCap = StrokeCap.round;
+    final paidPaint = Paint()
+      ..shader = AppTheme.goldGradient.createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 18
+      ..strokeCap = StrokeCap.round;
+    final plannedPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 18
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(rect, -math.pi / 2, math.pi * 2, false, basePaint);
+    canvas.drawArc(
+      rect,
+      -math.pi / 2,
+      math.pi * 2 * paidRatio.clamp(0.0, 1.0),
+      false,
+      paidPaint,
+    );
+    if (paidRatio < 1) {
+      canvas.drawArc(
+        rect,
+        -math.pi / 2 + (math.pi * 2 * paidRatio.clamp(0.0, 1.0)),
+        math.pi * 2 * (1 - paidRatio.clamp(0.0, 1.0)),
+        false,
+        plannedPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BudgetDonutPainter oldDelegate) {
+    return oldDelegate.paidRatio != paidRatio;
+  }
+}
+
+class _HeroFinanceTile extends StatelessWidget {
+  const _HeroFinanceTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final num value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 138,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(18),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: Colors.white.withAlpha(32)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white.withAlpha(210),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _MoneyText(
+            value,
+            color: Colors.white,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BudgetCategoryProgressRow extends StatelessWidget {
+  const _BudgetCategoryProgressRow({required this.row});
+
+  final _CategorySpendRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = row.progress >= .9
+        ? AppTheme.danger
+        : row.progress >= .65
+        ? AppTheme.dGoldDeep
+        : AppTheme.dMaroon;
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Icon(_categoryIcon(row.name), color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 1,
-                  child: AnimatedBuilder(
-                    animation: animation,
-                    builder: (context, child) {
-                      final curve = Curves.easeOutCirc.transform(animation.value);
-                      return CustomPaint(
-                        painter: _PieChartPainter(
-                          paidRatio: paidRatio,
-                          plannedRatio: plannedRatio,
-                          progress: curve,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        row.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
                         ),
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${(paidRatio * 100).round()}%',
-                                style: const TextStyle(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.dInk,
-                                ),
-                              ),
-                              const Text(
-                                'المدفوع',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.dMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(row.progress * 100).round()}%',
+                      textDirection: TextDirection.ltr,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    value: row.progress.clamp(0.0, 1.0),
+                    minHeight: 7,
+                    backgroundColor: AppTheme.dLine,
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
                 ),
-                const SizedBox(width: 32),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildLegendItem(
-                        color: AppTheme.dMaroon,
-                        label: 'مدفوع',
-                        amount: '${paid.toStringAsFixed(0)} YER',
-                        count: '${summary.countPaid} عمليات',
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        row.target > 0
+                            ? 'من ${_formatMoney(row.target)} ر.ي'
+                            : 'بدون مبلغ مستهدف',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                      const SizedBox(height: 20),
-                      _buildLegendItem(
-                        color: AppTheme.dGold,
-                        label: 'مخطط',
-                        amount: '${planned.toStringAsFixed(0)} YER',
-                        count: '${summary.countPlanned} عمليات',
+                    ),
+                    _MoneyText(
+                      row.spent,
+                      color: AppTheme.dInk,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppTheme.dInk,
+                        fontWeight: FontWeight.w900,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -457,408 +599,296 @@ class _LuxuryPieChartSummary extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildLegendItem({
-    required Color color,
-    required String label,
-    required String amount,
-    required String count,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 4),
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.dInkSoft,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                amount,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.dInk,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                count,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.dMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 }
 
-class _PieChartPainter extends CustomPainter {
-  _PieChartPainter({
-    required this.paidRatio,
-    required this.plannedRatio,
-    required this.progress,
-  });
-
-  final double paidRatio;
-  final double plannedRatio;
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width / 2, size.height / 2);
-    final strokeWidth = radius * 0.3;
-
-    final paintBg = Paint()
-      ..color = AppTheme.dLine
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final rect = Rect.fromCircle(center: center, radius: radius - strokeWidth / 2);
-
-    // Draw background
-    canvas.drawArc(rect, 0, 2 * pi, false, paintBg);
-
-    if (progress == 0) return;
-
-    final paidPaint = Paint()
-      ..color = AppTheme.dMaroon
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final plannedPaint = Paint()
-      ..color = AppTheme.dGold
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    final startAngle = -pi / 2;
-    final totalSweep = 2 * pi * progress;
-
-    final paidSweep = totalSweep * paidRatio;
-    final plannedSweep = totalSweep * plannedRatio;
-
-    // Draw Planned (first, from startAngle)
-    if (plannedSweep > 0) {
-      canvas.drawArc(rect, startAngle, plannedSweep, false, plannedPaint);
-    }
-
-    // Draw Paid (next, from startAngle + plannedSweep)
-    // Actually, draw Paid first, then planned, or vice versa
-    // Let's draw Paid first
-    if (paidSweep > 0) {
-      canvas.drawArc(rect, startAngle, paidSweep, false, paidPaint);
-    }
-    
-    if (plannedSweep > 0) {
-      canvas.drawArc(rect, startAngle + paidSweep, plannedSweep, false, plannedPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _PieChartPainter oldDelegate) {
-    return oldDelegate.paidRatio != paidRatio ||
-           oldDelegate.plannedRatio != plannedRatio ||
-           oldDelegate.progress != progress;
-  }
-}
-
-class _ExpenseItemCard extends StatelessWidget {
-  const _ExpenseItemCard({
-    required this.expense,
-    required this.budgetCategories,
-  });
+class _ExpenseRow extends StatelessWidget {
+  const _ExpenseRow({required this.expense, required this.categoryName});
 
   final Expense expense;
-  final List<BudgetCategory> budgetCategories;
+  final String categoryName;
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _expenseStatusColor(expense.status);
     final isPaid = expense.status == 'PAID';
-    final categoryName = _getCategoryName(expense.budgetCategoryId);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
-        boxShadow: AppTheme.softShadow(opacity: 0.03),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: Stack(
-          children: [
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: Container(
-                width: 4,
-                color: isPaid ? AppTheme.dMaroon : AppTheme.dGold,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isPaid ? AppTheme.dMaroon.withAlpha(20) : AppTheme.dGold.withAlpha(20),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      isPaid ? LucideIcons.checkCheck : LucideIcons.clock,
-                      color: isPaid ? AppTheme.dMaroon : AppTheme.dGoldDeep,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                expense.title,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.dInk,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '${expense.amount} YER',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.dMaroonDeep,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(LucideIcons.folder, size: 14, color: AppTheme.dMuted),
-                            const SizedBox(width: 4),
-                            Text(
-                              categoryName,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.dMuted,
-                              ),
-                            ),
-                            const Spacer(),
-                            if (expense.expenseDate != null) ...[
-                              Icon(LucideIcons.calendar, size: 14, color: AppTheme.dMuted),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatDate(expense.expenseDate!),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.dMuted,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (expense.hasNote) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dBg,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(LucideIcons.info, size: 14, color: AppTheme.dMuted),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    expense.note!,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.dInkSoft,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getCategoryName(String? categoryId) {
-    if (categoryId == null || categoryId.trim().isEmpty) return 'غير مصنف';
-    try {
-      final category = budgetCategories.firstWhere((c) => c.id == categoryId);
-      return category.name;
-    } catch (_) {
-      return 'غير مصنف';
-    }
-  }
-}
-
-class _BudgetCategoryCard extends StatelessWidget {
-  const _BudgetCategoryCard({required this.category});
-
-  final BudgetCategory category;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.dBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(LucideIcons.layoutGrid, color: AppTheme.dInkSoft),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    category.name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.dInk,
-                    ),
-                  ),
-                  if (category.hasTargetAmount) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'المستهدف: ${category.targetAmount} YER',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.dMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Icon(LucideIcons.chevronLeft, color: AppTheme.dLine),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({
-    required this.title,
-    required this.emptyMessage,
-    required this.isEmpty,
-  });
-
-  final String title;
-  final String emptyMessage;
-  final bool isEmpty;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: statusColor.withAlpha(20),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Icon(
+              isPaid
+                  ? Icons.receipt_long_rounded
+                  : Icons.pending_actions_rounded,
+              color: statusColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  expense.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 6,
+                  children: [
+                    AarastStatusPill(
+                      label: _expenseStatusLabel(expense.status),
+                      color: statusColor,
+                    ),
+                    AarastStatusPill(
+                      label: categoryName,
+                      color: AppTheme.dGoldDeep,
+                      icon: Icons.folder_outlined,
+                    ),
+                    if (expense.expenseDate != null)
+                      AarastStatusPill(
+                        label: _shortDate(expense.expenseDate!),
+                        color: AppTheme.dMuted,
+                        icon: Icons.calendar_month_rounded,
+                      ),
+                  ],
+                ),
+                if (expense.hasNote) ...[
+                  const SizedBox(height: 7),
+                  Text(
+                    expense.note!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          _MoneyText(
+            _moneyValue(expense.amount),
+            color: AppTheme.dMaroonDeep,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: AppTheme.dMaroonDeep,
               fontWeight: FontWeight.w900,
             ),
-            textAlign: TextAlign.right,
           ),
-          if (isEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.dCard,
-                borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                border: Border.all(color: AppTheme.dLine, style: BorderStyle.solid),
-              ),
-              child: Row(
-                children: [
-                  const Icon(LucideIcons.inbox, color: AppTheme.dMuted),
-                  const SizedBox(width: 12),
-                  Text(
-                    emptyMessage,
-                    textAlign: TextAlign.right,
-                    style: const TextStyle(color: AppTheme.dMuted, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-String _formatDate(DateTime date) {
-  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+class _FinanceLoadingState extends StatelessWidget {
+  const _FinanceLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 120),
+      children: const [
+        _SkeletonBox(height: 226),
+        SizedBox(height: 20),
+        _SkeletonBox(height: 78),
+        SizedBox(height: 10),
+        _SkeletonBox(height: 78),
+        SizedBox(height: 22),
+        _SkeletonBox(height: 88),
+        SizedBox(height: 10),
+        _SkeletonBox(height: 88),
+      ],
+    );
+  }
+}
+
+class _SkeletonBox extends StatelessWidget {
+  const _SkeletonBox({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: AppTheme.dCard2,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.dLine),
+      ),
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.danger.withAlpha(18),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.danger.withAlpha(45)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline_rounded, color: AppTheme.danger),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.danger,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneyText extends StatelessWidget {
+  const _MoneyText(this.value, {required this.color, this.style});
+
+  final num value;
+  final Color color;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '${_formatMoney(value)} ر.ي',
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style:
+          style ??
+          Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w900,
+          ),
+    );
+  }
+}
+
+class _CategorySpendRow {
+  const _CategorySpendRow({
+    required this.name,
+    required this.spent,
+    required this.target,
+    required this.progress,
+  });
+
+  final String name;
+  final num spent;
+  final num target;
+  final double progress;
+}
+
+List<_CategorySpendRow> _buildCategoryRows(
+  List<BudgetCategory> categories,
+  List<Expense> expenses,
+) {
+  final activeExpenses = expenses.where(
+    (expense) => expense.status != 'CANCELLED',
+  );
+  final totalSpent = activeExpenses.fold<num>(
+    0,
+    (sum, expense) => sum + _moneyValue(expense.amount),
+  );
+
+  return categories.map((category) {
+    final spent = activeExpenses
+        .where((expense) => expense.budgetCategoryId == category.id)
+        .fold<num>(0, (sum, expense) => sum + _moneyValue(expense.amount));
+    final target = _moneyValue(category.targetAmount ?? '0');
+    final denominator = target > 0 ? target : totalSpent;
+    final progress = denominator <= 0 ? 0.0 : spent / denominator;
+    return _CategorySpendRow(
+      name: category.name,
+      spent: spent,
+      target: target,
+      progress: progress.toDouble(),
+    );
+  }).toList();
+}
+
+String _categoryName(List<BudgetCategory> categories, String? id) {
+  if (id == null || id.trim().isEmpty) return 'غير مصنف';
+  for (final category in categories) {
+    if (category.id == id) return category.name;
+  }
+  return 'غير مصنف';
+}
+
+IconData _categoryIcon(String name) {
+  if (name.contains('قاعة')) return Icons.apartment_rounded;
+  if (name.contains('تصوير')) return Icons.photo_camera_outlined;
+  if (name.contains('ضيافة') || name.contains('طعام')) {
+    return Icons.room_service_outlined;
+  }
+  if (name.contains('لبس') ||
+      name.contains('ملابس') ||
+      name.contains('أزياء')) {
+    return Icons.checkroom_outlined;
+  }
+  return Icons.category_outlined;
+}
+
+Color _expenseStatusColor(String status) {
+  return switch (status) {
+    'PAID' => AppTheme.dGreen,
+    'CANCELLED' => AppTheme.dMuted,
+    _ => AppTheme.dGoldDeep,
+  };
+}
+
+String _expenseStatusLabel(String status) {
+  return switch (status) {
+    'PAID' => 'مدفوع',
+    'CANCELLED' => 'ملغي',
+    _ => 'مخطط',
+  };
+}
+
+num _moneyValue(String value) =>
+    num.tryParse(value.replaceAll(',', '').trim()) ?? 0;
+
+String _formatMoney(num value) {
+  final rounded = value.round();
+  final negative = rounded < 0;
+  final digits = rounded.abs().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return '${negative ? '-' : ''}$buffer';
+}
+
+String _shortDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }

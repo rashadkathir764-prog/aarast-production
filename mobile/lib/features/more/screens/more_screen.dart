@@ -1,112 +1,183 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 
-class MoreScreen extends StatefulWidget {
+class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
   @override
-  State<MoreScreen> createState() => _MoreScreenState();
-}
+  Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
+    final user = auth.user;
+    final name = user?.name ?? 'مستخدم اعّرست';
+    final phone = user?.phone;
 
-class _MoreScreenState extends State<MoreScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppTheme.dCard,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppTheme.danger.withAlpha(20),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(LucideIcons.logOut, color: AppTheme.danger, size: 32),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'تسجيل الخروج',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.dInk,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك؟',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.dInkSoft,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: SafeArea(
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
                 children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  _MoreHeader(name: name),
+                  const SizedBox(height: 18),
+                  _ProfileCard(name: name, phone: phone),
+                  const SizedBox(height: 20),
+                  _MenuGroup(
+                    children: [
+                      _MoreActionTile(
+                        title: 'الخطط المشتركة معي',
+                        subtitle: 'الخطط التي تمت مشاركتها معك للوصول إليها',
+                        icon: Icons.groups_2_outlined,
+                        iconColor: AppTheme.dMaroon,
+                        iconBackground: AppTheme.dPinkBg,
+                        onTap: () => context.push(AppRouter.sharedWeddingPlans),
+                      ),
+                      _MoreActionTile(
+                        title: 'خططي',
+                        subtitle: 'إدارة كل خطط الزفاف الخاصة بك',
+                        icon: Icons.event_note_outlined,
+                        iconColor: AppTheme.dMaroon,
+                        iconBackground: AppTheme.dPinkBg,
+                        onTap: () => context.push(AppRouter.weddingPlans),
+                      ),
+                      _MoreActionTile(
+                        title: 'إنشاء خطة زفاف',
+                        subtitle: 'ابدئي خطة جديدة لتنظيم يومك المميز',
+                        icon: Icons.add_circle_outline_rounded,
+                        iconColor: AppTheme.dMaroon,
+                        iconBackground: AppTheme.dPinkBg,
+                        onTap: () => context.push(AppRouter.createWeddingPlan),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _MenuGroup(
+                    children: [
+                      _MoreActionTile(
+                        title: 'الإعدادات',
+                        subtitle: 'تخصيص التطبيق والتفضيلات',
+                        icon: Icons.settings_outlined,
+                        iconColor: AppTheme.dGoldDeep,
+                        iconBackground: AppTheme.dCreamBg,
+                        onTap: () =>
+                            _showComingSoon(context, 'الإعدادات قيد الإعداد'),
+                      ),
+                      _MoreActionTile(
+                        title: 'الدعم والمساعدة',
+                        subtitle: 'تواصلي معنا أو استعرضي الأسئلة الشائعة',
+                        icon: Icons.support_agent_outlined,
+                        iconColor: AppTheme.dGoldDeep,
+                        iconBackground: AppTheme.dCreamBg,
+                        onTap: () => _showComingSoon(
+                          context,
+                          'الدعم والمساعدة قيد الإعداد',
                         ),
                       ),
-                      child: const Text('إلغاء', style: TextStyle(color: AppTheme.dMuted, fontWeight: FontWeight.w800)),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.danger,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text('خروج', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
+                  const SizedBox(height: 16),
+                  _LogoutTile(onTap: () => _logout(context)),
+                  const SizedBox(height: 22),
+                  const _VersionFooter(),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  static void _showComingSoon(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  static Future<void> _logout(BuildContext context) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: AppTheme.danger.withAlpha(22),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    child: const Icon(
+                      Icons.logout_rounded,
+                      color: AppTheme.danger,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'تسجيل الخروج',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'هل ترغبين في الخروج من حسابك الآن؟',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(false),
+                          child: const Text('إلغاء'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(sheetContext).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.danger,
+                          ),
+                          icon: const Icon(Icons.logout_rounded),
+                          label: const Text('خروج'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
 
     if (confirmed == true && context.mounted) {
@@ -114,309 +185,234 @@ class _MoreScreenState extends State<MoreScreen> with SingleTickerProviderStateM
       if (context.mounted) context.go(AppRouter.login);
     }
   }
+}
+
+class _MoreHeader extends StatelessWidget {
+  const _MoreHeader({required this.name});
+
+  final String name;
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
-    final user = auth.user;
-    
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            // Decorative Background
-            Positioned(
-              top: -100,
-              left: -50,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.dMaroon.withAlpha(15),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'المزيد',
+                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  color: AppTheme.dMaroonDeep,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: AppTheme.displayFontFamily,
+                  height: 1,
                 ),
               ),
-            ),
-            
-            ListView(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
-              children: [
-                _buildAnimated(
-                  0,
-                  Text(
-                    'الإعدادات والملف الشخصي',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              const SizedBox(height: 8),
+              Text(
+                'كل ما تحتاجينه في مكان واحد',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppTheme.dInkSoft,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 14),
+        _RoundIconButton(
+          icon: Icons.person_outline_rounded,
+          onTap: () => _showAccountSnack(context, name),
+        ),
+        const SizedBox(width: 10),
+        _RoundIconButton(
+          icon: Icons.notifications_none_rounded,
+          badge: '3',
+          onTap: () => _showAccountSnack(context, 'التنبيهات قيد الإعداد'),
+        ),
+      ],
+    );
+  }
+
+  void _showAccountSnack(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _RoundIconButton extends StatelessWidget {
+  const _RoundIconButton({required this.icon, this.onTap, this.badge});
+
+  final IconData icon;
+  final VoidCallback? onTap;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Container(
+        width: 46,
+        height: 46,
+        decoration: BoxDecoration(
+          color: AppTheme.dCard,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.dLine),
+          boxShadow: AppTheme.cardShadow(),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(icon, color: AppTheme.dMaroon),
+            if (badge != null)
+              PositionedDirectional(
+                top: 1,
+                start: 0,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 18),
+                  height: 18,
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppTheme.dMaroon,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppTheme.dCard, width: 2),
+                  ),
+                  child: Text(
+                    badge!,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: AppTheme.dMaroonDeep,
+                      height: 1,
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                _buildAnimated(
-                  1,
-                  _AccountCard(
-                    name: user?.name ?? 'مستخدم اعرست',
-                    phone: user?.phone,
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                _buildAnimated(
-                  2,
-                  const Text(
-                    'مساحة العمل',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.dInk,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                _buildAnimated(
-                  3,
-                  _MoreTile(
-                    icon: LucideIcons.gem,
-                    iconColor: AppTheme.dGold2,
-                    iconBg: AppTheme.dMaroonDeep,
-                    label: 'خططي',
-                    subtitle: 'إدارة وتعديل كل خطط الزفاف الخاصة بك',
-                    onTap: () => context.push(AppRouter.weddingPlans),
-                  ),
-                ),
-                
-                _buildAnimated(
-                  4,
-                  _MoreTile(
-                    icon: LucideIcons.users,
-                    iconColor: AppTheme.dMaroon,
-                    iconBg: AppTheme.dPinkBg,
-                    label: 'الخطط المشتركة معي',
-                    subtitle: 'الخطط التي تمت دعوتك للمشاركة فيها',
-                    onTap: () => context.push(AppRouter.sharedWeddingPlans),
-                  ),
-                ),
-                
-                _buildAnimated(
-                  5,
-                  _MoreTile(
-                    icon: LucideIcons.plusCircle,
-                    iconColor: AppTheme.dBlue,
-                    iconBg: AppTheme.dBlue.withAlpha(20),
-                    label: 'إنشاء خطة زفاف',
-                    subtitle: 'ابدأ خطة زفاف جديدة الآن',
-                    onTap: () => context.push(AppRouter.createWeddingPlan),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                _buildAnimated(
-                  6,
-                  const Text(
-                    'الدعم والإعدادات',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.dInk,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                _buildAnimated(
-                  7,
-                  _MoreTile(
-                    icon: LucideIcons.bellRing,
-                    iconColor: AppTheme.dGreen,
-                    iconBg: AppTheme.dGreenBg,
-                    label: 'الإشعارات',
-                    subtitle: 'التحكم بتنبيهات المهام والديون',
-                    onTap: () {},
-                  ),
-                ),
-                
-                _buildAnimated(
-                  8,
-                  _MoreTile(
-                    icon: LucideIcons.helpCircle,
-                    iconColor: AppTheme.warning,
-                    iconBg: AppTheme.warning.withAlpha(20),
-                    label: 'مركز المساعدة',
-                    subtitle: 'تواصل معنا في حال واجهت أي مشكلة',
-                    onTap: () {},
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                _buildAnimated(
-                  9,
-                  GestureDetector(
-                    onTap: () => _logout(context),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.danger.withAlpha(15),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                        border: Border.all(color: AppTheme.danger.withAlpha(30)),
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(LucideIcons.logOut, color: AppTheme.danger, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'تسجيل الخروج',
-                            style: TextStyle(
-                              color: AppTheme.danger,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                _buildAnimated(
-                  10,
-                  Center(
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Aarast V2.0',
-                          style: TextStyle(
-                            color: AppTheme.dMuted,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'صُنع بحب في اليمن 🇾🇪',
-                          style: TextStyle(
-                            color: AppTheme.dMuted.withAlpha(150),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildAnimated(int index, Widget child) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, childWidget) {
-        final delay = (index * 0.05).clamp(0.0, 0.5);
-        final value = (_animationController.value - delay).clamp(0.0, 1.0);
-        final curve = Curves.easeOutCubic.transform(value);
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - curve)),
-          child: Opacity(
-            opacity: curve,
-            child: childWidget,
-          ),
-        );
-      },
-      child: child,
-    );
-  }
 }
 
-class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.name, this.phone});
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({required this.name, this.phone});
 
   final String name;
   final String? phone;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.dMaroonDeep.withAlpha(60),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Row(
+    return AarastCard(
+      padding: const EdgeInsets.all(20),
+      color: AppTheme.dCard,
+      child: Column(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.softShadow(opacity: 0.1),
-            ),
-            child: const Icon(
-              LucideIcons.user,
-              color: AppTheme.dMaroon,
-              size: 32,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: AppTheme.dCreamBg,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.dGold.withAlpha(90)),
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: AppTheme.dGoldDeep,
+                  size: 38,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.dMaroonDeep,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      phone == null || phone!.trim().isEmpty
+                          ? 'حساب اعّرست'
+                          : phone!,
+                      textDirection: phone == null
+                          ? TextDirection.rtl
+                          : TextDirection.ltr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppTheme.dGoldDeep,
+                  shape: BoxShape.circle,
+                  boxShadow: AppTheme.softShadow(opacity: .08),
+                ),
+                child: const Icon(
+                  Icons.edit_outlined,
+                  color: Colors.white,
+                  size: 19,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: AppTheme.dCard2,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.dLine),
+            ),
+            child: const Row(
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
+                Expanded(
+                  child: _ProfileMetric(
+                    label: 'التقدم',
+                    value: '—',
+                    icon: Icons.donut_large_rounded,
                   ),
                 ),
-                const SizedBox(height: 4),
-                if (phone != null)
-                  Row(
-                    children: [
-                      const Icon(LucideIcons.phone, color: Colors.white70, size: 14),
-                      const SizedBox(width: 6),
-                      Text(
-                        phone!,
-                        textDirection: TextDirection.ltr,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                _MetricDivider(),
+                Expanded(
+                  child: _ProfileMetric(
+                    label: 'المهام',
+                    value: '—',
+                    icon: Icons.check_box_outlined,
                   ),
+                ),
+                _MetricDivider(),
+                Expanded(
+                  child: _ProfileMetric(
+                    label: 'خططي',
+                    value: '—',
+                    icon: Icons.description_outlined,
+                  ),
+                ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(LucideIcons.pencil, color: Colors.white, size: 20),
           ),
         ],
       ),
@@ -424,79 +420,251 @@ class _AccountCard extends StatelessWidget {
   }
 }
 
-class _MoreTile extends StatelessWidget {
-  const _MoreTile({
+class _ProfileMetric extends StatelessWidget {
+  const _ProfileMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppTheme.dMaroon, size: 18),
+            const SizedBox(width: 5),
+            Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppTheme.dMaroon,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: AppTheme.dInkSoft,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricDivider extends StatelessWidget {
+  const _MetricDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(width: 1, height: 44, color: AppTheme.dLine);
+  }
+}
+
+class _MenuGroup extends StatelessWidget {
+  const _MenuGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: EdgeInsets.zero,
+      color: AppTheme.dCard2,
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            children[i],
+            if (i != children.length - 1)
+              const Divider(height: 1, color: AppTheme.dLine),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MoreActionTile extends StatelessWidget {
+  const _MoreActionTile({
+    required this.title,
+    required this.subtitle,
     required this.icon,
     required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    required this.subtitle,
+    required this.iconBackground,
     required this.onTap,
   });
 
+  final String title;
+  final String subtitle;
   final IconData icon;
   final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final String subtitle;
+  final Color iconBackground;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.dLine),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: iconBackground,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(14),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  child: Icon(icon, color: iconColor, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.dInk,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppTheme.dInkSoft,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                      height: 1.35,
+                    ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.chevron_left_rounded,
+              color: AppTheme.dMuted,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LogoutTile extends StatelessWidget {
+  const _LogoutTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: EdgeInsets.zero,
+      color: AppTheme.dCard2,
+      border: Border.all(color: AppTheme.danger.withAlpha(45)),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppTheme.danger.withAlpha(18),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: const Icon(
+                Icons.logout_rounded,
+                color: AppTheme.danger,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Text(
+                'تسجيل الخروج',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.danger,
+                  fontWeight: FontWeight.w900,
                 ),
-                const Icon(LucideIcons.chevronLeft, color: AppTheme.dMuted),
-              ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_left_rounded,
+              color: AppTheme.danger,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VersionFooter extends StatelessWidget {
+  const _VersionFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        children: [
+          Text(
+            'Aarast V2.0',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppTheme.dMuted,
+              fontWeight: FontWeight.w900,
             ),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'صُنع بحب في اليمن',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.dMuted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 42,
+        height: 5,
+        decoration: BoxDecoration(
+          color: AppTheme.dLine,
+          borderRadius: BorderRadius.circular(999),
         ),
       ),
     );

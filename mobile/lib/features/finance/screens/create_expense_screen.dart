@@ -1,12 +1,12 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../models/budget_category.dart';
 import '../providers/finance_provider.dart';
 
 class CreateExpenseScreen extends StatefulWidget {
@@ -18,25 +18,19 @@ class CreateExpenseScreen extends StatefulWidget {
   State<CreateExpenseScreen> createState() => _CreateExpenseScreenState();
 }
 
-class _CreateExpenseScreenState extends State<CreateExpenseScreen> with SingleTickerProviderStateMixin {
+class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
+
   String? _budgetCategoryId;
   String _status = 'PLANNED';
   DateTime? _expenseDate;
-  
-  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<FinanceProvider>();
       if (provider.budgetCategories.isEmpty) {
@@ -50,571 +44,525 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> with SingleTi
     _titleController.dispose();
     _amountController.dispose();
     _noteController.dispose();
-    _animationController.dispose();
     super.dispose();
-  }
-
-  void _showDatePicker() async {
-    FocusScope.of(context).unfocus();
-    final now = DateTime.now();
-    DateTime tempDate = _expenseDate ?? now;
-
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppTheme.dCard.withAlpha(240),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: AppTheme.dLine,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dPinkBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(LucideIcons.calendarDays, color: AppTheme.dMaroon),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'تاريخ المصروف',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.dMaroonDeep,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: Theme.of(context).colorScheme.copyWith(
-                            primary: AppTheme.dMaroon,
-                            onPrimary: Colors.white,
-                            surface: Colors.transparent,
-                            onSurface: AppTheme.dInk,
-                          ),
-                        ),
-                        child: CalendarDatePicker(
-                          initialDate: tempDate,
-                          firstDate: DateTime(now.year - 1),
-                          lastDate: DateTime(now.year + 10),
-                          onDateChanged: (date) {
-                            tempDate = date;
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.dMaroon,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                            ),
-                          ),
-                          onPressed: () {
-                            setState(() => _expenseDate = tempDate);
-                            Navigator.pop(sheetContext);
-                          },
-                          child: const Text(
-                            'تأكيد التاريخ',
-                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showCategoryPicker() {
-    FocusScope.of(context).unfocus();
-    final provider = context.read<FinanceProvider>();
-    
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            height: MediaQuery.of(context).size.height * 0.6,
-            decoration: BoxDecoration(
-              color: AppTheme.dCard.withAlpha(240),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            ),
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: AppTheme.dLine,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.dGold.withAlpha(30),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(LucideIcons.folder, color: AppTheme.dGoldDeep),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'تصنيف الميزانية',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.dInk,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Expanded(
-                      child: provider.budgetCategories.isEmpty
-                        ? const Center(child: Text('لا توجد تصنيفات، يرجى إضافة تصنيف أولاً.'))
-                        : ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                            itemCount: provider.budgetCategories.length + 1,
-                            itemBuilder: (context, index) {
-                              final isNone = index == 0;
-                              final categoryId = isNone ? null : provider.budgetCategories[index - 1].id;
-                              final categoryName = isNone ? 'بدون تصنيف' : provider.budgetCategories[index - 1].name;
-                              final isSelected = _budgetCategoryId == categoryId;
-                              
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      setState(() => _budgetCategoryId = categoryId);
-                                      Navigator.pop(sheetContext);
-                                    },
-                                    borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 200),
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        border: Border.all(
-                                          color: isSelected ? AppTheme.dMaroon : AppTheme.dLine,
-                                          width: isSelected ? 2 : 1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        color: isSelected ? AppTheme.dPinkBg.withAlpha(100) : Colors.transparent,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            isNone ? LucideIcons.minusCircle : LucideIcons.folder,
-                                            color: isSelected ? AppTheme.dMaroon : AppTheme.dMuted,
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Text(
-                                            categoryName,
-                                            style: TextStyle(
-                                              fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                                              color: isSelected ? AppTheme.dMaroonDeep : AppTheme.dInk,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          const Spacer(),
-                                          if (isSelected)
-                                            const Icon(LucideIcons.checkCircle2, color: AppTheme.dMaroon),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
-    final textTheme = Theme.of(context).textTheme;
+    final category = _selectedCategory(provider.budgetCategories);
 
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              top: -80,
-              right: -80,
-              child: Container(
-                width: 250,
-                height: 250,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.dGold.withAlpha(20),
-                ),
-              ),
-            ),
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(AppRouter.finance(widget.weddingPlanId));
-                          }
-                        },
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: AppTheme.dCard,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.dLine),
-                          ),
-                          child: const Icon(Icons.arrow_back_rounded, color: AppTheme.dInk),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'إضافة مصروف',
-                        style: textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dInk,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                      child: Row(
                         children: [
-                          _buildAnimated(
-                            0,
-                            Column(
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.dGold.withAlpha(20),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: AppTheme.dLine),
+                          IconButton(
+                            onPressed: _goBack,
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            tooltip: 'رجوع',
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'إضافة مصروف',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: AppTheme.dMaroonDeep,
+                                    fontWeight: FontWeight.w900,
                                   ),
-                                  child: const Icon(LucideIcons.wallet, color: AppTheme.dGoldDeep, size: 36),
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'تتبعي مصروفاتك بدقة وسهولة 💰',
-                                  textAlign: TextAlign.center,
-                                  style: textTheme.bodyLarge?.copyWith(
-                                    color: AppTheme.dInkSoft,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                              ],
                             ),
                           ),
-
-                          _buildAnimated(
-                            1,
-                            TextFormField(
-                              controller: _titleController,
-                              textAlign: TextAlign.right,
-                              textInputAction: TextInputAction.next,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                              decoration: InputDecoration(
-                                labelText: 'عنوان المصروف',
-                                hintText: 'مثال: دفعة قاعة الأفراح',
-                                prefixIcon: const Icon(LucideIcons.penTool),
-                                filled: true,
-                                fillColor: AppTheme.dCard,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                              ),
-                              validator: (value) => value == null || value.trim().isEmpty ? 'عنوان المصروف مطلوب' : null,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildAnimated(
-                            2,
-                            TextFormField(
-                              controller: _amountController,
-                              textAlign: TextAlign.right,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppTheme.dMaroonDeep),
-                              decoration: InputDecoration(
-                                labelText: 'المبلغ',
-                                prefixIcon: const Icon(LucideIcons.coins),
-                                suffixText: 'YER',
-                                filled: true,
-                                fillColor: AppTheme.dCard,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                              ),
-                              validator: (value) {
-                                final parsed = num.tryParse(value?.trim() ?? '');
-                                if (parsed == null || parsed < 0) return 'المبلغ غير صحيح';
-                                return null;
-                              },
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          _buildAnimated(
-                            3,
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: _showCategoryPicker,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.dCard,
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        border: Border.all(color: AppTheme.dLine),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(LucideIcons.folder, color: AppTheme.dMuted),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                const Text('التصنيف', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.dInkSoft)),
-                                                Text(
-                                                  _getCategoryName(_budgetCategoryId),
-                                                  style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.dInk, fontSize: 14),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const Icon(LucideIcons.chevronDown, color: AppTheme.dMuted, size: 18),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: _showDatePicker,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.dCard,
-                                        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                        border: Border.all(
-                                          color: _expenseDate != null ? AppTheme.dMaroon : AppTheme.dLine,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(LucideIcons.calendarDays, color: _expenseDate != null ? AppTheme.dMaroon : AppTheme.dMuted),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                if (_expenseDate != null)
-                                                  const Text('التاريخ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppTheme.dInkSoft)),
-                                                Text(
-                                                  _expenseDate == null ? 'التاريخ' : '${_expenseDate!.year}/${_expenseDate!.month}/${_expenseDate!.day}',
-                                                  style: TextStyle(
-                                                    fontWeight: _expenseDate != null ? FontWeight.w800 : FontWeight.w600,
-                                                    color: _expenseDate != null ? AppTheme.dInk : AppTheme.dMuted,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          _buildAnimated(
-                            4,
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'حالة الدفع',
-                                  style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800, color: AppTheme.dInk),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    _buildStatusChip('PLANNED', 'مخطط', AppTheme.dGold),
-                                    _buildStatusChip('PAID', 'مدفوع', AppTheme.dMaroon),
-                                    _buildStatusChip('CANCELLED', 'ملغي', AppTheme.dMuted),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          _buildAnimated(
-                            5,
-                            TextFormField(
-                              controller: _noteController,
-                              textAlign: TextAlign.right,
-                              maxLines: 3,
-                              decoration: InputDecoration(
-                                labelText: 'ملاحظات (اختياري)',
-                                alignLabelWithHint: true,
-                                filled: true,
-                                fillColor: AppTheme.dCard,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.dLine),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-
-                          _buildAnimated(
-                            6,
-                            PrimaryActionButton(
-                              label: 'حفظ المصروف',
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                          ),
-                          const SizedBox(height: 40),
                         ],
                       ),
                     ),
                   ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                    sliver: SliverToBoxAdapter(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _ExpenseHero(),
+                            const SizedBox(height: 18),
+                            AarastCard(
+                              padding: const EdgeInsets.all(18),
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _titleController,
+                                    textAlign: TextAlign.right,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: const InputDecoration(
+                                      labelText: 'عنوان المصروف',
+                                      hintText: 'مثال: دفعة قاعة الأفراح',
+                                      prefixIcon: Icon(
+                                        Icons.receipt_long_outlined,
+                                      ),
+                                    ),
+                                    validator: _required('عنوان المصروف مطلوب'),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: _amountController,
+                                    textAlign: TextAlign.right,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    decoration: const InputDecoration(
+                                      labelText: 'المبلغ',
+                                      suffixText: 'YER',
+                                      prefixIcon: Icon(
+                                        Icons.account_balance_wallet_outlined,
+                                      ),
+                                    ),
+                                    validator: _nonNegativeRequired(
+                                      'المبلغ غير صحيح',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final categoryField = _SelectorField(
+                                        label: 'التصنيف',
+                                        value: category?.name ?? 'بدون تصنيف',
+                                        icon: Icons.folder_outlined,
+                                        selected: category != null,
+                                        onTap: _showCategoryPicker,
+                                      );
+                                      final dateField = _SelectorField(
+                                        label: 'التاريخ',
+                                        value: _expenseDate == null
+                                            ? 'اختياري'
+                                            : _formatDate(_expenseDate!),
+                                        icon: Icons.calendar_month_rounded,
+                                        selected: _expenseDate != null,
+                                        onTap: _showCalendarPicker,
+                                      );
+
+                                      if (constraints.maxWidth < 330) {
+                                        return Column(
+                                          children: [
+                                            categoryField,
+                                            const SizedBox(height: 12),
+                                            dateField,
+                                          ],
+                                        );
+                                      }
+
+                                      return Row(
+                                        children: [
+                                          Expanded(child: categoryField),
+                                          const SizedBox(width: 12),
+                                          Expanded(child: dateField),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 18),
+                                  const Align(
+                                    alignment: AlignmentDirectional.centerStart,
+                                    child: Text(
+                                      'حالة المصروف',
+                                      style: TextStyle(
+                                        color: AppTheme.dInk,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      _StatusChip(
+                                        label: 'مخطط',
+                                        icon: Icons.schedule_rounded,
+                                        color: AppTheme.dGoldDeep,
+                                        selected: _status == 'PLANNED',
+                                        onTap: () {
+                                          setState(() => _status = 'PLANNED');
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _StatusChip(
+                                        label: 'مدفوع',
+                                        icon: Icons.check_circle_rounded,
+                                        color: AppTheme.dGreen,
+                                        selected: _status == 'PAID',
+                                        onTap: () {
+                                          setState(() => _status = 'PAID');
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _StatusChip(
+                                        label: 'ملغي',
+                                        icon: Icons.block_rounded,
+                                        color: AppTheme.dMuted,
+                                        selected: _status == 'CANCELLED',
+                                        onTap: () {
+                                          setState(() => _status = 'CANCELLED');
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: _noteController,
+                                    textAlign: TextAlign.right,
+                                    maxLines: 4,
+                                    decoration: const InputDecoration(
+                                      labelText: 'ملاحظات (اختياري)',
+                                      hintText:
+                                          'أضيفي تفاصيل الدفعة أو الجهة المستلمة...',
+                                      alignLabelWithHint: true,
+                                    ),
+                                  ),
+                                  if (provider.errorMessage != null) ...[
+                                    const SizedBox(height: 14),
+                                    AarastStatusPill(
+                                      label: provider.errorMessage!,
+                                      color: AppTheme.danger,
+                                      icon: Icons.error_outline_rounded,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            PrimaryActionButton(
+                              label: 'حفظ المصروف',
+                              icon: Icons.check_rounded,
+                              isLoading: provider.isSubmitting,
+                              onPressed: _submit,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  BudgetCategory? _selectedCategory(List<BudgetCategory> categories) {
+    for (final category in categories) {
+      if (category.id == _budgetCategoryId) return category;
+    }
+    return null;
+  }
+
+  Future<void> _showCalendarPicker() async {
+    FocusScope.of(context).unfocus();
+    final now = DateTime.now();
+    var tempDate = _expenseDate ?? now;
+
+    final selected = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  const AarastSectionHeader(
+                    title: 'تاريخ المصروف',
+                    icon: Icons.calendar_month_rounded,
+                  ),
+                  const SizedBox(height: 8),
+                  Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                        primary: AppTheme.dMaroon,
+                        onPrimary: Colors.white,
+                        surface: AppTheme.dCard2,
+                        onSurface: AppTheme.dInk,
+                      ),
+                    ),
+                    child: CalendarDatePicker(
+                      initialDate: tempDate,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 10),
+                      onDateChanged: (date) => tempDate = date,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PrimaryActionButton(
+                    label: 'تأكيد التاريخ',
+                    icon: Icons.check_rounded,
+                    onPressed: () => Navigator.of(sheetContext).pop(tempDate),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected != null) setState(() => _expenseDate = selected);
+  }
+
+  Future<void> _showCategoryPicker() async {
+    FocusScope.of(context).unfocus();
+    final provider = context.read<FinanceProvider>();
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  const AarastSectionHeader(
+                    title: 'تصنيف الميزانية',
+                    icon: Icons.category_outlined,
+                  ),
+                  const SizedBox(height: 14),
+                  _CategoryRow(
+                    label: 'بدون تصنيف',
+                    icon: Icons.remove_circle_outline_rounded,
+                    selected: _budgetCategoryId == null,
+                    onTap: () => Navigator.of(sheetContext).pop(''),
+                  ),
+                  for (final category in provider.budgetCategories)
+                    _CategoryRow(
+                      label: category.name,
+                      icon: Icons.folder_outlined,
+                      selected: category.id == _budgetCategoryId,
+                      onTap: () => Navigator.of(sheetContext).pop(category.id),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!mounted) return;
+    if (selected != null) {
+      setState(() => _budgetCategoryId = selected.isEmpty ? null : selected);
+    }
+  }
+
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
+      return;
+    }
+    context.go(AppRouter.finance(widget.weddingPlanId));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final provider = context.read<FinanceProvider>();
+    final note = _noteController.text.trim();
+    final created = await provider.createExpense(
+      weddingPlanId: widget.weddingPlanId,
+      title: _titleController.text.trim(),
+      amount: _amountController.text.trim(),
+      budgetCategoryId: _budgetCategoryId,
+      status: _status,
+      expenseDate: _expenseDate,
+      note: note.isEmpty ? null : note,
+    );
+
+    if (created && mounted) _goBack();
+  }
+}
+
+class _ExpenseHero extends StatelessWidget {
+  const _ExpenseHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.dCreamBg,
+      border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              gradient: AppTheme.goldGradient,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'سجلي كل دفعة بوضوح',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dMaroonDeep,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'التفاصيل الصغيرة تمنع مفاجآت الميزانية لاحقاً.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectorField extends StatelessWidget {
+  const _SelectorField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.dCard2,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(
+            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                  ),
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppTheme.dMuted,
             ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildStatusChip(String value, String label, Color color) {
-    final isSelected = _status == value;
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _status = value),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
-            color: isSelected ? color.withAlpha(20) : Colors.transparent,
+            color: selected ? color.withAlpha(24) : AppTheme.dCard2,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(
-              color: isSelected ? color : AppTheme.dLine,
-              width: isSelected ? 2 : 1,
-            ),
+            border: Border.all(color: selected ? color : AppTheme.dLine),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (isSelected) ...[
-                Icon(LucideIcons.checkCircle2, color: color, size: 16),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-                  color: isSelected ? color : AppTheme.dMuted,
-                  fontSize: 14,
+              Icon(icon, color: selected ? color : AppTheme.dMuted, size: 16),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? color : AppTheme.dMuted,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
@@ -623,54 +571,83 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> with SingleTi
       ),
     );
   }
+}
 
-  Widget _buildAnimated(int index, Widget child) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, childWidget) {
-        final delay = 0.1 + (index * 0.05);
-        final value = (_animationController.value - delay).clamp(0.0, 1.0);
-        final curve = Curves.easeOutCubic.transform(value);
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - curve)),
-          child: Opacity(
-            opacity: curve,
-            child: childWidget,
-          ),
-        );
-      },
-      child: child,
+class _CategoryRow extends StatelessWidget {
+  const _CategoryRow({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AarastCard(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+        border: Border.all(color: selected ? AppTheme.dMaroon : AppTheme.dLine),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: selected ? AppTheme.dMaroon : AppTheme.dInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
+          ],
+        ),
+      ),
     );
   }
+}
 
-  String _getCategoryName(String? id) {
-    if (id == null) return 'بدون تصنيف';
-    final categories = context.read<FinanceProvider>().budgetCategories;
-    try {
-      return categories.firstWhere((c) => c.id == id).name;
-    } catch (_) {
-      return 'بدون تصنيف';
-    }
-  }
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final provider = context.read<FinanceProvider>();
-    final created = await provider.createExpense(
-      weddingPlanId: widget.weddingPlanId,
-      title: _titleController.text,
-      amount: _amountController.text,
-      budgetCategoryId: _budgetCategoryId,
-      status: _status,
-      expenseDate: _expenseDate,
-      note: _noteController.text,
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 42,
+        height: 5,
+        decoration: BoxDecoration(
+          color: AppTheme.dLine,
+          borderRadius: BorderRadius.circular(999),
+        ),
+      ),
     );
-    if (created && mounted) {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRouter.finance(widget.weddingPlanId));
-      }
-    }
   }
+}
+
+FormFieldValidator<String> _required(String message) {
+  return (value) => value == null || value.trim().isEmpty ? message : null;
+}
+
+FormFieldValidator<String> _nonNegativeRequired(String message) {
+  return (value) {
+    final rawValue = value?.trim() ?? '';
+    final parsed = num.tryParse(rawValue);
+    if (parsed == null || parsed < 0) return message;
+    return null;
+  };
+}
+
+String _formatDate(DateTime date) {
+  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
 }

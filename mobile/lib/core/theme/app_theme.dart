@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   const AppTheme._();
+
+  static const textFontFamily = 'Tajawal';
+  static const displayFontFamily = 'Amiri';
 
   // Core brand colors
   static const deepBurgundy = Color(0xFF800020);
@@ -67,24 +69,24 @@ class AppTheme {
   static const double gapLg = 18;
   static const double gapXl = 24;
 
+  static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 24);
+  static const EdgeInsets compactScreenPadding = EdgeInsets.symmetric(
+    horizontal: 16,
+  );
+
+  static const Duration motionFast = Duration(milliseconds: 180);
+  static const Duration motionMedium = Duration(milliseconds: 300);
+
   static const LinearGradient heroGradient = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [
-      dMaroonBright,
-      dMaroon,
-      dMaroonDeep,
-    ],
+    colors: [dMaroonBright, dMaroon, dMaroonDeep],
   );
 
   static const LinearGradient goldGradient = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [
-      dGold2,
-      dGold,
-      dGoldDeep,
-    ],
+    colors: [dGold2, dGold, dGoldDeep],
   );
 
   static List<BoxShadow> softShadow({double opacity = 0.08}) {
@@ -137,6 +139,7 @@ class AppTheme {
   static ThemeData light() {
     final baseTheme = ThemeData(
       useMaterial3: true,
+      fontFamily: textFontFamily,
       colorScheme: ColorScheme.fromSeed(
         seedColor: dMaroon,
         primary: dMaroon,
@@ -147,12 +150,9 @@ class AppTheme {
       scaffoldBackgroundColor: dBg,
     );
 
-    final textTheme = GoogleFonts.cairoTextTheme(
+    final textTheme = _buildTextTheme(
       baseTheme.textTheme,
-    ).apply(
-      bodyColor: dInk,
-      displayColor: dInk,
-    );
+    ).apply(bodyColor: dInk, displayColor: dInk);
 
     return baseTheme.copyWith(
       textTheme: textTheme,
@@ -170,6 +170,16 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: dInk),
       ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: dMaroon,
+          backgroundColor: dCard2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMd),
+            side: const BorderSide(color: dLine),
+          ),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: dMaroon,
@@ -181,6 +191,7 @@ class AppTheme {
           ),
           textStyle: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -194,6 +205,7 @@ class AppTheme {
           ),
           textStyle: textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -202,6 +214,7 @@ class AppTheme {
           foregroundColor: dMaroon,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w800,
+            letterSpacing: 0,
           ),
         ),
       ),
@@ -249,6 +262,50 @@ class AppTheme {
         ),
         margin: EdgeInsets.zero,
       ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: dCard,
+        surfaceTintColor: Colors.transparent,
+        modalBackgroundColor: dCard,
+        modalBarrierColor: Color(0x66000000),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXl)),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: dCard2,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusLg),
+        ),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: dMaroon,
+        foregroundColor: Colors.white,
+        shape: CircleBorder(),
+        elevation: 8,
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: dMaroon,
+        textColor: dInk,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return dMaroon;
+          return dCard2;
+        }),
+        checkColor: WidgetStateProperty.all(Colors.white),
+        side: const BorderSide(color: dLine, width: 1.2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: dMaroon,
+        circularTrackColor: dLine,
+        linearTrackColor: dLine,
+      ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: dInk,
@@ -278,6 +335,72 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: dCard2,
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: dPinkBg,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return textTheme.labelSmall?.copyWith(
+            color: isSelected ? dMaroon : dMuted,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            letterSpacing: 0,
+          );
+        }),
+      ),
+    );
+  }
+
+  static TextTheme _buildTextTheme(TextTheme base) {
+    TextStyle? style(
+      TextStyle? source, {
+      double? size,
+      FontWeight? weight,
+      String? family,
+      double height = 1.35,
+    }) {
+      return source?.copyWith(
+        fontFamily: family ?? textFontFamily,
+        fontSize: size,
+        fontWeight: weight,
+        height: height,
+        letterSpacing: 0,
+      );
+    }
+
+    return base.copyWith(
+      displayLarge: style(base.displayLarge, family: displayFontFamily),
+      displayMedium: style(base.displayMedium, family: displayFontFamily),
+      displaySmall: style(base.displaySmall, family: displayFontFamily),
+      headlineLarge: style(
+        base.headlineLarge,
+        size: 28,
+        weight: FontWeight.w700,
+        family: displayFontFamily,
+        height: 1.2,
+      ),
+      headlineMedium: style(
+        base.headlineMedium,
+        size: 24,
+        weight: FontWeight.w700,
+        family: displayFontFamily,
+        height: 1.2,
+      ),
+      headlineSmall: style(
+        base.headlineSmall,
+        size: 22,
+        weight: FontWeight.w700,
+        height: 1.25,
+      ),
+      titleLarge: style(base.titleLarge, size: 20, weight: FontWeight.w800),
+      titleMedium: style(base.titleMedium, size: 16, weight: FontWeight.w700),
+      titleSmall: style(base.titleSmall, size: 14, weight: FontWeight.w700),
+      bodyLarge: style(base.bodyLarge, size: 16, weight: FontWeight.w400),
+      bodyMedium: style(base.bodyMedium, size: 14, weight: FontWeight.w400),
+      bodySmall: style(base.bodySmall, size: 12, weight: FontWeight.w400),
+      labelLarge: style(base.labelLarge, size: 14, weight: FontWeight.w800),
+      labelMedium: style(base.labelMedium, size: 12, weight: FontWeight.w700),
+      labelSmall: style(base.labelSmall, size: 11, weight: FontWeight.w600),
     );
   }
 }

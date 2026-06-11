@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class AuthFormShell extends StatelessWidget {
   const AuthFormShell({
     required this.title,
@@ -15,29 +17,40 @@ class AuthFormShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.dBg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: Card(
+              child: Container(
+                decoration: AppTheme.premiumCardDecoration(
+                  color: AppTheme.dCard2.withAlpha(242),
+                  radius: AppTheme.radiusXl,
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'اعّرست',
+                        'أعرسِت',
                         style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
+                            ?.copyWith(
+                              color: AppTheme.dMaroon,
+                              fontFamily: AppTheme.displayFontFamily,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0,
+                            ),
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 18),
                       Text(
                         title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w800,
                         ),
                         textAlign: TextAlign.right,
                       ),

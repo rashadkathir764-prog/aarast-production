@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -66,12 +65,9 @@ class _WeddingPlanDashboardScreenState
     final provider = context.watch<DashboardSummaryProvider>();
     final auth = context.watch<AuthController>();
 
-    // Apply the design's Tajawal type scale over the dashboard subtree, and
-    // guarantee RTL regardless of the host locale.
-    final theme = Theme.of(context);
-    final dashboardTheme = theme.copyWith(
-      textTheme: GoogleFonts.tajawalTextTheme(theme.textTheme),
-    );
+    // Use the app-level Arabic type scale and guarantee RTL regardless of the
+    // host locale.
+    final dashboardTheme = Theme.of(context);
 
     return Theme(
       data: dashboardTheme,
@@ -191,14 +187,16 @@ class _WeddingPlanDashboardScreenState
           weddingDate: plan.weddingDate,
         ),
         const SizedBox(height: 20),
-        _padded(BudgetSummaryCard(
-          total: dashParseAmount(plan.estimatedBudget),
-          spent: dashParseAmount(provider.expenseSummary?.totalPaid),
-          obligations: dashParseAmount(provider.expenseSummary?.totalPlanned),
-          debtsTotal: 0, // Placeholder
-          upcomingInstallments: 0, // Placeholder
-          currency: 'ر.ي',
-        )),
+        _padded(
+          BudgetSummaryCard(
+            total: dashParseAmount(plan.estimatedBudget),
+            spent: dashParseAmount(provider.expenseSummary?.totalPaid),
+            obligations: dashParseAmount(provider.expenseSummary?.totalPlanned),
+            debtsTotal: 0, // Placeholder
+            upcomingInstallments: 0, // Placeholder
+            currency: 'ر.ي',
+          ),
+        ),
         const SizedBox(height: 14),
         _padded(
           Row(
@@ -231,48 +229,56 @@ class _WeddingPlanDashboardScreenState
           ),
         ),
         const SizedBox(height: 24),
-        _padded(QuickActionsCard(
-          actions: [
-            QuickAction(
-              icon: Icons.add,
-              label: 'إضافة\nمصروف',
-              color: AppTheme.dMaroon,
-              bg: AppTheme.dPinkBg,
-              onTap: () => context.push(AppRouter.createExpense(planId)),
-            ),
-            QuickAction(
-              icon: Icons.check_circle_outline,
-              label: 'إضافة\nمهمة',
-              color: AppTheme.dGreen,
-              bg: AppTheme.dGreenBg,
-              onTap: () => context.push(AppRouter.tasks(planId)), // Should navigate to create task, but use tasks as fallback
-            ),
-            QuickAction(
-              icon: Icons.credit_card,
-              label: 'الديون\nوالأقساط',
-              color: AppTheme.dGoldDeep,
-              bg: AppTheme.dCreamBg,
-              onTap: () => context.push(AppRouter.debts(planId)),
-            ),
-            QuickAction(
-              icon: Icons.groups_outlined,
-              label: 'قائمة\nالضيوف',
-              color: AppTheme.dBlue,
-              bg: AppTheme.dBlueBg,
-              onTap: () => _comingSoon('قائمة الضيوف قيد الإعداد'),
-            ),
-          ],
-        )),
+        _padded(
+          QuickActionsCard(
+            actions: [
+              QuickAction(
+                icon: Icons.add,
+                label: 'إضافة\nمصروف',
+                color: AppTheme.dMaroon,
+                bg: AppTheme.dPinkBg,
+                onTap: () => context.push(AppRouter.createExpense(planId)),
+              ),
+              QuickAction(
+                icon: Icons.check_circle_outline,
+                label: 'إضافة\nمهمة',
+                color: AppTheme.dGreen,
+                bg: AppTheme.dGreenBg,
+                onTap: () => context.push(
+                  AppRouter.tasks(planId),
+                ), // Should navigate to create task, but use tasks as fallback
+              ),
+              QuickAction(
+                icon: Icons.credit_card,
+                label: 'الديون\nوالأقساط',
+                color: AppTheme.dGoldDeep,
+                bg: AppTheme.dCreamBg,
+                onTap: () => context.push(AppRouter.debts(planId)),
+              ),
+              QuickAction(
+                icon: Icons.groups_outlined,
+                label: 'قائمة\nالضيوف',
+                color: AppTheme.dBlue,
+                bg: AppTheme.dBlueBg,
+                onTap: () => _comingSoon('قائمة الضيوف قيد الإعداد'),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 24),
-        _padded(AlertsCard(
-          alerts: const [],
-          onViewAll: () => _comingSoon('التنبيهات قيد الإعداد'),
-        )),
+        _padded(
+          AlertsCard(
+            alerts: const [],
+            onViewAll: () => _comingSoon('التنبيهات قيد الإعداد'),
+          ),
+        ),
         const SizedBox(height: 24),
-        _padded(SharedPlansCard(
-          subtitle: 'لا توجد خطط مشتركة',
-          onOpen: () => context.push(AppRouter.sharedWeddingPlans),
-        )),
+        _padded(
+          SharedPlansCard(
+            subtitle: 'لا توجد خطط مشتركة',
+            onOpen: () => context.push(AppRouter.sharedWeddingPlans),
+          ),
+        ),
       ],
     );
   }
@@ -391,5 +397,4 @@ class _WeddingPlanDashboardScreenState
       },
     );
   }
-
 }

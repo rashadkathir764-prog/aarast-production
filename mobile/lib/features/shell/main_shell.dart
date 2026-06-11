@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -65,7 +64,13 @@ class _MainShellState extends State<MainShell> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        Widget tile(IconData icon, Color color, Color bg, String label, String route) {
+        Widget tile(
+          IconData icon,
+          Color color,
+          Color bg,
+          String label,
+          String route,
+        ) {
           return ListTile(
             onTap: () {
               Navigator.of(sheetContext).pop();
@@ -74,13 +79,19 @@ class _MainShellState extends State<MainShell> {
             leading: Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(13)),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(13),
+              ),
               child: Icon(icon, color: color, size: 22),
             ),
             title: Text(
               label,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.dInk),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AppTheme.dInk,
+              ),
             ),
           );
         }
@@ -96,20 +107,54 @@ class _MainShellState extends State<MainShell> {
                   Container(
                     width: 44,
                     height: 4,
-                    decoration: BoxDecoration(color: AppTheme.dLine, borderRadius: BorderRadius.circular(2)),
+                    decoration: BoxDecoration(
+                      color: AppTheme.dLine,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(20, 6, 20, 6),
                     child: Align(
                       alignment: Alignment.centerRight,
-                      child: Text('إضافة سريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.dInk)),
+                      child: Text(
+                        'إضافة سريعة',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.dInk,
+                        ),
+                      ),
                     ),
                   ),
-                  tile(Icons.account_balance_wallet_outlined, AppTheme.dMaroon, AppTheme.dPinkBg, 'إضافة مصروف', AppRouter.finance(_activePlanId!)),
-                  tile(Icons.credit_card_rounded, AppTheme.dMaroon, AppTheme.dPinkBg, 'إضافة دين', AppRouter.debts(_activePlanId!)),
-                  tile(Icons.check_circle_outline_rounded, AppTheme.dGreen, AppTheme.dGreenBg, 'إضافة مهمة', AppRouter.tasks(_activePlanId!)),
-                  tile(Icons.post_add_rounded, AppTheme.dGoldDeep, AppTheme.dCreamBg, 'خطة جديدة', AppRouter.createWeddingPlan),
+                  tile(
+                    Icons.account_balance_wallet_outlined,
+                    AppTheme.dMaroon,
+                    AppTheme.dPinkBg,
+                    'إضافة مصروف',
+                    AppRouter.finance(_activePlanId!),
+                  ),
+                  tile(
+                    Icons.credit_card_rounded,
+                    AppTheme.dMaroon,
+                    AppTheme.dPinkBg,
+                    'إضافة دين',
+                    AppRouter.debts(_activePlanId!),
+                  ),
+                  tile(
+                    Icons.check_circle_outline_rounded,
+                    AppTheme.dGreen,
+                    AppTheme.dGreenBg,
+                    'إضافة مهمة',
+                    AppRouter.tasks(_activePlanId!),
+                  ),
+                  tile(
+                    Icons.post_add_rounded,
+                    AppTheme.dGoldDeep,
+                    AppTheme.dCreamBg,
+                    'خطة جديدة',
+                    AppRouter.createWeddingPlan,
+                  ),
                 ],
               ),
             ),
@@ -121,10 +166,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final shellTheme = theme.copyWith(
-      textTheme: GoogleFonts.tajawalTextTheme(theme.textTheme),
-    );
+    final shellTheme = Theme.of(context);
 
     // Map _index to the IndexedStack.
     // DashboardBottomNav indices:
@@ -134,10 +176,15 @@ class _MainShellState extends State<MainShell> {
     // 0: More -> IndexedStack 3
 
     int stackIndex = 0;
-    if (_index == 4) { stackIndex = 0; }
-    else if (_index == 3) { stackIndex = 1; }
-    else if (_index == 1) { stackIndex = 2; }
-    else if (_index == 0) { stackIndex = 3; }
+    if (_index == 4) {
+      stackIndex = 0;
+    } else if (_index == 3) {
+      stackIndex = 1;
+    } else if (_index == 1) {
+      stackIndex = 2;
+    } else if (_index == 0) {
+      stackIndex = 3;
+    }
 
     return Theme(
       data: shellTheme,
@@ -192,17 +239,21 @@ class _MainShellState extends State<MainShell> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isComingSoon ? Icons.construction : Icons.info_outline,
-                size: 64, color: AppTheme.dMuted),
+            Icon(
+              isComingSoon ? Icons.construction : Icons.info_outline,
+              size: 64,
+              color: AppTheme.dMuted,
+            ),
             const SizedBox(height: 16),
             Text(
               isComingSoon
                   ? 'قسم "$title" قيد الإعداد'
                   : 'الرجاء اختيار خطة من الرئيسية أولاً',
               style: const TextStyle(
-                  color: AppTheme.dInk,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700),
+                color: AppTheme.dInk,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),

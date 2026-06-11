@@ -1,10 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -15,8 +12,18 @@ import '../../../core/theme/app_theme.dart';
 // ============================================================================
 
 const _arMonths = <String>[
-  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
+  'يناير',
+  'فبراير',
+  'مارس',
+  'أبريل',
+  'مايو',
+  'يونيو',
+  'يوليو',
+  'أغسطس',
+  'سبتمبر',
+  'أكتوبر',
+  'نوفمبر',
+  'ديسمبر',
 ];
 
 String dashFormatArDate(DateTime date) {
@@ -128,9 +135,7 @@ class DashboardTopBar extends StatelessWidget {
             ],
           ),
           // Centered Brand Mark
-          const Positioned(
-            child: _BrandMark(),
-          ),
+          const Positioned(child: _BrandMark()),
         ],
       ),
     );
@@ -142,29 +147,19 @@ class _BrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTest = !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
-    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           'اعرست',
-          style: isTest
-              ? const TextStyle(
-                  fontFamily: 'Amiri',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.dMaroon,
-                  letterSpacing: 1,
-                  height: 1,
-                )
-              : GoogleFonts.amiri(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.dMaroon,
-                  letterSpacing: 1,
-                  height: 1,
-                ),
+          style: const TextStyle(
+            fontFamily: AppTheme.displayFontFamily,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.dMaroon,
+            letterSpacing: 0,
+            height: 1,
+          ),
         ),
         const SizedBox(height: 2),
         CustomPaint(size: const Size(46, 30), painter: _RingsPainter()),
@@ -342,11 +337,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
-          colors: [
-            AppTheme.dMaroonBright,
-            AppTheme.dMaroon,
-            AppTheme.dMaroon2,
-          ],
+          colors: [AppTheme.dMaroonBright, AppTheme.dMaroon, AppTheme.dMaroon2],
           stops: [0, 0.45, 1],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
@@ -361,9 +352,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
       ),
       child: Stack(
         children: [
-          Positioned.fill(
-            child: CustomPaint(painter: _HeroPatternPainter()),
-          ),
+          Positioned.fill(child: CustomPaint(painter: _HeroPatternPainter())),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -472,7 +461,11 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
     );
   }
 
-  Widget _metaRow({required IconData icon, required String value, String? label}) {
+  Widget _metaRow({
+    required IconData icon,
+    required String value,
+    String? label,
+  }) {
     // RTL: icon on the right, then label, then value flowing left.
     return Padding(
       padding: const EdgeInsets.only(bottom: 9),
@@ -529,7 +522,11 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.schedule_rounded, size: 14, color: AppTheme.dGold2),
+              const Icon(
+                Icons.schedule_rounded,
+                size: 14,
+                color: AppTheme.dGold2,
+              ),
               const SizedBox(width: 6),
               Text(
                 widget.statusLabel,
@@ -578,11 +575,20 @@ class _HeroPatternPainter extends CustomPainter {
       ..strokeWidth = 1;
     const gap = 14.0;
     // fade the hatch towards the right (start) edge only
-    final rect = Rect.fromLTWH(size.width * 0.45, 0, size.width * 0.55, size.height);
+    final rect = Rect.fromLTWH(
+      size.width * 0.45,
+      0,
+      size.width * 0.55,
+      size.height,
+    );
     canvas.save();
     canvas.clipRect(rect);
     for (var x = -size.height; x < size.width; x += gap) {
-      canvas.drawLine(Offset(x, 0), Offset(x + size.height, size.height), paint);
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x + size.height, size.height),
+        paint,
+      );
       canvas.drawLine(
         Offset(x + size.height, 0),
         Offset(x, size.height),
@@ -717,10 +723,7 @@ class BudgetSummaryCard extends StatelessWidget {
                       'الأقساط القادمة',
                       '${dashFormatMoney(upcomingInstallments)} $currency',
                     ),
-                    _budgetStat(
-                      'الميزانية الكلية',
-                      dashFormatMoney(total),
-                    ),
+                    _budgetStat('الميزانية الكلية', dashFormatMoney(total)),
                   ],
                 ),
               ),
@@ -971,7 +974,11 @@ class MiniStatCard extends StatelessWidget {
             child: Container(height: 1, color: AppTheme.dLine),
           ),
           if (locked)
-            const Icon(Icons.lock_outline_rounded, size: 18, color: AppTheme.dMuted)
+            const Icon(
+              Icons.lock_outline_rounded,
+              size: 18,
+              color: AppTheme.dMuted,
+            )
           else ...[
             if (subLabel != null)
               Text(
@@ -1391,7 +1398,10 @@ class _ParticipantTile extends StatelessWidget {
                 if (info.phone != null)
                   _Num(
                     info.phone!,
-                    style: const TextStyle(fontSize: 13, color: AppTheme.dMuted),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppTheme.dMuted,
+                    ),
                   ),
               ],
             ),
@@ -1504,7 +1514,10 @@ class SharedPlansCard extends StatelessWidget {
               onTap: onOpen,
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 15,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: const LinearGradient(
@@ -1661,7 +1674,11 @@ class DashboardBottomNav extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.add_rounded, size: 30, color: Colors.white),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      size: 30,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -1720,12 +1737,18 @@ class _NavItem extends StatelessWidget {
                   const Positioned(
                     top: -8,
                     left: 2,
-                    child: Text('✦', style: TextStyle(fontSize: 12, color: AppTheme.dGold)),
+                    child: Text(
+                      '✦',
+                      style: TextStyle(fontSize: 12, color: AppTheme.dGold),
+                    ),
                   ),
                   const Positioned(
                     top: 4,
                     left: -6,
-                    child: Text('✦', style: TextStyle(fontSize: 8, color: AppTheme.dGold2)),
+                    child: Text(
+                      '✦',
+                      style: TextStyle(fontSize: 8, color: AppTheme.dGold2),
+                    ),
                   ),
                 ],
               )
@@ -1876,11 +1899,7 @@ class LockedSectionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(width: 10),
-          _SectionIcon(
-            icon: icon,
-            color: AppTheme.dMuted,
-            bg: AppTheme.dLine,
-          ),
+          _SectionIcon(icon: icon, color: AppTheme.dMuted, bg: AppTheme.dLine),
         ],
       ),
     );
@@ -1932,12 +1951,12 @@ class _DashboardSkeletonState extends State<DashboardSkeleton>
   }
 
   Widget _box(double height) => Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: AppTheme.dTrack.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(22),
-        ),
-      );
+    height: height,
+    decoration: BoxDecoration(
+      color: AppTheme.dTrack.withValues(alpha: 0.5),
+      borderRadius: BorderRadius.circular(22),
+    ),
+  );
 }
 
 // ============================================================================
@@ -2016,7 +2035,11 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _SectionIcon extends StatelessWidget {
-  const _SectionIcon({required this.icon, required this.color, required this.bg});
+  const _SectionIcon({
+    required this.icon,
+    required this.color,
+    required this.bg,
+  });
 
   final IconData icon;
   final Color color;
@@ -2062,7 +2085,11 @@ class _FootLink extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            const Icon(Icons.chevron_left_rounded, size: 18, color: AppTheme.dMaroon),
+            const Icon(
+              Icons.chevron_left_rounded,
+              size: 18,
+              color: AppTheme.dMaroon,
+            ),
           ],
         ),
       ),

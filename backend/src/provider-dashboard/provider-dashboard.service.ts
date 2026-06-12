@@ -34,7 +34,10 @@ import {
   UpdateServiceImageDto,
 } from './dto/upsert-service-image.dto';
 
-type ProviderProfile = Provider & { city: City };
+type ProviderProfile = Provider & {
+  city: City;
+  primaryCategory?: ProviderCategory | null;
+};
 type ProviderDashboardServiceRecord = ProviderService & {
   category: ProviderCategory;
   city: City | null;
@@ -66,18 +69,20 @@ export class ProviderDashboardService {
 
     await this.findActiveCityOrThrow(dto.cityId);
     await this.assertActiveCategories(dto.categoryIds ?? []);
+    const primaryCategoryId = dto.categoryIds?.[0] ?? null;
 
     const provider = await this.prisma.$transaction(async (tx) => {
       const created = await tx.provider.create({
         data: {
           userId: currentUser.id,
           cityId: dto.cityId,
+          primaryCategoryId,
           businessName: this.requiredText(dto.businessName, 'businessName'),
           phone: this.requiredText(dto.phone, 'phone'),
           description: this.optionalText(dto.description),
           status: ProviderStatus.PENDING,
         },
-        include: { city: true },
+        include: { city: true, primaryCategory: true },
       });
 
       await tx.user.update({
@@ -142,7 +147,7 @@ export class ProviderDashboardService {
           ? { coverUrl: this.optionalText(dto.coverUrl) }
           : {}),
       },
-      include: { city: true },
+      include: { city: true, primaryCategory: true },
     });
 
     return this.toProviderProfileResponse(updated);
@@ -504,7 +509,7 @@ export class ProviderDashboardService {
   ): Promise<ProviderProfile> {
     const provider = await this.prisma.provider.findUnique({
       where: { userId },
-      include: { city: true },
+      include: { city: true, primaryCategory: true },
     });
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
@@ -654,6 +659,10 @@ export class ProviderDashboardService {
       userId: provider.userId,
       cityId: provider.cityId,
       city: this.toCityResponse(provider.city),
+      primaryCategoryId: provider.primaryCategoryId,
+      primaryCategory: provider.primaryCategory
+        ? this.toCategoryResponse(provider.primaryCategory)
+        : null,
       businessName: provider.businessName,
       ownerName: provider.ownerName,
       phone: provider.phone,
@@ -666,6 +675,9 @@ export class ProviderDashboardService {
       logoUrl: provider.logoUrl,
       coverUrl: provider.coverUrl,
       status: provider.status,
+      reviewNote: provider.reviewNote,
+      reviewedAt: provider.reviewedAt,
+      reviewedById: provider.reviewedById,
       isFeatured: provider.isFeatured,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,

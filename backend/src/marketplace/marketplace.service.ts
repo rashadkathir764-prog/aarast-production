@@ -44,7 +44,10 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-type ProviderWithCity = Provider & { city: City };
+type ProviderWithCity = Provider & {
+  city: City;
+  primaryCategory?: ProviderCategory | null;
+};
 type ServiceWithDetails = ProviderService & {
   provider: ProviderWithCity;
   category: ProviderCategory;
@@ -92,43 +95,46 @@ export class MarketplaceService {
 
   async findProviders(query: ListProvidersQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const where: Prisma.ProviderWhereInput = { status: ProviderStatus.ACTIVE };
+    const and: Prisma.ProviderWhereInput[] = [{ status: ProviderStatus.ACTIVE }];
+    const where: Prisma.ProviderWhereInput = { AND: and };
 
     if (query.cityId) {
       this.assertUuid(query.cityId, 'cityId');
-      where.cityId = query.cityId;
+      and.push({ cityId: query.cityId });
     }
 
     if (query.categoryId) {
       this.assertUuid(query.categoryId, 'categoryId');
-      where.services = {
-        some: {
-          categoryId: query.categoryId,
-          isActive: true,
-        },
-      };
+      and.push({
+        OR: [
+          { primaryCategoryId: query.categoryId },
+          { services: { some: { categoryId: query.categoryId, isActive: true } } },
+        ],
+      });
     }
 
     const featured = this.optionalBoolean(query.featured, 'featured');
     if (featured !== null) {
-      where.isFeatured = featured;
+      and.push({ isFeatured: featured });
     }
 
     const search = this.optionalText(query.search);
     if (search) {
-      where.OR = [
-        { businessName: { contains: search, mode: 'insensitive' } },
-        { ownerName: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
-      ];
+      and.push({
+        OR: [
+          { businessName: { contains: search, mode: 'insensitive' } },
+          { ownerName: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
 
     const [total, providers] = await this.prisma.$transaction([
       this.prisma.provider.count({ where }),
       this.prisma.provider.findMany({
         where,
-        include: { city: true },
+        include: { city: true, primaryCategory: true },
         orderBy: [
           { isFeatured: 'desc' },
           { ratingAverage: 'desc' },
@@ -152,6 +158,7 @@ export class MarketplaceService {
       where: { id, status: ProviderStatus.ACTIVE },
       include: {
         city: true,
+        primaryCategory: true,
         services: {
           where: { isActive: true },
           include: {
@@ -175,7 +182,7 @@ export class MarketplaceService {
     const services = await this.prisma.providerService.findMany({
       where: { providerId, isActive: true },
       include: {
-        provider: { include: { city: true } },
+        provider: { include: { city: true, primaryCategory: true } },
         category: true,
         city: true,
         images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
@@ -241,7 +248,7 @@ export class MarketplaceService {
       this.prisma.providerService.findMany({
         where,
         include: {
-          provider: { include: { city: true } },
+          provider: { include: { city: true, primaryCategory: true } },
           category: true,
           city: true,
           images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
@@ -272,7 +279,7 @@ export class MarketplaceService {
         provider: { status: ProviderStatus.ACTIVE },
       },
       include: {
-        provider: { include: { city: true } },
+        provider: { include: { city: true, primaryCategory: true } },
         category: true,
         city: true,
         images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
@@ -324,7 +331,7 @@ export class MarketplaceService {
         providerId,
       },
       update: {},
-      include: { provider: { include: { city: true } } },
+      include: { provider: { include: { city: true, primaryCategory: true } } },
     });
 
     return this.toFavoriteResponse(favorite);
@@ -348,7 +355,7 @@ export class MarketplaceService {
         userId: currentUser.id,
         provider: { status: ProviderStatus.ACTIVE },
       },
-      include: { provider: { include: { city: true } } },
+      include: { provider: { include: { city: true, primaryCategory: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -593,7 +600,7 @@ export class MarketplaceService {
 
   private quoteInclude() {
     return {
-      provider: { include: { city: true } },
+      provider: { include: { city: true, primaryCategory: true } },
       service: { include: { category: true } },
       city: true,
       weddingPlan: {
@@ -705,6 +712,7 @@ export class MarketplaceService {
   private toProviderResponse(
     provider: Provider & {
       city?: City | null;
+      primaryCategory?: ProviderCategory | null;
       services?: (ProviderService & {
         category: ProviderCategory;
         images: ProviderServiceImage[];
@@ -715,6 +723,10 @@ export class MarketplaceService {
       id: provider.id,
       cityId: provider.cityId,
       city: provider.city ? this.toCityResponse(provider.city) : null,
+      primaryCategoryId: provider.primaryCategoryId,
+      primaryCategory: provider.primaryCategory
+        ? this.toCategoryResponse(provider.primaryCategory)
+        : null,
       businessName: provider.businessName,
       ownerName: provider.ownerName,
       phone: provider.phone,
@@ -783,6 +795,9 @@ export class MarketplaceService {
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
       city: this.toCityResponse(provider.city),
+      primaryCategory: provider.primaryCategory
+        ? this.toCategoryResponse(provider.primaryCategory)
+        : null,
     };
   }
 

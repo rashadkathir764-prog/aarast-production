@@ -45,6 +45,9 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final services = dashboard.services;
+    final canManageListing = _canManageProviderListing(
+      dashboard.profile?.status,
+    );
 
     return AarastPageScaffold(
       title: 'إضافة باقة',
@@ -58,104 +61,130 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
           icon: const Icon(Icons.chevron_right_rounded),
         ),
       ],
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          children: [
-            const _PackageIntro(),
-            const SizedBox(height: 16),
-            AarastCard(
-              color: AppTheme.dCard,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: !canManageListing
+          ? ListView(
+              children: [
+                if (dashboard.isLoading && dashboard.profile == null)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 120),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  AarastEmptyState(
+                    icon: Icons.lock_clock_outlined,
+                    title: 'إضافة الباقات بعد الاعتماد',
+                    message:
+                        'الإدارة تراجع حساب المزود أولاً. ستتمكنين من إضافة الباقات بعد أن تصبح الحالة نشطة.',
+                    action: FilledButton.icon(
+                      onPressed: () => context.go(AppRouter.providerDashboard),
+                      icon: const Icon(Icons.dashboard_customize_outlined),
+                      label: const Text('فتح لوحة المزود'),
+                    ),
+                  ),
+              ],
+            )
+          : Form(
+              key: _formKey,
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
-                  TextFormField(
-                    controller: _titleController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم الباقة',
-                      prefixIcon: Icon(Icons.inventory_2_outlined),
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().length < 2
-                        ? 'اكتبي اسم الباقة'
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _safeServiceId(services),
-                    decoration: const InputDecoration(
-                      labelText: 'خدمة مرتبطة اختياري',
-                      prefixIcon: Icon(Icons.design_services_outlined),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('باقة عامة'),
-                      ),
-                      for (final service in services)
-                        DropdownMenuItem(
-                          value: service.id,
-                          child: Text(service.title),
+                  const _PackageIntro(),
+                  const SizedBox(height: 16),
+                  AarastCard(
+                    color: AppTheme.dCard,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _titleController,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'اسم الباقة',
+                            prefixIcon: Icon(Icons.inventory_2_outlined),
+                          ),
+                          validator: (value) =>
+                              value == null || value.trim().length < 2
+                              ? 'اكتبي اسم الباقة'
+                              : null,
                         ),
-                    ],
-                    onChanged: (value) => setState(() => _serviceId = value),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: TextInputType.number,
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.right,
-                    decoration: const InputDecoration(
-                      labelText: 'السعر',
-                      prefixIcon: Icon(Icons.payments_outlined),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: _safeServiceId(services),
+                          decoration: const InputDecoration(
+                            labelText: 'خدمة مرتبطة اختياري',
+                            prefixIcon: Icon(Icons.design_services_outlined),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('باقة عامة'),
+                            ),
+                            for (final service in services)
+                              DropdownMenuItem(
+                                value: service.id,
+                                child: Text(service.title),
+                              ),
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _serviceId = value),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _priceController,
+                          keyboardType: TextInputType.number,
+                          textDirection: TextDirection.ltr,
+                          textAlign: TextAlign.right,
+                          decoration: const InputDecoration(
+                            labelText: 'السعر',
+                            prefixIcon: Icon(Icons.payments_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _descriptionController,
+                          maxLines: 3,
+                          maxLength: 220,
+                          decoration: const InputDecoration(
+                            labelText: 'الوصف',
+                            prefixIcon: Icon(Icons.notes_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _itemsController,
+                          maxLines: 5,
+                          decoration: const InputDecoration(
+                            labelText: 'المميزات',
+                            hintText: 'اكتبي كل ميزة في سطر مستقل',
+                            prefixIcon: Icon(Icons.checklist_rtl_rounded),
+                          ),
+                        ),
+                        if (dashboard.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          _InlineError(message: dashboard.errorMessage!),
+                        ],
+                        const SizedBox(height: 18),
+                        FilledButton.icon(
+                          onPressed: dashboard.isSubmitting ? null : _submit,
+                          icon: dashboard.isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.add_rounded),
+                          label: const Text('إضافة الباقة'),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _descriptionController,
-                    maxLines: 3,
-                    maxLength: 220,
-                    decoration: const InputDecoration(
-                      labelText: 'الوصف',
-                      prefixIcon: Icon(Icons.notes_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _itemsController,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'المميزات',
-                      hintText: 'اكتبي كل ميزة في سطر مستقل',
-                      prefixIcon: Icon(Icons.checklist_rtl_rounded),
-                    ),
-                  ),
-                  if (dashboard.errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    _InlineError(message: dashboard.errorMessage!),
-                  ],
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: dashboard.isSubmitting ? null : _submit,
-                    icon: dashboard.isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add_rounded),
-                    label: const Text('إضافة الباقة'),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
     );
   }
 
@@ -191,6 +220,10 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       context.go(AppRouter.providerDashboard);
     }
   }
+}
+
+bool _canManageProviderListing(String? status) {
+  return status == 'ACTIVE' || status == 'APPROVED';
 }
 
 class _PackageIntro extends StatelessWidget {

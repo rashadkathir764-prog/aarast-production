@@ -72,6 +72,7 @@ enum OtpPurpose {
 enum ProviderStatus {
   PENDING
   ACTIVE
+  NEEDS_CHANGES
   SUSPENDED
   REJECTED
 }
@@ -121,6 +122,7 @@ model User {
   providerReviews        ProviderReview[]
   quoteRequests          QuoteRequest[]
   bookingLeads           BookingLead[]
+  reviewedProviders      Provider[]              @relation("ProviderReviewedBy")
 }
 
 model WeddingPlan {
@@ -291,42 +293,50 @@ model ProviderCategory {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   services  ProviderService[]
+  providers Provider[]
 
   @@index([isActive, sortOrder])
 }
 
 model Provider {
-  id            String             @id @default(uuid())
-  userId        String?            @unique
-  cityId        String
-  businessName  String
-  ownerName     String?
-  phone         String
-  whatsapp      String?
-  email         String?
-  description   String?            @db.Text
-  address       String?
-  latitude      Decimal?           @db.Decimal(10, 7)
-  longitude     Decimal?           @db.Decimal(10, 7)
-  logoUrl       String?
-  coverUrl      String?
-  status        ProviderStatus     @default(PENDING)
-  isFeatured    Boolean            @default(false)
-  ratingAverage Decimal            @default(0) @db.Decimal(3, 2)
-  ratingCount   Int                @default(0)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  user          User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  city          City               @relation(fields: [cityId], references: [id])
-  services      ProviderService[]
-  packages      ProviderPackage[]
-  favorites     FavoriteProvider[]
-  reviews       ProviderReview[]
-  quoteRequests QuoteRequest[]
-  bookingLeads  BookingLead[]
+  id                String             @id @default(uuid())
+  userId            String?            @unique
+  cityId            String
+  primaryCategoryId String?
+  businessName      String
+  ownerName         String?
+  phone             String
+  whatsapp          String?
+  email             String?
+  description       String?            @db.Text
+  address           String?
+  latitude          Decimal?           @db.Decimal(10, 7)
+  longitude         Decimal?           @db.Decimal(10, 7)
+  logoUrl           String?
+  coverUrl          String?
+  status            ProviderStatus     @default(PENDING)
+  reviewNote        String?            @db.Text
+  reviewedAt        DateTime?
+  reviewedById      String?
+  isFeatured        Boolean            @default(false)
+  ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
+  ratingCount       Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  city              City               @relation(fields: [cityId], references: [id])
+  primaryCategory   ProviderCategory?  @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  reviewedBy        User?              @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  services          ProviderService[]
+  packages          ProviderPackage[]
+  favorites         FavoriteProvider[]
+  reviews           ProviderReview[]
+  quoteRequests     QuoteRequest[]
+  bookingLeads      BookingLead[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
+  @@index([primaryCategoryId, status])
 }
 
 model ProviderService {

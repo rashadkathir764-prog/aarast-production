@@ -31,6 +31,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final dashboard = context.watch<ProviderDashboardProvider>();
+    final profile = dashboard.profile;
+    final canManageListing = _canManageProviderListing(profile?.status);
 
     return AarastPageScaffold(
       title: 'لوحة المزود',
@@ -61,18 +63,26 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 onApply: () => context.go(AppRouter.providerApply),
               )
             else ...[
-              _ProviderProfileCard(profile: dashboard.profile!),
+              _ProviderProfileCard(profile: profile!),
+              const SizedBox(height: 16),
+              _ProviderStatusNotice(profile: profile),
               const SizedBox(height: 16),
               _ProviderStats(
                 summary: dashboard.summary,
                 packageCount: dashboard.packages.length,
               ),
               const SizedBox(height: 16),
-              const _ProviderGuideCard(),
+              _ProviderGuideCard(profile: profile),
               const SizedBox(height: 16),
-              _ProviderServices(services: dashboard.services),
+              _ProviderServices(
+                services: dashboard.services,
+                canManageListing: canManageListing,
+              ),
               const SizedBox(height: 16),
-              _ProviderPackages(packages: dashboard.packages),
+              _ProviderPackages(
+                packages: dashboard.packages,
+                canManageListing: canManageListing,
+              ),
               const SizedBox(height: 16),
               _ProviderQuotes(quotes: dashboard.quoteRequests),
             ],
@@ -208,6 +218,13 @@ class _ProviderProfileCard extends StatelessWidget {
                   color: AppTheme.dBlue,
                   backgroundColor: AppTheme.dBlueBg,
                 ),
+              if (profile.primaryCategory?.nameAr.trim().isNotEmpty == true)
+                AarastStatusPill(
+                  label: profile.primaryCategory!.nameAr.trim(),
+                  icon: Icons.category_outlined,
+                  color: AppTheme.dMaroon,
+                  backgroundColor: AppTheme.dPinkBg,
+                ),
               AarastStatusPill(
                 label:
                     '${profile.ratingAverage.toStringAsFixed(1)} (${profile.ratingCount})',
@@ -232,6 +249,95 @@ class _ProviderProfileCard extends StatelessWidget {
             },
             icon: const Icon(Icons.edit_outlined),
             label: const Text('تعديل الملف'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderStatusNotice extends StatelessWidget {
+  const _ProviderStatusNotice({required this.profile});
+
+  final ProviderDashboardProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = profile.status;
+    if (_canManageProviderListing(status)) {
+      return const AarastCard(
+        color: AppTheme.dGreenBg,
+        child: Row(
+          children: [
+            Icon(Icons.verified_outlined, color: AppTheme.dGreen),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'حساب المزود نشط. خدماتك وباقاتك المؤهلة تظهر في سوق الموردين للعملاء.',
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  color: AppTheme.dInk,
+                  fontWeight: FontWeight.w800,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final note = profile.reviewNote?.trim();
+    return AarastCard(
+      color: status == 'SUSPENDED' || status == 'REJECTED'
+          ? AppTheme.dPinkBg
+          : AppTheme.dCreamBg,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            status == 'NEEDS_CHANGES'
+                ? Icons.edit_note_outlined
+                : Icons.pending_actions_outlined,
+            color: _providerStatusColor(status),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _providerStatusTitle(status),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _providerStatusMessage(status),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                    height: 1.45,
+                  ),
+                ),
+                if (note != null && note.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    note,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w800,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -289,21 +395,28 @@ class _ProviderStats extends StatelessWidget {
 }
 
 class _ProviderGuideCard extends StatelessWidget {
-  const _ProviderGuideCard();
+  const _ProviderGuideCard({required this.profile});
+
+  final ProviderDashboardProfile profile;
 
   @override
   Widget build(BuildContext context) {
-    return const AarastCard(
+    return AarastCard(
       color: AppTheme.dCreamBg,
       child: Row(
         children: [
-          Icon(Icons.lightbulb_outline_rounded, color: AppTheme.dGoldDeep),
-          SizedBox(width: 12),
+          const Icon(
+            Icons.lightbulb_outline_rounded,
+            color: AppTheme.dGoldDeep,
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'أكمل ملفك وخدماتك وباقاتك لتظهر أفضل في نتائج البحث وتستقبل طلبات أوضح من العملاء.',
+              _canManageProviderListing(profile.status)
+                  ? 'أكمل ملفك وخدماتك وباقاتك لتظهر أفضل في نتائج البحث وتستقبل طلبات أوضح من العملاء.'
+                  : 'يمكنك متابعة حالة الطلب من هنا. لن يظهر ملفك في سوق الموردين حتى يتم اعتماده من الإدارة.',
               textAlign: TextAlign.right,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppTheme.dInk,
                 fontWeight: FontWeight.w800,
                 height: 1.5,
@@ -317,9 +430,13 @@ class _ProviderGuideCard extends StatelessWidget {
 }
 
 class _ProviderServices extends StatelessWidget {
-  const _ProviderServices({required this.services});
+  const _ProviderServices({
+    required this.services,
+    required this.canManageListing,
+  });
 
   final List<MarketplaceService> services;
+  final bool canManageListing;
 
   @override
   Widget build(BuildContext context) {
@@ -330,20 +447,31 @@ class _ProviderServices extends StatelessWidget {
           AarastSectionHeader(
             title: 'الخدمات',
             icon: Icons.design_services_outlined,
-            actionLabel: 'إضافة',
-            onAction: () => context.push(AppRouter.providerServiceNew),
+            actionLabel: canManageListing ? 'إضافة' : null,
+            onAction: canManageListing
+                ? () => context.push(AppRouter.providerServiceNew)
+                : null,
           ),
           const SizedBox(height: 12),
+          if (!canManageListing) ...[
+            const _LockedListingNotice(),
+            const SizedBox(height: 12),
+          ],
           if (services.isEmpty)
             AarastEmptyState(
               icon: Icons.design_services_outlined,
               title: 'لا توجد خدمات بعد',
-              message: 'أضيفي خدمة ليبدأ كتالوج المزود بالظهور للعملاء.',
-              action: OutlinedButton.icon(
-                onPressed: () => context.push(AppRouter.providerServiceNew),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('إضافة خدمة'),
-              ),
+              message: canManageListing
+                  ? 'أضيفي خدمة ليبدأ كتالوج المزود بالظهور للعملاء.'
+                  : 'ستتمكنين من إضافة الخدمات بعد اعتماد حساب المزود.',
+              action: canManageListing
+                  ? OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push(AppRouter.providerServiceNew),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('إضافة خدمة'),
+                    )
+                  : null,
             )
           else
             for (final service in services) ...[
@@ -357,9 +485,13 @@ class _ProviderServices extends StatelessWidget {
 }
 
 class _ProviderPackages extends StatelessWidget {
-  const _ProviderPackages({required this.packages});
+  const _ProviderPackages({
+    required this.packages,
+    required this.canManageListing,
+  });
 
   final List<ProviderPackage> packages;
+  final bool canManageListing;
 
   @override
   Widget build(BuildContext context) {
@@ -370,20 +502,31 @@ class _ProviderPackages extends StatelessWidget {
           AarastSectionHeader(
             title: 'الباقات',
             icon: Icons.inventory_2_outlined,
-            actionLabel: 'إضافة',
-            onAction: () => context.push(AppRouter.providerPackageNew),
+            actionLabel: canManageListing ? 'إضافة' : null,
+            onAction: canManageListing
+                ? () => context.push(AppRouter.providerPackageNew)
+                : null,
           ),
           const SizedBox(height: 12),
+          if (!canManageListing) ...[
+            const _LockedListingNotice(),
+            const SizedBox(height: 12),
+          ],
           if (packages.isEmpty)
             AarastEmptyState(
               icon: Icons.card_giftcard_rounded,
               title: 'لا توجد باقات بعد',
-              message: 'أنشئي باقة واضحة لتسهل على العملاء مقارنة عروضك.',
-              action: OutlinedButton.icon(
-                onPressed: () => context.push(AppRouter.providerPackageNew),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('إضافة باقة'),
-              ),
+              message: canManageListing
+                  ? 'أنشئي باقة واضحة لتسهل على العملاء مقارنة عروضك.'
+                  : 'ستتمكنين من إضافة الباقات بعد اعتماد حساب المزود.',
+              action: canManageListing
+                  ? OutlinedButton.icon(
+                      onPressed: () =>
+                          context.push(AppRouter.providerPackageNew),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('إضافة باقة'),
+                    )
+                  : null,
             )
           else
             for (final item in packages) ...[
@@ -423,6 +566,39 @@ class _ProviderQuotes extends StatelessWidget {
               _QuoteTile(quote: quote),
               const SizedBox(height: 10),
             ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LockedListingNotice extends StatelessWidget {
+  const _LockedListingNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.dCreamBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.dGold2.withAlpha(120)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.lock_clock_outlined, color: AppTheme.dGoldDeep, size: 20),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'الإدارة تراجع الطلب أولاً. إدارة الخدمات والباقات ستفتح بعد الاعتماد.',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -995,6 +1171,7 @@ String _providerStatusLabel(String status) {
   return switch (status) {
     'ACTIVE' => 'نشط',
     'APPROVED' => 'نشط',
+    'NEEDS_CHANGES' => 'يحتاج تعديل',
     'REJECTED' => 'مرفوض / يحتاج تعديل',
     'SUSPENDED' => 'موقوف',
     _ => 'قيد المراجعة',
@@ -1004,9 +1181,36 @@ String _providerStatusLabel(String status) {
 Color _providerStatusColor(String status) {
   return switch (status) {
     'ACTIVE' || 'APPROVED' => AppTheme.dGreen,
+    'NEEDS_CHANGES' => AppTheme.dOrange,
     'REJECTED' => AppTheme.danger,
     'SUSPENDED' => AppTheme.dOrange,
     _ => AppTheme.dGoldDeep,
+  };
+}
+
+bool _canManageProviderListing(String? status) {
+  return status == 'ACTIVE' || status == 'APPROVED';
+}
+
+String _providerStatusTitle(String status) {
+  return switch (status) {
+    'NEEDS_CHANGES' => 'يحتاج الطلب إلى تعديل',
+    'REJECTED' => 'تم رفض الطلب',
+    'SUSPENDED' => 'تم إيقاف حساب المزود',
+    _ => 'طلبك قيد المراجعة',
+  };
+}
+
+String _providerStatusMessage(String status) {
+  return switch (status) {
+    'NEEDS_CHANGES' =>
+      'راجعي ملاحظة الإدارة ثم حدّثي بيانات الطلب عند توفر شاشة تعديل الملف.',
+    'REJECTED' =>
+      'لن يظهر ملف المزود في السوق. يمكنك متابعة الملاحظة أو إعادة التقديم لاحقاً عند دعم التعديل.',
+    'SUSPENDED' =>
+      'تم إيقاف الظهور العام مؤقتاً. تواصلي مع الإدارة لمعرفة الخطوة التالية.',
+    _ =>
+      'سيتم مراجعة بياناتك من الإدارة. لن يظهر ملفك للعملاء حتى يتم الاعتماد.',
   };
 }
 

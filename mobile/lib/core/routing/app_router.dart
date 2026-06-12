@@ -150,7 +150,9 @@ class AppRouter {
         GoRoute(path: login, builder: (context, state) => const LoginScreen()),
         GoRoute(
           path: register,
-          builder: (context, state) => const RegisterScreen(),
+          builder: (context, state) => RegisterScreen(
+            startAsProvider: state.uri.queryParameters['type'] == 'provider',
+          ),
         ),
         GoRoute(path: otp, builder: (context, state) => const OtpScreen()),
         GoRoute(path: home, builder: (context, state) => const MainShell()),

@@ -223,11 +223,13 @@ async function ensureDemoProvider(input: {
     packageItems: string[];
   }>;
 }) {
+  const primaryCategoryId = input.services[0]?.categoryId;
   const provider =
     (await prisma.provider.findFirst({ where: { phone: input.phone } })) ??
     (await prisma.provider.create({
       data: {
         cityId: input.cityId,
+        primaryCategoryId,
         businessName: input.businessName,
         ownerName: input.ownerName,
         phone: input.phone,
@@ -243,6 +245,7 @@ async function ensureDemoProvider(input: {
     where: { id: provider.id },
     data: {
       cityId: input.cityId,
+      primaryCategoryId,
       businessName: input.businessName,
       ownerName: input.ownerName,
       whatsapp: input.whatsapp,

@@ -18,6 +18,10 @@ class AuthWeddingScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectivePadding = padding.add(
+      EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom + 28),
+    );
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -33,7 +37,7 @@ class AuthWeddingScaffold extends StatelessWidget {
                       constraints: BoxConstraints(maxWidth: maxWidth),
                       child: SingleChildScrollView(
                         physics: const BouncingScrollPhysics(),
-                        padding: padding,
+                        padding: effectivePadding,
                         child: child,
                       ),
                     ),

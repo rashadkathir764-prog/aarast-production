@@ -14,6 +14,7 @@ import { UsersModule } from './users/users.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
 import { ProviderDashboardModule } from './provider-dashboard/provider-dashboard.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     MarketplaceModule,
     ProviderDashboardModule,
     DashboardModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

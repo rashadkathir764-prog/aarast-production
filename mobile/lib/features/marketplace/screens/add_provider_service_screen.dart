@@ -46,6 +46,9 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final dashboard = context.watch<ProviderDashboardProvider>();
+    final canManageListing = _canManageProviderListing(
+      dashboard.profile?.status,
+    );
 
     return AarastPageScaffold(
       title: 'إضافة خدمة',
@@ -59,121 +62,148 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
           icon: const Icon(Icons.chevron_right_rounded),
         ),
       ],
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          children: [
-            const _ServiceIntro(),
-            const SizedBox(height: 16),
-            AarastCard(
-              color: AppTheme.dCard,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: !canManageListing
+          ? ListView(
+              children: [
+                if (dashboard.isLoading && dashboard.profile == null)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 120),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else
+                  AarastEmptyState(
+                    icon: Icons.lock_clock_outlined,
+                    title: 'إضافة الخدمات بعد الاعتماد',
+                    message:
+                        'الإدارة تراجع حساب المزود أولاً. ستتمكنين من إضافة الخدمات بعد أن تصبح الحالة نشطة.',
+                    action: FilledButton.icon(
+                      onPressed: () => context.go(AppRouter.providerDashboard),
+                      icon: const Icon(Icons.dashboard_customize_outlined),
+                      label: const Text('فتح لوحة المزود'),
+                    ),
+                  ),
+              ],
+            )
+          : Form(
+              key: _formKey,
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 children: [
-                  TextFormField(
-                    controller: _titleController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم الخدمة',
-                      prefixIcon: Icon(Icons.design_services_outlined),
-                    ),
-                    validator: (value) =>
-                        value == null || value.trim().length < 2
-                        ? 'اكتبي اسم الخدمة'
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _safeCategoryId(marketplace),
-                    decoration: const InputDecoration(
-                      labelText: 'الفئة',
-                      prefixIcon: Icon(Icons.category_outlined),
-                    ),
-                    items: marketplace.categories
-                        .map(
-                          (category) => DropdownMenuItem(
-                            value: category.id,
-                            child: Text(category.nameAr),
+                  const _ServiceIntro(),
+                  const SizedBox(height: 16),
+                  AarastCard(
+                    color: AppTheme.dCard,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextFormField(
+                          controller: _titleController,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'اسم الخدمة',
+                            prefixIcon: Icon(Icons.design_services_outlined),
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) => setState(() => _categoryId = value),
-                    validator: (value) => value == null ? 'اختاري الفئة' : null,
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _safeCityId(marketplace),
-                    decoration: const InputDecoration(
-                      labelText: 'مدينة الخدمة اختياري',
-                      prefixIcon: Icon(Icons.place_outlined),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('نفس مدينة المزود'),
-                      ),
-                      for (final city in marketplace.cities)
-                        DropdownMenuItem(
-                          value: city.id,
-                          child: Text(city.nameAr),
+                          validator: (value) =>
+                              value == null || value.trim().length < 2
+                              ? 'اكتبي اسم الخدمة'
+                              : null,
                         ),
-                    ],
-                    onChanged: (value) => setState(() => _cityId = value),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _descriptionController,
-                    maxLines: 4,
-                    maxLength: 280,
-                    decoration: const InputDecoration(
-                      labelText: 'الوصف',
-                      hintText: 'ما الذي تشمل الخدمة؟',
-                      prefixIcon: Icon(Icons.notes_outlined),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: _safeCategoryId(marketplace),
+                          decoration: const InputDecoration(
+                            labelText: 'الفئة',
+                            prefixIcon: Icon(Icons.category_outlined),
+                          ),
+                          items: marketplace.categories
+                              .map(
+                                (category) => DropdownMenuItem(
+                                  value: category.id,
+                                  child: Text(category.nameAr),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) =>
+                              setState(() => _categoryId = value),
+                          validator: (value) =>
+                              value == null ? 'اختاري الفئة' : null,
+                        ),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: _safeCityId(marketplace),
+                          decoration: const InputDecoration(
+                            labelText: 'مدينة الخدمة اختياري',
+                            prefixIcon: Icon(Icons.place_outlined),
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('نفس مدينة المزود'),
+                            ),
+                            for (final city in marketplace.cities)
+                              DropdownMenuItem(
+                                value: city.id,
+                                child: Text(city.nameAr),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() => _cityId = value),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _descriptionController,
+                          maxLines: 4,
+                          maxLength: 280,
+                          decoration: const InputDecoration(
+                            labelText: 'الوصف',
+                            hintText: 'ما الذي تشمل الخدمة؟',
+                            prefixIcon: Icon(Icons.notes_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _basePriceController,
+                          keyboardType: TextInputType.number,
+                          textDirection: TextDirection.ltr,
+                          textAlign: TextAlign.right,
+                          decoration: const InputDecoration(
+                            labelText: 'السعر من',
+                            prefixIcon: Icon(Icons.payments_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _priceUnitController,
+                          decoration: const InputDecoration(
+                            labelText: 'مدة الخدمة / ملاحظات السعر',
+                            prefixIcon: Icon(Icons.timer_outlined),
+                          ),
+                        ),
+                        if (dashboard.errorMessage != null) ...[
+                          const SizedBox(height: 12),
+                          _InlineError(message: dashboard.errorMessage!),
+                        ],
+                        const SizedBox(height: 18),
+                        FilledButton.icon(
+                          onPressed: dashboard.isSubmitting ? null : _submit,
+                          icon: dashboard.isSubmitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.add_rounded),
+                          label: const Text('إضافة الخدمة'),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _basePriceController,
-                    keyboardType: TextInputType.number,
-                    textDirection: TextDirection.ltr,
-                    textAlign: TextAlign.right,
-                    decoration: const InputDecoration(
-                      labelText: 'السعر من',
-                      prefixIcon: Icon(Icons.payments_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _priceUnitController,
-                    decoration: const InputDecoration(
-                      labelText: 'مدة الخدمة / ملاحظات السعر',
-                      prefixIcon: Icon(Icons.timer_outlined),
-                    ),
-                  ),
-                  if (dashboard.errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    _InlineError(message: dashboard.errorMessage!),
-                  ],
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    onPressed: dashboard.isSubmitting ? null : _submit,
-                    icon: dashboard.isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.add_rounded),
-                    label: const Text('إضافة الخدمة'),
-                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
     );
   }
 
@@ -211,6 +241,10 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       context.go(AppRouter.providerDashboard);
     }
   }
+}
+
+bool _canManageProviderListing(String? status) {
+  return status == 'ACTIVE' || status == 'APPROVED';
 }
 
 class _ServiceIntro extends StatelessWidget {

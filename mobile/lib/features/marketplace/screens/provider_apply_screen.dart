@@ -65,9 +65,16 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       ],
       child: ListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
+        ),
         children: [
           if (auth.status == AuthStatus.unauthenticated)
-            _AuthRequiredCard(onLogin: () => context.go(AppRouter.login))
+            _AuthRequiredCard(
+              onLogin: () => context.go(AppRouter.login),
+              onRegisterProvider: () =>
+                  context.go('${AppRouter.register}?type=provider'),
+            )
           else if (dashboard.isLoading && dashboard.profile == null)
             const Padding(
               padding: EdgeInsets.only(top: 120),
@@ -120,12 +127,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                           : null,
                     ),
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _safeCityId(marketplace),
-                      decoration: const InputDecoration(
-                        labelText: 'المدينة',
-                        prefixIcon: Icon(Icons.place_outlined),
-                      ),
+                    _ApplyDropdown(
+                      value: _safeCityId(marketplace),
+                      label: 'المدينة',
+                      icon: Icons.place_outlined,
                       items: marketplace.cities
                           .map(
                             (city) => DropdownMenuItem(
@@ -139,12 +144,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                           value == null ? 'اختاري المدينة' : null,
                     ),
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _safeCategoryId(marketplace),
-                      decoration: const InputDecoration(
-                        labelText: 'فئة الخدمة',
-                        prefixIcon: Icon(Icons.category_outlined),
-                      ),
+                    _ApplyDropdown(
+                      value: _safeCategoryId(marketplace),
+                      label: 'فئة الخدمة',
+                      icon: Icons.category_outlined,
                       items: marketplace.categories
                           .map(
                             (category) => DropdownMenuItem(
@@ -305,9 +308,13 @@ class _ApplyIntroCard extends StatelessWidget {
 }
 
 class _AuthRequiredCard extends StatelessWidget {
-  const _AuthRequiredCard({required this.onLogin});
+  const _AuthRequiredCard({
+    required this.onLogin,
+    required this.onRegisterProvider,
+  });
 
   final VoidCallback onLogin;
+  final VoidCallback onRegisterProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -315,10 +322,22 @@ class _AuthRequiredCard extends StatelessWidget {
       icon: Icons.lock_outline_rounded,
       title: 'تسجيل الدخول مطلوب',
       message: 'أنشئي حسابًا أو سجلي الدخول أولًا لإرسال طلب الانضمام كمزود.',
-      action: FilledButton.icon(
-        onPressed: onLogin,
-        icon: const Icon(Icons.login_rounded),
-        label: const Text('تسجيل الدخول'),
+      action: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FilledButton.icon(
+            onPressed: onLogin,
+            icon: const Icon(Icons.login_rounded),
+            label: const Text('تسجيل الدخول'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: onRegisterProvider,
+            icon: const Icon(Icons.storefront_rounded),
+            label: const Text('إنشاء حساب كمزود'),
+          ),
+        ],
       ),
     );
   }
@@ -409,6 +428,45 @@ class _InlineError extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
+    );
+  }
+}
+
+class _ApplyDropdown extends StatelessWidget {
+  const _ApplyDropdown({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.items,
+    required this.onChanged,
+    required this.validator,
+  });
+
+  final String? value;
+  final String label;
+  final IconData icon;
+  final List<DropdownMenuItem<String>> items;
+  final ValueChanged<String?> onChanged;
+  final FormFieldValidator<String> validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      menuMaxHeight: 320,
+      decoration: InputDecoration(
+        labelText: label,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        prefixIcon: Icon(icon),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 13,
+        ),
+      ),
+      items: items,
+      onChanged: onChanged,
+      validator: validator,
     );
   }
 }

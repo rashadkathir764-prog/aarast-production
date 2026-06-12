@@ -374,8 +374,12 @@ class ProviderDashboardProfile {
     required this.ratingCount,
     this.city,
     this.cityId,
+    this.primaryCategory,
+    this.primaryCategoryId,
     this.phone,
     this.description,
+    this.reviewNote,
+    this.reviewedAt,
     this.logoUrl,
     this.coverUrl,
   });
@@ -389,8 +393,15 @@ class ProviderDashboardProfile {
       ratingCount: _intOrZero(json['ratingCount']),
       city: _mapOrNull(json['city'], MarketplaceCity.fromJson),
       cityId: json['cityId']?.toString(),
+      primaryCategory: _mapOrNull(
+        json['primaryCategory'],
+        ProviderCategory.fromJson,
+      ),
+      primaryCategoryId: json['primaryCategoryId']?.toString(),
       phone: json['phone']?.toString(),
       description: json['description']?.toString(),
+      reviewNote: json['reviewNote']?.toString(),
+      reviewedAt: _dateOrNull(json['reviewedAt']),
       logoUrl: json['logoUrl']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
     );
@@ -403,8 +414,12 @@ class ProviderDashboardProfile {
   final int ratingCount;
   final MarketplaceCity? city;
   final String? cityId;
+  final ProviderCategory? primaryCategory;
+  final String? primaryCategoryId;
   final String? phone;
   final String? description;
+  final String? reviewNote;
+  final DateTime? reviewedAt;
   final String? logoUrl;
   final String? coverUrl;
 }

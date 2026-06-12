@@ -13,7 +13,9 @@ import '../widgets/auth_wedding_widgets.dart';
 enum _AccountType { customer, provider }
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({this.startAsProvider = false, super.key});
+
+  final bool startAsProvider;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -35,6 +37,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.startAsProvider) {
+      _accountType = _AccountType.provider;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
     });
@@ -62,15 +67,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       leading: AuthBackButton(
         onPressed: () => context.go(AppRouter.onboarding),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             const AuthBrandMark(compact: true),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Text(
               providerMode ? 'طلب الانضمام كمزود' : 'إنشاء حساب',
               textAlign: TextAlign.center,
@@ -92,8 +97,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 height: 1.45,
               ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 18),
             AuthPanel(
+              padding: EdgeInsets.all(providerMode ? 16 : 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -161,12 +167,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   if (providerMode) ...[
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _safeCityId(marketplace),
-                      decoration: const InputDecoration(
-                        labelText: 'المدينة',
-                        prefixIcon: Icon(Icons.place_outlined),
-                      ),
+                    _ProviderDropdown(
+                      value: _safeCityId(marketplace),
+                      label: 'المدينة',
+                      icon: Icons.place_outlined,
                       items: marketplace.cities
                           .map(
                             (city) => DropdownMenuItem(
@@ -180,12 +184,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           value == null ? 'اختاري المدينة' : null,
                     ),
                     const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: _safeCategoryId(marketplace),
-                      decoration: const InputDecoration(
-                        labelText: 'الفئة',
-                        prefixIcon: Icon(Icons.category_outlined),
-                      ),
+                    _ProviderDropdown(
+                      value: _safeCategoryId(marketplace),
+                      label: 'الفئة',
+                      icon: Icons.category_outlined,
                       items: marketplace.categories
                           .map(
                             (category) => DropdownMenuItem(
@@ -448,6 +450,45 @@ class _ProviderModeNote extends StatelessWidget {
           height: 1.45,
         ),
       ),
+    );
+  }
+}
+
+class _ProviderDropdown extends StatelessWidget {
+  const _ProviderDropdown({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.items,
+    required this.onChanged,
+    required this.validator,
+  });
+
+  final String? value;
+  final String label;
+  final IconData icon;
+  final List<DropdownMenuItem<String>> items;
+  final ValueChanged<String?> onChanged;
+  final FormFieldValidator<String> validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      menuMaxHeight: 320,
+      decoration: InputDecoration(
+        labelText: label,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        prefixIcon: Icon(icon),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 13,
+        ),
+      ),
+      items: items,
+      onChanged: onChanged,
+      validator: validator,
     );
   }
 }

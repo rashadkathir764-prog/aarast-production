@@ -30,6 +30,7 @@ export interface SafeSharedMemberUser {
   id: string;
   name: string;
   phone: string | null;
+  avatarUrl: string | null;
 }
 
 export interface SharedWeddingPlanResponse {
@@ -80,7 +81,9 @@ export class SharingService {
         canManageTasks: dto.canManageTasks ?? false,
         canManageFinancialRecords: dto.canManageFinancialRecords ?? false,
       },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: {
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true } },
+      },
     });
 
     return this.toMemberResponse(member);
@@ -94,7 +97,9 @@ export class SharingService {
 
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: {
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true } },
+      },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -127,7 +132,9 @@ export class SharingService {
           ? { canManageFinancialRecords: dto.canManageFinancialRecords }
           : {}),
       },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: {
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true } },
+      },
     });
 
     return this.toMemberResponse(member);
@@ -150,7 +157,7 @@ export class SharingService {
       where: { userId: currentUser.id },
       include: {
         weddingPlan: true,
-        user: { select: { id: true, name: true, phone: true } },
+        user: { select: { id: true, name: true, phone: true, avatarUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

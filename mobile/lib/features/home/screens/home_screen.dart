@@ -9,7 +9,9 @@ import '../providers/home_dashboard_provider.dart';
 import '../widgets/home_widgets.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -46,7 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       slivers: [
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              16,
+                              16,
+                              widget.embedded ? 24 : 100,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -91,13 +98,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: HomeBottomNavigation(
-                      provider: provider,
-                      onNeedPlan: () => _showNeedPlanSnackBar(context),
+                  if (!widget.embedded)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: HomeBottomNavigation(
+                        provider: provider,
+                        onNeedPlan: () => _showNeedPlanSnackBar(context),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -138,6 +146,8 @@ class _HomeDashboardBody extends StatelessWidget {
         HomeCommandHero(provider: provider),
         const SizedBox(height: 18),
         if (hasPlan) ...[
+          const HomePlanControls(),
+          const SizedBox(height: 18),
           HomeMetricsBudgetSection(provider: provider),
           const SizedBox(height: 18),
         ],

@@ -47,8 +47,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
 
     try {
       final results = await Future.wait<Object>([
-        _api.getCities(),
-        _api.getCategories(),
+        _safeCities(),
+        _safeCategories(),
         _api.getProviders(
           search: _search,
           cityId: _cityId,
@@ -63,9 +63,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       final favorites = results[3] as List<FavoriteProvider>;
       _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _marketplaceErrorMessage(error.message);
     } catch (_) {
-      _errorMessage = 'تعذر تحميل الموردين.';
+      _errorMessage = 'تعذر تحميل الموردين. تأكد من الاتصال وحاول مرة أخرى.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -75,12 +75,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   Future<void> loadReferenceData() async {
     if (_cities.isNotEmpty && _categories.isNotEmpty) return;
     try {
-      final results = await Future.wait<Object>([
-        _api.getCities(),
-        _api.getCategories(),
-      ]);
-      _cities = results[0] as List<MarketplaceCity>;
-      _categories = results[1] as List<ProviderCategory>;
+      _cities = await _safeCities();
+      _categories = await _safeCategories();
       notifyListeners();
     } catch (_) {
       // The destination screens still render a clear empty state.
@@ -115,20 +111,19 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      _details[providerId] = await _api.getProvider(providerId);
       final results = await Future.wait<Object>([
-        _api.getProvider(providerId),
-        _api.getProviderServices(providerId),
-        _api.getProviderPackages(providerId),
-        _api.getProviderReviews(providerId),
+        _safeProviderServices(providerId),
+        _safeProviderPackages(providerId),
+        _safeProviderReviews(providerId),
       ]);
-      _details[providerId] = results[0] as MarketplaceProvider;
-      _services[providerId] = results[1] as List<MarketplaceService>;
-      _packages[providerId] = results[2] as List<ProviderPackage>;
-      _reviews[providerId] = results[3] as List<ProviderReview>;
+      _services[providerId] = results[0] as List<MarketplaceService>;
+      _packages[providerId] = results[1] as List<ProviderPackage>;
+      _reviews[providerId] = results[2] as List<ProviderReview>;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _marketplaceErrorMessage(error.message);
     } catch (_) {
-      _errorMessage = 'تعذر تحميل تفاصيل المورد.';
+      _errorMessage = 'تعذر تحميل تفاصيل المورد. حاول مرة أخرى.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -150,7 +145,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
         _favoriteProviderIds = {..._favoriteProviderIds, providerId};
       }
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _marketplaceErrorMessage(error.message);
     } catch (_) {
       _errorMessage = 'تعذر تحديث المفضلة.';
     } finally {
@@ -188,7 +183,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       );
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال طلب عرض السعر.';
@@ -202,6 +197,48 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   Future<List<FavoriteProvider>> _safeFavorites() async {
     try {
       return await _api.getFavoriteProviders();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<List<MarketplaceCity>> _safeCities() async {
+    try {
+      return await _api.getCities();
+    } catch (_) {
+      return _cities;
+    }
+  }
+
+  Future<List<ProviderCategory>> _safeCategories() async {
+    try {
+      return await _api.getCategories();
+    } catch (_) {
+      return _categories;
+    }
+  }
+
+  Future<List<MarketplaceService>> _safeProviderServices(
+    String providerId,
+  ) async {
+    try {
+      return await _api.getProviderServices(providerId);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<List<ProviderPackage>> _safeProviderPackages(String providerId) async {
+    try {
+      return await _api.getProviderPackages(providerId);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<List<ProviderReview>> _safeProviderReviews(String providerId) async {
+    try {
+      return await _api.getProviderReviews(providerId);
     } catch (_) {
       return const [];
     }
@@ -259,11 +296,11 @@ class ProviderDashboardProvider extends ChangeNotifier {
       _services = const [];
       _quoteRequests = const [];
       _hasProviderProfile = false;
-      if (!error.message.toLowerCase().contains('provider profile')) {
-        _errorMessage = error.message;
+      if (!_isMissingProviderProfile(error.message)) {
+        _errorMessage = _marketplaceErrorMessage(error.message);
       }
     } catch (_) {
-      _errorMessage = 'تعذر تحميل لوحة المورد.';
+      _errorMessage = 'تعذر تحميل لوحة المورد. حاول مرة أخرى.';
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -295,7 +332,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       _quoteRequests = const [];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال طلب الانضمام كمورد.';
@@ -310,4 +347,24 @@ class ProviderDashboardProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+}
+
+String _marketplaceErrorMessage(String message) {
+  final normalized = message.trim();
+  if (normalized.contains('هذه الخدمة غير متاحة') ||
+      normalized.startsWith('Cannot ')) {
+    return 'خدمة الموردين غير متاحة على الخادم الحالي. تأكد من تحديث وتشغيل الخلفية ثم حاول مرة أخرى.';
+  }
+  if (normalized.contains('انتهت الجلسة') ||
+      normalized.contains('بيانات الدخول')) {
+    return 'تحتاجين إلى تسجيل الدخول للمتابعة.';
+  }
+  return normalized.isEmpty ? 'تعذر تنفيذ الطلب. حاول مرة أخرى.' : normalized;
+}
+
+bool _isMissingProviderProfile(String message) {
+  final normalized = message.toLowerCase();
+  return normalized.contains('provider profile') ||
+      normalized.contains('provider not found') ||
+      normalized.contains('profile not found');
 }

@@ -4,11 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../home/screens/home_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
-import '../wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../wedding_plans/widgets/aarast_dashboard_widgets.dart';
 
@@ -28,28 +28,19 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<WeddingPlansProvider>().loadMyWeddingPlans();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<WeddingPlansProvider>();
+      await provider.loadMyWeddingPlans();
+      if (!mounted || _activePlanId != null || provider.plans.isEmpty) return;
+      setState(() {
+        _activePlanId = provider.plans.first.id;
+      });
     });
   }
 
   void _onItemTapped(int index) {
-    if (_index == 4 && index == 4 && _activePlanId != null) {
-      // User tapped Home while already on Home with an active plan -> Go back to plans list
-      setState(() {
-        _activePlanId = null;
-      });
-      return;
-    }
     setState(() {
       _index = index;
-    });
-  }
-
-  void _selectPlan(String planId) {
-    setState(() {
-      _activePlanId = planId;
-      _index = 4; // Go to Dashboard (Home)
     });
   }
 
@@ -193,14 +184,14 @@ class _MainShellState extends State<MainShell> {
           body: IndexedStack(
             index: stackIndex,
             children: [
-              // Index 0 (Nav 4): Home (Plans Hub OR Dashboard)
+              // Index 0 (Nav 4): Home overview. Plan lists are explicit routes.
               _activePlanId != null
                   ? WeddingPlanDashboardScreen(
                       key: ValueKey('home-$_activePlanId'),
                       weddingPlanId: _activePlanId!,
                       embedded: true,
                     )
-                  : MyWeddingPlansScreen(onSelectPlan: _selectPlan),
+                  : const HomeScreen(embedded: true),
 
               // Index 1 (Nav 3): Vendors marketplace
               const ProviderMarketplaceScreen(embedded: true),

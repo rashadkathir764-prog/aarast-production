@@ -290,10 +290,22 @@ class HomeCommandHero extends StatelessWidget {
         icon: Icons.favorite_border_rounded,
         title: 'لا توجد خطة زفاف حالية',
         message: 'ابدئي بإنشاء خطة واضحة لتظهر الميزانية والمهام هنا.',
-        action: FilledButton.icon(
-          onPressed: () => context.push(AppRouter.createWeddingPlan),
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('إنشاء خطة زفاف'),
+        action: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
+              onPressed: () => context.push(AppRouter.createWeddingPlan),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('إنشاء خطة زفاف'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => context.push(AppRouter.weddingPlans),
+              icon: const Icon(Icons.event_note_outlined),
+              label: const Text('عرض كل الخطط'),
+            ),
+          ],
         ),
       );
     }
@@ -439,6 +451,50 @@ class HomeCommandHero extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class HomePlanControls extends StatelessWidget {
+  const HomePlanControls({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(12),
+      color: AppTheme.dCard2,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 350;
+          final buttons = [
+            OutlinedButton.icon(
+              onPressed: () => context.push(AppRouter.weddingPlans),
+              icon: const Icon(Icons.event_note_outlined),
+              label: const Text('عرض كل الخطط'),
+            ),
+            FilledButton.icon(
+              onPressed: () => context.push(AppRouter.weddingPlans),
+              icon: const Icon(Icons.swap_horiz_rounded),
+              label: const Text('تبديل الخطة'),
+            ),
+          ];
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [buttons[0], const SizedBox(height: 8), buttons[1]],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(child: buttons[0]),
+              const SizedBox(width: 10),
+              Expanded(child: buttons[1]),
+            ],
+          );
+        },
       ),
     );
   }

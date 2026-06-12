@@ -627,45 +627,37 @@ class _PlanCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 2,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: dividerColor)),
+                        color: Colors.transparent,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'إدارة الخطة',
+                            style: textTheme.labelLarge?.copyWith(
+                              color: titleColor,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_back_rounded,
+                            color: titleColor,
+                            size: 20,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-
-              // Bottom Action Area
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 22,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: dividerColor)),
-                    color: isFeatured ? Colors.black12 : Colors.transparent,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'إدارة الخطة',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: titleColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_back_rounded,
-                        color: titleColor,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Dummy padding to make space for the absolute positioned bottom area
-              const Padding(padding: EdgeInsets.only(bottom: 50)),
             ],
           ),
         ),

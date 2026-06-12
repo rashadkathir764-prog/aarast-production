@@ -65,7 +65,7 @@ class MoreScreen extends StatelessWidget {
                       ),
                       _MoreActionTile(
                         title: 'الموردين',
-                        subtitle: 'استكشفي الموردين أو تابعي حسابك كمورد',
+                        subtitle: 'استكشفي الموردين والخدمات المتاحة لخطتك',
                         icon: Icons.storefront_outlined,
                         iconColor: AppTheme.dMaroon,
                         iconBackground: AppTheme.dPinkBg,
@@ -78,8 +78,9 @@ class MoreScreen extends StatelessWidget {
                   _MenuGroup(
                     children: [
                       _MoreActionTile(
-                        title: 'لوحة المورد',
-                        subtitle: 'حساب المورد والخدمات وطلبات عروض الأسعار',
+                        title: 'الدخول كمورد',
+                        subtitle:
+                            'تابعي حساب المورد أو أرسلي طلب الانضمام كمورد',
                         icon: Icons.store_mall_directory_outlined,
                         iconColor: AppTheme.dGoldDeep,
                         iconBackground: AppTheme.dCreamBg,

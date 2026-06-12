@@ -17,9 +17,20 @@ class SharingApi {
         .toList();
   }
 
+  Future<SharedUserLookup> lookupUserByPhone(String phone) async {
+    final json = await _apiClient.getJson(
+      Uri(
+        path: '/users/lookup',
+        queryParameters: {'phone': phone.trim()},
+      ).toString(),
+    );
+    return SharedUserLookup.fromJson(json);
+  }
+
   Future<SharedMember> createSharedMember({
     required String weddingPlanId,
-    required String phone,
+    String? userId,
+    String? phone,
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
@@ -27,16 +38,19 @@ class SharingApi {
     required bool canManageTasks,
     required bool canManageFinancialRecords,
   }) async {
-    final json = await _apiClient
-        .postJson('/wedding-plans/$weddingPlanId/shared-members', {
-          'phone': phone.trim(),
-          'role': role,
-          'canViewBudget': canViewBudget,
-          'canViewExpenses': canViewExpenses,
-          'canViewDebts': canViewDebts,
-          'canManageTasks': canManageTasks,
-          'canManageFinancialRecords': canManageFinancialRecords,
-        });
+    final json = await _apiClient.postJson(
+      '/wedding-plans/$weddingPlanId/shared-members',
+      {
+        if (userId != null && userId.trim().isNotEmpty) 'userId': userId.trim(),
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'role': role,
+        'canViewBudget': canViewBudget,
+        'canViewExpenses': canViewExpenses,
+        'canViewDebts': canViewDebts,
+        'canManageTasks': canManageTasks,
+        'canManageFinancialRecords': canManageFinancialRecords,
+      },
+    );
     return SharedMember.fromJson(json);
   }
 

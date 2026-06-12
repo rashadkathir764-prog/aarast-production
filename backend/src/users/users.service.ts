@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { NotificationPreference } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
@@ -22,6 +23,13 @@ export interface NotificationPreferenceResponse {
   providerMessagesEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface UserLookupResponse {
+  id: string;
+  name: string;
+  phone: string | null;
+  avatarUrl: string | null;
 }
 
 @Injectable()
@@ -60,6 +68,25 @@ export class UsersService {
     return toSafeUser(user);
   }
 
+  async lookupByPhone(phone: string): Promise<UserLookupResponse> {
+    const normalizedPhone = this.requiredText(phone, 'phone');
+    const user = await this.prisma.user.findUnique({
+      where: { phone: normalizedPhone },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found for phone');
+    }
+
+    return user;
+  }
+
   async getSettings(
     currentUser: AuthenticatedUser,
   ): Promise<NotificationPreferenceResponse> {
@@ -88,8 +115,8 @@ export class UsersService {
     return this.toSettingsResponse(settings);
   }
 
-  private requiredText(value: string, field: string): string {
-    const trimmed = value.trim();
+  private requiredText(value: string | null | undefined, field: string): string {
+    const trimmed = value?.trim() ?? '';
     if (!trimmed) {
       throw new BadRequestException(`${field} must not be empty`);
     }

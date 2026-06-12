@@ -114,10 +114,10 @@ class ApiException implements Exception {
     if (data is Map && data['message'] != null) {
       final message = data['message'];
       if (message is String) {
-        return ApiException(message);
+        return ApiException(_cleanServerMessage(message));
       }
       if (message is List && message.isNotEmpty) {
-        return ApiException(message.first.toString());
+        return ApiException(_cleanServerMessage(message.first.toString()));
       }
     }
 
@@ -134,4 +134,15 @@ class ApiException implements Exception {
 
   @override
   String toString() => message;
+
+  static String _cleanServerMessage(String message) {
+    final normalized = message.trim();
+    if (normalized.startsWith('Cannot GET') ||
+        normalized.startsWith('Cannot POST') ||
+        normalized.startsWith('Cannot PATCH') ||
+        normalized.startsWith('Cannot DELETE')) {
+      return 'هذه الخدمة غير متاحة على الخادم الحالي. تأكد من تشغيل آخر نسخة من الخلفية.';
+    }
+    return normalized;
+  }
 }

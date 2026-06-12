@@ -175,9 +175,14 @@ class _MarketplaceHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        _CircleButton(
-          icon: Icons.store_mall_directory_outlined,
-          onTap: onDashboard,
+        FilledButton.icon(
+          onPressed: onDashboard,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          icon: const Icon(Icons.store_mall_directory_outlined, size: 18),
+          label: Text(embedded ? 'كمورد' : 'الدخول كمورد'),
         ),
       ],
     );

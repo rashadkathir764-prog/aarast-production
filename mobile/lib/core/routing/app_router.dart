@@ -14,6 +14,9 @@ import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
 import '../../features/guests/screens/guest_list_screen.dart';
+import '../../features/marketplace/screens/add_provider_package_screen.dart';
+import '../../features/marketplace/screens/add_provider_service_screen.dart';
+import '../../features/marketplace/screens/provider_apply_screen.dart';
 import '../../features/marketplace/screens/provider_dashboard_screen.dart';
 import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
@@ -44,7 +47,12 @@ class AppRouter {
   static const weddingPlans = '/wedding-plans';
   static const createWeddingPlan = '/wedding-plans/create';
   static const providerMarketplace = '/providers';
-  static const providerDashboard = '/provider-dashboard';
+  static const providerApply = '/provider/apply';
+  static const providerApplyStatus = '/provider/apply/status';
+  static const providerDashboard = '/provider/dashboard';
+  static const legacyProviderDashboard = '/provider-dashboard';
+  static const providerServiceNew = '/provider/services/new';
+  static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
   static const settings = '/settings';
   static const support = '/support';
@@ -55,6 +63,10 @@ class AppRouter {
 
   static String providerQuoteRequest(String id) {
     return '/providers/$id/quote-request';
+  }
+
+  static String providerQuote(String id) {
+    return '/providers/$id/quote';
   }
 
   static String weddingPlanDashboard(String id) {
@@ -154,7 +166,7 @@ class AppRouter {
           },
         ),
         GoRoute(
-          path: '/providers/:id/quote-request',
+          path: '/providers/:id/quote',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
             final initialServiceId = state.extra is String
@@ -167,8 +179,35 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/providers/:id/quote-request',
+          redirect: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return providerQuote(id);
+          },
+        ),
+        GoRoute(
+          path: providerApply,
+          builder: (context, state) => const ProviderApplyScreen(),
+        ),
+        GoRoute(
+          path: providerApplyStatus,
+          builder: (context, state) => const ProviderApplyStatusScreen(),
+        ),
+        GoRoute(
           path: providerDashboard,
           builder: (context, state) => const ProviderDashboardScreen(),
+        ),
+        GoRoute(
+          path: legacyProviderDashboard,
+          redirect: (context, state) => providerDashboard,
+        ),
+        GoRoute(
+          path: providerServiceNew,
+          builder: (context, state) => const AddProviderServiceScreen(),
+        ),
+        GoRoute(
+          path: providerPackageNew,
+          builder: (context, state) => const AddProviderPackageScreen(),
         ),
         GoRoute(
           path: notifications,

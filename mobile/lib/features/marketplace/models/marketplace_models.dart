@@ -147,6 +147,7 @@ class MarketplaceService {
     required this.providerId,
     required this.title,
     required this.isFeatured,
+    required this.isActive,
     this.provider,
     this.category,
     this.categoryId,
@@ -171,6 +172,7 @@ class MarketplaceService {
       priceUnit: json['priceUnit']?.toString(),
       currency: json['currency']?.toString(),
       city: _mapOrNull(json['city'], MarketplaceCity.fromJson),
+      isActive: json['isActive'] != false,
       isFeatured: json['isFeatured'] == true,
       images: _listFromJson(json['images'], ProviderServiceImage.fromJson),
     );
@@ -187,6 +189,7 @@ class MarketplaceService {
   final String? priceUnit;
   final String? currency;
   final MarketplaceCity? city;
+  final bool isActive;
   final bool isFeatured;
   final List<ProviderServiceImage> images;
 }
@@ -227,6 +230,7 @@ class ProviderPackage {
 
   factory ProviderPackage.fromJson(Map<String, dynamic> json) {
     final service = json['service'];
+    final itemsValue = json['items'];
     return ProviderPackage(
       id: json['id'].toString(),
       providerId: json['providerId']?.toString() ?? '',
@@ -236,7 +240,9 @@ class ProviderPackage {
       description: json['description']?.toString(),
       price: json['price']?.toString(),
       currency: json['currency']?.toString(),
-      items: json['items']?.toString(),
+      items: itemsValue is List
+          ? itemsValue.map((item) => item.toString()).join('\n')
+          : itemsValue?.toString(),
       isActive: json['isActive'] != false,
     );
   }
@@ -307,30 +313,55 @@ class QuoteRequest {
     required this.id,
     required this.providerId,
     required this.status,
+    this.userName,
+    this.userPhone,
+    this.weddingPlanTitle,
     this.provider,
     this.service,
     this.eventDate,
+    this.cityId,
+    this.guestCount,
     this.message,
+    this.budgetMin,
+    this.budgetMax,
   });
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
+    final user = json['user'];
+    final weddingPlan = json['weddingPlan'];
     return QuoteRequest(
       id: json['id'].toString(),
       providerId: json['providerId']?.toString() ?? '',
+      userName: user is Map ? user['name']?.toString() : null,
+      userPhone: user is Map ? user['phone']?.toString() : null,
+      weddingPlanTitle: weddingPlan is Map
+          ? weddingPlan['title']?.toString()
+          : null,
       provider: _mapOrNull(json['provider'], ProviderSummary.fromJson),
       service: _mapOrNull(json['service'], MarketplaceService.fromJson),
       eventDate: _dateOrNull(json['eventDate']),
+      cityId: json['cityId']?.toString(),
+      guestCount: _intOrNull(json['guestCount']),
       message: json['message']?.toString(),
+      budgetMin: json['budgetMin']?.toString(),
+      budgetMax: json['budgetMax']?.toString(),
       status: json['status']?.toString() ?? 'SENT',
     );
   }
 
   final String id;
   final String providerId;
+  final String? userName;
+  final String? userPhone;
+  final String? weddingPlanTitle;
   final ProviderSummary? provider;
   final MarketplaceService? service;
   final DateTime? eventDate;
+  final String? cityId;
+  final int? guestCount;
   final String? message;
+  final String? budgetMin;
+  final String? budgetMax;
   final String status;
 }
 
@@ -342,6 +373,7 @@ class ProviderDashboardProfile {
     required this.ratingAverage,
     required this.ratingCount,
     this.city,
+    this.cityId,
     this.phone,
     this.description,
     this.logoUrl,
@@ -356,6 +388,7 @@ class ProviderDashboardProfile {
       ratingAverage: _doubleOrZero(json['ratingAverage']),
       ratingCount: _intOrZero(json['ratingCount']),
       city: _mapOrNull(json['city'], MarketplaceCity.fromJson),
+      cityId: json['cityId']?.toString(),
       phone: json['phone']?.toString(),
       description: json['description']?.toString(),
       logoUrl: json['logoUrl']?.toString(),
@@ -369,6 +402,7 @@ class ProviderDashboardProfile {
   final double ratingAverage;
   final int ratingCount;
   final MarketplaceCity? city;
+  final String? cityId;
   final String? phone;
   final String? description;
   final String? logoUrl;
@@ -434,6 +468,12 @@ T? _mapOrNull<T>(Object? value, T Function(Map<String, dynamic>) mapper) {
 int _intOrZero(Object? value) {
   if (value is int) return value;
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _intOrNull(Object? value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  return int.tryParse(value.toString());
 }
 
 double _doubleOrZero(Object? value) {

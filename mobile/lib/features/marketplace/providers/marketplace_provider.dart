@@ -262,6 +262,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
   ProviderDashboardProfile? _profile;
   ProviderDashboardSummary _summary = ProviderDashboardSummary.empty();
   List<MarketplaceService> _services = const [];
+  List<ProviderPackage> _packages = const [];
   List<QuoteRequest> _quoteRequests = const [];
 
   bool get isLoading => _isLoading;
@@ -271,6 +272,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
   ProviderDashboardProfile? get profile => _profile;
   ProviderDashboardSummary get summary => _summary;
   List<MarketplaceService> get services => _services;
+  List<ProviderPackage> get packages => _packages;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
 
   Future<void> loadDashboard() async {
@@ -283,17 +285,20 @@ class ProviderDashboardProvider extends ChangeNotifier {
       final results = await Future.wait<Object>([
         _api.getSummary(),
         _api.getServices(),
+        _api.getPackages(),
         _api.getQuoteRequests(),
       ]);
       _profile = profile;
       _summary = results[0] as ProviderDashboardSummary;
       _services = results[1] as List<MarketplaceService>;
-      _quoteRequests = results[2] as List<QuoteRequest>;
+      _packages = results[2] as List<ProviderPackage>;
+      _quoteRequests = results[3] as List<QuoteRequest>;
       _hasProviderProfile = true;
     } on ApiException catch (error) {
       _profile = null;
       _summary = ProviderDashboardSummary.empty();
       _services = const [];
+      _packages = const [];
       _quoteRequests = const [];
       _hasProviderProfile = false;
       if (!_isMissingProviderProfile(error.message)) {
@@ -329,6 +334,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       _hasProviderProfile = true;
       _summary = ProviderDashboardSummary.empty();
       _services = const [];
+      _packages = const [];
       _quoteRequests = const [];
       return true;
     } on ApiException catch (error) {
@@ -336,6 +342,115 @@ class ProviderDashboardProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال طلب الانضمام كمورد.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createService({
+    required String title,
+    required String categoryId,
+    String? description,
+    String? basePrice,
+    String? priceUnit,
+    String? currency,
+    String? cityId,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final service = await _api.createService(
+        title: title,
+        categoryId: categoryId,
+        description: description,
+        basePrice: basePrice,
+        priceUnit: priceUnit,
+        currency: currency,
+        cityId: cityId,
+      );
+      _services = [
+        service,
+        ..._services.where((item) => item.id != service.id),
+      ];
+      await loadDashboard();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر إضافة الخدمة. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createPackage({
+    required String title,
+    String? serviceId,
+    String? description,
+    String? price,
+    String? currency,
+    List<String> items = const [],
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final providerPackage = await _api.createPackage(
+        title: title,
+        serviceId: serviceId,
+        description: description,
+        price: price,
+        currency: currency,
+        items: items,
+      );
+      _packages = [
+        providerPackage,
+        ..._packages.where((item) => item.id != providerPackage.id),
+      ];
+      await loadDashboard();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر إضافة الباقة. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateQuoteStatus({
+    required String quoteRequestId,
+    required String status,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final quote = await _api.updateQuoteRequestStatus(
+        quoteRequestId: quoteRequestId,
+        status: status,
+      );
+      _quoteRequests = [
+        for (final item in _quoteRequests) item.id == quote.id ? quote : item,
+      ];
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث حالة الطلب. حاول مرة أخرى.';
       return false;
     } finally {
       _isSubmitting = false;

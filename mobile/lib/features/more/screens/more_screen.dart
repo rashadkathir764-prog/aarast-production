@@ -6,16 +6,32 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../marketplace/providers/marketplace_provider.dart';
 
-class MoreScreen extends StatelessWidget {
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
+
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProviderDashboardProvider>().loadDashboard();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
+    final providerDashboard = context.watch<ProviderDashboardProvider>();
     final user = auth.user;
     final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
+    final hasProviderProfile = providerDashboard.hasProviderProfile;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -78,13 +94,20 @@ class MoreScreen extends StatelessWidget {
                   _MenuGroup(
                     children: [
                       _MoreActionTile(
-                        title: 'الدخول كمورد',
-                        subtitle:
-                            'تابعي حساب المورد أو أرسلي طلب الانضمام كمورد',
+                        title: hasProviderProfile
+                            ? 'لوحة المزود'
+                            : 'طلب الانضمام كمزود',
+                        subtitle: hasProviderProfile
+                            ? 'إدارة الخدمات والباقات وطلبات عروض الأسعار'
+                            : 'أرسلي طلب الانضمام وابدئي تجهيز ملف المزود',
                         icon: Icons.store_mall_directory_outlined,
                         iconColor: AppTheme.dGoldDeep,
                         iconBackground: AppTheme.dCreamBg,
-                        onTap: () => context.push(AppRouter.providerDashboard),
+                        onTap: () => context.push(
+                          hasProviderProfile
+                              ? AppRouter.providerDashboard
+                              : AppRouter.providerApply,
+                        ),
                       ),
                       _MoreActionTile(
                         title: 'الإعدادات',

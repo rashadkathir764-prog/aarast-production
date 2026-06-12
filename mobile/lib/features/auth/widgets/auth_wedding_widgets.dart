@@ -161,6 +161,7 @@ class AuthTextField extends StatelessWidget {
     this.keyboardType,
     this.textInputAction,
     this.obscureText = false,
+    this.maxLines = 1,
     this.suffixIcon,
     this.onFieldSubmitted,
     super.key,
@@ -174,6 +175,7 @@ class AuthTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
   final bool obscureText;
+  final int maxLines;
   final Widget? suffixIcon;
   final ValueChanged<String>? onFieldSubmitted;
 
@@ -185,6 +187,7 @@ class AuthTextField extends StatelessWidget {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,
+      maxLines: maxLines,
       validator: validator,
       onFieldSubmitted: onFieldSubmitted,
       decoration: InputDecoration(

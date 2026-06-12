@@ -186,6 +186,16 @@ class ProviderDashboardApi {
         .toList();
   }
 
+  Future<List<ProviderPackage>> getPackages() async {
+    final list = await _apiClient.getJsonList('/provider/me/packages');
+    return list
+        .whereType<Map>()
+        .map(
+          (item) => ProviderPackage.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList();
+  }
+
   Future<ProviderDashboardProfile> applyProvider({
     required String businessName,
     required String phone,
@@ -202,5 +212,63 @@ class ProviderDashboardApi {
         'description': description.trim(),
     });
     return ProviderDashboardProfile.fromJson(json);
+  }
+
+  Future<MarketplaceService> createService({
+    required String title,
+    required String categoryId,
+    String? description,
+    String? basePrice,
+    String? priceUnit,
+    String? currency,
+    String? cityId,
+  }) async {
+    final json = await _apiClient.postJson('/provider/me/services', {
+      'title': title.trim(),
+      'categoryId': categoryId.trim(),
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+      if (basePrice != null && basePrice.trim().isNotEmpty)
+        'basePrice': basePrice.trim(),
+      if (priceUnit != null && priceUnit.trim().isNotEmpty)
+        'priceUnit': priceUnit.trim(),
+      if (currency != null && currency.trim().isNotEmpty)
+        'currency': currency.trim(),
+      if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
+    });
+    return MarketplaceService.fromJson(json);
+  }
+
+  Future<ProviderPackage> createPackage({
+    required String title,
+    String? serviceId,
+    String? description,
+    String? price,
+    String? currency,
+    List<String> items = const [],
+  }) async {
+    final json = await _apiClient.postJson('/provider/me/packages', {
+      'title': title.trim(),
+      if (serviceId != null && serviceId.trim().isNotEmpty)
+        'serviceId': serviceId.trim(),
+      if (description != null && description.trim().isNotEmpty)
+        'description': description.trim(),
+      if (price != null && price.trim().isNotEmpty) 'price': price.trim(),
+      if (currency != null && currency.trim().isNotEmpty)
+        'currency': currency.trim(),
+      if (items.isNotEmpty) 'items': items,
+    });
+    return ProviderPackage.fromJson(json);
+  }
+
+  Future<QuoteRequest> updateQuoteRequestStatus({
+    required String quoteRequestId,
+    required String status,
+  }) async {
+    final json = await _apiClient.patchJson(
+      '/provider/me/quote-requests/$quoteRequestId/status',
+      {'status': status},
+    );
+    return QuoteRequest.fromJson(json);
   }
 }

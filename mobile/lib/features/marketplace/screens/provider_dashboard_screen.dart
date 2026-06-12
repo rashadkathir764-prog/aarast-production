@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/providers/auth_controller.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -27,15 +29,20 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthController>();
     final dashboard = context.watch<ProviderDashboardProvider>();
 
     return AarastPageScaffold(
-      title: 'لوحة المورد',
-      subtitle: 'إدارة حضورك وطلبات عروض الأسعار',
+      title: 'لوحة المزود',
+      subtitle: 'إدارة ملفك وخدماتك وطلبات العملاء المحتملين.',
       actions: [
         IconButton(
           onPressed: () {
-            if (context.canPop()) context.pop();
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(AppRouter.home);
+            }
           },
           icon: const Icon(Icons.chevron_right_rounded),
         ),
@@ -45,32 +52,33 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         onRefresh: dashboard.loadDashboard,
         child: ListView(
           children: [
-            if (dashboard.isLoading && dashboard.profile == null)
-              const Padding(
-                padding: EdgeInsets.only(top: 120),
-                child: Center(child: CircularProgressIndicator()),
-              )
+            if (auth.status == AuthStatus.unauthenticated)
+              _AuthRequiredCard(onLogin: () => context.go(AppRouter.login))
+            else if (dashboard.isLoading && dashboard.profile == null)
+              const _DashboardSkeleton()
             else if (!dashboard.hasProviderProfile)
-              const _ProviderApplication()
+              _NoProviderProfileCard(
+                onApply: () => context.go(AppRouter.providerApply),
+              )
             else ...[
               _ProviderProfileCard(profile: dashboard.profile!),
               const SizedBox(height: 16),
-              _ProviderStats(summary: dashboard.summary),
+              _ProviderStats(
+                summary: dashboard.summary,
+                packageCount: dashboard.packages.length,
+              ),
+              const SizedBox(height: 16),
+              const _ProviderGuideCard(),
               const SizedBox(height: 16),
               _ProviderServices(services: dashboard.services),
+              const SizedBox(height: 16),
+              _ProviderPackages(packages: dashboard.packages),
               const SizedBox(height: 16),
               _ProviderQuotes(quotes: dashboard.quoteRequests),
             ],
             if (dashboard.errorMessage != null) ...[
               const SizedBox(height: 16),
-              Text(
-                dashboard.errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppTheme.danger,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              _InlineError(message: dashboard.errorMessage!),
             ],
             const SizedBox(height: 28),
           ],
@@ -80,188 +88,44 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   }
 }
 
-class _ProviderApplication extends StatefulWidget {
-  const _ProviderApplication();
+class _AuthRequiredCard extends StatelessWidget {
+  const _AuthRequiredCard({required this.onLogin});
 
-  @override
-  State<_ProviderApplication> createState() => _ProviderApplicationState();
-}
-
-class _ProviderApplicationState extends State<_ProviderApplication> {
-  final _formKey = GlobalKey<FormState>();
-  final _businessNameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  String? _cityId;
-  final Set<String> _categoryIds = {};
-
-  @override
-  void dispose() {
-    _businessNameController.dispose();
-    _phoneController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
+  final VoidCallback onLogin;
 
   @override
   Widget build(BuildContext context) {
-    final marketplace = context.watch<ProviderMarketplaceProvider>();
-    final dashboard = context.watch<ProviderDashboardProvider>();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AarastCard(
-          color: AppTheme.dCard,
-          child: Row(
-            children: [
-              Container(
-                width: 62,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: AppTheme.dCreamBg,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: AppTheme.dGoldDeep,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'ليس لديك حساب مورد حتى الآن. أرسلي طلب الانضمام، وبعد الموافقة ستظهر خدماتك وطلبات العملاء هنا.',
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.dInkSoft,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        AarastCard(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const AarastSectionHeader(
-                  title: 'طلب الانضمام كمورد',
-                  icon: Icons.assignment_ind_outlined,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _businessNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم النشاط',
-                    prefixIcon: Icon(Icons.badge_outlined),
-                  ),
-                  validator: (value) => value == null || value.trim().length < 2
-                      ? 'اكتبي اسم النشاط'
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'رقم التواصل',
-                    prefixIcon: Icon(Icons.phone_outlined),
-                  ),
-                  validator: (value) => value == null || value.trim().length < 6
-                      ? 'اكتبي رقم تواصل صحيح'
-                      : null,
-                ),
-                const SizedBox(height: 14),
-                DropdownButtonFormField<String>(
-                  initialValue: _cityId,
-                  decoration: const InputDecoration(
-                    labelText: 'المدينة',
-                    prefixIcon: Icon(Icons.place_outlined),
-                  ),
-                  items: marketplace.cities
-                      .map(
-                        (city) => DropdownMenuItem(
-                          value: city.id,
-                          child: Text(city.nameAr),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => setState(() => _cityId = value),
-                  validator: (value) => value == null ? 'اختاري المدينة' : null,
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final category in marketplace.categories)
-                      FilterChip(
-                        label: Text(category.nameAr),
-                        selected: _categoryIds.contains(category.id),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _categoryIds.add(category.id);
-                            } else {
-                              _categoryIds.remove(category.id);
-                            }
-                          });
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _descriptionController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'نبذة مختصرة',
-                    prefixIcon: Icon(Icons.notes_outlined),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: dashboard.isSubmitting ? null : _submit,
-                  icon: dashboard.isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_rounded),
-                  label: const Text('إرسال طلب الانضمام'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+    return AarastEmptyState(
+      icon: Icons.lock_outline_rounded,
+      title: 'تسجيل الدخول مطلوب',
+      message: 'سجلي الدخول لعرض لوحة المزود أو إرسال طلب الانضمام.',
+      action: FilledButton.icon(
+        onPressed: onLogin,
+        icon: const Icon(Icons.login_rounded),
+        label: const Text('تسجيل الدخول'),
+      ),
     );
   }
+}
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _cityId == null) return;
-    final ok = await context.read<ProviderDashboardProvider>().applyProvider(
-      businessName: _businessNameController.text,
-      phone: _phoneController.text,
-      cityId: _cityId!,
-      categoryIds: _categoryIds.toList(),
-      description: _descriptionController.text,
+class _NoProviderProfileCard extends StatelessWidget {
+  const _NoProviderProfileCard({required this.onApply});
+
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastEmptyState(
+      icon: Icons.storefront_rounded,
+      title: 'لا يوجد حساب مزود',
+      message:
+          'ارسلي طلب الانضمام كمزود. بعد المراجعة ستظهر لوحة المزود وخدماتك هنا.',
+      action: FilledButton.icon(
+        onPressed: onApply,
+        icon: const Icon(Icons.assignment_ind_outlined),
+        label: const Text('طلب الانضمام كمزود'),
+      ),
     );
-    if (!mounted) return;
-    if (ok) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('تم إرسال طلب الانضمام كمورد')),
-        );
-    }
   }
 }
 
@@ -274,42 +138,100 @@ class _ProviderProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       color: AppTheme.dCard,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Logo(url: profile.logoUrl),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AarastStatusPill(
-                  label: _statusLabel(profile.status),
-                  icon: Icons.verified_user_outlined,
-                  color: _statusColor(profile.status),
-                  backgroundColor: _statusColor(profile.status).withAlpha(24),
+          Row(
+            children: [
+              _Logo(url: profile.logoUrl),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AarastStatusPill(
+                      label: _providerStatusLabel(profile.status),
+                      icon: Icons.verified_user_outlined,
+                      color: _providerStatusColor(profile.status),
+                      backgroundColor: _providerStatusColor(
+                        profile.status,
+                      ).withAlpha(24),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      profile.businessName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.dMaroonDeep,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      profile.city?.nameAr ??
+                          profile.phone ??
+                          'حساب مزود اعّرست',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  profile.businessName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.dMaroonDeep,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  profile.city?.nameAr ?? profile.phone ?? 'حساب مورد اعّرست',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.dInkSoft,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          if (profile.description?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 14),
+            Text(
+              profile.description!.trim(),
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w700,
+                height: 1.5,
+              ),
             ),
+          ],
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              if (profile.phone?.trim().isNotEmpty == true)
+                AarastStatusPill(
+                  label: profile.phone!.trim(),
+                  icon: Icons.phone_outlined,
+                  color: AppTheme.dBlue,
+                  backgroundColor: AppTheme.dBlueBg,
+                ),
+              AarastStatusPill(
+                label:
+                    '${profile.ratingAverage.toStringAsFixed(1)} (${profile.ratingCount})',
+                icon: Icons.star_rounded,
+                color: AppTheme.dGoldDeep,
+                backgroundColor: AppTheme.dCreamBg,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'تعديل ملف المزود سيظهر قريبًا بواجهة كاملة.',
+                    ),
+                  ),
+                );
+            },
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('تعديل الملف'),
           ),
         ],
       ),
@@ -318,9 +240,10 @@ class _ProviderProfileCard extends StatelessWidget {
 }
 
 class _ProviderStats extends StatelessWidget {
-  const _ProviderStats({required this.summary});
+  const _ProviderStats({required this.summary, required this.packageCount});
 
   final ProviderDashboardSummary summary;
+  final int packageCount;
 
   @override
   Widget build(BuildContext context) {
@@ -330,37 +253,65 @@ class _ProviderStats extends StatelessWidget {
       crossAxisCount: 2,
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
-      childAspectRatio: 1.32,
+      childAspectRatio: 1.18,
       children: [
         _StatBox(
-          icon: Icons.shopping_bag_outlined,
-          label: 'الطلبات الجديدة',
-          value: '${summary.newQuoteRequestsCount}',
+          icon: Icons.design_services_outlined,
+          label: 'الخدمات',
+          value: '${summary.activeServicesCount}/${summary.servicesCount}',
           color: AppTheme.dMaroon,
           bg: AppTheme.dPinkBg,
         ),
         _StatBox(
-          icon: Icons.calendar_month_outlined,
-          label: 'إجمالي الطلبات',
-          value: '${summary.quoteRequestsCount}',
+          icon: Icons.inventory_2_outlined,
+          label: 'الباقات',
+          value: '$packageCount',
           color: AppTheme.dGoldDeep,
           bg: AppTheme.dCreamBg,
         ),
         _StatBox(
-          icon: Icons.star_border_rounded,
-          label: 'التقييم',
-          value: summary.averageRating.toStringAsFixed(1),
-          color: AppTheme.dGreen,
-          bg: AppTheme.dGreenBg,
-        ),
-        _StatBox(
-          icon: Icons.design_services_outlined,
-          label: 'الخدمات النشطة',
-          value: '${summary.activeServicesCount}/${summary.servicesCount}',
+          icon: Icons.chat_bubble_outline_rounded,
+          label: 'طلبات العروض',
+          value: '${summary.quoteRequestsCount}',
           color: AppTheme.dBlue,
           bg: AppTheme.dBlueBg,
         ),
+        _StatBox(
+          icon: Icons.person_search_outlined,
+          label: 'العملاء المحتملين',
+          value: '${summary.newQuoteRequestsCount}',
+          color: AppTheme.dGreen,
+          bg: AppTheme.dGreenBg,
+        ),
       ],
+    );
+  }
+}
+
+class _ProviderGuideCard extends StatelessWidget {
+  const _ProviderGuideCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AarastCard(
+      color: AppTheme.dCreamBg,
+      child: Row(
+        children: [
+          Icon(Icons.lightbulb_outline_rounded, color: AppTheme.dGoldDeep),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'أكمل ملفك وخدماتك وباقاتك لتظهر أفضل في نتائج البحث وتستقبل طلبات أوضح من العملاء.',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w800,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -376,29 +327,69 @@ class _ProviderServices extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
+          AarastSectionHeader(
             title: 'الخدمات',
             icon: Icons.design_services_outlined,
+            actionLabel: 'إضافة',
+            onAction: () => context.push(AppRouter.providerServiceNew),
           ),
           const SizedBox(height: 12),
           if (services.isEmpty)
-            const AarastEmptyState(
+            AarastEmptyState(
               icon: Icons.design_services_outlined,
               title: 'لا توجد خدمات بعد',
-              message: 'عند إضافة الخدمات من لوحة المورد ستظهر هنا للعملاء.',
+              message: 'أضيفي خدمة ليبدأ كتالوج المزود بالظهور للعملاء.',
+              action: OutlinedButton.icon(
+                onPressed: () => context.push(AppRouter.providerServiceNew),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('إضافة خدمة'),
+              ),
             )
           else
-            SizedBox(
-              height: 156,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: services.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  return _ServiceMiniCard(service: services[index]);
-                },
+            for (final service in services) ...[
+              _ServiceCard(service: service),
+              const SizedBox(height: 10),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderPackages extends StatelessWidget {
+  const _ProviderPackages({required this.packages});
+
+  final List<ProviderPackage> packages;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AarastSectionHeader(
+            title: 'الباقات',
+            icon: Icons.inventory_2_outlined,
+            actionLabel: 'إضافة',
+            onAction: () => context.push(AppRouter.providerPackageNew),
+          ),
+          const SizedBox(height: 12),
+          if (packages.isEmpty)
+            AarastEmptyState(
+              icon: Icons.card_giftcard_rounded,
+              title: 'لا توجد باقات بعد',
+              message: 'أنشئي باقة واضحة لتسهل على العملاء مقارنة عروضك.',
+              action: OutlinedButton.icon(
+                onPressed: () => context.push(AppRouter.providerPackageNew),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('إضافة باقة'),
               ),
-            ),
+            )
+          else
+            for (final item in packages) ...[
+              _PackageCard(item: item),
+              const SizedBox(height: 10),
+            ],
         ],
       ),
     );
@@ -428,7 +419,7 @@ class _ProviderQuotes extends StatelessWidget {
               message: 'ستظهر طلبات العملاء هنا عند إرسال عروض سعر لك.',
             )
           else
-            for (final quote in quotes.take(5)) ...[
+            for (final quote in quotes) ...[
               _QuoteTile(quote: quote),
               const SizedBox(height: 10),
             ],
@@ -474,6 +465,8 @@ class _StatBox extends StatelessWidget {
           Text(
             value,
             textDirection: TextDirection.ltr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: AppTheme.dInk,
               fontWeight: FontWeight.w900,
@@ -494,61 +487,179 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-class _ServiceMiniCard extends StatelessWidget {
-  const _ServiceMiniCard({required this.service});
+class _ServiceCard extends StatelessWidget {
+  const _ServiceCard({required this.service});
 
   final MarketplaceService service;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 140,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(12),
+      decoration: _tileDecoration(),
+      child: Row(
         children: [
-          Container(
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppTheme.dCreamBg,
-              borderRadius: BorderRadius.circular(14),
+          _TileIcon(
+            icon: Icons.auto_awesome_rounded,
+            color: AppTheme.dGoldDeep,
+            background: AppTheme.dCreamBg,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        service.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    AarastStatusPill(
+                      label: service.isActive ? 'نشطة' : 'متوقفة',
+                      color: service.isActive
+                          ? AppTheme.dGreen
+                          : AppTheme.dMuted,
+                      backgroundColor: service.isActive
+                          ? AppTheme.dGreenBg
+                          : AppTheme.dCard2,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  service.category?.nameAr ?? 'فئة غير محددة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _priceText(service.basePrice, service.currency),
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: AppTheme.dMaroon,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
-            child: const Center(
-              child: Icon(
-                Icons.local_florist_rounded,
-                color: AppTheme.dGoldDeep,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PackageCard extends StatelessWidget {
+  const _PackageCard({required this.item});
+
+  final ProviderPackage item;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = item.items
+        ?.split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .take(3)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: _tileDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _TileIcon(
+                icon: Icons.card_giftcard_rounded,
+                color: AppTheme.dMaroon,
+                background: AppTheme.dPinkBg,
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.dInk,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    if (item.serviceTitle?.trim().isNotEmpty == true)
+                      Text(
+                        item.serviceTitle!.trim(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Text(
+                _priceText(item.price, item.currency),
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(
+                  color: AppTheme.dMaroon,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            service.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.dInk,
-              fontWeight: FontWeight.w900,
+          if (item.description?.trim().isNotEmpty == true) ...[
+            const SizedBox(height: 10),
+            Text(
+              item.description!.trim(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppTheme.dInkSoft, height: 1.45),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            service.basePrice?.trim().isNotEmpty == true
-                ? '${service.basePrice} ${service.currency ?? ''}'
-                : 'حسب الطلب',
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.right,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.dMaroon,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          ],
+          if (items != null && items.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final feature in items)
+              Row(
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 16,
+                    color: AppTheme.dGreen,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      feature,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
         ],
       ),
     );
@@ -562,52 +673,234 @@ class _QuoteTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+    return InkWell(
+      onTap: () => _showQuoteDetails(context, quote),
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: _tileDecoration(),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: _quoteStatusColor(quote.status).withAlpha(24),
+              child: Text(
+                _statusInitial(quote.status),
+                style: TextStyle(
+                  color: _quoteStatusColor(quote.status),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    quote.service?.title ??
+                        quote.weddingPlanTitle ??
+                        'طلب عرض سعر',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    quote.userName?.trim().isNotEmpty == true
+                        ? quote.userName!.trim()
+                        : quote.message?.trim() ?? 'عميل اعّرست',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AarastStatusPill(
+              label: _quoteStatusLabel(quote.status),
+              color: _quoteStatusColor(quote.status),
+              backgroundColor: _quoteStatusColor(quote.status).withAlpha(24),
+            ),
+          ],
+        ),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: AppTheme.dPinkBg,
-            child: Text(
-              _statusInitial(quote.status),
-              style: const TextStyle(
-                color: AppTheme.dMaroon,
-                fontWeight: FontWeight.w900,
+    );
+  }
+
+  void _showQuoteDetails(BuildContext context, QuoteRequest quote) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.dCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppTheme.dLine,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    quote.service?.title ?? 'تفاصيل طلب عرض السعر',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _SheetLine('العميل', quote.userName ?? 'عميل اعّرست'),
+                  if (quote.userPhone?.trim().isNotEmpty == true)
+                    _SheetLine('التواصل', quote.userPhone!.trim()),
+                  if (quote.weddingPlanTitle?.trim().isNotEmpty == true)
+                    _SheetLine('الخطة', quote.weddingPlanTitle!.trim()),
+                  if (quote.eventDate != null)
+                    _SheetLine('التاريخ', _dateText(quote.eventDate!)),
+                  if (quote.guestCount != null)
+                    _SheetLine('الضيوف', '${quote.guestCount}'),
+                  if (quote.budgetMin?.trim().isNotEmpty == true ||
+                      quote.budgetMax?.trim().isNotEmpty == true)
+                    _SheetLine(
+                      'الميزانية',
+                      '${quote.budgetMin ?? '—'} - ${quote.budgetMax ?? '—'}',
+                    ),
+                  if (quote.message?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      quote.message!.trim(),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () =>
+                            _updateStatus(sheetContext, quote.id, 'VIEWED'),
+                        icon: const Icon(Icons.visibility_outlined),
+                        label: const Text('قيد الرد'),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () =>
+                            _updateStatus(sheetContext, quote.id, 'RESPONDED'),
+                        icon: const Icon(Icons.reply_rounded),
+                        label: const Text('تم الرد'),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            _updateStatus(sheetContext, quote.id, 'REJECTED'),
+                        child: const Text('إغلاق الطلب'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  quote.service?.title ?? 'طلب عرض سعر',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.dInk,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (quote.message?.trim().isNotEmpty == true)
-                  Text(
-                    quote.message!.trim(),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppTheme.dInkSoft),
-                  ),
-              ],
+        );
+      },
+    );
+  }
+
+  Future<void> _updateStatus(
+    BuildContext context,
+    String quoteRequestId,
+    String status,
+  ) async {
+    final ok = await context
+        .read<ProviderDashboardProvider>()
+        .updateQuoteStatus(quoteRequestId: quoteRequestId, status: status);
+    if (context.mounted && ok) Navigator.of(context).pop();
+  }
+}
+
+class _SheetLine extends StatelessWidget {
+  const _SheetLine(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppTheme.dMuted,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          AarastStatusPill(label: _quoteStatus(quote.status)),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _TileIcon extends StatelessWidget {
+  const _TileIcon({
+    required this.icon,
+    required this.color,
+    required this.background,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color background;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(icon, color: color),
     );
   }
 }
@@ -645,38 +938,117 @@ class _Logo extends StatelessWidget {
   }
 }
 
-String _statusLabel(String status) {
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var i = 0; i < 5; i++) ...[
+          Container(
+            height: i == 0 ? 130 : 94,
+            decoration: BoxDecoration(
+              color: AppTheme.dCard2.withAlpha(180),
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.dLine),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.dPinkBg,
+      border: Border.all(color: AppTheme.danger.withAlpha(55)),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppTheme.danger,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+BoxDecoration _tileDecoration() {
+  return BoxDecoration(
+    color: AppTheme.dCard,
+    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+    border: Border.all(color: AppTheme.dLine),
+  );
+}
+
+String _providerStatusLabel(String status) {
   return switch (status) {
-    'APPROVED' => 'معتمد',
-    'REJECTED' => 'مرفوض',
+    'ACTIVE' => 'نشط',
+    'APPROVED' => 'نشط',
+    'REJECTED' => 'مرفوض / يحتاج تعديل',
     'SUSPENDED' => 'موقوف',
     _ => 'قيد المراجعة',
   };
 }
 
-Color _statusColor(String status) {
+Color _providerStatusColor(String status) {
   return switch (status) {
-    'APPROVED' => AppTheme.dGreen,
+    'ACTIVE' || 'APPROVED' => AppTheme.dGreen,
     'REJECTED' => AppTheme.danger,
     'SUSPENDED' => AppTheme.dOrange,
     _ => AppTheme.dGoldDeep,
   };
 }
 
-String _quoteStatus(String status) {
+String _quoteStatusLabel(String status) {
   return switch (status) {
-    'ACCEPTED' => 'مقبول',
-    'REJECTED' => 'مرفوض',
+    'VIEWED' => 'قيد الرد',
     'RESPONDED' => 'تم الرد',
+    'ACCEPTED' => 'مغلق',
+    'REJECTED' => 'مغلق',
+    'CANCELLED' => 'ملغي',
     _ => 'جديد',
+  };
+}
+
+Color _quoteStatusColor(String status) {
+  return switch (status) {
+    'VIEWED' => AppTheme.dBlue,
+    'RESPONDED' => AppTheme.dGoldDeep,
+    'ACCEPTED' => AppTheme.dGreen,
+    'REJECTED' => AppTheme.danger,
+    'CANCELLED' => AppTheme.dMuted,
+    _ => AppTheme.dMaroon,
   };
 }
 
 String _statusInitial(String status) {
   return switch (status) {
-    'ACCEPTED' => 'ق',
-    'REJECTED' => 'ر',
+    'VIEWED' => 'ق',
     'RESPONDED' => 'ت',
+    'ACCEPTED' => 'غ',
+    'REJECTED' => 'غ',
+    'CANCELLED' => 'ل',
     _ => 'ج',
   };
+}
+
+String _priceText(String? value, String? currency) {
+  final clean = value?.trim();
+  if (clean == null || clean.isEmpty) return 'حسب الطلب';
+  return '$clean ${currency ?? 'YER'}';
+}
+
+String _dateText(DateTime value) {
+  return '${value.day}/${value.month}/${value.year}';
 }

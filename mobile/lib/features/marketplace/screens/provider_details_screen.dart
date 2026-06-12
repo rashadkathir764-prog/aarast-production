@@ -55,9 +55,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               border: Border(top: BorderSide(color: AppTheme.dLine)),
             ),
             child: FilledButton.icon(
-              onPressed: () => context.push(
-                AppRouter.providerQuoteRequest(widget.providerId),
-              ),
+              onPressed: () =>
+                  context.push(AppRouter.providerQuote(widget.providerId)),
               icon: const Icon(Icons.chat_bubble_outline_rounded),
               label: const Text('طلب عرض سعر'),
             ),
@@ -454,7 +453,7 @@ class _ServiceTile extends StatelessWidget {
           ),
           IconButton(
             onPressed: () => context.push(
-              AppRouter.providerQuoteRequest(providerId),
+              AppRouter.providerQuote(providerId),
               extra: service.id,
             ),
             icon: const Icon(Icons.chevron_left_rounded),

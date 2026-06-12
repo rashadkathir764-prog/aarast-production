@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/providers/auth_controller.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
@@ -33,6 +35,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   String? _serviceId;
   String? _cityId;
   DateTime? _eventDate;
+  bool _sent = false;
 
   @override
   void initState() {
@@ -60,6 +63,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final plans = context.watch<WeddingPlansProvider>();
+    final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
 
@@ -77,157 +81,164 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         ),
       ],
       resizeToAvoidBottomInset: true,
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          children: [
-            _QuoteIntro(provider: provider),
-            const SizedBox(height: 18),
-            AarastCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: _sent
+          ? _QuoteSentState(
+              onMarketplace: () => context.go(AppRouter.providerMarketplace),
+            )
+          : auth.status == AuthStatus.unauthenticated
+          ? _QuoteAuthRequired(onLogin: () => context.go(AppRouter.login))
+          : Form(
+              key: _formKey,
+              child: ListView(
                 children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: _weddingPlanId,
-                    decoration: const InputDecoration(
-                      labelText: 'خطة الزفاف',
-                      prefixIcon: Icon(Icons.event_note_outlined),
-                    ),
-                    items: plans.plans
-                        .map(
-                          (plan) => DropdownMenuItem(
-                            value: plan.id,
-                            child: Text(plan.title),
+                  _QuoteIntro(provider: provider),
+                  const SizedBox(height: 18),
+                  AarastCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DropdownButtonFormField<String>(
+                          initialValue: _weddingPlanId,
+                          decoration: const InputDecoration(
+                            labelText: 'خطة الزفاف',
+                            prefixIcon: Icon(Icons.event_note_outlined),
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) => setState(() {
-                      _weddingPlanId = value;
-                    }),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _safeSelectedService(services),
-                    decoration: const InputDecoration(
-                      labelText: 'الخدمة',
-                      prefixIcon: Icon(Icons.design_services_outlined),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String>(
-                        value: null,
-                        child: Text('حسب اقتراح المورد'),
-                      ),
-                      for (final service in services)
-                        DropdownMenuItem(
-                          value: service.id,
-                          child: Text(service.title),
+                          items: plans.plans
+                              .map(
+                                (plan) => DropdownMenuItem(
+                                  value: plan.id,
+                                  child: Text(plan.title),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) => setState(() {
+                            _weddingPlanId = value;
+                          }),
                         ),
-                    ],
-                    onChanged: (value) => setState(() {
-                      _serviceId = value;
-                    }),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: _cityId,
-                    decoration: const InputDecoration(
-                      labelText: 'المدينة',
-                      prefixIcon: Icon(Icons.place_outlined),
-                    ),
-                    items: marketplace.cities
-                        .map(
-                          (city) => DropdownMenuItem(
-                            value: city.id,
-                            child: Text(city.nameAr),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: _safeSelectedService(services),
+                          decoration: const InputDecoration(
+                            labelText: 'الخدمة',
+                            prefixIcon: Icon(Icons.design_services_outlined),
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) => setState(() {
-                      _cityId = value;
-                    }),
-                  ),
-                  const SizedBox(height: 14),
-                  _DateField(value: _eventDate, onTap: _pickDate),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _guestCountController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'عدد الضيوف المتوقع',
-                      prefixIcon: Icon(Icons.people_outline_rounded),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _budgetMinController,
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('حسب اقتراح المورد'),
+                            ),
+                            for (final service in services)
+                              DropdownMenuItem(
+                                value: service.id,
+                                child: Text(service.title),
+                              ),
+                          ],
+                          onChanged: (value) => setState(() {
+                            _serviceId = value;
+                          }),
+                        ),
+                        const SizedBox(height: 14),
+                        DropdownButtonFormField<String>(
+                          initialValue: _cityId,
+                          decoration: const InputDecoration(
+                            labelText: 'المدينة',
+                            prefixIcon: Icon(Icons.place_outlined),
+                          ),
+                          items: marketplace.cities
+                              .map(
+                                (city) => DropdownMenuItem(
+                                  value: city.id,
+                                  child: Text(city.nameAr),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) => setState(() {
+                            _cityId = value;
+                          }),
+                        ),
+                        const SizedBox(height: 14),
+                        _DateField(value: _eventDate, onTap: _pickDate),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _guestCountController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'أقل ميزانية',
+                            labelText: 'عدد الضيوف المتوقع',
+                            prefixIcon: Icon(Icons.people_outline_rounded),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _budgetMaxController,
-                          keyboardType: TextInputType.number,
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: _budgetMinController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'أقل ميزانية',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextFormField(
+                                controller: _budgetMaxController,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'أعلى ميزانية',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _messageController,
+                          maxLines: 4,
+                          maxLength: 250,
                           decoration: const InputDecoration(
-                            labelText: 'أعلى ميزانية',
+                            labelText: 'رسالة للمورد',
+                            hintText:
+                                'اكتبي تفاصيل التاريخ، المكان، والاحتياج...',
+                            prefixIcon: Icon(Icons.notes_outlined),
                           ),
+                          validator: (value) {
+                            if (value == null || value.trim().length < 8) {
+                              return 'اكتبي تفاصيل قصيرة ليفهم المورد طلبك';
+                            }
+                            return null;
+                          },
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _messageController,
-                    maxLines: 4,
-                    maxLength: 250,
-                    decoration: const InputDecoration(
-                      labelText: 'رسالة للمورد',
-                      hintText: 'اكتبي تفاصيل التاريخ، المكان، والاحتياج...',
-                      prefixIcon: Icon(Icons.notes_outlined),
+                      ],
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().length < 8) {
-                        return 'اكتبي تفاصيل قصيرة ليفهم المورد طلبك';
-                      }
-                      return null;
-                    },
                   ),
+                  const SizedBox(height: 18),
+                  if (marketplace.errorMessage != null) ...[
+                    Text(
+                      marketplace.errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppTheme.danger,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  FilledButton.icon(
+                    onPressed: marketplace.isSubmitting ? null : _submit,
+                    icon: marketplace.isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.send_rounded),
+                    label: const Text('إرسال الطلب'),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            if (marketplace.errorMessage != null) ...[
-              Text(
-                marketplace.errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppTheme.danger,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            FilledButton.icon(
-              onPressed: marketplace.isSubmitting ? null : _submit,
-              icon: marketplace.isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.send_rounded),
-              label: const Text('إرسال الطلب'),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
     );
   }
 
@@ -272,13 +283,70 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
     if (!mounted) return;
     if (success) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('تم إرسال طلب عرض السعر بنجاح')),
-        );
-      if (context.canPop()) context.pop();
+      setState(() => _sent = true);
     }
+  }
+}
+
+class _QuoteSentState extends StatelessWidget {
+  const _QuoteSentState({required this.onMarketplace});
+
+  final VoidCallback onMarketplace;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        const SizedBox(height: 48),
+        AarastEmptyState(
+          icon: Icons.mark_email_read_outlined,
+          title: 'تم إرسال طلبك للمزود',
+          message: 'سيظهر الطلب لدى المزود ضمن طلبات عروض الأسعار.',
+          action: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton.icon(
+                onPressed: onMarketplace,
+                icon: const Icon(Icons.storefront_outlined),
+                label: const Text('العودة للموردين'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.go(AppRouter.home),
+                icon: const Icon(Icons.home_rounded),
+                label: const Text('الرئيسية'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuoteAuthRequired extends StatelessWidget {
+  const _QuoteAuthRequired({required this.onLogin});
+
+  final VoidCallback onLogin;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      children: [
+        const SizedBox(height: 48),
+        AarastEmptyState(
+          icon: Icons.lock_outline_rounded,
+          title: 'تسجيل الدخول مطلوب',
+          message: 'سجلي الدخول أولاً لإرسال طلب عرض سعر للمزود.',
+          action: FilledButton.icon(
+            onPressed: onLogin,
+            icon: const Icon(Icons.login_rounded),
+            label: const Text('تسجيل الدخول'),
+          ),
+        ),
+      ],
+    );
   }
 }
 

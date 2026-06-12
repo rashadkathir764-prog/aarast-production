@@ -54,12 +54,6 @@ class _WeddingPlanDashboardScreenState
     }
   }
 
-  void _comingSoon(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardSummaryProvider>();
@@ -98,10 +92,10 @@ class _WeddingPlanDashboardScreenState
     final planId = provider.plan?.id ?? widget.weddingPlanId;
     return DashboardBottomNav(
       activeIndex: 4,
-      onMore: () => _comingSoon('قسم "المزيد" قيد الإعداد'),
+      onMore: () => context.go(AppRouter.home),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
-      onPlans: () => _comingSoon('قسم "الموردين" قيد الإعداد'),
+      onPlans: () => context.push(AppRouter.providerMarketplace),
       onHome: () {},
     );
   }
@@ -173,6 +167,8 @@ class _WeddingPlanDashboardScreenState
     final paymentCount =
         (provider.expenseSummary?.countPaid ?? 0) +
         (provider.expenseSummary?.countPlanned ?? 0);
+    final dueInstallments = provider.dueInstallments ?? [];
+    final alerts = _buildDashboardAlerts(allTasks, dueInstallments);
 
     return ListView(
       key: const ValueKey('content'),
@@ -181,7 +177,8 @@ class _WeddingPlanDashboardScreenState
         DashboardTopBar(
           userName: auth.user?.name ?? 'ضيف',
           onProfile: () => _openAccountSheet(auth),
-          onNotifications: () => _comingSoon('التنبيهات قيد الإعداد'),
+          onNotifications: () =>
+              context.push(AppRouter.planNotifications(planId)),
         ),
         DashboardHeroCard(
           title: plan.title,
@@ -199,9 +196,9 @@ class _WeddingPlanDashboardScreenState
             currency: 'ر.ي',
             tasksDone: tasksDone,
             tasksTotal: tasksTotal,
-            vendorCount: 12,
+            vendorCount: 0,
             paymentCount: paymentCount,
-            guestCount: 246,
+            guestCount: 0,
             onBudgetTap: () => context.push(AppRouter.finance(planId)),
           ),
         ),
@@ -235,7 +232,7 @@ class _WeddingPlanDashboardScreenState
                 label: 'قائمة\nالضيوف',
                 color: AppTheme.dBlue,
                 bg: AppTheme.dBlueBg,
-                onTap: () => _comingSoon('قائمة الضيوف قيد الإعداد'),
+                onTap: () => context.push(AppRouter.guestList(planId)),
               ),
             ],
           ),
@@ -243,8 +240,8 @@ class _WeddingPlanDashboardScreenState
         const SizedBox(height: 24),
         _padded(
           AlertsCard(
-            alerts: const [],
-            onViewAll: () => _comingSoon('التنبيهات قيد الإعداد'),
+            alerts: alerts,
+            onViewAll: () => context.push(AppRouter.planNotifications(planId)),
           ),
         ),
         const SizedBox(height: 24),
@@ -262,6 +259,41 @@ class _WeddingPlanDashboardScreenState
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: child,
   );
+
+  List<DashboardAlert> _buildDashboardAlerts(
+    List<dynamic> tasks,
+    List<dynamic> installments,
+  ) {
+    final alerts = <DashboardAlert>[];
+
+    for (final task in tasks.where((task) => !task.isDone).take(2)) {
+      alerts.add(
+        DashboardAlert(
+          title: task.title,
+          body: task.dueDate == null
+              ? 'مهمة مفتوحة تحتاج تحديد موعد.'
+              : 'مستحقة في ${dashFormatArDate(task.dueDate)}.',
+          icon: Icons.assignment_turned_in_outlined,
+          tone: task.priority == 'HIGH' ? AlertTone.pink : AlertTone.cream,
+        ),
+      );
+    }
+
+    for (final installment in installments.take(1)) {
+      alerts.add(
+        DashboardAlert(
+          title: 'قسط قريب',
+          body: installment.dueDate == null
+              ? 'قسط يحتاج متابعة في قسم الديون.'
+              : 'مستحق في ${dashFormatArDate(installment.dueDate)}.',
+          icon: Icons.payments_outlined,
+          tone: AlertTone.cream,
+        ),
+      );
+    }
+
+    return alerts;
+  }
 
   void _showQuickAdd(DashboardSummaryProvider provider) {
     final plan = provider.plan;
@@ -348,14 +380,14 @@ class _WeddingPlanDashboardScreenState
                     AppTheme.dMaroon,
                     AppTheme.dPinkBg,
                     'إضافة دين',
-                    AppRouter.debts(plan.id),
+                    AppRouter.createDebt(plan.id),
                   ),
                   tile(
                     Icons.check_circle_outline_rounded,
                     AppTheme.dGreen,
                     AppTheme.dGreenBg,
                     'إضافة مهمة',
-                    AppRouter.tasks(plan.id),
+                    AppRouter.createTask(plan.id),
                   ),
                   tile(
                     Icons.post_add_rounded,

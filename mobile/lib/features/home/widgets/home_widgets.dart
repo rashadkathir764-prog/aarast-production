@@ -120,11 +120,13 @@ class HomeErrorCard extends StatelessWidget {
 class HomeTopHeader extends StatelessWidget {
   const HomeTopHeader({
     required this.userName,
+    required this.onNotifications,
     required this.onLogout,
     super.key,
   });
 
   final String? userName;
+  final VoidCallback onNotifications;
   final Future<void> Function() onLogout;
 
   @override
@@ -201,7 +203,7 @@ class HomeTopHeader extends StatelessWidget {
         _HeaderCircleIcon(
           icon: Icons.notifications_none_rounded,
           badgeCount: 3,
-          onTap: () {},
+          onTap: onNotifications,
         ),
       ],
     );
@@ -594,7 +596,7 @@ class _QuickGlanceCard extends StatelessWidget {
               Expanded(
                 child: _MiniStatBox(
                   title: 'الموردين',
-                  value: '12',
+                  value: 'متاح',
                   icon: Icons.groups_rounded,
                   color: AppTheme.dGreen,
                   bg: AppTheme.dGreenBg,
@@ -618,7 +620,7 @@ class _QuickGlanceCard extends StatelessWidget {
               Expanded(
                 child: _MiniStatBox(
                   title: 'الضيوف',
-                  value: '246',
+                  value: 'جاهز',
                   icon: Icons.people_alt_rounded,
                   color: AppTheme.dGoldDeep,
                   bg: AppTheme.dCreamBg,
@@ -916,7 +918,9 @@ class HomeQuickActions extends StatelessWidget {
                   label: 'قائمة الضيوف',
                   icon: Icons.people_outline_rounded,
                   color: AppTheme.dGoldDeep,
-                  onTap: () {},
+                  onTap: plan == null
+                      ? onNeedPlan
+                      : () => context.push(AppRouter.guestList(plan.id)),
                 ),
                 _QuickActionItem(
                   label: 'جدول الزواج',
@@ -930,7 +934,7 @@ class HomeQuickActions extends StatelessWidget {
                   label: 'الموردين',
                   icon: Icons.storefront_rounded,
                   color: AppTheme.dGoldDeep,
-                  onTap: () {},
+                  onTap: () => context.push(AppRouter.providerMarketplace),
                 ),
                 _QuickActionItem(
                   label: 'الميزانية',
@@ -1018,6 +1022,7 @@ class HomeImportantNotesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final plan = provider.primaryPlan;
     final tasks = (provider.tasks ?? [])
         .where((task) => !task.isDone)
         .take(2)
@@ -1034,7 +1039,11 @@ class HomeImportantNotesList extends StatelessWidget {
             title: 'ملاحظات مهمة',
             icon: Icons.bookmark_border_rounded,
             actionLabel: 'عرض الكل',
-            onAction: () {},
+            onAction: () => context.push(
+              plan == null
+                  ? AppRouter.notifications
+                  : AppRouter.planNotifications(plan.id),
+            ),
           ),
           const SizedBox(height: 12),
           if (!hasItems)
@@ -1054,6 +1063,11 @@ class HomeImportantNotesList extends StatelessWidget {
                 tone: task.priority == 'HIGH'
                     ? AppTheme.dPinkBg
                     : AppTheme.dCreamBg,
+                onTap: () => context.push(
+                  plan == null
+                      ? AppRouter.notifications
+                      : AppRouter.planNotifications(plan.id),
+                ),
               ),
               const SizedBox(height: 10),
             ],
@@ -1064,6 +1078,11 @@ class HomeImportantNotesList extends StatelessWidget {
                     '${_formatNumber(_money(installment.amount))} ر.ي - ${_formatDate(installment.dueDate)}',
                 icon: Icons.payments_outlined,
                 tone: AppTheme.dCreamBg,
+                onTap: () => context.push(
+                  plan == null
+                      ? AppRouter.notifications
+                      : AppRouter.planNotifications(plan.id),
+                ),
               ),
           ],
         ],
@@ -1078,16 +1097,18 @@ class _NoteItem extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.tone,
+    this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final Color tone;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: tone.withAlpha(175),
@@ -1139,6 +1160,17 @@ class _NoteItem extends StatelessWidget {
             size: 21,
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: content,
       ),
     );
   }

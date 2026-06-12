@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/screens/login_screen.dart';
@@ -12,6 +13,12 @@ import '../../features/debts/screens/debt_installment_screen.dart';
 import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
+import '../../features/guests/screens/guest_list_screen.dart';
+import '../../features/marketplace/screens/provider_dashboard_screen.dart';
+import '../../features/marketplace/screens/provider_details_screen.dart';
+import '../../features/marketplace/screens/provider_marketplace_screen.dart';
+import '../../features/marketplace/screens/quote_request_screen.dart';
+import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
@@ -23,6 +30,7 @@ import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
+import '../widgets/coming_soon_screen.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -35,6 +43,19 @@ class AppRouter {
   static const home = '/home';
   static const weddingPlans = '/wedding-plans';
   static const createWeddingPlan = '/wedding-plans/create';
+  static const providerMarketplace = '/providers';
+  static const providerDashboard = '/provider-dashboard';
+  static const notifications = '/notifications';
+  static const settings = '/settings';
+  static const support = '/support';
+
+  static String providerDetails(String id) {
+    return '/providers/$id';
+  }
+
+  static String providerQuoteRequest(String id) {
+    return '/providers/$id/quote-request';
+  }
 
   static String weddingPlanDashboard(String id) {
     return '/wedding-plans/$id/dashboard';
@@ -84,6 +105,14 @@ class AppRouter {
     return '/wedding-plans/$id/sharing';
   }
 
+  static String guestList(String id) {
+    return '/wedding-plans/$id/guests';
+  }
+
+  static String planNotifications(String id) {
+    return '/wedding-plans/$id/notifications';
+  }
+
   static String addSharedMember(String id) {
     return '/wedding-plans/$id/sharing/add';
   }
@@ -111,11 +140,58 @@ class AppRouter {
           path: register,
           builder: (context, state) => const RegisterScreen(),
         ),
-        GoRoute(
-          path: otp,
-          builder: (context, state) => const OtpScreen(),
-        ),
+        GoRoute(path: otp, builder: (context, state) => const OtpScreen()),
         GoRoute(path: home, builder: (context, state) => const MainShell()),
+        GoRoute(
+          path: providerMarketplace,
+          builder: (context, state) => const ProviderMarketplaceScreen(),
+        ),
+        GoRoute(
+          path: '/providers/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return ProviderDetailsScreen(providerId: id);
+          },
+        ),
+        GoRoute(
+          path: '/providers/:id/quote-request',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final initialServiceId = state.extra is String
+                ? state.extra! as String
+                : null;
+            return QuoteRequestScreen(
+              providerId: id,
+              initialServiceId: initialServiceId,
+            );
+          },
+        ),
+        GoRoute(
+          path: providerDashboard,
+          builder: (context, state) => const ProviderDashboardScreen(),
+        ),
+        GoRoute(
+          path: notifications,
+          builder: (context, state) => const NotificationsScreen(),
+        ),
+        GoRoute(
+          path: settings,
+          builder: (context, state) => const AarastComingSoonScreen(
+            title: 'الإعدادات',
+            message:
+                'صفحة الإعدادات جاهزة كمسار واضح، وسيتم ربط التفضيلات الفعلية في المرحلة المناسبة.',
+            icon: Icons.settings_outlined,
+          ),
+        ),
+        GoRoute(
+          path: support,
+          builder: (context, state) => const AarastComingSoonScreen(
+            title: 'الدعم والمساعدة',
+            message:
+                'قناة الدعم ستظهر هنا عند اعتماد تجربة التواصل والأسئلة الشائعة.',
+            icon: Icons.support_agent_outlined,
+          ),
+        ),
         GoRoute(
           path: weddingPlans,
           builder: (context, state) => const MyWeddingPlansScreen(),
@@ -212,6 +288,20 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
             return SharingScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/guests',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return GuestListScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/notifications',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return NotificationsScreen(weddingPlanId: id);
           },
         ),
         GoRoute(

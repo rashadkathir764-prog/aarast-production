@@ -29,7 +29,11 @@ class MoreScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
                 children: [
-                  _MoreHeader(name: name),
+                  _MoreHeader(
+                    name: name,
+                    onNotifications: () =>
+                        context.push(AppRouter.notifications),
+                  ),
                   const SizedBox(height: 18),
                   _ProfileCard(name: name, phone: phone),
                   const SizedBox(height: 20),
@@ -59,19 +63,35 @@ class MoreScreen extends StatelessWidget {
                         iconBackground: AppTheme.dPinkBg,
                         onTap: () => context.push(AppRouter.createWeddingPlan),
                       ),
+                      _MoreActionTile(
+                        title: 'الموردين',
+                        subtitle: 'استكشفي الموردين أو تابعي حسابك كمورد',
+                        icon: Icons.storefront_outlined,
+                        iconColor: AppTheme.dMaroon,
+                        iconBackground: AppTheme.dPinkBg,
+                        onTap: () =>
+                            context.push(AppRouter.providerMarketplace),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   _MenuGroup(
                     children: [
                       _MoreActionTile(
+                        title: 'لوحة المورد',
+                        subtitle: 'حساب المورد والخدمات وطلبات عروض الأسعار',
+                        icon: Icons.store_mall_directory_outlined,
+                        iconColor: AppTheme.dGoldDeep,
+                        iconBackground: AppTheme.dCreamBg,
+                        onTap: () => context.push(AppRouter.providerDashboard),
+                      ),
+                      _MoreActionTile(
                         title: 'الإعدادات',
                         subtitle: 'تخصيص التطبيق والتفضيلات',
                         icon: Icons.settings_outlined,
                         iconColor: AppTheme.dGoldDeep,
                         iconBackground: AppTheme.dCreamBg,
-                        onTap: () =>
-                            _showComingSoon(context, 'الإعدادات قيد الإعداد'),
+                        onTap: () => context.push(AppRouter.settings),
                       ),
                       _MoreActionTile(
                         title: 'الدعم والمساعدة',
@@ -79,10 +99,7 @@ class MoreScreen extends StatelessWidget {
                         icon: Icons.support_agent_outlined,
                         iconColor: AppTheme.dGoldDeep,
                         iconBackground: AppTheme.dCreamBg,
-                        onTap: () => _showComingSoon(
-                          context,
-                          'الدعم والمساعدة قيد الإعداد',
-                        ),
+                        onTap: () => context.push(AppRouter.support),
                       ),
                     ],
                   ),
@@ -97,12 +114,6 @@ class MoreScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  static void _showComingSoon(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   static Future<void> _logout(BuildContext context) async {
@@ -188,9 +199,10 @@ class MoreScreen extends StatelessWidget {
 }
 
 class _MoreHeader extends StatelessWidget {
-  const _MoreHeader({required this.name});
+  const _MoreHeader({required this.name, required this.onNotifications});
 
   final String name;
+  final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -230,7 +242,7 @@ class _MoreHeader extends StatelessWidget {
         _RoundIconButton(
           icon: Icons.notifications_none_rounded,
           badge: '3',
-          onTap: () => _showAccountSnack(context, 'التنبيهات قيد الإعداد'),
+          onTap: onNotifications,
         ),
       ],
     );

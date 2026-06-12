@@ -52,6 +52,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 HomeTopHeader(
                                   userName: auth.user?.name,
+                                  onNotifications: () {
+                                    final plan = provider.primaryPlan;
+                                    context.push(
+                                      plan == null
+                                          ? AppRouter.notifications
+                                          : AppRouter.planNotifications(
+                                              plan.id,
+                                            ),
+                                    );
+                                  },
                                   onLogout: () async {
                                     await context
                                         .read<AuthController>()

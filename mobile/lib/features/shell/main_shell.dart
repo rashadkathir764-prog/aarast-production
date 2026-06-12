@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
@@ -141,7 +142,7 @@ class _MainShellState extends State<MainShell> {
                     AppTheme.dMaroon,
                     AppTheme.dPinkBg,
                     'إضافة دين',
-                    AppRouter.debts(_activePlanId!),
+                    AppRouter.createDebt(_activePlanId!),
                   ),
                   tile(
                     Icons.check_circle_outline_rounded,
@@ -201,8 +202,8 @@ class _MainShellState extends State<MainShell> {
                     )
                   : MyWeddingPlansScreen(onSelectPlan: _selectPlan),
 
-              // Index 1 (Nav 3): Vendors marketplace placeholder
-              _buildNoPlanFallback('الموردين', isComingSoon: true),
+              // Index 1 (Nav 3): Vendors marketplace
+              const ProviderMarketplaceScreen(embedded: true),
 
               // Index 2 (Nav 1): Tasks
               _activePlanId != null
@@ -229,23 +230,17 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildNoPlanFallback(String title, {bool isComingSoon = false}) {
+  Widget _buildNoPlanFallback(String title) {
     return Scaffold(
       backgroundColor: AppTheme.dBg,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isComingSoon ? Icons.construction : Icons.info_outline,
-              size: 64,
-              color: AppTheme.dMuted,
-            ),
+            Icon(Icons.info_outline, size: 64, color: AppTheme.dMuted),
             const SizedBox(height: 16),
             Text(
-              isComingSoon
-                  ? 'قسم "$title" قيد الإعداد'
-                  : 'الرجاء اختيار خطة من الرئيسية أولاً',
+              'الرجاء اختيار خطة من الرئيسية أولاً',
               style: const TextStyle(
                 color: AppTheme.dInk,
                 fontSize: 16,

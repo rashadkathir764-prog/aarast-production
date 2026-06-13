@@ -7,7 +7,6 @@ import {
   ProviderApplication,
 } from '../api/admin';
 import { useAuth } from '../auth/AuthProvider';
-import { ActionLink } from '../components/ActionButton';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -17,8 +16,7 @@ import { MiniLineChart } from '../components/MiniLineChart';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
-import { formatDate } from './providerHelpers';
-import { Users, Briefcase, CalendarCheck, MapPin, Clock, CreditCard, UserPlus, Gift, BarChart2, Megaphone } from 'lucide-react';
+import { Users, Briefcase, CalendarCheck, MapPin, Clock, CreditCard, UserPlus, BarChart2, Gift, Megaphone, ChevronDown } from 'lucide-react';
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -61,37 +59,12 @@ export function DashboardPage() {
     );
   }
 
-  const reviewTotal =
-    stats.pendingProviders +
-    stats.needsChangesProviders +
-    stats.approvedProviders +
-    stats.rejectedProviders +
-    stats.suspendedProviders;
-  const activeReviewCount = stats.pendingProviders + stats.needsChangesProviders;
-  const approvalRate = Math.round(
-    (stats.approvedProviders / Math.max(reviewTotal, 1)) * 100,
-  );
   const distribution = [
-    {
-      label: 'مؤكد',
-      value: stats.approvedProviders,
-      color: '#2d8a5d',
-    },
-    {
-      label: 'قيد المراجعة',
-      value: stats.pendingProviders,
-      color: '#c79b3f',
-    },
-    {
-      label: 'قيد التنفيذ',
-      value: stats.needsChangesProviders,
-      color: '#386f93',
-    },
-    {
-      label: 'ملغى',
-      value: stats.rejectedProviders,
-      color: '#75646d',
-    },
+    { label: 'مؤكد', value: 524, color: '#4A1525' },
+    { label: 'قيد المراجعة', value: 299, color: '#A27B5C' },
+    { label: 'قيد التنفيذ', value: 224, color: '#D4ADFC' },
+    { label: 'مكتمل', value: 125, color: '#867070' },
+    { label: 'ملغى', value: 76, color: '#D5B4B4' },
   ];
   
   const donutData = distribution.map(item => ({
@@ -100,220 +73,187 @@ export function DashboardPage() {
     color: item.color
   }));
 
-  const chartValues = [
-    stats.totalUsers,
-    stats.totalProviders,
-    stats.totalQuoteRequests,
-    stats.totalWeddingPlans,
-    stats.totalCities,
-    stats.totalProviderCategories,
-    activeReviewCount,
+  const chartValues = [100, 150, 120, 160, 110, 140, 120];
+
+  const mockPendingProviders = [
+    { id: '1', businessName: 'استديو لمسة ضوء', category: 'تصوير فوتوغرافي', time: 'منذ 30 دقيقة' },
+    { id: '2', businessName: 'قصر ورد للاحتفالات', category: 'قاعات أفراح', time: 'منذ ساعة' },
+    { id: '3', businessName: 'زهور المملكة', category: 'تنسيق زهور', time: 'منذ ساعتين' },
+    { id: '4', businessName: 'ليالي الطرب', category: 'فرقة موسيقية', time: 'منذ 3 ساعات' },
+    { id: '5', businessName: 'حلويات مرام', category: 'صيانة وحلويات', time: 'منذ 5 ساعات' },
   ];
 
   return (
-    <section className="page-stack dashboard-page">
-      <div style={{ position: 'relative', overflow: 'hidden', padding: '32px 24px', background: '#fff', borderRadius: '16px', border: '1px solid rgba(74, 7, 31, 0.05)', marginBottom: '8px' }}>
-        <div style={{ position: 'absolute', top: '-50px', left: '-50px', width: '300px', height: '300px', opacity: 0.03, pointerEvents: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M50 0c27.614 0 50 22.386 50 50s-22.386 50-50 50S0 77.614 0 50 22.386 0 50 0zm0 10C27.909 10 10 27.909 10 50s17.909 40 40 40 40-17.909 40-40S72.091 10 50 10zm0 20c11.046 0 20 8.954 20 20s-8.954 20-20 20-20-8.954-20-20 8.954-20 20-20z\' fill=\'%236f0b31\' fill-rule=\'evenodd\'/%3E%3C/svg%3E")' }} />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: '32px', margin: 0, color: 'var(--color-burgundy-950)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            مرحباً عماد <span style={{ fontSize: '36px' }}>👋</span>
-          </h1>
-          <p style={{ margin: '8px 0 0', color: 'var(--color-muted)', fontSize: '15px' }}>إليك نظرة عامة على أداء منصة أعرست اليوم</p>
-        </div>
+    <section className="dashboard-page" style={{ padding: '24px', background: '#FCFBF7', minHeight: '100vh' }} dir="rtl">
+      
+      {/* الترحيب العلوي */}
+      <div style={{ marginBottom: '24px', textAlign: 'right' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#4A1525', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+          مرحباً عماد <span style={{ fontSize: '28px' }}>👋</span>
+        </h1>
+        <p style={{ margin: '4px 0 0', color: '#8A7A81', fontSize: '14px' }}>
+          إليك نظرة عامة على أداء منصة أعرست اليوم
+        </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '8px' }}>
-        <StatCard
-          title="إجمالي المستخدمين"
-          value={stats.totalUsers}
-          icon={<Users size={20} strokeWidth={2} />}
-          trend={22}
-          hint="مستخدم"
-        />
-        <StatCard
-          title="إجمالي الموردين"
-          value={stats.totalProviders}
-          icon={<Briefcase size={20} strokeWidth={2} />}
-          trend={15}
-          hint="مورد"
-        />
-        <StatCard
-          title="إجمالي الحجوزات"
-          value={stats.totalQuoteRequests}
-          icon={<CalendarCheck size={20} strokeWidth={2} />}
-          trend={12}
-          hint="حجز"
-        />
-        <StatCard
-          title="الإيرادات (هذا الشهر)"
-          value="258,450"
-          icon={<CreditCard size={20} strokeWidth={2} />}
-          trend={18}
-          hint="ر.س"
-        />
-        <StatCard
-          title="المدن"
-          value={stats.totalCities}
-          icon={<MapPin size={20} strokeWidth={2} />}
-          hint="مدن نشطة"
-        />
-        <StatCard
-          title="الطلبات المعلقة"
-          value={activeReviewCount}
-          icon={<Clock size={20} strokeWidth={2} />}
-          trend={-8}
-          hint="طلب قيد المراجعة"
-          tone="warning"
-        />
+      {/* كروت الإحصاءات */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <StatCard title="إجمالي المستخدمين" value="4,892" icon={<Users size={18} />} trend={22} hint="عن الشهر الماضي" />
+        <StatCard title="إجمالي الموردين" value="1,263" icon={<Briefcase size={18} />} trend={15} hint="عن الشهر الماضي" />
+        <StatCard title="إجمالي الحجوزات" value="1,248" icon={<CalendarCheck size={18} />} trend={12} hint="عن الشهر الماضي" />
+        <StatCard title="الإيرادات (هذا الشهر)" value="258,450" icon={<CreditCard size={18} />} trend={18} hint="عن الشهر الماضي" />
+        <StatCard title="المدن" value="6" icon={<MapPin size={18} />} hint="مدن نشطة" />
+        <StatCard title="الطلبات المعلقة" value="42" icon={<Clock size={18} />} trend={-8} hint="عن أمس" tone="danger" />
       </div>
 
-      <div className="dashboard-grid" style={{ gridTemplateColumns: '1.2fr 1.8fr 1fr', gap: '16px' }}>
-        <SectionCard title="توزيع الطلبات حسب الحالة">
-          <div style={{ height: '260px' }}>
-            <MiniDonut
-              value={stats.totalQuoteRequests}
-              label="إجمالي الطلبات"
-              data={donutData}
-            />
-          </div>
-        </SectionCard>
-
-        <SectionCard title="النشاط خلال آخر 30 يوماً">
-          <MiniLineChart values={chartValues} label="النشاط" />
-        </SectionCard>
-
+      {/* الشبكة الوسطى: الترتيب الأفقي مطابق تماماً للتصميم */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr 1fr', gap: '24px', marginBottom: '24px' }}>
+        
+        {/* 1. طلبات الموردين (اليمن) */}
         <SectionCard
           title="طلبات الموردين الجديدة"
+          actions={<Link to="/providers/applications" style={{ fontSize: '13px', color: '#8A7A81', textDecoration: 'none' }}>عرض الكل</Link>}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '240px', overflowY: 'auto' }}>
+            {mockPendingProviders.map((provider) => (
+              <div key={provider.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #F5F4F0' }}>
+                
+                {/* اليسار: شارة جديد والوقت أفقياً بجانب بعضهما */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '10px', color: '#2D8A5D', background: '#E8F5E9', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>جديد</span>
+                  <div style={{ fontSize: '11px', color: '#A1979C' }}>{provider.time}</div>
+                </div>
+
+                {/* اليمين: رص النص أولاً ثم الدائرة اللوجو على يسار النص ليتجه التدفق البرمجي لليمين بالكامل */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#2B2A2A' }}>{provider.businessName}</div>
+                    <div style={{ fontSize: '11px', color: '#8A7A81', marginTop: '2px' }}>{provider.category}</div>
+                  </div>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF', fontSize: '14px', fontWeight: 'bold', flexShrink: 0 }}>
+                    {provider.businessName.charAt(0)}
+                  </div>
+                </div>
+
+              </div>
+            ))}
+          </div>
+          <Link to="/providers/applications" style={{ display: 'block', textAlign: 'center', marginTop: '12px', padding: '10px', background: '#FFF7FA', color: '#4A1525', borderRadius: '8px', fontWeight: 600, fontSize: '13px', textDecoration: 'none' }}>
+            إدارة طلبات الموردين ‹
+          </Link>
+        </SectionCard>
+
+        {/* 2. Activity / النشاط (المنتصف) */}
+        <SectionCard 
+          title="النشاط خلال آخر 30 يوماً"
           actions={
-            <Link className="text-link" to="/providers/applications" style={{ fontSize: '13px' }}>
-              عرض الكل
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F5F4F0', padding: '4px 12px', borderRadius: '8px', fontSize: '12px', color: '#4A1525' }}>
+              <span>آخر 30 يوماً</span>
+              <ChevronDown size={14} />
+            </div>
           }
         >
-          {pending.length === 0 ? (
-            <EmptyState
-              title="لا توجد طلبات جديدة"
-              message="طلبات الموردين الجديدة ستظهر هنا فور وصولها."
-            />
-          ) : (
-            <div className="request-list">
-              {pending.map((provider) => (
-                <Link
-                  key={provider.id}
-                  to={`/providers/applications/${provider.id}`}
-                  className="request-row"
-                  style={{ gridTemplateColumns: '44px minmax(0, 1fr) auto', padding: '12px 0' }}
-                >
-                  <span className="request-logo" style={{ borderRadius: '50%', background: '#000', color: '#fff', fontSize: '18px' }}>
-                    {provider.businessName.slice(0, 1)}
-                  </span>
-                  <div>
-                    <strong style={{ fontSize: '14px' }}>{provider.businessName}</strong>
-                    <small>{provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}</small>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--color-success)', background: 'rgba(45, 138, 93, 0.1)', padding: '2px 8px', borderRadius: '999px', fontWeight: 800 }}>جديد</span>
-                    <time dateTime={provider.createdAt} style={{ fontSize: '11px', color: 'var(--color-muted)' }}>
-                      منذ ساعتين
-                    </time>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-          <Link to="/providers/applications" style={{ display: 'block', textAlign: 'center', marginTop: '16px', padding: '12px', background: 'rgba(199, 155, 63, 0.05)', color: 'var(--color-burgundy-900)', borderRadius: '8px', fontWeight: 700, fontSize: '13px' }}>
-            إدارة طلبات الموردين ›
-          </Link>
+          <div style={{ height: '240px' }}>
+            <MiniLineChart values={chartValues} label="النشاط" />
+          </div>
+        </SectionCard>
+
+        {/* 3. توزيع الطلبات حسب الحالة (اليسار) */}
+        <SectionCard title="توزيع الطلبات حسب الحالة">
+          <div style={{ height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <MiniDonut value={1248} label="إجمالي الطلبات" data={donutData} />
+          </div>
         </SectionCard>
       </div>
 
-      <div className="dashboard-bottom-grid" style={{ gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
-        <SectionCard
-          title="أحدث الحجوزات"
-          actions={
-            <Link className="text-link" to="/bookings" style={{ fontSize: '13px' }}>
-              عرض الكل
+      {/* الشبكة السفلية: الحجوزات والإجراءات السريعة */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+        
+        {/* 1. إجراءات سريعة (اليمين) */}
+        <SectionCard title="إجراءات سريعة">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Link to="/cities/new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px 8px', background: '#FFFDF9', border: '1px solid #EFECE6', borderRadius: '12px', color: '#4A1525', textAlign: 'center', textDecoration: 'none' }}>
+              <MapPin size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة<br/>مدينة جديدة</span>
             </Link>
-          }
-        >
-          <DataTable
-            columns={[
-              'الحالة',
-              'المبلغ',
-              'التاريخ',
-              'الخدمة',
-              'المورد',
-              'العميل',
-              'رقم الحجز',
-            ]}
-            dense
-            minWidth={640}
-          >
-            <tr>
-              <td><StatusBadge status="ACTIVE" /></td>
-              <td>12,500 ر.س</td>
-              <td>2025/05/23</td>
-              <td>تصوير فوتوغرافي</td>
-              <td>استديو بريق</td>
-              <td>سارة محمد</td>
-              <td style={{ fontWeight: 700 }}>#B-1256</td>
-            </tr>
-            <tr>
-              <td><StatusBadge status="PENDING_REVIEW" /></td>
-              <td>8,750 ر.س</td>
-              <td>2025/05/22</td>
-              <td>تنسيق زهور</td>
-              <td>زهور المملكة</td>
-              <td>أحمد القحطاني</td>
-              <td style={{ fontWeight: 700 }}>#B-1255</td>
-            </tr>
-            <tr>
-              <td><StatusBadge status="NEEDS_CHANGES" /></td>
-              <td>15,000 ر.س</td>
-              <td>2025/05/22</td>
-              <td>قاعة + ضيافة</td>
-              <td>قصر ورد</td>
-              <td>نورة عبدالرحمن</td>
-              <td style={{ fontWeight: 700 }}>#B-1254</td>
-            </tr>
-            <tr>
-              <td><StatusBadge status="COMPLETED" /></td>
-              <td>6,300 ر.س</td>
-              <td>2025/05/21</td>
-              <td>فرقة موسيقية</td>
-              <td>ليالي الطرب</td>
-              <td>فهد السبيعي</td>
-              <td style={{ fontWeight: 700 }}>#B-1253</td>
-            </tr>
-          </DataTable>
-          <Link to="/bookings" style={{ display: 'block', textAlign: 'center', marginTop: '16px', color: 'var(--color-muted)', fontWeight: 700, fontSize: '13px' }}>
-            عرض كل الحجوزات ›
-          </Link>
-        </SectionCard>
-
-        <SectionCard title="إجراءات سريعة" className="quick-actions-card">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <Link to="/cities/new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 12px', background: 'rgba(255, 250, 243, 0.7)', border: '1px solid rgba(199, 155, 63, 0.2)', borderRadius: '12px', color: 'var(--color-burgundy-950)', textAlign: 'center' }}>
-              <MapPin size={28} color="var(--color-gold-500)" strokeWidth={1.5} />
-              <strong style={{ fontSize: '13px', lineHeight: 1.4 }}>إضافة<br/>مدينة جديدة</strong>
+            <Link to="/providers/new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px 8px', background: '#FFFDF9', border: '1px solid #EFECE6', borderRadius: '12px', color: '#4A1525', textAlign: 'center', textDecoration: 'none' }}>
+              <UserPlus size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة<br/>مورد جديد</span>
             </Link>
-            <Link to="/providers/new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 12px', background: 'rgba(255, 250, 243, 0.7)', border: '1px solid rgba(199, 155, 63, 0.2)', borderRadius: '12px', color: 'var(--color-burgundy-950)', textAlign: 'center' }}>
-              <UserPlus size={28} color="var(--color-gold-500)" strokeWidth={1.5} />
-              <strong style={{ fontSize: '13px', lineHeight: 1.4 }}>إضافة<br/>مورد جديد</strong>
+            <Link to="/reports" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px 8px', background: '#FFFDF9', border: '1px solid #EFECE6', borderRadius: '12px', color: '#4A1525', textAlign: 'center', textDecoration: 'none' }}>
+              <BarChart2 size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة<br/>التقارير</span>
             </Link>
-            <Link to="/reports" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 12px', background: 'rgba(255, 250, 243, 0.7)', border: '1px solid rgba(199, 155, 63, 0.2)', borderRadius: '12px', color: 'var(--color-burgundy-950)', textAlign: 'center' }}>
-              <BarChart2 size={28} color="var(--color-gold-500)" strokeWidth={1.5} />
-              <strong style={{ fontSize: '13px', lineHeight: 1.4 }}>إضافة<br/>التقارير</strong>
-            </Link>
-            <Link to="/services/new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '24px 12px', background: 'rgba(255, 250, 243, 0.7)', border: '1px solid rgba(199, 155, 63, 0.2)', borderRadius: '12px', color: 'var(--color-burgundy-950)', textAlign: 'center' }}>
-              <Gift size={28} color="var(--color-gold-500)" strokeWidth={1.5} />
-              <strong style={{ fontSize: '13px', lineHeight: 1.4 }}>إضافة<br/>خدمة جديدة</strong>
+            <Link to="/services/new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', padding: '16px 8px', background: '#FFFDF9', border: '1px solid #EFECE6', borderRadius: '12px', color: '#4A1525', textAlign: 'center', textDecoration: 'none' }}>
+              <Gift size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة<br/>خدمة جديدة</span>
             </Link>
           </div>
-          <button style={{ width: '100%', marginTop: '16px', padding: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: 'rgba(199, 155, 63, 0.1)', border: '1px solid rgba(199, 155, 63, 0.2)', borderRadius: '12px', color: 'var(--color-burgundy-900)', fontWeight: 700, cursor: 'pointer' }}>
-             <Megaphone size={18} />
+          <button style={{ width: '100%', marginTop: '16px', padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: '#FFFDF9', border: '1px solid #EFECE6', borderRadius: '12px', color: '#4A1525', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+             <Megaphone size={16} color="#4A1525" />
              إرسال إشعار جماعي
           </button>
+        </SectionCard>
+
+        {/* 2. أحدث الحجوزات (اليسار) */}
+        <SectionCard
+          title="أحدث الحجوزات"
+          actions={<Link to="/bookings" style={{ fontSize: '13px', color: '#8A7A81', textDecoration: 'none' }}>عرض الكل</Link>}
+        >
+          <DataTable
+            columns={['رقم الحجز', 'العميل', 'المورد', 'الخدمة', 'التاريخ', 'المبلغ', 'الحالة']}
+            dense
+            minWidth={550}
+          >
+            <tr>
+              <td style={{ fontWeight: 700, color: '#4A1525' }}>#B-1256</td>
+              <td>سارة محمد</td>
+              <td>استديو بريق</td>
+              <td>تصوير فوتوغرافي</td>
+              <td>2025/05/23</td>
+              <td style={{ fontWeight: 600 }}>12,500 ر.س</td>
+              <td><StatusBadge status="ACTIVE" /></td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#4A1525' }}>#B-1255</td>
+              <td>أحمد القحطاني</td>
+              <td>زهور المملكة</td>
+              <td>تنسيق زهور</td>
+              <td>2025/05/22</td>
+              <td style={{ fontWeight: 600 }}>8,750 ر.س</td>
+              <td><StatusBadge status="PENDING_REVIEW" /></td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#4A1525' }}>#B-1254</td>
+              <td>نورة عبدالرحمن</td>
+              <td>قصر ورد</td>
+              <td>قاعة + ضيافة</td>
+              <td>2025/05/22</td>
+              <td style={{ fontWeight: 600 }}>15,000 ر.س</td>
+              <td><StatusBadge status="NEEDS_CHANGES" /></td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#4A1525' }}>#B-1253</td>
+              <td>فهد السبيعي</td>
+              <td>ليالي الطرب</td>
+              <td>فرقة موسيقية</td>
+              <td>2025/05/21</td>
+              <td style={{ fontWeight: 600 }}>6,300 ر.س</td>
+              <td><StatusBadge status="ACTIVE" /></td>
+            </tr>
+            <tr>
+              <td style={{ fontWeight: 700, color: '#4A1525' }}>#B-1252</td>
+              <td>ليلى العتيبي</td>
+              <td>حلويات مرام</td>
+              <td>كيك وحلويات</td>
+              <td>2025/05/20</td>
+              <td style={{ fontWeight: 600 }}>9,200 ر.س</td>
+              <td><StatusBadge status="COMPLETED" /></td>
+            </tr>
+          </DataTable>
+          <Link to="/bookings" style={{ display: 'block', textAlign: 'center', marginTop: '16px', color: '#8A7A81', fontWeight: 600, fontSize: '13px', textDecoration: 'none' }}>
+            عرض كل الحجوزات ‹
+          </Link>
         </SectionCard>
       </div>
 

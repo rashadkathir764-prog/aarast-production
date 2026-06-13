@@ -15,24 +15,60 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="admin-shell">
+    <div 
+      className="admin-shell"
+      style={{
+        display: 'flex',
+        minHeight: '100vh', // يضمن أن الصفحة تأخذ كامل ارتفاع الشاشة كأقل تقدير
+        width: '100%',
+        backgroundColor: '#FCFBF7',
+        alignItems: 'stretch', // يضمن تمدد الشريط الجانبي والمحتوى معاً بنفس الطول تماماً
+        direction: 'rtl'
+      }}
+      dir="rtl"
+    >
+      {/* حقن تنسيق داخلي سريع لحماية الهيكل من أي تضارب ملفات CSS خارجية */}
+      <style>{`
+        .admin-shell > aside, .admin-shell > div {
+          height: auto !important;
+          min-height: 100% !important;
+        }
+      `}</style>
+
+      {/* الشريط الجانبي الأيمن */}
       <Sidebar
         isOpen={isSidebarOpen}
         onNavigate={() => setIsSidebarOpen(false)}
         onLogout={handleLogout}
       />
+      
       <button
         className={`sidebar-scrim ${isSidebarOpen ? 'visible' : ''}`}
         type="button"
         aria-label="إغلاق القائمة"
         onClick={() => setIsSidebarOpen(false)}
+        style={{ border: 'none', display: isSidebarOpen ? 'block' : 'none' }}
       />
-      <main className="admin-main">
+      
+      {/* المنطقة الرئيسية اليسرى */}
+      <main 
+        className="admin-main"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0, // تمنع تمدد العناصر أو خروج الجداول عن الشاشة
+          backgroundColor: '#FCFBF7'
+        }}
+      >
+        {/* الشريط العلوي */}
         <Topbar
           onMenuClick={() => setIsSidebarOpen(true)}
           onLogout={handleLogout}
         />
-        <div className="content-frame">
+        
+        {/* إطار محتوى الصفحات الداخلي */}
+        <div className="content-frame" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </div>
       </main>

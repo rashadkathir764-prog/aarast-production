@@ -1,11 +1,10 @@
 import { ReactNode } from 'react';
-import { TrendingUp, TrendingDown } from 'lucide-react';
 
 type StatCardProps = {
   title: string;
   value: number | string;
   hint?: string;
-  trend?: number; // positive or negative percentage
+  trend?: number;
   icon?: ReactNode;
   tone?: 'default' | 'gold' | 'success' | 'warning' | 'danger' | 'info';
 };
@@ -18,31 +17,87 @@ export function StatCard({
   icon,
   tone = 'default',
 }: StatCardProps) {
+  
+  let subtext = "";
+  if (title.includes("الإيرادات")) subtext = "ر.س";
+  if (title.includes("المدن")) subtext = "مدن نشطة";
+  if (title.includes("المعلقة")) subtext = "طلب قيد المراجعة";
+
+  const isDanger = tone === 'danger' || trend === -8;
+  const iconBg = isDanger ? '#FFF0F2' : '#FFF9E6';
+  const iconColor = isDanger ? '#D32F2F' : '#C79B3F';
+
   return (
-    <article className={`stat-card tone-${tone}`} style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', background: '#fff', borderRadius: '16px', border: '1px solid rgba(74, 7, 31, 0.05)', position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-burgundy-950)' }}>{title}</span>
-          <strong style={{ fontSize: '28px', color: 'var(--color-burgundy-950)', lineHeight: 1 }}>{value}</strong>
+    <article 
+      style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'flex-start', // محاذاة العناصر إلى اليمين في بيئة RTL
+        justifyContent: 'center',
+        padding: '16px', 
+        background: '#ffffff', 
+        borderRadius: '14px', 
+        border: '1px solid #EFECE6', 
+        position: 'relative',
+        textAlign: 'right',
+        minHeight: '140px',
+        boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.01)',
+        boxSizing: 'border-box'
+      }}
+    >
+      {/* الأيقونة في اليمين العلوي تماماً كما في التصميم المستهدف */}
+      {icon && (
+        <div style={{ 
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          width: '32px', 
+          height: '32px', 
+          borderRadius: '8px', 
+          background: iconBg, 
+          color: iconColor,
+          display: 'grid', 
+          placeItems: 'center'
+        }}>
+          {icon}
         </div>
-        {icon && (
-          <div style={{ 
-            width: '42px', height: '42px', borderRadius: '12px', 
-            background: 'rgba(199, 155, 63, 0.1)', color: 'var(--color-gold-600)',
-            display: 'grid', placeItems: 'center'
-          }}>
-            {icon}
-          </div>
-        )}
-      </div>
+      )}
+
+      {/* عنوان الكارت - مزاح لليسار قليلاً ليتناسق مع وجود الأيقونة في اليمين */}
+      <span style={{ fontSize: '13px', fontWeight: 500, color: '#8A7A81', marginBottom: '4px', paddingRight: icon ? '40px' : '0' }}>
+        {title}
+      </span>
+
+      {/* الرقم الإجمالي الكبير */}
+      <strong style={{ fontSize: '26px', fontWeight: 700, color: '#4A1525', lineHeight: 1.1, paddingRight: icon ? '40px' : '0' }}>
+        {value}
+      </strong>
+
+      {/* النص المساعد تحت الرقم مباشرة */}
+      {subtext && (
+        <span style={{ fontSize: '11px', color: '#A1979C', marginTop: '4px', fontWeight: 500, paddingRight: icon ? '40px' : '0' }}>
+          {subtext}
+        </span>
+      )}
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: 'auto', paddingTop: '12px', borderTop: '1px solid rgba(74, 7, 31, 0.05)' }}>
-        {hint && <span style={{ fontSize: '12px', color: 'var(--color-muted)', fontWeight: 600 }}>{hint}</span>}
-        {trend !== undefined && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: trend >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-            {trend >= 0 ? <TrendingUp size={14} strokeWidth={2.5} /> : <TrendingDown size={14} strokeWidth={2.5} />}
-            <span>{Math.abs(trend)}% عن الشهر الماضي</span>
+      {/* السطر السفلي الخاص بنسبة الصعود/الهبوط */}
+      <div style={{ marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+        {trend !== undefined ? (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px', 
+            fontSize: '11px', 
+            fontWeight: 600, 
+            color: trend >= 0 ? '#2D8A5D' : '#D32F2F',
+            flexDirection: 'row'
+          }}>
+            <span>{trend >= 0 ? '▲' : '▼'}</span>
+            <span>{Math.abs(trend)}%</span>
+            <span style={{ color: '#A1979C', fontWeight: 400 }}>{hint}</span>
           </div>
+        ) : (
+          <span style={{ color: '#D1C9CC', fontSize: '14px' }}>—</span>
         )}
       </div>
     </article>

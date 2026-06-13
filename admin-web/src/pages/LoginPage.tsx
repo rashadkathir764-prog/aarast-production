@@ -20,24 +20,42 @@ export function LoginPage() {
       await login(phone.trim(), password);
       navigate(from ?? '/', { replace: true });
     } catch {
-      // AuthProvider exposes the user-facing error.
+      // AuthProvider exposes the Arabic user-facing error.
     }
   }
 
   return (
     <main className="login-page">
-      <section className="login-card">
-        <div className="brand centered">
-          <strong>أعّرست</strong>
-          <span>لوحة موافقات الموردين</span>
+      <section className="login-shell" aria-label="تسجيل دخول إدارة أعرست">
+        <div className="login-brand-panel">
+          <div className="login-brand-panel__content">
+            <span className="brand-crown" aria-hidden="true">
+              ♕
+            </span>
+            <h1>أعرست</h1>
+            <p>لوحة إدارة منصة الأعراس</p>
+            <ul>
+              <li>اعتماد الموردين والتحقق من جودة كل ملف.</li>
+              <li>إدارة المدن والفئات دون كشف بيانات حساسة.</li>
+              <li>متابعة حالة السوق من واجهة إدارية آمنة.</li>
+            </ul>
+          </div>
         </div>
-        <form onSubmit={handleSubmit}>
+
+        <form className="login-card" onSubmit={handleSubmit}>
+          <div className="login-card__mark" aria-hidden="true">
+            ♕
+          </div>
+          <span className="eyebrow">بوابة الإدارة</span>
+          <h2>مرحبا بك</h2>
+          <p>سجل الدخول للوصول إلى لوحة إدارة أعرست.</p>
           <FormField
             label="رقم الهاتف"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
-            placeholder="77xxxxxxx"
+            placeholder="770579680"
             autoComplete="username"
+            inputMode="tel"
             required
           />
           <FormField
@@ -49,9 +67,12 @@ export function LoginPage() {
             required
           />
           {error ? <p className="inline-error">{error}</p> : null}
-          <button className="button full" disabled={isLoading}>
-            {isLoading ? 'جاري الدخول...' : 'تسجيل الدخول'}
+          <button className="button button--full button--premium" disabled={isLoading}>
+            {isLoading ? 'جاري الدخول...' : 'دخول كمسؤول'}
           </button>
+          <p className="security-note">
+            لا يتم عرض أي بيانات داخلية قبل تسجيل الدخول
+          </p>
         </form>
       </section>
     </main>

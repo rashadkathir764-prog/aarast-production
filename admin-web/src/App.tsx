@@ -10,6 +10,11 @@ import { ProviderDetailsPage } from './pages/ProviderDetailsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { CitiesPage } from './pages/CitiesPage';
 import { UsersPage } from './pages/UsersPage';
+import { BookingsPage } from './pages/BookingsPage';
+import { ServicesPage } from './pages/ServicesPage';
+import { ReviewsPage } from './pages/ReviewsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { AuditLogPage } from './pages/AuditLogPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -35,9 +40,14 @@ export default function App() {
         />
         <Route path="providers" element={<ProvidersPage />} />
         <Route path="providers/:id" element={<ProviderDetailsPage />} />
-        <Route path="categories" element={<CategoriesPage />} />
         <Route path="cities" element={<CitiesPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="bookings" element={<BookingsPage />} />
+        <Route path="services" element={<ServicesPage />} />
+        <Route path="reviews" element={<ReviewsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="audit-log" element={<AuditLogPage />} />
       </Route>
       <Route path="/admin" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFoundPage />} />

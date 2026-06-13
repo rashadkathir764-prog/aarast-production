@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ConfirmDialogProps = {
   title: string;
@@ -25,6 +26,12 @@ export function ConfirmDialog({
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function closeDialog() {
+    if (isSubmitting) return;
+    setOpen(false);
+    setNote('');
+  }
+
   async function submit() {
     if (needsNote && !note.trim()) return;
     setIsSubmitting(true);
@@ -39,37 +46,57 @@ export function ConfirmDialog({
 
   return (
     <>
-      <span onClick={() => setOpen(true)}>{trigger}</span>
-      {open ? (
-        <div className="dialog-backdrop" role="presentation">
-          <div className="dialog" role="dialog" aria-modal="true">
-            <h3>{title}</h3>
-            <p>{message}</p>
-            {needsNote ? (
-              <label className="form-field">
-                <span>{noteLabel}</span>
-                <textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  rows={4}
-                />
-              </label>
-            ) : null}
-            <div className="dialog-actions">
-              <button className="button ghost" onClick={() => setOpen(false)}>
-                إلغاء
-              </button>
-              <button
-                className={`button ${tone === 'danger' ? 'danger' : ''}`}
-                onClick={submit}
-                disabled={isSubmitting || (needsNote && !note.trim())}
+      <span className="dialog-trigger" onClick={() => setOpen(true)}>
+        {trigger}
+      </span>
+      {open
+        ? createPortal(
+            <div
+              className="dialog-backdrop"
+              role="presentation"
+              onClick={closeDialog}
+            >
+              <div
+                className="dialog"
+                role="dialog"
+                aria-modal="true"
+                onClick={(event) => event.stopPropagation()}
               >
-                {isSubmitting ? 'جاري التنفيذ...' : confirmLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+                <div className={`dialog__mark ${tone}`} aria-hidden="true" />
+                <h2>{title}</h2>
+                <p>{message}</p>
+                {needsNote ? (
+                  <label className="form-field">
+                    <span>{noteLabel}</span>
+                    <textarea
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                      rows={4}
+                    />
+                  </label>
+                ) : null}
+                <div className="dialog-actions">
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={closeDialog}
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    className={`button ${tone === 'danger' ? 'button--danger' : ''}`}
+                    type="button"
+                    onClick={submit}
+                    disabled={isSubmitting || (needsNote && !note.trim())}
+                  >
+                    {isSubmitting ? 'جاري التنفيذ...' : confirmLabel}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   );
 }

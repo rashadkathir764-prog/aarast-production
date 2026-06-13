@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import {
   activateProvider,
   approveProvider,
@@ -7,7 +6,9 @@ import {
   requestProviderChanges,
   suspendProvider,
 } from '../api/admin';
+import { ActionButton, ActionLink } from '../components/ActionButton';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { DetailField } from '../components/DetailField';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function formatDate(value?: string | null) {
@@ -17,6 +18,10 @@ export function formatDate(value?: string | null) {
     month: 'short',
     day: 'numeric',
   }).format(new Date(value));
+}
+
+export function shortId(value: string) {
+  return `#${value.slice(0, 8).toUpperCase()}`;
 }
 
 type ProviderActionsProps = {
@@ -38,60 +43,82 @@ export function ProviderActions({
   return (
     <div className="actions">
       {detailsPath ? (
-        <Link className="button small ghost" to={detailsPath}>
-          عرض التفاصيل
-        </Link>
+        <ActionLink tone="ghost" size="small" to={detailsPath}>
+          عرض
+        </ActionLink>
       ) : null}
       {provider.status !== 'ACTIVE' ? (
         <ConfirmDialog
-          title="قبول المورد"
-          message="سيصبح المورد ظاهراً للعملاء في سوق الموردين."
-          confirmLabel="قبول"
-          trigger={<button className="button small">قبول</button>}
+          title="اعتماد المورد"
+          message="سيصبح المورد ظاهرا للعملاء في سوق الموردين بعد الاعتماد."
+          confirmLabel="اعتماد"
+          trigger={
+            <ActionButton size="small" type="button">
+              اعتماد
+            </ActionButton>
+          }
           onConfirm={() => run(() => approveProvider(provider.id))}
         />
       ) : null}
       {provider.status === 'SUSPENDED' ? (
         <ConfirmDialog
-          title="تنشيط المورد"
-          message="سيصبح المورد نشطاً ومتاحاً في السوق العام."
-          confirmLabel="تنشيط"
-          trigger={<button className="button small ghost">تنشيط</button>}
+          title="تفعيل المورد"
+          message="سيعود المورد إلى الحالة النشطة والمتاحة في السوق العام."
+          confirmLabel="تفعيل"
+          trigger={
+            <ActionButton tone="ghost" size="small" type="button">
+              تفعيل
+            </ActionButton>
+          }
           onConfirm={() => run(() => activateProvider(provider.id))}
         />
       ) : null}
       {provider.status !== 'NEEDS_CHANGES' ? (
         <ConfirmDialog
           title="طلب تعديل"
-          message="سيبقى المورد مخفياً حتى يراجع بياناته."
+          message="سيبقى المورد مخفيا حتى يراجع بياناته ويعالج ملاحظات الإدارة."
           confirmLabel="طلب تعديل"
           needsNote
           noteLabel="ملاحظة الإدارة"
-          trigger={<button className="button small ghost">طلب تعديل</button>}
-          onConfirm={(note) => run(() => requestProviderChanges(provider.id, note))}
+          trigger={
+            <ActionButton tone="ghost" size="small" type="button">
+              طلب تعديل
+            </ActionButton>
+          }
+          onConfirm={(note) =>
+            run(() => requestProviderChanges(provider.id, note))
+          }
         />
       ) : null}
       {provider.status !== 'REJECTED' ? (
         <ConfirmDialog
           title="رفض الطلب"
-          message="سيبقى المورد مخفياً عن العملاء."
+          message="سيبقى المورد مخفيا عن العملاء ولن يظهر في السوق العام."
           confirmLabel="رفض"
           tone="danger"
           needsNote
           noteLabel="سبب الرفض"
-          trigger={<button className="button small danger">رفض</button>}
+          trigger={
+            <ActionButton tone="danger" size="small" type="button">
+              رفض
+            </ActionButton>
+          }
           onConfirm={(reason) => run(() => rejectProvider(provider.id, reason))}
         />
       ) : null}
       {provider.status !== 'SUSPENDED' ? (
         <ConfirmDialog
           title="إيقاف المورد"
-          message="سيتم إخفاء المورد من السوق العام مؤقتاً."
+          message="سيتم إخفاء المورد من السوق العام مؤقتا حتى تتم مراجعته."
           confirmLabel="إيقاف"
           tone="danger"
           needsNote
           noteLabel="سبب الإيقاف"
-          trigger={<button className="button small ghost">إيقاف</button>}
+          trigger={
+            <ActionButton tone="ghost" size="small" type="button">
+              إيقاف
+            </ActionButton>
+          }
           onConfirm={(reason) => run(() => suspendProvider(provider.id, reason))}
         />
       ) : null}
@@ -106,15 +133,29 @@ export function ProviderSummaryCard({
 }) {
   return (
     <article className="provider-summary">
-      <div>
-        <h3>{provider.businessName}</h3>
+      <div className="provider-summary__avatar" aria-hidden="true">
+        {provider.logoUrl ? (
+          <img src={provider.logoUrl} alt="" />
+        ) : (
+          provider.businessName.slice(0, 1)
+        )}
+      </div>
+      <div className="provider-summary__main">
+        <span className="eyebrow">ملف مورد</span>
+        <h2>{provider.businessName}</h2>
         <p>
           {provider.user?.name ?? provider.ownerName ?? 'مالك غير محدد'} ·{' '}
           {provider.city?.nameAr ?? 'مدينة غير محددة'} ·{' '}
           {provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}
         </p>
       </div>
-      <StatusBadge status={provider.status} />
+      <div className="provider-summary__details">
+        <DetailField label="رقم الطلب">{shortId(provider.id)}</DetailField>
+        <DetailField label="الهاتف">
+          <span dir="ltr">{provider.phone}</span>
+        </DetailField>
+        <StatusBadge status={provider.status} />
+      </div>
     </article>
   );
 }

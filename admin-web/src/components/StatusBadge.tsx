@@ -1,11 +1,16 @@
 const statusMap: Record<string, { label: string; tone: string }> = {
-  PENDING: { label: 'قيد المراجعة', tone: 'warning' },
+  PENDING: { label: 'جديد', tone: 'info' },
   PENDING_REVIEW: { label: 'قيد المراجعة', tone: 'warning' },
   ACTIVE: { label: 'نشط', tone: 'success' },
-  APPROVED: { label: 'نشط', tone: 'success' },
-  NEEDS_CHANGES: { label: 'يحتاج تعديل', tone: 'info' },
+  APPROVED: { label: 'مقبول', tone: 'success' },
+  NEEDS_CHANGES: { label: 'يحتاج تعديل', tone: 'gold' },
   REJECTED: { label: 'مرفوض', tone: 'danger' },
   SUSPENDED: { label: 'موقوف', tone: 'muted' },
+  DISABLED: { label: 'معطل', tone: 'muted' },
+  OPEN: { label: 'مفتوح', tone: 'info' },
+  COMPLETED: { label: 'مكتمل', tone: 'success' },
+  CANCELLED: { label: 'ملغى', tone: 'danger' },
+  API_REQUIRED: { label: 'يتطلب API', tone: 'gold' },
 };
 
 export function StatusBadge({ status }: { status: string }) {

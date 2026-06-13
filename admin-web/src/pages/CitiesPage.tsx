@@ -6,11 +6,18 @@ import {
   getCities,
   updateCity,
 } from '../api/admin';
+import { ActionButton } from '../components/ActionButton';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { FormCard } from '../components/FormCard';
 import { FormField } from '../components/FormField';
 import { LoadingState } from '../components/LoadingState';
+import { PageHeader } from '../components/PageHeader';
+import { SectionCard } from '../components/SectionCard';
+import { StatCard } from '../components/StatCard';
+import { StatusBadge } from '../components/StatusBadge';
 
 export function CitiesPage() {
   const [items, setItems] = useState<City[]>([]);
@@ -76,58 +83,141 @@ export function CitiesPage() {
     }
   }
 
-  if (isLoading) return <LoadingState />;
+  if (isLoading) return <LoadingState title="جاري تحميل المدن" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
+
+  const activeCount = items.filter((city) => city.isActive).length;
+  const totalProviders = items.reduce(
+    (total, city) => total + (city.providersCount ?? 0),
+    0,
+  );
+  const totalServices = items.reduce(
+    (total, city) => total + (city.servicesCount ?? 0),
+    0,
+  );
 
   return (
     <section className="page-stack">
-      <div className="page-heading">
-        <div>
-          <p>المدن</p>
-          <h2>إدارة المدن اليمنية المتاحة للموردين</h2>
-        </div>
+      <PageHeader
+        eyebrow="المدن"
+        icon="⌖"
+        title="إدارة المدن اليمنية"
+        description="إدارة المدن المتاحة للموردين والخدمات داخل أعرست."
+        meta={<span>{items.length} مدينة</span>}
+      />
+
+      <div className="stats-grid">
+        <StatCard title="إجمالي المدن" value={items.length} tone="gold" />
+        <StatCard title="نشطة" value={activeCount} tone="success" />
+        <StatCard title="الموردون" value={totalProviders} tone="info" />
+        <StatCard title="الخدمات" value={totalServices} tone="warning" />
       </div>
 
-      <form className="panel form-grid" onSubmit={submit}>
-        <FormField label="الاسم العربي" value={nameAr} onChange={(event) => setNameAr(event.target.value)} required />
-        <FormField label="الاسم الإنجليزي" value={nameEn} onChange={(event) => setNameEn(event.target.value)} />
-        <FormField label="رمز الدولة" value={countryCode} onChange={(event) => setCountryCode(event.target.value)} />
-        <FormField label="الترتيب" type="number" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)} />
-        <div className="form-actions">
-          <button className="button">{editing ? 'حفظ التعديل' : 'إضافة مدينة'}</button>
-          {editing ? (
-            <button className="button ghost" type="button" onClick={resetForm}>
-              إلغاء
-            </button>
-          ) : null}
-        </div>
-      </form>
+      <div className="management-layout">
+        <SectionCard
+          title="مدن السوق"
+          subtitle="الاسم العربي، الاسم الإنجليزي، رمز الدولة، الترتيب، والحالة."
+        >
+          {items.length === 0 ? (
+            <EmptyState title="لا توجد مدن" message="أضف أول مدينة." />
+          ) : (
+            <DataTable
+              columns={[
+                'الاسم العربي',
+                'الاسم الإنجليزي',
+                'رمز الدولة',
+                'الترتيب',
+                'الحالة',
+                'الموردون',
+                'الخدمات',
+                'إجراءات',
+              ]}
+              dense
+              minWidth={920}
+            >
+              {items.map((city) => (
+                <tr key={city.id}>
+                  <td>
+                    <strong>{city.nameAr}</strong>
+                  </td>
+                  <td>{city.nameEn ?? 'غير محدد'}</td>
+                  <td>{city.countryCode}</td>
+                  <td>{city.sortOrder}</td>
+                  <td>
+                    <StatusBadge status={city.isActive ? 'ACTIVE' : 'DISABLED'} />
+                  </td>
+                  <td>{city.providersCount ?? 0}</td>
+                  <td>{city.servicesCount ?? 0}</td>
+                  <td className="actions-cell">
+                    <div className="actions">
+                      <ActionButton
+                        tone="ghost"
+                        size="small"
+                        type="button"
+                        onClick={() => startEdit(city)}
+                      >
+                        تعديل
+                      </ActionButton>
+                      <ConfirmDialog
+                        title="تعطيل المدينة"
+                        message="سيتم تعطيل المدينة من قوائم إدارة السوق دون حذفها نهائيا."
+                        confirmLabel="تعطيل"
+                        tone="danger"
+                        trigger={
+                          <ActionButton tone="danger" size="small" type="button">
+                            تعطيل
+                          </ActionButton>
+                        }
+                        onConfirm={() => deleteCity(city.id).then(load)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </DataTable>
+          )}
+        </SectionCard>
 
-      {items.length === 0 ? (
-        <EmptyState title="لا توجد مدن" message="أضف أول مدينة." />
-      ) : (
-        <DataTable columns={['المدينة', 'الدولة', 'الحالة', 'الموردون', 'الخدمات', 'إجراءات']}>
-          {items.map((city) => (
-            <tr key={city.id}>
-              <td>{city.nameAr}</td>
-              <td>{city.countryCode}</td>
-              <td>{city.isActive ? 'نشطة' : 'معطلة'}</td>
-              <td>{city.providersCount ?? 0}</td>
-              <td>{city.servicesCount ?? 0}</td>
-              <td>
-                <div className="actions">
-                  <button className="button small ghost" onClick={() => startEdit(city)}>
-                    تعديل
-                  </button>
-                  <button className="button small danger" onClick={() => deleteCity(city.id).then(load)}>
-                    تعطيل
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-      )}
+        <FormCard
+          title={editing ? 'تعديل مدينة' : 'إضافة مدينة'}
+          subtitle="الأسماء العربية تظهر للمستخدمين في الواجهة."
+        >
+          <form className="side-form" onSubmit={submit}>
+            <FormField
+              label="الاسم العربي"
+              value={nameAr}
+              onChange={(event) => setNameAr(event.target.value)}
+              required
+            />
+            <FormField
+              label="الاسم الإنجليزي"
+              value={nameEn}
+              onChange={(event) => setNameEn(event.target.value)}
+            />
+            <FormField
+              label="رمز الدولة"
+              value={countryCode}
+              onChange={(event) => setCountryCode(event.target.value)}
+            />
+            <FormField
+              label="الترتيب"
+              type="number"
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value)}
+            />
+            <div className="form-actions">
+              <ActionButton type="submit">
+                {editing ? 'حفظ التعديل' : 'إضافة مدينة'}
+              </ActionButton>
+              {editing ? (
+                <ActionButton tone="ghost" type="button" onClick={resetForm}>
+                  إلغاء
+                </ActionButton>
+              ) : null}
+            </div>
+          </form>
+        </FormCard>
+      </div>
     </section>
   );
 }

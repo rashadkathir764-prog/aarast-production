@@ -2,6 +2,10 @@
 
 NestJS backend foundation for Aarast / اعّرست.
 
+## Current Audit Note - 2026-06-14
+
+The backend is implemented beyond the original foundation scope. It currently includes the Wedding Financial OS modules, provider marketplace references, provider dashboard, admin APIs, Prisma migrations, smoke scripts, and Docker runtime. `npm run check` and `npm run build` passed during the 2026-06-14 audit.
+
 ## Current Scope
 
 - Health endpoint at `GET /health`.

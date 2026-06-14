@@ -1,6 +1,10 @@
 # Aarast Mobile
 
-Flutter mobile foundation for Aarast / اعّرست.
+Flutter mobile app for Aarast / اعّرست.
+
+## Current Audit Note - 2026-06-14
+
+The mobile app is no longer only a foundation. It includes the core Wedding Financial OS flows, provider marketplace/reference screens, provider application/dashboard screens, and a SQLite offline cache/sync queue for selected safe mobile workflows.
 
 ## What Is Implemented
 
@@ -31,12 +35,21 @@ Flutter mobile foundation for Aarast / اعّرست.
   - Add Shared Member
   - Edit Shared Member
   - Shared WeddingPlans
+  - Provider Marketplace
+  - Provider Details
+  - Quote Request
+  - Provider Apply
+  - Provider Dashboard
+  - Add Provider Service
+  - Add Provider Package
+- SQLite offline cache/sync queue for supported mobile platforms, with JSON fallback for web/test.
 
 ## What Is Not Implemented Yet
 
-- Marketplace, payment, deposit, AI, FinTech, chat, or confirmed booking flows.
-- Backend API changes.
-- Docker, Dokploy, or deployment configuration.
+- Payment processing, deposits, payment status, AI, FinTech, internal chat, or confirmed booking flows.
+- Production Meta WhatsApp OTP delivery.
+- Full conflict resolution for offline sync beyond the MVP-safe queue/retry behavior.
+- Admin-only workflows inside the mobile app.
 
 ## API Base URL
 
@@ -49,13 +62,13 @@ lib/core/config/api_config.dart
 Default local value:
 
 ```text
-http://127.0.0.1:3000
+http://127.0.0.1:3115
 ```
 
 Override it at run time with:
 
 ```bash
-flutter run --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3000
+flutter run --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3115
 ```
 
 The current backend has no global `/api` prefix. Auth endpoints are wired to:
@@ -122,6 +135,28 @@ Sharing endpoints are wired to:
 - `DELETE /shared-members/:id`
 - `GET /shared/wedding-plans`
 
+Marketplace endpoints are wired to:
+
+- `GET /cities`
+- `GET /provider-categories`
+- `GET /providers`
+- `GET /providers/:id`
+- `GET /providers/:id/services`
+- `GET /providers/:id/packages`
+- `POST /providers/:id/favorite`
+- `DELETE /providers/:id/favorite`
+- `GET /me/favorite-providers`
+- `POST /providers/:id/quote-requests`
+- `GET /me/quote-requests`
+
+Provider dashboard endpoints are wired to:
+
+- `POST /provider/apply`
+- `GET /provider/me/profile`
+- `PATCH /provider/me/profile`
+- `GET /provider/me/summary`
+- Provider-owned service/package management routes.
+
 Protected requests send the token as:
 
 ```text
@@ -130,14 +165,15 @@ Authorization: Bearer <accessToken>
 
 ## Local Development
 
-### Fixed Ports
+### Local Ports
 
-All manual QA uses fixed ports. Smoke tests may use temporary ports, but manual QA always targets port 3000.
+There are two local backend modes. The Flutter default points to Docker/local API port 3115; manual QA scripts can override it to port 3000.
 
 | Service      | Port    | Notes                                          |
 |--------------|---------|------------------------------------------------|
-| Backend API  | 3000    | `http://127.0.0.1:3000`                        |
-| Flutter Web  | dynamic | Chrome assigns dynamically; API points to 3000 |
+| Backend API  | 3115    | Docker Compose host port                       |
+| Backend API  | 3000    | Manual QA script port                          |
+| Flutter Web  | dynamic | Chrome assigns dynamically                     |
 | PostgreSQL   | 5433    | `aarast-db` Docker container                   |
 
 ### Quick Start
@@ -163,10 +199,10 @@ Install dependencies:
 flutter pub get
 ```
 
-Run on Chrome (API points to port 3000):
+Run on Chrome against Docker/local API port 3115:
 
 ```bash
-flutter run -d chrome --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3000
+flutter run -d chrome --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3115
 ```
 
 Analyze and test:
@@ -182,13 +218,13 @@ Optional lightweight web build check:
 flutter build web --debug
 ```
 
-> **Note**: Smoke tests may use temporary safe ports (e.g. 3148, 3160).
-> Manual QA must always use port 3000.
+> **Note**: Smoke tests may use temporary safe ports (e.g. 3148, 3160). Use port 3000 when following the manual QA PowerShell scripts, or port 3115 when testing against Docker Compose.
 
 ## Notes
 
-- The backend API contract remains unchanged.
+- The mobile app still uses the direct backend routes documented in `../API_CONTRACT.md`.
 - Core Flutter MVP screens are implemented.
 - WeddingPlan Dashboard is fully redesigned as a command center (DashboardSummaryProvider + command cards).
 - `../MOBILE_QA_PLAN.md` contains the Arabic-first manual QA checklist for hands-on validation.
-- The next step is visual QA and stakeholder review of the new dashboard.
+- Offline SQLite details live in `OFFLINE_SQLITE.md`.
+- The next step is production API URL validation and visual QA/stakeholder review of the dashboard and marketplace flows.

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - Full Project Audit And Documentation Refresh
+
+- Audited the current backend, mobile, admin-web, Docker/Dokploy, smoke scripts, Prisma schema, migrations, and Markdown docs.
+- Updated documentation to reflect the real current state: NestJS + Prisma + PostgreSQL backend, Flutter mobile with SQLite offline cache/sync queue, React/Vite admin dashboard, provider reference marketplace, provider dashboard, and admin provider approval workflow.
+- Clarified that marketplace/provider flows are planning/reference and quote-lead workflows only, with no payment processing, deposits, confirmed bookings, loans, credit, financing, AI, or internal chat.
+- Added `PROJECT_STATUS.md` for current branch/module/deployment/blocker tracking.
+- Added `DEPLOYMENT_TROUBLESHOOTING.md` for NPM 502, SSL, CORS, Flutter API URL, and Meta WhatsApp OTP troubleshooting.
+- Documented the current deployment mismatch: committed Compose has backend on `8093` and admin-web on `8095`, while the target split expects admin on `8094` and Flutter web/mobile on `8095`.
+- Captured 2026-06-14 live checks: API health and `aarast.shadowgardn.com` returned HTTP 200; `aarast-admin.shadowgardn.com` returned HTTP 502.
+
 ## 2026-06-14 - Dokploy Production Routing Sync
 
 - Synchronized the production Dokploy Compose configuration with the live server fix.

@@ -2,6 +2,22 @@
 
 This folder prepares Aarast for a Dokploy Docker Compose deployment. It does not deploy anything by itself.
 
+## Current Audit Note - 2026-06-14
+
+Current committed Compose:
+
+- `backend`: host `8093` -> container `3000`, domain `aarast-api.shadowgardn.com`.
+- `admin-web`: host `8095` -> container `80`, currently documented/deployed at `aarast.shadowgardn.com`.
+- No separate Flutter web/mobile service exists in this Compose file.
+
+Target split under review:
+
+- API: `aarast-api.shadowgardn.com` on host port `8093`.
+- Admin: `aarast-admin.shadowgardn.com` on host port `8094`.
+- Flutter Web/Mobile Web: `aarast.shadowgardn.com` on host port `8095`.
+
+Do not claim the target split is live until Dokploy Compose/NPM are updated and verified. During the audit, `aarast-admin.shadowgardn.com` returned HTTP 502, while API health and `aarast.shadowgardn.com` returned HTTP 200.
+
 ## Services
 
 - `postgres`: private PostgreSQL 16 database with the named volume `aarast_postgres_data`.
@@ -56,13 +72,19 @@ CORS_ORIGINS=https://aarast.shadowgardn.com
 VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
 ```
 
+When `aarast-admin.shadowgardn.com` is enabled, include both browser origins:
+
+```env
+CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
+```
+
 ## Dokploy UI Steps
 
 1. Open Dokploy.
 2. Create a project named `Aarast`.
 3. Add a Docker Compose application.
 4. Select the GitHub repository for Aarast.
-5. Select branch `phase/frontend-rebuild-v1`.
+5. Select the release branch intentionally. Current audit observed `main`; use `phase/frontend-rebuild-v1` only if that is the approved deployment branch for the current redeploy.
 6. Set the compose file path to `deploy/dokploy/docker-compose.yml`.
 7. Add environment variables from `deploy/dokploy/.env.example`, replacing every placeholder secret with a strong generated value.
 8. Create a domain for the backend service:
@@ -80,6 +102,8 @@ VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
 12. Open logs for `postgres`, `backend`, and `admin-web`.
 13. Test API health at `https://aarast-api.shadowgardn.com/health`.
 14. Open `https://aarast.shadowgardn.com` and test admin login.
+
+If the target split is used, open `https://aarast-admin.shadowgardn.com` for admin and reserve `https://aarast.shadowgardn.com` for Flutter web/mobile.
 
 ## Domain And DNS Plan
 

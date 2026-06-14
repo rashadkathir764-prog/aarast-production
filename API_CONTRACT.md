@@ -1,16 +1,16 @@
 # API Contract
 
-This document freezes the current Aarast backend MVP API contract for Flutter MVP integration. It reflects the current NestJS implementation and smoke-tested route surface.
+This document records the current Aarast backend API contract used by the Flutter app and admin web. It reflects the current NestJS implementation and smoke-tested route surface as of the 2026-06-14 audit.
 
 ## Base URL
 
 Local backend example:
 
 ```text
-http://127.0.0.1:3000
+http://127.0.0.1:3115
 ```
 
-The current backend does not configure a global `/api` prefix. Flutter clients should call routes directly from the base URL, for example `GET /health` and `POST /auth/login`.
+Manual QA scripts can also run the backend at `http://127.0.0.1:3000`. The current backend does not configure a global `/api` prefix. Clients should call routes directly from the base URL, for example `GET /health` and `POST /auth/login`.
 
 ## Common Rules
 
@@ -293,6 +293,87 @@ The `user` object is safe display data only. It must not include `passwordHash`,
 
 Only the owner can add, list, update, or remove shared members for a WeddingPlan. The owner cannot add themselves as a shared member, unknown phone numbers are rejected without auto-creating users, and duplicate members are rejected.
 
+## Provider Marketplace References
+
+Public/reference routes:
+
+- `GET /cities`
+- `GET /provider-categories`
+- `GET /providers`
+- `GET /providers/:id`
+- `GET /providers/:id/services`
+- `GET /providers/:id/packages`
+- `GET /providers/:id/reviews`
+- `GET /services`
+- `GET /services/:id`
+
+Authenticated user marketplace routes:
+
+- `POST /providers/:id/favorite`
+- `DELETE /providers/:id/favorite`
+- `GET /me/favorite-providers`
+- `POST /providers/:id/quote-requests`
+- `GET /me/quote-requests`
+- `GET /me/quote-requests/:id`
+- `PATCH /me/quote-requests/:id/cancel`
+- `POST /providers/:id/reviews`
+- `PATCH /reviews/:id`
+- `DELETE /reviews/:id`
+
+These routes are planning/reference and quote-lead flows only. They do not create paid bookings, deposits, payment status, loans, credit, financing, AI, or chat behavior.
+
+## Provider Dashboard
+
+Provider routes:
+
+- `POST /provider/apply`
+- `GET /provider/me/profile`
+- `PATCH /provider/me/profile`
+- `GET /provider/me/summary`
+- `GET /provider/me/services`
+- `POST /provider/me/services`
+- `GET /provider/me/services/:id`
+- `PATCH /provider/me/services/:id`
+- `DELETE /provider/me/services/:id`
+- `POST /provider/me/services/:id/images`
+- `PATCH /provider/me/services/:serviceId/images/:imageId`
+- `DELETE /provider/me/services/:serviceId/images/:imageId`
+- `GET /provider/me/packages`
+- `POST /provider/me/packages`
+- `PATCH /provider/me/packages/:id`
+- `DELETE /provider/me/packages/:id`
+- `GET /provider/me/quote-requests`
+- `GET /provider/me/quote-requests/:id`
+- `PATCH /provider/me/quote-requests/:id/status`
+- `GET /provider/me/reviews`
+
+## Admin
+
+Admin web uses `/auth/login` and requires the authenticated user role to be `ADMIN`. Admin API routes include:
+
+- `GET /admin/dashboard/stats`
+- `GET /admin/providers/applications`
+- `GET /admin/providers/applications/:id`
+- `PATCH /admin/providers/:id/approve`
+- `PATCH /admin/providers/:id/reject`
+- `PATCH /admin/providers/:id/request-changes`
+- `PATCH /admin/providers/:id/suspend`
+- `PATCH /admin/providers/:id/activate`
+- `GET /admin/providers`
+- `GET /admin/providers/:id`
+- `GET /admin/provider-categories`
+- `POST /admin/provider-categories`
+- `PATCH /admin/provider-categories/:id`
+- `DELETE /admin/provider-categories/:id`
+- `GET /admin/cities`
+- `POST /admin/cities`
+- `PATCH /admin/cities/:id`
+- `DELETE /admin/cities/:id`
+- `GET /admin/users`
+- `GET /admin/users/:id`
+
+Admin pages for bookings, payments, notifications, reports, and settings are partial/readiness screens unless matching backend endpoints are added.
+
 ## Error Behavior
 
 - Missing or invalid JWT returns `401`.
@@ -302,14 +383,13 @@ Only the owner can add, list, update, or remove shared members for a WeddingPlan
 
 ## MVP Exclusions
 
-The current MVP backend contract does not include:
+The current backend contract does not include:
 
 - payments
 - deposits
 - confirmed booking
-- marketplace/provider/vendor flows
 - AI
 - FinTech
 - chat
-- Flutter/mobile implementation
-- Docker/Dokploy deployment implementation
+- production SMS/WhatsApp OTP delivery
+- public booking-lead management APIs

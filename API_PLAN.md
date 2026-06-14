@@ -1,8 +1,27 @@
 # API Plan
 
-This document describes planned API modules and endpoints at a high level only. It does not implement endpoints or define final route contracts.
+This document describes the current Aarast API surface at a high level. Route details are implemented in `backend/src/**` and smoke scripts live under `backend/scripts/smoke/`.
 
-The frozen MVP backend API contract for Flutter integration is documented in `API_CONTRACT.md`.
+The backend MVP/mobile contract is documented in `API_CONTRACT.md`; this file also tracks newer provider, admin, and deployment-facing API areas.
+
+## Current Implemented API Areas - 2026-06-14
+
+| Area | Current routes/status |
+| --- | --- |
+| Health | `GET /health` |
+| Auth | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `POST /auth/otp/request`, `POST /auth/otp/verify` |
+| Users/Profile | `PATCH /users/me`, `GET /users/lookup`, `GET /users/me/settings`, `PATCH /users/me/settings` |
+| Dashboard | `GET /dashboard/home` |
+| Wedding Plans | create/list/detail/update/archive |
+| Budget/Expenses | budget category CRUD, expense CRUD, expense summary |
+| Debts/Installments | debt CRUD/summary, installment CRUD, due installments |
+| Tasks/Timeline | task CRUD, WeddingPlan timeline |
+| Sharing | shared-member CRUD and shared WeddingPlan listing |
+| Marketplace references | cities, provider categories, providers, services, packages, favorites, reviews, quote requests |
+| Provider dashboard | provider application/profile/summary, provider-owned services/images/packages, quote-request status updates, review reads |
+| Admin | dashboard stats, provider approvals, provider/category/city/user reads and catalog management |
+
+All marketplace/provider flows remain planning/reference and lead workflows only. They do not implement paid booking, deposits, payment status, loans, credit, financing, AI, or chat.
 
 ## API Principles
 
@@ -21,8 +40,8 @@ The frozen MVP backend API contract for Flutter integration is documented in `AP
 
 | Module | Planned API Surface |
 | --- | --- |
-| Auth | Future Auth foundation after the User model exists; register, login, refresh session, logout, and current-user behavior must not be implemented during User model design alignment. |
-| Users | Planned around the minimal MVP User shape: `id`, `name`, `phone`, `email`, `role`, `status`, `createdAt`, and `updatedAt`. `passwordHash` is storage-only and must never be returned by APIs. Phone is important for Yemen-first usage. |
+| Auth | Implemented password auth with register, login, current-user, and provider-agnostic OTP request/verify. Refresh/logout are not implemented in the current backend. |
+| Users | Implemented around the minimal MVP User shape plus profile/settings fields. `passwordHash` is storage-only and must never be returned by APIs. Phone is important for Yemen-first usage. |
 | Cities | List active Yemen cities and admin city management. |
 | Categories | List active service categories and admin category management. |
 | Providers | Public provider listing/details and provider profile management. |
@@ -46,7 +65,7 @@ The frozen MVP backend API contract for Flutter integration is documented in `AP
 | Sharing | Implemented protected endpoints: `POST /wedding-plans/:weddingPlanId/shared-members`, `GET /wedding-plans/:weddingPlanId/shared-members`, `PATCH /shared-members/:id`, `DELETE /shared-members/:id`, and `GET /shared/wedding-plans`. Owners manage shared members; shared users can list plans shared with them. |
 | Quote Requests | Create non-binding requests for pricing or package details tied to a plan, category, service, or package; these are not purchase orders or confirmed bookings. |
 | Attachments | Future/planned upload or reference APIs for receipts, agreements, quote files, and supporting images tied to expenses, debts, installments, or quote requests. This is planning-level only and not implementation in this documentation phase. |
-| Timeline | Implemented protected WeddingPlan timeline endpoint with wedding date, upcoming tasks, due debts, and due installments. Owners can view all; shared members can view task timeline items while financial due items remain hidden unless debt permissions allow them. Quote requests and booking leads are not implemented yet. |
+| Timeline | Implemented protected WeddingPlan timeline endpoint with wedding date, upcoming tasks, due debts, and due installments. Owners can view all; shared members can view task timeline items while financial due items remain hidden unless debt permissions allow them. Quote requests exist as marketplace lead records; booking leads exist in the Prisma schema but no public/admin booking-lead management API is fully exposed yet. |
 
 ## Future Modules
 

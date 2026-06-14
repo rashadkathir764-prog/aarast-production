@@ -1,5 +1,23 @@
 # Project Phases
 
+## Current Phase Reality - 2026-06-14
+
+The repository has progressed past the original docs foundation:
+
+| Phase area | Current status |
+| --- | --- |
+| Backend foundation | DONE |
+| Wedding Financial OS backend | DONE for current MVP modules |
+| Flutter MVP planning flows | DONE for current core flows |
+| Provider references and quote leads | DONE as planning/reference flows, not paid bookings |
+| Provider dashboard and admin approval | DONE for current backend/admin-web workflow |
+| Mobile SQLite offline cache/sync queue | DONE for selected safe mobile workflows |
+| Dokploy deployment | IN PROGRESS/PARTIAL: API and current admin domain respond, but target admin/mobile domain split is not fully represented in Compose |
+| Marketplace expansion | PARTIAL: references, quote requests, favorites, reviews, and provider/admin operations exist; marketplace optimization is still future |
+| AI and FinTech | NOT STARTED |
+
+Continue to treat payment processing, confirmed booking/deposit flows, loans, credit, financing, AI, and internal chat as future work requiring explicit approval.
+
 ## Phase 0: Documentation And Smoke-Test Foundation
 
 Goal: Define the product, scope, technical plan, phase boundaries, and test expectations before expanding implementation.

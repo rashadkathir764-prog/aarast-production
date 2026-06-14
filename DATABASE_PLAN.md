@@ -1,6 +1,14 @@
 # Database Plan
 
-This document describes planned entities at a planning level only. It does not define migrations, schema syntax, indexes, or implementation details.
+This document describes the current PostgreSQL/Prisma source of truth and the separate Flutter local cache layer. It is not a migration runbook; committed migrations live under `backend/prisma/migrations/`.
+
+## Current Database Reality - 2026-06-14
+
+- Backend source of truth: PostgreSQL through Prisma.
+- Current schema file: `backend/prisma/schema.prisma`.
+- Current migrations include User/Auth foundation, WeddingPlan, Budget/Expense, Debt/Installment, Task/Timeline, Sharing/Permissions, Provider Marketplace, and Provider Review workflow.
+- Flutter SQLite is a local cache and sync queue only. It does not replace PostgreSQL and does not serve the admin web app.
+- SQLite stores cached planning/marketplace rows, sync queue entries, and a safe current-user profile. It must not store passwords, OTP codes, raw secrets, or credentials.
 
 ## Current And Marketplace Entities
 
@@ -35,9 +43,8 @@ This document describes planned entities at a planning level only. It does not d
 - WeddingPlan is the center of the MVP data model.
 - WeddingPlan implementation depends on database persistence and an authenticated user context.
 - Persistence/Auth readiness order is Prisma + PostgreSQL foundation first, User model second, Auth foundation third, ownership context fourth, and WeddingPlan module after those prerequisites.
-- User model design comes before Auth foundation and must stay limited to the minimal MVP identity shape.
-- User model design is documentation-only until explicitly approved for Prisma schema implementation; no Prisma model or migration belongs to this design-alignment task.
-- WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
+- User model and Auth foundation are implemented and backed by committed Prisma migrations.
+- WeddingPlan was the first Wedding Financial OS domain module after persistence and ownership prerequisites.
 - WeddingPlan now has implemented BudgetCategory, Expense, Debt, WeddingTask, and SharedMember relations.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.

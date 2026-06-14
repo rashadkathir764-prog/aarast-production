@@ -1,5 +1,9 @@
 # Mobile QA Plan
 
+## Current Audit Note - 2026-06-14
+
+This plan started before provider marketplace screens and the SQLite offline layer were added. Current mobile QA should also cover provider marketplace browsing, quote requests, provider apply/dashboard screens, cached reads, queued offline writes, pending sync badges, and reconnect sync behavior. Payment processing, deposits, confirmed bookings, AI, FinTech, and internal chat remain out of scope.
+
 خطة QA يدوية لتطبيق Aarast / اعّرست بعد اكتمال شاشات Flutter MVP الأساسية.
 
 ## 1. المتطلبات قبل الاختبار
@@ -11,6 +15,12 @@
 
 ```bash
 flutter run --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3000
+```
+
+When testing against the Docker Compose backend, use:
+
+```bash
+flutter run --dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3115
 ```
 
 - استخدم قاعدة بيانات تطوير فقط، ولا تستخدم بيانات إنتاج.

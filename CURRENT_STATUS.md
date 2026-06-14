@@ -1,5 +1,27 @@
 # Current Status
 
+## Current Status Override - 2026-06-14 Full Audit
+
+- Repository root: `D:\projects\aarast`
+- Observed branch: `main`
+- Initial working tree status: clean
+- Task: full project audit and Markdown documentation refresh.
+
+Current implementation summary:
+
+- Backend: NestJS + Prisma + PostgreSQL with auth/OTP/profile, Wedding Financial OS modules, sharing, provider references, provider dashboard, admin APIs, Prisma migrations, and smoke scripts.
+- Mobile: Flutter Arabic-first app with core planning flows, marketplace/provider screens, and SQLite offline cache/sync queue for selected safe workflows.
+- Admin Web: React/Vite dashboard with admin auth, dashboard stats, provider approval, category/city/user/provider management, and partial placeholder pages for bookings/settings/payments/notifications/reports.
+- Deployment: current Compose has API on `8093` and admin-web on `8095`; target split expects admin on `8094` and Flutter web/mobile on `8095`, but that split is not fully configured.
+
+Live checks on 2026-06-14:
+
+- `https://aarast-api.shadowgardn.com/health`: HTTP 200.
+- `https://aarast.shadowgardn.com/`: HTTP 200.
+- `https://aarast-admin.shadowgardn.com/`: HTTP 502.
+
+See `PROJECT_STATUS.md` for the concise current status table and `DEPLOYMENT_TROUBLESHOOTING.md` for 502/CORS/Meta notes.
+
 ## Current Status Override - 2026-06-14
 
 - Repository root: `D:\projects\aarast`

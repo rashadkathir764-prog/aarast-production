@@ -2,6 +2,17 @@
 
 _Maintained by /mxSave_
 
+## Full Audit Snapshot - 2026-06-14
+
+- Current observed branch: `main`.
+- Backend, mobile, admin-web, deployment docs, smoke scripts, and Prisma schema were audited.
+- Backend is implemented for auth, Wedding Financial OS, sharing, provider references, provider dashboard, and admin APIs.
+- Mobile includes the core Flutter planning flows, provider marketplace screens, and SQLite offline cache/sync queue.
+- Admin web includes provider approval/catalog/user flows, with several placeholder/admin-required pages still partial.
+- Deployment is partial: API and `aarast.shadowgardn.com` returned HTTP 200; `aarast-admin.shadowgardn.com` returned HTTP 502.
+- Canonical current status file: `PROJECT_STATUS.md`.
+- Deployment troubleshooting file: `DEPLOYMENT_TROUBLESHOOTING.md`.
+
 ## Implemented Features
 
 - Backend MVP core API done, documented in `API_CONTRACT.md`.

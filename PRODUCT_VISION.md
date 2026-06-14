@@ -1,5 +1,11 @@
 # Product Vision
 
+## Current Audit Note - 2026-06-14
+
+Aarast / اعّرست remains a Wedding Financial OS + Marketplace product, with the planning and financial system as the center of gravity. The current codebase now includes the backend provider-reference marketplace, provider dashboard, admin provider approval workflow, and Flutter marketplace screens, but these are still planning/reference and quote-lead flows only.
+
+This does not change the product boundary: payments, confirmed bookings, deposits, loans, credit, financing, production AI, and internal chat remain out of scope until explicitly approved.
+
 ## What Aarast Is
 
 Aarast / اعّرست is a mobile app for Yemen that helps people planning marriage manage the full wedding process from early planning through wedding-day readiness. It is designed for the financial and coordination reality of weddings, where the groom, bride, families, providers, and installment obligations often need to be tracked together.

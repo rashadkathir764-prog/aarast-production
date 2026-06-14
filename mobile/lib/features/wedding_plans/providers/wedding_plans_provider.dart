@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
 import '../data/wedding_plans_api.dart';
 import '../models/wedding_plan.dart';
 
@@ -12,12 +13,14 @@ class WeddingPlansProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _noticeMessage;
   List<WeddingPlan> _plans = const [];
   WeddingPlan? _selectedPlan;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get noticeMessage => _noticeMessage;
   List<WeddingPlan> get plans => _plans;
   WeddingPlan? get selectedPlan => _selectedPlan;
 
@@ -64,6 +67,7 @@ class WeddingPlansProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -76,6 +80,9 @@ class WeddingPlansProvider extends ChangeNotifier {
       );
       _selectedPlan = plan;
       _plans = [plan, ..._plans.where((item) => item.id != plan.id)];
+      if (plan.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
       return plan;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -91,6 +98,7 @@ class WeddingPlansProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
   }
 }

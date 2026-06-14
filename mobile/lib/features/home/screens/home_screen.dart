@@ -3,12 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../providers/home_dashboard_provider.dart';
 import '../widgets/home_widgets.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({this.embedded = false, super.key});
+
+  final bool embedded;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -31,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: HomeUiColors.background,
+        backgroundColor: AppTheme.dBg,
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -39,20 +42,37 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Stack(
                 children: [
                   RefreshIndicator(
-                    color: HomeUiColors.maroon,
+                    color: AppTheme.dMaroon,
                     onRefresh: () => provider.loadDashboard(),
                     child: CustomScrollView(
                       slivers: [
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              16,
+                              16,
+                              widget.embedded ? 24 : 100,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 HomeTopHeader(
                                   userName: auth.user?.name,
+                                  onNotifications: () {
+                                    final plan = provider.primaryPlan;
+                                    context.push(
+                                      plan == null
+                                          ? AppRouter.notifications
+                                          : AppRouter.planNotifications(
+                                              plan.id,
+                                            ),
+                                    );
+                                  },
                                   onLogout: () async {
-                                    await context.read<AuthController>().logout();
+                                    await context
+                                        .read<AuthController>()
+                                        .logout();
                                     if (context.mounted) {
                                       context.go(AppRouter.login);
                                     }
@@ -61,11 +81,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(height: 24),
                                 AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 220),
-                                  child: provider.isLoading && provider.primaryPlan == null
+                                  child:
+                                      provider.isLoading &&
+                                          provider.primaryPlan == null
                                       ? const HomeLoadingSkeleton()
                                       : _HomeDashboardBody(
                                           provider: provider,
-                                          onNeedPlan: () => _showNeedPlanSnackBar(context),
+                                          onNeedPlan: () =>
+                                              _showNeedPlanSnackBar(context),
                                         ),
                                 ),
                               ],
@@ -75,13 +98,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: HomeBottomNavigation(
-                      provider: provider,
-                      onNeedPlan: () => _showNeedPlanSnackBar(context),
+                  if (!widget.embedded)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: HomeBottomNavigation(
+                        provider: provider,
+                        onNeedPlan: () => _showNeedPlanSnackBar(context),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -92,9 +116,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showNeedPlanSnackBar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('أنشئ خطة أولاً')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('أنشئي خطة أولاً')));
   }
 }
 
@@ -122,6 +146,8 @@ class _HomeDashboardBody extends StatelessWidget {
         HomeCommandHero(provider: provider),
         const SizedBox(height: 18),
         if (hasPlan) ...[
+          const HomePlanControls(),
+          const SizedBox(height: 18),
           HomeMetricsBudgetSection(provider: provider),
           const SizedBox(height: 18),
         ],
@@ -131,9 +157,7 @@ class _HomeDashboardBody extends StatelessWidget {
           HomeImportantNotesList(provider: provider),
           const SizedBox(height: 18),
         ],
-        if (!hasPlan) ...[
-          HomeSharedPlansCard(provider: provider)
-        ],
+        if (!hasPlan) ...[HomeSharedPlansCard(provider: provider)],
       ],
     );
   }

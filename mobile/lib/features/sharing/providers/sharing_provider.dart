@@ -12,17 +12,23 @@ class SharingProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+  bool _isLookingUp = false;
   String? _errorMessage;
+  String? _lookupErrorMessage;
   List<SharedMember> _members = const [];
   List<SharedWeddingPlan> _sharedPlans = const [];
   SharedMember? _selectedMember;
+  SharedUserLookup? _lookupUser;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
+  bool get isLookingUp => _isLookingUp;
   String? get errorMessage => _errorMessage;
+  String? get lookupErrorMessage => _lookupErrorMessage;
   List<SharedMember> get members => _members;
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
   SharedMember? get selectedMember => _selectedMember;
+  SharedUserLookup? get lookupUser => _lookupUser;
 
   Future<void> loadMembers(String weddingPlanId) async {
     _isLoading = true;
@@ -70,9 +76,40 @@ class SharingProvider extends ChangeNotifier {
     return _findMember(id);
   }
 
+  Future<bool> lookupUserByPhone(String phone) async {
+    _isLookingUp = true;
+    _lookupErrorMessage = null;
+    _lookupUser = null;
+    notifyListeners();
+
+    try {
+      _lookupUser = await _api.lookupUserByPhone(phone);
+      return true;
+    } on ApiException catch (error) {
+      _lookupErrorMessage = _sharingErrorMessage(
+        error.message,
+        fallback: 'الرقم غير مسجل',
+      );
+      return false;
+    } catch (_) {
+      _lookupErrorMessage = 'تعذر البحث عن المستخدم. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isLookingUp = false;
+      notifyListeners();
+    }
+  }
+
+  void clearLookup() {
+    _lookupUser = null;
+    _lookupErrorMessage = null;
+    notifyListeners();
+  }
+
   Future<bool> createMember({
     required String weddingPlanId,
-    required String phone,
+    String? userId,
+    String? phone,
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
@@ -87,6 +124,7 @@ class SharingProvider extends ChangeNotifier {
     try {
       final member = await _api.createSharedMember(
         weddingPlanId: weddingPlanId,
+        userId: userId,
         phone: phone,
         role: role,
         canViewBudget: canViewBudget,
@@ -97,6 +135,8 @@ class SharingProvider extends ChangeNotifier {
       );
       _members = [member, ..._members.where((item) => item.id != member.id)];
       _selectedMember = member;
+      _lookupUser = null;
+      _lookupErrorMessage = null;
       return true;
     } on ApiException catch (error) {
       _errorMessage = _sharingErrorMessage(
@@ -200,14 +240,17 @@ String _sharingErrorMessage(
     return 'هذا العضو مضاف مسبقاً إلى هذه الخطة';
   }
   if (normalized.contains('No registered user found for this phone')) {
-    return 'لا يوجد مستخدم مسجل بهذا الرقم';
+    return 'الرقم غير مسجل';
+  }
+  if (normalized.contains('User not found for phone')) {
+    return 'الرقم غير مسجل';
   }
 
   return switch (normalized) {
     'User is already shared on this wedding plan' =>
       'هذا العضو مضاف مسبقاً إلى هذه الخطة',
-    'No registered user found for this phone' =>
-      'لا يوجد مستخدم مسجل بهذا الرقم',
+    'No registered user found for this phone' => 'الرقم غير مسجل',
+    'User not found for phone' => 'الرقم غير مسجل',
     'Provide either userId or phone, not both' =>
       'أدخل رقم الهاتف فقط ولا ترسل معرف المستخدم معه.',
     'Provide either userId or phone' => 'رقم هاتف العضو مطلوب.',

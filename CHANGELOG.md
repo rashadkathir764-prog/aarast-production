@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-14 - Dokploy Production Routing Sync
+
+- Synchronized the production Dokploy Compose configuration with the live server fix.
+- Published backend host port `8093` to container port `3000`.
+- Published admin dashboard host port `8095` to container port `80`.
+- Set production deployment defaults to `PORT=3000`, `CORS_ORIGINS=https://aarast.shadowgardn.com`, and `VITE_API_BASE_URL=https://aarast-api.shadowgardn.com`.
+- Updated deployment documentation so future Dokploy redeploys do not restore the old unhealthy port mapping.
+- Confirmed no backend business logic, Flutter screens, database migrations, payment/deposit flows, AI, FinTech, internal chat, or confirmed booking behavior were changed.
+
 ## 2026-06-07 - Home Dashboard Exact Blueprint Polish
 
 - Polished the Flutter Home dashboard to more closely match the approved Arabic visual reference.

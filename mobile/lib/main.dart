@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/network/api_client.dart';
+import 'core/offline/local_database.dart';
+import 'core/offline/offline_sync_service.dart';
 import 'core/storage/auth_storage.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
@@ -12,6 +14,8 @@ import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
 import 'features/finance/providers/finance_provider.dart';
 import 'features/home/providers/home_dashboard_provider.dart';
+import 'features/marketplace/data/marketplace_api.dart';
+import 'features/marketplace/providers/marketplace_provider.dart';
 import 'features/sharing/data/sharing_api.dart';
 import 'features/sharing/providers/sharing_provider.dart';
 import 'features/tasks/data/task_timeline_api.dart';
@@ -26,26 +30,56 @@ Future<void> main() async {
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+  final localDatabase = await createLocalDatabase(preferences);
+  final offlineSyncService = OfflineSyncService(
+    database: localDatabase,
+    apiClient: apiClient,
+  );
+  WidgetsBinding.instance.addObserver(offlineSyncService);
+  await offlineSyncService.refreshStatus();
   final authRepository = AuthRepository(apiClient, authStorage);
-  final weddingPlansApi = WeddingPlansApi(apiClient);
-  final budgetExpenseApi = BudgetExpenseApi(apiClient);
-  final debtInstallmentApi = DebtInstallmentApi(apiClient);
-  final taskTimelineApi = TaskTimelineApi(apiClient);
-  final sharingApi = SharingApi(apiClient);
+  final weddingPlansApi = WeddingPlansApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final budgetExpenseApi = BudgetExpenseApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final debtInstallmentApi = DebtInstallmentApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final taskTimelineApi = TaskTimelineApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final sharingApi = SharingApi(apiClient, offline: offlineSyncService);
+  final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
+  final providerDashboardApi = ProviderDashboardApi(apiClient);
 
   runApp(
     MultiProvider(
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
         Provider<ApiClient>.value(value: apiClient),
+        Provider<LocalDatabase>.value(value: localDatabase),
+        ChangeNotifierProvider<OfflineSyncService>.value(
+          value: offlineSyncService,
+        ),
         Provider<AuthRepository>.value(value: authRepository),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
         Provider<DebtInstallmentApi>.value(value: debtInstallmentApi),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         Provider<SharingApi>.value(value: sharingApi),
+        Provider<MarketplaceApi>.value(value: marketplaceApi),
+        Provider<ProviderDashboardApi>.value(value: providerDashboardApi),
         ChangeNotifierProvider(
-          create: (_) => AuthController(authRepository)..restoreSession(),
+          create: (_) => AuthController(
+            authRepository,
+            offlineSyncService: offlineSyncService,
+          )..restoreSession(),
         ),
         ChangeNotifierProvider(
           create: (_) => WeddingPlansProvider(weddingPlansApi),
@@ -78,6 +112,12 @@ Future<void> main() async {
           create: (_) => TaskTimelineProvider(taskTimelineApi),
         ),
         ChangeNotifierProvider(create: (_) => SharingProvider(sharingApi)),
+        ChangeNotifierProvider(
+          create: (_) => ProviderMarketplaceProvider(marketplaceApi),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ProviderDashboardProvider(providerDashboardApi),
+        ),
       ],
       child: const AarastApp(),
     ),

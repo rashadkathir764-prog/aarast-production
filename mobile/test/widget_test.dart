@@ -12,7 +12,7 @@ void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
-  testWidgets('shows Arabic login screen when no token is stored', (
+  testWidgets('shows Arabic onboarding screen when no token is stored', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -37,8 +37,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('اعّرست'), findsOneWidget);
-    expect(find.text('تسجيل الدخول'), findsAtLeastNWidgets(1));
-    expect(find.text('رقم الهاتف'), findsOneWidget);
+    expect(find.text('أهلاً بك في أعرسِت'), findsOneWidget);
+    expect(find.text('ابدئي الآن'), findsOneWidget);
+    expect(find.text('لديك حساب بالفعل؟ تسجيل الدخول'), findsOneWidget);
   });
 }

@@ -88,6 +88,7 @@ class SharedMemberUser {
     required this.id,
     required this.name,
     required this.phone,
+    this.avatarUrl,
   });
 
   factory SharedMemberUser.fromJson(Map<String, dynamic> json) {
@@ -95,12 +96,37 @@ class SharedMemberUser {
       id: json['id'].toString(),
       name: json['name']?.toString() ?? '',
       phone: json['phone']?.toString(),
+      avatarUrl: json['avatarUrl']?.toString(),
     );
   }
 
   final String id;
   final String name;
   final String? phone;
+  final String? avatarUrl;
+}
+
+class SharedUserLookup {
+  const SharedUserLookup({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.avatarUrl,
+  });
+
+  factory SharedUserLookup.fromJson(Map<String, dynamic> json) {
+    return SharedUserLookup(
+      id: json['id'].toString(),
+      name: json['name']?.toString() ?? '',
+      phone: json['phone']?.toString(),
+      avatarUrl: json['avatarUrl']?.toString(),
+    );
+  }
+
+  final String id;
+  final String name;
+  final String? phone;
+  final String? avatarUrl;
 }
 
 SharedMemberUser? _sharedMemberUserOrNull(Map<String, dynamic> json) {
@@ -111,11 +137,13 @@ SharedMemberUser? _sharedMemberUserOrNull(Map<String, dynamic> json) {
 
   final name = json['userName'] ?? json['memberName'];
   final phone = json['userPhone'] ?? json['memberPhone'];
+  final avatarUrl = json['userAvatarUrl'] ?? json['memberAvatarUrl'];
   if (name != null || phone != null) {
     return SharedMemberUser(
       id: json['userId']?.toString() ?? '',
       name: name?.toString() ?? '',
       phone: phone?.toString(),
+      avatarUrl: avatarUrl?.toString(),
     );
   }
 

@@ -22,7 +22,7 @@
 | Shared access is explicit and permission-based. | Accepted | Shared members may collaborate on a WeddingPlan, but financial visibility and task management must be granted through explicit SharedMember permissions; private financial data remains hidden by default. |
 | Docs Foundation is documentation-only. | Accepted | The current phase may create or update Markdown files only and must not create app code, backend modules, Flutter screens, tests, migrations, Docker files, or deployment configs. |
 | Use Docker for local service isolation and reproducible runtime environments. | Accepted | Docker is an operations decision for consistent local services and runtime behavior; it is not an implementation task in the current documentation phase. |
-| Use Dokploy for later VPS deployment and operations. | Accepted | Dokploy is a later deployment and operations decision; no Dokploy configuration is created in the current documentation phase. |
+| Use Dokploy for VPS deployment and operations. | Accepted | Dokploy is the approved production deployment path. The current Compose runbook lives in `deploy/dokploy/`, using backend host port `8093`, admin host port `8095`, `PORT=3000`, `CORS_ORIGINS=https://aarast.shadowgardn.com`, and `VITE_API_BASE_URL=https://aarast-api.shadowgardn.com`. |
 
 ## Deferred Decisions
 
@@ -31,9 +31,7 @@
 - Final database schema and migration sequence.
 - AI planning approach.
 - Payment, installment, savings, or financing partnerships.
-- Detailed production hosting and deployment runbook.
 - Confirming the actual Git repository root.
-- Exact Docker/Dokploy implementation files and deployment sequence.
 - Permission model details for shared members.
 - Attachment storage implementation.
 - Exact persistence package/setup sequence.

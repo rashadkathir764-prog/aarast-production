@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { SharingModule } from '../sharing/sharing.module';
 import {
   DebtInstallmentsController,
   InstallmentsController,
@@ -9,7 +10,7 @@ import {
 import { InstallmentsService } from './installments.service';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, SharingModule],
   controllers: [
     DebtInstallmentsController,
     WeddingPlanInstallmentsController,

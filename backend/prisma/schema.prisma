@@ -62,18 +62,67 @@ enum SharedMemberRole {
   MANAGER
 }
 
+enum OtpPurpose {
+  REGISTER
+  LOGIN
+  VERIFY_PHONE
+  RESET_PASSWORD
+}
+
+enum ProviderStatus {
+  PENDING
+  ACTIVE
+  NEEDS_CHANGES
+  SUSPENDED
+  REJECTED
+}
+
+enum ReviewStatus {
+  PUBLISHED
+  HIDDEN
+  PENDING
+}
+
+enum QuoteRequestStatus {
+  SENT
+  VIEWED
+  RESPONDED
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum BookingLeadStatus {
+  NEW
+  IN_PROGRESS
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
 model User {
-  id                 String         @id @default(cuid())
-  name               String
-  phone              String?        @unique
-  email              String?        @unique
-  passwordHash       String
-  role               UserRole       @default(USER)
-  status             UserStatus     @default(ACTIVE)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  weddingPlans       WeddingPlan[]
-  sharedWeddingPlans SharedMember[]
+  id                     String                  @id @default(cuid())
+  name                   String
+  phone                  String?                 @unique
+  email                  String?                 @unique
+  passwordHash           String
+  role                   UserRole                @default(USER)
+  status                 UserStatus              @default(ACTIVE)
+  phoneVerifiedAt        DateTime?
+  lastLoginAt            DateTime?
+  avatarUrl              String?
+  locale                 String                  @default("ar")
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  weddingPlans           WeddingPlan[]
+  sharedWeddingPlans     SharedMember[]
+  notificationPreference NotificationPreference?
+  providerProfile        Provider?
+  favoriteProviders      FavoriteProvider[]
+  providerReviews        ProviderReview[]
+  quoteRequests          QuoteRequest[]
+  bookingLeads           BookingLead[]
+  reviewedProviders      Provider[]              @relation("ProviderReviewedBy")
 }
 
 model WeddingPlan {
@@ -93,6 +142,8 @@ model WeddingPlan {
   debts            Debt[]
   tasks            WeddingTask[]
   sharedMembers    SharedMember[]
+  quoteRequests    QuoteRequest[]
+  bookingLeads     BookingLead[]
 }
 
 model BudgetCategory {
@@ -156,6 +207,8 @@ model WeddingTask {
   title         String
   description   String?
   dueDate       DateTime?
+  taskCategory  String?
+  reminderAt    DateTime?
   status        WeddingTaskStatus   @default(TODO)
   priority      WeddingTaskPriority @default(MEDIUM)
   createdAt     DateTime            @default(now())
@@ -179,4 +232,242 @@ model SharedMember {
   user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([weddingPlanId, userId])
+}
+
+model OtpCode {
+  id          String     @id @default(uuid())
+  phone       String
+  codeHash    String
+  purpose     OtpPurpose
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(5)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([phone, purpose, consumedAt])
+  @@index([phone, purpose, expiresAt])
+}
+
+model NotificationPreference {
+  id                      String   @id @default(uuid())
+  userId                  String   @unique
+  pushEnabled             Boolean  @default(true)
+  smsEnabled              Boolean  @default(false)
+  whatsappEnabled         Boolean  @default(false)
+  emailEnabled            Boolean  @default(false)
+  taskRemindersEnabled    Boolean  @default(true)
+  paymentRemindersEnabled Boolean  @default(true)
+  providerMessagesEnabled Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model City {
+  id            String            @id @default(uuid())
+  nameAr        String
+  nameEn        String?
+  countryCode   String            @default("YE")
+  isActive      Boolean           @default(true)
+  sortOrder     Int               @default(0)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  providers     Provider[]
+  services      ProviderService[]
+  quoteRequests QuoteRequest[]
+
+  @@unique([nameAr, countryCode])
+  @@index([isActive, sortOrder])
+}
+
+model ProviderCategory {
+  id        String            @id @default(uuid())
+  nameAr    String
+  nameEn    String?
+  slug      String            @unique
+  icon      String?
+  isActive  Boolean           @default(true)
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  services  ProviderService[]
+  providers Provider[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Provider {
+  id                String             @id @default(uuid())
+  userId            String?            @unique
+  cityId            String
+  primaryCategoryId String?
+  businessName      String
+  ownerName         String?
+  phone             String
+  whatsapp          String?
+  email             String?
+  description       String?            @db.Text
+  address           String?
+  latitude          Decimal?           @db.Decimal(10, 7)
+  longitude         Decimal?           @db.Decimal(10, 7)
+  logoUrl           String?
+  coverUrl          String?
+  status            ProviderStatus     @default(PENDING)
+  reviewNote        String?            @db.Text
+  reviewedAt        DateTime?
+  reviewedById      String?
+  isFeatured        Boolean            @default(false)
+  ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
+  ratingCount       Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  city              City               @relation(fields: [cityId], references: [id])
+  primaryCategory   ProviderCategory?  @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  reviewedBy        User?              @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  services          ProviderService[]
+  packages          ProviderPackage[]
+  favorites         FavoriteProvider[]
+  reviews           ProviderReview[]
+  quoteRequests     QuoteRequest[]
+  bookingLeads      BookingLead[]
+
+  @@index([status, isFeatured])
+  @@index([cityId, status])
+  @@index([primaryCategoryId, status])
+}
+
+model ProviderService {
+  id            String                 @id @default(uuid())
+  providerId    String
+  categoryId    String
+  title         String
+  description   String?                @db.Text
+  basePrice     Decimal?               @db.Decimal(14, 2)
+  priceUnit     String?
+  currency      String                 @default("YER")
+  cityId        String?
+  isActive      Boolean                @default(true)
+  isFeatured    Boolean                @default(false)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  provider      Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category      ProviderCategory       @relation(fields: [categoryId], references: [id])
+  city          City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  images        ProviderServiceImage[]
+  packages      ProviderPackage[]
+  quoteRequests QuoteRequest[]
+
+  @@index([providerId, isActive])
+  @@index([categoryId, isActive])
+  @@index([cityId, isActive])
+}
+
+model ProviderServiceImage {
+  id        String          @id @default(uuid())
+  serviceId String
+  imageUrl  String
+  altText   String?
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  service   ProviderService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([serviceId, sortOrder])
+}
+
+model ProviderPackage {
+  id          String           @id @default(uuid())
+  providerId  String
+  serviceId   String?
+  title       String
+  description String?          @db.Text
+  price       Decimal?         @db.Decimal(14, 2)
+  currency    String           @default("YER")
+  items       Json?
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  provider    Provider         @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service     ProviderService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+
+  @@index([providerId, isActive])
+  @@index([serviceId, isActive])
+}
+
+model FavoriteProvider {
+  id         String   @id @default(uuid())
+  userId     String
+  providerId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId])
+  @@index([providerId])
+}
+
+model ProviderReview {
+  id         String       @id @default(uuid())
+  userId     String
+  providerId String
+  rating     Int
+  comment    String?      @db.Text
+  status     ReviewStatus @default(PUBLISHED)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, providerId])
+  @@index([providerId, status])
+}
+
+model QuoteRequest {
+  id            String             @id @default(uuid())
+  userId        String
+  weddingPlanId String?
+  providerId    String
+  serviceId     String?
+  eventDate     DateTime?
+  cityId        String?
+  guestCount    Int?
+  message       String?            @db.Text
+  budgetMin     Decimal?           @db.Decimal(14, 2)
+  budgetMax     Decimal?           @db.Decimal(14, 2)
+  status        QuoteRequestStatus @default(SENT)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan   WeddingPlan?       @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider      Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service       ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  city          City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  bookingLeads  BookingLead[]
+
+  @@index([userId, status])
+  @@index([providerId, status])
+  @@index([weddingPlanId])
+}
+
+model BookingLead {
+  id             String            @id @default(uuid())
+  userId         String
+  weddingPlanId  String?
+  providerId     String
+  quoteRequestId String?
+  title          String
+  eventDate      DateTime?
+  status         BookingLeadStatus @default(NEW)
+  notes          String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan    WeddingPlan?      @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider       Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  quoteRequest   QuoteRequest?     @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([providerId, status])
 }

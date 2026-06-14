@@ -18,6 +18,8 @@ export interface TimelineTaskResponse {
   title: string;
   description: string | null;
   dueDate: Date | null;
+  taskCategory: string | null;
+  reminderAt: Date | null;
   status: string;
   priority: string;
 }
@@ -113,6 +115,8 @@ export class TimelineService {
       title: task.title,
       description: task.description,
       dueDate: task.dueDate,
+      taskCategory: task.taskCategory,
+      reminderAt: task.reminderAt,
       status: task.status,
       priority: task.priority,
     };

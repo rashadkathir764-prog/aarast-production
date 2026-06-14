@@ -5,6 +5,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+deploy/dokploy/.env
 
 # Build and test output
 dist/
@@ -28,5 +29,6 @@ coverage/
 .docker-data/
 docker-data/
 runtime-data/
+design_web_refs/
 tmp/
 temp/

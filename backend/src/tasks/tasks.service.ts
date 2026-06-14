@@ -12,6 +12,8 @@ export interface TaskResponse {
   title: string;
   description: string | null;
   dueDate: Date | null;
+  taskCategory: string | null;
+  reminderAt: Date | null;
   status: WeddingTaskStatus;
   priority: WeddingTaskPriority;
   createdAt: Date;
@@ -38,6 +40,8 @@ export class TasksService {
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
         dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
+        taskCategory: this.optionalText(dto.taskCategory),
+        reminderAt: this.optionalDate(dto.reminderAt, 'reminderAt'),
         status: dto.status ?? WeddingTaskStatus.TODO,
         priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
       },
@@ -79,6 +83,12 @@ export class TasksService {
           : {}),
         ...(dto.dueDate !== undefined
           ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
+          : {}),
+        ...(dto.taskCategory !== undefined
+          ? { taskCategory: this.optionalText(dto.taskCategory) }
+          : {}),
+        ...(dto.reminderAt !== undefined
+          ? { reminderAt: this.optionalDate(dto.reminderAt, 'reminderAt') }
           : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
@@ -143,6 +153,8 @@ export class TasksService {
       title: task.title,
       description: task.description,
       dueDate: task.dueDate,
+      taskCategory: task.taskCategory,
+      reminderAt: task.reminderAt,
       status: task.status,
       priority: task.priority,
       createdAt: task.createdAt,

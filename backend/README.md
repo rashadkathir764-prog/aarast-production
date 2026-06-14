@@ -1,28 +1,41 @@
 # Aarast Backend
 
-Minimal NestJS backend foundation for Aarast / اعّرست.
+NestJS backend foundation for Aarast / اعّرست.
 
 ## Current Scope
 
-- NestJS application shell.
-- Basic health endpoint at `GET /health`.
-- TypeScript build and check scripts.
-- Example environment file with `PORT`.
+- Health endpoint at `GET /health`.
+- Password auth plus provider-agnostic OTP request/verify endpoints.
+- Profile and notification settings endpoints.
+- Wedding Financial OS APIs for plans, budget categories, expenses, debts, installments, tasks, timeline, and sharing.
+- Provider reference marketplace APIs for cities, categories, providers, services, packages, favorites, reviews, quote requests, and provider dashboard catalog management.
+- Optional dashboard aggregator at `GET /dashboard/home`.
 - Local Docker runtime through the root `docker-compose.yml`.
 
 ## Out Of Scope
 
-- Product business modules.
-- Database migrations.
-- Flutter screens.
-- Dokploy files.
-- Payment, FinTech, AI, chat, or confirmed booking logic.
+- Flutter screen changes.
+- Dokploy production files.
+- Payment processing, deposits, paid booking, loan, credit, financing, FinTech, AI, or internal chat logic.
 
 ## Scripts
 
 - `npm run check`
+- `npx prisma validate`
 - `npm run build`
-- `npm run start`
+- `npm run seed`
+- `npm run smoke:all`
+- `npm run smoke:otp-profile`
+- `npm run smoke:marketplace`
+- `npm run smoke:provider-dashboard`
+
+## OTP Local Development
+
+`POST /auth/otp/request` stores only a hashed OTP. In non-production it returns the generated code for local testing. In production, expose the code only for isolated smoke environments by explicitly setting `AARAST_EXPOSE_OTP_IN_SMOKE=true`; do not use that flag for real users.
+
+## Smoke Environment
+
+Smoke scripts use `SMOKE_BASE_URL` and default to `http://127.0.0.1:3115`. Marketplace and provider-dashboard smokes can set `SMOKE_DATABASE_URL` when they need to create local ACTIVE marketplace fixtures.
 
 ## Local Docker
 

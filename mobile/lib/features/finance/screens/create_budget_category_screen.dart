@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../providers/finance_provider.dart';
 
@@ -33,78 +35,108 @@ class _CreateBudgetCategoryScreenState
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('تصنيف ميزانية جديد')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'أضف بندا واضحا للميزانية',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 500),
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: _goBack,
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            tooltip: 'رجوع',
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'تصنيف ميزانية',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: AppTheme.dMaroonDeep,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                            ),
+                          ),
+                        ],
                       ),
-                      textAlign: TextAlign.right,
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _nameController,
-                      textAlign: TextAlign.right,
-                      decoration: const InputDecoration(
-                        labelText: 'اسم التصنيف',
-                      ),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                          ? 'اسم التصنيف مطلوب'
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _targetAmountController,
-                      textAlign: TextAlign.right,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'المبلغ المستهدف اختياري',
-                      ),
-                      validator: (value) {
-                        final rawValue = value?.trim() ?? '';
-                        if (rawValue.isEmpty) {
-                          return null;
-                        }
-                        final parsed = num.tryParse(rawValue);
-                        if (parsed == null || parsed < 0) {
-                          return 'المبلغ يجب أن يكون رقما غير سالب';
-                        }
-                        return null;
-                      },
-                    ),
-                    if (provider.errorMessage != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        provider.errorMessage!,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                    sliver: SliverToBoxAdapter(
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const _CategoryHero(),
+                            const SizedBox(height: 18),
+                            AarastCard(
+                              padding: const EdgeInsets.all(18),
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _nameController,
+                                    textAlign: TextAlign.right,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: const InputDecoration(
+                                      labelText: 'اسم التصنيف',
+                                      hintText:
+                                          'مثال: القاعة، الضيافة، التصوير...',
+                                      prefixIcon: Icon(Icons.sell_outlined),
+                                    ),
+                                    validator: _required('اسم التصنيف مطلوب'),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: _targetAmountController,
+                                    textAlign: TextAlign.right,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    decoration: const InputDecoration(
+                                      labelText: 'المبلغ المستهدف (اختياري)',
+                                      suffixText: 'YER',
+                                      prefixIcon: Icon(
+                                        Icons.track_changes_rounded,
+                                      ),
+                                    ),
+                                    validator: _nonNegativeOptional,
+                                  ),
+                                  if (provider.errorMessage != null) ...[
+                                    const SizedBox(height: 14),
+                                    AarastStatusPill(
+                                      label: provider.errorMessage!,
+                                      color: AppTheme.danger,
+                                      icon: Icons.error_outline_rounded,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                            PrimaryActionButton(
+                              label: 'حفظ التصنيف',
+                              icon: Icons.check_rounded,
+                              isLoading: provider.isSubmitting,
+                              onPressed: _submit,
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.right,
                       ),
-                    ],
-                    const SizedBox(height: 20),
-                    PrimaryActionButton(
-                      label: 'حفظ التصنيف',
-                      isLoading: provider.isSubmitting,
-                      onPressed: _submit,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -113,24 +145,99 @@ class _CreateBudgetCategoryScreenState
     );
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
+  void _goBack() {
+    if (context.canPop()) {
+      context.pop();
       return;
     }
+    context.go(AppRouter.finance(widget.weddingPlanId));
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<FinanceProvider>();
+    final target = _targetAmountController.text.trim();
     final created = await provider.createBudgetCategory(
       weddingPlanId: widget.weddingPlanId,
-      name: _nameController.text,
-      targetAmount: _targetAmountController.text,
+      name: _nameController.text.trim(),
+      targetAmount: target.isEmpty ? null : target,
     );
 
     if (created && mounted) {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRouter.finance(widget.weddingPlanId));
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
       }
+      _goBack();
     }
   }
+}
+
+class _CategoryHero extends StatelessWidget {
+  const _CategoryHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.dPinkBg.withAlpha(120),
+      border: Border.all(color: AppTheme.dMaroon.withAlpha(35)),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: AppTheme.dCard2,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            ),
+            child: const Icon(
+              Icons.create_new_folder_outlined,
+              color: AppTheme.dMaroon,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'قسمي الميزانية إلى بنود واضحة',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dMaroonDeep,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'كل تصنيف يجعل المصاريف أسهل في القراءة والمراجعة.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+FormFieldValidator<String> _required(String message) {
+  return (value) => value == null || value.trim().isEmpty ? message : null;
+}
+
+String? _nonNegativeOptional(String? value) {
+  final rawValue = value?.trim() ?? '';
+  if (rawValue.isEmpty) return null;
+  final parsed = num.tryParse(rawValue);
+  if (parsed == null || parsed < 0) {
+    return 'المبلغ يجب أن يكون رقماً غير سالب';
+  }
+  return null;
 }

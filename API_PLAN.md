@@ -57,3 +57,16 @@ The frozen MVP backend API contract for Flutter integration is documented in `AP
 | FinTech Partnerships | Future only; no MVP implementation. |
 | Internal Chat | Excluded from MVP unless explicitly approved later. |
 | Advanced Analytics | Future only after core usage exists. |
+
+## Implemented Backend Foundation Addendum
+
+The backend now includes the approved OTP/profile and provider-reference API foundation:
+
+- Auth OTP: `POST /auth/otp/request`, `POST /auth/otp/verify`.
+- Profile/settings: `PATCH /users/me`, `GET /users/me/settings`, `PATCH /users/me/settings`.
+- Public provider references: `GET /cities`, `GET /provider-categories`, `GET /providers`, `GET /providers/:id`, `GET /providers/:id/services`, `GET /services`, `GET /services/:id`, `GET /providers/:id/packages`, `GET /providers/:id/reviews`.
+- Authenticated marketplace actions: `POST /providers/:id/favorite`, `DELETE /providers/:id/favorite`, `GET /me/favorite-providers`, `POST /providers/:id/quote-requests`, `GET /me/quote-requests`, `GET /me/quote-requests/:id`, `PATCH /me/quote-requests/:id/cancel`, `POST /providers/:id/reviews`, `PATCH /reviews/:id`, `DELETE /reviews/:id`.
+- Provider dashboard: `POST /provider/apply`, `GET /provider/me/profile`, `PATCH /provider/me/profile`, `GET /provider/me/summary`, provider-owned service/image/package management, quote-request reads/status updates, and review reads.
+- Optional mobile aggregation: `GET /dashboard/home`.
+
+Public provider/service/package endpoints expose only `ACTIVE` providers and active catalog records. User-owned quote requests, reviews, favorites, and provider dashboard records are scoped by authenticated user ownership. These endpoints remain planning/reference and lead workflows only; they do not create paid bookings, deposits, payment status, loans, credit, financing, AI, or chat behavior.

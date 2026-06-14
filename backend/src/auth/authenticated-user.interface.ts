@@ -7,6 +7,10 @@ export interface AuthenticatedUser {
   email: string | null;
   role: UserRole;
   status: UserStatus;
+  phoneVerifiedAt: Date | null;
+  lastLoginAt: Date | null;
+  avatarUrl: string | null;
+  locale: string;
   createdAt: Date;
   updatedAt: Date;
 }

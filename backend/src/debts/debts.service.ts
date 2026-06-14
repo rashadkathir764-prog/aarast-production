@@ -1,8 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Debt, DebtStatus, WeddingPlan } from '@prisma/client';
+import { Debt, DebtStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { OwnershipContextService } from '../auth/ownership-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../sharing/permission.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
 
@@ -34,7 +34,7 @@ export interface DebtSummaryResponse {
 export class DebtsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly ownershipContext: OwnershipContextService,
+    private readonly permissionService: PermissionService,
   ) {}
 
   async create(
@@ -42,7 +42,7 @@ export class DebtsService {
     weddingPlanId: string,
     dto: CreateDebtDto,
   ): Promise<DebtResponse> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissionService.assertFinancialManageable(weddingPlanId, currentUser);
 
     const debt = await this.prisma.debt.create({
       data: {
@@ -64,7 +64,11 @@ export class DebtsService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<DebtResponse[]> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      'debts',
+    );
 
     const debts = await this.prisma.debt.findMany({
       where: { weddingPlanId },
@@ -78,7 +82,11 @@ export class DebtsService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<DebtSummaryResponse> {
-    await this.findOwnedWeddingPlanOrThrow(currentUser, weddingPlanId);
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      'debts',
+    );
 
     const debts = await this.prisma.debt.findMany({
       where: { weddingPlanId },
@@ -124,7 +132,11 @@ export class DebtsService {
     id: string,
     dto: UpdateDebtDto,
   ): Promise<DebtResponse> {
-    await this.findOwnedDebtOrThrow(currentUser, id);
+    const existing = await this.findDebtOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
 
     const debt = await this.prisma.debt.update({
       where: { id },
@@ -156,13 +168,16 @@ export class DebtsService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<{ id: string; deleted: true }> {
-    await this.findOwnedDebtOrThrow(currentUser, id);
+    const debt = await this.findDebtOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      debt.weddingPlanId,
+      currentUser,
+    );
     await this.prisma.debt.delete({ where: { id } });
     return { id, deleted: true };
   }
 
-  async findOwnedDebtOrThrow(
-    currentUser: AuthenticatedUser,
+  private async findDebtOrThrow(
     id: string,
   ): Promise<Debt> {
     const debt = await this.prisma.debt.findUnique({ where: { id } });
@@ -171,23 +186,7 @@ export class DebtsService {
       throw new NotFoundException('Debt not found');
     }
 
-    await this.findOwnedWeddingPlanOrThrow(currentUser, debt.weddingPlanId);
     return debt;
-  }
-
-  private async findOwnedWeddingPlanOrThrow(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-  ): Promise<WeddingPlan> {
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: weddingPlanId },
-    });
-
-    if (!plan || !this.ownershipContext.isOwner(currentUser, plan.ownerUserId)) {
-      throw new NotFoundException('Wedding plan not found');
-    }
-
-    return plan;
   }
 
   private requiredText(value: string, field: string): string {

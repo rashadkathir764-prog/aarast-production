@@ -12,6 +12,9 @@ const smokeScripts = [
   ['smoke:debt-installment', 'debt-installment-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],
   ['smoke:sharing', 'sharing-smoke.js'],
+  ['smoke:otp-profile', 'otp-profile-smoke.js'],
+  ['smoke:marketplace', 'marketplace-smoke.js'],
+  ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
 ];
 
 const results = [];

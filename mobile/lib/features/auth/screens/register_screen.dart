@@ -4,11 +4,18 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../marketplace/providers/marketplace_provider.dart';
 import '../providers/auth_controller.dart';
+import '../widgets/auth_wedding_widgets.dart';
+
+enum _AccountType { customer, provider }
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  const RegisterScreen({this.startAsProvider = false, super.key});
+
+  final bool startAsProvider;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -20,8 +27,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   bool _obscurePassword = true;
+  _AccountType _accountType = _AccountType.customer;
+  String? _cityId;
+  String? _categoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.startAsProvider) {
+      _accountType = _AccountType.provider;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProviderMarketplaceProvider>().loadReferenceData();
+    });
+  }
 
   @override
   void dispose() {
@@ -29,236 +51,224 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _descriptionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
+    final dashboard = context.watch<ProviderDashboardProvider>();
+    final marketplace = context.watch<ProviderMarketplaceProvider>();
     final textTheme = Theme.of(context).textTheme;
+    final providerMode = _accountType == _AccountType.provider;
 
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: SafeArea(
-        child: Stack(
+    return AuthWeddingScaffold(
+      leading: AuthBackButton(
+        onPressed: () => context.go(AppRouter.onboarding),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _RegisterDecorations(),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 430),
-                    child: SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(
-                        20,
-                        constraints.maxHeight < 720 ? 18 : 30,
-                        20,
-                        24,
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const _BrandMark(),
-                            const SizedBox(height: 20),
-                            Text(
-                              'إنشاء حساب',
-                              textAlign: TextAlign.center,
-                              style: textTheme.headlineSmall?.copyWith(
-                                color: AppTheme.dInk,
-                                fontWeight: FontWeight.w900,
-                                height: 1.15,
-                              ),
+            const SizedBox(height: 8),
+            const AuthBrandMark(compact: true),
+            const SizedBox(height: 18),
+            Text(
+              providerMode ? 'طلب الانضمام كمزود' : 'إنشاء حساب',
+              textAlign: TextAlign.center,
+              style: textTheme.headlineSmall?.copyWith(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w900,
+                height: 1.18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              providerMode
+                  ? 'أرسلي بيانات نشاطك وسيتم مراجعة الطلب قبل ظهور لوحة المزود.'
+                  : 'ابدئي رحلتك بخطة زفاف واضحة ومرتبة.',
+              textAlign: TextAlign.center,
+              style: textTheme.bodyMedium?.copyWith(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w700,
+                height: 1.45,
+              ),
+            ),
+            const SizedBox(height: 18),
+            AuthPanel(
+              padding: EdgeInsets.all(providerMode ? 16 : 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _AccountTypeSegmentedControl(
+                    value: _accountType,
+                    onChanged: (value) {
+                      auth.clearError();
+                      dashboard.clearError();
+                      setState(() => _accountType = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  if (providerMode) ...[
+                    const _ProviderModeNote(),
+                    const SizedBox(height: 14),
+                  ],
+                  AuthTextField(
+                    controller: _nameController,
+                    label: providerMode
+                        ? 'اسم النشاط / اسم المزود'
+                        : 'الاسم الكامل',
+                    icon: providerMode
+                        ? Icons.storefront_rounded
+                        : Icons.person_rounded,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return providerMode
+                            ? 'اسم النشاط مطلوب'
+                            : 'الاسم مطلوب';
+                      }
+                      if (value.trim().length < 3) {
+                        return providerMode
+                            ? 'اسم النشاط قصير جداً'
+                            : 'الاسم قصير جداً';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  AuthTextField(
+                    controller: _phoneController,
+                    label: providerMode ? 'رقم التواصل' : 'رقم الهاتف',
+                    hint: 'مثال: 77xxxxxxx',
+                    icon: Icons.phone_rounded,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'رقم الهاتف مطلوب';
+                      }
+                      if (value.trim().length < 7) {
+                        return 'رقم الهاتف غير صحيح';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  AuthTextField(
+                    controller: _emailController,
+                    label: 'البريد الإلكتروني اختياري',
+                    icon: Icons.mail_rounded,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  if (providerMode) ...[
+                    const SizedBox(height: 14),
+                    _ProviderDropdown(
+                      value: _safeCityId(marketplace),
+                      label: 'المدينة',
+                      icon: Icons.place_outlined,
+                      items: marketplace.cities
+                          .map(
+                            (city) => DropdownMenuItem(
+                              value: city.id,
+                              child: Text(city.nameAr),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'ابدأ حسابك بسهولة وابدأ رحلة تنظيم زفافك.',
-                              textAlign: TextAlign.center,
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.dInkSoft,
-                                fontWeight: FontWeight.w600,
-                                height: 1.45,
-                              ),
+                          )
+                          .toList(),
+                      onChanged: (value) => setState(() => _cityId = value),
+                      validator: (value) =>
+                          value == null ? 'اختاري المدينة' : null,
+                    ),
+                    const SizedBox(height: 14),
+                    _ProviderDropdown(
+                      value: _safeCategoryId(marketplace),
+                      label: 'الفئة',
+                      icon: Icons.category_outlined,
+                      items: marketplace.categories
+                          .map(
+                            (category) => DropdownMenuItem(
+                              value: category.id,
+                              child: Text(category.nameAr),
                             ),
-                            const SizedBox(height: 24),
-                            Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: AppTheme.premiumCardDecoration(
-                                radius: AppTheme.radiusXl,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  TextFormField(
-                                    controller: _nameController,
-                                    textAlign: TextAlign.right,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: const InputDecoration(
-                                      labelText: 'الاسم الكامل',
-                                      prefixIcon: Icon(Icons.person_rounded),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'الاسم مطلوب';
-                                      }
-                                      if (value.trim().length < 3) {
-                                        return 'الاسم قصير جداً';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _phoneController,
-                                    textAlign: TextAlign.right,
-                                    keyboardType: TextInputType.phone,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: const InputDecoration(
-                                      labelText: 'رقم الهاتف',
-                                      hintText: 'مثال: 77xxxxxxx',
-                                      prefixIcon: Icon(Icons.phone_rounded),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'رقم الهاتف مطلوب';
-                                      }
-                                      if (value.trim().length < 7) {
-                                        return 'رقم الهاتف غير صحيح';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _emailController,
-                                    textAlign: TextAlign.right,
-                                    keyboardType: TextInputType.emailAddress,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: const InputDecoration(
-                                      labelText: 'البريد الإلكتروني اختياري',
-                                      prefixIcon: Icon(Icons.mail_rounded),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _passwordController,
-                                    textAlign: TextAlign.right,
-                                    obscureText: _obscurePassword,
-                                    textInputAction: TextInputAction.done,
-                                    onFieldSubmitted: (_) => _submit(),
-                                    decoration: InputDecoration(
-                                      labelText: 'كلمة المرور',
-                                      prefixIcon:
-                                          const Icon(Icons.lock_rounded),
-                                      suffixIcon: IconButton(
-                                        tooltip: _obscurePassword
-                                            ? 'إظهار كلمة المرور'
-                                            : 'إخفاء كلمة المرور',
-                                        onPressed: () {
-                                          setState(() {
-                                            _obscurePassword =
-                                                !_obscurePassword;
-                                          });
-                                        },
-                                        icon: Icon(
-                                          _obscurePassword
-                                              ? Icons.visibility_rounded
-                                              : Icons.visibility_off_rounded,
-                                        ),
-                                      ),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'كلمة المرور مطلوبة';
-                                      }
-                                      if (value.length < 6) {
-                                        return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  if (auth.errorMessage != null) ...[
-                                    const SizedBox(height: 14),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.dPinkBg,
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusMd,
-                                        ),
-                                        border: Border.all(
-                                          color: AppTheme.danger.withAlpha(70),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Icon(
-                                            Icons.error_outline_rounded,
-                                            color: AppTheme.danger,
-                                            size: 19,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              auth.errorMessage!,
-                                              textAlign: TextAlign.right,
-                                              style: textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: AppTheme.danger,
-                                                fontWeight: FontWeight.w700,
-                                                height: 1.35,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 20),
-                                  PrimaryActionButton(
-                                    label: 'إنشاء حساب',
-                                    isLoading: auth.isSubmitting,
-                                    onPressed: _submit,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  TextButton(
-                                    onPressed: auth.isSubmitting
-                                        ? null
-                                        : () {
-                                            auth.clearError();
-                                            context.go(AppRouter.login);
-                                          },
-                                    child: const Text(
-                                      'لديك حساب بالفعل؟ تسجيل الدخول',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              'كل تفاصيل زفافك في مكان واحد: خطة، ميزانية، مهام، ومتابعة يومية.',
-                              textAlign: TextAlign.center,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: AppTheme.dMuted,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
+                          )
+                          .toList(),
+                      onChanged: (value) => setState(() => _categoryId = value),
+                      validator: (value) =>
+                          value == null ? 'اختاري الفئة' : null,
+                    ),
+                    const SizedBox(height: 14),
+                    AuthTextField(
+                      controller: _descriptionController,
+                      label: 'نبذة مختصرة',
+                      hint: 'الخدمات، المدينة، وما يميز نشاطك',
+                      icon: Icons.notes_outlined,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.next,
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  AuthTextField(
+                    controller: _passwordController,
+                    label: 'كلمة المرور',
+                    icon: Icons.lock_rounded,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _submit(),
+                    suffixIcon: IconButton(
+                      tooltip: _obscurePassword
+                          ? 'إظهار كلمة المرور'
+                          : 'إخفاء كلمة المرور',
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
                       ),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'كلمة المرور مطلوبة';
+                      }
+                      if (value.length < 6) {
+                        return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                      }
+                      return null;
+                    },
                   ),
-                );
+                  if (auth.errorMessage != null) ...[
+                    const SizedBox(height: 14),
+                    AuthInlineError(message: auth.errorMessage!),
+                  ],
+                  if (providerMode && dashboard.errorMessage != null) ...[
+                    const SizedBox(height: 14),
+                    AuthInlineError(message: dashboard.errorMessage!),
+                  ],
+                  const SizedBox(height: 20),
+                  PrimaryActionButton(
+                    label: providerMode ? 'إرسال طلب الانضمام' : 'إنشاء حساب',
+                    icon: providerMode
+                        ? Icons.assignment_ind_outlined
+                        : Icons.person_add_alt_1_rounded,
+                    isLoading: auth.isSubmitting || dashboard.isSubmitting,
+                    onPressed: _submit,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            AuthFooterLink(
+              prefix: 'لديك حساب بالفعل؟',
+              action: 'تسجيل الدخول',
+              onTap: () {
+                if (auth.isSubmitting) return;
+                auth.clearError();
+                context.go(AppRouter.login);
               },
             ),
           ],
@@ -267,69 +277,107 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  String? _safeCityId(ProviderMarketplaceProvider marketplace) {
+    if (_cityId == null) return null;
+    return marketplace.cities.any((city) => city.id == _cityId)
+        ? _cityId
+        : null;
+  }
+
+  String? _safeCategoryId(ProviderMarketplaceProvider marketplace) {
+    if (_categoryId == null) return null;
+    return marketplace.categories.any((category) => category.id == _categoryId)
+        ? _categoryId
+        : null;
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthController>();
+    final email = _emailController.text.trim();
     final success = await auth.register(
       name: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
-      email: _emailController.text.trim(),
+      email: email.isEmpty ? null : email,
       password: _passwordController.text,
     );
 
-    if (success && mounted) {
-      context.go(AppRouter.home);
+    if (!success || !mounted) return;
+
+    if (_accountType == _AccountType.provider) {
+      if (_cityId == null || _categoryId == null) return;
+      final applied = await context
+          .read<ProviderDashboardProvider>()
+          .applyProvider(
+            businessName: _nameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            cityId: _cityId!,
+            categoryIds: [_categoryId!],
+            description: _descriptionController.text,
+          );
+      if (applied && mounted) {
+        context.go(AppRouter.providerApplyStatus);
+      }
+      return;
+    }
+
+    if (mounted) {
+      context.go(AppRouter.otp);
     }
   }
 }
 
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
+class _AccountTypeSegmentedControl extends StatelessWidget {
+  const _AccountTypeSegmentedControl({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final _AccountType value;
+  final ValueChanged<_AccountType> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(
+          'نوع الحساب',
+          textAlign: TextAlign.right,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppTheme.dInk,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
         Container(
-          width: 74,
-          height: 74,
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            gradient: AppTheme.heroGradient,
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.dMaroonDeep.withAlpha(45),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
+            color: AppTheme.dCard2,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(color: AppTheme.dLine),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _SegmentOption(
+                  selected: value == _AccountType.customer,
+                  label: 'عميل',
+                  icon: Icons.favorite_border_rounded,
+                  onTap: () => onChanged(_AccountType.customer),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _SegmentOption(
+                  selected: value == _AccountType.provider,
+                  label: 'مزود',
+                  icon: Icons.storefront_rounded,
+                  onTap: () => onChanged(_AccountType.provider),
+                ),
               ),
             ],
-          ),
-          child: const Icon(
-            Icons.favorite_rounded,
-            color: AppTheme.dGold2,
-            size: 34,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Text(
-          'اعّرست',
-          textAlign: TextAlign.center,
-          style: textTheme.displaySmall?.copyWith(
-            color: AppTheme.dMaroon,
-            fontWeight: FontWeight.w900,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          width: 76,
-          height: 4,
-          decoration: BoxDecoration(
-            gradient: AppTheme.goldGradient,
-            borderRadius: BorderRadius.circular(99),
           ),
         ),
       ],
@@ -337,37 +385,45 @@ class _BrandMark extends StatelessWidget {
   }
 }
 
-class _RegisterDecorations extends StatelessWidget {
-  const _RegisterDecorations();
+class _SegmentOption extends StatelessWidget {
+  const _SegmentOption({
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Stack(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.dMaroon : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Positioned(
-              top: -58,
-              right: -44,
-              child: _DecorativeCircle(
-                size: 150,
-                color: AppTheme.dGold.withAlpha(32),
-              ),
+            Icon(
+              icon,
+              size: 18,
+              color: selected ? Colors.white : AppTheme.dInkSoft,
             ),
-            Positioned(
-              top: 130,
-              left: -76,
-              child: _DecorativeCircle(
-                size: 160,
-                color: AppTheme.dMaroon.withAlpha(18),
-              ),
-            ),
-            Positioned(
-              bottom: -90,
-              right: -60,
-              child: _DecorativeCircle(
-                size: 200,
-                color: AppTheme.dPinkBg.withAlpha(180),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : AppTheme.dInkSoft,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ],
@@ -377,24 +433,62 @@ class _RegisterDecorations extends StatelessWidget {
   }
 }
 
-class _DecorativeCircle extends StatelessWidget {
-  const _DecorativeCircle({
-    required this.size,
-    required this.color,
-  });
-
-  final double size;
-  final Color color;
+class _ProviderModeNote extends StatelessWidget {
+  const _ProviderModeNote();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
+    return const AarastCard(
+      padding: EdgeInsets.all(14),
+      color: AppTheme.dCreamBg,
+      child: Text(
+        'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود.',
+        textAlign: TextAlign.right,
+        style: TextStyle(
+          color: AppTheme.dInk,
+          fontWeight: FontWeight.w800,
+          height: 1.45,
+        ),
       ),
+    );
+  }
+}
+
+class _ProviderDropdown extends StatelessWidget {
+  const _ProviderDropdown({
+    required this.value,
+    required this.label,
+    required this.icon,
+    required this.items,
+    required this.onChanged,
+    required this.validator,
+  });
+
+  final String? value;
+  final String label;
+  final IconData icon;
+  final List<DropdownMenuItem<String>> items;
+  final ValueChanged<String?> onChanged;
+  final FormFieldValidator<String> validator;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      initialValue: value,
+      isExpanded: true,
+      menuMaxHeight: 320,
+      decoration: InputDecoration(
+        labelText: label,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        prefixIcon: Icon(icon),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 13,
+        ),
+      ),
+      items: items,
+      onChanged: onChanged,
+      validator: validator,
     );
   }
 }

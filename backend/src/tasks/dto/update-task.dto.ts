@@ -14,6 +14,14 @@ export class UpdateTaskDto {
   @IsOptional()
   dueDate?: string | null;
 
+  @IsString()
+  @IsOptional()
+  taskCategory?: string | null;
+
+  @IsString()
+  @IsOptional()
+  reminderAt?: string | null;
+
   @IsEnum(WeddingTaskStatus)
   @IsOptional()
   status?: WeddingTaskStatus;

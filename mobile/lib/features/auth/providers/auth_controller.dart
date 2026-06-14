@@ -1,15 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../data/auth_repository.dart';
 import '../models/safe_user.dart';
 
 enum AuthStatus { checking, authenticated, unauthenticated }
 
 class AuthController extends ChangeNotifier {
-  AuthController(this._authRepository);
+  AuthController(this._authRepository, {OfflineSyncService? offlineSyncService})
+    : _offlineSyncService = offlineSyncService;
 
   final AuthRepository _authRepository;
+  final OfflineSyncService? _offlineSyncService;
 
   AuthStatus _status = AuthStatus.checking;
   SafeUser? _user;
@@ -35,11 +41,20 @@ class AuthController extends ChangeNotifier {
 
     try {
       _user = await _authRepository.me();
+      if (_user != null) {
+        await _offlineSyncService?.cacheCurrentUser(_user!);
+      }
       _status = AuthStatus.authenticated;
-    } on ApiException {
-      await _authRepository.logout();
-      _user = null;
-      _status = AuthStatus.unauthenticated;
+      unawaited(_offlineSyncService?.syncPendingChanges());
+    } on ApiException catch (error) {
+      if (CachePolicy.shouldUseCache(error) && _user != null) {
+        _status = AuthStatus.authenticated;
+        await _offlineSyncService?.noteNetworkFailure(error.message);
+      } else {
+        await _authRepository.logout();
+        _user = null;
+        _status = AuthStatus.unauthenticated;
+      }
     }
     notifyListeners();
   }
@@ -51,7 +66,9 @@ class AuthController extends ChangeNotifier {
         password: password,
       );
       _user = response.user;
+      await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
+      unawaited(_offlineSyncService?.syncPendingChanges());
     });
   }
 
@@ -69,7 +86,9 @@ class AuthController extends ChangeNotifier {
         password: password,
       );
       _user = response.user;
+      await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
+      unawaited(_offlineSyncService?.syncPendingChanges());
     });
   }
 
@@ -94,7 +113,9 @@ class AuthController extends ChangeNotifier {
       await action();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = error.isNetworkFailure && _user == null
+          ? CachePolicy.firstLoginNeedsInternet
+          : error.message;
       return false;
     } catch (_) {
       _errorMessage = 'حدث خطأ، يرجى المحاولة مرة أخرى.';

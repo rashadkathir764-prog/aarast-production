@@ -101,7 +101,7 @@ class ApiClient {
 }
 
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(this.message, {this.isNetworkFailure = false});
 
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
@@ -114,24 +114,39 @@ class ApiException implements Exception {
     if (data is Map && data['message'] != null) {
       final message = data['message'];
       if (message is String) {
-        return ApiException(message);
+        return ApiException(_cleanServerMessage(message));
       }
       if (message is List && message.isNotEmpty) {
-        return ApiException(message.first.toString());
+        return ApiException(_cleanServerMessage(message.first.toString()));
       }
     }
 
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {
-      return const ApiException('تعذر الاتصال بالخادم. تأكد من تشغيل الخلفية.');
+      return const ApiException(
+        'تعذر الاتصال بالخادم. تأكد من تشغيل الخلفية.',
+        isNetworkFailure: true,
+      );
     }
 
     return const ApiException('حدث خطأ، يرجى المحاولة مرة أخرى.');
   }
 
   final String message;
+  final bool isNetworkFailure;
 
   @override
   String toString() => message;
+
+  static String _cleanServerMessage(String message) {
+    final normalized = message.trim();
+    if (normalized.startsWith('Cannot GET') ||
+        normalized.startsWith('Cannot POST') ||
+        normalized.startsWith('Cannot PATCH') ||
+        normalized.startsWith('Cannot DELETE')) {
+      return 'هذه الخدمة غير متاحة على الخادم الحالي. تأكد من تشغيل آخر نسخة من الخلفية.';
+    }
+    return normalized;
+  }
 }

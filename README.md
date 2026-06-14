@@ -9,11 +9,18 @@ Aarast / اعّرست is a Yemen-focused mobile app for people planning marriage
 - Database: PostgreSQL
 - Admin dashboard: simple admin panel for managing vendors and services
 - Local operations: Docker for local service isolation and reproducible runtime environments
-- Deployment operations: Dokploy for later VPS deployment and operations
+- Deployment operations: Dokploy VPS deployment via `deploy/dokploy/`
 - Workflow: Git worktree is the intended workflow for isolated branches and feature work, but actual worktree usage is blocked until the correct Git repository root is confirmed.
 - Testing: smoke tests for critical units before expanding feature scope
 
-Docker and Dokploy are part of the planned operations stack, but no Dockerfile, docker-compose file, or Dokploy configuration has been created in the current documentation phase.
+Docker and Dokploy are part of the operations stack. Local Docker files support backend/database isolation, and `deploy/dokploy/` contains the approved production Compose runbook for the current Aarast domains.
+
+Production deployment uses:
+
+| Service | Public URL | Host -> Container |
+|---------|------------|------------------|
+| Backend API | `https://aarast-api.shadowgardn.com` | `8093 -> 3000` |
+| Admin dashboard | `https://aarast.shadowgardn.com` | `8095 -> 80` |
 
 ## Local Development Ports
 

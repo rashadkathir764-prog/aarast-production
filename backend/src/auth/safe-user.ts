@@ -7,6 +7,10 @@ export interface SafeUser {
   email: string | null;
   role: string;
   status: string;
+  phoneVerifiedAt: Date | null;
+  lastLoginAt: Date | null;
+  avatarUrl: string | null;
+  locale: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +27,10 @@ export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser 
     email: user.email,
     role: user.role,
     status: user.status,
+    phoneVerifiedAt: user.phoneVerifiedAt,
+    lastLoginAt: user.lastLoginAt,
+    avatarUrl: user.avatarUrl,
+    locale: user.locale,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

@@ -1,0 +1,178 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateProviderReviewDto } from './dto/create-provider-review.dto';
+import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
+import { ListProvidersQueryDto } from './dto/list-providers-query.dto';
+import { ListServicesQueryDto } from './dto/list-services-query.dto';
+import { UpdateProviderReviewDto } from './dto/update-provider-review.dto';
+import { MarketplaceService } from './marketplace.service';
+
+@Controller('cities')
+export class CitiesController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findCities() {
+    return this.marketplaceService.findCities();
+  }
+}
+
+@Controller('provider-categories')
+export class ProviderCategoriesController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findCategories() {
+    return this.marketplaceService.findCategories();
+  }
+}
+
+@Controller('providers')
+export class ProvidersController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findProviders(@Query() query: ListProvidersQueryDto) {
+    return this.marketplaceService.findProviders(query);
+  }
+
+  @Get(':id/services')
+  findProviderServices(@Param('id') id: string) {
+    return this.marketplaceService.findProviderServices(id);
+  }
+
+  @Get(':id/packages')
+  findProviderPackages(@Param('id') id: string) {
+    return this.marketplaceService.findProviderPackages(id);
+  }
+
+  @Get(':id/reviews')
+  findProviderReviews(@Param('id') id: string) {
+    return this.marketplaceService.findProviderReviews(id);
+  }
+
+  @Post(':id/favorite')
+  @UseGuards(JwtAuthGuard)
+  favoriteProvider(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.favoriteProvider(currentUser, id);
+  }
+
+  @Delete(':id/favorite')
+  @UseGuards(JwtAuthGuard)
+  unfavoriteProvider(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.unfavoriteProvider(currentUser, id);
+  }
+
+  @Post(':id/quote-requests')
+  @UseGuards(JwtAuthGuard)
+  createQuoteRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateQuoteRequestDto,
+  ) {
+    return this.marketplaceService.createQuoteRequest(currentUser, id, dto);
+  }
+
+  @Post(':id/reviews')
+  @UseGuards(JwtAuthGuard)
+  createReview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateProviderReviewDto,
+  ) {
+    return this.marketplaceService.createReview(currentUser, id, dto);
+  }
+
+  @Get(':id')
+  findProvider(@Param('id') id: string) {
+    return this.marketplaceService.findProvider(id);
+  }
+}
+
+@Controller('services')
+export class ServicesController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findServices(@Query() query: ListServicesQueryDto) {
+    return this.marketplaceService.findServices(query);
+  }
+
+  @Get(':id')
+  findService(@Param('id') id: string) {
+    return this.marketplaceService.findService(id);
+  }
+}
+
+@Controller('me')
+@UseGuards(JwtAuthGuard)
+export class MeMarketplaceController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get('favorite-providers')
+  findMyFavoriteProviders(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.marketplaceService.findMyFavoriteProviders(currentUser);
+  }
+
+  @Get('quote-requests')
+  findMyQuoteRequests(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.marketplaceService.findMyQuoteRequests(currentUser);
+  }
+
+  @Get('quote-requests/:id')
+  findMyQuoteRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.findMyQuoteRequest(currentUser, id);
+  }
+
+  @Patch('quote-requests/:id/cancel')
+  cancelMyQuoteRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.cancelMyQuoteRequest(currentUser, id);
+  }
+}
+
+@Controller('reviews')
+@UseGuards(JwtAuthGuard)
+export class ReviewsController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Patch(':id')
+  updateReview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateProviderReviewDto,
+  ) {
+    return this.marketplaceService.updateReview(currentUser, id, dto);
+  }
+
+  @Delete(':id')
+  deleteReview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.deleteReview(currentUser, id);
+  }
+}

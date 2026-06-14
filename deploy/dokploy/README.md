@@ -1,0 +1,150 @@
+# Aarast Dokploy Deployment Runbook
+
+This folder prepares Aarast for a Dokploy Docker Compose deployment. It does not deploy anything by itself.
+
+## Services
+
+- `postgres`: private PostgreSQL 16 database with the named volume `aarast_postgres_data`.
+- `backend`: NestJS API built from `backend/Dockerfile`, exposed on host port `8093` and container port `3000`.
+- `admin-web`: React/Vite admin dashboard built from `admin-web/Dockerfile`, exposed on host port `8095` and container port `80`.
+
+PostgreSQL must stay private. Do not create a public domain or host-port binding for the database.
+
+## Required Environment Variables
+
+Copy `deploy/dokploy/.env.example` into Dokploy's environment editor or into a private `.env` file managed outside Git. Never commit the real `.env`.
+
+Required:
+
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `DATABASE_URL`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `CORS_ORIGINS`
+- `NODE_ENV`
+- `PORT`
+- `VITE_API_BASE_URL`
+
+Current backend note: the backend code reads `JWT_SECRET`. The compose file maps `JWT_ACCESS_SECRET` into the backend container as `JWT_SECRET`. `JWT_REFRESH_SECRET` is documented for the production secret contract, but it is not consumed by the current backend code.
+
+Optional:
+
+- `OTP_EXPIRES_MINUTES`
+- `OTP_MAX_ATTEMPTS`
+- `AARAST_EXPOSE_OTP_IN_SMOKE`
+- `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_ACCESS_TOKEN`
+- `WHATSAPP_VERIFY_TOKEN`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `EMAIL_FROM`
+
+Use the Docker network service name for PostgreSQL:
+
+```env
+DATABASE_URL=postgresql://aarast_app:replace-with-strong-postgres-password@postgres:5432/aarast?schema=public
+```
+
+Set CORS and API URLs for the public domains:
+
+```env
+CORS_ORIGINS=https://aarast.shadowgardn.com
+VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
+```
+
+## Dokploy UI Steps
+
+1. Open Dokploy.
+2. Create a project named `Aarast`.
+3. Add a Docker Compose application.
+4. Select the GitHub repository for Aarast.
+5. Select branch `phase/frontend-rebuild-v1`.
+6. Set the compose file path to `deploy/dokploy/docker-compose.yml`.
+7. Add environment variables from `deploy/dokploy/.env.example`, replacing every placeholder secret with a strong generated value.
+8. Create a domain for the backend service:
+   - Service: `backend`
+   - Internal port: `3000`
+   - Host port: `8093`
+   - Domain: `aarast-api.shadowgardn.com`
+9. Create a domain for the admin dashboard service:
+   - Service: `admin-web`
+   - Internal port: `80`
+   - Host port: `8095`
+   - Domain: `aarast.shadowgardn.com`
+10. Enable SSL for both domains.
+11. Deploy.
+12. Open logs for `postgres`, `backend`, and `admin-web`.
+13. Test API health at `https://aarast-api.shadowgardn.com/health`.
+14. Open `https://aarast.shadowgardn.com` and test admin login.
+
+## Domain And DNS Plan
+
+Create DNS records before deployment:
+
+- `aarast-api.shadowgardn.com` points to the Dokploy server.
+- `aarast.shadowgardn.com` points to the Dokploy server.
+
+Both domains must have SSL enabled in Dokploy. Keep `CORS_ORIGINS` limited to the admin domain unless another approved frontend is deployed.
+
+## Migration And Startup Behavior
+
+The backend service runs:
+
+```sh
+npx prisma migrate deploy && node dist/main.js
+```
+
+`prisma migrate deploy` applies committed migrations only. Do not run `prisma migrate dev`, `prisma db push`, database resets, or destructive migration commands against production.
+
+Before the first production deployment, confirm a database backup and rollback process exists. For later deployments, check migration SQL before deploying.
+
+## Admin User Setup
+
+The current production image does not include a production-safe admin reset command. Do not use hardcoded development credentials for production.
+
+Before launch, create an approved one-off admin creation flow that accepts secrets from Dokploy environment variables or a secure console prompt. Never paste the admin password, Meta token, WhatsApp token, JWT secret, or database password into chat or commit them.
+
+## Health Checks
+
+After deploy:
+
+```powershell
+Invoke-RestMethod https://aarast-api.shadowgardn.com/health
+```
+
+Expected result: HTTP 200 with the backend health payload.
+
+Then open:
+
+```text
+https://aarast.shadowgardn.com
+```
+
+Expected result: admin dashboard loads and sends API requests to `https://aarast-api.shadowgardn.com`.
+
+## Backups
+
+Enable backups for the PostgreSQL volume `aarast_postgres_data` in Dokploy or the VPS backup layer. Test restore before real user data is stored.
+
+## Rollback
+
+1. In Dokploy, open the Aarast application deployment history.
+2. Select the previous known-good deployment.
+3. Redeploy the previous version.
+4. Check `backend` logs and `https://aarast-api.shadowgardn.com/health`.
+5. Check `admin-web` loads.
+6. If a database migration was applied, use the pre-deploy backup and a documented restore plan. Do not manually edit production data as a rollback shortcut.
+
+## Local Review Commands
+
+These commands are safe for reviewing this deployment preparation locally:
+
+```powershell
+cd D:\projects\aarast
+git diff -- deploy/dokploy admin-web/Dockerfile admin-web/nginx.conf .gitignore
+git status --short --untracked-files=all
+```

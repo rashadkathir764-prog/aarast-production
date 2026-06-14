@@ -1,20 +1,42 @@
+import 'dart:convert';
+
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/offline_tables.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 
 class SharingApi {
-  const SharingApi(this._apiClient);
+  const SharingApi(this._apiClient, {OfflineSyncService? offline})
+    : _offline = offline;
 
   final ApiClient _apiClient;
+  final OfflineSyncService? _offline;
 
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
-    final list = await _apiClient.getJsonList(
-      '/wedding-plans/$weddingPlanId/shared-members',
-    );
-    return list
-        .whereType<Map>()
-        .map((item) => SharedMember.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    try {
+      final items = await _getJsonMapList(
+        '/wedding-plans/$weddingPlanId/shared-members',
+      );
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedPlanMembers,
+        items: items,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return items.map(SharedMember.fromJson).toList();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await _offline.database.readCachedList(
+        table: OfflineTables.cachedPlanMembers,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      if (cached.isEmpty) rethrow;
+      return cached.map(SharedMember.fromJson).toList();
+    }
   }
 
   Future<SharedUserLookup> lookupUserByPhone(String phone) async {
@@ -67,12 +89,33 @@ class SharingApi {
   }
 
   Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
-    final list = await _apiClient.getJsonList('/shared/wedding-plans');
+    const key = 'shared_wedding_plans';
+    try {
+      final items = await _getJsonMapList('/shared/wedding-plans');
+      await _offline?.database.setMeta(key, jsonEncode(items));
+      return items.map(SharedWeddingPlan.fromJson).toList();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await _offline.database.getMeta(key);
+      if (cached == null) rethrow;
+      final decoded = jsonDecode(cached);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map(
+            (item) =>
+                SharedWeddingPlan.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _getJsonMapList(String path) async {
+    final list = await _apiClient.getJsonList(path);
     return list
         .whereType<Map>()
-        .map(
-          (item) => SharedWeddingPlan.fromJson(Map<String, dynamic>.from(item)),
-        )
+        .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
 }

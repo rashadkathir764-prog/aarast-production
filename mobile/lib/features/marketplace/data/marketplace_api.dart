@@ -1,29 +1,52 @@
+import 'dart:convert';
+
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/offline_tables.dart';
 import '../models/marketplace_models.dart';
 
 class MarketplaceApi {
-  const MarketplaceApi(this._apiClient);
+  const MarketplaceApi(this._apiClient, {OfflineSyncService? offline})
+    : _offline = offline;
 
   final ApiClient _apiClient;
+  final OfflineSyncService? _offline;
 
   Future<List<MarketplaceCity>> getCities() async {
-    final list = await _apiClient.getJsonList('/cities');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) => MarketplaceCity.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    try {
+      final items = await _getJsonMapList('/cities');
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedCities,
+        items: items,
+      );
+      return items.map(MarketplaceCity.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedCities,
+      );
+      if (cached != null) return cached.map(MarketplaceCity.fromJson).toList();
+      rethrow;
+    }
   }
 
   Future<List<ProviderCategory>> getCategories() async {
-    final list = await _apiClient.getJsonList('/provider-categories');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) => ProviderCategory.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    try {
+      final items = await _getJsonMapList('/provider-categories');
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedProviderCategories,
+        items: items,
+      );
+      return items.map(ProviderCategory.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedProviderCategories,
+      );
+      if (cached != null) return cached.map(ProviderCategory.fromJson).toList();
+      rethrow;
+    }
   }
 
   Future<List<MarketplaceProvider>> getProviders({
@@ -34,85 +57,199 @@ class MarketplaceApi {
     int page = 1,
     int limit = 30,
   }) async {
-    final json = await _apiClient.getJson(
-      _path('/providers', {
-        'page': '$page',
-        'limit': '$limit',
-        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
-        if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId,
-        if (categoryId != null && categoryId.trim().isNotEmpty)
-          'categoryId': categoryId,
-        if (featured != null) 'featured': featured.toString(),
-      }),
-    );
+    try {
+      final json = await _apiClient.getJson(
+        _path('/providers', {
+          'page': '$page',
+          'limit': '$limit',
+          if (search != null && search.trim().isNotEmpty)
+            'search': search.trim(),
+          if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId,
+          if (categoryId != null && categoryId.trim().isNotEmpty)
+            'categoryId': categoryId,
+          if (featured != null) 'featured': featured.toString(),
+        }),
+      );
 
-    final items = json['items'];
-    if (items is! List) return const [];
-    return items
-        .whereType<Map>()
-        .map(
-          (item) =>
-              MarketplaceProvider.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+      final items = _itemsFromPagedJson(json);
+      if (_isUnfiltered(search, cityId, categoryId, featured)) {
+        await _offline?.database.replaceCachedList(
+          table: OfflineTables.cachedProviders,
+          items: items,
+        );
+      } else {
+        for (final item in items) {
+          await _offline?.database.saveCachedItem(
+            table: OfflineTables.cachedProviders,
+            json: item,
+          );
+        }
+      }
+      return items.map(MarketplaceProvider.fromJson).toList();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await _offline.database.readCachedList(
+        table: OfflineTables.cachedProviders,
+      );
+      final filtered = _filterProviders(cached, search, cityId, categoryId);
+      if (filtered.isEmpty) rethrow;
+      return filtered.map(MarketplaceProvider.fromJson).toList();
+    }
   }
 
   Future<MarketplaceProvider> getProvider(String id) async {
-    final json = await _apiClient.getJson('/providers/$id');
-    return MarketplaceProvider.fromJson(json);
+    try {
+      final json = await _apiClient.getJson('/providers/$id');
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedProviders,
+        json: json,
+      );
+      return MarketplaceProvider.fromJson(json);
+    } on Object catch (error) {
+      final cached = await _cachedItemOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedProviders,
+        id: id,
+      );
+      if (cached != null) return MarketplaceProvider.fromJson(cached);
+      rethrow;
+    }
   }
 
   Future<List<MarketplaceService>> getProviderServices(
     String providerId,
   ) async {
-    final list = await _apiClient.getJsonList(
-      '/providers/$providerId/services',
-    );
-    return list
-        .whereType<Map>()
-        .map(
-          (item) =>
-              MarketplaceService.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    try {
+      final items = await _getJsonMapList('/providers/$providerId/services');
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedProviderServices,
+        items: items,
+        parentColumn: 'providerId',
+        parentId: providerId,
+      );
+      return items.map(MarketplaceService.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedProviderServices,
+        parentColumn: 'providerId',
+        parentId: providerId,
+      );
+      if (cached != null) {
+        return cached.map(MarketplaceService.fromJson).toList();
+      }
+      rethrow;
+    }
   }
 
   Future<List<ProviderPackage>> getProviderPackages(String providerId) async {
-    final list = await _apiClient.getJsonList(
-      '/providers/$providerId/packages',
-    );
-    return list
-        .whereType<Map>()
-        .map(
-          (item) => ProviderPackage.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    try {
+      final items = await _getJsonMapList('/providers/$providerId/packages');
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedProviderPackages,
+        items: items,
+        parentColumn: 'providerId',
+        parentId: providerId,
+      );
+      return items.map(ProviderPackage.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedProviderPackages,
+        parentColumn: 'providerId',
+        parentId: providerId,
+      );
+      if (cached != null) return cached.map(ProviderPackage.fromJson).toList();
+      rethrow;
+    }
   }
 
   Future<List<ProviderReview>> getProviderReviews(String providerId) async {
-    final list = await _apiClient.getJsonList('/providers/$providerId/reviews');
-    return list
-        .whereType<Map>()
-        .map((item) => ProviderReview.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    final key = 'provider_reviews:$providerId';
+    try {
+      final items = await _getJsonMapList('/providers/$providerId/reviews');
+      await _offline?.database.setMeta(key, jsonEncode(items));
+      return items.map(ProviderReview.fromJson).toList();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await _offline.database.getMeta(key);
+      if (cached == null) return const [];
+      final decoded = jsonDecode(cached);
+      if (decoded is! List) return const [];
+      return decoded
+          .whereType<Map>()
+          .map(
+            (item) => ProviderReview.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+    }
   }
 
   Future<List<FavoriteProvider>> getFavoriteProviders() async {
-    final list = await _apiClient.getJsonList('/me/favorite-providers');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) => FavoriteProvider.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList();
+    try {
+      final items = await _getJsonMapList('/me/favorite-providers');
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedFavoriteProviders,
+        items: items,
+      );
+      return items.map(FavoriteProvider.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedFavoriteProviders,
+      );
+      if (cached != null) return cached.map(FavoriteProvider.fromJson).toList();
+      rethrow;
+    }
   }
 
   Future<void> favoriteProvider(String providerId) async {
-    await _apiClient.postJson('/providers/$providerId/favorite', {});
+    try {
+      await _apiClient.postJson('/providers/$providerId/favorite', {});
+      await _offline?.syncPendingChanges();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedFavoriteProviders,
+        json: {'id': providerId, 'providerId': providerId},
+        dirty: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'favorite_provider',
+        operation: 'create',
+        endpoint: '/providers/$providerId/favorite',
+        method: 'POST',
+        payload: const {},
+        localEntityId: providerId,
+      );
+      await _offline.refreshStatus();
+    }
   }
 
   Future<void> unfavoriteProvider(String providerId) async {
-    await _apiClient.deleteJson('/providers/$providerId/favorite');
+    try {
+      await _apiClient.deleteJson('/providers/$providerId/favorite');
+      await _offline?.syncPendingChanges();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedFavoriteProviders,
+        json: {'id': providerId, 'providerId': providerId},
+        dirty: true,
+        deletedLocally: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'favorite_provider',
+        operation: 'delete',
+        endpoint: '/providers/$providerId/favorite',
+        method: 'DELETE',
+        payload: const {},
+        localEntityId: providerId,
+      );
+      await _offline.refreshStatus();
+    }
   }
 
   Future<QuoteRequest> createQuoteRequest({
@@ -126,29 +263,155 @@ class MarketplaceApi {
     String? budgetMin,
     String? budgetMax,
   }) async {
-    final json = await _apiClient.postJson(
-      '/providers/$providerId/quote-requests',
-      {
-        if (weddingPlanId != null && weddingPlanId.trim().isNotEmpty)
-          'weddingPlanId': weddingPlanId.trim(),
-        if (serviceId != null && serviceId.trim().isNotEmpty)
-          'serviceId': serviceId.trim(),
-        if (eventDate != null) 'eventDate': eventDate.toIso8601String(),
-        if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
-        if (guestCount != null && guestCount > 0) 'guestCount': guestCount,
-        if (message != null && message.trim().isNotEmpty)
-          'message': message.trim(),
-        if (budgetMin != null && budgetMin.trim().isNotEmpty)
-          'budgetMin': budgetMin.trim(),
-        if (budgetMax != null && budgetMax.trim().isNotEmpty)
-          'budgetMax': budgetMax.trim(),
-      },
-    );
-    return QuoteRequest.fromJson(json);
+    final payload = {
+      if (weddingPlanId != null && weddingPlanId.trim().isNotEmpty)
+        'weddingPlanId': weddingPlanId.trim(),
+      if (serviceId != null && serviceId.trim().isNotEmpty)
+        'serviceId': serviceId.trim(),
+      if (eventDate != null) 'eventDate': eventDate.toIso8601String(),
+      if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
+      if (guestCount != null && guestCount > 0) 'guestCount': guestCount,
+      if (message != null && message.trim().isNotEmpty)
+        'message': message.trim(),
+      if (budgetMin != null && budgetMin.trim().isNotEmpty)
+        'budgetMin': budgetMin.trim(),
+      if (budgetMax != null && budgetMax.trim().isNotEmpty)
+        'budgetMax': budgetMax.trim(),
+    };
+    try {
+      final json = await _apiClient.postJson(
+        '/providers/$providerId/quote-requests',
+        payload,
+      );
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedBookings,
+        json: json,
+      );
+      await _offline?.syncPendingChanges();
+      return QuoteRequest.fromJson(json);
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      final now = DateTime.now();
+      final localId = 'local-quote-${now.microsecondsSinceEpoch}';
+      final localJson = {
+        'id': localId,
+        'providerId': providerId,
+        ...payload,
+        'status': 'SENT',
+        'createdAt': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+      };
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedBookings,
+        json: localJson,
+        dirty: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'quote_request',
+        operation: 'create',
+        endpoint: '/providers/$providerId/quote-requests',
+        method: 'POST',
+        payload: payload,
+        localEntityId: localId,
+      );
+      await _offline.refreshStatus();
+      return QuoteRequest.fromJson(localJson);
+    }
   }
 
   String _path(String path, Map<String, String> query) {
     return Uri(path: path, queryParameters: query).toString();
+  }
+
+  Future<List<Map<String, dynamic>>> _getJsonMapList(String path) async {
+    final list = await _apiClient.getJsonList(path);
+    return list
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  List<Map<String, dynamic>> _itemsFromPagedJson(Map<String, dynamic> json) {
+    final items = json['items'];
+    if (items is! List) return const [];
+    return items
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(
+    Object error, {
+    required String table,
+    String? parentColumn,
+    String? parentId,
+  }) async {
+    if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
+    await _offline.noteNetworkFailure((error as ApiException).message);
+    final cached = await _offline.database.readCachedList(
+      table: table,
+      parentColumn: parentColumn,
+      parentId: parentId,
+    );
+    return cached.isEmpty ? null : cached;
+  }
+
+  Future<Map<String, dynamic>?> _cachedItemOnNetworkFailure(
+    Object error, {
+    required String table,
+    required String id,
+  }) async {
+    if (!CachePolicy.shouldUseCache(error) || _offline == null) return null;
+    await _offline.noteNetworkFailure((error as ApiException).message);
+    return _offline.database.readCachedItem(table: table, id: id);
+  }
+
+  bool _isUnfiltered(
+    String? search,
+    String? cityId,
+    String? categoryId,
+    bool? featured,
+  ) {
+    return (search == null || search.trim().isEmpty) &&
+        (cityId == null || cityId.trim().isEmpty) &&
+        (categoryId == null || categoryId.trim().isEmpty) &&
+        featured == null;
+  }
+
+  List<Map<String, dynamic>> _filterProviders(
+    List<Map<String, dynamic>> providers,
+    String? search,
+    String? cityId,
+    String? categoryId,
+  ) {
+    final query = search?.trim().toLowerCase();
+    return providers.where((provider) {
+      if (cityId != null &&
+          cityId.trim().isNotEmpty &&
+          provider['cityId']?.toString() != cityId) {
+        return false;
+      }
+      if (categoryId != null && categoryId.trim().isNotEmpty) {
+        final primary = provider['primaryCategoryId']?.toString();
+        final services = provider['services'];
+        final hasServiceCategory =
+            services is List &&
+            services.whereType<Map>().any(
+              (service) => service['categoryId']?.toString() == categoryId,
+            );
+        if (primary != categoryId && !hasServiceCategory) {
+          return false;
+        }
+      }
+      if (query == null || query.isEmpty) return true;
+      final haystack = [
+        provider['businessName'],
+        provider['ownerName'],
+        provider['description'],
+        provider['address'],
+      ].whereType<Object>().join(' ').toLowerCase();
+      return haystack.contains(query);
+    }).toList();
   }
 }
 

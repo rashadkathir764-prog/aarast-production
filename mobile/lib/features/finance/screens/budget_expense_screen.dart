@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -664,6 +665,10 @@ class _ExpenseRow extends StatelessWidget {
                         color: AppTheme.dMuted,
                         icon: Icons.calendar_month_rounded,
                       ),
+                    OfflinePendingBadge(
+                      entityType: 'expense',
+                      entityId: expense.id,
+                    ),
                   ],
                 ),
                 if (expense.hasNote) ...[

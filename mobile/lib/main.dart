@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/network/api_client.dart';
+import 'core/offline/local_database.dart';
+import 'core/offline/offline_sync_service.dart';
 import 'core/storage/auth_storage.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
@@ -28,13 +30,32 @@ Future<void> main() async {
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+  final localDatabase = await createLocalDatabase(preferences);
+  final offlineSyncService = OfflineSyncService(
+    database: localDatabase,
+    apiClient: apiClient,
+  );
+  WidgetsBinding.instance.addObserver(offlineSyncService);
+  await offlineSyncService.refreshStatus();
   final authRepository = AuthRepository(apiClient, authStorage);
-  final weddingPlansApi = WeddingPlansApi(apiClient);
-  final budgetExpenseApi = BudgetExpenseApi(apiClient);
-  final debtInstallmentApi = DebtInstallmentApi(apiClient);
-  final taskTimelineApi = TaskTimelineApi(apiClient);
-  final sharingApi = SharingApi(apiClient);
-  final marketplaceApi = MarketplaceApi(apiClient);
+  final weddingPlansApi = WeddingPlansApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final budgetExpenseApi = BudgetExpenseApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final debtInstallmentApi = DebtInstallmentApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final taskTimelineApi = TaskTimelineApi(
+    apiClient,
+    offline: offlineSyncService,
+  );
+  final sharingApi = SharingApi(apiClient, offline: offlineSyncService);
+  final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
   final providerDashboardApi = ProviderDashboardApi(apiClient);
 
   runApp(
@@ -42,6 +63,10 @@ Future<void> main() async {
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
         Provider<ApiClient>.value(value: apiClient),
+        Provider<LocalDatabase>.value(value: localDatabase),
+        ChangeNotifierProvider<OfflineSyncService>.value(
+          value: offlineSyncService,
+        ),
         Provider<AuthRepository>.value(value: authRepository),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
@@ -51,7 +76,10 @@ Future<void> main() async {
         Provider<MarketplaceApi>.value(value: marketplaceApi),
         Provider<ProviderDashboardApi>.value(value: providerDashboardApi),
         ChangeNotifierProvider(
-          create: (_) => AuthController(authRepository)..restoreSession(),
+          create: (_) => AuthController(
+            authRepository,
+            offlineSyncService: offlineSyncService,
+          )..restoreSession(),
         ),
         ChangeNotifierProvider(
           create: (_) => WeddingPlansProvider(weddingPlansApi),

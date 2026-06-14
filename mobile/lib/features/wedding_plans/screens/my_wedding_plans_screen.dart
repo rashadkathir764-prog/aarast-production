@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../models/wedding_plan.dart';
@@ -557,6 +558,11 @@ class _PlanCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                        ),
+                        const SizedBox(width: 8),
+                        OfflinePendingBadge(
+                          entityType: 'wedding_plan',
+                          entityId: plan.id,
                         ),
                       ],
                     ),

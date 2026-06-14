@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
 import '../data/task_timeline_api.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
@@ -13,12 +14,14 @@ class TaskTimelineProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _noticeMessage;
   List<WeddingTask> _tasks = const [];
   Timeline _timeline = Timeline.empty();
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get noticeMessage => _noticeMessage;
   List<WeddingTask> get tasks => _tasks;
   Timeline get timeline => _timeline;
 
@@ -54,6 +57,7 @@ class TaskTimelineProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -66,7 +70,12 @@ class TaskTimelineProvider extends ChangeNotifier {
         priority: priority,
       );
       _tasks = [task, ..._tasks.where((item) => item.id != task.id)];
-      _timeline = await _api.getTimeline(weddingPlanId);
+      if (task.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+        _timeline = await _api.getTimeline(weddingPlanId);
+      } else {
+        _timeline = await _api.getTimeline(weddingPlanId);
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -83,6 +92,7 @@ class TaskTimelineProvider extends ChangeNotifier {
   Future<bool> markTaskDone(String weddingPlanId, WeddingTask task) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -90,6 +100,9 @@ class TaskTimelineProvider extends ChangeNotifier {
       _tasks = [
         for (final item in _tasks) item.id == updated.id ? updated : item,
       ];
+      if (updated.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
       _timeline = await _api.getTimeline(weddingPlanId);
       return true;
     } on ApiException catch (error) {
@@ -107,6 +120,7 @@ class TaskTimelineProvider extends ChangeNotifier {
   Future<bool> deleteTask(String weddingPlanId, String taskId) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -128,6 +142,7 @@ class TaskTimelineProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
   }
 }

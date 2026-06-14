@@ -101,7 +101,7 @@ class ApiClient {
 }
 
 class ApiException implements Exception {
-  const ApiException(this.message);
+  const ApiException(this.message, {this.isNetworkFailure = false});
 
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
@@ -124,13 +124,17 @@ class ApiException implements Exception {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {
-      return const ApiException('تعذر الاتصال بالخادم. تأكد من تشغيل الخلفية.');
+      return const ApiException(
+        'تعذر الاتصال بالخادم. تأكد من تشغيل الخلفية.',
+        isNetworkFailure: true,
+      );
     }
 
     return const ApiException('حدث خطأ، يرجى المحاولة مرة أخرى.');
   }
 
   final String message;
+  final bool isNetworkFailure;
 
   @override
   String toString() => message;

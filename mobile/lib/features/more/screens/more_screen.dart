@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -127,6 +128,8 @@ class _MoreScreenState extends State<MoreScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  const _MenuGroup(children: [OfflineSyncNowTile()]),
                   const SizedBox(height: 16),
                   _LogoutTile(onTap: () => _logout(context)),
                   const SizedBox(height: 22),

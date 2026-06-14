@@ -164,7 +164,15 @@ class _CreateBudgetCategoryScreenState
       targetAmount: target.isEmpty ? null : target,
     );
 
-    if (created && mounted) _goBack();
+    if (created && mounted) {
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
+      }
+      _goBack();
+    }
   }
 }
 

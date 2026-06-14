@@ -359,7 +359,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       priority: _priority,
     );
 
-    if (created && mounted) _goBack();
+    if (created && mounted) {
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
+      }
+      _goBack();
+    }
   }
 }
 

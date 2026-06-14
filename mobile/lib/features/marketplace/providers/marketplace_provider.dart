@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 
@@ -12,6 +13,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _noticeMessage;
   String _search = '';
   String? _cityId;
   String? _categoryId;
@@ -27,6 +29,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get noticeMessage => _noticeMessage;
   String get search => _search;
   String? get cityId => _cityId;
   String? get categoryId => _categoryId;
@@ -133,6 +136,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   Future<void> toggleFavorite(String providerId) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     final wasFavorite = _favoriteProviderIds.contains(providerId);
@@ -170,7 +174,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _api.createQuoteRequest(
+      final quote = await _api.createQuoteRequest(
         providerId: providerId,
         weddingPlanId: weddingPlanId,
         serviceId: serviceId,
@@ -181,6 +185,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
         budgetMin: budgetMin,
         budgetMax: budgetMax,
       );
+      if (quote.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = _marketplaceErrorMessage(error.message);
@@ -246,6 +253,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
   }
 }

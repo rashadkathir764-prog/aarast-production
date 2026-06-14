@@ -342,7 +342,15 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
           : _currencyController.text.trim(),
     );
 
-    if (plan != null && mounted) _goBack();
+    if (plan != null && mounted) {
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
+      }
+      _goBack();
+    }
   }
 }
 

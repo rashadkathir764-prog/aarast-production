@@ -283,6 +283,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
     if (!mounted) return;
     if (success) {
+      final notice = context.read<ProviderMarketplaceProvider>().noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
+      }
       setState(() => _sent = true);
     }
   }

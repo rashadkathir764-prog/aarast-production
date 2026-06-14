@@ -399,7 +399,15 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
       note: note.isEmpty ? null : note,
     );
 
-    if (created && mounted) _goBack();
+    if (created && mounted) {
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(notice)));
+      }
+      _goBack();
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/utils/phone_normalizer.dart';
 import '../models/auth_response.dart';
 import '../models/safe_user.dart';
 
@@ -14,7 +15,7 @@ class AuthRepository {
     required String password,
   }) async {
     final json = await _apiClient.postJson('/auth/login', {
-      'phone': phone,
+      'phone': normalizeYemenPhone(phone),
       'password': password,
     });
     final response = AuthResponse.fromJson(json);
@@ -33,7 +34,7 @@ class AuthRepository {
   }) async {
     final json = await _apiClient.postJson('/auth/register', {
       'name': name,
-      'phone': phone,
+      'phone': normalizeYemenPhone(phone),
       if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'password': password,
     });

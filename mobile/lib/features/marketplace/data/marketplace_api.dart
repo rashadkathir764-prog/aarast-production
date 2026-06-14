@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/phone_normalizer.dart';
 import '../models/marketplace_models.dart';
 
 class MarketplaceApi {
@@ -468,7 +469,7 @@ class ProviderDashboardApi {
   }) async {
     final json = await _apiClient.postJson('/provider/apply', {
       'businessName': businessName.trim(),
-      'phone': phone.trim(),
+      'phone': normalizeYemenPhone(phone),
       'cityId': cityId.trim(),
       if (categoryIds.isNotEmpty) 'categoryIds': categoryIds,
       if (description != null && description.trim().isNotEmpty)

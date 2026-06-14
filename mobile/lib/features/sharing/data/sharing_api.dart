@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/phone_normalizer.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 
@@ -40,10 +41,11 @@ class SharingApi {
   }
 
   Future<SharedUserLookup> lookupUserByPhone(String phone) async {
+    final normalizedPhone = normalizeYemenPhone(phone);
     final json = await _apiClient.getJson(
       Uri(
         path: '/users/lookup',
-        queryParameters: {'phone': phone.trim()},
+        queryParameters: {'phone': normalizedPhone},
       ).toString(),
     );
     return SharedUserLookup.fromJson(json);
@@ -64,7 +66,8 @@ class SharingApi {
       '/wedding-plans/$weddingPlanId/shared-members',
       {
         if (userId != null && userId.trim().isNotEmpty) 'userId': userId.trim(),
-        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        if (phone != null && phone.trim().isNotEmpty)
+          'phone': normalizeYemenPhone(phone),
         'role': role,
         'canViewBudget': canViewBudget,
         'canViewExpenses': canViewExpenses,

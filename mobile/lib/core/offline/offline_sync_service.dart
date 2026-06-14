@@ -145,10 +145,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     if (json == null || json.isEmpty) return;
 
     if (item.localEntityId != null && json['id'] != item.localEntityId) {
-      await database.markCachedItemClean(
+      await database.replaceCachedItemId(
         table: table,
-        id: item.localEntityId!,
-        remoteJson: {...json, 'id': item.localEntityId},
+        localId: item.localEntityId!,
+        remoteJson: json,
       );
       return;
     }

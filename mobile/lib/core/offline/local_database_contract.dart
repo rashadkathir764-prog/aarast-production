@@ -39,6 +39,12 @@ abstract class LocalDatabase {
     Map<String, dynamic>? remoteJson,
   });
 
+  Future<void> replaceCachedItemId({
+    required String table,
+    required String localId,
+    required Map<String, dynamic> remoteJson,
+  });
+
   Future<SyncQueueItem> enqueueSync({
     required String entityType,
     required String operation,

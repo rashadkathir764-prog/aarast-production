@@ -294,12 +294,21 @@ class FavoriteProvider {
   });
 
   factory FavoriteProvider.fromJson(Map<String, dynamic> json) {
+    final providerJson = json['provider'];
+    final provider = providerJson is Map
+        ? MarketplaceProvider.fromJson(Map<String, dynamic>.from(providerJson))
+        : MarketplaceProvider(
+            id: json['providerId']?.toString() ?? json['id'].toString(),
+            businessName: '',
+            ownerName: '',
+            ratingAverage: 0,
+            ratingCount: 0,
+            isFeatured: false,
+          );
     return FavoriteProvider(
       id: json['id'].toString(),
       providerId: json['providerId'].toString(),
-      provider: MarketplaceProvider.fromJson(
-        Map<String, dynamic>.from(json['provider'] as Map),
-      ),
+      provider: provider,
     );
   }
 

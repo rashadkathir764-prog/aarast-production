@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
 
@@ -18,6 +19,9 @@ class ApiClient {
           },
         ),
       ) {
+    if (kDebugMode) {
+      debugPrint('Aarast API base URL: ${ApiConfig.baseUrl}');
+    }
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {

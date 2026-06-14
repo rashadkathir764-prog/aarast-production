@@ -165,6 +165,23 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> replaceCachedItemId({
+    required String table,
+    required String localId,
+    required Map<String, dynamic> remoteJson,
+  }) async {
+    await _db.transaction((txn) async {
+      await txn.delete(table, where: 'id = ?', whereArgs: [localId]);
+      final row = buildCacheRow(table: table, json: remoteJson);
+      await txn.insert(
+        table,
+        row.columns,
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
+
+  @override
   Future<SyncQueueItem> enqueueSync({
     required String entityType,
     required String operation,

@@ -5,8 +5,8 @@ This folder prepares Aarast for a Dokploy Docker Compose deployment. It does not
 ## Services
 
 - `postgres`: private PostgreSQL 16 database with the named volume `aarast_postgres_data`.
-- `backend`: NestJS API built from `backend/Dockerfile`, exposed internally on port `3000`.
-- `admin-web`: React/Vite admin dashboard built from `admin-web/Dockerfile`, served by Nginx on internal port `80`.
+- `backend`: NestJS API built from `backend/Dockerfile`, exposed on host port `8093` and container port `3000`.
+- `admin-web`: React/Vite admin dashboard built from `admin-web/Dockerfile`, exposed on host port `8095` and container port `80`.
 
 PostgreSQL must stay private. Do not create a public domain or host-port binding for the database.
 
@@ -52,8 +52,8 @@ DATABASE_URL=postgresql://aarast_app:replace-with-strong-postgres-password@postg
 Set CORS and API URLs for the public domains:
 
 ```env
-CORS_ORIGINS=https://admin.aarast.example
-VITE_API_BASE_URL=https://api.aarast.example
+CORS_ORIGINS=https://aarast.shadowgardn.com
+VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
 ```
 
 ## Dokploy UI Steps
@@ -68,23 +68,25 @@ VITE_API_BASE_URL=https://api.aarast.example
 8. Create a domain for the backend service:
    - Service: `backend`
    - Internal port: `3000`
-   - Domain: `api.aarast.example`
+   - Host port: `8093`
+   - Domain: `aarast-api.shadowgardn.com`
 9. Create a domain for the admin dashboard service:
    - Service: `admin-web`
    - Internal port: `80`
-   - Domain: `admin.aarast.example`
+   - Host port: `8095`
+   - Domain: `aarast.shadowgardn.com`
 10. Enable SSL for both domains.
 11. Deploy.
 12. Open logs for `postgres`, `backend`, and `admin-web`.
-13. Test API health at `https://api.aarast.example/health`.
-14. Open `https://admin.aarast.example` and test admin login.
+13. Test API health at `https://aarast-api.shadowgardn.com/health`.
+14. Open `https://aarast.shadowgardn.com` and test admin login.
 
 ## Domain And DNS Plan
 
 Create DNS records before deployment:
 
-- `api.aarast.example` points to the Dokploy server.
-- `admin.aarast.example` points to the Dokploy server.
+- `aarast-api.shadowgardn.com` points to the Dokploy server.
+- `aarast.shadowgardn.com` points to the Dokploy server.
 
 Both domains must have SSL enabled in Dokploy. Keep `CORS_ORIGINS` limited to the admin domain unless another approved frontend is deployed.
 
@@ -111,7 +113,7 @@ Before launch, create an approved one-off admin creation flow that accepts secre
 After deploy:
 
 ```powershell
-Invoke-RestMethod https://api.aarast.example/health
+Invoke-RestMethod https://aarast-api.shadowgardn.com/health
 ```
 
 Expected result: HTTP 200 with the backend health payload.
@@ -119,10 +121,10 @@ Expected result: HTTP 200 with the backend health payload.
 Then open:
 
 ```text
-https://admin.aarast.example
+https://aarast.shadowgardn.com
 ```
 
-Expected result: admin dashboard loads and sends API requests to `https://api.aarast.example`.
+Expected result: admin dashboard loads and sends API requests to `https://aarast-api.shadowgardn.com`.
 
 ## Backups
 
@@ -133,7 +135,7 @@ Enable backups for the PostgreSQL volume `aarast_postgres_data` in Dokploy or th
 1. In Dokploy, open the Aarast application deployment history.
 2. Select the previous known-good deployment.
 3. Redeploy the previous version.
-4. Check `backend` logs and `https://api.aarast.example/health`.
+4. Check `backend` logs and `https://aarast-api.shadowgardn.com/health`.
 5. Check `admin-web` loads.
 6. If a database migration was applied, use the pre-deploy backup and a documented restore plan. Do not manually edit production data as a rollback shortcut.
 

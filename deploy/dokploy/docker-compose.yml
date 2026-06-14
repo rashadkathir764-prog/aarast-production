@@ -47,8 +47,8 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
     command: sh -c "npx prisma migrate deploy && node dist/main.js"
-    expose:
-      - "3000"
+    ports:
+      - "8093:3000"
     healthcheck:
       test:
         [
@@ -75,8 +75,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    expose:
-      - "80"
+    ports:
+      - "8095:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
       interval: 15s

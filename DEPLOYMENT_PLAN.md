@@ -1,6 +1,6 @@
 # Deployment Plan
 
-This document started as planning-only. Local Docker runtime files now exist for the approved backend and PostgreSQL development setup. Dokploy, production deployment scripts, and VPS runtime infrastructure are still not configured.
+This document started as planning-only. Local Docker runtime files now exist for the approved backend and PostgreSQL development setup. Dokploy production Compose files now exist under `deploy/dokploy/` for the approved VPS deployment path.
 
 ## Prerequisites
 
@@ -23,7 +23,22 @@ The backend container runs `prisma migrate deploy` before starting the NestJS AP
 
 ## VPS Deployment Direction
 
-Dokploy will be used for later VPS deployment and operations. Dokploy is a deployment platform choice for a future phase, not an implementation task in the current Docs Foundation phase.
+Dokploy is used for the approved VPS deployment path. The production Compose application is defined in `deploy/dokploy/docker-compose.yml`, with environment defaults documented in `deploy/dokploy/.env.example` and the runbook in `deploy/dokploy/README.md`.
+
+Current production routing:
+
+- Backend API domain: `https://aarast-api.shadowgardn.com`
+- Admin dashboard domain: `https://aarast.shadowgardn.com`
+- Backend host port: `8093`, mapped to container port `3000`
+- Admin dashboard host port: `8095`, mapped to container port `80`
+
+Required production values:
+
+```env
+PORT=3000
+CORS_ORIGINS=https://aarast.shadowgardn.com
+VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
+```
 
 ## Environment Staging
 
@@ -50,11 +65,11 @@ During Docs Foundation:
 - No deployment scripts should be created unless explicitly requested.
 - No application code, backend modules, Flutter screens, package installs, or migrations should be added.
 
-The local Docker backend and database files were created after an explicit deployment request, not as part of the original Docs Foundation scope.
+The local Docker backend/database files and Dokploy production files were created after explicit deployment requests, not as part of the original Docs Foundation scope.
 
 ## Deferral Rule
 
-Production deployment remains deferred until the backend and mobile MVP foundations are clearer. Dokploy implementation should happen only in a later deployment-readiness phase after the Wedding Financial OS MVP foundation is stable enough to deploy and verify.
+Production deployment is now represented by the approved Dokploy Compose runbook and must stay synchronized with `deploy/dokploy/`. Any Dokploy UI redeploy should use the same host ports, domains, and environment values documented above.
 
 ## Production Deployment Requirements
 

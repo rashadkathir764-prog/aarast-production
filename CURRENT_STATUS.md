@@ -1,5 +1,30 @@
 # Current Status
 
+## Current Status Override - 2026-06-14
+
+- Repository root: `D:\projects\aarast`
+- Current worktree path: `D:\projects\aarast`
+- Task: Dokploy production routing synchronized with the live server fix.
+
+Current deployment status: Aarast production is configured through `deploy/dokploy/` and the live Dokploy runtime.
+
+Production routing:
+
+- Backend API: `https://aarast-api.shadowgardn.com`, host port `8093` to container port `3000`.
+- Admin dashboard: `https://aarast.shadowgardn.com`, host port `8095` to container port `80`.
+- Backend runtime values: `PORT=3000`, `CORS_ORIGINS=https://aarast.shadowgardn.com`.
+- Admin build value: `VITE_API_BASE_URL=https://aarast-api.shadowgardn.com`.
+
+Live verification on 2026-06-14:
+
+- `aarast-backend-prod`: healthy, `0.0.0.0:8093->3000/tcp`.
+- `aarast-admin-web-prod`: healthy, `0.0.0.0:8095->80/tcp`.
+- `aarast-postgres-prod`: healthy.
+- `https://aarast-api.shadowgardn.com/health`: HTTP 200.
+- `https://aarast.shadowgardn.com/`: HTTP 200.
+
+This sync changes deployment configuration and documentation only. It does not add backend business logic, Flutter screens, database migrations, payment/deposit flows, AI, FinTech, internal chat, or confirmed booking behavior.
+
 ## Current Status Override - 2026-06-11
 
 - Repository root: `D:\projects\aarast`

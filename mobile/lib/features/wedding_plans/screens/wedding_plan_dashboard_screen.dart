@@ -108,12 +108,12 @@ class _WeddingPlanDashboardScreenState
     DashboardSummaryProvider provider,
     AuthController auth,
   ) {
-    final bottomPadding = widget.embedded ? 24.0 : 108.0;
+    final bottomPadding = widget.embedded ? 88.0 : 108.0;
 
     if (provider.isLoading && provider.plan == null) {
       return ListView(
         key: const ValueKey('skeleton'),
-        padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding),
         children: const [DashboardUxLoading()],
       );
     }
@@ -175,7 +175,7 @@ class _WeddingPlanDashboardScreenState
 
     return ListView(
       key: const ValueKey('content'),
-      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+      padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPadding),
       children: [
         DashboardUxHeader(
           userName: auth.user?.name ?? 'ضيف',
@@ -183,7 +183,8 @@ class _WeddingPlanDashboardScreenState
               context.push(AppRouter.planNotifications(planId)),
           onProfile: () => _openAccountSheet(auth),
         ),
-        const SizedBox(height: 12),
+        const DashboardUxOfflineBanner(),
+        const SizedBox(height: 10),
         DashboardUxPlanCard(
           title: plan.title,
           city: plan.city,
@@ -194,7 +195,7 @@ class _WeddingPlanDashboardScreenState
           daysRemaining: plan.daysRemaining,
           onContinue: () => context.push(AppRouter.tasks(planId)),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DashboardUxStatsSection(
           stats: [
             DashboardUxStat(
@@ -227,7 +228,7 @@ class _WeddingPlanDashboardScreenState
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DashboardUxActionsSection(
           actions: [
             DashboardUxAction(
@@ -252,11 +253,11 @@ class _WeddingPlanDashboardScreenState
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DashboardUxUpcomingSection(
           items: _buildUpcomingItems(planId, tasks, dueInstallments, plan),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         DashboardUxSharedPlanCard(
           participantCount: sharedMembers.length,
           participantNames: sharedMembers

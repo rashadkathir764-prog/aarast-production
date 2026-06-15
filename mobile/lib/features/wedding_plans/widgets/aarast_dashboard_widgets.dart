@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/sync_status.dart';
 import '../../../core/theme/app_theme.dart';
 
 // ============================================================================
@@ -146,6 +149,67 @@ class DashboardUxHeader extends StatelessWidget {
   }
 }
 
+class DashboardUxOfflineBanner extends StatelessWidget {
+  const DashboardUxOfflineBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final service = _maybeOfflineService(context);
+    if (service == null) return const SizedBox.shrink();
+
+    final state = service.state;
+    final shouldShow =
+        state == SyncState.offline ||
+        state == SyncState.syncing ||
+        state == SyncState.syncError ||
+        service.pendingCount > 0;
+    if (!shouldShow) return const SizedBox.shrink();
+
+    final label = switch (state) {
+      SyncState.offline => 'بدون اتصال',
+      SyncState.syncing => 'جاري المزامنة',
+      SyncState.syncError => 'تعذر الاتصال',
+      _ => 'بانتظار المزامنة',
+    };
+    final icon = state == SyncState.syncing
+        ? Icons.sync_rounded
+        : Icons.cloud_off_outlined;
+    final pending = service.pendingCount > 0
+        ? ' · ${service.pendingCount}'
+        : '';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: _uxSoft,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _uxLine),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: _uxMuted),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                '$label$pending',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _uxInk,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class DashboardUxPlanCard extends StatelessWidget {
   const DashboardUxPlanCard({
     required this.title,
@@ -180,7 +244,7 @@ class DashboardUxPlanCard extends StatelessWidget {
         : '$daysRemaining يوم';
 
     return _UxCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -197,12 +261,12 @@ class DashboardUxPlanCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: _uxInk,
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         height: 1.25,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -222,13 +286,11 @@ class DashboardUxPlanCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               _UxProgressBadge(percent: progressPercent),
             ],
           ),
-          const SizedBox(height: 16),
-          _UxProgressBar(percent: progressPercent),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -243,9 +305,9 @@ class DashboardUxPlanCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           SizedBox(
-            height: 48,
+            height: 42,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
                 backgroundColor: _uxPrimary,
@@ -300,7 +362,7 @@ class DashboardUxStatsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _UxSectionTitle(title: 'إحصائيات سريعة'),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           _UxTwoColumnWrap(
             children: [
               for (final stat in stats.take(4)) _UxStatTile(stat: stat),
@@ -601,8 +663,8 @@ class _UxProgressBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 72,
-      height: 72,
+      width: 58,
+      height: 58,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -614,35 +676,8 @@ class _UxProgressBadge extends StatelessWidget {
         textDirection: TextDirection.ltr,
         style: const TextStyle(
           color: _uxInk,
-          fontSize: 18,
+          fontSize: 16,
           fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
-}
-
-class _UxProgressBar extends StatelessWidget {
-  const _UxProgressBar({required this.percent});
-
-  final int percent;
-
-  @override
-  Widget build(BuildContext context) {
-    final value = percent.clamp(0, 100) / 100;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(999),
-      child: SizedBox(
-        height: 8,
-        child: Stack(
-          children: [
-            const Positioned.fill(child: ColoredBox(color: _uxSoft2)),
-            FractionallySizedBox(
-              widthFactor: value,
-              alignment: AlignmentDirectional.centerStart,
-              child: const ColoredBox(color: _uxPrimary),
-            ),
-          ],
         ),
       ),
     );
@@ -659,7 +694,7 @@ class _UxMetaChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: _uxSoft,
         borderRadius: BorderRadius.circular(999),
@@ -697,7 +732,7 @@ class _UxSmallMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: _uxSoft,
         borderRadius: BorderRadius.circular(12),
@@ -789,8 +824,8 @@ class _UxStatTile extends StatelessWidget {
         onTap: stat.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 84),
-          padding: const EdgeInsets.all(10),
+          constraints: const BoxConstraints(minHeight: 68),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _uxLine),
@@ -798,7 +833,7 @@ class _UxStatTile extends StatelessWidget {
           child: Row(
             children: [
               _UxIconBox(icon: stat.icon),
-              const SizedBox(width: 9),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -814,7 +849,7 @@ class _UxStatTile extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       stat.value,
                       maxLines: 1,
@@ -823,7 +858,7 @@ class _UxStatTile extends StatelessWidget {
                       textAlign: TextAlign.right,
                       style: const TextStyle(
                         color: _uxInk,
-                        fontSize: 17,
+                        fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -862,8 +897,8 @@ class _UxActionButton extends StatelessWidget {
         onTap: action.onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 58),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          constraints: const BoxConstraints(minHeight: 54),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _uxLine),
@@ -946,15 +981,15 @@ class _UxIconBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 38,
-      height: 38,
+      width: 34,
+      height: 34,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: _uxCard,
         borderRadius: BorderRadius.circular(11),
         border: Border.all(color: _uxLine),
       ),
-      child: Icon(icon, color: _uxPrimary, size: 20),
+      child: Icon(icon, color: _uxPrimary, size: 18),
     );
   }
 }
@@ -989,6 +1024,14 @@ class _UxSkeletonBox extends StatelessWidget {
         border: Border.all(color: _uxLine),
       ),
     );
+  }
+}
+
+OfflineSyncService? _maybeOfflineService(BuildContext context) {
+  try {
+    return context.watch<OfflineSyncService>();
+  } on ProviderNotFoundException {
+    return null;
   }
 }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/offline/offline_status_widgets.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../home/screens/home_screen.dart';
@@ -182,41 +181,31 @@ class _MainShellState extends State<MainShell> {
         textDirection: TextDirection.rtl,
         child: Scaffold(
           backgroundColor: AppTheme.dBg,
-          body: Stack(
+          body: IndexedStack(
+            index: stackIndex,
             children: [
-              IndexedStack(
-                index: stackIndex,
-                children: [
-                  // Index 0 (Nav 4): Home overview. Plan lists are explicit routes.
-                  _activePlanId != null
-                      ? WeddingPlanDashboardScreen(
-                          key: ValueKey('home-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                          embedded: true,
-                        )
-                      : const HomeScreen(embedded: true),
+              // Index 0 (Nav 4): Home overview. Plan lists are explicit routes.
+              _activePlanId != null
+                  ? WeddingPlanDashboardScreen(
+                      key: ValueKey('home-$_activePlanId'),
+                      weddingPlanId: _activePlanId!,
+                      embedded: true,
+                    )
+                  : const HomeScreen(embedded: true),
 
-                  // Index 1 (Nav 3): Vendors marketplace
-                  const ProviderMarketplaceScreen(embedded: true),
+              // Index 1 (Nav 3): Vendors marketplace
+              const ProviderMarketplaceScreen(embedded: true),
 
-                  // Index 2 (Nav 1): Tasks
-                  _activePlanId != null
-                      ? TaskTimelineScreen(
-                          key: ValueKey('tasks-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                        )
-                      : _buildNoPlanFallback('المهام'),
+              // Index 2 (Nav 1): Tasks
+              _activePlanId != null
+                  ? TaskTimelineScreen(
+                      key: ValueKey('tasks-$_activePlanId'),
+                      weddingPlanId: _activePlanId!,
+                    )
+                  : _buildNoPlanFallback('المهام'),
 
-                  // Index 3 (Nav 0): More
-                  const MoreScreen(),
-                ],
-              ),
-              const SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: OfflineStatusBanner(),
-                ),
-              ),
+              // Index 3 (Nav 0): More
+              const MoreScreen(),
             ],
           ),
           bottomNavigationBar: DashboardBottomNav(

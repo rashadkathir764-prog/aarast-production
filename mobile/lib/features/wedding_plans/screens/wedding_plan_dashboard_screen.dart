@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../debts/models/installment.dart';
 import '../../sharing/models/shared_member.dart';
+import '../../tasks/models/wedding_task.dart';
+import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../widgets/aarast_dashboard_widgets.dart';
 
@@ -59,29 +62,17 @@ class _WeddingPlanDashboardScreenState
     final provider = context.watch<DashboardSummaryProvider>();
     final auth = context.watch<AuthController>();
 
-    // Use the app-level Arabic type scale and guarantee RTL regardless of the
-    // host locale.
-    final dashboardTheme = Theme.of(context);
-
-    return Theme(
-      data: dashboardTheme,
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: AppTheme.dBg,
-          bottomNavigationBar: widget.embedded
-              ? null
-              : _buildBottomNav(provider),
-          body: SafeArea(
-            bottom: false,
-            child: RefreshIndicator(
-              color: AppTheme.dMaroon,
-              onRefresh: () => provider.loadDashboard(widget.weddingPlanId),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _buildContent(context, provider, auth),
-              ),
-            ),
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        bottomNavigationBar: widget.embedded ? null : _buildBottomNav(provider),
+        body: SafeArea(
+          bottom: false,
+          child: RefreshIndicator(
+            color: const Color(0xFF475569),
+            onRefresh: () => provider.loadDashboard(widget.weddingPlanId),
+            child: _buildContent(context, provider, auth),
           ),
         ),
       ),
@@ -103,7 +94,7 @@ class _WeddingPlanDashboardScreenState
   void _openAccountSheet(AuthController auth) {
     showAccountSheet(
       context,
-      name: auth.user?.name ?? 'مستخدم اعرست',
+      name: auth.user?.name ?? 'مستخدم اعّرست',
       phone: auth.user?.phone,
       onLogout: () async {
         await context.read<AuthController>().logout();
@@ -117,28 +108,33 @@ class _WeddingPlanDashboardScreenState
     DashboardSummaryProvider provider,
     AuthController auth,
   ) {
+    final bottomPadding = widget.embedded ? 24.0 : 108.0;
+
     if (provider.isLoading && provider.plan == null) {
       return ListView(
         key: const ValueKey('skeleton'),
-        children: const [DashboardSkeleton()],
+        padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+        children: const [DashboardUxLoading()],
       );
     }
 
     if (provider.errorMessage != null && provider.plan == null) {
       return ListView(
         key: const ValueKey('error'),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, 24, 16, bottomPadding),
         children: [
-          const SizedBox(height: 120),
-          Text(
-            provider.errorMessage!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.danger),
+          DashboardUxEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'تعذر تحميل اللوحة',
+            message: provider.errorMessage!,
           ),
           const SizedBox(height: 16),
           Center(
-            child: FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppTheme.dMaroon),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF334155),
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
               onPressed: () => provider.loadDashboard(widget.weddingPlanId),
               child: const Text('إعادة المحاولة'),
             ),
@@ -151,148 +147,188 @@ class _WeddingPlanDashboardScreenState
     if (plan == null) {
       return ListView(
         key: const ValueKey('empty'),
+        padding: EdgeInsets.fromLTRB(16, 24, 16, bottomPadding),
         children: const [
-          SizedBox(height: 120),
-          Text('لم يتم العثور على خطة الزفاف.', textAlign: TextAlign.center),
+          DashboardUxEmptyState(
+            icon: Icons.event_busy_outlined,
+            title: 'لا توجد خطة',
+            message: 'لم يتم العثور على خطة الزفاف الحالية.',
+          ),
         ],
       );
     }
 
     final planId = plan.id;
-    final allTasks = provider.tasks ?? [];
-    final tasksDone = allTasks.where((t) => t.isDone).length;
-    final tasksTotal = allTasks.length;
+    final tasks = provider.tasks ?? [];
+    final tasksDone = tasks.where((task) => task.isDone).length;
+    final tasksTotal = tasks.length;
     final totalBudget = dashParseAmount(plan.estimatedBudget);
     final spent = dashParseAmount(provider.expenseSummary?.totalPaid);
-    final paymentCount =
-        (provider.expenseSummary?.countPaid ?? 0) +
-        (provider.expenseSummary?.countPlanned ?? 0);
     final dueInstallments = provider.dueInstallments ?? [];
-    final alerts = _buildDashboardAlerts(allTasks, dueInstallments);
+    final sharedMembers = provider.sharedMembers ?? [];
+    final progressPercent = tasksTotal == 0
+        ? 0
+        : ((tasksDone / tasksTotal) * 100).round().clamp(0, 100);
+    final budgetPercent = totalBudget <= 0
+        ? 0
+        : ((spent / totalBudget) * 100).round().clamp(0, 100);
 
     return ListView(
       key: const ValueKey('content'),
-      padding: const EdgeInsets.only(bottom: 32),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
       children: [
-        DashboardTopBar(
+        DashboardUxHeader(
           userName: auth.user?.name ?? 'ضيف',
-          onProfile: () => _openAccountSheet(auth),
           onNotifications: () =>
               context.push(AppRouter.planNotifications(planId)),
+          onProfile: () => _openAccountSheet(auth),
         ),
-        DashboardHeroCard(
+        const SizedBox(height: 12),
+        DashboardUxPlanCard(
           title: plan.title,
-          statusLabel: 'في الموعد',
-          tasksDone: tasksDone,
-          tasksTotal: tasksTotal,
           city: plan.city,
           weddingDate: plan.weddingDate,
+          progressPercent: progressPercent,
+          tasksDone: tasksDone,
+          tasksTotal: tasksTotal,
+          daysRemaining: plan.daysRemaining,
+          onContinue: () => context.push(AppRouter.tasks(planId)),
         ),
-        const SizedBox(height: 20),
-        _padded(
-          DashboardSnapshotRow(
-            totalBudget: totalBudget,
-            spent: spent,
-            currency: 'ر.ي',
-            tasksDone: tasksDone,
-            tasksTotal: tasksTotal,
-            vendorCount: 0,
-            paymentCount: paymentCount,
-            guestCount: 0,
-            onBudgetTap: () => context.push(AppRouter.finance(planId)),
-          ),
+        const SizedBox(height: 12),
+        DashboardUxStatsSection(
+          stats: [
+            DashboardUxStat(
+              icon: Icons.checklist_rounded,
+              label: 'المهام',
+              value: tasksTotal == 0 ? '0' : '$tasksDone/$tasksTotal',
+              helper: 'مكتملة',
+              onTap: () => context.push(AppRouter.tasks(planId)),
+            ),
+            DashboardUxStat(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'الميزانية',
+              value: totalBudget <= 0 ? 'غير محددة' : '$budgetPercent%',
+              helper: totalBudget <= 0 ? 'أضف الميزانية' : 'مستخدمة',
+              onTap: () => context.push(AppRouter.finance(planId)),
+            ),
+            DashboardUxStat(
+              icon: Icons.storefront_outlined,
+              label: 'الموردين',
+              value: '0',
+              helper: 'مراجع',
+              onTap: () => context.push(AppRouter.providerMarketplace),
+            ),
+            DashboardUxStat(
+              icon: Icons.groups_2_outlined,
+              label: 'الضيوف',
+              value: '0',
+              helper: 'مسجلين',
+              onTap: () => context.push(AppRouter.guestList(planId)),
+            ),
+          ],
         ),
-        const SizedBox(height: 18),
-        _padded(
-          QuickActionsCard(
-            actions: [
-              QuickAction(
-                icon: Icons.add,
-                label: 'إضافة\nمصروف',
-                color: AppTheme.dMaroon,
-                bg: AppTheme.dPinkBg,
-                onTap: () => context.push(AppRouter.createExpense(planId)),
-              ),
-              QuickAction(
-                icon: Icons.check_circle_outline,
-                label: 'إضافة\nمهمة',
-                color: AppTheme.dGreen,
-                bg: AppTheme.dGreenBg,
-                onTap: () => context.push(AppRouter.createTask(planId)),
-              ),
-              QuickAction(
-                icon: Icons.credit_card,
-                label: 'الديون\nوالأقساط',
-                color: AppTheme.dGoldDeep,
-                bg: AppTheme.dCreamBg,
-                onTap: () => context.push(AppRouter.debts(planId)),
-              ),
-              QuickAction(
-                icon: Icons.groups_outlined,
-                label: 'قائمة\nالضيوف',
-                color: AppTheme.dBlue,
-                bg: AppTheme.dBlueBg,
-                onTap: () => context.push(AppRouter.guestList(planId)),
-              ),
-            ],
-          ),
+        const SizedBox(height: 12),
+        DashboardUxActionsSection(
+          actions: [
+            DashboardUxAction(
+              icon: Icons.check_circle_outline_rounded,
+              label: 'إضافة مهمة',
+              onTap: () => context.push(AppRouter.createTask(planId)),
+            ),
+            DashboardUxAction(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'إضافة نفقة',
+              onTap: () => context.push(AppRouter.createExpense(planId)),
+            ),
+            DashboardUxAction(
+              icon: Icons.person_add_alt_1_outlined,
+              label: 'إضافة ضيف',
+              onTap: () => context.push(AppRouter.guestList(planId)),
+            ),
+            DashboardUxAction(
+              icon: Icons.storefront_outlined,
+              label: 'إضافة مورد',
+              onTap: () => context.push(AppRouter.providerMarketplace),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-        _padded(
-          AlertsCard(
-            alerts: alerts,
-            onViewAll: () => context.push(AppRouter.planNotifications(planId)),
-          ),
+        const SizedBox(height: 12),
+        DashboardUxUpcomingSection(
+          items: _buildUpcomingItems(planId, tasks, dueInstallments, plan),
         ),
-        const SizedBox(height: 24),
-        _padded(
-          SharedPlansCard(
-            subtitle: 'لا توجد خطط مشتركة',
-            onOpen: () => context.push(AppRouter.sharedWeddingPlans),
-          ),
+        const SizedBox(height: 12),
+        DashboardUxSharedPlanCard(
+          participantCount: sharedMembers.length,
+          participantNames: sharedMembers
+              .take(3)
+              .map((member) => member.displayName)
+              .toList(),
+          onOpen: () => context.push(AppRouter.sharing(planId)),
         ),
       ],
     );
   }
 
-  Widget _padded(Widget child) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: child,
-  );
-
-  List<DashboardAlert> _buildDashboardAlerts(
-    List<dynamic> tasks,
-    List<dynamic> installments,
+  List<DashboardUxUpcomingItem> _buildUpcomingItems(
+    String planId,
+    List<WeddingTask> tasks,
+    List<Installment> installments,
+    WeddingPlan plan,
   ) {
-    final alerts = <DashboardAlert>[];
+    final entries = <_UpcomingEntry>[];
 
-    for (final task in tasks.where((task) => !task.isDone).take(2)) {
-      alerts.add(
-        DashboardAlert(
-          title: task.title,
-          body: task.dueDate == null
-              ? 'مهمة مفتوحة تحتاج تحديد موعد.'
-              : 'مستحقة في ${dashFormatArDate(task.dueDate)}.',
-          icon: Icons.assignment_turned_in_outlined,
-          tone: task.priority == 'HIGH' ? AlertTone.pink : AlertTone.cream,
+    final upcomingTasks =
+        tasks.where((task) => !task.isDone && task.dueDate != null).toList()
+          ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+    for (final task in upcomingTasks.take(2)) {
+      entries.add(
+        _UpcomingEntry(
+          date: task.dueDate!,
+          item: DashboardUxUpcomingItem(
+            icon: Icons.check_circle_outline_rounded,
+            title: task.title,
+            meta: dashFormatArDate(task.dueDate!),
+            onTap: () => context.push(AppRouter.tasks(planId)),
+          ),
         ),
       );
     }
 
-    for (final installment in installments.take(1)) {
-      alerts.add(
-        DashboardAlert(
-          title: 'قسط قريب',
-          body: installment.dueDate == null
-              ? 'قسط يحتاج متابعة في قسم الديون.'
-              : 'مستحق في ${dashFormatArDate(installment.dueDate)}.',
-          icon: Icons.payments_outlined,
-          tone: AlertTone.cream,
+    final upcomingInstallments =
+        installments
+            .where((installment) => installment.dueDate != null)
+            .toList()
+          ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+    for (final installment in upcomingInstallments.take(1)) {
+      entries.add(
+        _UpcomingEntry(
+          date: installment.dueDate!,
+          item: DashboardUxUpcomingItem(
+            icon: Icons.payments_outlined,
+            title: 'قسط مستحق',
+            meta: dashFormatArDate(installment.dueDate!),
+            onTap: () => context.push(AppRouter.debts(planId)),
+          ),
         ),
       );
     }
 
-    return alerts;
+    if (entries.isEmpty && plan.weddingDate != null) {
+      entries.add(
+        _UpcomingEntry(
+          date: plan.weddingDate!,
+          item: DashboardUxUpcomingItem(
+            icon: Icons.event_available_outlined,
+            title: 'موعد الزفاف',
+            meta: dashFormatArDate(plan.weddingDate!),
+            onTap: () => context.push(AppRouter.tasks(planId)),
+          ),
+        ),
+      );
+    }
+
+    entries.sort((a, b) => a.date.compareTo(b.date));
+    return entries.map((entry) => entry.item).take(3).toList();
   }
 
   void _showQuickAdd(DashboardSummaryProvider provider) {
@@ -404,4 +440,11 @@ class _WeddingPlanDashboardScreenState
       },
     );
   }
+}
+
+class _UpcomingEntry {
+  const _UpcomingEntry({required this.date, required this.item});
+
+  final DateTime date;
+  final DashboardUxUpcomingItem item;
 }

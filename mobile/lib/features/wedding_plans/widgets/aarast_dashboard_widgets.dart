@@ -66,6 +66,932 @@ class _Num extends StatelessWidget {
   }
 }
 
+const _uxInk = Color(0xFF0F172A);
+const _uxMuted = Color(0xFF64748B);
+const _uxLine = Color(0xFFE2E8F0);
+const _uxSoft = Color(0xFFF8FAFC);
+const _uxSoft2 = Color(0xFFF1F5F9);
+const _uxCard = Colors.white;
+const _uxPrimary = Color(0xFF334155);
+const _uxRadius = 14.0;
+
+// ============================================================================
+// NEUTRAL UX DASHBOARD SKELETON
+// ============================================================================
+
+class DashboardUxHeader extends StatelessWidget {
+  const DashboardUxHeader({
+    required this.userName,
+    required this.onNotifications,
+    required this.onProfile,
+    super.key,
+  });
+
+  final String userName;
+  final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 56),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'اعّرست',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _uxInk,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'أهلاً $userName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _uxMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          _UxIconButton(
+            icon: Icons.notifications_none_rounded,
+            tooltip: 'الإشعارات',
+            onTap: onNotifications,
+          ),
+          const SizedBox(width: 8),
+          _UxIconButton(
+            icon: Icons.person_outline_rounded,
+            tooltip: 'الملف الشخصي',
+            onTap: onProfile,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardUxPlanCard extends StatelessWidget {
+  const DashboardUxPlanCard({
+    required this.title,
+    required this.progressPercent,
+    required this.tasksDone,
+    required this.tasksTotal,
+    required this.onContinue,
+    this.city,
+    this.weddingDate,
+    this.daysRemaining,
+    super.key,
+  });
+
+  final String title;
+  final String? city;
+  final DateTime? weddingDate;
+  final int progressPercent;
+  final int tasksDone;
+  final int tasksTotal;
+  final int? daysRemaining;
+  final VoidCallback onContinue;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateLabel = weddingDate == null
+        ? 'لم يحدد الموعد'
+        : dashFormatArDate(weddingDate!);
+    final daysLabel = daysRemaining == null
+        ? 'غير محدد'
+        : daysRemaining! < 0
+        ? 'انتهى الموعد'
+        : '$daysRemaining يوم';
+
+    return _UxCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _uxInk,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _UxMetaChip(
+                          icon: Icons.location_on_outlined,
+                          label: city?.trim().isNotEmpty == true
+                              ? city!.trim()
+                              : 'المدينة غير محددة',
+                        ),
+                        _UxMetaChip(
+                          icon: Icons.calendar_month_outlined,
+                          label: dateLabel,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _UxProgressBadge(percent: progressPercent),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _UxProgressBar(percent: progressPercent),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _UxSmallMetric(
+                  label: 'المهام المكتملة',
+                  value: tasksTotal == 0 ? '0' : '$tasksDone/$tasksTotal',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _UxSmallMetric(label: 'المتبقي', value: daysLabel),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 48,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: _uxPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: onContinue,
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: const Text(
+                'متابعة الخطة',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardUxStat {
+  const DashboardUxStat({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.helper,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String helper;
+  final VoidCallback? onTap;
+}
+
+class DashboardUxStatsSection extends StatelessWidget {
+  const DashboardUxStatsSection({required this.stats, super.key});
+
+  final List<DashboardUxStat> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return _UxCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _UxSectionTitle(title: 'إحصائيات سريعة'),
+          const SizedBox(height: 10),
+          _UxTwoColumnWrap(
+            children: [
+              for (final stat in stats.take(4)) _UxStatTile(stat: stat),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardUxAction {
+  const DashboardUxAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+}
+
+class DashboardUxActionsSection extends StatelessWidget {
+  const DashboardUxActionsSection({required this.actions, super.key});
+
+  final List<DashboardUxAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return _UxCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _UxSectionTitle(title: 'إجراءات سريعة'),
+          const SizedBox(height: 10),
+          _UxTwoColumnWrap(
+            children: [
+              for (final action in actions.take(4))
+                _UxActionButton(action: action),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardUxUpcomingItem {
+  const DashboardUxUpcomingItem({
+    required this.icon,
+    required this.title,
+    required this.meta,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String meta;
+  final VoidCallback? onTap;
+}
+
+class DashboardUxUpcomingSection extends StatelessWidget {
+  const DashboardUxUpcomingSection({required this.items, super.key});
+
+  final List<DashboardUxUpcomingItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return _UxCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _UxSectionTitle(title: 'اليوم والقادم'),
+          const SizedBox(height: 8),
+          if (items.isEmpty)
+            const DashboardUxEmptyState(
+              icon: Icons.inbox_outlined,
+              title: 'لا توجد مواعيد قريبة',
+              message: 'ستظهر هنا المهام أو المدفوعات القادمة عند توفرها.',
+              compact: true,
+            )
+          else
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) const Divider(height: 12, color: _uxLine),
+              _UxUpcomingRow(item: items[i]),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardUxSharedPlanCard extends StatelessWidget {
+  const DashboardUxSharedPlanCard({
+    required this.participantCount,
+    required this.participantNames,
+    required this.onOpen,
+    super.key,
+  });
+
+  final int participantCount;
+  final List<String> participantNames;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final names = participantNames
+        .where((name) => name.trim().isNotEmpty)
+        .take(3)
+        .join('، ');
+    final summary = participantCount == 0
+        ? 'لا يوجد مشاركون بعد'
+        : '$participantCount مشارك في هذه الخطة';
+
+    return _UxCard(
+      padding: const EdgeInsets.all(14),
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(_uxRadius),
+        child: Row(
+          children: [
+            const _UxIconBox(icon: Icons.group_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'الخطة المشتركة',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _uxInk,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    names.isEmpty ? summary : '$summary: $names',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _uxMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_left_rounded, color: _uxMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class DashboardUxLoading extends StatelessWidget {
+  const DashboardUxLoading({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _UxSkeletonLine(widthFactor: 0.5),
+        SizedBox(height: 12),
+        _UxSkeletonBox(height: 188),
+        SizedBox(height: 12),
+        _UxSkeletonBox(height: 152),
+        SizedBox(height: 12),
+        _UxSkeletonBox(height: 128),
+      ],
+    );
+  }
+}
+
+class DashboardUxEmptyState extends StatelessWidget {
+  const DashboardUxEmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.compact = false,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: compact ? 8 : 36, horizontal: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _uxMuted, size: compact ? 24 : 34),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _uxInk,
+              fontSize: compact ? 13 : 15,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            message,
+            maxLines: compact ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: _uxMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UxCard extends StatelessWidget {
+  const _UxCard({required this.child, this.padding});
+
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _uxCard,
+        borderRadius: BorderRadius.circular(_uxRadius),
+        border: Border.all(color: _uxLine),
+      ),
+      padding: padding,
+      child: child,
+    );
+  }
+}
+
+class _UxIconButton extends StatelessWidget {
+  const _UxIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: _uxCard,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _uxLine),
+            ),
+            child: Icon(icon, color: _uxPrimary, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UxProgressBadge extends StatelessWidget {
+  const _UxProgressBadge({required this.percent});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      height: 72,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: _uxLine, width: 6),
+        color: _uxSoft,
+      ),
+      child: Text(
+        '$percent%',
+        textDirection: TextDirection.ltr,
+        style: const TextStyle(
+          color: _uxInk,
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _UxProgressBar extends StatelessWidget {
+  const _UxProgressBar({required this.percent});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = percent.clamp(0, 100) / 100;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: 8,
+        child: Stack(
+          children: [
+            const Positioned.fill(child: ColoredBox(color: _uxSoft2)),
+            FractionallySizedBox(
+              widthFactor: value,
+              alignment: AlignmentDirectional.centerStart,
+              child: const ColoredBox(color: _uxPrimary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UxMetaChip extends StatelessWidget {
+  const _UxMetaChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 180),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: _uxSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _uxLine),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _uxMuted, size: 15),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _uxMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UxSmallMetric extends StatelessWidget {
+  const _UxSmallMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: _uxSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _uxLine),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _uxMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _uxInk,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UxSectionTitle extends StatelessWidget {
+  const _UxSectionTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: _uxInk,
+        fontSize: 14,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _UxTwoColumnWrap extends StatelessWidget {
+  const _UxTwoColumnWrap({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = (constraints.maxWidth - 8) / 2;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final child in children) SizedBox(width: width, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _UxStatTile extends StatelessWidget {
+  const _UxStatTile({required this.stat});
+
+  final DashboardUxStat stat;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _uxSoft,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: stat.onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 84),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _uxLine),
+          ),
+          child: Row(
+            children: [
+              _UxIconBox(icon: stat.icon),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      stat.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _uxMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      stat.value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: _uxInk,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      stat.helper,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _uxMuted,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UxActionButton extends StatelessWidget {
+  const _UxActionButton({required this.action});
+
+  final DashboardUxAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: _uxSoft,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: action.onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 58),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _uxLine),
+          ),
+          child: Row(
+            children: [
+              Icon(action.icon, color: _uxPrimary, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  action.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _uxInk,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UxUpcomingRow extends StatelessWidget {
+  const _UxUpcomingRow({required this.item});
+
+  final DashboardUxUpcomingItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: item.onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          children: [
+            _UxIconBox(icon: item.icon),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                item.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _uxInk,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              item.meta,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _uxMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UxIconBox extends StatelessWidget {
+  const _UxIconBox({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _uxCard,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: _uxLine),
+      ),
+      child: Icon(icon, color: _uxPrimary, size: 20),
+    );
+  }
+}
+
+class _UxSkeletonLine extends StatelessWidget {
+  const _UxSkeletonLine({required this.widthFactor});
+
+  final double widthFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionallySizedBox(
+      alignment: AlignmentDirectional.centerStart,
+      widthFactor: widthFactor,
+      child: const _UxSkeletonBox(height: 18),
+    );
+  }
+}
+
+class _UxSkeletonBox extends StatelessWidget {
+  const _UxSkeletonBox({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: _uxSoft2,
+        borderRadius: BorderRadius.circular(_uxRadius),
+        border: Border.all(color: _uxLine),
+      ),
+    );
+  }
+}
+
 // ============================================================================
 // TOP BAR
 // ============================================================================

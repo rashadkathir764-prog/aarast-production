@@ -215,15 +215,15 @@ class _WeddingPlanDashboardScreenState
             DashboardUxStat(
               icon: Icons.storefront_outlined,
               label: 'الموردين',
-              value: '0',
-              helper: 'مراجع',
+              value: 'تصفح',
+              helper: 'السوق',
               onTap: () => context.push(AppRouter.providerMarketplace),
             ),
             DashboardUxStat(
               icon: Icons.groups_2_outlined,
               label: 'الضيوف',
-              value: '0',
-              helper: 'مسجلين',
+              value: 'محلي',
+              helper: 'مؤقت',
               onTap: () => context.push(AppRouter.guestList(planId)),
             ),
           ],
@@ -410,7 +410,7 @@ class _WeddingPlanDashboardScreenState
                     AppTheme.dMaroon,
                     AppTheme.dPinkBg,
                     'إضافة مصروف',
-                    AppRouter.finance(plan.id),
+                    AppRouter.createExpense(plan.id),
                   ),
                   tile(
                     Icons.credit_card_rounded,

@@ -126,7 +126,7 @@ class _MainShellState extends State<MainShell> {
                     AppTheme.dMaroon,
                     AppTheme.dPinkBg,
                     'إضافة مصروف',
-                    AppRouter.finance(_activePlanId!),
+                    AppRouter.createExpense(_activePlanId!),
                   ),
                   tile(
                     Icons.credit_card_rounded,

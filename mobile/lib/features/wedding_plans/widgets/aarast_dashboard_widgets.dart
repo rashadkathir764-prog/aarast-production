@@ -109,7 +109,7 @@ class DashboardUxHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'اعّرست',
+                  'أعرست',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -120,11 +120,22 @@ class DashboardUxHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  'أهلاً $userName',
+                const Text(
+                  'مساء الخير',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
+                    color: _uxInk,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
+                ),
+                const Text(
+                  'جاهزين نكمل خطة زفافك',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     color: _uxMuted,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -255,7 +266,7 @@ class DashboardUxPlanCard extends StatelessWidget {
           end: Alignment.bottomLeft,
         ),
         borderRadius: BorderRadius.circular(_uxRadius),
-        border: Border.all(color: _uxSoftGold.withAlpha(120)),
+        border: Border.all(color: _uxSoftGold.withAlpha(60)),
         boxShadow: [
           BoxShadow(
             color: _uxBurgundyDark.withAlpha(32),
@@ -701,7 +712,7 @@ class _UxProgressBadge extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: _uxGold, width: 5),
+        border: Border.all(color: _uxGold.withAlpha(200), width: 3),
         color: Colors.white.withAlpha(26),
       ),
       child: Text(
@@ -731,7 +742,7 @@ class _UxMetaChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withAlpha(24),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _uxSoftGold.withAlpha(120)),
+        border: Border.all(color: _uxSoftGold.withAlpha(60)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -769,7 +780,7 @@ class _UxSmallMetric extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withAlpha(24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _uxSoftGold.withAlpha(120)),
+        border: Border.all(color: _uxSoftGold.withAlpha(60)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

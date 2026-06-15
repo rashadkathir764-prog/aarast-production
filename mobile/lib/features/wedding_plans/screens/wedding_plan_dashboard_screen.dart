@@ -108,7 +108,7 @@ class _WeddingPlanDashboardScreenState
     DashboardSummaryProvider provider,
     AuthController auth,
   ) {
-    final bottomPadding = widget.embedded ? 88.0 : 108.0;
+    final bottomPadding = widget.embedded ? 110.0 : 140.0;
 
     if (provider.isLoading && provider.plan == null) {
       return ListView(

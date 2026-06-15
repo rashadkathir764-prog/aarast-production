@@ -10,7 +10,6 @@ import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
-import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../wedding_plans/widgets/aarast_dashboard_widgets.dart';
 
 class MainShell extends StatefulWidget {
@@ -187,14 +186,11 @@ class _MainShellState extends State<MainShell> {
               IndexedStack(
                 index: stackIndex,
                 children: [
-                  // Index 0 (Nav 4): Home overview. Plan lists are explicit routes.
-                  _activePlanId != null
-                      ? WeddingPlanDashboardScreen(
-                          key: ValueKey('home-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                          embedded: true,
-                        )
-                      : const HomeScreen(embedded: true),
+                  // Index 0 (Nav 4): Home dashboard — the reference design lives in
+                  // features/home. It loads the primary plan itself and exposes the
+                  // full plan dashboard via its hero/quick actions. Detail screens
+                  // (incl. WeddingPlanDashboardScreen) are pushed over the shell.
+                  const HomeScreen(embedded: true),
 
                   // Index 1 (Nav 3): Vendors marketplace
                   const ProviderMarketplaceScreen(embedded: true),

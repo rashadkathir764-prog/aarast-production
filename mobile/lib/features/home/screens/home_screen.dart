@@ -157,7 +157,7 @@ class _HomeDashboardBody extends StatelessWidget {
           HomeImportantNotesList(provider: provider),
           const SizedBox(height: 18),
         ],
-        if (!hasPlan) ...[HomeSharedPlansCard(provider: provider)],
+        HomeSharedPlansCard(provider: provider),
       ],
     );
   }

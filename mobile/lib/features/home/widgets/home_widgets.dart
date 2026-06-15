@@ -417,32 +417,36 @@ class HomeCommandHero extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   if (constraints.maxWidth < 380) ...[
-                    _HeroMeta(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'تبقى $remainingDays يوم',
-                    ),
-                    const SizedBox(height: 12),
                     _HeroActionButton(
                       onPressed: () {
                         context.push(AppRouter.weddingPlanDashboard(plan.id));
                       },
                     ),
+                    const SizedBox(height: 12),
+                    _HeroMeta(
+                      icon: Icons.calendar_today_outlined,
+                      label: 'تبقى $remainingDays يوم',
+                    ),
                   ] else
                     Row(
                       children: [
                         Expanded(
+                          flex: 3,
+                          child: _HeroActionButton(
+                            onPressed: () {
+                              context.push(
+                                AppRouter.weddingPlanDashboard(plan.id),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Flexible(
+                          flex: 2,
                           child: _HeroMeta(
                             icon: Icons.calendar_today_outlined,
                             label: 'تبقى $remainingDays يوم',
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        _HeroActionButton(
-                          onPressed: () {
-                            context.push(
-                              AppRouter.weddingPlanDashboard(plan.id),
-                            );
-                          },
                         ),
                       ],
                     ),
@@ -508,8 +512,8 @@ class _HeroProgressRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 92,
-      height: 92,
+      width: 100,
+      height: 100,
       child: CustomPaint(
         painter: _RingPainter(progress: progressPct / 100),
         child: Center(
@@ -576,19 +580,44 @@ class _HeroActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onPressed,
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        side: BorderSide(color: Colors.white.withAlpha(95)),
-        minimumSize: const Size(0, 44),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-      ),
-      icon: const Icon(Icons.chevron_left_rounded, size: 18),
-      label: const Text(
-        'استكمال المهام',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+    return Material(
+      color: Colors.white.withAlpha(36),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: 46,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withAlpha(64)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  'استكمال المهام',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -651,21 +680,21 @@ class _QuickGlanceCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MiniStatBox(
-                  title: 'الموردين',
-                  value: 'متاح',
-                  icon: Icons.groups_rounded,
-                  color: AppTheme.dGreen,
-                  bg: AppTheme.dGreenBg,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MiniStatBox(
                   title: 'المهام',
                   value: '$completedTasks/${tasks.length}',
                   icon: Icons.assignment_turned_in_rounded,
                   color: AppTheme.dMaroon,
                   bg: AppTheme.dPinkBg,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MiniStatBox(
+                  title: 'الموردين',
+                  value: '—',
+                  icon: Icons.groups_rounded,
+                  color: AppTheme.dGreen,
+                  bg: AppTheme.dGreenBg,
                 ),
               ),
             ],
@@ -675,21 +704,21 @@ class _QuickGlanceCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _MiniStatBox(
-                  title: 'الضيوف',
-                  value: 'جاهز',
-                  icon: Icons.people_alt_rounded,
-                  color: AppTheme.dGoldDeep,
-                  bg: AppTheme.dCreamBg,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MiniStatBox(
                   title: 'المدفوعات',
                   value: '$paymentCount',
                   icon: Icons.credit_card_rounded,
                   color: AppTheme.dBlue,
                   bg: AppTheme.dBlueBg,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MiniStatBox(
+                  title: 'الضيوف',
+                  value: '—',
+                  icon: Icons.people_alt_rounded,
+                  color: AppTheme.dGoldDeep,
+                  bg: AppTheme.dCreamBg,
                 ),
               ),
             ],
@@ -812,14 +841,6 @@ class _BudgetSummaryCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              SizedBox(
-                width: 66,
-                height: 66,
-                child: CustomPaint(
-                  painter: _BudgetDonutPainter(spentRatio: spentRatio),
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   children: [
@@ -835,6 +856,14 @@ class _BudgetSummaryCard extends StatelessWidget {
                       color: AppTheme.dGoldDeep,
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 66,
+                height: 66,
+                child: CustomPaint(
+                  painter: _BudgetDonutPainter(spentRatio: spentRatio),
                 ),
               ),
             ],
@@ -956,60 +985,84 @@ class HomeQuickActions extends StatelessWidget {
             title: 'إجراءات سريعة',
             icon: Icons.bolt_rounded,
           ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(),
-            child: Row(
-              children: [
-                _QuickActionItem(
-                  label: 'نفقات سريعة',
-                  icon: Icons.add_rounded,
-                  color: AppTheme.dMaroon,
-                  onTap: plan == null
-                      ? onNeedPlan
-                      : () => context.push(AppRouter.createExpense(plan.id)),
-                ),
-                _QuickActionItem(
-                  label: 'قائمة الضيوف',
-                  icon: Icons.people_outline_rounded,
-                  color: AppTheme.dGoldDeep,
-                  onTap: plan == null
-                      ? onNeedPlan
-                      : () => context.push(AppRouter.guestList(plan.id)),
-                ),
-                _QuickActionItem(
-                  label: 'جدول الزواج',
-                  icon: Icons.calendar_month_rounded,
-                  color: AppTheme.dMaroon,
-                  onTap: plan == null
-                      ? onNeedPlan
-                      : () => context.push(AppRouter.timeline(plan.id)),
-                ),
-                _QuickActionItem(
-                  label: 'الموردين',
-                  icon: Icons.storefront_rounded,
-                  color: AppTheme.dGoldDeep,
-                  onTap: () => context.push(AppRouter.providerMarketplace),
-                ),
-                _QuickActionItem(
-                  label: 'الميزانية',
-                  icon: Icons.account_balance_wallet_outlined,
-                  color: AppTheme.dMaroon,
-                  onTap: plan == null
-                      ? onNeedPlan
-                      : () => context.push(AppRouter.finance(plan.id)),
-                ),
-                _QuickActionItem(
-                  label: 'قائمة المهام',
-                  icon: Icons.assignment_turned_in_outlined,
-                  color: AppTheme.dMaroon,
-                  onTap: plan == null
-                      ? onNeedPlan
-                      : () => context.push(AppRouter.createTask(plan.id)),
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Fit all six circular actions in one row; scale the circle to the
+              // available cell width so nothing overflows on narrow phones (320px).
+              final cell = constraints.maxWidth / 6;
+              final circle = (cell - 6).clamp(34.0, 50.0);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _QuickActionItem(
+                      label: 'قائمة المهام',
+                      icon: Icons.assignment_turned_in_outlined,
+                      color: AppTheme.dMaroon,
+                      size: circle,
+                      onTap: plan == null
+                          ? onNeedPlan
+                          : () => context.push(AppRouter.createTask(plan.id)),
+                    ),
+                  ),
+                  Expanded(
+                    child: _QuickActionItem(
+                      label: 'الميزانية',
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: AppTheme.dMaroon,
+                      size: circle,
+                      onTap: plan == null
+                          ? onNeedPlan
+                          : () => context.push(AppRouter.finance(plan.id)),
+                    ),
+                  ),
+                  Expanded(
+                    child: _QuickActionItem(
+                      label: 'الموردين',
+                      icon: Icons.storefront_rounded,
+                      color: AppTheme.dGoldDeep,
+                      size: circle,
+                      onTap: () => context.push(AppRouter.providerMarketplace),
+                    ),
+                  ),
+                  Expanded(
+                    child: _QuickActionItem(
+                      label: 'جدول الزواج',
+                      icon: Icons.calendar_month_rounded,
+                      color: AppTheme.dMaroon,
+                      size: circle,
+                      onTap: plan == null
+                          ? onNeedPlan
+                          : () => context.push(AppRouter.timeline(plan.id)),
+                    ),
+                  ),
+                  Expanded(
+                    child: _QuickActionItem(
+                      label: 'قائمة الضيوف',
+                      icon: Icons.people_outline_rounded,
+                      color: AppTheme.dGoldDeep,
+                      size: circle,
+                      onTap: plan == null
+                          ? onNeedPlan
+                          : () => context.push(AppRouter.guestList(plan.id)),
+                    ),
+                  ),
+                  Expanded(
+                    child: _QuickActionItem(
+                      label: 'نفقات سريعة',
+                      icon: Icons.add_rounded,
+                      color: AppTheme.dMaroon,
+                      size: circle,
+                      filled: true,
+                      onTap: plan == null
+                          ? onNeedPlan
+                          : () => context.push(AppRouter.createExpense(plan.id)),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1023,48 +1076,65 @@ class _QuickActionItem extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
+    this.size = 50,
+    this.filled = false,
   });
 
   final String label;
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final double size;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: SizedBox(
-          width: 72,
-          child: Column(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: AppTheme.dCard2,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withAlpha(60)),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Column(
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: filled ? color : AppTheme.dCard2,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: filled ? Colors.transparent : color.withAlpha(55),
                 ),
-                child: Icon(icon, color: color, size: 24),
+                boxShadow: filled
+                    ? [
+                        BoxShadow(
+                          color: color.withAlpha(70),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ]
+                    : null,
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.dInk,
-                  fontWeight: FontWeight.w800,
-                  height: 1.15,
-                ),
+              child: Icon(
+                icon,
+                color: filled ? AppTheme.dGold2 : color,
+                size: (size * 0.46).clamp(18.0, 24.0),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w800,
+                height: 1.15,
+                fontSize: 10.5,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1241,6 +1311,10 @@ class HomeSharedPlansCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasSharedPlans = provider.sharedPlans.isNotEmpty;
     final firstPlan = hasSharedPlans ? provider.sharedPlans.first : null;
+    final memberNames = (provider.sharedMembers ?? [])
+        .map((member) => member.displayName)
+        .where((name) => name.trim().isNotEmpty)
+        .toList(growable: false);
 
     return AarastCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -1264,6 +1338,7 @@ class HomeSharedPlansCard extends StatelessWidget {
             _SharedPlanRow(
               title: firstPlan!.title,
               subtitle: 'آخر تحديث: اليوم',
+              memberNames: memberNames,
               onTap: () => context.push(AppRouter.sharedWeddingPlans),
             ),
         ],
@@ -1276,11 +1351,13 @@ class _SharedPlanRow extends StatelessWidget {
   const _SharedPlanRow({
     required this.title,
     required this.subtitle,
+    required this.memberNames,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
+  final List<String> memberNames;
   final VoidCallback onTap;
 
   @override
@@ -1332,10 +1409,107 @@ class _SharedPlanRow extends StatelessWidget {
                 ],
               ),
             ),
+            if (memberNames.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              MemberAvatarStack(names: memberNames),
+            ],
+            const SizedBox(width: 4),
             const Icon(Icons.chevron_left_rounded, color: AppTheme.dInkSoft),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Overlapping circular initials for shared-plan participants, with a "+N"
+/// overflow chip when more members exist than the visible cap.
+class MemberAvatarStack extends StatelessWidget {
+  const MemberAvatarStack({required this.names, this.maxVisible = 3, super.key});
+
+  final List<String> names;
+  final int maxVisible;
+
+  static const _palette = <Color>[
+    Color(0xFFB6432F),
+    Color(0xFF4F6D7A),
+    Color(0xFF8A5A44),
+    Color(0xFF5B6E4F),
+    Color(0xFF6E0E2C),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (names.isEmpty) return const SizedBox.shrink();
+
+    final visible = names.take(maxVisible).toList(growable: false);
+    final overflow = names.length - visible.length;
+    const size = 30.0;
+    const overlap = 20.0;
+
+    final circles = <Widget>[];
+    for (var i = 0; i < visible.length; i++) {
+      final name = visible[i].trim();
+      final initial = name.isNotEmpty ? name.characters.first : '؟';
+      final color = _palette[name.hashCode.abs() % _palette.length];
+      circles.add(
+        Positioned(
+          right: i * overlap,
+          child: _circle(
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            color: color,
+          ),
+        ),
+      );
+    }
+    if (overflow > 0) {
+      circles.add(
+        Positioned(
+          right: visible.length * overlap,
+          child: _circle(
+            color: AppTheme.dCreamBg,
+            child: Text(
+              '+$overflow',
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(
+                color: AppTheme.dGoldDeep,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final count = visible.length + (overflow > 0 ? 1 : 0);
+    final width = size + (count - 1) * overlap;
+
+    return SizedBox(
+      height: size,
+      width: width,
+      child: Stack(children: circles),
+    );
+  }
+
+  Widget _circle({required Widget child, required Color color}) {
+    return Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: child,
     );
   }
 }

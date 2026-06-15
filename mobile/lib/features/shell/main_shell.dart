@@ -180,7 +180,7 @@ class _MainShellState extends State<MainShell> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: AppTheme.dBg,
+          backgroundColor: const Color(0xFFFAF6EF),
           body: IndexedStack(
             index: stackIndex,
             children: [

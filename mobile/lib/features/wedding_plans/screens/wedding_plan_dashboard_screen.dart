@@ -65,12 +65,12 @@ class _WeddingPlanDashboardScreenState
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: const Color(0xFFFAF6EF),
         bottomNavigationBar: widget.embedded ? null : _buildBottomNav(provider),
         body: SafeArea(
           bottom: false,
           child: RefreshIndicator(
-            color: const Color(0xFF475569),
+            color: const Color(0xFF8A0032),
             onRefresh: () => provider.loadDashboard(widget.weddingPlanId),
             child: _buildContent(context, provider, auth),
           ),
@@ -132,8 +132,8 @@ class _WeddingPlanDashboardScreenState
           Center(
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF334155),
-                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                foregroundColor: const Color(0xFF8A0032),
+                side: const BorderSide(color: Color(0xFFEFE4DA)),
               ),
               onPressed: () => provider.loadDashboard(widget.weddingPlanId),
               child: const Text('إعادة المحاولة'),

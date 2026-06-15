@@ -69,14 +69,17 @@ class _Num extends StatelessWidget {
   }
 }
 
-const _uxInk = Color(0xFF0F172A);
-const _uxMuted = Color(0xFF64748B);
-const _uxLine = Color(0xFFE2E8F0);
-const _uxSoft = Color(0xFFF8FAFC);
-const _uxSoft2 = Color(0xFFF1F5F9);
+const _uxBurgundy = Color(0xFF8A0032);
+const _uxBurgundyDark = Color(0xFF4A001B);
+const _uxInk = Color(0xFF162235);
+const _uxGold = Color(0xFFC9A24D);
+const _uxSoftGold = Color(0xFFE8D29A);
+const _uxMuted = Color(0xFF6F7A89);
+const _uxLine = Color(0xFFEFE4DA);
+const _uxSoft = Color(0xFFFAF6EF);
+const _uxSoft2 = Color(0xFFF6EEE4);
 const _uxCard = Colors.white;
-const _uxPrimary = Color(0xFF334155);
-const _uxRadius = 14.0;
+const _uxRadius = 16.0;
 
 // ============================================================================
 // NEUTRAL UX DASHBOARD SKELETON
@@ -110,9 +113,9 @@ class DashboardUxHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _uxInk,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    color: _uxBurgundyDark,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
                     height: 1.15,
                   ),
                 ),
@@ -124,7 +127,7 @@ class DashboardUxHeader extends StatelessWidget {
                   style: const TextStyle(
                     color: _uxMuted,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                     height: 1.2,
                   ),
                 ),
@@ -183,13 +186,13 @@ class DashboardUxOfflineBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
-          color: _uxSoft,
+          color: _uxSoftGold.withAlpha(60),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _uxLine),
+          border: Border.all(color: _uxSoftGold.withAlpha(170)),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: _uxMuted),
+            Icon(icon, size: 16, color: _uxBurgundy),
             const SizedBox(width: 7),
             Expanded(
               child: Text(
@@ -243,8 +246,24 @@ class DashboardUxPlanCard extends StatelessWidget {
         ? 'انتهى الموعد'
         : '$daysRemaining يوم';
 
-    return _UxCard(
+    return Container(
       padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_uxBurgundy, _uxBurgundyDark],
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+        ),
+        borderRadius: BorderRadius.circular(_uxRadius),
+        border: Border.all(color: _uxSoftGold.withAlpha(120)),
+        boxShadow: [
+          BoxShadow(
+            color: _uxBurgundyDark.withAlpha(32),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -260,9 +279,9 @@ class DashboardUxPlanCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: _uxInk,
+                        color: Colors.white,
                         fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w900,
                         height: 1.25,
                       ),
                     ),
@@ -310,8 +329,8 @@ class DashboardUxPlanCard extends StatelessWidget {
             height: 42,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: _uxPrimary,
-                foregroundColor: Colors.white,
+                backgroundColor: Colors.white,
+                foregroundColor: _uxBurgundy,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -323,7 +342,7 @@ class DashboardUxPlanCard extends StatelessWidget {
                 'متابعة الخطة',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.w800),
+                style: TextStyle(fontWeight: FontWeight.w900),
               ),
             ),
           ),
@@ -612,6 +631,13 @@ class _UxCard extends StatelessWidget {
         color: _uxCard,
         borderRadius: BorderRadius.circular(_uxRadius),
         border: Border.all(color: _uxLine),
+        boxShadow: [
+          BoxShadow(
+            color: _uxBurgundyDark.withAlpha(10),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       padding: padding,
       child: child,
@@ -636,18 +662,25 @@ class _UxIconButton extends StatelessWidget {
       message: tooltip,
       child: Material(
         color: _uxCard,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(999),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(999),
           child: Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
               border: Border.all(color: _uxLine),
+              boxShadow: [
+                BoxShadow(
+                  color: _uxBurgundyDark.withAlpha(8),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: Icon(icon, color: _uxPrimary, size: 22),
+            child: Icon(icon, color: _uxBurgundy, size: 21),
           ),
         ),
       ),
@@ -668,14 +701,14 @@ class _UxProgressBadge extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: _uxLine, width: 6),
-        color: _uxSoft,
+        border: Border.all(color: _uxGold, width: 5),
+        color: Colors.white.withAlpha(26),
       ),
       child: Text(
         '$percent%',
         textDirection: TextDirection.ltr,
         style: const TextStyle(
-          color: _uxInk,
+          color: Colors.white,
           fontSize: 16,
           fontWeight: FontWeight.w900,
         ),
@@ -696,14 +729,14 @@ class _UxMetaChip extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 180),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: _uxSoft,
+        color: Colors.white.withAlpha(24),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _uxLine),
+        border: Border.all(color: _uxSoftGold.withAlpha(120)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: _uxMuted, size: 15),
+          Icon(icon, color: _uxSoftGold, size: 15),
           const SizedBox(width: 5),
           Flexible(
             child: Text(
@@ -711,9 +744,9 @@ class _UxMetaChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: _uxMuted,
+                color: Colors.white,
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -734,9 +767,9 @@ class _UxSmallMetric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
-        color: _uxSoft,
+        color: Colors.white.withAlpha(24),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _uxLine),
+        border: Border.all(color: _uxSoftGold.withAlpha(120)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -746,7 +779,7 @@ class _UxSmallMetric extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: _uxMuted,
+              color: _uxSoftGold,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -757,7 +790,7 @@ class _UxSmallMetric extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: _uxInk,
+              color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.w900,
             ),
@@ -818,7 +851,7 @@ class _UxStatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _uxSoft,
+      color: _uxCard,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: stat.onTap,
@@ -829,6 +862,7 @@ class _UxStatTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _uxLine),
+            color: _uxCard,
           ),
           child: Row(
             children: [
@@ -857,7 +891,7 @@ class _UxStatTile extends StatelessWidget {
                       textDirection: TextDirection.ltr,
                       textAlign: TextAlign.right,
                       style: const TextStyle(
-                        color: _uxInk,
+                        color: _uxBurgundy,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                       ),
@@ -891,7 +925,7 @@ class _UxActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _uxSoft,
+      color: _uxCard,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: action.onTap,
@@ -902,10 +936,20 @@ class _UxActionButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: _uxLine),
+            color: _uxCard,
           ),
           child: Row(
             children: [
-              Icon(action.icon, color: _uxPrimary, size: 22),
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: _uxSoft,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _uxLine),
+                ),
+                child: Icon(action.icon, color: _uxBurgundy, size: 18),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -985,11 +1029,11 @@ class _UxIconBox extends StatelessWidget {
       height: 34,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: _uxCard,
+        color: _uxSoft,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: _uxLine),
+        border: Border.all(color: _uxSoftGold.withAlpha(150)),
       ),
-      child: Icon(icon, color: _uxPrimary, size: 18),
+      child: Icon(icon, color: _uxBurgundy, size: 18),
     );
   }
 }
@@ -2933,13 +2977,13 @@ class DashboardBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        border: const Border(top: BorderSide(color: Color(0xFFF1ECE6))),
+        color: _uxCard,
+        border: const Border(top: BorderSide(color: _uxLine)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: _uxBurgundyDark.withAlpha(20),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -2994,17 +3038,18 @@ class DashboardBottomNav extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(
-                        colors: [AppTheme.dMaroonBright, AppTheme.dMaroon],
+                        colors: [_uxBurgundy, _uxBurgundyDark],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.dMaroon.withValues(alpha: 0.35),
-                          blurRadius: 12,
+                          color: _uxBurgundy.withAlpha(70),
+                          blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
                       ],
+                      border: Border.all(color: _uxSoftGold, width: 1.5),
                     ),
                     child: const Icon(
                       Icons.add_rounded,
@@ -3037,7 +3082,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppTheme.dMaroon : AppTheme.dMuted;
+    final color = active ? _uxBurgundy : _uxMuted;
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       children: [

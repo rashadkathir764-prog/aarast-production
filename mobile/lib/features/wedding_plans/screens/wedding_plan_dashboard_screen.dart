@@ -210,7 +210,7 @@ class _WeddingPlanDashboardScreenState
               label: 'الميزانية',
               value: totalBudget <= 0 ? 'غير محددة' : '$budgetPercent%',
               helper: totalBudget <= 0 ? 'أضف الميزانية' : 'مستخدمة',
-              onTap: () => context.push(AppRouter.finance(planId)),
+              onTap: () => _openFinanceOverview(provider, planId),
             ),
             DashboardUxStat(
               icon: Icons.storefront_outlined,
@@ -239,7 +239,7 @@ class _WeddingPlanDashboardScreenState
             DashboardUxAction(
               icon: Icons.account_balance_wallet_outlined,
               label: 'إضافة نفقة',
-              onTap: () => context.push(AppRouter.createExpense(planId)),
+              onTap: () => _openExpenseForm(provider, planId),
             ),
             DashboardUxAction(
               icon: Icons.person_add_alt_1_outlined,
@@ -347,12 +347,16 @@ class _WeddingPlanDashboardScreenState
           Color color,
           Color bg,
           String label,
-          String route,
-        ) {
+          String route, {
+          bool refreshDashboard = false,
+        }) {
           return ListTile(
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              context.push(route);
+              final changed = await context.push<bool>(route);
+              if (refreshDashboard && changed == true && mounted) {
+                await provider.loadDashboard(plan.id);
+              }
             },
             leading: Container(
               width: 44,
@@ -411,6 +415,7 @@ class _WeddingPlanDashboardScreenState
                     AppTheme.dPinkBg,
                     'إضافة مصروف',
                     AppRouter.createExpense(plan.id),
+                    refreshDashboard: true,
                   ),
                   tile(
                     Icons.credit_card_rounded,
@@ -440,6 +445,26 @@ class _WeddingPlanDashboardScreenState
         );
       },
     );
+  }
+
+  Future<void> _openExpenseForm(
+    DashboardSummaryProvider provider,
+    String planId,
+  ) async {
+    final changed = await context.push<bool>(AppRouter.createExpense(planId));
+    if (changed == true && mounted) {
+      await provider.loadDashboard(planId);
+    }
+  }
+
+  Future<void> _openFinanceOverview(
+    DashboardSummaryProvider provider,
+    String planId,
+  ) async {
+    final changed = await context.push<bool>(AppRouter.finance(planId));
+    if (changed == true && mounted) {
+      await provider.loadDashboard(planId);
+    }
   }
 }
 

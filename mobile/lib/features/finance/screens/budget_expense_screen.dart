@@ -23,6 +23,8 @@ class BudgetExpenseScreen extends StatefulWidget {
 }
 
 class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
+  bool _hasExpenseChanges = false;
+
   @override
   void initState() {
     super.initState();
@@ -104,9 +106,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          onPressed: () => context.push(
-                            AppRouter.createExpense(widget.weddingPlanId),
-                          ),
+                          onPressed: _openCreateExpense,
                           icon: const Icon(Icons.add_rounded),
                           tooltip: 'إضافة مصروف',
                           style: IconButton.styleFrom(
@@ -126,6 +126,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                       child: _FinanceContent(
                         provider: provider,
                         weddingPlanId: widget.weddingPlanId,
+                        onChanged: _markExpenseChanged,
                       ),
                     ),
                   ),
@@ -140,18 +141,34 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
 
   void _goBack() {
     if (context.canPop()) {
-      context.pop();
+      context.pop(_hasExpenseChanges);
       return;
     }
     context.go(AppRouter.home);
   }
+
+  Future<void> _openCreateExpense() async {
+    final changed = await context.push<bool>(
+      AppRouter.createExpense(widget.weddingPlanId),
+    );
+    if (changed == true && mounted) _markExpenseChanged();
+  }
+
+  void _markExpenseChanged() {
+    _hasExpenseChanges = true;
+  }
 }
 
 class _FinanceContent extends StatelessWidget {
-  const _FinanceContent({required this.provider, required this.weddingPlanId});
+  const _FinanceContent({
+    required this.provider,
+    required this.weddingPlanId,
+    required this.onChanged,
+  });
 
   final FinanceProvider provider;
   final String weddingPlanId;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -227,7 +244,7 @@ class _FinanceContent extends StatelessWidget {
           title: 'المدفوعات والمصاريف الأخيرة',
           icon: Icons.schedule_rounded,
           actionLabel: 'إضافة',
-          onAction: () => context.push(AppRouter.createExpense(weddingPlanId)),
+          onAction: () => _openCreateExpense(context),
         ),
         const SizedBox(height: 12),
         if (provider.expenses.isEmpty)
@@ -236,8 +253,7 @@ class _FinanceContent extends StatelessWidget {
             message: 'سجلي أول مصروف لتبدأ لوحة الميزانية في قراءة الواقع.',
             icon: Icons.receipt_long_outlined,
             action: ElevatedButton.icon(
-              onPressed: () =>
-                  context.push(AppRouter.createExpense(weddingPlanId)),
+              onPressed: () => _openCreateExpense(context),
               icon: const Icon(Icons.add_rounded),
               label: const Text('إضافة مصروف'),
             ),
@@ -250,17 +266,159 @@ class _FinanceContent extends StatelessWidget {
                 provider.budgetCategories,
                 expense.budgetCategoryId,
               ),
+              isBusy: provider.isSubmitting,
+              onEdit: () => _openEditExpense(context, expense),
+              onDelete: () => _confirmDeleteExpense(context, provider, expense),
             ),
             const SizedBox(height: 10),
           ],
         const SizedBox(height: 14),
         ElevatedButton.icon(
-          onPressed: () => context.push(AppRouter.createExpense(weddingPlanId)),
+          onPressed: () => _openCreateExpense(context),
           icon: const Icon(Icons.add_rounded),
           label: const Text('إضافة مصروف'),
         ),
       ],
     );
+  }
+
+  Future<void> _openCreateExpense(BuildContext context) async {
+    final changed = await context.push<bool>(
+      AppRouter.createExpense(weddingPlanId),
+    );
+    if (changed == true && context.mounted) onChanged();
+  }
+
+  Future<void> _openEditExpense(BuildContext context, Expense expense) async {
+    if (expense.id.startsWith('local-')) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'هذا المصروف محفوظ محلياً وقيد المزامنة. انتظر اكتمال المزامنة قبل تعديله.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    final changed = await context.push<bool>(
+      AppRouter.editExpense(weddingPlanId, expense.id),
+      extra: expense,
+    );
+    if (changed == true && context.mounted) onChanged();
+  }
+
+  Future<void> _confirmDeleteExpense(
+    BuildContext context,
+    FinanceProvider provider,
+    Expense expense,
+  ) async {
+    if (expense.id.startsWith('local-')) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'هذا المصروف محفوظ محلياً وقيد المزامنة. انتظر اكتمال المزامنة قبل حذفه.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: AppTheme.danger.withAlpha(22),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppTheme.danger,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'حذف المصروف؟',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'سيتم حذف "${expense.title}" من المصاريف. لا يمكن التراجع عن هذا الإجراء.',
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(false),
+                          child: const Text('إلغاء'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(sheetContext).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.danger,
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('حذف'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final deleted = await provider.deleteExpense(
+      weddingPlanId: weddingPlanId,
+      expense: expense,
+    );
+    if (!context.mounted) return;
+
+    final message = deleted
+        ? 'تم حذف المصروف بنجاح'
+        : provider.errorMessage ?? 'تعذر حذف المصروف.';
+    if (deleted) onChanged();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -603,10 +761,19 @@ class _BudgetCategoryProgressRow extends StatelessWidget {
 }
 
 class _ExpenseRow extends StatelessWidget {
-  const _ExpenseRow({required this.expense, required this.categoryName});
+  const _ExpenseRow({
+    required this.expense,
+    required this.categoryName,
+    required this.isBusy,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final Expense expense;
   final String categoryName;
+  final bool isBusy;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -695,7 +862,84 @@ class _ExpenseRow extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
+          const SizedBox(width: 4),
+          PopupMenuButton<_ExpenseAction>(
+            enabled: !isBusy,
+            tooltip: 'خيارات المصروف',
+            icon: const Icon(Icons.more_vert_rounded, color: AppTheme.dMuted),
+            onSelected: (action) {
+              if (action == _ExpenseAction.edit) {
+                onEdit();
+              } else {
+                onDelete();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: _ExpenseAction.edit,
+                child: _ExpenseMenuItem(
+                  icon: Icons.edit_outlined,
+                  label: 'تعديل',
+                ),
+              ),
+              const PopupMenuItem(
+                value: _ExpenseAction.delete,
+                child: _ExpenseMenuItem(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'حذف',
+                  color: AppTheme.danger,
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+}
+
+enum _ExpenseAction { edit, delete }
+
+class _ExpenseMenuItem extends StatelessWidget {
+  const _ExpenseMenuItem({
+    required this.icon,
+    required this.label,
+    this.color = AppTheme.dInk,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 18),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: TextStyle(color: color, fontWeight: FontWeight.w800),
+        ),
+      ],
+    );
+  }
+}
+
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 42,
+        height: 5,
+        decoration: BoxDecoration(
+          color: AppTheme.dLine,
+          borderRadius: BorderRadius.circular(999),
+        ),
       ),
     );
   }

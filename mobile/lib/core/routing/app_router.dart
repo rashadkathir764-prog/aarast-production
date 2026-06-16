@@ -13,6 +13,7 @@ import '../../features/debts/screens/debt_installment_screen.dart';
 import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
+import '../../features/finance/models/expense.dart';
 import '../../features/guests/screens/guest_list_screen.dart';
 import '../../features/marketplace/screens/add_provider_package_screen.dart';
 import '../../features/marketplace/screens/add_provider_service_screen.dart';
@@ -84,6 +85,10 @@ class AppRouter {
 
   static String createExpense(String id) {
     return '/wedding-plans/$id/expenses/create';
+  }
+
+  static String editExpense(String weddingPlanId, String expenseId) {
+    return '/wedding-plans/$weddingPlanId/expenses/$expenseId/edit';
   }
 
   static String debts(String id) {
@@ -278,6 +283,21 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
             return CreateExpenseScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/expenses/:expenseId/edit',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final expenseId = state.pathParameters['expenseId'] ?? '';
+            final expense = state.extra is Expense
+                ? state.extra! as Expense
+                : null;
+            return CreateExpenseScreen(
+              weddingPlanId: id,
+              expenseId: expenseId,
+              initialExpense: expense,
+            );
           },
         ),
         GoRoute(

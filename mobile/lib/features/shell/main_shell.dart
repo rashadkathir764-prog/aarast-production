@@ -8,6 +8,7 @@ import '../home/screens/home_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
+import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../wedding_plans/widgets/aarast_dashboard_widgets.dart';
@@ -63,12 +64,18 @@ class _MainShellState extends State<MainShell> {
           Color color,
           Color bg,
           String label,
-          String route,
-        ) {
+          String route, {
+          bool refreshDashboard = false,
+        }) {
           return ListTile(
-            onTap: () {
+            onTap: () async {
               Navigator.of(sheetContext).pop();
-              context.push(route);
+              final changed = await context.push<bool>(route);
+              if (refreshDashboard && changed == true && mounted) {
+                await context.read<DashboardSummaryProvider>().loadDashboard(
+                  _activePlanId!,
+                );
+              }
             },
             leading: Container(
               width: 44,
@@ -127,6 +134,7 @@ class _MainShellState extends State<MainShell> {
                     AppTheme.dPinkBg,
                     'إضافة مصروف',
                     AppRouter.createExpense(_activePlanId!),
+                    refreshDashboard: true,
                   ),
                   tile(
                     Icons.credit_card_rounded,

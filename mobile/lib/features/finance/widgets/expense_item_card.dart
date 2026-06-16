@@ -41,7 +41,7 @@ class ExpenseItemCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '${expense.amount} YER',
+              '${expense.amount} ر.ي',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: AppTheme.deepBurgundy,
                 fontWeight: FontWeight.w800,

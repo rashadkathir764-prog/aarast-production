@@ -7,12 +7,20 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../models/budget_category.dart';
+import '../models/expense.dart';
 import '../providers/finance_provider.dart';
 
 class CreateExpenseScreen extends StatefulWidget {
-  const CreateExpenseScreen({required this.weddingPlanId, super.key});
+  const CreateExpenseScreen({
+    required this.weddingPlanId,
+    this.expenseId,
+    this.initialExpense,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final String? expenseId;
+  final Expense? initialExpense;
 
   @override
   State<CreateExpenseScreen> createState() => _CreateExpenseScreenState();
@@ -27,16 +35,32 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
   String? _budgetCategoryId;
   String _status = 'PLANNED';
   DateTime? _expenseDate;
+  bool _didPrefill = false;
+
+  bool get _isEditMode =>
+      widget.expenseId != null || widget.initialExpense != null;
 
   @override
   void initState() {
     super.initState();
+    final initialExpense = widget.initialExpense;
+    if (initialExpense != null) {
+      _prefillExpense(initialExpense);
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<FinanceProvider>();
-      if (provider.budgetCategories.isEmpty) {
-        provider.loadFinance(widget.weddingPlanId);
-      }
+      _loadFinanceForForm(provider);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isEditMode || _didPrefill) return;
+
+    final expense = _expenseFromProvider(context.read<FinanceProvider>());
+    if (expense != null) _prefillExpense(expense);
   }
 
   @override
@@ -51,6 +75,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
     final category = _selectedCategory(provider.budgetCategories);
+    final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -75,7 +100,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'إضافة مصروف',
+                              _isEditMode ? 'تعديل مصروف' : 'إضافة مصروف',
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(
                                     color: AppTheme.dMaroonDeep,
@@ -88,14 +113,19 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      0,
+                      20,
+                      28 + keyboardBottom,
+                    ),
                     sliver: SliverToBoxAdapter(
                       child: Form(
                         key: _formKey,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const _ExpenseHero(),
+                            _ExpenseHero(isEditMode: _isEditMode),
                             const SizedBox(height: 18),
                             AarastCard(
                               padding: const EdgeInsets.all(18),
@@ -124,7 +154,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                                         ),
                                     decoration: const InputDecoration(
                                       labelText: 'المبلغ',
-                                      suffixText: 'YER',
+                                      suffixText: 'ر.ي',
                                       prefixIcon: Icon(
                                         Icons.account_balance_wallet_outlined,
                                       ),
@@ -242,8 +272,12 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                             ),
                             const SizedBox(height: 18),
                             PrimaryActionButton(
-                              label: 'حفظ المصروف',
-                              icon: Icons.check_rounded,
+                              label: _isEditMode
+                                  ? 'حفظ التعديلات'
+                                  : 'حفظ المصروف',
+                              icon: _isEditMode
+                                  ? Icons.save_outlined
+                                  : Icons.check_rounded,
                               isLoading: provider.isSubmitting,
                               onPressed: _submit,
                             ),
@@ -266,6 +300,40 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
       if (category.id == _budgetCategoryId) return category;
     }
     return null;
+  }
+
+  Future<void> _loadFinanceForForm(FinanceProvider provider) async {
+    final shouldLoad =
+        provider.budgetCategories.isEmpty ||
+        (_isEditMode && _expenseFromProvider(provider) == null);
+    if (shouldLoad) {
+      await provider.loadFinance(widget.weddingPlanId);
+    }
+    if (!mounted || !_isEditMode || _didPrefill) return;
+
+    final expense = _expenseFromProvider(provider);
+    if (expense != null) {
+      setState(() => _prefillExpense(expense));
+    }
+  }
+
+  Expense? _expenseFromProvider(FinanceProvider provider) {
+    final expenseId = widget.expenseId;
+    if (expenseId == null) return null;
+    for (final expense in provider.expenses) {
+      if (expense.id == expenseId) return expense;
+    }
+    return null;
+  }
+
+  void _prefillExpense(Expense expense) {
+    _titleController.text = expense.title;
+    _amountController.text = expense.amount;
+    _noteController.text = expense.note ?? '';
+    _budgetCategoryId = expense.budgetCategoryId;
+    _status = expense.status;
+    _expenseDate = expense.expenseDate;
+    _didPrefill = true;
   }
 
   Future<void> _showCalendarPicker() async {
@@ -376,9 +444,9 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     }
   }
 
-  void _goBack() {
+  void _goBack({bool changed = false}) {
     if (context.canPop()) {
-      context.pop();
+      context.pop(changed);
       return;
     }
     context.go(AppRouter.finance(widget.weddingPlanId));
@@ -389,30 +457,59 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
 
     final provider = context.read<FinanceProvider>();
     final note = _noteController.text.trim();
-    final created = await provider.createExpense(
-      weddingPlanId: widget.weddingPlanId,
-      title: _titleController.text.trim(),
-      amount: _amountController.text.trim(),
-      budgetCategoryId: _budgetCategoryId,
-      status: _status,
-      expenseDate: _expenseDate,
-      note: note.isEmpty ? null : note,
-    );
+    final editingExpense = _isEditMode ? _editingExpense(provider) : null;
+    final saved = _isEditMode
+        ? editingExpense != null &&
+              await provider.updateExpense(
+                weddingPlanId: widget.weddingPlanId,
+                expense: editingExpense,
+                title: _titleController.text.trim(),
+                amount: _amountController.text.trim(),
+                budgetCategoryId: _budgetCategoryId,
+                status: _status,
+                expenseDate: _expenseDate,
+                note: note.isEmpty ? null : note,
+              )
+        : await provider.createExpense(
+            weddingPlanId: widget.weddingPlanId,
+            title: _titleController.text.trim(),
+            amount: _amountController.text.trim(),
+            budgetCategoryId: _budgetCategoryId,
+            status: _status,
+            expenseDate: _expenseDate,
+            note: note.isEmpty ? null : note,
+          );
 
-    if (created && mounted) {
-      final notice = provider.noticeMessage;
-      if (notice != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(notice)));
-      }
-      _goBack();
+    if (_isEditMode && editingExpense == null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المصروف للتعديل')));
+      return;
     }
+
+    if (saved && mounted) {
+      final notice = provider.noticeMessage;
+      final message =
+          notice ??
+          (_isEditMode ? 'تم حفظ التعديلات بنجاح' : 'تم حفظ المصروف بنجاح');
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+      _goBack(changed: true);
+    }
+  }
+
+  Expense? _editingExpense(FinanceProvider provider) {
+    final expense = widget.initialExpense;
+    if (expense != null) return expense;
+    return _expenseFromProvider(provider);
   }
 }
 
 class _ExpenseHero extends StatelessWidget {
-  const _ExpenseHero();
+  const _ExpenseHero({required this.isEditMode});
+
+  final bool isEditMode;
 
   @override
   Widget build(BuildContext context) {
@@ -440,7 +537,7 @@ class _ExpenseHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'سجلي كل دفعة بوضوح',
+                  isEditMode ? 'راجعي تفاصيل المصروف' : 'سجلي كل دفعة بوضوح',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.dMaroonDeep,
                     fontWeight: FontWeight.w900,
@@ -448,7 +545,9 @@ class _ExpenseHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'التفاصيل الصغيرة تمنع مفاجآت الميزانية لاحقاً.',
+                  isEditMode
+                      ? 'أي تعديل هنا سينعكس على ملخص الميزانية والمصاريف.'
+                      : 'التفاصيل الصغيرة تمنع مفاجآت الميزانية لاحقاً.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.dInkSoft,
                     fontWeight: FontWeight.w700,

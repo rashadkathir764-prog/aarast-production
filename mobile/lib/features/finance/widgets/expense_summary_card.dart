@@ -92,7 +92,7 @@ class _SummaryChip extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '$amount YER',
+            '$amount ر.ي',
             style: Theme.of(
               context,
             ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),

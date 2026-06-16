@@ -37,7 +37,7 @@ class BudgetCategoryCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     category.hasTargetAmount
-                        ? 'الهدف: ${category.targetAmount} YER'
+                        ? 'الهدف: ${category.targetAmount} ر.ي'
                         : 'بدون مبلغ مستهدف',
                     textAlign: TextAlign.right,
                   ),

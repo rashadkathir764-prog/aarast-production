@@ -212,13 +212,104 @@ class BudgetExpenseApi {
     }
   }
 
-  Future<Expense> updateExpense(String id, Map<String, dynamic> data) async {
-    final json = await _apiClient.patchJson('/expenses/$id', data);
-    return Expense.fromJson(json);
+  Future<Expense> updateExpense({
+    required String id,
+    required String weddingPlanId,
+    required String title,
+    required String amount,
+    String? budgetCategoryId,
+    String status = 'PLANNED',
+    DateTime? expenseDate,
+    String? note,
+  }) async {
+    final payload = {
+      'title': title.trim(),
+      'amount': amount.trim(),
+      'status': status,
+      'budgetCategoryId':
+          budgetCategoryId != null && budgetCategoryId.trim().isNotEmpty
+          ? budgetCategoryId.trim()
+          : null,
+      'expenseDate': expenseDate?.toIso8601String(),
+      'note': note != null && note.trim().isNotEmpty ? note.trim() : null,
+    };
+
+    try {
+      final json = await _apiClient.patchJson('/expenses/$id', payload);
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedBudgetItems,
+        json: json,
+      );
+      await _offline?.syncPendingChanges();
+      return Expense.fromJson(json);
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      final cached = await _offline.database.readCachedItem(
+        table: OfflineTables.cachedBudgetItems,
+        id: id,
+      );
+      if (cached == null) rethrow;
+
+      final localJson = {
+        ...cached,
+        ...payload,
+        'id': id,
+        'weddingPlanId': weddingPlanId,
+        'updatedAt': DateTime.now().toIso8601String(),
+      };
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedBudgetItems,
+        json: localJson,
+        dirty: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'expense',
+        operation: 'update',
+        endpoint: '/expenses/$id',
+        method: 'PATCH',
+        payload: payload,
+        localEntityId: id,
+      );
+      await _offline.refreshStatus();
+      return Expense.fromJson(localJson);
+    }
   }
 
   Future<void> deleteExpense(String id) async {
-    await _apiClient.deleteJson('/expenses/$id');
+    try {
+      await _apiClient.deleteJson('/expenses/$id');
+      await _markExpenseDeletedLocally(id, dirty: false);
+      await _offline?.syncPendingChanges();
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      await _markExpenseDeletedLocally(id, dirty: true);
+      await _offline.database.enqueueSync(
+        entityType: 'expense',
+        operation: 'delete',
+        endpoint: '/expenses/$id',
+        method: 'DELETE',
+        payload: const {},
+        localEntityId: id,
+      );
+      await _offline.refreshStatus();
+    }
+  }
+
+  Future<void> _markExpenseDeletedLocally(
+    String id, {
+    required bool dirty,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedBudgetItems,
+      id: id,
+    );
+    if (cached == null) return;
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBudgetItems,
+      json: cached,
+      dirty: dirty,
+      deletedLocally: true,
+    );
   }
 
   Future<List<Map<String, dynamic>>> _getJsonMapList(String path) async {

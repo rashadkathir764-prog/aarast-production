@@ -106,7 +106,7 @@ class _CreateBudgetCategoryScreenState
                                         ),
                                     decoration: const InputDecoration(
                                       labelText: 'المبلغ المستهدف (اختياري)',
-                                      suffixText: 'YER',
+                                      suffixText: 'ر.ي',
                                       prefixIcon: Icon(
                                         Icons.track_changes_rounded,
                                       ),

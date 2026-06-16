@@ -110,11 +110,9 @@ class FinanceProvider extends ChangeNotifier {
         note: note,
       );
       _expenses = [expense, ..._expenses];
+      _summary = _summaryFromExpenses(_expenses);
       if (expense.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
-        _summary = _localSummaryWith(expense);
-      } else {
-        _summary = await _api.getExpenseSummary(weddingPlanId);
       }
       return true;
     } on ApiException catch (error) {
@@ -129,47 +127,129 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateExpense({
+    required String weddingPlanId,
+    required Expense expense,
+    required String title,
+    required String amount,
+    String? budgetCategoryId,
+    String status = 'PLANNED',
+    DateTime? expenseDate,
+    String? note,
+  }) async {
+    if (expense.id.startsWith('local-')) {
+      _errorMessage =
+          'لا يمكن تعديل مصروف قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+      notifyListeners();
+      return false;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final updated = await _api.updateExpense(
+        id: expense.id,
+        weddingPlanId: weddingPlanId,
+        title: title,
+        amount: amount,
+        budgetCategoryId: budgetCategoryId,
+        status: status,
+        expenseDate: expenseDate,
+        note: note,
+      );
+      _replaceExpense(updated);
+      _summary = _summaryFromExpenses(_expenses);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث المصروف.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteExpense({
+    required String weddingPlanId,
+    required Expense expense,
+  }) async {
+    if (expense.id.startsWith('local-')) {
+      _errorMessage =
+          'لا يمكن حذف مصروف قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+      notifyListeners();
+      return false;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.deleteExpense(expense.id);
+      _expenses = _expenses.where((item) => item.id != expense.id).toList();
+      _summary = _summaryFromExpenses(_expenses);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حذف المصروف.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     _noticeMessage = null;
     notifyListeners();
   }
 
-  ExpenseSummary _localSummaryWith(Expense expense) {
-    final amount = num.tryParse(expense.amount) ?? 0;
-    switch (expense.status) {
-      case 'PAID':
-        return ExpenseSummary(
-          totalPaid: _sum(_summary.totalPaid, amount),
-          totalPlanned: _summary.totalPlanned,
-          totalCancelled: _summary.totalCancelled,
-          countPaid: _summary.countPaid + 1,
-          countPlanned: _summary.countPlanned,
-          countCancelled: _summary.countCancelled,
-        );
-      case 'CANCELLED':
-        return ExpenseSummary(
-          totalPaid: _summary.totalPaid,
-          totalPlanned: _summary.totalPlanned,
-          totalCancelled: _sum(_summary.totalCancelled, amount),
-          countPaid: _summary.countPaid,
-          countPlanned: _summary.countPlanned,
-          countCancelled: _summary.countCancelled + 1,
-        );
-      default:
-        return ExpenseSummary(
-          totalPaid: _summary.totalPaid,
-          totalPlanned: _sum(_summary.totalPlanned, amount),
-          totalCancelled: _summary.totalCancelled,
-          countPaid: _summary.countPaid,
-          countPlanned: _summary.countPlanned + 1,
-          countCancelled: _summary.countCancelled,
-        );
-    }
+  void _replaceExpense(Expense updated) {
+    _expenses = [
+      for (final item in _expenses) item.id == updated.id ? updated : item,
+    ];
   }
 
-  String _sum(String current, num amount) {
-    final value = (num.tryParse(current) ?? 0) + amount;
-    return value.toStringAsFixed(2);
+  ExpenseSummary _summaryFromExpenses(List<Expense> expenses) {
+    num totalPaid = 0;
+    num totalPlanned = 0;
+    num totalCancelled = 0;
+    var countPaid = 0;
+    var countPlanned = 0;
+    var countCancelled = 0;
+
+    for (final expense in expenses) {
+      final amount = num.tryParse(expense.amount) ?? 0;
+      switch (expense.status) {
+        case 'PAID':
+          totalPaid += amount;
+          countPaid++;
+        case 'CANCELLED':
+          totalCancelled += amount;
+          countCancelled++;
+        default:
+          totalPlanned += amount;
+          countPlanned++;
+      }
+    }
+
+    return ExpenseSummary(
+      totalPaid: totalPaid.toStringAsFixed(2),
+      totalPlanned: totalPlanned.toStringAsFixed(2),
+      totalCancelled: totalCancelled.toStringAsFixed(2),
+      countPaid: countPaid,
+      countPlanned: countPlanned,
+      countCancelled: countCancelled,
+    );
   }
 }

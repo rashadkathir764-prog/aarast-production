@@ -48,7 +48,10 @@ class DashboardSummaryProvider extends ChangeNotifier {
   List<WeddingTask>? get tasks => _tasks;
   List<SharedMember>? get sharedMembers => _sharedMembers;
 
-  Future<void> loadDashboard(String weddingPlanId) async {
+  Future<void> loadDashboard(
+    String weddingPlanId, {
+    SharedMember? sharedMember,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -56,12 +59,21 @@ class DashboardSummaryProvider extends ChangeNotifier {
     try {
       // Fetch plan first. If it fails, the whole dashboard fails.
       _plan = await weddingPlansApi.getWeddingPlan(weddingPlanId);
-      
+      final canReadExpenses =
+          sharedMember == null || sharedMember.canReadExpenses;
+      final canReadDebts = sharedMember == null || sharedMember.canReadDebts;
+
       // Fetch the rest concurrently to speed up loading
       final results = await Future.wait([
-        _fetchExpenseSummary(weddingPlanId),
-        _fetchDebtSummary(weddingPlanId),
-        _fetchDueInstallments(weddingPlanId),
+        canReadExpenses
+            ? _fetchExpenseSummary(weddingPlanId)
+            : Future<ExpenseSummary?>.value(null),
+        canReadDebts
+            ? _fetchDebtSummary(weddingPlanId)
+            : Future<DebtSummary?>.value(null),
+        canReadDebts
+            ? _fetchDueInstallments(weddingPlanId)
+            : Future<List<Installment>?>.value(null),
         _fetchTasks(weddingPlanId),
         _fetchSharedMembers(weddingPlanId),
       ]);
@@ -71,7 +83,6 @@ class DashboardSummaryProvider extends ChangeNotifier {
       _dueInstallments = results[2] as List<Installment>?;
       _tasks = results[3] as List<WeddingTask>?;
       _sharedMembers = results[4] as List<SharedMember>?;
-
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {

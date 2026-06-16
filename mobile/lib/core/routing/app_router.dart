@@ -268,7 +268,13 @@ class AppRouter {
           path: '/wedding-plans/:id/finance',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return BudgetExpenseScreen(weddingPlanId: id);
+            final sharedMember = state.extra is SharedMember
+                ? state.extra! as SharedMember
+                : null;
+            return BudgetExpenseScreen(
+              weddingPlanId: id,
+              sharedMember: sharedMember,
+            );
           },
         ),
         GoRoute(
@@ -304,7 +310,13 @@ class AppRouter {
           path: '/wedding-plans/:id/debts',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return DebtInstallmentScreen(weddingPlanId: id);
+            final sharedMember = state.extra is SharedMember
+                ? state.extra! as SharedMember
+                : null;
+            return DebtInstallmentScreen(
+              weddingPlanId: id,
+              sharedMember: sharedMember,
+            );
           },
         ),
         GoRoute(

@@ -28,16 +28,26 @@ class FinanceProvider extends ChangeNotifier {
   List<Expense> get expenses => _expenses;
   ExpenseSummary get summary => _summary;
 
-  Future<void> loadFinance(String weddingPlanId) async {
+  Future<void> loadFinance(
+    String weddingPlanId, {
+    bool canReadBudget = true,
+    bool canReadExpenses = true,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final results = await Future.wait<Object>([
-        _api.getBudgetCategories(weddingPlanId),
-        _api.getExpenses(weddingPlanId),
-        _api.getExpenseSummary(weddingPlanId),
+      final results = await Future.wait<Object?>([
+        canReadBudget
+            ? _api.getBudgetCategories(weddingPlanId)
+            : Future<List<BudgetCategory>>.value(const []),
+        canReadExpenses
+            ? _api.getExpenses(weddingPlanId)
+            : Future<List<Expense>>.value(const []),
+        canReadExpenses
+            ? _api.getExpenseSummary(weddingPlanId)
+            : Future<ExpenseSummary>.value(ExpenseSummary.empty()),
       ]);
       _budgetCategories = results[0] as List<BudgetCategory>;
       _expenses = results[1] as List<Expense>;

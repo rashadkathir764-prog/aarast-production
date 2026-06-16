@@ -50,6 +50,12 @@ class SharedMember {
       canViewDebts ||
       canManageFinancialRecords;
 
+  bool get canReadBudget => canViewBudget || canManageFinancialRecords;
+
+  bool get canReadExpenses => canViewExpenses || canManageFinancialRecords;
+
+  bool get canReadDebts => canViewDebts || canManageFinancialRecords;
+
   String get displayName {
     final name = user?.name.trim();
     if (name != null && name.isNotEmpty) {

@@ -41,6 +41,7 @@ class _WeddingPlanDashboardScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DashboardSummaryProvider>().loadDashboard(
         widget.weddingPlanId,
+        sharedMember: widget.sharedMember,
       );
     });
   }
@@ -52,6 +53,7 @@ class _WeddingPlanDashboardScreenState
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.read<DashboardSummaryProvider>().loadDashboard(
           widget.weddingPlanId,
+          sharedMember: widget.sharedMember,
         );
       });
     }
@@ -71,7 +73,10 @@ class _WeddingPlanDashboardScreenState
           bottom: false,
           child: RefreshIndicator(
             color: const Color(0xFF8A0032),
-            onRefresh: () => provider.loadDashboard(widget.weddingPlanId),
+            onRefresh: () => provider.loadDashboard(
+              widget.weddingPlanId,
+              sharedMember: widget.sharedMember,
+            ),
             child: _buildContent(context, provider, auth),
           ),
         ),
@@ -135,7 +140,10 @@ class _WeddingPlanDashboardScreenState
                 foregroundColor: const Color(0xFF8A0032),
                 side: const BorderSide(color: Color(0xFFEFE4DA)),
               ),
-              onPressed: () => provider.loadDashboard(widget.weddingPlanId),
+              onPressed: () => provider.loadDashboard(
+                widget.weddingPlanId,
+                sharedMember: widget.sharedMember,
+              ),
               child: const Text('إعادة المحاولة'),
             ),
           ),
@@ -162,9 +170,24 @@ class _WeddingPlanDashboardScreenState
     final tasks = provider.tasks ?? [];
     final tasksDone = tasks.where((task) => task.isDone).length;
     final tasksTotal = tasks.length;
-    final totalBudget = dashParseAmount(plan.estimatedBudget);
-    final spent = dashParseAmount(provider.expenseSummary?.totalPaid);
-    final dueInstallments = provider.dueInstallments ?? [];
+    final canReadBudget =
+        widget.sharedMember == null || widget.sharedMember!.canReadBudget;
+    final canReadExpenses =
+        widget.sharedMember == null || widget.sharedMember!.canReadExpenses;
+    final canReadDebts =
+        widget.sharedMember == null || widget.sharedMember!.canReadDebts;
+    final canManageFinancialRecords =
+        widget.sharedMember == null ||
+        widget.sharedMember!.canManageFinancialRecords;
+    final totalBudget = canReadBudget
+        ? dashParseAmount(plan.estimatedBudget)
+        : 0;
+    final spent = canReadExpenses
+        ? dashParseAmount(provider.expenseSummary?.totalPaid)
+        : 0;
+    final List<Installment> dueInstallments = canReadDebts
+        ? provider.dueInstallments ?? const []
+        : const [];
     final sharedMembers = provider.sharedMembers ?? [];
     final progressPercent = tasksTotal == 0
         ? 0
@@ -239,7 +262,9 @@ class _WeddingPlanDashboardScreenState
             DashboardUxAction(
               icon: Icons.account_balance_wallet_outlined,
               label: 'إضافة نفقة',
-              onTap: () => _openExpenseForm(provider, planId),
+              onTap: canManageFinancialRecords
+                  ? () => _openExpenseForm(provider, planId)
+                  : _showFinancialAccessDenied,
             ),
             DashboardUxAction(
               icon: Icons.person_add_alt_1_outlined,
@@ -308,7 +333,10 @@ class _WeddingPlanDashboardScreenState
             icon: Icons.payments_outlined,
             title: 'قسط مستحق',
             meta: dashFormatArDate(installment.dueDate!),
-            onTap: () => context.push(AppRouter.debts(planId)),
+            onTap: () => context.push(
+              AppRouter.debts(planId),
+              extra: widget.sharedMember,
+            ),
           ),
         ),
       );
@@ -335,6 +363,9 @@ class _WeddingPlanDashboardScreenState
   void _showQuickAdd(DashboardSummaryProvider provider) {
     final plan = provider.plan;
     if (plan == null) return;
+    final canManageFinancialRecords =
+        widget.sharedMember == null ||
+        widget.sharedMember!.canManageFinancialRecords;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppTheme.dCard,
@@ -353,9 +384,22 @@ class _WeddingPlanDashboardScreenState
           return ListTile(
             onTap: () async {
               Navigator.of(sheetContext).pop();
-              final changed = await context.push<bool>(route);
+              final isFinancialWriteRoute =
+                  route == AppRouter.createExpense(plan.id) ||
+                  route == AppRouter.createDebt(plan.id);
+              if (isFinancialWriteRoute && !canManageFinancialRecords) {
+                _showFinancialAccessDenied();
+                return;
+              }
+              final changed = await context.push<bool>(
+                route,
+                extra: widget.sharedMember,
+              );
               if (refreshDashboard && changed == true && mounted) {
-                await provider.loadDashboard(plan.id);
+                await provider.loadDashboard(
+                  plan.id,
+                  sharedMember: widget.sharedMember,
+                );
               }
             },
             leading: Container(
@@ -451,9 +495,20 @@ class _WeddingPlanDashboardScreenState
     DashboardSummaryProvider provider,
     String planId,
   ) async {
-    final changed = await context.push<bool>(AppRouter.createExpense(planId));
+    final canManageFinancialRecords =
+        widget.sharedMember == null ||
+        widget.sharedMember!.canManageFinancialRecords;
+    if (!canManageFinancialRecords) {
+      _showFinancialAccessDenied();
+      return;
+    }
+
+    final changed = await context.push<bool>(
+      AppRouter.createExpense(planId),
+      extra: widget.sharedMember,
+    );
     if (changed == true && mounted) {
-      await provider.loadDashboard(planId);
+      await provider.loadDashboard(planId, sharedMember: widget.sharedMember);
     }
   }
 
@@ -461,10 +516,32 @@ class _WeddingPlanDashboardScreenState
     DashboardSummaryProvider provider,
     String planId,
   ) async {
-    final changed = await context.push<bool>(AppRouter.finance(planId));
-    if (changed == true && mounted) {
-      await provider.loadDashboard(planId);
+    final canOpenFinance =
+        widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
+    if (!canOpenFinance) {
+      _showFinancialAccessDenied();
+      return;
     }
+
+    final changed = await context.push<bool>(
+      AppRouter.finance(planId),
+      extra: widget.sharedMember,
+    );
+    if (changed == true && mounted) {
+      await provider.loadDashboard(planId, sharedMember: widget.sharedMember);
+    }
+  }
+
+  void _showFinancialAccessDenied() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'الميزانية خاصة. ليست لديك صلاحية عرض التفاصيل المالية.',
+          ),
+        ),
+      );
   }
 }
 

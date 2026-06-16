@@ -8,15 +8,21 @@ import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../sharing/models/shared_member.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../models/expense_summary.dart';
 import '../providers/finance_provider.dart';
 
 class BudgetExpenseScreen extends StatefulWidget {
-  const BudgetExpenseScreen({required this.weddingPlanId, super.key});
+  const BudgetExpenseScreen({
+    required this.weddingPlanId,
+    this.sharedMember,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final SharedMember? sharedMember;
 
   @override
   State<BudgetExpenseScreen> createState() => _BudgetExpenseScreenState();
@@ -29,7 +35,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
+      _loadFinance();
     });
   }
 
@@ -38,7 +44,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
+        _loadFinance();
       });
     }
   }
@@ -46,6 +52,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final canManageFinancialRecords = _canManageFinancialRecords;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -96,17 +103,22 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                         ),
                         const SizedBox(width: 10),
                         IconButton(
-                          onPressed: () => context.push(
-                            AppRouter.createBudgetCategory(
-                              widget.weddingPlanId,
-                            ),
-                          ),
+                          onPressed: canManageFinancialRecords
+                              ? () => context.push(
+                                  AppRouter.createBudgetCategory(
+                                    widget.weddingPlanId,
+                                  ),
+                                  extra: widget.sharedMember,
+                                )
+                              : null,
                           icon: const Icon(Icons.create_new_folder_outlined),
                           tooltip: 'إضافة تصنيف',
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          onPressed: _openCreateExpense,
+                          onPressed: canManageFinancialRecords
+                              ? _openCreateExpense
+                              : null,
                           icon: const Icon(Icons.add_rounded),
                           tooltip: 'إضافة مصروف',
                           style: IconButton.styleFrom(
@@ -121,13 +133,17 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                   Expanded(
                     child: RefreshIndicator(
                       color: AppTheme.dMaroon,
-                      onRefresh: () =>
-                          provider.loadFinance(widget.weddingPlanId),
-                      child: _FinanceContent(
-                        provider: provider,
-                        weddingPlanId: widget.weddingPlanId,
-                        onChanged: _markExpenseChanged,
-                      ),
+                      onRefresh: _loadFinance,
+                      child: _hasAnyFinanceAccess
+                          ? _FinanceContent(
+                              provider: provider,
+                              weddingPlanId: widget.weddingPlanId,
+                              canManageFinancialRecords:
+                                  canManageFinancialRecords,
+                              sharedMember: widget.sharedMember,
+                              onChanged: _markExpenseChanged,
+                            )
+                          : const _FinancialAccessDeniedState(),
                     ),
                   ),
                 ],
@@ -150,6 +166,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   Future<void> _openCreateExpense() async {
     final changed = await context.push<bool>(
       AppRouter.createExpense(widget.weddingPlanId),
+      extra: widget.sharedMember,
     );
     if (changed == true && mounted) _markExpenseChanged();
   }
@@ -157,17 +174,46 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   void _markExpenseChanged() {
     _hasExpenseChanges = true;
   }
+
+  bool get _canReadBudget =>
+      widget.sharedMember == null || widget.sharedMember!.canReadBudget;
+
+  bool get _canReadExpenses =>
+      widget.sharedMember == null || widget.sharedMember!.canReadExpenses;
+
+  bool get _canManageFinancialRecords =>
+      widget.sharedMember == null ||
+      widget.sharedMember!.canManageFinancialRecords;
+
+  bool get _hasAnyFinanceAccess =>
+      widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
+
+  Future<void> _loadFinance() {
+    if (!_hasAnyFinanceAccess) {
+      return Future<void>.value();
+    }
+
+    return context.read<FinanceProvider>().loadFinance(
+      widget.weddingPlanId,
+      canReadBudget: _canReadBudget,
+      canReadExpenses: _canReadExpenses,
+    );
+  }
 }
 
 class _FinanceContent extends StatelessWidget {
   const _FinanceContent({
     required this.provider,
     required this.weddingPlanId,
+    required this.canManageFinancialRecords,
+    required this.sharedMember,
     required this.onChanged,
   });
 
   final FinanceProvider provider;
   final String weddingPlanId;
+  final bool canManageFinancialRecords;
+  final SharedMember? sharedMember;
   final VoidCallback onChanged;
 
   @override
@@ -218,8 +264,12 @@ class _FinanceContent extends StatelessWidget {
           title: 'تفاصيل المصروفات حسب الفئة',
           icon: Icons.pie_chart_outline_rounded,
           actionLabel: 'تصنيف',
-          onAction: () =>
-              context.push(AppRouter.createBudgetCategory(weddingPlanId)),
+          onAction: canManageFinancialRecords
+              ? () => context.push(
+                  AppRouter.createBudgetCategory(weddingPlanId),
+                  extra: sharedMember,
+                )
+              : null,
         ),
         const SizedBox(height: 12),
         if (categoryRows.isEmpty)
@@ -228,8 +278,12 @@ class _FinanceContent extends StatelessWidget {
             message: 'أضيفي تصنيفات مثل القاعة أو الضيافة لتظهر المتابعة هنا.',
             icon: Icons.category_outlined,
             action: OutlinedButton.icon(
-              onPressed: () =>
-                  context.push(AppRouter.createBudgetCategory(weddingPlanId)),
+              onPressed: canManageFinancialRecords
+                  ? () => context.push(
+                      AppRouter.createBudgetCategory(weddingPlanId),
+                      extra: sharedMember,
+                    )
+                  : null,
               icon: const Icon(Icons.add_rounded),
               label: const Text('إضافة تصنيف'),
             ),
@@ -244,7 +298,9 @@ class _FinanceContent extends StatelessWidget {
           title: 'المدفوعات والمصاريف الأخيرة',
           icon: Icons.schedule_rounded,
           actionLabel: 'إضافة',
-          onAction: () => _openCreateExpense(context),
+          onAction: canManageFinancialRecords
+              ? () => _openCreateExpense(context)
+              : null,
         ),
         const SizedBox(height: 12),
         if (provider.expenses.isEmpty)
@@ -253,7 +309,9 @@ class _FinanceContent extends StatelessWidget {
             message: 'سجلي أول مصروف لتبدأ لوحة الميزانية في قراءة الواقع.',
             icon: Icons.receipt_long_outlined,
             action: ElevatedButton.icon(
-              onPressed: () => _openCreateExpense(context),
+              onPressed: canManageFinancialRecords
+                  ? () => _openCreateExpense(context)
+                  : null,
               icon: const Icon(Icons.add_rounded),
               label: const Text('إضافة مصروف'),
             ),
@@ -274,7 +332,9 @@ class _FinanceContent extends StatelessWidget {
           ],
         const SizedBox(height: 14),
         ElevatedButton.icon(
-          onPressed: () => _openCreateExpense(context),
+          onPressed: canManageFinancialRecords
+              ? () => _openCreateExpense(context)
+              : null,
           icon: const Icon(Icons.add_rounded),
           label: const Text('إضافة مصروف'),
         ),
@@ -285,6 +345,7 @@ class _FinanceContent extends StatelessWidget {
   Future<void> _openCreateExpense(BuildContext context) async {
     final changed = await context.push<bool>(
       AppRouter.createExpense(weddingPlanId),
+      extra: sharedMember,
     );
     if (changed == true && context.mounted) onChanged();
   }
@@ -963,6 +1024,25 @@ class _FinanceLoadingState extends StatelessWidget {
         _SkeletonBox(height: 88),
         SizedBox(height: 10),
         _SkeletonBox(height: 88),
+      ],
+    );
+  }
+}
+
+class _FinancialAccessDeniedState extends StatelessWidget {
+  const _FinancialAccessDeniedState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
+      children: const [
+        AarastEmptyState(
+          title: 'الميزانية خاصة',
+          message: 'ليست لديك صلاحية عرض التفاصيل المالية.',
+          icon: Icons.lock_outline_rounded,
+        ),
       ],
     );
   }

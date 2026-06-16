@@ -5,15 +5,21 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../sharing/models/shared_member.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
 import '../models/installment.dart';
 import '../providers/debt_installment_provider.dart';
 
 class DebtInstallmentScreen extends StatefulWidget {
-  const DebtInstallmentScreen({required this.weddingPlanId, super.key});
+  const DebtInstallmentScreen({
+    required this.weddingPlanId,
+    this.sharedMember,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final SharedMember? sharedMember;
 
   @override
   State<DebtInstallmentScreen> createState() => _DebtInstallmentScreenState();
@@ -24,7 +30,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DebtInstallmentProvider>().loadDebts(widget.weddingPlanId);
+      _loadDebts();
     });
   }
 
@@ -33,7 +39,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<DebtInstallmentProvider>().loadDebts(widget.weddingPlanId);
+        _loadDebts();
       });
     }
   }
@@ -41,6 +47,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DebtInstallmentProvider>();
+    final canManageFinancialRecords = _canManageFinancialRecords;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -91,9 +98,12 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                         ),
                         const SizedBox(width: 12),
                         IconButton(
-                          onPressed: () => context.push(
-                            AppRouter.createDebt(widget.weddingPlanId),
-                          ),
+                          onPressed: canManageFinancialRecords
+                              ? () => context.push(
+                                  AppRouter.createDebt(widget.weddingPlanId),
+                                  extra: widget.sharedMember,
+                                )
+                              : null,
                           icon: const Icon(Icons.add_rounded),
                           tooltip: 'إضافة دين',
                           style: IconButton.styleFrom(
@@ -108,11 +118,16 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                   Expanded(
                     child: RefreshIndicator(
                       color: AppTheme.dMaroon,
-                      onRefresh: () => provider.loadDebts(widget.weddingPlanId),
-                      child: _DebtInstallmentContent(
-                        provider: provider,
-                        weddingPlanId: widget.weddingPlanId,
-                      ),
+                      onRefresh: _loadDebts,
+                      child: _canReadDebts
+                          ? _DebtInstallmentContent(
+                              provider: provider,
+                              weddingPlanId: widget.weddingPlanId,
+                              canManageFinancialRecords:
+                                  canManageFinancialRecords,
+                              sharedMember: widget.sharedMember,
+                            )
+                          : const _DebtAccessDeniedState(),
                     ),
                   ),
                 ],
@@ -131,16 +146,36 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     }
     context.go(AppRouter.home);
   }
+
+  bool get _canReadDebts =>
+      widget.sharedMember == null || widget.sharedMember!.canReadDebts;
+
+  bool get _canManageFinancialRecords =>
+      widget.sharedMember == null ||
+      widget.sharedMember!.canManageFinancialRecords;
+
+  Future<void> _loadDebts() {
+    if (!_canReadDebts) {
+      return Future<void>.value();
+    }
+    return context.read<DebtInstallmentProvider>().loadDebts(
+      widget.weddingPlanId,
+    );
+  }
 }
 
 class _DebtInstallmentContent extends StatelessWidget {
   const _DebtInstallmentContent({
     required this.provider,
     required this.weddingPlanId,
+    required this.canManageFinancialRecords,
+    required this.sharedMember,
   });
 
   final DebtInstallmentProvider provider;
   final String weddingPlanId;
+  final bool canManageFinancialRecords;
+  final SharedMember? sharedMember;
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +223,12 @@ class _DebtInstallmentContent extends StatelessWidget {
           title: 'قائمة الديون',
           icon: Icons.account_balance_wallet_outlined,
           actionLabel: 'إضافة',
-          onAction: () => context.push(AppRouter.createDebt(weddingPlanId)),
+          onAction: canManageFinancialRecords
+              ? () => context.push(
+                  AppRouter.createDebt(weddingPlanId),
+                  extra: sharedMember,
+                )
+              : null,
         ),
         const SizedBox(height: 12),
         if (provider.debts.isEmpty)
@@ -197,8 +237,12 @@ class _DebtInstallmentContent extends StatelessWidget {
             message: 'سجلي الالتزامات أو الدفعات المؤجلة لتبقى الصورة واضحة.',
             icon: Icons.receipt_long_outlined,
             action: ElevatedButton.icon(
-              onPressed: () =>
-                  context.push(AppRouter.createDebt(weddingPlanId)),
+              onPressed: canManageFinancialRecords
+                  ? () => context.push(
+                      AppRouter.createDebt(weddingPlanId),
+                      extra: sharedMember,
+                    )
+                  : null,
               icon: const Icon(Icons.add_rounded),
               label: const Text('إضافة دين'),
             ),
@@ -783,6 +827,25 @@ class _DebtLoadingState extends StatelessWidget {
         _SkeletonBox(height: 132),
         SizedBox(height: 10),
         _SkeletonBox(height: 132),
+      ],
+    );
+  }
+}
+
+class _DebtAccessDeniedState extends StatelessWidget {
+  const _DebtAccessDeniedState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
+      children: const [
+        AarastEmptyState(
+          title: 'الديون والأقساط خاصة',
+          message: 'ليست لديك صلاحية عرض التفاصيل المالية.',
+          icon: Icons.lock_outline_rounded,
+        ),
       ],
     );
   }

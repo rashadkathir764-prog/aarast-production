@@ -334,10 +334,15 @@ class _TimelineHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final done = tasks.where((task) => task.isDone).length;
-    final total = tasks.length;
+    final hasTaskList = tasks.isNotEmpty;
+    final done = hasTaskList
+        ? tasks.where((task) => task.isDone).length
+        : timeline.upcomingTasks.where((task) => task.status == 'DONE').length;
+    final total = hasTaskList ? tasks.length : timeline.upcomingTasks.length;
     final pending = total - done;
-    final late = tasks.where(_isLateTask).length;
+    final late = hasTaskList
+        ? tasks.where(_isLateTask).length
+        : timeline.upcomingTasks.where(_isLateTimelineTask).length;
     final progress = total == 0 ? 0.0 : done / total;
     final dueCount =
         timeline.upcomingTasks.length +
@@ -1085,6 +1090,12 @@ List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
 bool _isLateTask(WeddingTask task) {
   final dueDate = task.dueDate;
   if (dueDate == null || task.isDone) return false;
+  return _dateOnly(dueDate).isBefore(_dateOnly(DateTime.now()));
+}
+
+bool _isLateTimelineTask(TimelineTask task) {
+  final dueDate = task.dueDate;
+  if (dueDate == null || task.status == 'DONE') return false;
   return _dateOnly(dueDate).isBefore(_dateOnly(DateTime.now()));
 }
 

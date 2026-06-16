@@ -30,13 +30,44 @@ class TaskTimelineProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    Object? loadError;
+
+    Future<List<WeddingTask>?> loadTasks() async {
+      try {
+        return await _api.getTasks(weddingPlanId);
+      } catch (error) {
+        loadError ??= error;
+        return null;
+      }
+    }
+
+    Future<Timeline?> loadTimeline() async {
+      try {
+        return await _api.getTimeline(weddingPlanId);
+      } catch (error) {
+        loadError ??= error;
+        return null;
+      }
+    }
+
     try {
-      final results = await Future.wait<Object>([
-        _api.getTasks(weddingPlanId),
-        _api.getTimeline(weddingPlanId),
-      ]);
-      _tasks = results[0] as List<WeddingTask>;
-      _timeline = results[1] as Timeline;
+      final results = await Future.wait<Object?>([loadTasks(), loadTimeline()]);
+      final tasks = results[0] as List<WeddingTask>?;
+      final timeline = results[1] as Timeline?;
+
+      if (tasks != null) {
+        _tasks = tasks;
+      } else {
+        _tasks = _tasks
+            .where((task) => task.weddingPlanId == weddingPlanId)
+            .toList();
+      }
+
+      _timeline = timeline ?? Timeline.empty();
+
+      if (loadError != null) {
+        _errorMessage = _loadErrorMessage(loadError!);
+      }
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -45,6 +76,13 @@ class TaskTimelineProvider extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  String _loadErrorMessage(Object error) {
+    if (error is ApiException) {
+      return error.message;
+    }
+    return 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ù‡Ø§Ù… ÙˆØ§Ù„Ø¬Ø¯ÙˆÙ„ Ø§Ù„Ø²Ù…Ù†ÙŠ.';
   }
 
   Future<bool> createTask({

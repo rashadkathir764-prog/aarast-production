@@ -350,7 +350,7 @@ class DashboardUxPlanCard extends StatelessWidget {
               onPressed: onContinue,
               icon: const Icon(Icons.arrow_back_rounded, size: 18),
               label: const Text(
-                'متابعة الخطة',
+                'متابعة المهام',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w900),

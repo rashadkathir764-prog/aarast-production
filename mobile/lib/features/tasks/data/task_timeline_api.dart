@@ -64,6 +64,7 @@ class TaskTimelineApi {
     required String title,
     String? description,
     DateTime? dueDate,
+    String? taskCategory,
     String status = 'TODO',
     String priority = 'MEDIUM',
   }) async {
@@ -74,6 +75,8 @@ class TaskTimelineApi {
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
       if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
+      if (taskCategory != null && taskCategory.trim().isNotEmpty)
+        'taskCategory': taskCategory.trim(),
     };
     try {
       final json = await _apiClient.postJson(

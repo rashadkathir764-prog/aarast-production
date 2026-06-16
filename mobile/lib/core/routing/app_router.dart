@@ -28,6 +28,7 @@ import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
 import '../../features/sharing/screens/sharing_screen.dart';
 import '../../features/sharing/models/shared_member.dart';
+import '../../features/tasks/models/wedding_task.dart';
 import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
@@ -107,6 +108,10 @@ class AppRouter {
 
   static String createTask(String id) {
     return '/wedding-plans/$id/tasks/create';
+  }
+
+  static String editTask(String weddingPlanId, String taskId) {
+    return '/wedding-plans/$weddingPlanId/tasks/$taskId/edit';
   }
 
   static String timeline(String id) {
@@ -315,6 +320,21 @@ class AppRouter {
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
             return CreateTaskScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/tasks/:taskId/edit',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final taskId = state.pathParameters['taskId'] ?? '';
+            final task = state.extra is WeddingTask
+                ? state.extra! as WeddingTask
+                : null;
+            return CreateTaskScreen(
+              weddingPlanId: id,
+              taskId: taskId,
+              initialTask: task,
+            );
           },
         ),
         GoRoute(

@@ -6,12 +6,20 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 
 class CreateTaskScreen extends StatefulWidget {
-  const CreateTaskScreen({required this.weddingPlanId, super.key});
+  const CreateTaskScreen({
+    required this.weddingPlanId,
+    this.taskId,
+    this.initialTask,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final String? taskId;
+  final WeddingTask? initialTask;
 
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -25,6 +33,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   DateTime? _dueDate;
   String _priority = 'MEDIUM';
   String _category = 'GENERAL';
+  String _status = 'TODO';
+  bool _didPrefill = false;
 
   static const _categories = [
     _TaskCategory('GENERAL', 'عامة', Icons.dashboard_customize_outlined),
@@ -33,6 +43,34 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     _TaskCategory('ATTIRE', 'الملابس', Icons.checkroom_outlined),
     _TaskCategory('GUESTS', 'الضيوف', Icons.groups_outlined),
   ];
+
+  bool get _isEditMode => widget.taskId != null || widget.initialTask != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final task = widget.initialTask;
+    if (task != null) {
+      _prefillTask(task);
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isEditMode || _didPrefill) return;
+
+    final taskId = widget.taskId;
+    if (taskId == null) return;
+
+    final provider = context.read<TaskTimelineProvider>();
+    for (final task in provider.tasks) {
+      if (task.id == taskId) {
+        _prefillTask(task);
+        return;
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -138,6 +176,23 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (selected != null) setState(() => _category = selected);
   }
 
+  void _prefillTask(WeddingTask task) {
+    _titleController.text = task.title;
+    _descriptionController.text = task.description ?? '';
+    _dueDate = task.dueDate;
+    _priority = task.priority;
+    _category = _categoryExists(task.taskCategory)
+        ? task.taskCategory!
+        : 'GENERAL';
+    _status = task.status;
+    _didPrefill = true;
+  }
+
+  bool _categoryExists(String? id) {
+    if (id == null || id.isEmpty) return false;
+    return _categories.any((category) => category.id == id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
@@ -166,7 +221,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'إضافة مهمة',
+                              _isEditMode ? 'تعديل المهمة' : 'إضافة مهمة',
                               style: Theme.of(context).textTheme.titleLarge
                                   ?.copyWith(
                                     color: AppTheme.dMaroonDeep,
@@ -318,8 +373,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             ),
                             const SizedBox(height: 18),
                             PrimaryActionButton(
-                              label: 'حفظ المهمة',
-                              icon: Icons.event_available_rounded,
+                              label: _isEditMode
+                                  ? 'حفظ التعديلات'
+                                  : 'حفظ المهمة',
+                              icon: _isEditMode
+                                  ? Icons.save_outlined
+                                  : Icons.event_available_rounded,
                               isLoading: provider.isSubmitting,
                               onPressed: _submit,
                             ),
@@ -350,16 +409,38 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
     final provider = context.read<TaskTimelineProvider>();
     final description = _descriptionController.text.trim();
-    final created = await provider.createTask(
-      weddingPlanId: widget.weddingPlanId,
-      title: _titleController.text.trim(),
-      description: description.isEmpty ? null : description,
-      dueDate: _dueDate,
-      status: 'TODO',
-      priority: _priority,
-    );
+    final normalizedDescription = description.isEmpty ? null : description;
+    final task = _editingTask(provider);
+    final saved = _isEditMode
+        ? task != null &&
+              await provider.updateTask(
+                weddingPlanId: widget.weddingPlanId,
+                task: task,
+                title: _titleController.text.trim(),
+                description: normalizedDescription,
+                dueDate: _dueDate,
+                taskCategory: _category,
+                status: _status,
+                priority: _priority,
+              )
+        : await provider.createTask(
+            weddingPlanId: widget.weddingPlanId,
+            title: _titleController.text.trim(),
+            description: normalizedDescription,
+            dueDate: _dueDate,
+            taskCategory: _category,
+            status: 'TODO',
+            priority: _priority,
+          );
 
-    if (created && mounted) {
+    if (_isEditMode && task == null && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المهمة للتعديل')));
+      return;
+    }
+
+    if (saved && mounted) {
       final notice = provider.noticeMessage;
       if (notice != null) {
         ScaffoldMessenger.of(
@@ -368,6 +449,19 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       }
       _goBack();
     }
+  }
+
+  WeddingTask? _editingTask(TaskTimelineProvider provider) {
+    final task = widget.initialTask;
+    if (task != null) return task;
+
+    final taskId = widget.taskId;
+    if (taskId == null) return null;
+
+    for (final item in provider.tasks) {
+      if (item.id == taskId) return item;
+    }
+    return null;
   }
 }
 

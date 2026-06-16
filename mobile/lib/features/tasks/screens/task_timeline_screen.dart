@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -223,7 +225,14 @@ class _TaskTimelineContent extends StatelessWidget {
               isBusy: provider.isSubmitting,
               onMarkDone: task.isDone
                   ? null
-                  : () => provider.markTaskDone(weddingPlanId, task),
+                  : () => _markDoneWithUndo(context, provider, task),
+              onReopen: task.isDone
+                  ? () => _reopenTask(context, provider, task)
+                  : null,
+              onEdit: () => context.push(
+                AppRouter.editTask(weddingPlanId, task.id),
+                extra: task,
+              ),
               onDelete: () => _confirmDelete(context, provider, task),
             ),
             const SizedBox(height: 12),
@@ -236,6 +245,57 @@ class _TaskTimelineContent extends StatelessWidget {
         const SizedBox(height: 12),
         _TimelineDueList(timeline: timeline),
       ],
+    );
+  }
+
+  void _markDoneWithUndo(
+    BuildContext context,
+    TaskTimelineProvider provider,
+    WeddingTask task,
+  ) {
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    final previousStatus = task.status;
+
+    unawaited(
+      provider.markTaskDone(weddingPlanId, task).then((success) {
+        if (!success && context.mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+      }),
+    );
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('تم إنجاز المهمة'),
+        action: SnackBarAction(
+          label: 'تراجع',
+          onPressed: () {
+            unawaited(
+              provider.updateTaskStatus(weddingPlanId, task, previousStatus),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _reopenTask(
+    BuildContext context,
+    TaskTimelineProvider provider,
+    WeddingTask task,
+  ) {
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+
+    unawaited(
+      provider.reopenTask(weddingPlanId, task).then((success) {
+        if (!success && context.mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+      }),
+    );
+
+    messenger.showSnackBar(
+      const SnackBar(content: Text('تمت إعادة فتح المهمة')),
     );
   }
 
@@ -623,12 +683,16 @@ class _PremiumTaskCard extends StatelessWidget {
     required this.task,
     required this.isBusy,
     required this.onDelete,
+    required this.onEdit,
     this.onMarkDone,
+    this.onReopen,
   });
 
   final WeddingTask task;
   final bool isBusy;
   final VoidCallback? onMarkDone;
+  final VoidCallback? onReopen;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   @override
@@ -639,7 +703,7 @@ class _PremiumTaskCard extends StatelessWidget {
 
     return AarastCard(
       padding: EdgeInsets.zero,
-      color: isDone ? AppTheme.dCard.withAlpha(205) : AppTheme.dCard2,
+      color: isDone ? AppTheme.dCard : AppTheme.dCard2,
       border: Border.all(
         color: isLate
             ? AppTheme.danger.withAlpha(70)
@@ -685,7 +749,9 @@ class _PremiumTaskCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
-                                color: isDone ? AppTheme.dMuted : AppTheme.dInk,
+                                color: isDone
+                                    ? AppTheme.dInkSoft
+                                    : AppTheme.dInk,
                                 fontWeight: FontWeight.w900,
                                 decoration: isDone
                                     ? TextDecoration.lineThrough
@@ -701,7 +767,7 @@ class _PremiumTaskCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: isDone
-                                      ? AppTheme.dMuted
+                                      ? AppTheme.dInkSoft
                                       : AppTheme.dInkSoft,
                                   fontWeight: FontWeight.w600,
                                   height: 1.35,
@@ -751,10 +817,45 @@ class _PremiumTaskCard extends StatelessWidget {
                       color: AppTheme.dMuted,
                     ),
                     onSelected: (value) {
+                      if (value == 'done') onMarkDone?.call();
+                      if (value == 'reopen') onReopen?.call();
+                      if (value == 'edit') onEdit();
                       if (value == 'delete') onDelete();
                     },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: isDone ? 'reopen' : 'done',
+                        enabled: isDone ? onReopen != null : onMarkDone != null,
+                        child: Row(
+                          children: [
+                            Icon(
+                              isDone
+                                  ? Icons.restart_alt_rounded
+                                  : Icons.check_circle_outline_rounded,
+                              color: isDone
+                                  ? AppTheme.dMaroon
+                                  : AppTheme.dGreen,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(isDone ? 'إعادة فتح المهمة' : 'إنجاز المهمة'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit_note_rounded,
+                              color: AppTheme.dMaroon,
+                            ),
+                            SizedBox(width: 10),
+                            Text('تعديل المهمة'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem<String>(
                         value: 'delete',
                         child: Row(
                           children: [

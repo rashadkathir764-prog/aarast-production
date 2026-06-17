@@ -230,7 +230,10 @@ class _WeddingPlanDashboardScreenState
           progressPercent: progressPercent,
           tasksDone: tasksDone,
           tasksTotal: tasksTotal,
-          onOpen: () => context.push(AppRouter.tasks(planId)),
+          onOpen: () => context.push(
+            AppRouter.planCenter(planId),
+            extra: widget.sharedMember,
+          ),
         ),
         const SizedBox(height: 8),
         _WireAssistantCard(

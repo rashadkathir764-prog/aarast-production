@@ -34,6 +34,7 @@ import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
+import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../widgets/coming_soon_screen.dart';
 
@@ -73,6 +74,10 @@ class AppRouter {
 
   static String weddingPlanDashboard(String id) {
     return '/wedding-plans/$id/dashboard';
+  }
+
+  static String planCenter(String id) {
+    return '/wedding-plans/$id/plan-center';
   }
 
   static String finance(String id) {
@@ -259,6 +264,19 @@ class AppRouter {
                 ? state.extra! as SharedMember
                 : null;
             return WeddingPlanDashboardScreen(
+              weddingPlanId: id,
+              sharedMember: sharedMember,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/plan-center',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final sharedMember = state.extra is SharedMember
+                ? state.extra! as SharedMember
+                : null;
+            return PlanCenterScreen(
               weddingPlanId: id,
               sharedMember: sharedMember,
             );

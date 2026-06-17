@@ -26,9 +26,13 @@ class DebtInstallmentScreen extends StatefulWidget {
 }
 
 class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
+  final _searchController = TextEditingController();
+  _DebtListFilter _selectedFilter = _DebtListFilter.all;
+
   @override
   void initState() {
     super.initState();
+    _searchController.addListener(_handleSearchChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadDebts();
     });
@@ -42,6 +46,14 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
         _loadDebts();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController
+      ..removeListener(_handleSearchChanged)
+      ..dispose();
+    super.dispose();
   }
 
   @override
@@ -70,48 +82,32 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'الديون والأقساط',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: AppTheme.dMaroonDeep,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                              ),
-                              Text(
-                                'تابعي الالتزامات القادمة بوضوح',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.dInkSoft,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ],
+                          child: Text(
+                            'الديون والأقساط',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: AppTheme.dMaroonDeep,
+                                  fontWeight: FontWeight.w900,
+                                ),
                           ),
                         ),
                         const SizedBox(width: 12),
-                        IconButton(
-                          onPressed: canManageFinancialRecords
-                              ? () => context.push(
-                                  AppRouter.createDebt(widget.weddingPlanId),
-                                  extra: widget.sharedMember,
-                                )
-                              : null,
-                          icon: const Icon(Icons.add_rounded),
-                          tooltip: 'إضافة دين',
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppTheme.dMaroon,
-                            foregroundColor: Colors.white,
-                            side: BorderSide.none,
+                        if (canManageFinancialRecords)
+                          IconButton(
+                            onPressed: () => context.push(
+                              AppRouter.createDebt(widget.weddingPlanId),
+                              extra: widget.sharedMember,
+                            ),
+                            icon: const Icon(Icons.add_rounded),
+                            tooltip: 'إضافة دين',
+                            style: IconButton.styleFrom(
+                              backgroundColor: AppTheme.dMaroon,
+                              foregroundColor: Colors.white,
+                              side: BorderSide.none,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -126,6 +122,13 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                               canManageFinancialRecords:
                                   canManageFinancialRecords,
                               sharedMember: widget.sharedMember,
+                              searchController: _searchController,
+                              selectedFilter: _selectedFilter,
+                              onFilterChanged: (filter) {
+                                setState(() {
+                                  _selectedFilter = filter;
+                                });
+                              },
                             )
                           : const _DebtAccessDeniedState(),
                     ),
@@ -162,6 +165,10 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
       widget.weddingPlanId,
     );
   }
+
+  void _handleSearchChanged() {
+    setState(() {});
+  }
 }
 
 class _DebtInstallmentContent extends StatelessWidget {
@@ -170,12 +177,18 @@ class _DebtInstallmentContent extends StatelessWidget {
     required this.weddingPlanId,
     required this.canManageFinancialRecords,
     required this.sharedMember,
+    required this.searchController,
+    required this.selectedFilter,
+    required this.onFilterChanged,
   });
 
   final DebtInstallmentProvider provider;
   final String weddingPlanId;
   final bool canManageFinancialRecords;
   final SharedMember? sharedMember;
+  final TextEditingController searchController;
+  final _DebtListFilter selectedFilter;
+  final ValueChanged<_DebtListFilter> onFilterChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +215,12 @@ class _DebtInstallmentContent extends StatelessWidget {
       );
     }
 
+    final query = searchController.text.trim();
+    final visibleDebts = provider.debts.where((debt) {
+      return _matchesSearch(debt, query, provider.dueInstallments) &&
+          _matchesFilter(debt, selectedFilter, provider.dueInstallments);
+    }).toList();
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 124),
@@ -210,47 +229,45 @@ class _DebtInstallmentContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _DebtHero(summary: provider.summary),
-        const SizedBox(height: 20),
-        const AarastSectionHeader(
-          title: 'الأقساط المستحقة',
-          icon: Icons.event_available_rounded,
+        _DebtSearchRow(controller: searchController),
+        const SizedBox(height: 12),
+        _DebtSummaryGrid(
+          summary: provider.summary,
+          dueInstallments: provider.dueInstallments,
         ),
         const SizedBox(height: 12),
-        _DueInstallmentsPreview(installments: provider.dueInstallments),
-        const SizedBox(height: 20),
-        AarastSectionHeader(
-          title: 'قائمة الديون',
-          icon: Icons.account_balance_wallet_outlined,
-          actionLabel: 'إضافة',
-          onAction: canManageFinancialRecords
-              ? () => context.push(
-                  AppRouter.createDebt(weddingPlanId),
-                  extra: sharedMember,
-                )
-              : null,
+        _DebtFilterChips(
+          selectedFilter: selectedFilter,
+          onFilterChanged: onFilterChanged,
         ),
         const SizedBox(height: 12),
         if (provider.debts.isEmpty)
           AarastEmptyState(
             title: 'لا توجد ديون بعد',
-            message: 'سجلي الالتزامات أو الدفعات المؤجلة لتبقى الصورة واضحة.',
+            message: 'أضف أول دين لتتبع الأقساط',
             icon: Icons.receipt_long_outlined,
-            action: ElevatedButton.icon(
-              onPressed: canManageFinancialRecords
-                  ? () => context.push(
+            action: canManageFinancialRecords
+                ? ElevatedButton.icon(
+                    onPressed: () => context.push(
                       AppRouter.createDebt(weddingPlanId),
                       extra: sharedMember,
-                    )
-                  : null,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('إضافة دين'),
-            ),
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('+ إضافة دين جديد'),
+                  )
+                : null,
+          )
+        else if (visibleDebts.isEmpty)
+          const AarastEmptyState(
+            title: 'لا توجد نتائج مطابقة',
+            message: 'جرّب تغيير كلمة البحث أو حالة التصفية',
+            icon: Icons.search_off_rounded,
           )
         else
-          for (final debt in provider.debts) ...[
+          for (final debt in visibleDebts) ...[
             _DebtCard(
               debt: debt,
+              dueInstallments: provider.dueInstallments,
               onTap: () {
                 provider.selectDebt(debt);
                 context.push(AppRouter.debtDetails(debt.id));
@@ -258,186 +275,386 @@ class _DebtInstallmentContent extends StatelessWidget {
             ),
             const SizedBox(height: 10),
           ],
+        if (canManageFinancialRecords && provider.debts.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: () => context.push(
+                AppRouter.createDebt(weddingPlanId),
+                extra: sharedMember,
+              ),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('+ إضافة دين جديد'),
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
-class _DebtHero extends StatelessWidget {
-  const _DebtHero({required this.summary});
+class _DebtSearchRow extends StatelessWidget {
+  const _DebtSearchRow({required this.controller});
 
-  final DebtSummary summary;
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
-    final total = _moneyValue(summary.totalDebt);
-    final paid = _moneyValue(summary.totalPaid);
-    final remaining = _moneyValue(summary.remainingDebt);
-    final progress = total <= 0 ? 0.0 : paid / total;
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            textAlign: TextAlign.right,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'ابحث عن شخص أو دين...',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: controller.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: controller.clear,
+                      icon: const Icon(Icons.close_rounded),
+                      tooltip: 'مسح البحث',
+                    ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.tune_rounded),
+          tooltip: 'تصفية',
+        ),
+      ],
+    );
+  }
+}
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
+class _DebtSummaryGrid extends StatelessWidget {
+  const _DebtSummaryGrid({
+    required this.summary,
+    required this.dueInstallments,
+  });
+
+  final DebtSummary summary;
+  final List<Installment> dueInstallments;
+
+  @override
+  Widget build(BuildContext context) {
+    final nextInstallment = _nearestInstallment(dueInstallments);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = constraints.maxWidth < 340
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 10) / 2;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _SummaryTile(
+              width: itemWidth,
+              label: 'إجمالي الديون',
+              value: _formatCompactMoney(_moneyValue(summary.totalDebt)),
+              color: AppTheme.dMaroon,
+              icon: Icons.account_balance_wallet_outlined,
+            ),
+            _SummaryTile(
+              width: itemWidth,
+              label: 'المدفوع',
+              value: _formatCompactMoney(_moneyValue(summary.totalPaid)),
+              color: AppTheme.dGreen,
+              icon: Icons.check_circle_outline_rounded,
+            ),
+            _SummaryTile(
+              width: itemWidth,
+              label: 'المتبقي',
+              value: _formatCompactMoney(_moneyValue(summary.remainingDebt)),
+              color: AppTheme.danger,
+              icon: Icons.pending_actions_rounded,
+            ),
+            _SummaryTile(
+              width: itemWidth,
+              label: 'أقرب قسط',
+              value: nextInstallment?.dueDate == null
+                  ? '-'
+                  : _shortDate(nextInstallment!.dueDate!),
+              color: AppTheme.dBlue,
+              icon: Icons.calendar_month_rounded,
+              ltrValue: true,
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  const _SummaryTile({
+    required this.width,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+    this.ltrValue = false,
+  });
+
+  final double width;
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+  final bool ltrValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: AarastCard(
+        padding: const EdgeInsets.all(12),
+        radius: AppTheme.radiusMd,
+        border: Border.all(color: AppTheme.dLine),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withAlpha(18),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+              ),
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    textDirection: ltrValue ? TextDirection.ltr : null,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DebtFilterChips extends StatelessWidget {
+  const _DebtFilterChips({
+    required this.selectedFilter,
+    required this.onFilterChanged,
+  });
+
+  final _DebtListFilter selectedFilter;
+  final ValueChanged<_DebtListFilter> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final filter in _DebtListFilter.values) ...[
+            ChoiceChip(
+              label: Text(_filterLabel(filter)),
+              selected: selectedFilter == filter,
+              onSelected: (_) => onFilterChanged(filter),
+              showCheckmark: false,
+              avatar: selectedFilter == filter
+                  ? const Icon(Icons.check_rounded, size: 16)
+                  : null,
+              labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selectedFilter == filter
+                    ? Colors.white
+                    : AppTheme.dInkSoft,
+                fontWeight: FontWeight.w900,
+              ),
+              selectedColor: AppTheme.dMaroon,
+              backgroundColor: AppTheme.dCard2,
+              side: const BorderSide(color: AppTheme.dLine),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DebtCard extends StatelessWidget {
+  const _DebtCard({
+    required this.debt,
+    required this.dueInstallments,
+    required this.onTap,
+  });
+
+  final Debt debt;
+  final List<Installment> dueInstallments;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _debtUiStatus(debt, dueInstallments);
+    final color = _debtUiStatusColor(status);
+    final nextDate = _nextDebtDate(debt, dueInstallments);
+    final remaining = _moneyValue(debt.remainingAmount);
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      radius: AppTheme.radiusLg,
+      onTap: onTap,
+      border: Border.all(color: AppTheme.dLine),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(28),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: Colors.white.withAlpha(36)),
-                ),
-                child: const Icon(
-                  Icons.payments_outlined,
-                  color: AppTheme.dGold,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 14),
+              _DebtAvatar(name: debt.creditorName, color: color),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ملخص الالتزامات',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                      debt.creditorName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.dInk,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      'المتبقي من إجمالي الديون',
+                      debt.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withAlpha(205),
+                        color: AppTheme.dInkSoft,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-              _MoneyText(
-                remaining,
-                color: Colors.white,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
+              const SizedBox(width: 8),
+              AarastStatusPill(label: _debtUiStatusLabel(status), color: color),
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.chevron_left_rounded,
+                color: AppTheme.dMuted,
+                size: 22,
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: progress.clamp(0.0, 1.0),
-              minHeight: 8,
-              backgroundColor: Colors.black.withAlpha(35),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dGold),
-            ),
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
-              final itemWidth = constraints.maxWidth < 330
+              final itemWidth = constraints.maxWidth < 320
                   ? constraints.maxWidth
-                  : (constraints.maxWidth - 10) / 2;
+                  : (constraints.maxWidth - 8) / 2;
               return Wrap(
-                spacing: 10,
-                runSpacing: 10,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  _HeroDebtMetric(
+                  _DebtMiniMetric(
                     width: itemWidth,
                     label: 'إجمالي الدين',
-                    value: total,
-                    icon: Icons.account_balance_rounded,
+                    value: _formatCompactMoney(_moneyValue(debt.totalAmount)),
+                    color: AppTheme.dInk,
                   ),
-                  _HeroDebtMetric(
+                  _DebtMiniMetric(
                     width: itemWidth,
                     label: 'المدفوع',
-                    value: paid,
-                    icon: Icons.check_circle_outline_rounded,
+                    value: _formatCompactMoney(_moneyValue(debt.paidAmount)),
+                    color: AppTheme.dGreen,
                   ),
-                  _HeroDebtCount(
+                  _DebtMiniMetric(
                     width: itemWidth,
-                    label: 'مفتوحة',
-                    value: summary.countOpen + summary.countPartiallyPaid,
-                    icon: Icons.pending_actions_rounded,
+                    label: 'المتبقي',
+                    value: _formatCompactMoney(remaining),
+                    color: remaining <= 0 ? AppTheme.dGreen : AppTheme.danger,
                   ),
-                  _HeroDebtCount(
+                  _DebtMiniMetric(
                     width: itemWidth,
-                    label: 'مغلقة',
-                    value: summary.countPaid + summary.countCancelled,
-                    icon: Icons.done_all_rounded,
+                    label: 'أقرب قسط',
+                    value: nextDate == null ? '-' : _shortDate(nextDate),
+                    color: AppTheme.dGoldDeep,
+                    ltrValue: nextDate != null,
                   ),
                 ],
               );
             },
           ),
+          if (debt.hasNote) ...[
+            const SizedBox(height: 10),
+            Text(
+              debt.note!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
-class _HeroDebtMetric extends StatelessWidget {
-  const _HeroDebtMetric({
-    required this.width,
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
+class _DebtAvatar extends StatelessWidget {
+  const _DebtAvatar({required this.name, required this.color});
 
-  final double width;
-  final String label;
-  final num value;
-  final IconData icon;
+  final String name;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return _HeroMetricFrame(
-      width: width,
-      label: label,
-      icon: icon,
-      child: _MoneyText(
-        value,
-        color: Colors.white,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w900,
-        ),
+    final trimmed = name.trim();
+    final initial = trimmed.isEmpty ? '?' : trimmed.substring(0, 1);
+    return Container(
+      width: 46,
+      height: 46,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withAlpha(20),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: color.withAlpha(45)),
       ),
-    );
-  }
-}
-
-class _HeroDebtCount extends StatelessWidget {
-  const _HeroDebtCount({
-    required this.width,
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final double width;
-  final String label;
-  final int value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return _HeroMetricFrame(
-      width: width,
-      label: label,
-      icon: icon,
       child: Text(
-        value.toString(),
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-          color: Colors.white,
+        initial,
+        maxLines: 1,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: color,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -445,367 +662,57 @@ class _HeroDebtCount extends StatelessWidget {
   }
 }
 
-class _HeroMetricFrame extends StatelessWidget {
-  const _HeroMetricFrame({
+class _DebtMiniMetric extends StatelessWidget {
+  const _DebtMiniMetric({
     required this.width,
     required this.label,
-    required this.icon,
-    required this.child,
+    required this.value,
+    required this.color,
+    this.ltrValue = false,
   });
 
   final double width;
   final String label;
-  final IconData icon;
-  final Widget child;
+  final String value;
+  final Color color;
+  final bool ltrValue;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(22),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: Colors.white.withAlpha(30)),
+          color: AppTheme.dBg,
+          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          border: Border.all(color: AppTheme.dLine),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AppTheme.dGold, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white.withAlpha(190),
-                  fontWeight: FontWeight.w700,
-                ),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 6),
-            Flexible(child: child),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DueInstallmentsPreview extends StatelessWidget {
-  const _DueInstallmentsPreview({required this.installments});
-
-  final List<Installment> installments;
-
-  @override
-  Widget build(BuildContext context) {
-    if (installments.isEmpty) {
-      return const AarastEmptyState(
-        title: 'لا توجد أقساط مستحقة حالياً',
-        message: 'عند وجود قسط قريب سيظهر هنا بشكل واضح.',
-        icon: Icons.event_available_rounded,
-      );
-    }
-
-    return Column(
-      children: [
-        for (final installment in installments.take(4)) ...[
-          _InstallmentCard(installment: installment),
-          const SizedBox(height: 10),
-        ],
-        if (installments.length > 4)
-          AarastStatusPill(
-            label: '+${installments.length - 4} أقساط أخرى',
-            color: AppTheme.dMaroon,
-            icon: Icons.more_horiz_rounded,
-          ),
-      ],
-    );
-  }
-}
-
-class _DebtCard extends StatelessWidget {
-  const _DebtCard({required this.debt, required this.onTap});
-
-  final Debt debt;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _debtStatusColor(debt.status);
-    final remaining = _moneyValue(debt.remainingAmount);
-    final total = _moneyValue(debt.totalAmount);
-    final progress = total <= 0 ? 0.0 : 1 - (remaining / total);
-
-    return AarastCard(
-      padding: EdgeInsets.zero,
-      onTap: onTap,
-      border: Border.all(color: color.withAlpha(38)),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: Stack(
-          children: [
-            PositionedDirectional(
-              top: 0,
-              bottom: 0,
-              start: 0,
-              child: Container(width: 4, color: color),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: color.withAlpha(20),
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusMd,
-                          ),
-                        ),
-                        child: Icon(Icons.receipt_long_outlined, color: color),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              debt.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(
-                                    color: AppTheme.dInk,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              debt.creditorName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.dInkSoft,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      AarastStatusPill(
-                        label: _debtStatusLabel(debt.status),
-                        color: color,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 13),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: progress.clamp(0.0, 1.0),
-                      minHeight: 7,
-                      backgroundColor: AppTheme.dLine,
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                    ),
-                  ),
-                  const SizedBox(height: 11),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _MiniAmount(
-                          label: 'المتبقي',
-                          value: remaining,
-                          color: AppTheme.dMaroonDeep,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _MiniAmount(
-                          label: 'المدفوع',
-                          value: _moneyValue(debt.paidAmount),
-                          color: AppTheme.dGreen,
-                        ),
-                      ),
-                      if (debt.dueDate != null) ...[
-                        const SizedBox(width: 8),
-                        Expanded(child: _MiniDate(date: debt.dueDate!)),
-                      ],
-                    ],
-                  ),
-                  if (debt.hasNote) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      debt.note!,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.dInkSoft,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
+            const SizedBox(height: 3),
+            Text(
+              value,
+              textDirection: ltrValue ? TextDirection.ltr : null,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w900,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _InstallmentCard extends StatelessWidget {
-  const _InstallmentCard({required this.installment});
-
-  final Installment installment;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _installmentStatusColor(installment.status);
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      border: Border.all(color: color.withAlpha(38)),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withAlpha(20),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: Icon(Icons.payments_outlined, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _MoneyText(
-                  _moneyValue(installment.amount),
-                  color: AppTheme.dInk,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 6,
-                  children: [
-                    AarastStatusPill(
-                      label: _installmentStatusLabel(installment.status),
-                      color: color,
-                    ),
-                    if (installment.dueDate != null)
-                      AarastStatusPill(
-                        label: _shortDate(installment.dueDate!),
-                        color: AppTheme.dGoldDeep,
-                        icon: Icons.calendar_month_rounded,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniAmount extends StatelessWidget {
-  const _MiniAmount({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final num value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.dBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.dInkSoft,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 2),
-          _MoneyText(
-            value,
-            color: color,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MiniDate extends StatelessWidget {
-  const _MiniDate({required this.date});
-
-  final DateTime date;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.dBg,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'الاستحقاق',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.dInkSoft,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _shortDate(date),
-            textDirection: TextDirection.ltr,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: AppTheme.dGoldDeep,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -820,13 +727,15 @@ class _DebtLoadingState extends StatelessWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 120),
       children: const [
-        _SkeletonBox(height: 236),
-        SizedBox(height: 20),
-        _SkeletonBox(height: 92),
+        _SkeletonBox(height: 52),
+        SizedBox(height: 12),
+        _SkeletonBox(height: 154),
+        SizedBox(height: 12),
+        _SkeletonBox(height: 42),
+        SizedBox(height: 12),
+        _SkeletonBox(height: 150),
         SizedBox(height: 10),
-        _SkeletonBox(height: 132),
-        SizedBox(height: 10),
-        _SkeletonBox(height: 132),
+        _SkeletonBox(height: 150),
       ],
     );
   }
@@ -902,81 +811,162 @@ class _InlineError extends StatelessWidget {
   }
 }
 
-class _MoneyText extends StatelessWidget {
-  const _MoneyText(this.value, {required this.color, this.style});
+enum _DebtListFilter { all, active, overdue, completed }
 
-  final num value;
-  final Color color;
-  final TextStyle? style;
+enum _DebtUiStatus { active, overdue, completed }
 
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      '${_formatMoney(value)} ر.ي',
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style:
-          style ??
-          Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w900,
-          ),
-    );
+bool _matchesSearch(
+  Debt debt,
+  String query,
+  List<Installment> dueInstallments,
+) {
+  if (query.isEmpty) return true;
+  final normalizedQuery = _normalizeSearch(query);
+  final status = _debtUiStatus(debt, dueInstallments);
+  final fields = [
+    debt.creditorName,
+    debt.title,
+    debt.note ?? '',
+    debt.status,
+    _debtUiStatusLabel(status),
+  ];
+  return fields.any(
+    (field) => _normalizeSearch(field).contains(normalizedQuery),
+  );
+}
+
+bool _matchesFilter(
+  Debt debt,
+  _DebtListFilter filter,
+  List<Installment> dueInstallments,
+) {
+  final status = _debtUiStatus(debt, dueInstallments);
+  return switch (filter) {
+    _DebtListFilter.all => true,
+    _DebtListFilter.active => status == _DebtUiStatus.active,
+    _DebtListFilter.overdue => status == _DebtUiStatus.overdue,
+    _DebtListFilter.completed => status == _DebtUiStatus.completed,
+  };
+}
+
+_DebtUiStatus _debtUiStatus(Debt debt, List<Installment> dueInstallments) {
+  if (debt.status == 'PAID' || _moneyValue(debt.remainingAmount) <= 0) {
+    return _DebtUiStatus.completed;
   }
+  if (_hasOverdueInstallment(debt.id, dueInstallments) ||
+      _isPastDate(debt.dueDate)) {
+    return _DebtUiStatus.overdue;
+  }
+  return _DebtUiStatus.active;
+}
+
+bool _hasOverdueInstallment(String debtId, List<Installment> installments) {
+  return installments.any((installment) {
+    return installment.debtId == debtId &&
+        (installment.status == 'OVERDUE' || _isPastDate(installment.dueDate));
+  });
+}
+
+bool _isPastDate(DateTime? date) {
+  if (date == null) return false;
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(date.year, date.month, date.day);
+  return day.isBefore(today);
+}
+
+DateTime? _nextDebtDate(Debt debt, List<Installment> dueInstallments) {
+  final debtInstallments =
+      dueInstallments
+          .where((installment) {
+            return installment.debtId == debt.id && installment.dueDate != null;
+          })
+          .map((installment) => installment.dueDate!)
+          .toList()
+        ..sort();
+  if (debtInstallments.isNotEmpty) return debtInstallments.first;
+  return debt.dueDate;
+}
+
+Installment? _nearestInstallment(List<Installment> installments) {
+  final sorted =
+      installments.where((installment) => installment.dueDate != null).toList()
+        ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+  return sorted.isEmpty ? null : sorted.first;
+}
+
+String _filterLabel(_DebtListFilter filter) {
+  return switch (filter) {
+    _DebtListFilter.all => 'الكل',
+    _DebtListFilter.active => 'نشط',
+    _DebtListFilter.overdue => 'متأخر',
+    _DebtListFilter.completed => 'مكتمل',
+  };
+}
+
+String _debtUiStatusLabel(_DebtUiStatus status) {
+  return switch (status) {
+    _DebtUiStatus.active => 'نشط',
+    _DebtUiStatus.overdue => 'متأخر',
+    _DebtUiStatus.completed => 'مكتمل',
+  };
+}
+
+Color _debtUiStatusColor(_DebtUiStatus status) {
+  return switch (status) {
+    _DebtUiStatus.active => AppTheme.dMaroon,
+    _DebtUiStatus.overdue => AppTheme.danger,
+    _DebtUiStatus.completed => AppTheme.dGreen,
+  };
 }
 
 num _moneyValue(String value) =>
     num.tryParse(value.replaceAll(',', '').trim()) ?? 0;
 
-String _formatMoney(num value) {
+String _formatCompactMoney(num value) {
   final rounded = value.round();
   final negative = rounded < 0;
+  final absValue = rounded.abs();
+  final prefix = negative ? '-' : '';
+  if (absValue >= 1000000) {
+    return '$prefix${_compactNumber(absValue / 1000000)}M ر.ي';
+  }
+  if (absValue >= 1000) {
+    return '$prefix${_compactNumber(absValue / 1000)}K ر.ي';
+  }
+  return '$prefix${_formatMoney(absValue)} ر.ي';
+}
+
+String _compactNumber(num value) {
+  final fixed = value >= 10
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
+  return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
+}
+
+String _formatMoney(num value) {
+  final rounded = value.round();
   final digits = rounded.abs().toString();
   final buffer = StringBuffer();
   for (var i = 0; i < digits.length; i++) {
     if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
     buffer.write(digits[i]);
   }
-  return '${negative ? '-' : ''}$buffer';
-}
-
-Color _debtStatusColor(String status) {
-  return switch (status) {
-    'PAID' => AppTheme.dGreen,
-    'CANCELLED' => AppTheme.dMuted,
-    'PARTIALLY_PAID' => AppTheme.dGoldDeep,
-    _ => AppTheme.dMaroon,
-  };
-}
-
-String _debtStatusLabel(String status) {
-  return switch (status) {
-    'PARTIALLY_PAID' => 'مدفوع جزئياً',
-    'PAID' => 'مدفوع',
-    'CANCELLED' => 'ملغي',
-    _ => 'مفتوح',
-  };
-}
-
-Color _installmentStatusColor(String status) {
-  return switch (status) {
-    'PAID' => AppTheme.dGreen,
-    'OVERDUE' => AppTheme.danger,
-    'CANCELLED' => AppTheme.dMuted,
-    _ => AppTheme.dGoldDeep,
-  };
-}
-
-String _installmentStatusLabel(String status) {
-  return switch (status) {
-    'PAID' => 'مدفوع',
-    'OVERDUE' => 'متأخر',
-    'CANCELLED' => 'ملغي',
-    _ => 'قيد الانتظار',
-  };
+  return buffer.toString();
 }
 
 String _shortDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+String _normalizeSearch(String value) {
+  return value
+      .toLowerCase()
+      .replaceAll('أ', 'ا')
+      .replaceAll('إ', 'ا')
+      .replaceAll('آ', 'ا')
+      .replaceAll('ى', 'ي')
+      .replaceAll('ة', 'ه')
+      .replaceAll(',', '')
+      .trim();
 }

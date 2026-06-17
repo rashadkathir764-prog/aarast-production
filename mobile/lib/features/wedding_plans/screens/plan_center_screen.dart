@@ -667,40 +667,29 @@ class _ProgressSummaryCard extends StatelessWidget {
             icon: Icons.donut_large_rounded,
           ),
           const SizedBox(height: 12),
-          Row(
+          _MetricGrid(
             children: [
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.donut_large_rounded,
-                  label: 'نسبة الإنجاز',
-                  value: progressPercent == null
-                      ? 'غير متاح'
-                      : '$progressPercent%',
-                ),
+              _MetricTile(
+                icon: Icons.donut_large_rounded,
+                label: 'نسبة الإنجاز',
+                value: progressPercent == null
+                    ? 'غير متاح'
+                    : '$progressPercent%',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.check_circle_outline_rounded,
-                  label: 'المهام المكتملة',
-                  value: completedTasks?.toString() ?? 'غير متاح',
-                ),
+              _MetricTile(
+                icon: Icons.check_circle_outline_rounded,
+                label: 'المكتملة',
+                value: completedTasks?.toString() ?? 'غير متاح',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.description_outlined,
-                  label: 'المهام المتبقية',
-                  value: remainingTasks?.toString() ?? 'غير متاح',
-                ),
+              _MetricTile(
+                icon: Icons.description_outlined,
+                label: 'المتبقية',
+                value: remainingTasks?.toString() ?? 'غير متاح',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.event_available_outlined,
-                  label: 'آخر تحديث',
-                  value: _lastUpdateLabel(lastUpdate),
-                ),
+              _MetricTile(
+                icon: Icons.event_available_outlined,
+                label: 'آخر تحديث',
+                value: _lastUpdateLabel(lastUpdate),
               ),
             ],
           ),
@@ -748,20 +737,11 @@ class _PlanTimelineCard extends StatelessWidget {
             title: 'الخط الزمني',
             icon: Icons.timeline_rounded,
           ),
-          const SizedBox(height: 14),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 12),
+          Column(
             children: [
-              for (var i = 0; i < steps.length; i++) ...[
-                Expanded(child: _TimelineNode(step: steps[i])),
-                if (i != steps.length - 1)
-                  const Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: 38),
-                      child: Divider(color: _pcInk, thickness: 1),
-                    ),
-                  ),
-              ],
+              for (var i = 0; i < steps.length; i++)
+                _TimelineRow(step: steps[i], isLast: i == steps.length - 1),
             ],
           ),
         ],
@@ -805,59 +785,69 @@ class _PlanSectionsCard extends StatelessWidget {
             icon: Icons.dashboard_customize_outlined,
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _SectionLink(
-                  icon: Icons.assignment_outlined,
-                  label: 'المهام',
-                  onTap: onTasks,
-                ),
-              ),
-              const _VerticalDivider(),
-              Expanded(
-                child: _SectionLink(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'الميزانية',
-                  onTap: onBudget,
-                  enabled: budgetEnabled,
-                ),
-              ),
-              const _VerticalDivider(),
-              Expanded(
-                child: _SectionLink(
-                  icon: Icons.savings_outlined,
-                  label: 'الديون والأقساط',
-                  onTap: onDebts,
-                  enabled: debtsEnabled,
-                ),
-              ),
-              const _VerticalDivider(),
-              Expanded(
-                child: _SectionLink(
-                  icon: Icons.groups_2_outlined,
-                  label: 'الضيوف',
-                  onTap: onGuests,
-                ),
-              ),
-              const _VerticalDivider(),
-              Expanded(
-                child: _SectionLink(
-                  icon: Icons.storefront_outlined,
-                  label: 'الموردون والعروض',
-                  onTap: onProviders,
-                ),
-              ),
-              const _VerticalDivider(),
-              Expanded(
-                child: _SectionLink(
-                  icon: Icons.group_add_outlined,
-                  label: 'المشاركة والصلاحيات',
-                  onTap: onSharing,
-                  enabled: sharingEnabled,
-                ),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth < 300 ? 2 : 3;
+              final itemWidth =
+                  (constraints.maxWidth - (8 * (columns - 1))) / columns;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SectionLink(
+                      icon: Icons.assignment_outlined,
+                      label: 'المهام',
+                      onTap: onTasks,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SectionLink(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'الميزانية',
+                      onTap: onBudget,
+                      enabled: budgetEnabled,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SectionLink(
+                      icon: Icons.savings_outlined,
+                      label: 'الديون',
+                      onTap: onDebts,
+                      enabled: debtsEnabled,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SectionLink(
+                      icon: Icons.groups_2_outlined,
+                      label: 'الضيوف',
+                      onTap: onGuests,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SectionLink(
+                      icon: Icons.storefront_outlined,
+                      label: 'الموردون',
+                      onTap: onProviders,
+                    ),
+                  ),
+                  SizedBox(
+                    width: itemWidth,
+                    child: _SectionLink(
+                      icon: Icons.group_add_outlined,
+                      label: 'المشاركة',
+                      onTap: onSharing,
+                      enabled: sharingEnabled,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -892,30 +882,22 @@ class _ParticipantsCard extends StatelessWidget {
             icon: Icons.people_outline_rounded,
           ),
           const SizedBox(height: 12),
-          Row(
+          _MetricGrid(
             children: [
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.person_outline_rounded,
-                  label: 'الدور',
-                  value: roleLabel,
-                ),
+              _MetricTile(
+                icon: Icons.person_outline_rounded,
+                label: 'الدور',
+                value: roleLabel,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.groups_outlined,
-                  label: 'المشاركون',
-                  value: participantsCount?.toString() ?? 'غير متاح',
-                ),
+              _MetricTile(
+                icon: Icons.groups_outlined,
+                label: 'المشاركون',
+                value: participantsCount?.toString() ?? 'غير متاح',
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _MetricTile(
-                  icon: Icons.verified_user_outlined,
-                  label: 'الصلاحيات',
-                  value: permissionsLabel,
-                ),
+              _MetricTile(
+                icon: Icons.verified_user_outlined,
+                label: 'الصلاحيات',
+                value: permissionsLabel,
               ),
             ],
           ),
@@ -1045,6 +1027,31 @@ class _MetricTile extends StatelessWidget {
   }
 }
 
+class _MetricGrid extends StatelessWidget {
+  const _MetricGrid({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth < 280 ? 1 : 2;
+        final itemWidth =
+            (constraints.maxWidth - (8 * (columns - 1))) / columns;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final child in children)
+              SizedBox(width: itemWidth, child: child),
+          ],
+        );
+      },
+    );
+  }
+}
+
 class _SectionLink extends StatelessWidget {
   const _SectionLink({
     required this.icon,
@@ -1151,49 +1158,71 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-class _TimelineNode extends StatelessWidget {
-  const _TimelineNode({required this.step});
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow({required this.step, required this.isLast});
 
   final _TimelineStep step;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(step.icon, color: _pcInk, size: 22),
-        const SizedBox(height: 8),
-        Container(
-          width: 18,
-          height: 18,
-          decoration: BoxDecoration(
-            color: step.active ? _pcInk : Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(color: _pcInk, width: 1),
+        SizedBox(
+          width: 34,
+          child: Column(
+            children: [
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: step.active ? _pcInk : Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _pcInk, width: 1),
+                ),
+              ),
+              if (!isLast) Container(width: 1, height: 46, color: _pcLine),
+            ],
           ),
         ),
-        const SizedBox(height: 9),
-        Text(
-          step.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _pcInk,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w900,
-          ),
+        const SizedBox(width: 10),
+        Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+          child: _PcIconBox(icon: step.icon, compact: true),
         ),
-        const SizedBox(height: 4),
-        Text(
-          step.subtitle,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _pcMuted,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            height: 1.2,
+        const SizedBox(width: 10),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  step.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _pcInk,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  step.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _pcMuted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.15,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1489,15 +1518,6 @@ class _SkeletonBox extends StatelessWidget {
   }
 }
 
-class _VerticalDivider extends StatelessWidget {
-  const _VerticalDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 52, color: _pcLine);
-  }
-}
-
 const _pcInk = Color(0xFF111111);
 const _pcText = Color(0xFF333333);
 const _pcMuted = Color(0xFF777777);
@@ -1540,7 +1560,7 @@ String _lastUpdateLabel(DateTime date) {
 }
 
 String _roleLabel(bool isOwner, SharedMember? member) {
-  if (isOwner) return 'صاحب الخطة';
+  if (isOwner) return 'صاحب';
   if (member == null) return 'غير متاح';
   return 'مشارك: ${sharedMemberRoleLabel(member.role)}';
 }

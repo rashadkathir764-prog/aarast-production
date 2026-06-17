@@ -84,6 +84,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
     required String creditorName,
     required String title,
     required String totalAmount,
+    String? creditorPhone,
     String? paidAmount,
     DateTime? dueDate,
     String status = 'OPEN',
@@ -97,6 +98,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
       final debt = await _api.createDebt(
         weddingPlanId: weddingPlanId,
         creditorName: creditorName,
+        creditorPhone: creditorPhone,
         title: title,
         totalAmount: totalAmount,
         paidAmount: paidAmount,

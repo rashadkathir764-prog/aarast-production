@@ -9,6 +9,7 @@ class Debt {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    this.creditorPhone,
     this.dueDate,
     this.note,
   });
@@ -18,6 +19,7 @@ class Debt {
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
       creditorName: json['creditorName'].toString(),
+      creditorPhone: json['creditorPhone']?.toString(),
       title: json['title'].toString(),
       totalAmount: json['totalAmount'].toString(),
       paidAmount: json['paidAmount'].toString(),
@@ -32,6 +34,7 @@ class Debt {
   final String id;
   final String weddingPlanId;
   final String creditorName;
+  final String? creditorPhone;
   final String title;
   final String totalAmount;
   final String paidAmount;

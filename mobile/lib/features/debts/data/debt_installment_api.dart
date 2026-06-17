@@ -71,6 +71,7 @@ class DebtInstallmentApi {
     required String creditorName,
     required String title,
     required String totalAmount,
+    String? creditorPhone,
     String? paidAmount,
     DateTime? dueDate,
     String status = 'OPEN',
@@ -78,6 +79,8 @@ class DebtInstallmentApi {
   }) async {
     final payload = {
       'creditorName': creditorName.trim(),
+      if (creditorPhone != null && creditorPhone.trim().isNotEmpty)
+        'creditorPhone': creditorPhone.trim(),
       'title': title.trim(),
       'totalAmount': totalAmount.trim(),
       'status': status,

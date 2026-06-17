@@ -193,6 +193,7 @@ async function run() {
     check('created debt totalAmount is string', res.body?.totalAmount === '500000');
     check('created debt paidAmount is string', res.body?.paidAmount === '100000');
     check('created debt status is PARTIALLY_PAID', res.body?.status === 'PARTIALLY_PAID');
+    check('created debt without phone returns null', res.body?.creditorPhone === null);
     check('debt does not expose passwordHash', !hasPasswordHash(res.body));
     debtId = res.body?.id;
   }
@@ -232,6 +233,7 @@ async function run() {
   {
     const res = await request('POST', `/wedding-plans/${weddingPlanId}/debts`, {
       creditorName: 'Shared Managed Vendor',
+      creditorPhone: '  +967 777 123 456  ',
       title: 'Shared managed balance',
       totalAmount: '100000.00',
       paidAmount: '25000.00',
@@ -241,6 +243,7 @@ async function run() {
     check('finance manager creates debt - HTTP 201', res.status === 201);
     check('finance manager-created debt has id', typeof res.body?.id === 'string');
     check('finance manager-created debt belongs to plan', res.body?.weddingPlanId === weddingPlanId);
+    check('created debt phone is trimmed', res.body?.creditorPhone === '+967 777 123 456');
     check('finance manager-created debt does not expose passwordHash', !hasPasswordHash(res.body));
     managerDebtId = res.body?.id;
   }
@@ -249,11 +252,21 @@ async function run() {
     const res = await request('PATCH', `/debts/${managerDebtId}`, {
       title: 'Updated shared managed debt',
       totalAmount: '125000.00',
+      creditorPhone: '  01 234 567  ',
     }, financeManagerToken);
     check('finance manager updates debt - HTTP 200', res.status === 200);
     check('finance manager-updated debt title changed', res.body?.title === 'Updated shared managed debt');
     check('finance manager-updated debt totalAmount changed', res.body?.totalAmount === '125000');
+    check('updated debt phone is trimmed', res.body?.creditorPhone === '01 234 567');
     check('finance manager-updated debt does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('PATCH', `/debts/${managerDebtId}`, {
+      creditorPhone: '   ',
+    }, financeManagerToken);
+    check('finance manager clears debt phone - HTTP 200', res.status === 200);
+    check('blank debt phone is stored as null', res.body?.creditorPhone === null);
   }
 
   {
@@ -264,6 +277,7 @@ async function run() {
   {
     const res = await request('PATCH', `/debts/${debtId}`, {
       creditorName: 'Updated Vendor',
+      creditorPhone: '  +967 733 456 789  ',
       title: 'Updated debt',
       totalAmount: '600000.00',
       paidAmount: '150000.00',
@@ -272,6 +286,7 @@ async function run() {
     }, ownerToken);
     check('PATCH debt - HTTP 200', res.status === 200);
     check('updated debt creditor changed', res.body?.creditorName === 'Updated Vendor');
+    check('update adds and trims debt phone', res.body?.creditorPhone === '+967 733 456 789');
     check('updated debt title changed', res.body?.title === 'Updated debt');
     check('updated debt totalAmount changed', res.body?.totalAmount === '600000');
     check('updated debt status changed', res.body?.status === 'OPEN');

@@ -173,6 +173,7 @@ Create debt request:
 ```json
 {
   "creditorName": "Vendor or person",
+  "creditorPhone": "+967 777 123 456",
   "title": "Remaining hall amount",
   "totalAmount": "300000.00",
   "paidAmount": "50000.00",
@@ -181,6 +182,8 @@ Create debt request:
   "note": "Optional note"
 }
 ```
+
+`creditorPhone` is optional and may be `null`. Phase 2A accepts manual entry only; contact picking is not implemented.
 
 Installment routes:
 

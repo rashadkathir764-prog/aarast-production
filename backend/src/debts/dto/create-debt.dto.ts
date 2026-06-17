@@ -1,10 +1,15 @@
 import { DebtStatus } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateDebtDto {
   @IsString()
   @IsNotEmpty()
   creditorName!: string;
+
+  @IsString()
+  @MaxLength(40)
+  @IsOptional()
+  creditorPhone?: string | null;
 
   @IsString()
   @IsNotEmpty()

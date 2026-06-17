@@ -10,6 +10,7 @@ export interface DebtResponse {
   id: string;
   weddingPlanId: string;
   creditorName: string;
+  creditorPhone: string | null;
   title: string;
   totalAmount: string;
   paidAmount: string;
@@ -48,6 +49,7 @@ export class DebtsService {
       data: {
         weddingPlanId,
         creditorName: this.requiredText(dto.creditorName, 'creditorName'),
+        creditorPhone: this.optionalText(dto.creditorPhone),
         title: this.requiredText(dto.title, 'title'),
         totalAmount: this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
         paidAmount: this.optionalNonNegativeDecimal(dto.paidAmount, 'paidAmount') ?? '0',
@@ -144,6 +146,9 @@ export class DebtsService {
         ...(dto.creditorName !== undefined
           ? { creditorName: this.requiredText(dto.creditorName, 'creditorName') }
           : {}),
+        ...(dto.creditorPhone !== undefined
+          ? { creditorPhone: this.optionalText(dto.creditorPhone) }
+          : {}),
         ...(dto.title !== undefined
           ? { title: this.requiredText(dto.title, 'title') }
           : {}),
@@ -237,6 +242,7 @@ export class DebtsService {
       id: debt.id,
       weddingPlanId: debt.weddingPlanId,
       creditorName: debt.creditorName,
+      creditorPhone: debt.creditorPhone,
       title: debt.title,
       totalAmount: debt.totalAmount.toString(),
       paidAmount: debt.paidAmount.toString(),

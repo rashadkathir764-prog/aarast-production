@@ -2988,6 +2988,165 @@ class DashboardBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(top: BorderSide(color: Color(0xFFD8D8D8))),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withAlpha(10),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 74,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _WireNavItem(
+                      icon: Icons.home_rounded,
+                      label: 'الرئيسية',
+                      active: activeIndex == 4,
+                      onTap: onHome,
+                    ),
+                    _WireNavItem(
+                      icon: Icons.assignment_turned_in_outlined,
+                      label: 'المهام',
+                      active: activeIndex == 1,
+                      onTap: onTasks,
+                    ),
+                    const SizedBox(width: 84),
+                    _WireNavItem(
+                      icon: Icons.storefront_outlined,
+                      label: 'الموردون',
+                      active: activeIndex == 3,
+                      onTap: onPlans,
+                    ),
+                    _WireNavItem(
+                      icon: Icons.grid_view_rounded,
+                      label: 'المزيد',
+                      active: activeIndex == 0,
+                      onTap: onMore,
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: -22,
+                child: InkWell(
+                  onTap: onAdd,
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: const Color(0xFFD8D8D8),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(18),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Color(0xFF111111),
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WireNavItem extends StatelessWidget {
+  const _WireNavItem({
+    required this.icon,
+    required this.label,
+    required this.active,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? const Color(0xFF111111) : const Color(0xFF666666);
+    return InkResponse(
+      onTap: onTap,
+      radius: 36,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        width: 62,
+        height: 52,
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFF2F2F2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: active
+              ? Border.all(color: const Color(0xFFE0E0E0), width: 0.8)
+              : null,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 23, color: color),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ignore: unused_element
+class _UnusedDashboardBottomNav extends StatelessWidget {
+  const _UnusedDashboardBottomNav();
+
+  final VoidCallback? onMore = null;
+  final VoidCallback? onTasks = null;
+  final VoidCallback? onAdd = null;
+  final VoidCallback? onPlans = null;
+  final VoidCallback? onHome = null;
+  final int activeIndex = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
         color: _uxCard,
         border: const Border(top: BorderSide(color: _uxLine)),
         boxShadow: [

@@ -151,6 +151,13 @@ class _MainShellState extends State<MainShell> {
                     AppRouter.createTask(_activePlanId!),
                   ),
                   tile(
+                    Icons.person_add_alt_1_outlined,
+                    AppTheme.dBlue,
+                    AppTheme.dBlueBg,
+                    'إضافة ضيف',
+                    AppRouter.guestList(_activePlanId!),
+                  ),
+                  tile(
                     Icons.post_add_rounded,
                     AppTheme.dGoldDeep,
                     AppTheme.dCreamBg,
@@ -188,7 +195,7 @@ class _MainShellState extends State<MainShell> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: const Color(0xFFFAF6EF),
+          backgroundColor: Colors.white,
           body: IndexedStack(
             index: stackIndex,
             children: [

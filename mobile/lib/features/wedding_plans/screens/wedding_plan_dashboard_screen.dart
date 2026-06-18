@@ -41,6 +41,7 @@ class _WeddingPlanDashboardScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<DashboardSummaryProvider>().loadDashboard(
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
@@ -54,6 +55,7 @@ class _WeddingPlanDashboardScreenState
     if (oldWidget.weddingPlanId != widget.weddingPlanId ||
         oldWidget.sharedMember != widget.sharedMember) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         context.read<DashboardSummaryProvider>().loadDashboard(
           widget.weddingPlanId,
           sharedMember: widget.sharedMember,
@@ -421,6 +423,7 @@ class _WeddingPlanDashboardScreenState
           return ListTile(
             onTap: () async {
               Navigator.of(sheetContext).pop();
+              if (!mounted) return;
               final isFinancialWriteRoute =
                   route == AppRouter.createExpense(plan.id) ||
                   route == AppRouter.createDebt(plan.id);

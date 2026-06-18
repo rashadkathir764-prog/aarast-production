@@ -273,8 +273,8 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                   ),
                   const SizedBox(height: 8),
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                    data: Theme.of(sheetContext).copyWith(
+                      colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
                         primary: AppTheme.dMaroon,
                         onPrimary: Colors.white,
                         surface: AppTheme.dCard2,
@@ -302,7 +302,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
       },
     );
 
-    if (selected == null) return;
+    if (selected == null || !mounted) return;
     setState(() {
       if (mode == _DateMode.due) {
         _dueDate = selected;

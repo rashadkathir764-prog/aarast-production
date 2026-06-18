@@ -28,6 +28,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
     });
   }

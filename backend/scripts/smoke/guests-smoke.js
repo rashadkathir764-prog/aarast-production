@@ -68,6 +68,7 @@ async function run() {
   let accessToken = null;
   let planId = null;
   let guestId = null;
+  let secondGuestId = null;
 
   {
     const res = await request('POST', '/auth/register', {
@@ -109,8 +110,46 @@ async function run() {
     check('POST /wedding-plans/:id/guests - HTTP 201', res.status === 201);
     check('created guest has id', typeof res.body?.id === 'string');
     check('created guest persists submitted name', res.body?.name === 'Smoke Guest');
+    check('created guest stores normalized phone', res.body?.phone === '+967700000001');
     check('created guest does not expose passwordHash', !hasPasswordHash(res.body));
     guestId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/wedding-plans/${planId}/guests`, {
+      name: '  Smoke   Guest  ',
+      phone: '00967700000001',
+      side: 'FAMILY',
+      status: 'INVITED',
+    }, accessToken);
+    check('duplicate guest create returns 409', res.status === 409);
+    check(
+      'duplicate guest create returns clear message',
+      res.body?.message === 'هذا الضيف مضاف مسبقًا',
+    );
+  }
+
+  {
+    const res = await request('POST', `/wedding-plans/${planId}/guests`, {
+      name: 'Smoke Guest',
+      phone: '+967700000002',
+      side: 'FAMILY',
+      status: 'INVITED',
+    }, accessToken);
+    check('same guest name with different phone returns 201', res.status === 201);
+    check('same guest name different phone has id', typeof res.body?.id === 'string');
+    secondGuestId = res.body?.id;
+  }
+
+  {
+    const res = await request('PATCH', `/guests/${secondGuestId}`, {
+      phone: '700000001',
+    }, accessToken);
+    check('duplicate guest update returns 409', res.status === 409);
+    check(
+      'duplicate guest update returns clear message',
+      res.body?.message === 'هذا الضيف مضاف مسبقًا',
+    );
   }
 
   {
@@ -139,12 +178,19 @@ async function run() {
     check('delete response marks deleted', res.body?.deleted === true);
   }
 
+  if (secondGuestId) {
+    const res = await request('DELETE', `/guests/${secondGuestId}`, null, accessToken);
+    check('DELETE second guest - HTTP 200', res.status === 200);
+    check('second guest delete response marks deleted', res.body?.deleted === true);
+  }
+
   {
     const res = await request('GET', `/wedding-plans/${planId}/guests`, null, accessToken);
     check('GET guests after delete - HTTP 200', res.status === 200);
     check(
-      'deleted guest is removed',
-      Array.isArray(res.body) && !res.body.some((guest) => guest.id === guestId),
+      'deleted guests are removed',
+      Array.isArray(res.body) &&
+        !res.body.some((guest) => guest.id === guestId || guest.id === secondGuestId),
     );
   }
 

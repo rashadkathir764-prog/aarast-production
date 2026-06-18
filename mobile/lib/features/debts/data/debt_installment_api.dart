@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
 import '../models/installment.dart';
@@ -77,10 +78,9 @@ class DebtInstallmentApi {
     String status = 'OPEN',
     String? note,
   }) async {
+    final normalizedCreditorPhone = _normalizeOptionalPhone(creditorPhone);
     final payload = {
       'creditorName': creditorName.trim(),
-      if (creditorPhone != null && creditorPhone.trim().isNotEmpty)
-        'creditorPhone': creditorPhone.trim(),
       'title': title.trim(),
       'totalAmount': totalAmount.trim(),
       'status': status,
@@ -89,6 +89,9 @@ class DebtInstallmentApi {
       if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
+    if (normalizedCreditorPhone != null) {
+      payload['creditorPhone'] = normalizedCreditorPhone;
+    }
     try {
       final json = await _apiClient.postJson(
         '/wedding-plans/$weddingPlanId/debts',
@@ -307,5 +310,13 @@ class DebtInstallmentApi {
       countPaid: countPaid,
       countCancelled: countCancelled,
     );
+  }
+
+  String? _normalizeOptionalPhone(String? phone) {
+    try {
+      return normalizeOptionalYemeniPhone(phone);
+    } on FormatException {
+      throw const ApiException('رقم الهاتف غير صحيح');
+    }
   }
 }

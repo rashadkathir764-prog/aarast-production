@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../providers/auth_controller.dart';
-import '../utils/yemeni_phone_normalizer.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -75,6 +76,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     icon: Icons.phone_rounded,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
+                    suffixIcon: ContactPhoneFieldSuffix(
+                      controller: _phoneController,
+                    ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'رقم الهاتف مطلوب';

@@ -42,6 +42,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     super.initState();
     _serviceId = widget.initialServiceId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadProviderDetails(
         widget.providerId,
       );

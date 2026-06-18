@@ -20,6 +20,7 @@ class _SharedWeddingPlansScreenState extends State<SharedWeddingPlansScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<SharingProvider>().loadSharedPlans();
     });
   }

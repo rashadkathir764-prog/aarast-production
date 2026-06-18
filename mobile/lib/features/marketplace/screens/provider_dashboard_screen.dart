@@ -22,6 +22,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
     });
@@ -940,10 +941,11 @@ class _QuoteTile extends StatelessWidget {
                   const SizedBox(height: 18),
                   Text(
                     quote.service?.title ?? 'تفاصيل طلب عرض السعر',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   _SheetLine('العميل', quote.userName ?? 'عميل اعّرست'),

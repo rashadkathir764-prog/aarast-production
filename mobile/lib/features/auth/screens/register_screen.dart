@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../providers/auth_controller.dart';
-import '../utils/yemeni_phone_normalizer.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 enum _AccountType { customer, provider }
@@ -42,6 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _accountType = _AccountType.provider;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
     });
   }
@@ -148,6 +150,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     icon: Icons.phone_rounded,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
+                    suffixIcon: ContactPhoneFieldSuffix(
+                      controller: _phoneController,
+                    ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return 'رقم الهاتف مطلوب';

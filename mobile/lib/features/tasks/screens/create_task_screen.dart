@@ -105,8 +105,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   ),
                   const SizedBox(height: 8),
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                    data: Theme.of(sheetContext).copyWith(
+                      colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
                         primary: AppTheme.dMaroon,
                         onPrimary: Colors.white,
                         surface: AppTheme.dCard2,
@@ -134,7 +134,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       },
     );
 
-    if (selected != null) setState(() => _dueDate = selected);
+    if (selected != null && mounted) setState(() => _dueDate = selected);
   }
 
   Future<void> _showCategoryPicker() async {
@@ -173,7 +173,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       },
     );
 
-    if (selected != null) setState(() => _category = selected);
+    if (selected != null && mounted) setState(() => _category = selected);
   }
 
   void _prefillTask(WeddingTask task) {

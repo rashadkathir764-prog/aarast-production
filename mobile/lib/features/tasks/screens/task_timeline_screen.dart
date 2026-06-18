@@ -28,6 +28,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
     });
   }
@@ -37,6 +38,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
       });
     }
@@ -333,10 +335,11 @@ class _TaskTimelineContent extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     'حذف المهمة؟',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -344,10 +347,11 @@ class _TaskTimelineContent extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.dInkSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.bodyMedium
+                        ?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                   const SizedBox(height: 22),
                   Row(
@@ -380,7 +384,7 @@ class _TaskTimelineContent extends StatelessWidget {
       },
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && context.mounted) {
       await provider.deleteTask(weddingPlanId, task.id);
     }
   }

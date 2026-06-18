@@ -22,6 +22,7 @@ class _MoreScreenState extends State<MoreScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
       _maybeReadNotifications(context)?.loadUnreadCount();
     });
@@ -177,19 +178,21 @@ class _MoreScreenState extends State<MoreScreen> {
                   const SizedBox(height: 16),
                   Text(
                     'تسجيل الخروج',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'هل ترغبين في الخروج من حسابك الآن؟',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.dInkSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.bodyMedium
+                        ?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                   const SizedBox(height: 22),
                   Row(

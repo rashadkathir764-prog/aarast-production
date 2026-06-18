@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../models/guest.dart';
 
 class GuestsApi {
@@ -25,15 +26,21 @@ class GuestsApi {
     required int seatsCount,
     String? notes,
   }) async {
-    final json = await _apiClient
-        .postJson('/wedding-plans/$weddingPlanId/guests', {
-          'name': name.trim(),
-          if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-          'side': side,
-          'status': status,
-          'seatsCount': seatsCount,
-          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
-        });
+    final normalizedPhone = _normalizeOptionalPhone(phone);
+    final payload = {
+      'name': name.trim(),
+      'side': side,
+      'status': status,
+      'seatsCount': seatsCount,
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+    };
+    if (normalizedPhone != null) {
+      payload['phone'] = normalizedPhone;
+    }
+    final json = await _apiClient.postJson(
+      '/wedding-plans/$weddingPlanId/guests',
+      payload,
+    );
     return Guest.fromJson(json);
   }
 
@@ -51,7 +58,7 @@ class GuestsApi {
       payload['name'] = name.trim();
     }
     if (phone != null) {
-      payload['phone'] = phone.trim();
+      payload['phone'] = _normalizeOptionalPhone(phone);
     }
     if (side != null) {
       payload['side'] = side;
@@ -71,5 +78,13 @@ class GuestsApi {
 
   Future<void> deleteGuest(String id) async {
     await _apiClient.deleteJson('/guests/$id');
+  }
+
+  String? _normalizeOptionalPhone(String? phone) {
+    try {
+      return normalizeOptionalYemeniPhone(phone);
+    } on FormatException {
+      throw const ApiException('رقم الهاتف غير صحيح');
+    }
   }
 }

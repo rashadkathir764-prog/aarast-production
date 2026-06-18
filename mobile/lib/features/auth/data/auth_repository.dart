@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../models/auth_response.dart';
 import '../models/safe_user.dart';
-import '../utils/yemeni_phone_normalizer.dart';
 
 class AuthRepository {
   const AuthRepository(this._apiClient, this._authStorage);
@@ -17,9 +17,6 @@ class AuthRepository {
     required String password,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    if (kDebugMode) {
-      debugPrint('[AarastAuth] normalizedPhone=$normalizedPhone');
-    }
     final json = await _apiClient.postJson('/auth/login', {
       'phone': normalizedPhone,
       'password': password,

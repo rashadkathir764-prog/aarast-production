@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -27,6 +29,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
       context.read<ProviderDashboardProvider>().loadDashboard();
     });
@@ -117,14 +120,22 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                       controller: _phoneController,
                       keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'رقم التواصل',
-                        prefixIcon: Icon(Icons.phone_outlined),
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        suffixIcon: ContactPhoneFieldSuffix(
+                          controller: _phoneController,
+                        ),
                       ),
-                      validator: (value) =>
-                          value == null || value.trim().length < 6
-                          ? 'اكتبي رقم تواصل صحيح'
-                          : null,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'رقم التواصل مطلوب';
+                        }
+                        if (!isValidYemeniPhoneInput(value)) {
+                          return 'رقم التواصل غير صحيح';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 14),
                     _ApplyDropdown(

@@ -148,10 +148,16 @@ class ApiException implements Exception {
     if (data is Map && data['message'] != null) {
       final message = data['message'];
       if (message is String) {
-        return ApiException(_cleanServerMessage(message));
+        return ApiException(
+          _cleanServerMessage(message),
+          statusCode: statusCode,
+        );
       }
       if (message is List && message.isNotEmpty) {
-        return ApiException(_cleanServerMessage(message.first.toString()));
+        return ApiException(
+          _cleanServerMessage(message.first.toString()),
+          statusCode: statusCode,
+        );
       }
     }
 

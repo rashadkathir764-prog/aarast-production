@@ -34,6 +34,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
     )..forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<WeddingPlansProvider>().loadMyWeddingPlans();
     });
   }

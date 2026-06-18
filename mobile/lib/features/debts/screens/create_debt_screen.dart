@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -20,6 +22,7 @@ class CreateDebtScreen extends StatefulWidget {
 class _CreateDebtScreenState extends State<CreateDebtScreen> {
   final _formKey = GlobalKey<FormState>();
   final _creditorNameController = TextEditingController();
+  final _creditorPhoneController = TextEditingController();
   final _titleController = TextEditingController();
   final _totalAmountController = TextEditingController();
   final _paidAmountController = TextEditingController();
@@ -31,6 +34,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
   @override
   void dispose() {
     _creditorNameController.dispose();
+    _creditorPhoneController.dispose();
     _titleController.dispose();
     _totalAmountController.dispose();
     _paidAmountController.dispose();
@@ -101,6 +105,24 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                                       prefixIcon: Icon(Icons.person_outline),
                                     ),
                                     validator: _required('اسم الدائن مطلوب'),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  TextFormField(
+                                    controller: _creditorPhoneController,
+                                    textAlign: TextAlign.right,
+                                    keyboardType: TextInputType.phone,
+                                    textInputAction: TextInputAction.next,
+                                    decoration: InputDecoration(
+                                      labelText: 'رقم الدائن (اختياري)',
+                                      hintText: 'مثال: 77xxxxxxx',
+                                      prefixIcon: const Icon(
+                                        Icons.phone_outlined,
+                                      ),
+                                      suffixIcon: ContactPhoneFieldSuffix(
+                                        controller: _creditorPhoneController,
+                                      ),
+                                    ),
+                                    validator: _optionalPhone,
                                   ),
                                   const SizedBox(height: 14),
                                   TextFormField(
@@ -281,8 +303,8 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                   ),
                   const SizedBox(height: 8),
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                    data: Theme.of(sheetContext).copyWith(
+                      colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
                         primary: AppTheme.dMaroon,
                         onPrimary: Colors.white,
                         surface: AppTheme.dCard2,
@@ -310,7 +332,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
       },
     );
 
-    if (selected != null) setState(() => _dueDate = selected);
+    if (selected != null && mounted) setState(() => _dueDate = selected);
   }
 
   void _goBack() {
@@ -330,6 +352,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
     final debt = await provider.createDebt(
       weddingPlanId: widget.weddingPlanId,
       creditorName: _creditorNameController.text.trim(),
+      creditorPhone: _creditorPhoneController.text,
       title: _titleController.text.trim(),
       totalAmount: _totalAmountController.text.trim(),
       paidAmount: paid.isEmpty ? null : paid,
@@ -554,6 +577,10 @@ String? _nonNegativeOptional(String? value) {
     return 'المبلغ يجب أن يكون رقماً غير سالب';
   }
   return null;
+}
+
+String? _optionalPhone(String? value) {
+  return isValidOptionalYemeniPhoneInput(value) ? null : 'رقم الهاتف غير صحيح';
 }
 
 String _formatDate(DateTime date) {

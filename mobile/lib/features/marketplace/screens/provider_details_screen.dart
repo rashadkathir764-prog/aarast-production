@@ -22,6 +22,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadProviderDetails(
         widget.providerId,
       );
@@ -33,6 +34,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.providerId != widget.providerId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         context.read<ProviderMarketplaceProvider>().loadProviderDetails(
           widget.providerId,
         );

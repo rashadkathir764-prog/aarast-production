@@ -26,6 +26,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
       _searchController.text = provider.search;
       provider.loadMarketplace();

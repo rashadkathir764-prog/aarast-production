@@ -49,6 +49,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final provider = context.read<FinanceProvider>();
       _loadFinanceForForm(provider);
     });
@@ -362,8 +363,8 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                   ),
                   const SizedBox(height: 8),
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                    data: Theme.of(sheetContext).copyWith(
+                      colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
                         primary: AppTheme.dMaroon,
                         onPrimary: Colors.white,
                         surface: AppTheme.dCard2,
@@ -391,7 +392,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
       },
     );
 
-    if (selected != null) setState(() => _expenseDate = selected);
+    if (selected != null && mounted) setState(() => _expenseDate = selected);
   }
 
   Future<void> _showCategoryPicker() async {

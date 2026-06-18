@@ -23,6 +23,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<DebtInstallmentProvider>().loadDebtDetails(widget.debtId);
     });
   }
@@ -32,6 +33,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.debtId != widget.debtId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         context.read<DebtInstallmentProvider>().loadDebtDetails(widget.debtId);
       });
     }

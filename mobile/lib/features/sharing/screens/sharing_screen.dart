@@ -21,6 +21,7 @@ class _SharingScreenState extends State<SharingScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<SharingProvider>().loadMembers(widget.weddingPlanId);
     });
   }
@@ -30,6 +31,7 @@ class _SharingScreenState extends State<SharingScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         context.read<SharingProvider>().loadMembers(widget.weddingPlanId);
       });
     }

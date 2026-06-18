@@ -27,7 +27,7 @@ class GuestsProvider extends ChangeNotifier {
     try {
       _guests = await _api.getGuests(weddingPlanId);
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _guestErrorMessage(error);
     } catch (_) {
       _errorMessage = 'تعذر تحميل قائمة الضيوف.';
     } finally {
@@ -62,7 +62,7 @@ class GuestsProvider extends ChangeNotifier {
       _guests = [guest, ..._guests];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إضافة الضيف.';
@@ -99,7 +99,7 @@ class GuestsProvider extends ChangeNotifier {
       _replace(updated);
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث الضيف.';
@@ -120,7 +120,7 @@ class GuestsProvider extends ChangeNotifier {
       _guests = _guests.where((item) => item.id != guest.id).toList();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _errorMessage = _guestErrorMessage(error);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر حذف الضيف.';
@@ -141,4 +141,19 @@ class GuestsProvider extends ChangeNotifier {
       for (final item in _guests) item.id == updated.id ? updated : item,
     ];
   }
+}
+
+String _guestErrorMessage(ApiException error) {
+  final normalized = error.message.trim();
+  if (error.statusCode == 409 ||
+      normalized.contains('هذا الضيف مضاف') ||
+      normalized.contains('Guest already exists') ||
+      normalized.contains('duplicate')) {
+    return 'هذا الضيف مضاف مسبقًا';
+  }
+  if (normalized.contains('valid Yemeni phone') ||
+      normalized.contains('phone must')) {
+    return 'رقم الهاتف غير صحيح';
+  }
+  return normalized.isEmpty ? 'تعذر تنفيذ طلب الضيوف.' : normalized;
 }

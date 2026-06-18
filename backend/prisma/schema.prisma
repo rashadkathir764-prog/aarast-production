@@ -314,19 +314,23 @@ model Notification {
 }
 
 model Guest {
-  id            String      @id @default(cuid())
-  weddingPlanId String
-  name          String
-  phone         String?
-  side          GuestSide   @default(OTHER)
-  status        GuestStatus @default(INVITED)
-  seatsCount    Int         @default(1)
-  notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  id              String      @id @default(cuid())
+  weddingPlanId   String
+  name            String
+  normalizedName  String
+  phone           String?
+  normalizedPhone String?
+  side            GuestSide   @default(OTHER)
+  status          GuestStatus @default(INVITED)
+  seatsCount      Int         @default(1)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  weddingPlan     WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
 
+  @@unique([weddingPlanId, normalizedName, normalizedPhone])
   @@index([weddingPlanId, status])
+  @@index([weddingPlanId, normalizedName])
 }
 
 model City {

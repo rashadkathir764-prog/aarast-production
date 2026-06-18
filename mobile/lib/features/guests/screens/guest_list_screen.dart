@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/guest.dart';
@@ -20,6 +22,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _load();
     });
   }
@@ -29,6 +32,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _load();
       });
     }
@@ -133,212 +137,45 @@ class _GuestListScreenState extends State<GuestListScreen> {
   }
 
   Future<void> _showGuestSheet({Guest? guest}) async {
-    final provider = context.read<GuestsProvider>();
-    final nameController = TextEditingController(text: guest?.name ?? '');
-    final phoneController = TextEditingController(text: guest?.phone ?? '');
-    final notesController = TextEditingController(text: guest?.notes ?? '');
-    var side = guest?.side ?? 'OTHER';
-    var status = guest?.status ?? 'INVITED';
-    var seatsCount = guest?.seatsCount ?? 1;
-
-    final saved = await showModalBottomSheet<bool>(
+    final result = await showModalBottomSheet<_GuestSheetResult>(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              16,
-              20,
-              20 + MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: StatefulBuilder(
-              builder: (context, setSheetState) {
-                return SafeArea(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Align(
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: 44,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: AppTheme.dLine,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Text(
-                          guest == null ? 'إضافة ضيف' : 'تعديل ضيف',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم الضيف',
-                            prefixIcon: Icon(Icons.person_outline_rounded),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: phoneController,
-                          keyboardType: TextInputType.phone,
-                          decoration: const InputDecoration(
-                            labelText: 'رقم التواصل (اختياري)',
-                            prefixIcon: Icon(Icons.phone_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: side,
-                          items: _sideValues
-                              .map(
-                                (item) => DropdownMenuItem(
-                                  value: item,
-                                  child: Text(_sideLabel(item)),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setSheetState(() => side = value);
-                            }
-                          },
-                          decoration: const InputDecoration(
-                            labelText: 'القسم',
-                            prefixIcon: Icon(Icons.group_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          initialValue: status,
-                          items: _statusValues
-                              .map(
-                                (item) => DropdownMenuItem(
-                                  value: item,
-                                  child: Text(_statusLabel(item)),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              setSheetState(() => status = value);
-                            }
-                          },
-                          decoration: const InputDecoration(
-                            labelText: 'حالة الدعوة',
-                            prefixIcon: Icon(Icons.mark_email_read_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'عدد المقاعد: $seatsCount',
-                                style: const TextStyle(
-                                  color: AppTheme.dInk,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: seatsCount > 1
-                                  ? () => setSheetState(() => seatsCount--)
-                                  : null,
-                              icon: const Icon(Icons.remove_circle_outline),
-                            ),
-                            IconButton(
-                              onPressed: seatsCount < 20
-                                  ? () => setSheetState(() => seatsCount++)
-                                  : null,
-                              icon: const Icon(Icons.add_circle_outline),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: notesController,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'ملاحظات (اختياري)',
-                            prefixIcon: Icon(Icons.notes_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        FilledButton.icon(
-                          onPressed: provider.isSubmitting
-                              ? null
-                              : () async {
-                                  final name = nameController.text.trim();
-                                  if (name.isEmpty) return;
-                                  final ok = guest == null
-                                      ? await provider.createGuest(
-                                          weddingPlanId: widget.weddingPlanId,
-                                          name: name,
-                                          phone: phoneController.text,
-                                          side: side,
-                                          status: status,
-                                          seatsCount: seatsCount,
-                                          notes: notesController.text,
-                                        )
-                                      : await provider.updateGuest(
-                                          guest: guest,
-                                          name: name,
-                                          phone: phoneController.text,
-                                          side: side,
-                                          status: status,
-                                          seatsCount: seatsCount,
-                                          notes: notesController.text,
-                                        );
-                                  if (ok && sheetContext.mounted) {
-                                    Navigator.of(sheetContext).pop(true);
-                                  }
-                                },
-                          icon: const Icon(Icons.check_rounded),
-                          label: Text(
-                            guest == null ? 'إضافة ضيف' : 'حفظ التعديل',
-                          ),
-                        ),
-                        if (provider.errorMessage != null) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            provider.errorMessage!,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: AppTheme.danger,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
+      builder: (_) => _GuestFormSheet(guest: guest),
     );
 
-    nameController.dispose();
-    phoneController.dispose();
-    notesController.dispose();
+    if (result == null || !mounted) return;
 
-    if (saved == true && mounted) {
+    final provider = context.read<GuestsProvider>();
+    final ok = guest == null
+        ? await provider.createGuest(
+            weddingPlanId: widget.weddingPlanId,
+            name: result.name,
+            phone: result.phone,
+            side: result.side,
+            status: result.status,
+            seatsCount: result.seatsCount,
+            notes: result.notes,
+          )
+        : await provider.updateGuest(
+            guest: guest,
+            name: result.name,
+            phone: result.phone ?? '',
+            side: result.side,
+            status: result.status,
+            seatsCount: result.seatsCount,
+            notes: result.notes,
+          );
+    if (!mounted) return;
+    if (ok) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(content: Text('تم حفظ الضيف.')));
+    } else {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(provider.errorMessage ?? 'تعذر حفظ الضيف.')),
+        );
     }
   }
 
@@ -365,10 +202,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 children: [
                   Text(
                     'حذف ${guest.name}؟',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -418,6 +256,254 @@ class _GuestListScreenState extends State<GuestListScreen> {
       }
     }
   }
+}
+
+class _GuestFormSheet extends StatefulWidget {
+  const _GuestFormSheet({this.guest});
+
+  final Guest? guest;
+
+  @override
+  State<_GuestFormSheet> createState() => _GuestFormSheetState();
+}
+
+class _GuestFormSheetState extends State<_GuestFormSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _notesController;
+  late String _side;
+  late String _status;
+  late int _seatsCount;
+  String? _sheetError;
+
+  @override
+  void initState() {
+    super.initState();
+    final guest = widget.guest;
+    _nameController = TextEditingController(text: guest?.name ?? '');
+    _phoneController = TextEditingController(text: guest?.phone ?? '');
+    _notesController = TextEditingController(text: guest?.notes ?? '');
+    _side = guest?.side ?? 'OTHER';
+    _status = guest?.status ?? 'INVITED';
+    _seatsCount = guest?.seatsCount ?? 1;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _sheetError = 'اسم الضيف مطلوب');
+      return;
+    }
+
+    String? phone;
+    try {
+      phone = normalizeOptionalYemeniPhone(_phoneController.text);
+    } on FormatException {
+      setState(() => _sheetError = 'رقم الهاتف غير صحيح');
+      return;
+    }
+
+    setState(() => _sheetError = null);
+    Navigator.of(context).pop(
+      _GuestSheetResult(
+        name: name,
+        phone: phone,
+        side: _side,
+        status: _status,
+        seatsCount: _seatsCount,
+        notes: _notesController.text,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final guest = widget.guest;
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          20 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.dLine,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  guest == null ? 'إضافة ضيف' : 'تعديل ضيف',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم الضيف',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'رقم التواصل (اختياري)',
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    suffixIcon: ContactPhoneFieldSuffix(
+                      controller: _phoneController,
+                      onPhoneSelected: (_) {
+                        if (!mounted) return;
+                        setState(() => _sheetError = null);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _side,
+                  items: _sideValues
+                      .map(
+                        (item) => DropdownMenuItem(
+                          value: item,
+                          child: Text(_sideLabel(item)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _side = value);
+                    }
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'القسم',
+                    prefixIcon: Icon(Icons.group_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _status,
+                  items: _statusValues
+                      .map(
+                        (item) => DropdownMenuItem(
+                          value: item,
+                          child: Text(_statusLabel(item)),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() => _status = value);
+                    }
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'حالة الدعوة',
+                    prefixIcon: Icon(Icons.mark_email_read_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'عدد المقاعد: $_seatsCount',
+                        style: const TextStyle(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _seatsCount > 1
+                          ? () => setState(() => _seatsCount--)
+                          : null,
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    IconButton(
+                      onPressed: _seatsCount < 20
+                          ? () => setState(() => _seatsCount++)
+                          : null,
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _notesController,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظات (اختياري)',
+                    prefixIcon: Icon(Icons.notes_outlined),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.check_rounded),
+                  label: Text(guest == null ? 'إضافة ضيف' : 'حفظ التعديل'),
+                ),
+                if (_sheetError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _sheetError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppTheme.danger,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestSheetResult {
+  const _GuestSheetResult({
+    required this.name,
+    required this.side,
+    required this.status,
+    required this.seatsCount,
+    this.phone,
+    this.notes,
+  });
+
+  final String name;
+  final String? phone;
+  final String side;
+  final String status;
+  final int seatsCount;
+  final String? notes;
 }
 
 class _GuestSummary extends StatelessWidget {

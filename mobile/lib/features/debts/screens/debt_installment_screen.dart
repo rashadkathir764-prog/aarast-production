@@ -34,6 +34,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     super.initState();
     _searchController.addListener(_handleSearchChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _loadDebts();
     });
   }
@@ -43,6 +44,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _loadDebts();
       });
     }

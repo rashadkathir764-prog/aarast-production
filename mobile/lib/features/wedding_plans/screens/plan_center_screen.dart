@@ -32,6 +32,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<DashboardSummaryProvider>().loadDashboard(
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
@@ -45,6 +46,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId ||
         oldWidget.sharedMember != widget.sharedMember) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         context.read<DashboardSummaryProvider>().loadDashboard(
           widget.weddingPlanId,
           sharedMember: widget.sharedMember,
@@ -254,9 +256,8 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       AppRouter.finance(planId),
       extra: widget.sharedMember,
     );
-    if (changed == true && mounted) {
-      await provider.loadDashboard(planId, sharedMember: widget.sharedMember);
-    }
+    if (changed != true || !mounted) return;
+    await provider.loadDashboard(planId, sharedMember: widget.sharedMember);
   }
 
   void _showQuickAdd(DashboardSummaryProvider provider) {
@@ -282,6 +283,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           return ListTile(
             onTap: () async {
               Navigator.of(sheetContext).pop();
+              if (!mounted) return;
               final isFinancialWriteRoute =
                   route == AppRouter.createExpense(plan.id) ||
                   route == AppRouter.createDebt(plan.id);
@@ -459,6 +461,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                               firstDate: DateTime(2020),
                               lastDate: DateTime(2100),
                             );
+                            if (!sheetContext.mounted) return;
                             if (picked != null) {
                               setSheetState(() => selectedDate = picked);
                             }
@@ -483,7 +486,8 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                             };
                             final updated = await weddingPlansProvider
                                 .updateWeddingPlan(plan.id, data);
-                            if (updated != null && sheetContext.mounted) {
+                            if (!sheetContext.mounted) return;
+                            if (updated != null) {
                               Navigator.of(sheetContext).pop(true);
                             }
                           },
@@ -584,7 +588,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
 
     final archived = await weddingPlansProvider.archiveWeddingPlan(plan.id);
     if (archived != null && mounted) {

@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 
@@ -40,10 +41,11 @@ class SharingApi {
   }
 
   Future<SharedUserLookup> lookupUserByPhone(String phone) async {
+    final normalizedPhone = _normalizePhone(phone);
     final json = await _apiClient.getJson(
       Uri(
         path: '/users/lookup',
-        queryParameters: {'phone': phone.trim()},
+        queryParameters: {'phone': normalizedPhone},
       ).toString(),
     );
     return SharedUserLookup.fromJson(json);
@@ -60,18 +62,22 @@ class SharingApi {
     required bool canManageTasks,
     required bool canManageFinancialRecords,
   }) async {
+    final normalizedPhone = _normalizeOptionalPhone(phone);
+    final payload = {
+      if (userId != null && userId.trim().isNotEmpty) 'userId': userId.trim(),
+      'role': role,
+      'canViewBudget': canViewBudget,
+      'canViewExpenses': canViewExpenses,
+      'canViewDebts': canViewDebts,
+      'canManageTasks': canManageTasks,
+      'canManageFinancialRecords': canManageFinancialRecords,
+    };
+    if (normalizedPhone != null) {
+      payload['phone'] = normalizedPhone;
+    }
     final json = await _apiClient.postJson(
       '/wedding-plans/$weddingPlanId/shared-members',
-      {
-        if (userId != null && userId.trim().isNotEmpty) 'userId': userId.trim(),
-        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-        'role': role,
-        'canViewBudget': canViewBudget,
-        'canViewExpenses': canViewExpenses,
-        'canViewDebts': canViewDebts,
-        'canManageTasks': canManageTasks,
-        'canManageFinancialRecords': canManageFinancialRecords,
-      },
+      payload,
     );
     return SharedMember.fromJson(json);
   }
@@ -117,5 +123,21 @@ class SharingApi {
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
+  }
+
+  String _normalizePhone(String phone) {
+    try {
+      return normalizeYemeniPhone(phone);
+    } on FormatException {
+      throw const ApiException('رقم الهاتف غير صحيح');
+    }
+  }
+
+  String? _normalizeOptionalPhone(String? phone) {
+    try {
+      return normalizeOptionalYemeniPhone(phone);
+    } on FormatException {
+      throw const ApiException('رقم الهاتف غير صحيح');
+    }
   }
 }

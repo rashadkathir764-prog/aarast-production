@@ -80,7 +80,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       },
     );
 
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() => _selectedCity = selected);
     }
   }
@@ -111,8 +111,8 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                   ),
                   const SizedBox(height: 8),
                   Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: Theme.of(context).colorScheme.copyWith(
+                    data: Theme.of(sheetContext).copyWith(
+                      colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
                         primary: AppTheme.dMaroon,
                         onPrimary: Colors.white,
                         surface: AppTheme.dCard2,
@@ -140,7 +140,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       },
     );
 
-    if (selected != null) {
+    if (selected != null && mounted) {
       setState(() => _weddingDate = selected);
     }
   }

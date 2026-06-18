@@ -20,6 +20,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _load();
     });
   }
@@ -29,6 +30,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _load();
       });
     }
@@ -140,10 +142,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 children: [
                   Text(
                     'حذف التنبيه؟',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -184,7 +187,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       },
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       await provider.deleteNotification(notification);
     }
   }

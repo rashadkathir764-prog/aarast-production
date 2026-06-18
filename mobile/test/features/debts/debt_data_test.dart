@@ -30,7 +30,7 @@ void main() {
   });
 
   group('DebtInstallmentApi.createDebt', () {
-    test('includes a trimmed creditorPhone when provided', () async {
+    test('normalizes creditorPhone when provided', () async {
       final apiClient = ApiClient(tokenProvider: () async => 'token');
       Map<String, dynamic>? capturedPayload;
       apiClient.dio.interceptors.add(
@@ -41,7 +41,7 @@ void main() {
               Response<Object?>(
                 requestOptions: options,
                 statusCode: 201,
-                data: _debtJson(creditorPhone: '+967 777 123 456'),
+                data: _debtJson(creditorPhone: '+967777123456'),
               ),
             );
           },
@@ -57,8 +57,8 @@ void main() {
         totalAmount: '1000',
       );
 
-      expect(capturedPayload?['creditorPhone'], '+967 777 123 456');
-      expect(debt.creditorPhone, '+967 777 123 456');
+      expect(capturedPayload?['creditorPhone'], '+967777123456');
+      expect(debt.creditorPhone, '+967777123456');
     });
 
     test('omits a blank creditorPhone', () async {
@@ -92,7 +92,7 @@ void main() {
       expect(debt.creditorPhone, isNull);
     });
 
-    test('preserves creditorPhone in offline cache and queue', () async {
+    test('normalizes creditorPhone in offline cache and queue', () async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
       final database = JsonLocalDatabase(preferences);
@@ -120,7 +120,7 @@ void main() {
       final debt = await api.createDebt(
         weddingPlanId: 'plan-1',
         creditorName: 'Vendor',
-        creditorPhone: '  01 234 567  ',
+        creditorPhone: '  0777 123 456  ',
         title: 'Hall balance',
         totalAmount: '1000',
       );
@@ -130,9 +130,9 @@ void main() {
         id: debt.id,
       );
       final queued = await database.pendingSyncItems();
-      expect(debt.creditorPhone, '01 234 567');
-      expect(cached?['creditorPhone'], '01 234 567');
-      expect(queued.single.payload['creditorPhone'], '01 234 567');
+      expect(debt.creditorPhone, '+967777123456');
+      expect(cached?['creditorPhone'], '+967777123456');
+      expect(queued.single.payload['creditorPhone'], '+967777123456');
     });
   });
 }

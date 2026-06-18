@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../models/marketplace_models.dart';
 
 class MarketplaceApi {
@@ -466,9 +467,10 @@ class ProviderDashboardApi {
     List<String> categoryIds = const [],
     String? description,
   }) async {
+    final normalizedPhone = _normalizePhone(phone);
     final json = await _apiClient.postJson('/provider/apply', {
       'businessName': businessName.trim(),
-      'phone': phone.trim(),
+      'phone': normalizedPhone,
       'cityId': cityId.trim(),
       if (categoryIds.isNotEmpty) 'categoryIds': categoryIds,
       if (description != null && description.trim().isNotEmpty)
@@ -533,5 +535,13 @@ class ProviderDashboardApi {
       {'status': status},
     );
     return QuoteRequest.fromJson(json);
+  }
+
+  String _normalizePhone(String phone) {
+    try {
+      return normalizeYemeniPhone(phone);
+    } on FormatException {
+      throw const ApiException('رقم الهاتف غير صحيح');
+    }
   }
 }

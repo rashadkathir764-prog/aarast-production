@@ -35,6 +35,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _loadFinance();
     });
   }
@@ -44,6 +45,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _loadFinance();
       });
     }
@@ -418,10 +420,11 @@ class _FinanceContent extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text(
                     'حذف المصروف؟',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -429,10 +432,11 @@ class _FinanceContent extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.dInkSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: Theme.of(sheetContext).textTheme.bodyMedium
+                        ?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                   const SizedBox(height: 22),
                   Row(

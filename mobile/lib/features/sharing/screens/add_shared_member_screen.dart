@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -203,13 +205,16 @@ class _PhoneLookupCard extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     )
-                  : null,
+                  : ContactPhoneFieldSuffix(
+                      controller: controller,
+                      onPhoneSelected: onChanged,
+                    ),
             ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'رقم هاتف العضو مطلوب';
               }
-              if (value.trim().length < 6) {
+              if (!isValidYemeniPhoneInput(value)) {
                 return 'أدخلي رقم هاتف صحيح';
               }
               return null;

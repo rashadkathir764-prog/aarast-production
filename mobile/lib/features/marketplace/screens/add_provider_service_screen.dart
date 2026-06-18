@@ -28,6 +28,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
       context.read<ProviderDashboardProvider>().loadDashboard();
     });

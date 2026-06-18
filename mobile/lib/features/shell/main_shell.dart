@@ -30,6 +30,7 @@ class _MainShellState extends State<MainShell> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final provider = context.read<WeddingPlansProvider>();
       await provider.loadMyWeddingPlans();
       if (!mounted || _activePlanId != null || provider.plans.isEmpty) return;
@@ -70,6 +71,7 @@ class _MainShellState extends State<MainShell> {
           return ListTile(
             onTap: () async {
               Navigator.of(sheetContext).pop();
+              if (!mounted) return;
               final changed = await context.push<bool>(route);
               if (refreshDashboard && changed == true && mounted) {
                 await context.read<DashboardSummaryProvider>().loadDashboard(

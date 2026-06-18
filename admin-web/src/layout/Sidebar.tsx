@@ -1,34 +1,29 @@
 import { NavLink } from 'react-router-dom';
-import { 
-  Home, 
-  LayoutGrid, 
-  Inbox, 
-  Users, 
-  MapPin, 
-  Tag, 
-  UserCircle, 
-  CalendarCheck, 
-  Briefcase, 
-  Star, 
-  Settings, 
-  Clock,
+import {
+  Briefcase,
+  CalendarCheck,
+  Crown,
+  Inbox,
+  LayoutGrid,
   LogOut,
-  Crown
+  MapPin,
+  Settings,
+  Star,
+  Tag,
+  UserCircle,
+  Users,
 } from 'lucide-react';
 
 const links = [
-  { to: '/', label: 'الرئيسية', icon: <Home size={20} strokeWidth={1.5} /> },
   { to: '/', label: 'لوحة التحكم', icon: <LayoutGrid size={20} strokeWidth={1.5} />, end: true },
   { to: '/users', label: 'المستخدمون', icon: <UserCircle size={20} strokeWidth={1.5} /> },
   { to: '/providers', label: 'الموردون', icon: <Users size={20} strokeWidth={1.5} /> },
-  { to: '/providers/applications', label: 'الطلبات والتعاقدات', icon: <Inbox size={20} strokeWidth={1.5} /> },
-  { to: '/bookings', label: 'الحجوزات', icon: <CalendarCheck size={20} strokeWidth={1.5} /> },
+  { to: '/providers/applications', label: 'طلبات الموردين', icon: <Inbox size={20} strokeWidth={1.5} /> },
   { to: '/services', label: 'الخدمات', icon: <Briefcase size={20} strokeWidth={1.5} /> },
+  { to: '/categories', label: 'فئات الموردين', icon: <Tag size={20} strokeWidth={1.5} /> },
   { to: '/cities', label: 'المدن والمناطق', icon: <MapPin size={20} strokeWidth={1.5} /> },
-  { to: '/payments', label: 'المدفوعات والفواتير', icon: <Tag size={20} strokeWidth={1.5} /> },
-  { to: '/reviews', label: 'التقييمات والمراجعات', icon: <Star size={20} strokeWidth={1.5} /> },
-  { to: '/notifications', label: 'الإشعارات', icon: <Clock size={20} strokeWidth={1.5} /> },
-  { to: '/reports', label: 'التقارير والتحليلات', icon: <CalendarCheck size={20} strokeWidth={1.5} /> },
+  { to: '/bookings', label: 'الحجوزات', icon: <CalendarCheck size={20} strokeWidth={1.5} /> },
+  { to: '/reviews', label: 'التقييمات', icon: <Star size={20} strokeWidth={1.5} /> },
   { to: '/settings', label: 'الإعدادات', icon: <Settings size={20} strokeWidth={1.5} /> },
 ];
 

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
 
@@ -25,7 +26,22 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          _debugAuthLoginRequest(options);
           handler.next(options);
+        },
+        onResponse: (response, handler) {
+          _debugAuthLoginStatus(
+            response.requestOptions.path,
+            response.statusCode,
+          );
+          handler.next(response);
+        },
+        onError: (error, handler) {
+          _debugAuthLoginStatus(
+            error.requestOptions.path,
+            error.response?.statusCode,
+          );
+          handler.next(error);
         },
       ),
     );
@@ -98,10 +114,28 @@ class ApiClient {
     }
     throw const ApiException('استجابة غير متوقعة من الخادم.');
   }
+
+  static void _debugAuthLoginRequest(RequestOptions options) {
+    if (!kDebugMode || options.path != '/auth/login') return;
+    debugPrint(
+      '[AarastAuth] baseUrl=${options.baseUrl}; endpoint=${options.path}',
+    );
+  }
+
+  static void _debugAuthLoginStatus(String path, int? statusCode) {
+    if (!kDebugMode || path != '/auth/login') return;
+    debugPrint(
+      '[AarastAuth] statusCode=${statusCode?.toString() ?? 'no response'}',
+    );
+  }
 }
 
 class ApiException implements Exception {
-  const ApiException(this.message, {this.isNetworkFailure = false});
+  const ApiException(
+    this.message, {
+    this.isNetworkFailure = false,
+    this.statusCode,
+  });
 
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
@@ -135,6 +169,13 @@ class ApiException implements Exception {
 
   final String message;
   final bool isNetworkFailure;
+  final int? statusCode;
+
+  bool get isUnauthorized {
+    return statusCode == 401 ||
+        message.contains('بيانات الدخول') ||
+        message.contains('Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¯Ø®ÙˆÙ„');
+  }
 
   @override
   String toString() => message;

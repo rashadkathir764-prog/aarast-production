@@ -4,9 +4,18 @@ class AuthResponse {
   const AuthResponse({required this.accessToken, required this.user});
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
+    final accessToken = json['accessToken'];
+    final user = json['user'];
+    if (accessToken is! String || accessToken.trim().isEmpty) {
+      throw const FormatException('Missing accessToken');
+    }
+    if (user is! Map) {
+      throw const FormatException('Missing user');
+    }
+
     return AuthResponse(
-      accessToken: json['accessToken'].toString(),
-      user: SafeUser.fromJson(json['user'] as Map<String, dynamic>),
+      accessToken: accessToken,
+      user: SafeUser.fromJson(Map<String, dynamic>.from(user)),
     );
   }
 

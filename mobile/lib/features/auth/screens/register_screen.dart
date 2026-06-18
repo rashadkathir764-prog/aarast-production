@@ -8,6 +8,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../providers/auth_controller.dart';
+import '../utils/yemeni_phone_normalizer.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 enum _AccountType { customer, provider }
@@ -151,7 +152,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       if (value == null || value.trim().isEmpty) {
                         return 'رقم الهاتف مطلوب';
                       }
-                      if (value.trim().length < 7) {
+                      if (!isValidYemeniPhoneInput(value)) {
                         return 'رقم الهاتف غير صحيح';
                       }
                       return null;
@@ -296,9 +297,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final auth = context.read<AuthController>();
     final email = _emailController.text.trim();
+    final normalizedPhone = normalizeYemeniPhone(_phoneController.text);
     final success = await auth.register(
       name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
+      phone: normalizedPhone,
       email: email.isEmpty ? null : email,
       password: _passwordController.text,
     );
@@ -311,7 +313,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           .read<ProviderDashboardProvider>()
           .applyProvider(
             businessName: _nameController.text.trim(),
-            phone: _phoneController.text.trim(),
+            phone: normalizedPhone,
             cityId: _cityId!,
             categoryIds: [_categoryId!],
             description: _descriptionController.text,

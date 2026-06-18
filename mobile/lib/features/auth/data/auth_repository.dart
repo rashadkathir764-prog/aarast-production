@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../models/auth_response.dart';
 import '../models/safe_user.dart';
+import '../utils/yemeni_phone_normalizer.dart';
 
 class AuthRepository {
   const AuthRepository(this._apiClient, this._authStorage);
@@ -13,11 +16,15 @@ class AuthRepository {
     required String phone,
     required String password,
   }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    if (kDebugMode) {
+      debugPrint('[AarastAuth] normalizedPhone=$normalizedPhone');
+    }
     final json = await _apiClient.postJson('/auth/login', {
-      'phone': phone,
+      'phone': normalizedPhone,
       'password': password,
     });
-    final response = AuthResponse.fromJson(json);
+    final response = _parseAuthResponse(json, operation: 'login');
     await _authStorage.saveSession(
       accessToken: response.accessToken,
       user: response.user,
@@ -31,13 +38,14 @@ class AuthRepository {
     required String password,
     String? email,
   }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
     final json = await _apiClient.postJson('/auth/register', {
       'name': name,
-      'phone': phone,
+      'phone': normalizedPhone,
       if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'password': password,
     });
-    final response = AuthResponse.fromJson(json);
+    final response = _parseAuthResponse(json, operation: 'register');
     await _authStorage.saveSession(
       accessToken: response.accessToken,
       user: response.user,
@@ -57,4 +65,18 @@ class AuthRepository {
   SafeUser? readCachedUser() => _authStorage.readUser();
 
   Future<void> logout() => _authStorage.clear();
+
+  AuthResponse _parseAuthResponse(
+    Map<String, dynamic> json, {
+    required String operation,
+  }) {
+    try {
+      return AuthResponse.fromJson(json);
+    } on Object catch (error) {
+      if (kDebugMode) {
+        debugPrint('[AarastAuth] Failed to parse $operation response: $error');
+      }
+      throw const ApiException('تعذر قراءة جلسة تسجيل الدخول من الخادم.');
+    }
+  }
 }

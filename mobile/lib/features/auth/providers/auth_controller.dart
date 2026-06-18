@@ -69,7 +69,7 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
       unawaited(_offlineSyncService?.syncPendingChanges());
-    });
+    }, unauthorizedMessage: 'رقم الهاتف أو كلمة المرور غير صحيحة');
   }
 
   Future<bool> register({
@@ -104,7 +104,10 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> _submit(Future<void> Function() action) async {
+  Future<bool> _submit(
+    Future<void> Function() action, {
+    String? unauthorizedMessage,
+  }) async {
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
@@ -112,12 +115,25 @@ class AuthController extends ChangeNotifier {
     try {
       await action();
       return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.isNetworkFailure && _user == null
-          ? CachePolicy.firstLoginNeedsInternet
-          : error.message;
+    } on FormatException catch (error) {
+      if (kDebugMode) {
+        debugPrint('[AarastAuth] Invalid phone input: $error');
+      }
+      _errorMessage = 'رقم الهاتف غير صحيح';
       return false;
-    } catch (_) {
+    } on ApiException catch (error) {
+      if (error.isUnauthorized && unauthorizedMessage != null) {
+        _errorMessage = unauthorizedMessage;
+      } else if (error.isNetworkFailure) {
+        _errorMessage = 'تعذر الاتصال بالخادم';
+      } else {
+        _errorMessage = error.message;
+      }
+      return false;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[AarastAuth] Unexpected auth error: $error');
+      }
       _errorMessage = 'حدث خطأ، يرجى المحاولة مرة أخرى.';
       return false;
     } finally {

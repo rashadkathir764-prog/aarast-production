@@ -12,20 +12,23 @@ const smokeScripts = [
   ['smoke:debt-installment', 'debt-installment-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],
   ['smoke:sharing', 'sharing-smoke.js'],
+  ['smoke:notifications', 'notifications-smoke.js'],
+  ['smoke:guests', 'guests-smoke.js'],
   ['smoke:otp-profile', 'otp-profile-smoke.js'],
   ['smoke:marketplace', 'marketplace-smoke.js'],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
 ];
 
 const results = [];
+const smokeBaseUrl = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 
 console.log('\nAarast Backend Smoke: All');
-console.log(`Target: ${process.env.SMOKE_BASE_URL ?? 'default script base URLs'}\n`);
+console.log(`Target: ${smokeBaseUrl}\n`);
 
 for (const [script, fileName] of smokeScripts) {
   console.log(`===== ${script} =====`);
   const result = spawnSync(process.execPath, [path.join(__dirname, fileName)], {
-    env: process.env,
+    env: { ...process.env, SMOKE_BASE_URL: smokeBaseUrl },
     stdio: 'inherit',
   });
 

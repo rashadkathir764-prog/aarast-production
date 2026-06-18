@@ -12,7 +12,7 @@ Smoke tests are the first priority. They confirm that the most important units s
 
 Smoke API tests should come before large feature expansion because they protect the project from building new work on unstable foundations.
 
-The backend MVP regression command is `npm run smoke:all` from `backend/`. It runs the current health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, Sharing, OTP/Profile, Marketplace, and Provider Dashboard smoke scripts in sequence.
+The backend MVP regression command is `npm run smoke:all` from `backend/`. It runs the current health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, Sharing, Notifications, Guests, OTP/Profile, Marketplace, and Provider Dashboard smoke scripts in sequence.
 
 No smoke-test code is created during the Docs Foundation phase.
 
@@ -49,6 +49,7 @@ Manual QA should validate user journeys that are difficult to trust through auto
 - Wedding plan creation.
 - Adding budget categories, expenses, debts, installments, and tasks.
 - Inviting shared members.
+- Managing persisted notifications and guest lists.
 - Confirming shared members cannot see private financial details, debts, installments, attachments, or private tasks unless permission allows it.
 - Reviewing due items.
 - Comparing saved providers or services only as planning references, not paid booking or full marketplace flows.
@@ -60,6 +61,8 @@ The provider-reference backend foundation adds these focused smoke scripts:
 - `npm run smoke:otp-profile` for OTP request/verify, wrong/consumed code rejection, profile update, and settings defaults/update.
 - `npm run smoke:marketplace` for public city/category/provider/service/package reads plus favorites, quote requests, and review ownership.
 - `npm run smoke:provider-dashboard` for provider application, provider-owned profile/service/image/package management, quote request reads/status updates, and review reads.
+- `npm run smoke:notifications` for persisted notification listing, unread counts, mark-read/read-all, delete, and task due notification generation.
+- `npm run smoke:guests` for persisted guest create/list/update/delete behavior.
 
 Marketplace and provider-dashboard smokes may use `SMOKE_DATABASE_URL` to create local ACTIVE fixtures. They must not require external SMS, WhatsApp, payment, deposit, or financing providers.
 

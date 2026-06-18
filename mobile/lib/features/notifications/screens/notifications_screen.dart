@@ -3,11 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../debts/data/debt_installment_api.dart';
-import '../../debts/models/installment.dart';
-import '../../home/providers/home_dashboard_provider.dart';
-import '../../tasks/data/task_timeline_api.dart';
-import '../../tasks/models/wedding_task.dart';
+import '../models/aarast_notification.dart';
+import '../providers/notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({this.weddingPlanId, super.key});
@@ -19,169 +16,202 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  Future<_NotificationBundle>? _future;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.weddingPlanId == null) {
-        context.read<HomeDashboardProvider>().loadDashboard();
-      } else {
-        setState(() {
-          _future = _loadPlanAlerts(widget.weddingPlanId!);
-        });
-      }
+      _load();
     });
   }
 
   @override
   void didUpdateWidget(covariant NotificationsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.weddingPlanId != widget.weddingPlanId &&
-        widget.weddingPlanId != null) {
-      _future = _loadPlanAlerts(widget.weddingPlanId!);
+    if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _load();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<NotificationsProvider>();
+    final unreadInList = provider.notifications
+        .where((item) => item.isUnread)
+        .length;
+
     return AarastPageScaffold(
       title: 'التنبيهات',
-      subtitle: 'مواعيد ومهام تحتاج انتباهك',
-      child: widget.weddingPlanId == null ? _homeAlerts() : _planAlerts(),
+      subtitle: widget.weddingPlanId == null
+          ? 'كل تنبيهات الحساب المحفوظة'
+          : 'تنبيهات الخطة المحفوظة',
+      actions: [
+        if (unreadInList > 0)
+          TextButton.icon(
+            onPressed: provider.isSubmitting
+                ? null
+                : () =>
+                      provider.markAllRead(weddingPlanId: widget.weddingPlanId),
+            icon: const Icon(Icons.done_all_rounded),
+            label: const Text('قراءة الكل'),
+          ),
+      ],
+      child: RefreshIndicator(
+        color: AppTheme.dMaroon,
+        onRefresh: _load,
+        child: _body(provider),
+      ),
     );
   }
 
-  Widget _homeAlerts() {
-    final provider = context.watch<HomeDashboardProvider>();
-    if (provider.isLoading && provider.primaryPlan == null) {
+  Widget _body(NotificationsProvider provider) {
+    if (provider.isLoading && provider.notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final items = [
-      for (final task in (provider.tasks ?? []))
-        if (!task.isDone && _isNear(task.dueDate)) _AlertEntry.task(task),
-      for (final installment in (provider.dueInstallments ?? []))
-        _AlertEntry.installment(installment),
-    ];
-
-    return _AlertsList(items: items, onRefresh: provider.loadDashboard);
-  }
-
-  Widget _planAlerts() {
-    final future = _future;
-    if (future == null) {
-      return const Center(child: CircularProgressIndicator());
+    if (provider.errorMessage != null && provider.notifications.isEmpty) {
+      return ListView(
+        children: [
+          const SizedBox(height: 90),
+          AarastEmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'تعذر تحميل التنبيهات',
+            message: provider.errorMessage!,
+            action: OutlinedButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('إعادة المحاولة'),
+            ),
+          ),
+        ],
+      );
     }
-    return FutureBuilder<_NotificationBundle>(
-      future: future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return ListView(
-            children: [
-              AarastEmptyState(
-                icon: Icons.error_outline_rounded,
-                title: 'تعذر تحميل التنبيهات',
-                message: 'راجعي اتصالك وحاولي مرة أخرى.',
-                action: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _future = _loadPlanAlerts(widget.weddingPlanId!);
-                    });
-                  },
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('إعادة المحاولة'),
-                ),
-              ),
-            ],
-          );
-        }
 
-        final bundle = snapshot.data ?? const _NotificationBundle();
-        final items = [
-          for (final task in bundle.tasks)
-            if (!task.isDone && _isNear(task.dueDate)) _AlertEntry.task(task),
-          for (final installment in bundle.installments)
-            _AlertEntry.installment(installment),
-        ];
-        return _AlertsList(
-          items: items,
-          onRefresh: () async {
-            setState(() {
-              _future = _loadPlanAlerts(widget.weddingPlanId!);
-            });
-            await _future;
-          },
+    if (provider.notifications.isEmpty) {
+      return ListView(
+        children: const [
+          SizedBox(height: 90),
+          AarastEmptyState(
+            icon: Icons.notifications_none_rounded,
+            title: 'لا توجد تنبيهات الآن',
+            message:
+                'سيظهر هنا كل تنبيه محفوظ مرتبط بمهامك وأقساطك ومشاركات الخطة.',
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      itemCount: provider.notifications.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final notification = provider.notifications[index];
+        return _NotificationCard(
+          notification: notification,
+          onTap: () => provider.markRead(notification),
+          onDelete: () => _confirmDelete(provider, notification),
         );
       },
     );
   }
 
-  Future<_NotificationBundle> _loadPlanAlerts(String weddingPlanId) async {
-    final tasksApi = context.read<TaskTimelineApi>();
-    final debtsApi = context.read<DebtInstallmentApi>();
-    final results = await Future.wait<Object>([
-      tasksApi.getTasks(weddingPlanId),
-      debtsApi.getDueInstallments(weddingPlanId),
-    ]);
-    return _NotificationBundle(
-      tasks: results[0] as List<WeddingTask>,
-      installments: results[1] as List<Installment>,
+  Future<void> _load() {
+    return context.read<NotificationsProvider>().loadNotifications(
+      weddingPlanId: widget.weddingPlanId,
     );
   }
-}
 
-class _AlertsList extends StatelessWidget {
-  const _AlertsList({required this.items, required this.onRefresh});
-
-  final List<_AlertEntry> items;
-  final Future<void> Function() onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView(
-          children: const [
-            SizedBox(height: 90),
-            AarastEmptyState(
-              icon: Icons.notifications_none_rounded,
-              title: 'لا توجد تنبيهات الآن',
-              message:
-                  'كل شيء مرتب. ستظهر هنا المهام القريبة والأقساط المستحقة.',
+  Future<void> _confirmDelete(
+    NotificationsProvider provider,
+    AarastNotification notification,
+  ) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'حذف التنبيه؟',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'سيتم حذف هذا التنبيه من حسابك فقط.',
+                    style: TextStyle(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(false),
+                          child: const Text('إلغاء'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(sheetContext).pop(true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.danger,
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          label: const Text('حذف'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      color: AppTheme.dMaroon,
-      child: ListView.separated(
-        itemCount: items.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _AlertCard(entry: items[index]),
-      ),
+          ),
+        );
+      },
     );
+
+    if (confirmed == true) {
+      await provider.deleteNotification(notification);
+    }
   }
 }
 
-class _AlertCard extends StatelessWidget {
-  const _AlertCard({required this.entry});
+class _NotificationCard extends StatelessWidget {
+  const _NotificationCard({
+    required this.notification,
+    required this.onTap,
+    required this.onDelete,
+  });
 
-  final _AlertEntry entry;
+  final AarastNotification notification;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
+    final tone = _tone(notification.type);
     return AarastCard(
-      color: entry.background,
-      border: Border.all(color: entry.color.withAlpha(60)),
+      color: notification.isUnread ? tone.background : AppTheme.dCard,
+      border: Border.all(
+        color: notification.isUnread
+            ? tone.color.withAlpha(80)
+            : AppTheme.dLine,
+      ),
+      onTap: onTap,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -192,25 +222,41 @@ class _AlertCard extends StatelessWidget {
               color: AppTheme.dCard2,
               borderRadius: BorderRadius.circular(15),
             ),
-            child: Icon(entry.icon, color: entry.color),
+            child: Icon(tone.icon, color: tone.color),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  entry.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: entry.color,
-                    fontWeight: FontWeight.w900,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notification.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: tone.color,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ),
+                    if (notification.isUnread)
+                      Container(
+                        width: 9,
+                        height: 9,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.dMaroon,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  entry.body,
+                  notification.body,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
                     color: AppTheme.dInkSoft,
@@ -218,8 +264,24 @@ class _AlertCard extends StatelessWidget {
                     height: 1.45,
                   ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  _dateLabel(notification.createdAt),
+                  style: const TextStyle(
+                    color: AppTheme.dMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_outline_rounded),
+            tooltip: 'حذف التنبيه',
+            color: AppTheme.dMuted,
           ),
         ],
       ),
@@ -227,72 +289,47 @@ class _AlertCard extends StatelessWidget {
   }
 }
 
-class _NotificationBundle {
-  const _NotificationBundle({
-    this.tasks = const [],
-    this.installments = const [],
-  });
-
-  final List<WeddingTask> tasks;
-  final List<Installment> installments;
-}
-
-class _AlertEntry {
-  const _AlertEntry({
-    required this.title,
-    required this.body,
+class _NotificationTone {
+  const _NotificationTone({
     required this.icon,
     required this.color,
     required this.background,
   });
 
-  factory _AlertEntry.task(WeddingTask task) {
-    return _AlertEntry(
-      title: task.title,
-      body: task.dueDate == null
-          ? 'مهمة مفتوحة بدون تاريخ. حددي موعدًا لها من قائمة المهام.'
-          : 'تستحق في ${_formatDate(task.dueDate!)}. الأولوية: ${_priority(task.priority)}.',
-      icon: Icons.assignment_turned_in_outlined,
-      color: task.priority == 'HIGH' ? AppTheme.danger : AppTheme.dMaroon,
-      background: AppTheme.dPinkBg.withAlpha(180),
-    );
-  }
-
-  factory _AlertEntry.installment(Installment installment) {
-    return _AlertEntry(
-      title: 'قسط مستحق',
-      body: installment.dueDate == null
-          ? 'قسط بقيمة ${installment.amount} يحتاج متابعة.'
-          : 'قسط بقيمة ${installment.amount} مستحق في ${_formatDate(installment.dueDate!)}.',
-      icon: Icons.credit_card_rounded,
-      color: AppTheme.dGoldDeep,
-      background: AppTheme.dCreamBg,
-    );
-  }
-
-  final String title;
-  final String body;
   final IconData icon;
   final Color color;
   final Color background;
 }
 
-bool _isNear(DateTime? date) {
-  if (date == null) return true;
-  final today = DateTime.now();
-  final due = DateTime(date.year, date.month, date.day);
-  final current = DateTime(today.year, today.month, today.day);
-  return due.difference(current).inDays <= 7;
+_NotificationTone _tone(String type) {
+  if (type.contains('INSTALLMENT')) {
+    return const _NotificationTone(
+      icon: Icons.credit_card_rounded,
+      color: AppTheme.dGoldDeep,
+      background: AppTheme.dCreamBg,
+    );
+  }
+  if (type.contains('SHARING')) {
+    return const _NotificationTone(
+      icon: Icons.group_add_outlined,
+      color: AppTheme.dGreen,
+      background: Color(0xFFEAF7EF),
+    );
+  }
+  if (type.contains('OVERDUE')) {
+    return const _NotificationTone(
+      icon: Icons.warning_amber_rounded,
+      color: AppTheme.danger,
+      background: AppTheme.dPinkBg,
+    );
+  }
+  return const _NotificationTone(
+    icon: Icons.assignment_turned_in_outlined,
+    color: AppTheme.dMaroon,
+    background: AppTheme.dPinkBg,
+  );
 }
 
-String _formatDate(DateTime date) {
+String _dateLabel(DateTime date) {
   return '${date.day}/${date.month}/${date.year}';
-}
-
-String _priority(String value) {
-  return switch (value) {
-    'HIGH' => 'عالية',
-    'LOW' => 'منخفضة',
-    _ => 'متوسطة',
-  };
 }

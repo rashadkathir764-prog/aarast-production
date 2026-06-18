@@ -96,6 +96,58 @@ class WeddingPlansProvider extends ChangeNotifier {
     }
   }
 
+  Future<WeddingPlan?> updateWeddingPlan(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final plan = await _api.updateWeddingPlan(id, data);
+      _selectedPlan = plan;
+      _plans = [for (final item in _plans) item.id == id ? plan : item];
+      if (plan.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      return plan;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return null;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث خطة الزفاف.';
+      return null;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<WeddingPlan?> archiveWeddingPlan(String id) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final plan = await _api.archiveWeddingPlan(id);
+      _selectedPlan = plan;
+      _plans = [for (final item in _plans) item.id == id ? plan : item];
+      return plan;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return null;
+    } catch (_) {
+      _errorMessage = 'تعذر أرشفة خطة الزفاف.';
+      return null;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     _noticeMessage = null;

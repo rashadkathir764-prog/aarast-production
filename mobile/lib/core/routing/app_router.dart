@@ -23,6 +23,7 @@ import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
 import '../../features/marketplace/screens/quote_request_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/main_shell.dart';
 import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
@@ -232,12 +233,7 @@ class AppRouter {
         ),
         GoRoute(
           path: settings,
-          builder: (context, state) => const AarastComingSoonScreen(
-            title: 'الإعدادات',
-            message:
-                'صفحة الإعدادات جاهزة كمسار واضح، وسيتم ربط التفضيلات الفعلية في المرحلة المناسبة.',
-            icon: Icons.settings_outlined,
-          ),
+          builder: (context, state) => const SettingsScreen(),
         ),
         GoRoute(
           path: support,

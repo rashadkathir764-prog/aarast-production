@@ -361,8 +361,8 @@ class _WeddingPlanDashboardScreenState
             onTap: () => context.push(AppRouter.guestList(planId)),
             child: const _WireHonestNote(
               icon: Icons.groups_outlined,
-              title: 'قائمة ضيوف محلية',
-              message: 'لا يوجد ملخص مزامنة ضيوف حقيقي في اللوحة بعد.',
+              title: 'قائمة الضيوف',
+              message: 'افتحي القائمة لإدارة الحضور وحالات الدعوة المحفوظة.',
             ),
           ),
           left: _WireSectionCard(

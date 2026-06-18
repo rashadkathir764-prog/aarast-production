@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PermissionService } from './permission.service';
 import {
@@ -10,7 +11,7 @@ import {
 import { SharingService } from './sharing.service';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, NotificationsModule],
   controllers: [
     WeddingPlanSharedMembersController,
     SharedMembersController,

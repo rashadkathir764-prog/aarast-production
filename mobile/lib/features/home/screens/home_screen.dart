@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../notifications/providers/notifications_provider.dart';
 import '../providers/home_dashboard_provider.dart';
 import '../widgets/home_widgets.dart';
 
@@ -23,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HomeDashboardProvider>().loadDashboard();
+      _maybeReadNotifications(context)?.loadUnreadCount();
     });
   }
 
@@ -30,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final provider = context.watch<HomeDashboardProvider>();
+    final notifications = _maybeWatchNotifications(context);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -59,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               children: [
                                 HomeTopHeader(
                                   userName: auth.user?.name,
+                                  notificationCount:
+                                      notifications?.unreadCount ?? 0,
                                   onNotifications: () {
                                     final plan = provider.primaryPlan;
                                     context.push(
@@ -119,6 +124,22 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('أنشئي خطة أولاً')));
+  }
+}
+
+NotificationsProvider? _maybeReadNotifications(BuildContext context) {
+  try {
+    return context.read<NotificationsProvider>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
+
+NotificationsProvider? _maybeWatchNotifications(BuildContext context) {
+  try {
+    return context.watch<NotificationsProvider>();
+  } on ProviderNotFoundException {
+    return null;
   }
 }
 

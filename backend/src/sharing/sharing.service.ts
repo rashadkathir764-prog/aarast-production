@@ -4,8 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { SharedMember, SharedMemberRole, User, WeddingPlan } from '@prisma/client';
+import {
+  NotificationType,
+  SharedMember,
+  SharedMemberRole,
+  User,
+  WeddingPlan,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateSharedMemberDto } from './dto/create-shared-member.dto';
 import { UpdateSharedMemberDto } from './dto/update-shared-member.dto';
@@ -47,6 +54,7 @@ export class SharingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(
@@ -83,6 +91,20 @@ export class SharingService {
       include: {
         user: { select: { id: true, name: true, phone: true } },
       },
+    });
+
+    await this.notifications.createNotification({
+      userId,
+      weddingPlanId,
+      type: NotificationType.SHARING_INVITATION,
+      title: 'تمت مشاركتك في خطة زفاف',
+      body: `تمت إضافتك إلى خطة "${plan.title}" بصلاحية ${member.role}.`,
+      data: {
+        sharedMemberId: member.id,
+        weddingPlanId,
+        role: member.role,
+      },
+      dedupeKey: `${userId}:sharing:${member.id}:invitation`,
     });
 
     return this.toMemberResponse(member);
@@ -134,6 +156,25 @@ export class SharingService {
       include: {
         user: { select: { id: true, name: true, phone: true } },
       },
+    });
+
+    const plan = await this.prisma.weddingPlan.findUnique({
+      where: { id: member.weddingPlanId },
+      select: { title: true },
+    });
+
+    await this.notifications.createNotification({
+      userId: member.userId,
+      weddingPlanId: member.weddingPlanId,
+      type: NotificationType.SHARING_UPDATED,
+      title: 'تم تحديث صلاحيات المشاركة',
+      body: `تم تحديث صلاحياتك في خطة "${plan?.title ?? 'زفاف'}".`,
+      data: {
+        sharedMemberId: member.id,
+        weddingPlanId: member.weddingPlanId,
+        role: member.role,
+      },
+      dedupeKey: `${member.userId}:sharing:${member.id}:updated:${member.updatedAt.getTime()}`,
     });
 
     return this.toMemberResponse(member);

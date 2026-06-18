@@ -10,6 +10,7 @@ import '../../sharing/models/shared_member.dart';
 import '../../tasks/models/wedding_task.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
+import '../providers/wedding_plans_provider.dart';
 import '../widgets/aarast_dashboard_widgets.dart';
 
 class PlanCenterScreen extends StatefulWidget {
@@ -173,7 +174,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           completedTasks: completedTasks,
           totalTasks: tasksAvailable ? tasks.length : null,
           canManagePlan: canManagePlan,
-          onEdit: () => _showUnavailable('تعديل بيانات الخطة غير متاح بعد'),
+          onEdit: () => _showEditPlanSheet(provider, plan),
         ),
         const SizedBox(height: 10),
         _ProgressSummaryCard(
@@ -200,7 +201,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onSharing: canOpenSharing
               ? () => context.push(AppRouter.sharing(plan.id))
-              : () => _showUnavailable('هذا القسم غير متاح بعد'),
+              : () => _showUnavailable('إدارة المشاركة متاحة لصاحب الخطة فقط.'),
           sharingEnabled: canOpenSharing,
           budgetEnabled: canOpenFinance,
           debtsEnabled: canOpenDebts,
@@ -214,7 +215,12 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
         ),
         const SizedBox(height: 10),
-        const _PlanSettingsCard(),
+        _PlanSettingsCard(
+          plan: plan,
+          canManagePlan: canManagePlan,
+          onEdit: () => _showEditPlanSheet(provider, plan),
+          onArchive: () => _showArchivePlanSheet(provider, plan),
+        ),
       ],
     );
   }
@@ -371,6 +377,229 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         );
       },
     );
+  }
+
+  Future<void> _showEditPlanSheet(
+    DashboardSummaryProvider dashboardProvider,
+    WeddingPlan plan,
+  ) async {
+    final weddingPlansProvider = context.read<WeddingPlansProvider>();
+    final titleController = TextEditingController(text: plan.title);
+    final cityController = TextEditingController(text: plan.city ?? '');
+    var selectedDate = plan.weddingDate;
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              14,
+              20,
+              20 + MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setSheetState) {
+                return SafeArea(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Align(
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: 44,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: _pcLine,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'تعديل بيانات الخطة',
+                          style: TextStyle(
+                            color: _pcInk,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: titleController,
+                          decoration: const InputDecoration(
+                            labelText: 'اسم الخطة',
+                            prefixIcon: Icon(Icons.edit_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: cityController,
+                          decoration: const InputDecoration(
+                            labelText: 'المدينة',
+                            prefixIcon: Icon(Icons.location_on_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          style: _pcOutlinedButtonStyle(),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: sheetContext,
+                              initialDate: selectedDate ?? DateTime.now(),
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setSheetState(() => selectedDate = picked);
+                            }
+                          },
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          label: Text(
+                            selectedDate == null
+                                ? 'اختيار تاريخ الزواج'
+                                : _dateLabel(selectedDate),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        FilledButton.icon(
+                          onPressed: () async {
+                            final title = titleController.text.trim();
+                            if (title.isEmpty) return;
+                            final data = <String, dynamic>{
+                              'title': title,
+                              'city': cityController.text.trim(),
+                              if (selectedDate != null)
+                                'weddingDate': selectedDate!.toIso8601String(),
+                            };
+                            final updated = await weddingPlansProvider
+                                .updateWeddingPlan(plan.id, data);
+                            if (updated != null && sheetContext.mounted) {
+                              Navigator.of(sheetContext).pop(true);
+                            }
+                          },
+                          icon: const Icon(Icons.save_outlined),
+                          label: const Text('حفظ التعديل'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+
+    titleController.dispose();
+    cityController.dispose();
+
+    if (saved == true && mounted) {
+      await dashboardProvider.loadDashboard(
+        plan.id,
+        sharedMember: widget.sharedMember,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('تم تحديث الخطة.')));
+    } else {
+      final error = weddingPlansProvider.errorMessage;
+      if (error != null && mounted) _showUnavailable(error);
+    }
+  }
+
+  Future<void> _showArchivePlanSheet(
+    DashboardSummaryProvider dashboardProvider,
+    WeddingPlan plan,
+  ) async {
+    final weddingPlansProvider = context.read<WeddingPlansProvider>();
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'أرشفة الخطة؟',
+                    style: TextStyle(
+                      color: _pcInk,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'سيتم نقل "${plan.title}" إلى الأرشيف بدون حذف البيانات.',
+                    style: const TextStyle(
+                      color: _pcMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(false),
+                          child: const Text('إلغاء'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.of(sheetContext).pop(true),
+                          icon: const Icon(Icons.archive_outlined),
+                          label: const Text('أرشفة'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    final archived = await weddingPlansProvider.archiveWeddingPlan(plan.id);
+    if (archived != null && mounted) {
+      await dashboardProvider.loadDashboard(
+        plan.id,
+        sharedMember: widget.sharedMember,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('تمت أرشفة الخطة.')));
+    } else {
+      final error = weddingPlansProvider.errorMessage;
+      if (error != null && mounted) _showUnavailable(error);
+    }
   }
 
   void _showFinancialAccessDenied() {
@@ -924,45 +1153,60 @@ class _ParticipantsCard extends StatelessWidget {
 }
 
 class _PlanSettingsCard extends StatelessWidget {
-  const _PlanSettingsCard();
+  const _PlanSettingsCard({
+    required this.plan,
+    required this.canManagePlan,
+    required this.onEdit,
+    required this.onArchive,
+  });
+
+  final WeddingPlan plan;
+  final bool canManagePlan;
+  final VoidCallback onEdit;
+  final VoidCallback onArchive;
 
   @override
   Widget build(BuildContext context) {
-    return const _PcCard(
-      padding: EdgeInsets.all(14),
+    final disabledSubtitle = canManagePlan ? null : 'يتطلب صلاحية إدارة الخطة';
+    return _PcCard(
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PcSectionTitle(
+          const _PcSectionTitle(
             title: 'إعدادات الخطة',
             icon: Icons.settings_outlined,
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           _SettingsRow(
             icon: Icons.edit_outlined,
             title: 'تغيير اسم الخطة',
-            subtitle: 'غير متاح بعد',
+            subtitle: disabledSubtitle ?? plan.title,
+            enabled: canManagePlan,
+            onTap: onEdit,
           ),
           _SettingsRow(
             icon: Icons.calendar_month_outlined,
             title: 'تغيير تاريخ الزواج',
-            subtitle: 'غير متاح بعد',
+            subtitle: disabledSubtitle ?? _dateLabel(plan.weddingDate),
+            enabled: canManagePlan,
+            onTap: onEdit,
           ),
           _SettingsRow(
             icon: Icons.location_on_outlined,
             title: 'تغيير المدينة',
-            subtitle: 'غير متاح بعد',
+            subtitle: disabledSubtitle ?? _cityLabel(plan.city),
+            enabled: canManagePlan,
+            onTap: onEdit,
           ),
           _SettingsRow(
             icon: Icons.archive_outlined,
             title: 'أرشفة الخطة',
-            subtitle: 'غير متاح بعد',
-          ),
-          _SettingsRow(
-            icon: Icons.delete_outline_rounded,
-            title: 'حذف الخطة',
-            subtitle: 'غير متاح بدون تدفق حذف آمن',
-            danger: true,
+            subtitle: canManagePlan
+                ? 'نقلها للأرشيف بدون حذف البيانات'
+                : disabledSubtitle!,
+            enabled: canManagePlan && plan.status != 'ARCHIVED',
+            onTap: onArchive,
           ),
         ],
       ),
@@ -1102,57 +1346,66 @@ class _SettingsRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.danger = false,
+    required this.onTap,
+    this.enabled = true,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final bool danger;
+  final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? const Color(0xFF777777) : _pcText;
-    return Container(
-      constraints: const BoxConstraints(minHeight: 44),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: _pcLine, width: 0.8)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 21),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
+    final color = enabled ? _pcText : _pcMuted;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: _pcLine, width: 0.8)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 21),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _pcMuted,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _pcMuted,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.lock_outline_rounded, color: _pcMuted, size: 16),
-        ],
+            const SizedBox(width: 8),
+            Icon(
+              enabled ? Icons.chevron_left_rounded : Icons.lock_outline_rounded,
+              color: _pcMuted,
+              size: enabled ? 20 : 16,
+            ),
+          ],
+        ),
       ),
     );
   }

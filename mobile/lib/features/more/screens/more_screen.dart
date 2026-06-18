@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
+import '../../notifications/providers/notifications_provider.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -22,6 +23,7 @@ class _MoreScreenState extends State<MoreScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProviderDashboardProvider>().loadDashboard();
+      _maybeReadNotifications(context)?.loadUnreadCount();
     });
   }
 
@@ -29,6 +31,7 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final providerDashboard = context.watch<ProviderDashboardProvider>();
+    final notifications = _maybeWatchNotifications(context);
     final user = auth.user;
     final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
@@ -48,6 +51,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 children: [
                   _MoreHeader(
                     name: name,
+                    notificationCount: notifications?.unreadCount ?? 0,
                     onNotifications: () =>
                         context.push(AppRouter.notifications),
                   ),
@@ -225,10 +229,31 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 }
 
+NotificationsProvider? _maybeReadNotifications(BuildContext context) {
+  try {
+    return context.read<NotificationsProvider>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
+
+NotificationsProvider? _maybeWatchNotifications(BuildContext context) {
+  try {
+    return context.watch<NotificationsProvider>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
+
 class _MoreHeader extends StatelessWidget {
-  const _MoreHeader({required this.name, required this.onNotifications});
+  const _MoreHeader({
+    required this.name,
+    required this.notificationCount,
+    required this.onNotifications,
+  });
 
   final String name;
+  final int notificationCount;
   final VoidCallback onNotifications;
 
   @override
@@ -268,7 +293,7 @@ class _MoreHeader extends StatelessWidget {
         const SizedBox(width: 10),
         _RoundIconButton(
           icon: Icons.notifications_none_rounded,
-          badge: '3',
+          badge: notificationCount > 0 ? '$notificationCount' : null,
           onTap: onNotifications,
         ),
       ],

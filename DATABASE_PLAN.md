@@ -21,12 +21,14 @@ This document describes planned entities at a planning level only. It does not d
 | Entity | Purpose |
 | --- | --- |
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
+| Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user. |
 | BudgetCategory | Implemented for owner-scoped WeddingPlan budget groups, with optional target amounts and links to expenses. |
 | Expense | Implemented for owner-scoped WeddingPlan spending records with amount, status, optional date, optional note, and optional BudgetCategory link. |
 | Debt | Implemented for owner-scoped WeddingPlan obligations, including creditor, optional manually entered creditor phone, title, total amount, paid amount, optional due date, status, and optional note. Contact picking is not implemented in Phase 2A. |
 | Installment | Implemented for owner-scoped scheduled payments under debts, including amount, optional due date, optional paid date, status, and optional note. |
 | Task | Implemented as `WeddingTask` for owner-scoped WeddingPlan planning work, including title, optional description, optional due date, status, priority, and timestamps. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. A shared member links a User to a WeddingPlan with role `VIEWER`, `CONTRIBUTOR`, or `MANAGER`, plus explicit permissions for budget, expenses, debts, task management, and financial-record management. |
+| Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
 | QuoteRequest | Represents a request sent to one or more providers for pricing or package details. |
 | Attachment | Represents an optional supporting file or image for expenses, debts, installments, quote requests, or provider agreements. This is planning-level only and does not require implementation in the Docs Foundation phase. |
 
@@ -57,6 +59,8 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `OtpCode` for provider-agnostic local OTP request/verify flows, storing only hashed codes.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
 - `NotificationPreference` for safe default account settings.
+- `Notification` for persisted task, installment, and sharing alerts with deduplication.
+- `Guest` for saved WeddingPlan guest lists and invitation statuses.
 - `City` and `ProviderCategory` for Yemen-first marketplace filters.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, and `BookingLead` for saved providers, reviews, quote requests, and non-paid lead context.

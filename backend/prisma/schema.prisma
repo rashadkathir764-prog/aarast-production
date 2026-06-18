@@ -100,6 +100,31 @@ enum BookingLeadStatus {
   COMPLETED
 }
 
+enum NotificationType {
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  INSTALLMENT_DUE_SOON
+  INSTALLMENT_OVERDUE
+  SHARING_INVITATION
+  SHARING_UPDATED
+  GENERAL
+}
+
+enum GuestSide {
+  GROOM
+  BRIDE
+  FAMILY
+  FRIEND
+  OTHER
+}
+
+enum GuestStatus {
+  INVITED
+  CONFIRMED
+  DECLINED
+  PENDING
+}
+
 model User {
   id                     String                  @id @default(cuid())
   name                   String
@@ -117,6 +142,7 @@ model User {
   weddingPlans           WeddingPlan[]
   sharedWeddingPlans     SharedMember[]
   notificationPreference NotificationPreference?
+  notifications          Notification[]
   providerProfile        Provider?
   favoriteProviders      FavoriteProvider[]
   providerReviews        ProviderReview[]
@@ -144,6 +170,8 @@ model WeddingPlan {
   sharedMembers    SharedMember[]
   quoteRequests    QuoteRequest[]
   bookingLeads     BookingLead[]
+  notifications    Notification[]
+  guests           Guest[]
 }
 
 model BudgetCategory {
@@ -173,20 +201,20 @@ model Expense {
 }
 
 model Debt {
-  id              String        @id @default(cuid())
-  weddingPlanId   String
-  creditorName    String
-  creditorPhone   String?
-  title           String
-  totalAmount     Decimal       @db.Decimal(14, 2)
-  paidAmount      Decimal       @default(0) @db.Decimal(14, 2)
-  dueDate         DateTime?
-  status          DebtStatus    @default(OPEN)
-  note            String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  weddingPlan     WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
-  installments    Installment[]
+  id            String        @id @default(cuid())
+  weddingPlanId String
+  creditorName  String
+  creditorPhone String?
+  title         String
+  totalAmount   Decimal       @db.Decimal(14, 2)
+  paidAmount    Decimal       @default(0) @db.Decimal(14, 2)
+  dueDate       DateTime?
+  status        DebtStatus    @default(OPEN)
+  note          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  weddingPlan   WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  installments  Installment[]
 }
 
 model Installment {
@@ -264,6 +292,41 @@ model NotificationPreference {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  userId        String
+  weddingPlanId String?
+  type          NotificationType
+  title         String
+  body          String           @db.Text
+  data          Json?
+  dedupeKey     String?          @unique
+  readAt        DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan   WeddingPlan?     @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([weddingPlanId, createdAt])
+}
+
+model Guest {
+  id            String      @id @default(cuid())
+  weddingPlanId String
+  name          String
+  phone         String?
+  side          GuestSide   @default(OTHER)
+  status        GuestStatus @default(INVITED)
+  seatsCount    Int         @default(1)
+  notes         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+
+  @@index([weddingPlanId, status])
 }
 
 model City {

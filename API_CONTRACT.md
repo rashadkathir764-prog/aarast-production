@@ -113,6 +113,44 @@ Response:
 
 Shared members can read basic plan info. Updating or archiving requires owner access or manager-style sharing permission.
 
+## Notifications
+
+Protected routes:
+
+- `GET /notifications`
+- `GET /notifications/unread-count`
+- `PATCH /notifications/:id/read`
+- `PATCH /notifications/read-all`
+- `DELETE /notifications/:id`
+
+`GET /notifications` and `GET /notifications/unread-count` accept an optional `weddingPlanId` query parameter. Notifications are always owned by the authenticated user. The backend may create idempotent task and installment due notifications while listing/counting notifications.
+
+Notification response:
+
+```json
+{
+  "id": "notification_id",
+  "userId": "user_id",
+  "weddingPlanId": "plan_id",
+  "type": "TASK_DUE_SOON",
+  "title": "مهمة قريبة",
+  "body": "Confirm hall - تستحق قريباً (20/12/2026).",
+  "data": {
+    "taskId": "task_id",
+    "weddingPlanId": "plan_id"
+  },
+  "readAt": null,
+  "createdAt": "2026-06-18T00:00:00.000Z",
+  "updatedAt": "2026-06-18T00:00:00.000Z"
+}
+```
+
+Unread count response:
+
+```json
+{ "count": 3 }
+```
+
 ## Budget Categories
 
 Protected routes:
@@ -295,6 +333,47 @@ Shared member response:
 The `user` object is safe display data only. It must not include `passwordHash`, refresh tokens, email, role, status, or a full user object.
 
 Only the owner can add, list, update, or remove shared members for a WeddingPlan. The owner cannot add themselves as a shared member, unknown phone numbers are rejected without auto-creating users, and duplicate members are rejected.
+
+## Guests
+
+Protected routes:
+
+- `GET /wedding-plans/:weddingPlanId/guests`
+- `POST /wedding-plans/:weddingPlanId/guests`
+- `PATCH /guests/:id`
+- `DELETE /guests/:id`
+
+Create guest request:
+
+```json
+{
+  "name": "Guest Name",
+  "phone": "+967700000000",
+  "side": "FAMILY",
+  "status": "INVITED",
+  "seatsCount": 1,
+  "notes": "Optional note"
+}
+```
+
+Guest response:
+
+```json
+{
+  "id": "guest_id",
+  "weddingPlanId": "plan_id",
+  "name": "Guest Name",
+  "phone": "+967700000000",
+  "side": "FAMILY",
+  "status": "INVITED",
+  "seatsCount": 1,
+  "notes": "Optional note",
+  "createdAt": "2026-06-18T00:00:00.000Z",
+  "updatedAt": "2026-06-18T00:00:00.000Z"
+}
+```
+
+Users with readable plan access can list guests. Creating, updating, and deleting guests requires owner or manager access.
 
 ## Error Behavior
 

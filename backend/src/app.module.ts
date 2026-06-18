@@ -15,6 +15,8 @@ import { MarketplaceModule } from './marketplace/marketplace.module';
 import { ProviderDashboardModule } from './provider-dashboard/provider-dashboard.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { GuestsModule } from './guests/guests.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { AdminModule } from './admin/admin.module';
     MarketplaceModule,
     ProviderDashboardModule,
     DashboardModule,
+    NotificationsModule,
+    GuestsModule,
     AdminModule,
   ],
   controllers: [HealthController],

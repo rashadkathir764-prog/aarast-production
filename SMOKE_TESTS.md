@@ -33,13 +33,15 @@ Smoke tests should verify:
 - Installments
 - Tasks
 - Sharing
+- Notifications
+- Guests
 - Quote Requests
 - Attachments
 - Timeline / Due Dates
 
 ## MVP Smoke-Test Boundaries
 
-- `smoke:all` is the backend MVP regression smoke command. It runs health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, Sharing, OTP/Profile, Marketplace, and Provider Dashboard smoke scripts in sequence.
+- `smoke:all` is the backend MVP regression smoke command. It runs health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, Sharing, Notifications, Guests, OTP/Profile, Marketplace, and Provider Dashboard smoke scripts in sequence.
 - Smoke tests must not validate payment processing, deposit confirmation, loan, credit, financing, or confirmed booking behavior in the MVP.
 - Future Wedding Financial OS smoke tests must verify that private financial data is not exposed to shared members unless permissions allow it.
 - This document is documentation only; no smoke-test code is created in this phase.
@@ -51,6 +53,8 @@ From `backend/`:
 - `npm run smoke:otp-profile`
 - `npm run smoke:marketplace`
 - `npm run smoke:provider-dashboard`
+- `npm run smoke:notifications`
+- `npm run smoke:guests`
 
 All scripts use `SMOKE_BASE_URL`; marketplace/provider-dashboard smokes can also use `SMOKE_DATABASE_URL` to create local active provider fixtures safely. These smoke tests cover planning/reference and quote-lead behavior only, not paid bookings or payment state.
 

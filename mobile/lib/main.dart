@@ -13,9 +13,15 @@ import 'features/debts/data/debt_installment_api.dart';
 import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
 import 'features/finance/providers/finance_provider.dart';
+import 'features/guests/data/guests_api.dart';
+import 'features/guests/providers/guests_provider.dart';
 import 'features/home/providers/home_dashboard_provider.dart';
 import 'features/marketplace/data/marketplace_api.dart';
 import 'features/marketplace/providers/marketplace_provider.dart';
+import 'features/notifications/data/notifications_api.dart';
+import 'features/notifications/providers/notifications_provider.dart';
+import 'features/settings/data/settings_api.dart';
+import 'features/settings/providers/settings_provider.dart';
 import 'features/sharing/data/sharing_api.dart';
 import 'features/sharing/providers/sharing_provider.dart';
 import 'features/tasks/data/task_timeline_api.dart';
@@ -57,6 +63,9 @@ Future<void> main() async {
   final sharingApi = SharingApi(apiClient, offline: offlineSyncService);
   final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
   final providerDashboardApi = ProviderDashboardApi(apiClient);
+  final notificationsApi = NotificationsApi(apiClient);
+  final guestsApi = GuestsApi(apiClient);
+  final settingsApi = SettingsApi(apiClient);
 
   runApp(
     MultiProvider(
@@ -75,6 +84,9 @@ Future<void> main() async {
         Provider<SharingApi>.value(value: sharingApi),
         Provider<MarketplaceApi>.value(value: marketplaceApi),
         Provider<ProviderDashboardApi>.value(value: providerDashboardApi),
+        Provider<NotificationsApi>.value(value: notificationsApi),
+        Provider<GuestsApi>.value(value: guestsApi),
+        Provider<SettingsApi>.value(value: settingsApi),
         ChangeNotifierProvider(
           create: (_) => AuthController(
             authRepository,
@@ -112,6 +124,11 @@ Future<void> main() async {
           create: (_) => TaskTimelineProvider(taskTimelineApi),
         ),
         ChangeNotifierProvider(create: (_) => SharingProvider(sharingApi)),
+        ChangeNotifierProvider(
+          create: (_) => NotificationsProvider(notificationsApi),
+        ),
+        ChangeNotifierProvider(create: (_) => GuestsProvider(guestsApi)),
+        ChangeNotifierProvider(create: (_) => SettingsProvider(settingsApi)),
         ChangeNotifierProvider(
           create: (_) => ProviderMarketplaceProvider(marketplaceApi),
         ),

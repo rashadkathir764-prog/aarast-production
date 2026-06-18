@@ -153,6 +153,10 @@ class WeddingPlansApi {
 
   Future<WeddingPlan> archiveWeddingPlan(String id) async {
     final json = await _apiClient.patchJson('/wedding-plans/$id/archive', {});
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: json,
+    );
     return WeddingPlan.fromJson(json);
   }
 

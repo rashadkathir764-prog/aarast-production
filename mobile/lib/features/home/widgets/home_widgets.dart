@@ -120,12 +120,14 @@ class HomeErrorCard extends StatelessWidget {
 class HomeTopHeader extends StatelessWidget {
   const HomeTopHeader({
     required this.userName,
+    required this.notificationCount,
     required this.onNotifications,
     required this.onLogout,
     super.key,
   });
 
   final String? userName;
+  final int notificationCount;
   final VoidCallback onNotifications;
   final Future<void> Function() onLogout;
 
@@ -202,7 +204,7 @@ class HomeTopHeader extends StatelessWidget {
         const SizedBox(width: 10),
         _HeaderCircleIcon(
           icon: Icons.notifications_none_rounded,
-          badgeCount: 3,
+          badgeCount: notificationCount,
           onTap: onNotifications,
         ),
       ],

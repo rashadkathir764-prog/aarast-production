@@ -40,6 +40,7 @@ import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../config/app_feature_flags.dart';
+import 'app_route_guard_resolver.dart';
 import '../widgets/coming_soon_screen.dart';
 
 class AppRouter {
@@ -157,11 +158,19 @@ class AppRouter {
   static const sharedWeddingPlans = '/shared/wedding-plans';
 
   static String? guestOnboardingRedirect(AppFeatureFlags flags) {
-    return flags.enableGuestFirstOnboarding ? null : onboarding;
+    return AppRouteGuardResolver.featureFlagRedirect(
+      flags: flags,
+      flagName: 'enableGuestFirstOnboarding',
+      disabledRedirect: onboarding,
+    );
   }
 
   static String? userNavigationShellRedirect(AppFeatureFlags flags) {
-    return flags.enableNewUserBottomNavigation ? null : home;
+    return AppRouteGuardResolver.featureFlagRedirect(
+      flags: flags,
+      flagName: 'enableNewUserBottomNavigation',
+      disabledRedirect: home,
+    );
   }
 
   static GoRouter create({AppFeatureFlags flags = AppFeatureFlags.defaults}) {

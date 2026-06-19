@@ -38,5 +38,20 @@ void main() {
     test('keeps the default app route unchanged', () {
       expect(AppRouter.splash, '/');
     });
+
+    test('default create starts at splash and uses safe default flags', () {
+      final router = AppRouter.create();
+      addTearDown(router.dispose);
+
+      expect(router.routeInformationProvider.value.uri.path, AppRouter.splash);
+      expect(
+        AppRouter.guestOnboardingRedirect(AppFeatureFlags.defaults),
+        AppRouter.onboarding,
+      );
+      expect(
+        AppRouter.userNavigationShellRedirect(AppFeatureFlags.defaults),
+        AppRouter.home,
+      );
+    });
   });
 }

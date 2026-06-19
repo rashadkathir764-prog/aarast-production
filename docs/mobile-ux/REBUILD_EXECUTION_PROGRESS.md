@@ -22,7 +22,7 @@ Mode: Autonomous Sequential Execution
 | 4 | Navigation Blueprint | DONE | `docs/mobile-ux/NAVIGATION_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined user/provider bottom navigation, + action sheet, operation entry points, route guards, deep-link guards, duplicate restrictions, and user/provider separation. | `35a2a53` |
 | 5 | Roles & Permissions | DONE | `docs/architecture/DATA_MODEL_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Covered current `UserRole`, `SharedMemberRole`, shared permission booleans, persona-vs-role separation, provider isolation, and future permission gaps inside Data Model Blueprint. | Pending after data model commit |
 | 6 | Data Model Blueprint | DONE | `docs/architecture/DATA_MODEL_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Read `backend/prisma/schema.prisma`; documented current models/enums, missing concepts, relationships, guest-first support, quote-to-plan gaps, notifications, offline/sync, location matching, migrations, and risks. | Pending after commit |
-| 7 | Backend Flow Blueprint | TODO | - | - | Must stay planning-level until data/API Blueprint is complete. | - |
+| 7 | Backend Flow Blueprint | DONE | `docs/architecture/BACKEND_FLOW_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined onboarding, create plan, provider quote, money, debt/installment, task, guest, sharing, notification flows plus endpoint suggestions, permissions, errors, and events. | Pending after commit |
 | 8 | Auth & Guest Strategy | TODO | - | - | Must resolve current auth-first startup versus required guest-first strategy. | - |
 | 9 | Location & Provider Matching | TODO | - | - | Must connect Yemen location fields to provider ranking without heavy maps first. | - |
 | 10 | Notifications Blueprint | TODO | - | - | Must define notification types, deep links, permission timing, and no first-launch push request. | - |
@@ -63,3 +63,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 2. |
 | `git diff --check` | PASS | Markdown-only changes for phase 3. |
 | `git diff --check` | PASS | Markdown-only changes for phase 4 data model and roles/permissions coverage. |
+| `git diff --check` | PASS | Markdown-only changes for phase 5 backend flow. |

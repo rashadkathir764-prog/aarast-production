@@ -23,8 +23,8 @@ Mode: Autonomous Sequential Execution
 | 5 | Roles & Permissions | DONE | `docs/architecture/DATA_MODEL_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Covered current `UserRole`, `SharedMemberRole`, shared permission booleans, persona-vs-role separation, provider isolation, and future permission gaps inside Data Model Blueprint. | Pending after data model commit |
 | 6 | Data Model Blueprint | DONE | `docs/architecture/DATA_MODEL_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Read `backend/prisma/schema.prisma`; documented current models/enums, missing concepts, relationships, guest-first support, quote-to-plan gaps, notifications, offline/sync, location matching, migrations, and risks. | Pending after commit |
 | 7 | Backend Flow Blueprint | DONE | `docs/architecture/BACKEND_FLOW_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined onboarding, create plan, provider quote, money, debt/installment, task, guest, sharing, notification flows plus endpoint suggestions, permissions, errors, and events. | `3c94ac9` |
-| 8 | Auth & Guest Strategy | DONE | `docs/architecture/AUTH_GUEST_STRATEGY.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined guest capabilities, account gates, resume behavior, migration steps, offline constraints, provider auth separation, and security rules. | Pending after commit |
-| 9 | Location & Provider Matching | TODO | - | - | Must connect Yemen location fields to provider ranking without heavy maps first. | - |
+| 8 | Auth & Guest Strategy | DONE | `docs/architecture/AUTH_GUEST_STRATEGY.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined guest capabilities, account gates, resume behavior, migration steps, offline constraints, provider auth separation, and security rules. | `5141653` |
+| 9 | Location & Provider Matching | DONE | `docs/architecture/LOCATION_PROVIDER_MATCHING.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined plan/provider location fields, provider ranking rules, location permission timing, quote location privacy, offline/cached provider behavior, and data model implications. | Pending after commit |
 | 10 | Notifications Blueprint | TODO | - | - | Must define notification types, deep links, permission timing, and no first-launch push request. | - |
 | 11 | Design System | TODO | - | - | Must define tokens/components before visual polish. | - |
 | 12 | State Management Plan | TODO | - | - | Must resolve duplicated Home/Dashboard summary providers and active plan ownership. | - |
@@ -65,3 +65,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 4 data model and roles/permissions coverage. |
 | `git diff --check` | PASS | Markdown-only changes for phase 5 backend flow. |
 | `git diff --check` | PASS | Markdown-only changes for phase 6 auth and guest strategy. |
+| `git diff --check` | PASS | Markdown-only changes for phase 7 location/provider matching. |

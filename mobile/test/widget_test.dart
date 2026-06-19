@@ -4,15 +4,16 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 void main() {
   setUpAll(() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
-  testWidgets('shows Arabic onboarding screen when no token is stored', (
+
+  testWidgets('shows Arabic onboarding gate when no token is stored', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -37,8 +38,8 @@ void main() {
 
     await tester.pumpAndSettle();
 
-    expect(find.text('أهلاً بك في أعرسِت'), findsOneWidget);
-    expect(find.text('ابدئي الآن'), findsOneWidget);
-    expect(find.text('لديك حساب بالفعل؟ تسجيل الدخول'), findsOneWidget);
+    expect(find.text('ألف مبروك!'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.text('إنشاء حساب'), findsOneWidget);
   });
 }

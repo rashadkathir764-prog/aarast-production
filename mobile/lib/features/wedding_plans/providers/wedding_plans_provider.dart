@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../data/wedding_plans_api.dart';
+import '../models/active_wedding_plan.dart';
+import '../models/onboarding_complete.dart';
 import '../models/wedding_plan.dart';
 
 class WeddingPlansProvider extends ChangeNotifier {
@@ -16,6 +18,7 @@ class WeddingPlansProvider extends ChangeNotifier {
   String? _noticeMessage;
   List<WeddingPlan> _plans = const [];
   WeddingPlan? _selectedPlan;
+  ActiveWeddingPlan? _activePlan;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -23,6 +26,34 @@ class WeddingPlansProvider extends ChangeNotifier {
   String? get noticeMessage => _noticeMessage;
   List<WeddingPlan> get plans => _plans;
   WeddingPlan? get selectedPlan => _selectedPlan;
+  ActiveWeddingPlan? get activePlan => _activePlan;
+  bool get hasActivePlan => _activePlan != null;
+  bool get shouldOpenOnboarding =>
+      !_isLoading && _errorMessage == null && _activePlan == null;
+
+  Future<void> loadActiveWeddingPlan() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _activePlan = await _api.getActiveWeddingPlan();
+      _selectedPlan = _activePlan?.toWeddingPlan();
+      if (_selectedPlan != null) {
+        _plans = [
+          _selectedPlan!,
+          ..._plans.where((item) => item.id != _selectedPlan!.id),
+        ];
+      }
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+    } catch (_) {
+      _errorMessage = 'تعذر تحميل الخطة الحالية.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> loadMyWeddingPlans() async {
     _isLoading = true;
@@ -89,6 +120,33 @@ class WeddingPlansProvider extends ChangeNotifier {
       return null;
     } catch (_) {
       _errorMessage = 'تعذر إنشاء خطة الزفاف.';
+      return null;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<OnboardingCompleteResponse?> completeOnboarding(
+    OnboardingCompleteRequest request,
+  ) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _api.completeOnboarding(request);
+      _activePlan = response.activeWeddingPlan;
+      final plan = response.activeWeddingPlan.toWeddingPlan();
+      _selectedPlan = plan;
+      _plans = [plan, ..._plans.where((item) => item.id != plan.id)];
+      return response;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return null;
+    } catch (_) {
+      _errorMessage = 'تعذر إنشاء خطتك. تأكد من الاتصال وحاول مرة أخرى.';
       return null;
     } finally {
       _isSubmitting = false;

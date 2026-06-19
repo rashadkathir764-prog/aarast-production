@@ -32,10 +32,16 @@ class _MainShellState extends State<MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<WeddingPlansProvider>();
-      await provider.loadMyWeddingPlans();
-      if (!mounted || _activePlanId != null || provider.plans.isEmpty) return;
+      await provider.loadActiveWeddingPlan();
+      if (!mounted || _activePlanId != null) return;
+      final activePlan = provider.activePlan;
+      if (activePlan == null && provider.errorMessage == null) {
+        context.go(AppRouter.onboarding);
+        return;
+      }
+      if (activePlan == null) return;
       setState(() {
-        _activePlanId = provider.plans.first.id;
+        _activePlanId = activePlan.id;
       });
     });
   }

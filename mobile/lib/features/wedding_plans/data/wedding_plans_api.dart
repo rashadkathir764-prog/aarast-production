@@ -1,7 +1,12 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../models/active_wedding_plan.dart';
+import '../models/dashboard_summary.dart';
+import '../models/onboarding_complete.dart';
 import '../models/wedding_plan.dart';
 
 class WeddingPlansApi {
@@ -10,6 +15,49 @@ class WeddingPlansApi {
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
+
+  Future<OnboardingCompleteResponse> completeOnboarding(
+    OnboardingCompleteRequest request,
+  ) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/onboarding/complete',
+      request.toJson(),
+    );
+    final response = OnboardingCompleteResponse.fromJson(json);
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: _activePlanToCacheJson(response.activeWeddingPlan),
+    );
+    await _offline?.refreshStatus();
+    return response;
+  }
+
+  Future<ActiveWeddingPlan?> getActiveWeddingPlan() async {
+    try {
+      final response = await _apiClient.dio.get<Object?>(
+        '/api/v1/wedding-plans/active',
+      );
+      final data = response.data;
+      if (data == null) return null;
+      final json = _asJsonMap(data);
+      final plan = ActiveWeddingPlan.fromJson(json);
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedWeddingPlans,
+        json: _activePlanToCacheJson(plan),
+      );
+      await _offline?.refreshStatus();
+      return plan;
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
+  Future<DashboardSummary> getDashboardSummary(String planId) async {
+    final json = await _apiClient.getJson(
+      '/api/v1/wedding-plans/$planId/dashboard-summary',
+    );
+    return DashboardSummary.fromJson(json);
+  }
 
   Future<List<WeddingPlan>> getMyWeddingPlans() async {
     try {
@@ -166,6 +214,28 @@ class WeddingPlansApi {
         .whereType<Map>()
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
+  }
+
+  Map<String, dynamic> _asJsonMap(Object? data) {
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) return Map<String, dynamic>.from(data);
+    throw const ApiException('استجابة غير متوقعة من الخادم.');
+  }
+
+  Map<String, dynamic> _activePlanToCacheJson(ActiveWeddingPlan plan) {
+    return {
+      'id': plan.id,
+      'ownerUserId': plan.ownerUserId,
+      'title': plan.title,
+      if (plan.city != null) 'city': plan.city,
+      if (plan.weddingDate != null)
+        'weddingDate': plan.weddingDate!.toIso8601String(),
+      if (plan.estimatedBudget != null) 'estimatedBudget': plan.estimatedBudget,
+      'currency': plan.currency,
+      'status': plan.status,
+      'createdAt': plan.createdAt.toIso8601String(),
+      'updatedAt': plan.updatedAt.toIso8601String(),
+    };
   }
 
   Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/onboarding/screens/guest_onboarding_flow_screen.dart';
+import '../../features/onboarding/screens/active_plan_onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
-import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/debts/screens/create_debt_screen.dart';
 import '../../features/debts/screens/create_installment_screen.dart';
@@ -183,7 +183,7 @@ class AppRouter {
         ),
         GoRoute(
           path: onboarding,
-          builder: (context, state) => const OnboardingScreen(),
+          builder: (context, state) => const ActivePlanOnboardingScreen(),
         ),
         GoRoute(
           path: guestOnboardingPreview,

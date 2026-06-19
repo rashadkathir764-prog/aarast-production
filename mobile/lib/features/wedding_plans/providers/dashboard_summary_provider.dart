@@ -11,6 +11,7 @@ import '../../sharing/models/shared_member.dart';
 import '../../tasks/data/task_timeline_api.dart';
 import '../../tasks/models/wedding_task.dart';
 import '../data/wedding_plans_api.dart';
+import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 
 class DashboardSummaryProvider extends ChangeNotifier {
@@ -30,23 +31,21 @@ class DashboardSummaryProvider extends ChangeNotifier {
 
   bool _isLoading = false;
   String? _errorMessage;
-
+  DashboardSummary? _summary;
   WeddingPlan? _plan;
-  ExpenseSummary? _expenseSummary;
-  DebtSummary? _debtSummary;
-  List<Installment>? _dueInstallments;
-  List<WeddingTask>? _tasks;
-  List<SharedMember>? _sharedMembers;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-
+  DashboardSummary? get summary => _summary;
   WeddingPlan? get plan => _plan;
-  ExpenseSummary? get expenseSummary => _expenseSummary;
-  DebtSummary? get debtSummary => _debtSummary;
-  List<Installment>? get dueInstallments => _dueInstallments;
-  List<WeddingTask>? get tasks => _tasks;
-  List<SharedMember>? get sharedMembers => _sharedMembers;
+
+  // Compatibility getters for older plan-center widgets. The visible Phase 1
+  // dashboard reads [summary] from the backend aggregate endpoint.
+  ExpenseSummary? get expenseSummary => null;
+  DebtSummary? get debtSummary => null;
+  List<Installment>? get dueInstallments => null;
+  List<WeddingTask>? get tasks => null;
+  List<SharedMember>? get sharedMembers => null;
 
   Future<void> loadDashboard(
     String weddingPlanId, {
@@ -57,32 +56,11 @@ class DashboardSummaryProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Fetch plan first. If it fails, the whole dashboard fails.
-      _plan = await weddingPlansApi.getWeddingPlan(weddingPlanId);
-      final canReadExpenses =
-          sharedMember == null || sharedMember.canReadExpenses;
-      final canReadDebts = sharedMember == null || sharedMember.canReadDebts;
-
-      // Fetch the rest concurrently to speed up loading
-      final results = await Future.wait([
-        canReadExpenses
-            ? _fetchExpenseSummary(weddingPlanId)
-            : Future<ExpenseSummary?>.value(null),
-        canReadDebts
-            ? _fetchDebtSummary(weddingPlanId)
-            : Future<DebtSummary?>.value(null),
-        canReadDebts
-            ? _fetchDueInstallments(weddingPlanId)
-            : Future<List<Installment>?>.value(null),
-        _fetchTasks(weddingPlanId),
-        _fetchSharedMembers(weddingPlanId),
-      ]);
-
-      _expenseSummary = results[0] as ExpenseSummary?;
-      _debtSummary = results[1] as DebtSummary?;
-      _dueInstallments = results[2] as List<Installment>?;
-      _tasks = results[3] as List<WeddingTask>?;
-      _sharedMembers = results[4] as List<SharedMember>?;
+      final nextSummary = await weddingPlansApi.getDashboardSummary(
+        weddingPlanId,
+      );
+      _summary = nextSummary;
+      _plan = nextSummary.toWeddingPlan();
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -90,46 +68,6 @@ class DashboardSummaryProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  Future<ExpenseSummary?> _fetchExpenseSummary(String planId) async {
-    try {
-      return await budgetExpenseApi.getExpenseSummary(planId);
-    } catch (_) {
-      return null; // Graceful degradation
-    }
-  }
-
-  Future<DebtSummary?> _fetchDebtSummary(String planId) async {
-    try {
-      return await debtInstallmentApi.getDebtSummary(planId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<List<Installment>?> _fetchDueInstallments(String planId) async {
-    try {
-      return await debtInstallmentApi.getDueInstallments(planId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<List<WeddingTask>?> _fetchTasks(String planId) async {
-    try {
-      return await taskTimelineApi.getTasks(planId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<List<SharedMember>?> _fetchSharedMembers(String planId) async {
-    try {
-      return await sharingApi.getSharedMembers(planId);
-    } catch (_) {
-      return null;
     }
   }
 }

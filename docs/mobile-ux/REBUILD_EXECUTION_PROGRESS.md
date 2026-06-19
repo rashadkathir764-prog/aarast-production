@@ -42,8 +42,8 @@ Mode: Autonomous Sequential Execution
 | 24 | Testing & QA Plan | DONE | `docs/testing/MOBILE_QA_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined QA gates for guest-first onboarding, route guards, dashboard consistency, privacy, offline/sync, provider/quotes, notifications, visual/accessibility, and manual reports. | `6e9433c` |
 | 25 | Performance Plan | DONE | `docs/mobile-architecture/PERFORMANCE_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined budgets and rules for provider pagination/cache, dashboard duplicate loads, offline queries, images/media, state rebuilds, network behavior, and measurement. | `100d728` |
 | 26 | Observability/Logs | DONE | `docs/architecture/OBSERVABILITY_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined event names, privacy classes, backend/mobile logging boundaries, product event matrix, error categories, future dashboards, and debug bundle limits. | `a0a2728` |
-| 27 | Release Plan | DONE | `docs/release/MOBILE_RELEASE_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined internal dev, QA, test artifact, pilot, production candidate, rollback, release notes, and blocker gates without deployment changes. | Pending after commit |
-| 28 | Analytics Plan | TODO | - | - | Must keep implementation deferred but flows measurable. | - |
+| 27 | Release Plan | DONE | `docs/release/MOBILE_RELEASE_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined internal dev, QA, test artifact, pilot, production candidate, rollback, release notes, and blocker gates without deployment changes. | `646d345` |
+| 28 | Analytics Plan | DONE | `docs/analytics/ANALYTICS_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Deferred analytics behind `enableAnalytics`, defined funnels, safe/forbidden fields, domain event matrix, metrics, future constraints, and QA. | Pending after commit |
 | 29 | Monetization Later | TODO | - | - | Must explicitly defer subscriptions/payments/commission. | - |
 | 30 | Legal/Support/Disputes | TODO | - | - | Must define legal/support boundaries without implying guaranteed provider agreements. | - |
 | 31 | Visual Polish | TODO | - | - | Must wait until product/UX/data/architecture Blueprints are complete. | - |
@@ -84,3 +84,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 23 performance plan. |
 | `git diff --check` | PASS | Markdown-only changes for phase 24 observability/logs. |
 | `git diff --check` | PASS | Markdown-only changes for phase 25 mobile release plan. |
+| `git diff --check` | PASS | Markdown-only changes for phase 26 analytics plan. |

@@ -19,5 +19,23 @@ void main() {
         expect(find.text(tab.label), findsAtLeastNWidgets(1));
       }
     });
+
+    testWidgets('renders safe money content when opened on the money tab', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: UserRebuildShell(initialTab: UserRebuildTab.money),
+        ),
+      );
+
+      expect(find.text('المال'), findsAtLeastNWidgets(1));
+      expect(
+        find.text(
+          'تبويب المال التجريبي — يحتاج خطة حالية قبل عرض الميزانية والمصروفات',
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

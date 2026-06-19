@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'user_rebuild_money_tab.dart';
 import 'user_rebuild_navigation_item.dart';
 import 'user_rebuild_tab.dart';
 
@@ -34,7 +35,7 @@ class _UserRebuildShellState extends State<UserRebuildShell> {
       child: Scaffold(
         body: IndexedStack(
           index: UserRebuildTab.values.indexOf(_selectedTab),
-          children: UserRebuildTab.values.map(_buildTabPlaceholder).toList(),
+          children: UserRebuildTab.values.map(_buildTabContent).toList(),
         ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: UserRebuildTab.values.indexOf(_selectedTab),
@@ -50,6 +51,13 @@ class _UserRebuildShellState extends State<UserRebuildShell> {
         ),
       ),
     );
+  }
+
+  Widget _buildTabContent(UserRebuildTab tab) {
+    return switch (tab) {
+      UserRebuildTab.money => const UserRebuildMoneyTab(),
+      _ => _buildTabPlaceholder(tab),
+    };
   }
 
   Widget _buildTabPlaceholder(UserRebuildTab tab) {

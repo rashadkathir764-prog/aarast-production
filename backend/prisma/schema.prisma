@@ -69,7 +69,11 @@ enum WeddingTaskPriority {
 }
 
 enum SharedMemberRole {
+  OWNER
   VIEWER
+  EDITOR
+  FINANCE_MANAGER
+  HELPER
   CONTRIBUTOR
   MANAGER
 }
@@ -179,6 +183,8 @@ model User {
   bookingLeads           BookingLead[]
   reviewedProviders      Provider[]              @relation("ProviderReviewedBy")
   assignedWeddingTasks   WeddingTask[]           @relation("AssignedWeddingTasks")
+  sentPlanInvites        PlanInvite[]            @relation("PlanInviteInviter")
+  receivedPlanInvites    PlanInvite[]            @relation("PlanInviteInvitee")
 }
 
 model WeddingPlan {
@@ -204,6 +210,7 @@ model WeddingPlan {
   debts                 Debt[]
   tasks                 WeddingTask[]
   sharedMembers         SharedMember[]
+  planInvites           PlanInvite[]
   quoteRequests         QuoteRequest[]
   bookingLeads          BookingLead[]
   notifications         Notification[]
@@ -319,6 +326,34 @@ model SharedMember {
   user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([weddingPlanId, userId])
+}
+
+model PlanInvite {
+  id                        String           @id @default(cuid())
+  weddingPlanId             String
+  inviterUserId             String
+  inviteeUserId             String?
+  phone                     String?
+  token                     String           @unique
+  role                      SharedMemberRole @default(VIEWER)
+  canViewBudget             Boolean          @default(false)
+  canViewExpenses           Boolean          @default(false)
+  canViewDebts              Boolean          @default(false)
+  canManageTasks            Boolean          @default(false)
+  canManageFinancialRecords Boolean          @default(false)
+  expiresAt                 DateTime
+  acceptedAt                DateTime?
+  revokedAt                 DateTime?
+  createdAt                 DateTime         @default(now())
+  updatedAt                 DateTime         @updatedAt
+  weddingPlan               WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  inviter                   User             @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
+  invitee                   User?            @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+
+  @@index([weddingPlanId, createdAt])
+  @@index([inviteeUserId, acceptedAt])
+  @@index([phone, acceptedAt])
+  @@index([expiresAt])
 }
 
 model OtpCode {

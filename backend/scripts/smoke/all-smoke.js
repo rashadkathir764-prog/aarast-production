@@ -16,6 +16,7 @@ const smokeScripts = [
   ['smoke:tasks-apis', 'tasks-apis-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],
   ['smoke:sharing', 'sharing-smoke.js'],
+  ['smoke:sharing-roles', 'sharing-roles-smoke.js'],
   ['smoke:notifications', 'notifications-smoke.js'],
   ['smoke:guests', 'guests-smoke.js'],
   ['smoke:guests-apis', 'guests-apis-smoke.js'],

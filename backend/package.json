@@ -20,6 +20,7 @@
     "smoke:tasks-apis": "node scripts/smoke/tasks-apis-smoke.js",
     "smoke:task-timeline": "node scripts/smoke/task-timeline-smoke.js",
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
+    "smoke:sharing-roles": "node scripts/smoke/sharing-roles-smoke.js",
     "smoke:notifications": "node scripts/smoke/notifications-smoke.js",
     "smoke:guests": "node scripts/smoke/guests-smoke.js",
     "smoke:guests-apis": "node scripts/smoke/guests-apis-smoke.js",

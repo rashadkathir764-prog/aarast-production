@@ -103,7 +103,7 @@ export class GuestsService {
     weddingPlanId: string,
     dto: CreateGuestDto,
   ): Promise<GuestResponse> {
-    await this.permissions.assertPlanManageable(weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(weddingPlanId, currentUser);
     await this.assertGroupBelongsToPlan(dto.groupId, weddingPlanId);
     const name = this.requiredText(dto.name, 'name');
     const normalizedName = this.normalizeGuestName(name);
@@ -146,7 +146,7 @@ export class GuestsService {
     weddingPlanId: string,
     dto: BulkGuestsDto,
   ): Promise<BulkGuestsResponse> {
-    await this.permissions.assertPlanManageable(weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(weddingPlanId, currentUser);
     if (!Array.isArray(dto.items) || dto.items.length === 0) {
       throw new BadRequestException('items must contain at least one guest');
     }
@@ -168,7 +168,7 @@ export class GuestsService {
     dto: UpdateGuestDto,
   ): Promise<GuestResponse> {
     const existing = await this.findGuestOrThrow(id);
-    await this.permissions.assertPlanManageable(existing.weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(existing.weddingPlanId, currentUser);
     if (dto.groupId !== undefined) {
       await this.assertGroupBelongsToPlan(dto.groupId, existing.weddingPlanId);
     }
@@ -238,7 +238,7 @@ export class GuestsService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findGuestOrThrow(id);
-    await this.permissions.assertPlanManageable(existing.weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(existing.weddingPlanId, currentUser);
     await this.prisma.guest.delete({ where: { id } });
     return { id, deleted: true };
   }
@@ -260,7 +260,7 @@ export class GuestsService {
     weddingPlanId: string,
     dto: CreateGuestGroupDto,
   ): Promise<GuestGroupResponse> {
-    await this.permissions.assertPlanManageable(weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(weddingPlanId, currentUser);
     const group = await this.catchDuplicateGroupConflict(
       this.prisma.guestGroup.create({
         data: {
@@ -280,7 +280,7 @@ export class GuestsService {
     dto: UpdateGuestGroupDto,
   ): Promise<GuestGroupResponse> {
     const existing = await this.findGroupOrThrow(id);
-    await this.permissions.assertPlanManageable(existing.weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(existing.weddingPlanId, currentUser);
     const group = await this.catchDuplicateGroupConflict(
       this.prisma.guestGroup.update({
         where: { id },
@@ -301,7 +301,7 @@ export class GuestsService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findGroupOrThrow(id);
-    await this.permissions.assertPlanManageable(existing.weddingPlanId, currentUser);
+    await this.permissions.assertGuestManageable(existing.weddingPlanId, currentUser);
     await this.prisma.guestGroup.delete({ where: { id } });
     return { id, deleted: true };
   }

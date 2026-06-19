@@ -521,10 +521,8 @@ export class DashboardService {
       canViewDebts: this.permissions.canReadFinancial(context, 'debts'),
       canManageTasks: this.permissions.canManageTasks(context),
       canManageFinancialRecords:
-        context.isOwner ||
-        Boolean(context.sharedMember?.canManageFinancialRecords),
-      canManagePlan:
-        context.isOwner || context.sharedMember?.role === SharedMemberRole.MANAGER,
+        this.permissions.canManageFinancialRecords(context),
+      canManagePlan: this.permissions.canManagePlan(context),
     };
   }
 }

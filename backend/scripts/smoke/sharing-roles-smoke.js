@@ -1,0 +1,267 @@
+#!/usr/bin/env node
+'use strict';
+
+/**
+ * Sharing Roles APIs Smoke Test
+ * Covers /api/v1 members, invite tokens, role permissions, and revoke flow.
+ */
+
+const http = require('http');
+
+const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
+const timestamp = Date.now();
+const OWNER_PHONE = `+96750${timestamp.toString().slice(-6)}`;
+const EDITOR_PHONE = `+96751${timestamp.toString().slice(-6)}`;
+const HELPER_PHONE = `+96752${timestamp.toString().slice(-6)}`;
+const OUTSIDER_PHONE = `+96753${timestamp.toString().slice(-6)}`;
+const TEST_PASSWORD = 'SmokeTest123!';
+
+let passed = 0;
+let failed = 0;
+
+function check(label, condition) {
+  if (condition) {
+    console.log(`PASS - ${label}`);
+    passed++;
+  } else {
+    console.log(`FAIL - ${label}`);
+    failed++;
+  }
+}
+
+function request(method, path, body, token) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(path, BASE_URL);
+    const bodyStr = body ? JSON.stringify(body) : undefined;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: `${url.pathname}${url.search}`,
+      method,
+      headers,
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(data) });
+        } catch {
+          resolve({ status: res.statusCode, body: data });
+        }
+      });
+    });
+
+    req.on('error', reject);
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
+function hasPasswordHash(value) {
+  return JSON.stringify(value).includes('passwordHash');
+}
+
+async function register(name, phone) {
+  const res = await request('POST', '/auth/register', {
+    name,
+    phone,
+    password: TEST_PASSWORD,
+  });
+  check(`${name} register - HTTP 201`, res.status === 201);
+  check(`${name} register returns token`, typeof res.body?.accessToken === 'string');
+  check(`${name} register has user id`, typeof res.body?.user?.id === 'string');
+  check(`${name} register does not expose passwordHash`, !hasPasswordHash(res.body));
+  return { token: res.body?.accessToken, user: res.body?.user };
+}
+
+async function run() {
+  console.log('\nSharing Roles APIs Smoke Report');
+  console.log(`Target: ${BASE_URL}`);
+  console.log(`Owner phone: ${OWNER_PHONE}`);
+  console.log(`Editor phone: ${EDITOR_PHONE}`);
+  console.log(`Helper phone: ${HELPER_PHONE}`);
+  console.log(`Outsider phone: ${OUTSIDER_PHONE}\n`);
+
+  const owner = await register('Roles Owner', OWNER_PHONE);
+  const editor = await register('Roles Editor', EDITOR_PHONE);
+  const helper = await register('Roles Helper', HELPER_PHONE);
+  const outsider = await register('Roles Outsider', OUTSIDER_PHONE);
+
+  let planId = null;
+  let editorInviteToken = null;
+  let helperInviteToken = null;
+  let editorMemberId = null;
+  let helperMemberId = null;
+
+  {
+    const res = await request('POST', '/api/v1/wedding-plans', {
+      title: 'Sharing Roles Plan',
+      city: 'Sanaa',
+      estimatedBudget: '500000.00',
+    }, owner.token);
+    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
+    check('created plan has id', typeof res.body?.id === 'string');
+    planId = res.body?.id;
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/permissions/me`, null, owner.token);
+    check('owner permissions - HTTP 200', res.status === 200);
+    check('owner role is OWNER', res.body?.role === 'OWNER');
+    check('owner can manage members', res.body?.canManageMembers === true);
+    check('owner permissions do not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/invites`, {
+      userId: editor.user.id,
+      role: 'EDITOR',
+      expiresInDays: 7,
+    }, owner.token);
+    check('owner creates editor invite - HTTP 201', res.status === 201);
+    check('editor invite has token', typeof res.body?.token === 'string');
+    check('editor invite status is PENDING', res.body?.status === 'PENDING');
+    check('editor invite role is EDITOR', res.body?.role === 'EDITOR');
+    check('editor invite does not expose passwordHash', !hasPasswordHash(res.body));
+    editorInviteToken = res.body?.token;
+  }
+
+  {
+    const res = await request('GET', `/api/v1/invites/${editorInviteToken}`);
+    check('public invite preview - HTTP 200', res.status === 200);
+    check('public invite preview has plan title', res.body?.weddingPlan?.title === 'Sharing Roles Plan');
+    check('public invite preview status is PENDING', res.body?.status === 'PENDING');
+    check('public invite preview does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('POST', `/api/v1/invites/${editorInviteToken}/accept`, null, outsider.token);
+    check('wrong user cannot accept targeted invite', res.status === 404);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/invites/${editorInviteToken}/accept`, null, editor.token);
+    check('editor accepts invite - HTTP 201', res.status === 201);
+    check('accepted invite status is ACCEPTED', res.body?.invite?.status === 'ACCEPTED');
+    check('accepted member role is EDITOR', res.body?.member?.role === 'EDITOR');
+    check('accepted member has id', typeof res.body?.member?.id === 'string');
+    check('accept response does not expose passwordHash', !hasPasswordHash(res.body));
+    editorMemberId = res.body?.member?.id;
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/permissions/me`, null, editor.token);
+    check('editor permissions - HTTP 200', res.status === 200);
+    check('editor can manage plan', res.body?.canManagePlan === true);
+    check('editor can manage tasks', res.body?.canManageTasks === true);
+    check('editor cannot manage finance by default', res.body?.canManageFinancialRecords === false);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/members`, null, owner.token);
+    check('owner lists /api/v1 members - HTTP 200', res.status === 200);
+    check('member list includes virtual owner', Array.isArray(res.body) && res.body.some((member) => member.role === 'OWNER' && member.isOwner === true));
+    check('member list includes editor', Array.isArray(res.body) && res.body.some((member) => member.id === editorMemberId));
+    check('member list does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${planId}/members/${editorMemberId}`, {
+      role: 'FINANCE_MANAGER',
+    }, owner.token);
+    check('owner updates editor to finance manager - HTTP 200', res.status === 200);
+    check('finance role updated', res.body?.role === 'FINANCE_MANAGER');
+    check('finance manager can view debts by default', res.body?.canViewDebts === true);
+    check('finance manager can manage financial records', res.body?.canManageFinancialRecords === true);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
+      name: 'Finance Managed Category',
+      targetAmount: '100000.00',
+    }, editor.token);
+    check('finance manager can create budget category', res.status === 201);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/invites`, {
+      phone: HELPER_PHONE,
+      role: 'HELPER',
+    }, owner.token);
+    check('owner creates helper invite by phone - HTTP 201', res.status === 201);
+    check('helper invite has token', typeof res.body?.token === 'string');
+    check('helper invite role is HELPER', res.body?.role === 'HELPER');
+    helperInviteToken = res.body?.token;
+  }
+
+  {
+    const res = await request('POST', `/api/v1/invites/${helperInviteToken}/accept`, null, helper.token);
+    check('helper accepts invite - HTTP 201', res.status === 201);
+    check('helper member role is HELPER', res.body?.member?.role === 'HELPER');
+    helperMemberId = res.body?.member?.id;
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/permissions/me`, null, helper.token);
+    check('helper permissions - HTTP 200', res.status === 200);
+    check('helper can manage guests', res.body?.canManageGuests === true);
+    check('helper cannot manage plan', res.body?.canManagePlan === false);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/guests`, {
+      name: 'Helper Managed Guest',
+      phone: '+967700200001',
+    }, helper.token);
+    check('helper can create guest', res.status === 201);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${planId}`, {
+      title: 'Helper Should Not Rename',
+    }, helper.token);
+    check('helper cannot update plan', res.status === 404);
+  }
+
+  {
+    const res = await request('DELETE', `/api/v1/wedding-plans/${planId}/members/owner:${owner.user.id}`, null, owner.token);
+    check('owner cannot remove last owner', res.status === 400);
+  }
+
+  {
+    const res = await request('DELETE', `/api/v1/wedding-plans/${planId}/members/${helperMemberId}`, null, owner.token);
+    check('owner revokes helper - HTTP 200', res.status === 200);
+    check('helper revoke returns id', res.body?.id === helperMemberId);
+  }
+
+  {
+    const res = await request('DELETE', `/api/v1/wedding-plans/${planId}/members/${editorMemberId}`, null, owner.token);
+    check('owner revokes finance member - HTTP 200', res.status === 200);
+    check('finance revoke returns id', res.body?.id === editorMemberId);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/permissions/me`, null, editor.token);
+    check('revoked member cannot read permissions', res.status === 404);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/members`);
+    check('members without token returns 401', res.status === 401);
+  }
+
+  console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
+  console.log(`Checks: ${passed} passed, ${failed} failed`);
+
+  if (failed > 0) process.exit(1);
+}
+
+run().catch((err) => {
+  console.error('Sharing roles smoke error:', err.message);
+  process.exit(1);
+});

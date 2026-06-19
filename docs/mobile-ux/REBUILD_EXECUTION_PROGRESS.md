@@ -36,8 +36,8 @@ Mode: Autonomous Sequential Execution
 | 18 | Content System | DONE | `docs/content/ARABIC_COPY_MATRIX.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined personas, Arabic copy rules, initial copy matrix, content-key direction, and sensitive copy boundaries. | `df51027` |
 | 19 | Data Seeding | DONE | `docs/data/SEEDING_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined Yemen location, budget category, provider category, onboarding priority, notification template seed groups, and quality rules. | `f9ba07b` |
 | 20 | Task Templates | DONE | `docs/data/TASK_TEMPLATES.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined task template fields, timeline examples, priority rules, persona copy, and generation rules tied to wedding date. | `8e9e253` |
-| 21 | Feature Flags | DONE | `docs/architecture/FEATURE_FLAGS_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined required flags, default-disabled policy, flag sources, disabled UX behavior, and risks for incomplete features. | Pending after commit |
-| 22 | Migration Plan | TODO | - | - | Must cover local/offline data and safe migrations before schema changes. | - |
+| 21 | Feature Flags | DONE | `docs/architecture/FEATURE_FLAGS_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined required flags, default-disabled policy, flag sources, disabled UX behavior, and risks for incomplete features. | `2750f29` |
+| 22 | Migration Plan | DONE | `docs/architecture/MIGRATION_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Documented current SQLite/JSON offline storage, protected data, pending-sync safety, guest migration, backend compatibility, failure UX, and tests. | Pending after commit |
 | 23 | Mobile Implementation Plan | TODO | - | - | Must sequence safe mobile work after core Blueprints. | - |
 | 24 | Testing & QA Plan | TODO | - | - | Must define mobile QA, widget/regression/manual smoke, and route/privacy checks. | - |
 | 25 | Performance Plan | TODO | - | - | Must address providers pagination/cache/images/dashboard rebuilds/offline queries. | - |
@@ -78,3 +78,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 17 data seeding. |
 | `git diff --check` | PASS | Markdown-only changes for phase 18 task templates. |
 | `git diff --check` | PASS | Markdown-only changes for phase 19 feature flags. |
+| `git diff --check` | PASS | Markdown-only changes for phase 20 migration plan. |

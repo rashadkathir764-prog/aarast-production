@@ -46,8 +46,8 @@ Mode: Autonomous Sequential Execution
 | 28 | Analytics Plan | DONE | `docs/analytics/ANALYTICS_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Deferred analytics behind `enableAnalytics`, defined funnels, safe/forbidden fields, domain event matrix, metrics, future constraints, and QA. | `052904b` |
 | 29 | Monetization Later | DONE | `docs/business/MONETIZATION_LATER.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Explicitly deferred payments, deposits, subscriptions, commissions, ads, premium, and FinTech; defined future conditions, forbidden copy, and provider/user monetization boundaries. | `f735e11` |
 | 30 | Legal/Support/Disputes | DONE | `docs/legal/PRIVACY_TERMS_NOTES.md`, `docs/support/SUPPORT_DISPUTES_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined legal/privacy/terms notes plus support boundaries, case/dispute types, unsupported MVP disputes, statuses, privacy/copy rules, and admin/provider handling. | `a67f9d4`, `38f5044` |
-| 31 | Visual Polish | DONE | `docs/mobile-ux/VISUAL_SYSTEM.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined future visual direction, layout hierarchy, palette, typography, component contracts, domain visual rules, states, imagery/icons, accessibility, and visual QA checklist. | Pending after commit |
-| 32 | Agent Execution Rules | TODO | - | - | Must translate README rules into repo-local execution guardrails. | - |
+| 31 | Visual Polish | DONE | `docs/mobile-ux/VISUAL_SYSTEM.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined future visual direction, layout hierarchy, palette, typography, component contracts, domain visual rules, states, imagery/icons, accessibility, and visual QA checklist. | `a768392` |
+| 32 | Agent Execution Rules | DONE | `docs/AGENT_EXECUTION_RULES.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Translated README/AGENTS rules into required reading, phase/product boundaries, guest/privacy/single-source/offline/feature-flag rules, git/file discipline, verification, stop conditions, and report format. | Pending after commit |
 
 ## Current Validation Log
 
@@ -89,3 +89,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 28 legal/privacy notes. |
 | `git diff --check` | PASS | Markdown-only changes for phase 29 support/disputes plan. |
 | `git diff --check` | PASS | Markdown-only changes for phase 30 visual system. |
+| `git diff --check` | PASS | Markdown-only changes for phase 31 agent execution rules. |

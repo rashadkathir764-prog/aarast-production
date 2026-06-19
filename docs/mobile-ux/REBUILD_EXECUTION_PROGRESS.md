@@ -31,8 +31,8 @@ Mode: Autonomous Sequential Execution
 | 13 | Single Source of Truth Plan | DONE | `docs/mobile-architecture/SINGLE_SOURCE_OF_TRUTH_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined canonical summary sources for plan, days, progress, money, debts, tasks, guests, providers, notifications, permissions, sync, and widget calculation boundaries. | `27882a0` |
 | 14 | Error/Loading/Empty States Guide | DONE | `docs/mobile-ux/ERROR_LOADING_EMPTY_STATES_GUIDE.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined loading, error, empty, locked, offline, pending-sync, success, and domain state matrix rules. | `3cf4d23` |
 | 15 | Offline & Sync Plan | DONE | `docs/architecture/OFFLINE_SYNC_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Protected existing offline layers and defined offline-capable actions, online-required actions, sync states, guest migration, conflicts, and domain offline matrix. | `8e3a443` |
-| 16 | Security & Privacy Plan | DONE | `docs/security/SECURITY_PRIVACY_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined sensitive data, privacy, permission, device permission timing, auth/token, provider visibility, and admin audit rules. | Pending after commit |
-| 17 | Admin & Provider Operations | TODO | - | - | Must clarify admin review before real marketplace/provider launch. | - |
+| 16 | Security & Privacy Plan | DONE | `docs/security/SECURITY_PRIVACY_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined sensitive data, privacy, permission, device permission timing, auth/token, provider visibility, and admin audit rules. | `97e44ec` |
+| 17 | Admin & Provider Operations | DONE | `docs/admin/ADMIN_PROVIDER_OPERATIONS.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined provider lifecycle, admin responsibilities, provider dashboard rules, review checklist, and support/dispute operation needs. | Pending after commit |
 | 18 | Content System | TODO | - | - | Must stop random Arabic copy drift and support persona tone. | - |
 | 19 | Data Seeding | TODO | - | - | Must define Yemen locations, categories, task templates, empty state and notification templates. | - |
 | 20 | Task Templates | TODO | - | - | Must map tasks to wedding date and local wedding timelines. | - |
@@ -73,3 +73,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 12 error/loading/empty guide. |
 | `git diff --check` | PASS | Markdown-only changes for phase 13 offline/sync. |
 | `git diff --check` | PASS | Markdown-only changes for phase 14 security/privacy. |
+| `git diff --check` | PASS | Markdown-only changes for phase 15 admin/provider operations. |

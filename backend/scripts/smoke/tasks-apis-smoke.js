@@ -1,0 +1,248 @@
+#!/usr/bin/env node
+'use strict';
+
+/**
+ * Tasks APIs Smoke Test
+ * Covers /api/v1 task CRUD, checklist CRUD, assignment, summary, and auth guards.
+ */
+
+const http = require('http');
+
+const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
+const timestamp = Date.now();
+const OWNER_PHONE = `+9672${timestamp.toString().slice(-7)}`;
+const MEMBER_PHONE = `+9673${timestamp.toString().slice(-7)}`;
+const OUTSIDER_PHONE = `+9670${timestamp.toString().slice(-7)}`;
+const TEST_PASSWORD = 'SmokeTest123!';
+
+let passed = 0;
+let failed = 0;
+
+function check(label, condition) {
+  if (condition) {
+    console.log(`PASS - ${label}`);
+    passed++;
+  } else {
+    console.log(`FAIL - ${label}`);
+    failed++;
+  }
+}
+
+function request(method, path, body, token) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(path, BASE_URL);
+    const bodyStr = body ? JSON.stringify(body) : undefined;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const options = {
+      hostname: url.hostname,
+      port: url.port,
+      path: `${url.pathname}${url.search}`,
+      method,
+      headers,
+    };
+
+    const req = http.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(data) });
+        } catch {
+          resolve({ status: res.statusCode, body: data });
+        }
+      });
+    });
+
+    req.on('error', reject);
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
+}
+
+function hasPasswordHash(value) {
+  return JSON.stringify(value).includes('passwordHash');
+}
+
+function dateOffsetIso(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  date.setHours(11, 0, 0, 0);
+  return date.toISOString();
+}
+
+async function registerUser(name, phone) {
+  const res = await request('POST', '/auth/register', {
+    name,
+    phone,
+    password: TEST_PASSWORD,
+  });
+  check(`${name} register - HTTP 201`, res.status === 201);
+  check(`${name} register returns token`, typeof res.body?.accessToken === 'string');
+  check(`${name} register has user id`, typeof res.body?.user?.id === 'string');
+  check(`${name} register does not expose passwordHash`, !hasPasswordHash(res.body));
+  return { token: res.body?.accessToken, userId: res.body?.user?.id };
+}
+
+async function run() {
+  console.log('\nTasks APIs Smoke Report');
+  console.log(`Target: ${BASE_URL}`);
+  console.log(`Owner phone: ${OWNER_PHONE}`);
+  console.log(`Member phone: ${MEMBER_PHONE}`);
+  console.log(`Outsider phone: ${OUTSIDER_PHONE}\n`);
+
+  const owner = await registerUser('Tasks Owner', OWNER_PHONE);
+  const member = await registerUser('Tasks Member', MEMBER_PHONE);
+  const outsider = await registerUser('Tasks Outsider', OUTSIDER_PHONE);
+
+  let planId = null;
+  let taskId = null;
+  let todayTaskId = null;
+  let checklistItemId = null;
+
+  {
+    const res = await request('POST', '/api/v1/wedding-plans', {
+      title: 'Tasks APIs Plan',
+      city: 'Sanaa',
+      weddingDate: dateOffsetIso(60),
+    }, owner.token);
+    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
+    planId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/wedding-plans/${planId}/shared-members`, {
+      userId: member.userId,
+      role: 'VIEWER',
+      canManageTasks: true,
+    }, owner.token);
+    check('owner adds task-capable member - HTTP 201', res.status === 201);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Book hall',
+      description: 'Choose a hall',
+      dueDate: dateOffsetIso(-1),
+      status: 'TODO',
+      priority: 'URGENT',
+    }, owner.token);
+    check('POST /api/v1 tasks - HTTP 201', res.status === 201);
+    check('created task has id', typeof res.body?.id === 'string');
+    check('created task priority supports URGENT', res.body?.priority === 'URGENT');
+    taskId = res.body?.id;
+  }
+
+  {
+    const res = await request('GET', `/api/v1/tasks/${taskId}`, null, owner.token);
+    check('GET /api/v1/tasks/:id - HTTP 200', res.status === 200);
+    check('task get-by-id matches', res.body?.id === taskId);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/tasks/${taskId}`, {
+      status: 'IN_PROGRESS',
+      title: 'Book main hall',
+    }, owner.token);
+    check('PATCH /api/v1/tasks/:id - HTTP 200', res.status === 200);
+    check('task title updated', res.body?.title === 'Book main hall');
+    check('task status updated', res.body?.status === 'IN_PROGRESS');
+  }
+
+  {
+    const res = await request('POST', `/api/v1/tasks/${taskId}/checklist`, {
+      title: 'Call hall owner',
+      sortOrder: 1,
+    }, owner.token);
+    check('POST checklist item - HTTP 201', res.status === 201);
+    check('checklist item has id', typeof res.body?.id === 'string');
+    checklistItemId = res.body?.id;
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/tasks/${taskId}/checklist/${checklistItemId}`, {
+      isDone: true,
+      title: 'Called hall owner',
+    }, owner.token);
+    check('PATCH checklist item - HTTP 200', res.status === 200);
+    check('checklist item is done', res.body?.isDone === true);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/tasks/${taskId}/assign`, {
+      assigneeUserId: member.userId,
+    }, owner.token);
+    check('PATCH task assign - HTTP 200', res.status === 200);
+    check('task assignee is member', res.body?.assigneeUserId === member.userId);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/tasks/${taskId}/assign`, {
+      assigneeUserId: outsider.userId,
+    }, owner.token);
+    check('cannot assign outside plan', res.status === 400);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Today task',
+      dueDate: dateOffsetIso(0),
+      status: 'TODO',
+      priority: 'HIGH',
+    }, member.token);
+    check('task-capable member creates task - HTTP 201', res.status === 201);
+    todayTaskId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Done task',
+      dueDate: dateOffsetIso(3),
+      status: 'DONE',
+      priority: 'LOW',
+    }, owner.token);
+    check('owner creates done task - HTTP 201', res.status === 201);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/tasks/summary`, null, owner.token);
+    check('GET task summary - HTTP 200', res.status === 200);
+    check('summary totalTasks is real', res.body?.totalTasks === 3);
+    check('summary completedTasks is real', res.body?.completedTasks === 1);
+    check('summary overdueTasks is real', res.body?.overdueTasks === 1);
+    check('summary todayTasks is real', res.body?.todayTasks === 1);
+    check('summary byPriority includes URGENT', res.body?.byPriority?.URGENT === 1);
+    check('summary does not expose passwordHash', !hasPasswordHash(res.body));
+  }
+
+  {
+    const res = await request('DELETE', `/api/v1/tasks/${taskId}/checklist/${checklistItemId}`, null, owner.token);
+    check('DELETE checklist item - HTTP 200', res.status === 200);
+  }
+
+  {
+    const res = await request('DELETE', `/api/v1/tasks/${todayTaskId}`, null, owner.token);
+    check('DELETE task - HTTP 200', res.status === 200);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/tasks`);
+    check('tasks without token returns 401', res.status === 401);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/tasks`, null, outsider.token);
+    check('outsider cannot list plan tasks', res.status === 404);
+  }
+
+  console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
+  console.log(`Checks: ${passed} passed, ${failed} failed`);
+
+  if (failed > 0) process.exit(1);
+}
+
+run().catch((err) => {
+  console.error('Tasks APIs smoke error:', err.message);
+  process.exit(1);
+});

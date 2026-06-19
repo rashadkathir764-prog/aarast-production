@@ -17,6 +17,7 @@
     "smoke:money-apis": "node scripts/smoke/money-apis-smoke.js",
     "smoke:budget-expense": "node scripts/smoke/budget-expense-smoke.js",
     "smoke:debt-installment": "node scripts/smoke/debt-installment-smoke.js",
+    "smoke:tasks-apis": "node scripts/smoke/tasks-apis-smoke.js",
     "smoke:task-timeline": "node scripts/smoke/task-timeline-smoke.js",
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
     "smoke:notifications": "node scripts/smoke/notifications-smoke.js",

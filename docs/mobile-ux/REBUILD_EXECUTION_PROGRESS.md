@@ -18,8 +18,8 @@ Mode: Autonomous Sequential Execution
 |---|---|---|---|---|---|---|
 | 1 | Current State Audit | DONE | `docs/mobile-ux/CURRENT_STATE_AUDIT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Read official README, approved root docs, mobile README/API/QA docs, routing, shell, providers, and current screen files by static inspection. | `0c7763d` |
 | 2 | Product Logic Blueprint | DONE | `docs/mobile-ux/PRODUCT_LOGIC_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined wedding-user journey, provider journey, guest-first strategy, account gates, plan creation, quote-to-plan logic, budget/provider linkage, tasks, notifications, sharing, and forbidden behaviors. | `941c4c9` |
-| 3 | UX Blueprint | DONE | `docs/mobile-ux/UX_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined screen contracts for Welcome, Choose Path, Persona, Location, Wedding Date, Priorities, Budget, Categories, Generated Dashboard, Today Center, Money, Tasks, Providers, Guests, Notifications, Sharing, More, and Settings. | Pending after commit |
-| 4 | Navigation Blueprint | TODO | - | - | Must define user/provider bottom navigation, + action sheet, route guards, duplicate-entry rules, and user/provider separation. | - |
+| 3 | UX Blueprint | DONE | `docs/mobile-ux/UX_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined screen contracts for Welcome, Choose Path, Persona, Location, Wedding Date, Priorities, Budget, Categories, Generated Dashboard, Today Center, Money, Tasks, Providers, Guests, Notifications, Sharing, More, and Settings. | `4a63b30` |
+| 4 | Navigation Blueprint | DONE | `docs/mobile-ux/NAVIGATION_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined user/provider bottom navigation, + action sheet, operation entry points, route guards, deep-link guards, duplicate restrictions, and user/provider separation. | Pending after commit |
 | 5 | Roles & Permissions | TODO | - | - | Must align user roles, personas, plan roles, shared permissions, provider isolation, and private financial visibility. | - |
 | 6 | Data Model Blueprint | TODO | - | - | Must read `backend/prisma/schema.prisma` before writing. | - |
 | 7 | Backend Flow Blueprint | TODO | - | - | Must stay planning-level until data/API Blueprint is complete. | - |
@@ -61,3 +61,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 0. |
 | `git diff --check` | PASS | Markdown-only changes for phase 1. |
 | `git diff --check` | PASS | Markdown-only changes for phase 2. |
+| `git diff --check` | PASS | Markdown-only changes for phase 3. |

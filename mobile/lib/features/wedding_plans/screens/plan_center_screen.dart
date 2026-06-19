@@ -385,130 +385,25 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     DashboardSummaryProvider dashboardProvider,
     WeddingPlan plan,
   ) async {
-    final weddingPlansProvider = context.read<WeddingPlansProvider>();
-    final titleController = TextEditingController(text: plan.title);
-    final cityController = TextEditingController(text: plan.city ?? '');
-    var selectedDate = plan.weddingDate;
-
-    final saved = await showModalBottomSheet<bool>(
+    final result = await showModalBottomSheet<_PlanEditResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              14,
-              20,
-              20 + MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: StatefulBuilder(
-              builder: (context, setSheetState) {
-                return SafeArea(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Align(
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: 44,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: _pcLine,
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'تعديل بيانات الخطة',
-                          style: TextStyle(
-                            color: _pcInk,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم الخطة',
-                            prefixIcon: Icon(Icons.edit_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: cityController,
-                          decoration: const InputDecoration(
-                            labelText: 'المدينة',
-                            prefixIcon: Icon(Icons.location_on_outlined),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          style: _pcOutlinedButtonStyle(),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: sheetContext,
-                              initialDate: selectedDate ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2100),
-                            );
-                            if (!sheetContext.mounted) return;
-                            if (picked != null) {
-                              setSheetState(() => selectedDate = picked);
-                            }
-                          },
-                          icon: const Icon(Icons.calendar_month_outlined),
-                          label: Text(
-                            selectedDate == null
-                                ? 'اختيار تاريخ الزواج'
-                                : _dateLabel(selectedDate),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        FilledButton.icon(
-                          onPressed: () async {
-                            final title = titleController.text.trim();
-                            if (title.isEmpty) return;
-                            final data = <String, dynamic>{
-                              'title': title,
-                              'city': cityController.text.trim(),
-                              if (selectedDate != null)
-                                'weddingDate': selectedDate!.toIso8601String(),
-                            };
-                            final updated = await weddingPlansProvider
-                                .updateWeddingPlan(plan.id, data);
-                            if (!sheetContext.mounted) return;
-                            if (updated != null) {
-                              Navigator.of(sheetContext).pop(true);
-                            }
-                          },
-                          icon: const Icon(Icons.save_outlined),
-                          label: const Text('حفظ التعديل'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        );
-      },
+      builder: (_) => _EditPlanSheet(plan: plan),
     );
 
-    titleController.dispose();
-    cityController.dispose();
+    if (result == null || !mounted) return;
 
-    if (saved == true && mounted) {
+    final weddingPlansProvider = context.read<WeddingPlansProvider>();
+    final updated = await weddingPlansProvider.updateWeddingPlan(
+      plan.id,
+      result.toUpdateJson(),
+    );
+    if (!mounted) return;
+    if (updated != null) {
       await dashboardProvider.loadDashboard(
         plan.id,
         sharedMember: widget.sharedMember,
@@ -517,10 +412,11 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(content: Text('تم تحديث الخطة.')));
-    } else {
-      final error = weddingPlansProvider.errorMessage;
-      if (error != null && mounted) _showUnavailable(error);
+      return;
     }
+
+    final error = weddingPlansProvider.errorMessage;
+    if (error != null) _showUnavailable(error);
   }
 
   Future<void> _showArchivePlanSheet(
@@ -617,6 +513,178 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+class _EditPlanSheet extends StatefulWidget {
+  const _EditPlanSheet({required this.plan});
+
+  final WeddingPlan plan;
+
+  @override
+  State<_EditPlanSheet> createState() => _EditPlanSheetState();
+}
+
+class _EditPlanSheetState extends State<_EditPlanSheet> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _cityController;
+  late DateTime? _selectedDate;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.plan.title);
+    _cityController = TextEditingController(text: widget.plan.city ?? '');
+    _selectedDate = widget.plan.weddingDate;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _cityController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _selectedDate = picked);
+  }
+
+  void _submit() {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _errorMessage = 'اسم الخطة مطلوب');
+      return;
+    }
+
+    setState(() => _errorMessage = null);
+    Navigator.of(context).pop(
+      _PlanEditResult(
+        title: title,
+        city: _cityController.text.trim(),
+        weddingDate: _selectedDate,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          14,
+          20,
+          20 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _pcLine,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'تعديل بيانات الخطة',
+                  style: TextStyle(
+                    color: _pcInk,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'اسم الخطة',
+                    prefixIcon: Icon(Icons.edit_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _cityController,
+                  decoration: const InputDecoration(
+                    labelText: 'المدينة',
+                    prefixIcon: Icon(Icons.location_on_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  style: _pcOutlinedButtonStyle(),
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: Text(
+                    _selectedDate == null
+                        ? 'اختيار تاريخ الزواج'
+                        : _dateLabel(_selectedDate),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: _submit,
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('حفظ التعديل'),
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanEditResult {
+  const _PlanEditResult({
+    required this.title,
+    required this.city,
+    required this.weddingDate,
+  });
+
+  final String title;
+  final String city;
+  final DateTime? weddingDate;
+
+  Map<String, dynamic> toUpdateJson() {
+    return {
+      'title': title,
+      'city': city,
+      if (weddingDate != null) 'weddingDate': _dateOnlyIso(weddingDate!),
+    };
+  }
+}
+
+String _dateOnlyIso(DateTime date) {
+  return DateTime.utc(date.year, date.month, date.day).toIso8601String();
 }
 
 class _PlanCenterHeader extends StatelessWidget {

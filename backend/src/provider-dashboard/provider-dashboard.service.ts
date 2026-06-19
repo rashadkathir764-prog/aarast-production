@@ -14,6 +14,8 @@ import {
   ProviderService,
   ProviderServiceImage,
   ProviderStatus,
+  QuoteOffer,
+  QuoteOfferStatus,
   QuoteRequest,
   QuoteRequestStatus,
   User,
@@ -25,10 +27,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
+import { CreateQuoteOfferDto } from './dto/create-quote-offer.dto';
 import { UpdateProviderPackageDto } from './dto/update-provider-package.dto';
 import { UpdateProviderProfileDto } from './dto/update-provider-profile.dto';
 import { UpdateProviderQuoteStatusDto } from './dto/update-provider-quote-status.dto';
 import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
+import { UpdateQuoteOfferDto } from './dto/update-quote-offer.dto';
 import {
   CreateServiceImageDto,
   UpdateServiceImageDto,
@@ -50,6 +54,7 @@ type ProviderQuoteRecord = QuoteRequest & {
   user: Pick<User, 'id' | 'name' | 'phone'>;
   service?: (ProviderService & { category: ProviderCategory }) | null;
   weddingPlan?: Pick<WeddingPlan, 'id' | 'title' | 'city' | 'weddingDate'> | null;
+  offers?: QuoteOffer[];
 };
 type ProviderReviewRecord = ProviderReview & {
   user: Pick<User, 'id' | 'name' | 'phone'>;
@@ -485,6 +490,84 @@ export class ProviderDashboardService {
     return this.toQuoteResponse(quote);
   }
 
+  async createQuoteOffer(
+    currentUser: AuthenticatedUser,
+    quoteRequestId: string,
+    dto: CreateQuoteOfferDto,
+  ) {
+    const provider = await this.findOwnedProviderOrThrow(currentUser.id);
+    this.assertUuid(quoteRequestId, 'quoteRequestId');
+    const quote = await this.prisma.quoteRequest.findFirst({
+      where: { id: quoteRequestId, providerId: provider.id },
+    });
+    if (!quote) {
+      throw new NotFoundException('Quote request not found');
+    }
+    if (quote.status === QuoteRequestStatus.CANCELLED) {
+      throw new BadRequestException('Cancelled quote requests cannot receive offers');
+    }
+
+    const offer = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.quoteOffer.create({
+        data: {
+          quoteRequestId,
+          providerId: provider.id,
+          title: this.optionalText(dto.title),
+          message: this.requiredText(dto.message, 'message'),
+          amount: this.optionalDecimal(dto.amount, 'amount'),
+          currency: dto.currency ?? 'YER',
+          validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
+        },
+      });
+
+      await tx.quoteRequest.update({
+        where: { id: quoteRequestId },
+        data: { status: QuoteRequestStatus.RESPONDED },
+      });
+
+      return created;
+    });
+
+    return this.toQuoteOfferResponse(offer);
+  }
+
+  async updateQuoteOffer(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: UpdateQuoteOfferDto,
+  ) {
+    const provider = await this.findOwnedProviderOrThrow(currentUser.id);
+    this.assertUuid(id, 'quoteOfferId');
+    const existing = await this.prisma.quoteOffer.findFirst({
+      where: { id, providerId: provider.id },
+    });
+    if (!existing) {
+      throw new NotFoundException('Quote offer not found');
+    }
+    if (existing.status !== QuoteOfferStatus.PENDING) {
+      throw new ConflictException('Only pending quote offers can be updated');
+    }
+
+    const offer = await this.prisma.quoteOffer.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined ? { title: this.optionalText(dto.title) } : {}),
+        ...(dto.message !== undefined
+          ? { message: this.requiredText(dto.message ?? '', 'message') }
+          : {}),
+        ...(dto.amount !== undefined
+          ? { amount: this.optionalDecimal(dto.amount, 'amount') }
+          : {}),
+        ...(dto.currency !== undefined ? { currency: dto.currency } : {}),
+        ...(dto.validUntil !== undefined
+          ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
+          : {}),
+      },
+    });
+
+    return this.toQuoteOfferResponse(offer);
+  }
+
   async findReviews(currentUser: AuthenticatedUser) {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     const reviews = await this.prisma.providerReview.findMany({
@@ -602,6 +685,7 @@ export class ProviderDashboardService {
       weddingPlan: {
         select: { id: true, title: true, city: true, weddingDate: true },
       },
+      offers: { orderBy: { createdAt: 'desc' } },
     } satisfies Prisma.QuoteRequestInclude;
   }
 
@@ -643,6 +727,17 @@ export class ProviderDashboardService {
       throw new BadRequestException(`${field} must be a valid decimal value`);
     }
     return normalized;
+  }
+
+  private optionalDate(value: string | null | undefined, field: string): Date | null {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const date = new Date(trimmed);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`${field} must be a valid date`);
+    }
+    return date;
   }
 
   private assertUuid(value: string, field: string): void {
@@ -784,6 +879,7 @@ export class ProviderDashboardService {
       budgetMin: quote.budgetMin?.toString() ?? null,
       budgetMax: quote.budgetMax?.toString() ?? null,
       status: quote.status,
+      offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
       createdAt: quote.createdAt,
       updatedAt: quote.updatedAt,
     };
@@ -800,6 +896,22 @@ export class ProviderDashboardService {
       status: review.status,
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
+    };
+  }
+
+  private toQuoteOfferResponse(offer: QuoteOffer) {
+    return {
+      id: offer.id,
+      quoteRequestId: offer.quoteRequestId,
+      providerId: offer.providerId,
+      title: offer.title,
+      message: offer.message,
+      amount: offer.amount?.toString() ?? null,
+      currency: offer.currency,
+      validUntil: offer.validUntil,
+      status: offer.status,
+      createdAt: offer.createdAt,
+      updatedAt: offer.updatedAt,
     };
   }
 }

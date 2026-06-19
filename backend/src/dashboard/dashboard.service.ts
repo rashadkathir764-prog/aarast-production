@@ -137,6 +137,7 @@ export class DashboardService {
       todayTasks,
       guestCount,
       confirmedGuests,
+      providerCount,
       quoteRequestsCount,
       unreadNotificationsCount,
     ] = await Promise.all([
@@ -191,6 +192,7 @@ export class DashboardService {
       this.prisma.guest.count({
         where: { weddingPlanId, status: GuestStatus.CONFIRMED },
       }),
+      this.prisma.planProviderLink.count({ where: { weddingPlanId } }),
       this.prisma.quoteRequest.count({ where: { weddingPlanId } }),
       this.prisma.notification.count({
         where: {
@@ -252,7 +254,7 @@ export class DashboardService {
       todayTasks,
       guestCount,
       confirmedGuests,
-      providerCount: 0,
+      providerCount,
       quoteRequestsCount,
       unreadNotificationsCount,
       currentUserRole: this.currentUserRole(context),

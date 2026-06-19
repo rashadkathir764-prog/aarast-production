@@ -15,6 +15,9 @@ import {
   ProviderService,
   ProviderServiceImage,
   ProviderStatus,
+  PlanProviderLinkStatus,
+  QuoteOffer,
+  QuoteOfferStatus,
   QuoteRequest,
   QuoteRequestStatus,
   ReviewStatus,
@@ -24,6 +27,7 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
+import { CreatePlanQuoteRequestDto } from './dto/create-plan-quote-request.dto';
 import { CreateProviderReviewDto } from './dto/create-provider-review.dto';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
 import { ListProvidersQueryDto } from './dto/list-providers-query.dto';
@@ -66,6 +70,7 @@ type QuoteWithRelations = QuoteRequest & {
   service?: (ProviderService & { category: ProviderCategory }) | null;
   city?: City | null;
   weddingPlan?: Pick<WeddingPlan, 'id' | 'title' | 'city' | 'weddingDate'> | null;
+  offers?: QuoteOffer[];
 };
 
 @Injectable()
@@ -410,6 +415,137 @@ export class MarketplaceService {
     return this.toQuoteResponse(quote);
   }
 
+  async createPlanQuoteRequest(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    dto: CreatePlanQuoteRequestDto,
+  ) {
+    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    return this.createQuoteRequest(currentUser, dto.providerId, {
+      ...dto,
+      weddingPlanId,
+    });
+  }
+
+  async findPlanQuoteRequests(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ) {
+    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const quotes = await this.prisma.quoteRequest.findMany({
+      where: { weddingPlanId },
+      include: this.quoteInclude(),
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return quotes.map((quote) => this.toQuoteResponse(quote));
+  }
+
+  async findQuoteRequestForCurrentUser(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ) {
+    const quote = await this.findAccessibleQuoteRequestOrThrow(currentUser, id);
+    return this.toQuoteResponse(quote);
+  }
+
+  async cancelQuoteRequestForCurrentUser(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ) {
+    const existing = await this.findAccessibleQuoteRequestOrThrow(currentUser, id);
+    const quote = await this.prisma.quoteRequest.update({
+      where: { id: existing.id },
+      data: { status: QuoteRequestStatus.CANCELLED },
+      include: this.quoteInclude(),
+    });
+
+    return this.toQuoteResponse(quote);
+  }
+
+  async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
+    const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
+    if (!offer.quoteRequest.weddingPlanId) {
+      throw new BadRequestException('Quote offer is not linked to a wedding plan');
+    }
+    if (offer.status !== QuoteOfferStatus.PENDING) {
+      throw new ConflictException('Quote offer is not pending');
+    }
+    const weddingPlanId = offer.quoteRequest.weddingPlanId;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const acceptedOffer = await tx.quoteOffer.update({
+        where: { id },
+        data: { status: QuoteOfferStatus.ACCEPTED },
+      });
+
+      await tx.quoteOffer.updateMany({
+        where: {
+          quoteRequestId: offer.quoteRequestId,
+          id: { not: id },
+          status: QuoteOfferStatus.PENDING,
+        },
+        data: { status: QuoteOfferStatus.REJECTED },
+      });
+
+      await tx.quoteRequest.update({
+        where: { id: offer.quoteRequestId },
+        data: { status: QuoteRequestStatus.ACCEPTED },
+      });
+
+      const link = await tx.planProviderLink.upsert({
+        where: {
+          weddingPlanId_providerId: {
+            weddingPlanId,
+            providerId: offer.providerId,
+          },
+        },
+        update: {
+          quoteRequestId: offer.quoteRequestId,
+          quoteOfferId: offer.id,
+          status: PlanProviderLinkStatus.ACTIVE,
+        },
+        create: {
+          weddingPlanId,
+          providerId: offer.providerId,
+          quoteRequestId: offer.quoteRequestId,
+          quoteOfferId: offer.id,
+          status: PlanProviderLinkStatus.ACTIVE,
+        },
+      });
+
+      return { offer: acceptedOffer, link };
+    });
+
+    return {
+      offer: this.toQuoteOfferResponse(result.offer),
+      planProviderLink: {
+        id: result.link.id,
+        weddingPlanId: result.link.weddingPlanId,
+        providerId: result.link.providerId,
+        quoteRequestId: result.link.quoteRequestId,
+        quoteOfferId: result.link.quoteOfferId,
+        status: result.link.status,
+        createdAt: result.link.createdAt,
+        updatedAt: result.link.updatedAt,
+      },
+    };
+  }
+
+  async rejectQuoteOffer(currentUser: AuthenticatedUser, id: string) {
+    const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
+    if (offer.status !== QuoteOfferStatus.PENDING) {
+      throw new ConflictException('Quote offer is not pending');
+    }
+
+    const rejected = await this.prisma.quoteOffer.update({
+      where: { id },
+      data: { status: QuoteOfferStatus.REJECTED },
+    });
+
+    return this.toQuoteOfferResponse(rejected);
+  }
+
   async findMyQuoteRequests(currentUser: AuthenticatedUser) {
     const quotes = await this.prisma.quoteRequest.findMany({
       where: { userId: currentUser.id },
@@ -606,7 +742,58 @@ export class MarketplaceService {
       weddingPlan: {
         select: { id: true, title: true, city: true, weddingDate: true },
       },
+      offers: { orderBy: { createdAt: 'desc' } },
     } satisfies Prisma.QuoteRequestInclude;
+  }
+
+  private async findAccessibleQuoteRequestOrThrow(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<QuoteWithRelations> {
+    this.assertUuid(id, 'quoteRequestId');
+    const quote = await this.prisma.quoteRequest.findUnique({
+      where: { id },
+      include: this.quoteInclude(),
+    });
+    if (!quote) {
+      throw new NotFoundException('Quote request not found');
+    }
+
+    if (quote.weddingPlanId) {
+      await this.permissions.assertPlanReadable(quote.weddingPlanId, currentUser);
+      return quote;
+    }
+
+    if (quote.userId !== currentUser.id) {
+      throw new NotFoundException('Quote request not found');
+    }
+
+    return quote;
+  }
+
+  private async findAccessibleQuoteOfferOrThrow(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<QuoteOffer & { quoteRequest: QuoteRequest }> {
+    this.assertUuid(id, 'quoteOfferId');
+    const offer = await this.prisma.quoteOffer.findUnique({
+      where: { id },
+      include: { quoteRequest: true },
+    });
+    if (!offer) {
+      throw new NotFoundException('Quote offer not found');
+    }
+
+    if (offer.quoteRequest.weddingPlanId) {
+      await this.permissions.assertPlanReadable(
+        offer.quoteRequest.weddingPlanId,
+        currentUser,
+      );
+    } else if (offer.quoteRequest.userId !== currentUser.id) {
+      throw new NotFoundException('Quote offer not found');
+    }
+
+    return offer;
   }
 
   private parsePagination(pageValue?: string, limitValue?: string): Pagination {
@@ -882,8 +1069,25 @@ export class MarketplaceService {
       budgetMin: quote.budgetMin?.toString() ?? null,
       budgetMax: quote.budgetMax?.toString() ?? null,
       status: quote.status,
+      offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
       createdAt: quote.createdAt,
       updatedAt: quote.updatedAt,
+    };
+  }
+
+  private toQuoteOfferResponse(offer: QuoteOffer) {
+    return {
+      id: offer.id,
+      quoteRequestId: offer.quoteRequestId,
+      providerId: offer.providerId,
+      title: offer.title,
+      message: offer.message,
+      amount: offer.amount?.toString() ?? null,
+      currency: offer.currency,
+      validUntil: offer.validUntil,
+      status: offer.status,
+      createdAt: offer.createdAt,
+      updatedAt: offer.updatedAt,
     };
   }
 }

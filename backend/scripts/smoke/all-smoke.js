@@ -22,6 +22,7 @@ const smokeScripts = [
   ['smoke:guests-apis', 'guests-apis-smoke.js'],
   ['smoke:otp-profile', 'otp-profile-smoke.js'],
   ['smoke:marketplace', 'marketplace-smoke.js'],
+  ['smoke:providers-quotes', 'providers-quotes-smoke.js'],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
 ];
 

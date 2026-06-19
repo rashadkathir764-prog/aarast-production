@@ -108,6 +108,18 @@ enum QuoteRequestStatus {
   CANCELLED
 }
 
+enum QuoteOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum PlanProviderLinkStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 enum BookingLeadStatus {
   NEW
   IN_PROGRESS
@@ -188,23 +200,23 @@ model User {
 }
 
 model WeddingPlan {
-  id                    String            @id @default(cuid())
+  id                    String             @id @default(cuid())
   ownerUserId           String
   title                 String
   city                  String?
   location              Json?
   weddingDate           DateTime?
-  priorities            String[]          @default([])
-  estimatedBudget       Decimal?          @db.Decimal(14, 2)
-  currency              String            @default("YER")
+  priorities            String[]           @default([])
+  estimatedBudget       Decimal?           @db.Decimal(14, 2)
+  currency              String             @default("YER")
   onboardingPath        OnboardingPath?
   persona               WeddingPersona?
   onboardingCompletedAt DateTime?
-  status                WeddingPlanStatus @default(PLANNING)
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
-  owner                 User              @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
-  activeForUsers        User[]            @relation("ActiveWeddingPlan")
+  status                WeddingPlanStatus  @default(PLANNING)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  owner                 User               @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
+  activeForUsers        User[]             @relation("ActiveWeddingPlan")
   budgetCategories      BudgetCategory[]
   expenses              Expense[]
   debts                 Debt[]
@@ -216,6 +228,7 @@ model WeddingPlan {
   notifications         Notification[]
   guests                Guest[]
   guestGroups           GuestGroup[]
+  providerLinks         PlanProviderLink[]
 
   @@index([ownerUserId, status])
 }
@@ -516,7 +529,9 @@ model Provider {
   favorites         FavoriteProvider[]
   reviews           ProviderReview[]
   quoteRequests     QuoteRequest[]
+  quoteOffers       QuoteOffer[]
   bookingLeads      BookingLead[]
+  planLinks         PlanProviderLink[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
@@ -629,10 +644,52 @@ model QuoteRequest {
   service       ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   city          City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
   bookingLeads  BookingLead[]
+  offers        QuoteOffer[]
+  providerLinks PlanProviderLink[]
 
   @@index([userId, status])
   @@index([providerId, status])
   @@index([weddingPlanId])
+}
+
+model QuoteOffer {
+  id             String             @id @default(uuid())
+  quoteRequestId String
+  providerId     String
+  title          String?
+  message        String?            @db.Text
+  amount         Decimal?           @db.Decimal(14, 2)
+  currency       String             @default("YER")
+  validUntil     DateTime?
+  status         QuoteOfferStatus   @default(PENDING)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  quoteRequest   QuoteRequest       @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  provider       Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerLinks  PlanProviderLink[]
+
+  @@index([quoteRequestId, status])
+  @@index([providerId, status])
+}
+
+model PlanProviderLink {
+  id             String                 @id @default(uuid())
+  weddingPlanId  String
+  providerId     String
+  quoteRequestId String?
+  quoteOfferId   String?
+  status         PlanProviderLinkStatus @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  weddingPlan    WeddingPlan            @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  provider       Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  quoteRequest   QuoteRequest?          @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer     QuoteOffer?            @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+
+  @@unique([weddingPlanId, providerId])
+  @@index([providerId, status])
+  @@index([quoteRequestId])
+  @@index([quoteOfferId])
 }
 
 model BookingLead {

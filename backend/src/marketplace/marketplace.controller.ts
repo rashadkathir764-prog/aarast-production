@@ -12,6 +12,7 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreatePlanQuoteRequestDto } from './dto/create-plan-quote-request.dto';
 import { CreateProviderReviewDto } from './dto/create-provider-review.dto';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
 import { ListProvidersQueryDto } from './dto/list-providers-query.dto';
@@ -174,5 +175,110 @@ export class ReviewsController {
     @Param('id') id: string,
   ) {
     return this.marketplaceService.deleteReview(currentUser, id);
+  }
+}
+
+@Controller('api/v1/provider-categories')
+export class ApiV1ProviderCategoriesController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findCategories() {
+    return this.marketplaceService.findCategories();
+  }
+}
+
+@Controller('api/v1/providers')
+export class ApiV1ProvidersController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get()
+  findProviders(@Query() query: ListProvidersQueryDto) {
+    return this.marketplaceService.findProviders(query);
+  }
+
+  @Get(':id')
+  findProvider(@Param('id') id: string) {
+    return this.marketplaceService.findProvider(id);
+  }
+}
+
+@Controller('api/v1/wedding-plans/:weddingPlanId/quote-requests')
+@UseGuards(JwtAuthGuard)
+export class ApiV1WeddingPlanQuoteRequestsController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Post()
+  createQuoteRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+    @Body() dto: CreatePlanQuoteRequestDto,
+  ) {
+    return this.marketplaceService.createPlanQuoteRequest(
+      currentUser,
+      weddingPlanId,
+      dto,
+    );
+  }
+
+  @Get()
+  findQuoteRequests(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+  ) {
+    return this.marketplaceService.findPlanQuoteRequests(
+      currentUser,
+      weddingPlanId,
+    );
+  }
+}
+
+@Controller('api/v1/quote-requests')
+@UseGuards(JwtAuthGuard)
+export class ApiV1QuoteRequestsController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Get(':id')
+  findQuoteRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.findQuoteRequestForCurrentUser(
+      currentUser,
+      id,
+    );
+  }
+
+  @Patch(':id/cancel')
+  cancelQuoteRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.cancelQuoteRequestForCurrentUser(
+      currentUser,
+      id,
+    );
+  }
+}
+
+@Controller('api/v1/quote-offers')
+@UseGuards(JwtAuthGuard)
+export class ApiV1QuoteOffersController {
+  constructor(private readonly marketplaceService: MarketplaceService) {}
+
+  @Patch(':id/accept')
+  acceptOffer(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.acceptQuoteOffer(currentUser, id);
+  }
+
+  @Patch(':id/reject')
+  rejectOffer(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.marketplaceService.rejectQuoteOffer(currentUser, id);
   }
 }

@@ -2,6 +2,11 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SharingModule } from '../sharing/sharing.module';
 import {
+  ApiV1ProviderCategoriesController,
+  ApiV1ProvidersController,
+  ApiV1QuoteOffersController,
+  ApiV1QuoteRequestsController,
+  ApiV1WeddingPlanQuoteRequestsController,
   CitiesController,
   MeMarketplaceController,
   ProviderCategoriesController,
@@ -20,6 +25,11 @@ import { MarketplaceService } from './marketplace.service';
     ServicesController,
     MeMarketplaceController,
     ReviewsController,
+    ApiV1ProviderCategoriesController,
+    ApiV1ProvidersController,
+    ApiV1WeddingPlanQuoteRequestsController,
+    ApiV1QuoteRequestsController,
+    ApiV1QuoteOffersController,
   ],
   providers: [MarketplaceService],
   exports: [MarketplaceService],

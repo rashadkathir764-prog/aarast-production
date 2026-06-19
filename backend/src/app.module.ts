@@ -9,6 +9,7 @@ import { BudgetCategoriesModule } from './budget-categories/budget-categories.mo
 import { ExpensesModule } from './expenses/expenses.module';
 import { DebtsModule } from './debts/debts.module';
 import { InstallmentsModule } from './installments/installments.module';
+import { MoneyModule } from './money/money.module';
 import { TasksModule } from './tasks/tasks.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { SharingModule } from './sharing/sharing.module';
@@ -31,6 +32,7 @@ import { GuestsModule } from './guests/guests.module';
     ExpensesModule,
     DebtsModule,
     InstallmentsModule,
+    MoneyModule,
     TasksModule,
     TimelineModule,
     SharingModule,

@@ -3,6 +3,8 @@ import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SharingModule } from '../sharing/sharing.module';
 import {
+  ApiV1DebtInstallmentsController,
+  ApiV1InstallmentsController,
   DebtInstallmentsController,
   InstallmentsController,
   WeddingPlanInstallmentsController,
@@ -15,6 +17,8 @@ import { InstallmentsService } from './installments.service';
     DebtInstallmentsController,
     WeddingPlanInstallmentsController,
     InstallmentsController,
+    ApiV1DebtInstallmentsController,
+    ApiV1InstallmentsController,
   ],
   providers: [InstallmentsService],
 })

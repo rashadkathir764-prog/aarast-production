@@ -51,3 +51,49 @@ export class BudgetCategoriesController {
     return this.budgetCategoriesService.remove(currentUser, id);
   }
 }
+
+@Controller('api/v1/wedding-plans/:weddingPlanId/budget-categories')
+@UseGuards(JwtAuthGuard)
+export class ApiV1WeddingPlanBudgetCategoriesController {
+  constructor(private readonly budgetCategoriesService: BudgetCategoriesService) {}
+
+  @Post()
+  create(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+    @Body() dto: CreateBudgetCategoryDto,
+  ) {
+    return this.budgetCategoriesService.create(currentUser, weddingPlanId, dto);
+  }
+
+  @Get()
+  findForPlan(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+  ) {
+    return this.budgetCategoriesService.findForPlan(currentUser, weddingPlanId);
+  }
+}
+
+@Controller('api/v1/budget-categories')
+@UseGuards(JwtAuthGuard)
+export class ApiV1BudgetCategoriesController {
+  constructor(private readonly budgetCategoriesService: BudgetCategoriesService) {}
+
+  @Patch(':id')
+  update(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateBudgetCategoryDto,
+  ) {
+    return this.budgetCategoriesService.update(currentUser, id, dto);
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.budgetCategoriesService.remove(currentUser, id);
+  }
+}

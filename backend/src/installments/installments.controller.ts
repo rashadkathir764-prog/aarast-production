@@ -48,6 +48,68 @@ export class WeddingPlanInstallmentsController {
 export class InstallmentsController {
   constructor(private readonly installmentsService: InstallmentsService) {}
 
+  @Patch(':id/pay')
+  pay(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.installmentsService.pay(currentUser, id);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateInstallmentDto,
+  ) {
+    return this.installmentsService.update(currentUser, id, dto);
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.installmentsService.remove(currentUser, id);
+  }
+}
+
+@Controller('api/v1/debts/:debtId/installments')
+@UseGuards(JwtAuthGuard)
+export class ApiV1DebtInstallmentsController {
+  constructor(private readonly installmentsService: InstallmentsService) {}
+
+  @Post()
+  create(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('debtId') debtId: string,
+    @Body() dto: CreateInstallmentDto,
+  ) {
+    return this.installmentsService.create(currentUser, debtId, dto);
+  }
+
+  @Get()
+  findForDebt(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('debtId') debtId: string,
+  ) {
+    return this.installmentsService.findForDebt(currentUser, debtId);
+  }
+}
+
+@Controller('api/v1/installments')
+@UseGuards(JwtAuthGuard)
+export class ApiV1InstallmentsController {
+  constructor(private readonly installmentsService: InstallmentsService) {}
+
+  @Patch(':id/pay')
+  pay(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.installmentsService.pay(currentUser, id);
+  }
+
   @Patch(':id')
   update(
     @CurrentUser() currentUser: AuthenticatedUser,

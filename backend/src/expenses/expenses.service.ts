@@ -123,6 +123,20 @@ export class ExpensesService {
     };
   }
 
+  async findOne(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<ExpenseResponse> {
+    const expense = await this.findExpenseOrThrow(id);
+    await this.permissionService.assertFinancialReadable(
+      expense.weddingPlanId,
+      currentUser,
+      'expenses',
+    );
+
+    return this.toResponse(expense);
+  }
+
   async update(
     currentUser: AuthenticatedUser,
     id: string,

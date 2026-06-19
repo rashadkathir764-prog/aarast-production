@@ -129,6 +129,20 @@ export class DebtsService {
     };
   }
 
+  async findOne(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<DebtResponse> {
+    const debt = await this.findDebtOrThrow(id);
+    await this.permissionService.assertFinancialReadable(
+      debt.weddingPlanId,
+      currentUser,
+      'debts',
+    );
+
+    return this.toResponse(debt);
+  }
+
   async update(
     currentUser: AuthenticatedUser,
     id: string,

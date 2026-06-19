@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Debt, Installment, InstallmentStatus } from '@prisma/client';
+import { Debt, DebtStatus, Installment, InstallmentStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
@@ -117,6 +117,56 @@ export class InstallmentsService {
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.note !== undefined ? { note: this.optionalText(dto.note) } : {}),
       },
+    });
+
+    return this.toResponse(installment);
+  }
+
+  async pay(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<InstallmentResponse> {
+    const existing = await this.findInstallmentOrThrow(id);
+    const debt = await this.findDebtOrThrow(existing.debtId);
+    await this.permissionService.assertFinancialManageable(
+      debt.weddingPlanId,
+      currentUser,
+    );
+
+    const now = new Date();
+    const installment = await this.prisma.$transaction(async (tx) => {
+      const paidInstallment = await tx.installment.update({
+        where: { id },
+        data: {
+          status: InstallmentStatus.PAID,
+          paidAt: existing.paidAt ?? now,
+        },
+      });
+
+      if (existing.status !== InstallmentStatus.PAID) {
+        const currentPaidAmount = Number(debt.paidAmount.toString());
+        const installmentAmount = Number(existing.amount.toString());
+        const totalAmount = Number(debt.totalAmount.toString());
+        const nextPaidAmount = Math.min(
+          currentPaidAmount + installmentAmount,
+          totalAmount,
+        );
+
+        await tx.debt.update({
+          where: { id: debt.id },
+          data: {
+            paidAmount: nextPaidAmount.toFixed(2),
+            status:
+              nextPaidAmount >= totalAmount
+                ? DebtStatus.PAID
+                : nextPaidAmount > 0
+                  ? DebtStatus.PARTIALLY_PAID
+                  : DebtStatus.OPEN,
+          },
+        });
+      }
+
+      return paidInstallment;
     });
 
     return this.toResponse(installment);

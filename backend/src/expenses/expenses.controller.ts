@@ -42,6 +42,68 @@ export class WeddingPlanExpensesController {
 export class ExpensesController {
   constructor(private readonly expensesService: ExpensesService) {}
 
+  @Get(':id')
+  findOne(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.expensesService.findOne(currentUser, id);
+  }
+
+  @Patch(':id')
+  update(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: UpdateExpenseDto,
+  ) {
+    return this.expensesService.update(currentUser, id, dto);
+  }
+
+  @Delete(':id')
+  remove(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.expensesService.remove(currentUser, id);
+  }
+}
+
+@Controller('api/v1/wedding-plans/:weddingPlanId/expenses')
+@UseGuards(JwtAuthGuard)
+export class ApiV1WeddingPlanExpensesController {
+  constructor(private readonly expensesService: ExpensesService) {}
+
+  @Post()
+  create(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+    @Body() dto: CreateExpenseDto,
+  ) {
+    return this.expensesService.create(currentUser, weddingPlanId, dto);
+  }
+
+  @Get()
+  findForPlan(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+  ) {
+    return this.expensesService.findForPlan(currentUser, weddingPlanId);
+  }
+}
+
+@Controller('api/v1/expenses')
+@UseGuards(JwtAuthGuard)
+export class ApiV1ExpensesController {
+  constructor(private readonly expensesService: ExpensesService) {}
+
+  @Get(':id')
+  findOne(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.expensesService.findOne(currentUser, id);
+  }
+
   @Patch(':id')
   update(
     @CurrentUser() currentUser: AuthenticatedUser,

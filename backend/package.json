@@ -22,6 +22,7 @@
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
     "smoke:sharing-roles": "node scripts/smoke/sharing-roles-smoke.js",
     "smoke:notifications": "node scripts/smoke/notifications-smoke.js",
+    "smoke:notifications-apis": "node scripts/smoke/notifications-apis-smoke.js",
     "smoke:guests": "node scripts/smoke/guests-smoke.js",
     "smoke:guests-apis": "node scripts/smoke/guests-apis-smoke.js",
     "smoke:otp-profile": "node scripts/smoke/otp-profile-smoke.js",

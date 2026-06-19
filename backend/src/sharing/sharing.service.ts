@@ -397,7 +397,7 @@ export class SharingService {
     await this.notifications.createNotification({
       userId: invite.inviterUserId,
       weddingPlanId: invite.weddingPlanId,
-      type: NotificationType.SHARING_UPDATED,
+      type: NotificationType.SHARING_INVITE_ACCEPTED,
       title: 'Invitation accepted',
       body: `${currentUser.name} accepted your wedding plan invitation.`,
       data: {

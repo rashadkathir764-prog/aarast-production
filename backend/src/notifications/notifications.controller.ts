@@ -25,6 +25,14 @@ export class NotificationsController {
     return this.notificationsService.unreadCount(currentUser, weddingPlanId);
   }
 
+  @Get(':id')
+  findOne(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.notificationsService.findOne(currentUser, id);
+  }
+
   @Patch(':id/read')
   markRead(
     @CurrentUser() currentUser: AuthenticatedUser,
@@ -47,5 +55,13 @@ export class NotificationsController {
     @Param('id') id: string,
   ) {
     return this.notificationsService.remove(currentUser, id);
+  }
+}
+
+@Controller('api/v1/notifications')
+@UseGuards(JwtAuthGuard)
+export class ApiV1NotificationsController extends NotificationsController {
+  constructor(notificationsService: NotificationsService) {
+    super(notificationsService);
   }
 }

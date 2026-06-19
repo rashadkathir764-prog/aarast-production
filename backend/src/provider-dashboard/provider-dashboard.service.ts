@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   City,
+  NotificationType,
   Prisma,
   Provider,
   ProviderCategory,
@@ -23,6 +24,7 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';
@@ -62,7 +64,10 @@ type ProviderReviewRecord = ProviderReview & {
 
 @Injectable()
 export class ProviderDashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {
     const existing = await this.prisma.provider.findUnique({
@@ -526,6 +531,20 @@ export class ProviderDashboardService {
       });
 
       return created;
+    });
+
+    await this.notifications.createNotification({
+      userId: quote.userId,
+      weddingPlanId: quote.weddingPlanId,
+      type: NotificationType.QUOTE_OFFER_RECEIVED,
+      title: 'Quote offer received',
+      body: `${provider.businessName} sent an offer for your quote request.`,
+      data: {
+        quoteRequestId,
+        quoteOfferId: offer.id,
+        providerId: provider.id,
+      },
+      dedupeKey: `${quote.userId}:quote-offer:${offer.id}`,
     });
 
     return this.toQuoteOfferResponse(offer);

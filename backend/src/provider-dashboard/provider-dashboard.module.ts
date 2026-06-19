@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import {
   ApiV1ProviderController,
@@ -8,7 +9,7 @@ import {
 import { ProviderDashboardService } from './provider-dashboard.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, NotificationsModule],
   controllers: [
     ProviderApplicationController,
     ProviderDashboardController,

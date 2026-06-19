@@ -80,6 +80,14 @@ export class NotificationsService {
     return { count };
   }
 
+  async findOne(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<NotificationResponse> {
+    const notification = await this.findOwnedOrThrow(currentUser, id);
+    return this.toResponse(notification);
+  }
+
   async markRead(
     currentUser: AuthenticatedUser,
     id: string,

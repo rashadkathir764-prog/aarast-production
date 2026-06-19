@@ -25,8 +25,8 @@ Mode: Autonomous Sequential Execution
 | 7 | Backend Flow Blueprint | DONE | `docs/architecture/BACKEND_FLOW_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined onboarding, create plan, provider quote, money, debt/installment, task, guest, sharing, notification flows plus endpoint suggestions, permissions, errors, and events. | `3c94ac9` |
 | 8 | Auth & Guest Strategy | DONE | `docs/architecture/AUTH_GUEST_STRATEGY.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined guest capabilities, account gates, resume behavior, migration steps, offline constraints, provider auth separation, and security rules. | `5141653` |
 | 9 | Location & Provider Matching | DONE | `docs/architecture/LOCATION_PROVIDER_MATCHING.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined plan/provider location fields, provider ranking rules, location permission timing, quote location privacy, offline/cached provider behavior, and data model implications. | `3404a88` |
-| 10 | Notifications Blueprint | DONE | `docs/architecture/NOTIFICATIONS_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined notification types, fields, deep links, push permission timing, guest/offline behavior, privacy, generation, dedupe, and UX rules. | Pending after commit |
-| 11 | Design System | TODO | - | - | Must define tokens/components before visual polish. | - |
+| 10 | Notifications Blueprint | DONE | `docs/architecture/NOTIFICATIONS_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined notification types, fields, deep links, push permission timing, guest/offline behavior, privacy, generation, dedupe, and UX rules. | `4251dcc` |
+| 11 | Design System | DONE | `docs/mobile-ux/DESIGN_SYSTEM.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined identity, typography, spacing, components, buttons, cards/lists, states, RTL/accessibility, and domain-specific UI rules without visual implementation. | Pending after commit |
 | 12 | State Management Plan | TODO | - | - | Must resolve duplicated Home/Dashboard summary providers and active plan ownership. | - |
 | 13 | Single Source of Truth Plan | TODO | - | - | Must define summary sources for days, progress, budget, debts, tasks, providers, guests, notifications. | - |
 | 14 | Error/Loading/Empty States Guide | TODO | - | - | Must standardize states per screen and avoid blank/placeholder screens. | - |
@@ -67,3 +67,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 6 auth and guest strategy. |
 | `git diff --check` | PASS | Markdown-only changes for phase 7 location/provider matching. |
 | `git diff --check` | PASS | Markdown-only changes for phase 8 notifications. |
+| `git diff --check` | PASS | Markdown-only changes for phase 9 design system. |

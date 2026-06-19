@@ -9,7 +9,12 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: UserRebuildShell()));
 
       expect(find.byType(UserRebuildShell), findsOneWidget);
-      expect(find.text('هذه شاشة تجريبية للتنقل الجديد'), findsOneWidget);
+      expect(
+        find.text(
+          'تبويب الرئيسية التجريبي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('renders the five approved tab labels', (tester) async {
@@ -33,6 +38,42 @@ void main() {
       expect(
         find.text(
           'تبويب المال التجريبي — يحتاج خطة حالية قبل عرض الميزانية والمصروفات',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('keeps non-money tabs on safe internal placeholders', (
+      tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: UserRebuildShell()));
+
+      await tester.tap(find.text('المهام'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'تبويب المهام التجريبي — يحتاج خطة حالية قبل عرض المهام والمواعيد',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('الموردون'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'تبويب الموردون التجريبي — يعرض لاحقاً مراجع الموردين وطلبات العروض بدون حجوزات أو مدفوعات',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('المزيد'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'تبويب المزيد التجريبي — سيجمع الخطط والإعدادات والدعم بدون تغيير المسارات الحالية',
         ),
         findsOneWidget,
       );

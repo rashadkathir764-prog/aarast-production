@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'user_rebuild_money_tab.dart';
 import 'user_rebuild_navigation_item.dart';
+import 'user_rebuild_placeholder_tab.dart';
 import 'user_rebuild_tab.dart';
 
 class UserRebuildShell extends StatefulWidget {
@@ -15,8 +16,6 @@ class UserRebuildShell extends StatefulWidget {
 
 class _UserRebuildShellState extends State<UserRebuildShell> {
   late UserRebuildTab _selectedTab;
-
-  static const _placeholderMessage = 'هذه شاشة تجريبية للتنقل الجديد';
 
   @override
   void initState() {
@@ -56,34 +55,7 @@ class _UserRebuildShellState extends State<UserRebuildShell> {
   Widget _buildTabContent(UserRebuildTab tab) {
     return switch (tab) {
       UserRebuildTab.money => const UserRebuildMoneyTab(),
-      _ => _buildTabPlaceholder(tab),
+      _ => UserRebuildPlaceholderTab.fromTab(tab),
     };
-  }
-
-  Widget _buildTabPlaceholder(UserRebuildTab tab) {
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(tab.icon, size: 40),
-              const SizedBox(height: 12),
-              Text(
-                tab.label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(_placeholderMessage, textAlign: TextAlign.center),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

@@ -28,8 +28,8 @@ Mode: Autonomous Sequential Execution
 | 10 | Notifications Blueprint | DONE | `docs/architecture/NOTIFICATIONS_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined notification types, fields, deep links, push permission timing, guest/offline behavior, privacy, generation, dedupe, and UX rules. | `4251dcc` |
 | 11 | Design System | DONE | `docs/mobile-ux/DESIGN_SYSTEM.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined identity, typography, spacing, components, buttons, cards/lists, states, RTL/accessibility, and domain-specific UI rules without visual implementation. | `c566277` |
 | 12 | State Management Plan | DONE | `docs/mobile-architecture/STATE_MANAGEMENT_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Documented current Provider-based state, required global/domain state, current-plan ownership, summary-state rules, guest migration state, and loading/error expectations. | `ddd459b` |
-| 13 | Single Source of Truth Plan | DONE | `docs/mobile-architecture/SINGLE_SOURCE_OF_TRUTH_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined canonical summary sources for plan, days, progress, money, debts, tasks, guests, providers, notifications, permissions, sync, and widget calculation boundaries. | Pending after commit |
-| 14 | Error/Loading/Empty States Guide | TODO | - | - | Must standardize states per screen and avoid blank/placeholder screens. | - |
+| 13 | Single Source of Truth Plan | DONE | `docs/mobile-architecture/SINGLE_SOURCE_OF_TRUTH_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined canonical summary sources for plan, days, progress, money, debts, tasks, guests, providers, notifications, permissions, sync, and widget calculation boundaries. | `27882a0` |
+| 14 | Error/Loading/Empty States Guide | DONE | `docs/mobile-ux/ERROR_LOADING_EMPTY_STATES_GUIDE.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined loading, error, empty, locked, offline, pending-sync, success, and domain state matrix rules. | Pending after commit |
 | 15 | Offline & Sync Plan | TODO | - | - | Must preserve existing offline/sqflite/json layers and define allowed offline actions. | - |
 | 16 | Security & Privacy Plan | TODO | - | - | Must keep financial data private by default and permission-scoped. | - |
 | 17 | Admin & Provider Operations | TODO | - | - | Must clarify admin review before real marketplace/provider launch. | - |
@@ -70,3 +70,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 9 design system. |
 | `git diff --check` | PASS | Markdown-only changes for phase 10 state management. |
 | `git diff --check` | PASS | Markdown-only changes for phase 11 single source of truth. |
+| `git diff --check` | PASS | Markdown-only changes for phase 12 error/loading/empty guide. |

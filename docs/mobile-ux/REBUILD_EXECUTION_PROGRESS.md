@@ -26,8 +26,8 @@ Mode: Autonomous Sequential Execution
 | 8 | Auth & Guest Strategy | DONE | `docs/architecture/AUTH_GUEST_STRATEGY.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined guest capabilities, account gates, resume behavior, migration steps, offline constraints, provider auth separation, and security rules. | `5141653` |
 | 9 | Location & Provider Matching | DONE | `docs/architecture/LOCATION_PROVIDER_MATCHING.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined plan/provider location fields, provider ranking rules, location permission timing, quote location privacy, offline/cached provider behavior, and data model implications. | `3404a88` |
 | 10 | Notifications Blueprint | DONE | `docs/architecture/NOTIFICATIONS_BLUEPRINT.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined notification types, fields, deep links, push permission timing, guest/offline behavior, privacy, generation, dedupe, and UX rules. | `4251dcc` |
-| 11 | Design System | DONE | `docs/mobile-ux/DESIGN_SYSTEM.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined identity, typography, spacing, components, buttons, cards/lists, states, RTL/accessibility, and domain-specific UI rules without visual implementation. | Pending after commit |
-| 12 | State Management Plan | TODO | - | - | Must resolve duplicated Home/Dashboard summary providers and active plan ownership. | - |
+| 11 | Design System | DONE | `docs/mobile-ux/DESIGN_SYSTEM.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined identity, typography, spacing, components, buttons, cards/lists, states, RTL/accessibility, and domain-specific UI rules without visual implementation. | `c566277` |
+| 12 | State Management Plan | DONE | `docs/mobile-architecture/STATE_MANAGEMENT_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Documented current Provider-based state, required global/domain state, current-plan ownership, summary-state rules, guest migration state, and loading/error expectations. | Pending after commit |
 | 13 | Single Source of Truth Plan | TODO | - | - | Must define summary sources for days, progress, budget, debts, tasks, providers, guests, notifications. | - |
 | 14 | Error/Loading/Empty States Guide | TODO | - | - | Must standardize states per screen and avoid blank/placeholder screens. | - |
 | 15 | Offline & Sync Plan | TODO | - | - | Must preserve existing offline/sqflite/json layers and define allowed offline actions. | - |
@@ -68,3 +68,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 7 location/provider matching. |
 | `git diff --check` | PASS | Markdown-only changes for phase 8 notifications. |
 | `git diff --check` | PASS | Markdown-only changes for phase 9 design system. |
+| `git diff --check` | PASS | Markdown-only changes for phase 10 state management. |

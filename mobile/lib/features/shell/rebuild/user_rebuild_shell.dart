@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/config/app_feature_flags.dart';
+import '../../wedding_plans/models/plan_summary_readiness.dart';
+import 'user_rebuild_dashboard_summary_adapter.dart';
 import 'user_rebuild_money_tab.dart';
 import 'user_rebuild_navigation_item.dart';
 import 'user_rebuild_placeholder_tab.dart';
 import 'user_rebuild_tab.dart';
 
 class UserRebuildShell extends StatefulWidget {
-  const UserRebuildShell({super.key, this.initialTab = UserRebuildTab.home});
+  const UserRebuildShell({
+    super.key,
+    this.initialTab = UserRebuildTab.home,
+    this.featureFlags = AppFeatureFlags.defaults,
+    this.planSummaryReadiness = const PlanSummaryReadiness.empty(),
+  });
 
   final UserRebuildTab initialTab;
+  final AppFeatureFlags featureFlags;
+  final PlanSummaryReadiness planSummaryReadiness;
 
   @override
   State<UserRebuildShell> createState() => _UserRebuildShellState();
@@ -54,6 +64,10 @@ class _UserRebuildShellState extends State<UserRebuildShell> {
 
   Widget _buildTabContent(UserRebuildTab tab) {
     return switch (tab) {
+      UserRebuildTab.home => UserRebuildDashboardSummaryAdapter(
+        featureFlags: widget.featureFlags,
+        readiness: widget.planSummaryReadiness,
+      ),
       UserRebuildTab.money => const UserRebuildMoneyTab(),
       _ => UserRebuildPlaceholderTab.fromTab(tab),
     };

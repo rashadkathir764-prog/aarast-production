@@ -44,8 +44,8 @@ Mode: Autonomous Sequential Execution
 | 26 | Observability/Logs | DONE | `docs/architecture/OBSERVABILITY_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined event names, privacy classes, backend/mobile logging boundaries, product event matrix, error categories, future dashboards, and debug bundle limits. | `a0a2728` |
 | 27 | Release Plan | DONE | `docs/release/MOBILE_RELEASE_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined internal dev, QA, test artifact, pilot, production candidate, rollback, release notes, and blocker gates without deployment changes. | `646d345` |
 | 28 | Analytics Plan | DONE | `docs/analytics/ANALYTICS_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Deferred analytics behind `enableAnalytics`, defined funnels, safe/forbidden fields, domain event matrix, metrics, future constraints, and QA. | `052904b` |
-| 29 | Monetization Later | DONE | `docs/business/MONETIZATION_LATER.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Explicitly deferred payments, deposits, subscriptions, commissions, ads, premium, and FinTech; defined future conditions, forbidden copy, and provider/user monetization boundaries. | Pending after commit |
-| 30 | Legal/Support/Disputes | TODO | - | - | Must define legal/support boundaries without implying guaranteed provider agreements. | - |
+| 29 | Monetization Later | DONE | `docs/business/MONETIZATION_LATER.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Explicitly deferred payments, deposits, subscriptions, commissions, ads, premium, and FinTech; defined future conditions, forbidden copy, and provider/user monetization boundaries. | `f735e11` |
+| 30 | Legal/Support/Disputes | IN_PROGRESS | `docs/legal/PRIVACY_TERMS_NOTES.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Added legal/privacy/terms notes; support/disputes plan still pending before this stage is DONE. | Pending after commit |
 | 31 | Visual Polish | TODO | - | - | Must wait until product/UX/data/architecture Blueprints are complete. | - |
 | 32 | Agent Execution Rules | TODO | - | - | Must translate README rules into repo-local execution guardrails. | - |
 
@@ -86,3 +86,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 25 mobile release plan. |
 | `git diff --check` | PASS | Markdown-only changes for phase 26 analytics plan. |
 | `git diff --check` | PASS | Markdown-only changes for phase 27 monetization later. |
+| `git diff --check` | PASS | Markdown-only changes for phase 28 legal/privacy notes. |

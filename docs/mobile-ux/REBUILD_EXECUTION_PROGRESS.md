@@ -34,8 +34,8 @@ Mode: Autonomous Sequential Execution
 | 16 | Security & Privacy Plan | DONE | `docs/security/SECURITY_PRIVACY_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined sensitive data, privacy, permission, device permission timing, auth/token, provider visibility, and admin audit rules. | `97e44ec` |
 | 17 | Admin & Provider Operations | DONE | `docs/admin/ADMIN_PROVIDER_OPERATIONS.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined provider lifecycle, admin responsibilities, provider dashboard rules, review checklist, and support/dispute operation needs. | `18de49e` |
 | 18 | Content System | DONE | `docs/content/ARABIC_COPY_MATRIX.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined personas, Arabic copy rules, initial copy matrix, content-key direction, and sensitive copy boundaries. | `df51027` |
-| 19 | Data Seeding | DONE | `docs/data/SEEDING_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined Yemen location, budget category, provider category, onboarding priority, notification template seed groups, and quality rules. | Pending after commit |
-| 20 | Task Templates | TODO | - | - | Must map tasks to wedding date and local wedding timelines. | - |
+| 19 | Data Seeding | DONE | `docs/data/SEEDING_PLAN.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined Yemen location, budget category, provider category, onboarding priority, notification template seed groups, and quality rules. | `f9ba07b` |
+| 20 | Task Templates | DONE | `docs/data/TASK_TEMPLATES.md`, `docs/mobile-ux/REBUILD_EXECUTION_PROGRESS.md` | PASS: `git diff --check` | Defined task template fields, timeline examples, priority rules, persona copy, and generation rules tied to wedding date. | Pending after commit |
 | 21 | Feature Flags | TODO | - | - | Must hide incomplete AI, provider, push, maps, subscriptions, analytics, and quote pieces as needed. | - |
 | 22 | Migration Plan | TODO | - | - | Must cover local/offline data and safe migrations before schema changes. | - |
 | 23 | Mobile Implementation Plan | TODO | - | - | Must sequence safe mobile work after core Blueprints. | - |
@@ -76,3 +76,4 @@ Mode: Autonomous Sequential Execution
 | `git diff --check` | PASS | Markdown-only changes for phase 15 admin/provider operations. |
 | `git diff --check` | PASS | Markdown-only changes for phase 16 content/copy matrix. |
 | `git diff --check` | PASS | Markdown-only changes for phase 17 data seeding. |
+| `git diff --check` | PASS | Markdown-only changes for phase 18 task templates. |

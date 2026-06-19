@@ -7,9 +7,11 @@
  * accept/reject, and plan-provider linking without payments or bookings.
  */
 
-if (process.env.SMOKE_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-}
+const {
+  configureSmokeDatabaseUrl,
+  requireResponseId,
+} = require('./smoke-utils');
+configureSmokeDatabaseUrl();
 
 const http = require('http');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
@@ -150,7 +152,7 @@ async function run() {
     check('provider profile has id', typeof res.body?.id === 'string');
     check('provider profile starts pending', res.body?.status === 'PENDING');
     check('provider profile does not expose passwordHash', !hasPasswordHash(res.body));
-    providerId = res.body?.id;
+    providerId = requireResponseId('POST /api/v1/provider/profile', res);
   }
 
   {
@@ -179,7 +181,7 @@ async function run() {
     }, providerUser.token);
     check('POST /api/v1/provider/services - HTTP 201', res.status === 201);
     check('provider service has id', typeof res.body?.id === 'string');
-    serviceId = res.body?.id;
+    serviceId = requireResponseId('POST /api/v1/provider/services', res);
   }
 
   {

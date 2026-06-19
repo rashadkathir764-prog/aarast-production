@@ -7,9 +7,8 @@
  * marketplace and authenticated user actions through HTTP only.
  */
 
-if (process.env.SMOKE_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-}
+const { configureSmokeDatabaseUrl } = require('./smoke-utils');
+configureSmokeDatabaseUrl();
 
 const http = require('http');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');

@@ -7,9 +7,11 @@
  * invite notifications, and quote offer notifications.
  */
 
-if (process.env.SMOKE_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-}
+const {
+  configureSmokeDatabaseUrl,
+  requireResponseId,
+} = require('./smoke-utils');
+configureSmokeDatabaseUrl();
 
 const http = require('http');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
@@ -230,7 +232,7 @@ async function run() {
       description: 'Phase9 provider',
     }, providerUser.token);
     check('provider creates profile - HTTP 201', res.status === 201);
-    providerId = res.body?.id;
+    providerId = requireResponseId('provider creates profile', res);
   }
 
   {
@@ -241,7 +243,7 @@ async function run() {
       cityId: reference.city.id,
     }, providerUser.token);
     check('provider creates service - HTTP 201', res.status === 201);
-    serviceId = res.body?.id;
+    serviceId = requireResponseId('provider creates service', res);
   }
 
   await prisma.provider.update({

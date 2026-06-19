@@ -8,9 +8,11 @@
  * so quote/review dashboard reads can be exercised.
  */
 
-if (process.env.SMOKE_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-}
+const {
+  configureSmokeDatabaseUrl,
+  requireResponseId,
+} = require('./smoke-utils');
+configureSmokeDatabaseUrl();
 
 const http = require('http');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
@@ -151,7 +153,7 @@ async function run() {
     check('POST /provider/apply - HTTP 201', res.status === 201);
     check('provider apply status is PENDING', res.body?.status === 'PENDING');
     check('provider apply does not expose passwordHash', !hasPasswordHash(res.body));
-    providerId = res.body?.id;
+    providerId = requireResponseId('POST /provider/apply', res);
   }
 
   {
@@ -189,7 +191,7 @@ async function run() {
     }, providerToken);
     check('POST /provider/me/services - HTTP 201', res.status === 201);
     check('created service has id', typeof res.body?.id === 'string');
-    serviceId = res.body?.id;
+    serviceId = requireResponseId('POST /provider/me/services', res);
   }
 
   {

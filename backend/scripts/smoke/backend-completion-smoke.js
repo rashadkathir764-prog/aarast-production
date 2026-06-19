@@ -7,9 +7,11 @@
  * dashboard, money, tasks, guests, providers, quote offers, and notifications.
  */
 
-if (process.env.SMOKE_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-}
+const {
+  configureSmokeDatabaseUrl,
+  requireResponseId,
+} = require('./smoke-utils');
+configureSmokeDatabaseUrl();
 
 const http = require('http');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
@@ -329,7 +331,7 @@ async function run() {
       description: 'Provider used by backend completion smoke.',
     }, providerUser.token);
     check('POST provider profile - HTTP 201', res.status === 201);
-    providerId = res.body?.id;
+    providerId = requireResponseId('POST provider profile', res);
   }
 
   {
@@ -341,7 +343,7 @@ async function run() {
       cityId: reference.city.id,
     }, providerUser.token);
     check('POST provider service - HTTP 201', res.status === 201);
-    serviceId = res.body?.id;
+    serviceId = requireResponseId('POST provider service', res);
   }
 
   await prisma.provider.update({

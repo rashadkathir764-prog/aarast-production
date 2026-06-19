@@ -9,6 +9,7 @@ class AuthStorage {
 
   static const _accessTokenKey = 'aarast_access_token';
   static const _safeUserKey = 'aarast_safe_user';
+  static const _activePlanIdKey = 'aarast_active_plan_id';
 
   final SharedPreferences _preferences;
 
@@ -41,8 +42,17 @@ class AuthStorage {
     await _preferences.setString(_safeUserKey, jsonEncode(user.toJson()));
   }
 
+  String? readActivePlanId() {
+    return _preferences.getString(_activePlanIdKey);
+  }
+
+  Future<void> saveActivePlanId(String activePlanId) async {
+    await _preferences.setString(_activePlanIdKey, activePlanId);
+  }
+
   Future<void> clear() async {
     await _preferences.remove(_accessTokenKey);
     await _preferences.remove(_safeUserKey);
+    await _preferences.remove(_activePlanIdKey);
   }
 }

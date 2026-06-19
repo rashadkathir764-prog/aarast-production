@@ -3,8 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/providers/auth_controller.dart';
+import '../data/guest_onboarding_storage.dart';
+import '../models/guest_onboarding_draft.dart';
 import '../../wedding_plans/models/onboarding_complete.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 
@@ -81,12 +83,6 @@ class _ActivePlanOnboardingScreenState
 
   @override
   Widget build(BuildContext context) {
-    final auth = _maybeWatchAuth(context);
-
-    if (auth?.status == AuthStatus.unauthenticated) {
-      return const _UnauthenticatedOnboardingGate();
-    }
-
     final provider = context.watch<WeddingPlansProvider>();
 
     return Directionality(
@@ -196,116 +192,72 @@ class _ActivePlanOnboardingScreenState
     }
 
     final city = _cityController.text.trim();
-    final response = await context
-        .read<WeddingPlansProvider>()
-        .completeOnboarding(
-          OnboardingCompleteRequest(
-            path: 'USER',
-            persona: _persona,
-            title: city.isEmpty ? 'خطة زفافي' : 'خطة زفاف $city',
-            city: city.isEmpty ? null : city,
-            location: {
-              'governorate': _governorateController.text.trim(),
-              'city': city,
-              'district': _districtController.text.trim(),
-              'neighborhood': _neighborhoodController.text.trim(),
-              'street': _streetController.text.trim(),
-            }..removeWhere((key, value) => value.trim().isEmpty),
-            weddingDate: _weddingDate.toIso8601String(),
-            priorities: _priorities.toList(growable: false),
-            estimatedBudget: _budgetController.text.trim(),
-            currency: _currency,
-            selectedCategories: _categories.toList(growable: false),
-          ),
-        );
+    final location = {
+      'governorate': _governorateController.text.trim(),
+      'city': city,
+      'district': _districtController.text.trim(),
+      'neighborhood': _neighborhoodController.text.trim(),
+      'street': _streetController.text.trim(),
+    }..removeWhere((key, value) => value.trim().isEmpty);
+    final priorities = _priorities.toList(growable: false);
+    final categories = _categories.toList(growable: false);
+    final authStorage = context.read<AuthStorage>();
+    final guestStorage = context.read<GuestOnboardingStorage>();
+    final weddingPlansProvider = context.read<WeddingPlansProvider>();
+    final accessToken = await authStorage.readAccessToken();
 
-    if (response != null && mounted) {
+    if (accessToken == null || accessToken.trim().isEmpty) {
+      final now = DateTime.now();
+      final guestPlan = GuestOnboardingDraft(
+        guestPlanId: 'local-guest-${now.microsecondsSinceEpoch}',
+        createdAt: now,
+        isGuestPlan: true,
+        needsSync: true,
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: switch (_persona) {
+          'BRIDE' => GuestPersona.bride,
+          'HELPER' => GuestPersona.helper,
+          _ => GuestPersona.groom,
+        },
+        governorate: location['governorate'],
+        city: city.isEmpty ? null : city,
+        district: location['district'],
+        neighborhood: location['neighborhood'],
+        street: location['street'],
+        addressNote: null,
+        weddingDate: _weddingDate,
+        weddingDateUnknown: false,
+        priorities: priorities,
+        currency: _currency,
+        estimatedBudget: _budgetController.text.trim(),
+        selectedCategoryKeys: categories,
+      );
+      await guestStorage.saveDraft(guestPlan);
+      if (!mounted) return;
       context.go(AppRouter.home);
+      return;
     }
-  }
-}
 
-AuthController? _maybeWatchAuth(BuildContext context) {
-  try {
-    return context.watch<AuthController>();
-  } on ProviderNotFoundException {
-    return null;
-  }
-}
-
-class _UnauthenticatedOnboardingGate extends StatelessWidget {
-  const _UnauthenticatedOnboardingGate();
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(18),
-                child: _StepCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(22),
-                        decoration: AppTheme.heroDecoration(),
-                        child: const Column(
-                          children: [
-                            Icon(
-                              Icons.favorite_border_rounded,
-                              color: AppTheme.dGold2,
-                              size: 46,
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'ألف مبروك!',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              'سجّل دخولك أو أنشئ حسابك لننشئ خطة زفاف حقيقية محفوظة على الخادم.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      FilledButton.icon(
-                        onPressed: () => context.go(AppRouter.login),
-                        icon: const Icon(Icons.login_rounded),
-                        label: const Text('تسجيل الدخول'),
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => context.go(AppRouter.register),
-                        icon: const Icon(Icons.person_add_alt_1_rounded),
-                        label: const Text('إنشاء حساب'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+    final response = await weddingPlansProvider.completeOnboarding(
+      OnboardingCompleteRequest(
+        path: 'USER',
+        persona: _persona,
+        title: city.isEmpty ? 'خطة زفافي' : 'خطة زفاف $city',
+        city: city.isEmpty ? null : city,
+        location: location,
+        weddingDate: _weddingDate.toIso8601String(),
+        priorities: priorities,
+        estimatedBudget: _budgetController.text.trim(),
+        currency: _currency,
+        selectedCategories: categories,
       ),
     );
+
+    if (response != null && mounted) {
+      await authStorage.saveActivePlanId(response.activePlanId);
+      if (!mounted) return;
+      context.go(AppRouter.home);
+    }
   }
 }
 

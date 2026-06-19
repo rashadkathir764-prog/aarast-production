@@ -1,4 +1,6 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/screens/active_plan_onboarding_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
@@ -7,11 +9,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('completes visible onboarding and opens dashboard route', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({'aarast_access_token': 'token'});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final guestStorage = GuestOnboardingStorage(preferences);
     late RequestOptions capturedRequest;
     final provider = WeddingPlansProvider(
       WeddingPlansApi(
@@ -39,8 +46,12 @@ void main() {
     );
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: authStorage),
+          Provider<GuestOnboardingStorage>.value(value: guestStorage),
+          ChangeNotifierProvider.value(value: provider),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -57,7 +68,71 @@ void main() {
     expect(capturedRequest.path, '/api/v1/onboarding/complete');
     expect(capturedRequest.data['path'], 'USER');
     expect(provider.activePlan?.id, 'plan-1');
+    expect(authStorage.readActivePlanId(), 'plan-1');
     expect(find.text('dashboard-opened'), findsOneWidget);
+  });
+
+  testWidgets('creates local guest plan without calling protected API', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final guestStorage = GuestOnboardingStorage(preferences);
+    var apiCallCount = 0;
+    final provider = WeddingPlansProvider(
+      WeddingPlansApi(
+        _client((options) {
+          apiCallCount += 1;
+          return _onboardingResponseJson();
+        }),
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const ActivePlanOnboardingScreen(),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (context, state) => const Directionality(
+            textDirection: TextDirection.rtl,
+            child: Text('local-dashboard-opened'),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: authStorage),
+          Provider<GuestOnboardingStorage>.value(value: guestStorage),
+          ChangeNotifierProvider.value(value: provider),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await _tapVisible(tester, const Key('active-onboarding-primary-action'));
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, const Key('active-onboarding-primary-action'));
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, const Key('active-onboarding-primary-action'));
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, const Key('active-onboarding-create-plan'));
+    await tester.pumpAndSettle();
+
+    final guestPlan = await guestStorage.loadGuestPlan();
+    expect(apiCallCount, 0);
+    expect(guestPlan, isNotNull);
+    expect(guestPlan!.guestPlanId, startsWith('local-guest-'));
+    expect(guestPlan.isGuestPlan, isTrue);
+    expect(guestPlan.needsSync, isTrue);
+    expect(guestPlan.createdAt, isNotNull);
+    expect(find.text('local-dashboard-opened'), findsOneWidget);
   });
 }
 

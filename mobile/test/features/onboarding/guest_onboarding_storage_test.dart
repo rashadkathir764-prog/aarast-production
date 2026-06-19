@@ -42,5 +42,31 @@ void main() {
       expect(await storage.hasDraft(), isFalse);
       expect(await storage.loadDraft(), isNull);
     });
+
+    test('distinguishes a complete local guest plan from a draft', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      final draft = const GuestOnboardingDraft.empty().copyWith(
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.groom,
+        city: 'Sanaa',
+        weddingDateUnknown: true,
+        selectedCategoryKeys: ['hall'],
+      );
+
+      await storage.saveDraft(draft);
+      expect(await storage.hasGuestPlan(), isFalse);
+
+      await storage.saveDraft(
+        draft.copyWith(
+          guestPlanId: 'local-guest-1',
+          createdAt: DateTime.utc(2026, 6, 19),
+          isGuestPlan: true,
+          needsSync: true,
+        ),
+      );
+      expect(await storage.hasGuestPlan(), isTrue);
+      expect((await storage.loadGuestPlan())?.guestPlanId, 'local-guest-1');
+    });
   });
 }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
@@ -47,9 +48,13 @@ class _SplashScreenState extends State<SplashScreen>
       return _navigateWhenReady();
     }
 
+    final hasGuestPlan =
+        auth.status == AuthStatus.unauthenticated &&
+        await context.read<GuestOnboardingStorage>().hasGuestPlan();
+
     if (!mounted) return;
     context.go(
-      auth.status == AuthStatus.authenticated
+      auth.status == AuthStatus.authenticated || hasGuestPlan
           ? AppRouter.home
           : AppRouter.onboarding,
     );

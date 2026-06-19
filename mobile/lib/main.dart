@@ -20,6 +20,7 @@ import 'features/marketplace/data/marketplace_api.dart';
 import 'features/marketplace/providers/marketplace_provider.dart';
 import 'features/notifications/data/notifications_api.dart';
 import 'features/notifications/providers/notifications_provider.dart';
+import 'features/onboarding/data/guest_onboarding_storage.dart';
 import 'features/settings/data/settings_api.dart';
 import 'features/settings/providers/settings_provider.dart';
 import 'features/sharing/data/sharing_api.dart';
@@ -35,6 +36,7 @@ Future<void> main() async {
 
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
+  final guestOnboardingStorage = GuestOnboardingStorage(preferences);
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
   final localDatabase = await createLocalDatabase(preferences);
   final offlineSyncService = OfflineSyncService(
@@ -71,6 +73,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
+        Provider<GuestOnboardingStorage>.value(value: guestOnboardingStorage),
         Provider<ApiClient>.value(value: apiClient),
         Provider<LocalDatabase>.value(value: localDatabase),
         ChangeNotifierProvider<OfflineSyncService>.value(

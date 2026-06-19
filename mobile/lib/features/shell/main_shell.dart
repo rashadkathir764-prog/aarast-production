@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../home/screens/home_screen.dart';
+import '../home/data/dashboard_summary_sources.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
@@ -32,9 +33,10 @@ class _MainShellState extends State<MainShell> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<WeddingPlansProvider>();
-      await provider.loadActiveWeddingPlan();
+      final activePlan = await BackendDashboardSummarySource(
+        provider,
+      ).loadActivePlan();
       if (!mounted || _activePlanId != null) return;
-      final activePlan = provider.activePlan;
       if (activePlan == null && provider.errorMessage == null) {
         context.go(AppRouter.onboarding);
         return;

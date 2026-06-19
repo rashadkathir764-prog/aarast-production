@@ -24,8 +24,8 @@ import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
 import '../../features/marketplace/screens/quote_request_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/home/screens/dashboard_entry_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/shell/main_shell.dart';
 import '../../features/shell/rebuild/user_rebuild_shell.dart';
 import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
@@ -207,7 +207,10 @@ class AppRouter {
           ),
         ),
         GoRoute(path: otp, builder: (context, state) => const OtpScreen()),
-        GoRoute(path: home, builder: (context, state) => const MainShell()),
+        GoRoute(
+          path: home,
+          builder: (context, state) => const DashboardEntryScreen(),
+        ),
         GoRoute(
           path: providerMarketplace,
           builder: (context, state) => const ProviderMarketplaceScreen(),

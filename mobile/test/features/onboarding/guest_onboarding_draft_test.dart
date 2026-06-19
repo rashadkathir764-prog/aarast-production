@@ -6,6 +6,10 @@ void main() {
     test('starts empty', () {
       const draft = GuestOnboardingDraft.empty();
 
+      expect(draft.guestPlanId, isNull);
+      expect(draft.createdAt, isNull);
+      expect(draft.isGuestPlan, isFalse);
+      expect(draft.needsSync, isFalse);
       expect(draft.selectedPath, isNull);
       expect(draft.persona, isNull);
       expect(draft.governorate, isNull);
@@ -23,6 +27,7 @@ void main() {
       expect(draft.isWeddingUser, isFalse);
       expect(draft.hasMinimumPlanSeed, isFalse);
       expect(draft.canGenerateLocalPreview, isFalse);
+      expect(draft.isCompleteGuestPlan, isFalse);
     });
 
     test('selects wedding user path', () {
@@ -118,6 +123,10 @@ void main() {
 
     test('serializes to and from JSON without losing data', () {
       final draft = GuestOnboardingDraft(
+        guestPlanId: 'local-guest-1',
+        createdAt: DateTime.utc(2026, 6, 19),
+        isGuestPlan: true,
+        needsSync: true,
         selectedPath: GuestOnboardingPath.weddingUser,
         persona: GuestPersona.helper,
         governorate: 'Sanaa',
@@ -141,6 +150,7 @@ void main() {
       expect(restored.hasPersona, isTrue);
       expect(restored.hasLocationSeed, isTrue);
       expect(restored.hasTimelineSeed, isTrue);
+      expect(restored.isCompleteGuestPlan, isTrue);
     });
   });
 }

@@ -4,6 +4,10 @@ enum GuestPersona { groom, bride, helper }
 
 class GuestOnboardingDraft {
   const GuestOnboardingDraft({
+    this.guestPlanId,
+    this.createdAt,
+    this.isGuestPlan = false,
+    this.needsSync = false,
     required this.selectedPath,
     required this.persona,
     required this.governorate,
@@ -21,7 +25,11 @@ class GuestOnboardingDraft {
   });
 
   const GuestOnboardingDraft.empty()
-    : selectedPath = null,
+    : guestPlanId = null,
+      createdAt = null,
+      isGuestPlan = false,
+      needsSync = false,
+      selectedPath = null,
       persona = null,
       governorate = null,
       city = null,
@@ -36,6 +44,10 @@ class GuestOnboardingDraft {
       estimatedBudget = null,
       selectedCategoryKeys = const [];
 
+  final String? guestPlanId;
+  final DateTime? createdAt;
+  final bool isGuestPlan;
+  final bool needsSync;
   final GuestOnboardingPath? selectedPath;
   final GuestPersona? persona;
   final String? governorate;
@@ -69,7 +81,21 @@ class GuestOnboardingDraft {
     return hasMinimumPlanSeed && selectedCategoryKeys.isNotEmpty;
   }
 
+  bool get isCompleteGuestPlan {
+    return isGuestPlan &&
+        needsSync &&
+        guestPlanId?.startsWith('local-guest-') == true &&
+        createdAt != null &&
+        canGenerateLocalPreview;
+  }
+
   GuestOnboardingDraft copyWith({
+    String? guestPlanId,
+    bool clearGuestPlanId = false,
+    DateTime? createdAt,
+    bool clearCreatedAt = false,
+    bool? isGuestPlan,
+    bool? needsSync,
     GuestOnboardingPath? selectedPath,
     bool clearSelectedPath = false,
     GuestPersona? persona,
@@ -102,6 +128,10 @@ class GuestOnboardingDraft {
         : weddingDate ?? this.weddingDate;
 
     return GuestOnboardingDraft(
+      guestPlanId: clearGuestPlanId ? null : guestPlanId ?? this.guestPlanId,
+      createdAt: clearCreatedAt ? null : createdAt ?? this.createdAt,
+      isGuestPlan: isGuestPlan ?? this.isGuestPlan,
+      needsSync: needsSync ?? this.needsSync,
       selectedPath: clearSelectedPath
           ? null
           : selectedPath ?? this.selectedPath,
@@ -129,6 +159,10 @@ class GuestOnboardingDraft {
 
   Map<String, dynamic> toJson() {
     return {
+      'guestPlanId': guestPlanId,
+      'createdAt': createdAt?.toIso8601String(),
+      'isGuestPlan': isGuestPlan,
+      'needsSync': needsSync,
       'selectedPath': selectedPath?.name,
       'persona': persona?.name,
       'governorate': governorate,
@@ -149,6 +183,10 @@ class GuestOnboardingDraft {
   static GuestOnboardingDraft fromJson(Map<String, dynamic> json) {
     final weddingDateUnknown = json['weddingDateUnknown'] == true;
     return GuestOnboardingDraft(
+      guestPlanId: _stringOrNull(json['guestPlanId']),
+      createdAt: _dateTimeOrNull(json['createdAt']),
+      isGuestPlan: json['isGuestPlan'] == true,
+      needsSync: json['needsSync'] == true,
       selectedPath: _enumByName(
         GuestOnboardingPath.values,
         json['selectedPath'],
@@ -204,6 +242,10 @@ class GuestOnboardingDraft {
   @override
   bool operator ==(Object other) {
     return other is GuestOnboardingDraft &&
+        other.guestPlanId == guestPlanId &&
+        other.createdAt == createdAt &&
+        other.isGuestPlan == isGuestPlan &&
+        other.needsSync == needsSync &&
         other.selectedPath == selectedPath &&
         other.persona == persona &&
         other.governorate == governorate &&
@@ -223,6 +265,10 @@ class GuestOnboardingDraft {
   @override
   int get hashCode {
     return Object.hash(
+      guestPlanId,
+      createdAt,
+      isGuestPlan,
+      needsSync,
       selectedPath,
       persona,
       governorate,

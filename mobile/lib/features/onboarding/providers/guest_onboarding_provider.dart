@@ -15,6 +15,15 @@ class GuestOnboardingProvider extends ChangeNotifier {
 
   GuestOnboardingDraft get draft => _draft;
 
+  bool get shouldShowProviderPendingBranch {
+    return _draft.selectedPath == GuestOnboardingPath.provider;
+  }
+
+  Future<GuestOnboardingDraft> loadOrStartDraft() async {
+    final savedDraft = await loadSavedDraft();
+    return savedDraft ?? _draft;
+  }
+
   Future<GuestOnboardingDraft?> loadSavedDraft() async {
     final savedDraft = await _storage?.loadDraft();
     if (savedDraft == null) return null;
@@ -34,8 +43,18 @@ class GuestOnboardingProvider extends ChangeNotifier {
     _setDraft(_draft.copyWith(selectedPath: path));
   }
 
+  Future<void> updatePathAndSave(GuestOnboardingPath path) async {
+    setPath(path);
+    await saveCurrentDraft();
+  }
+
   void setPersona(GuestPersona persona) {
     _setDraft(_draft.copyWith(persona: persona));
+  }
+
+  Future<void> updatePersonaAndSave(GuestPersona persona) async {
+    setPersona(persona);
+    await saveCurrentDraft();
   }
 
   void setLocation({
@@ -64,6 +83,25 @@ class GuestOnboardingProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> updateLocationAndSave({
+    String? governorate,
+    String? city,
+    String? district,
+    String? neighborhood,
+    String? street,
+    String? addressNote,
+  }) async {
+    setLocation(
+      governorate: governorate,
+      city: city,
+      district: district,
+      neighborhood: neighborhood,
+      street: street,
+      addressNote: addressNote,
+    );
+    await saveCurrentDraft();
+  }
+
   void setWeddingDate(DateTime? date, {bool unknown = false}) {
     _setDraft(
       _draft.copyWith(
@@ -74,8 +112,21 @@ class GuestOnboardingProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> updateWeddingDateAndSave(
+    DateTime? date, {
+    bool unknown = false,
+  }) async {
+    setWeddingDate(date, unknown: unknown);
+    await saveCurrentDraft();
+  }
+
   void setPriorities(List<String> priorities) {
     _setDraft(_draft.copyWith(priorities: priorities));
+  }
+
+  Future<void> updatePrioritiesAndSave(List<String> priorities) async {
+    setPriorities(priorities);
+    await saveCurrentDraft();
   }
 
   void setBudget({String? currency, String? estimatedBudget}) {
@@ -90,8 +141,21 @@ class GuestOnboardingProvider extends ChangeNotifier {
     );
   }
 
+  Future<void> updateBudgetAndSave({
+    String? currency,
+    String? estimatedBudget,
+  }) async {
+    setBudget(currency: currency, estimatedBudget: estimatedBudget);
+    await saveCurrentDraft();
+  }
+
   void setCategories(List<String> categoryKeys) {
     _setDraft(_draft.copyWith(selectedCategoryKeys: categoryKeys));
+  }
+
+  Future<void> updateCategoriesAndSave(List<String> categoryKeys) async {
+    setCategories(categoryKeys);
+    await saveCurrentDraft();
   }
 
   void reset() {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/onboarding/screens/guest_welcome_screen.dart';
+import '../../features/onboarding/screens/guest_onboarding_flow_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
@@ -175,7 +175,7 @@ class AppRouter {
           redirect: (context, state) {
             return guestOnboardingRedirect(AppFeatureFlags.defaults);
           },
-          builder: (context, state) => const GuestWelcomeScreen(),
+          builder: (context, state) => const GuestOnboardingFlowScreen(),
         ),
         GoRoute(path: login, builder: (context, state) => const LoginScreen()),
         GoRoute(

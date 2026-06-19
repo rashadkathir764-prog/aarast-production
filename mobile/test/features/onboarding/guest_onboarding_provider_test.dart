@@ -119,5 +119,78 @@ void main() {
         expect(await storage.hasDraft(), isFalse);
       },
     );
+
+    test('starts with an empty draft when no saved draft exists', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      final provider = GuestOnboardingProvider(storage: storage);
+
+      final draft = await provider.loadOrStartDraft();
+
+      expect(draft, const GuestOnboardingDraft.empty());
+      expect(provider.draft, const GuestOnboardingDraft.empty());
+    });
+
+    test('hydrates an existing saved draft before navigation begins', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      final savedDraft = const GuestOnboardingDraft.empty().copyWith(
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.helper,
+        city: 'Aden',
+        weddingDateUnknown: true,
+      );
+      await storage.saveDraft(savedDraft);
+      final provider = GuestOnboardingProvider(storage: storage);
+
+      final draft = await provider.loadOrStartDraft();
+
+      expect(draft, savedDraft);
+      expect(provider.draft, savedDraft);
+    });
+
+    test('updates important choices and saves them explicitly', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      final provider = GuestOnboardingProvider(storage: storage);
+
+      await provider.updatePathAndSave(GuestOnboardingPath.weddingUser);
+      await provider.updatePersonaAndSave(GuestPersona.bride);
+      await provider.updateLocationAndSave(city: 'Sanaa');
+      await provider.updateWeddingDateAndSave(null, unknown: true);
+      await provider.updatePrioritiesAndSave(['budget', 'tasks']);
+      await provider.updateBudgetAndSave(
+        currency: 'YER',
+        estimatedBudget: '1500000',
+      );
+      await provider.updateCategoriesAndSave(['hall', 'photo']);
+
+      final savedDraft = await storage.loadDraft();
+
+      expect(savedDraft, provider.draft);
+      expect(savedDraft?.selectedPath, GuestOnboardingPath.weddingUser);
+      expect(savedDraft?.persona, GuestPersona.bride);
+      expect(savedDraft?.city, 'Sanaa');
+      expect(savedDraft?.weddingDateUnknown, isTrue);
+      expect(savedDraft?.priorities, ['budget', 'tasks']);
+      expect(savedDraft?.estimatedBudget, '1500000');
+      expect(savedDraft?.selectedCategoryKeys, ['hall', 'photo']);
+    });
+
+    test('provider path is recorded as a safe pending branch', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = GuestOnboardingStorage(preferences);
+      final provider = GuestOnboardingProvider(storage: storage);
+
+      await provider.updatePathAndSave(GuestOnboardingPath.provider);
+
+      expect(provider.draft.selectedPath, GuestOnboardingPath.provider);
+      expect(provider.shouldShowProviderPendingBranch, isTrue);
+      expect(await storage.loadDraft(), provider.draft);
+    });
   });
 }

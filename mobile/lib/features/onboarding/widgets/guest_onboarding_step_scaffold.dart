@@ -72,6 +72,7 @@ class GuestOnboardingStepScaffold extends StatelessWidget {
                           child,
                           const SizedBox(height: 22),
                           PrimaryActionButton(
+                            key: const Key('guest-onboarding-primary-action'),
                             label: continueLabel,
                             icon: Icons.arrow_back_rounded,
                             onPressed: onContinue ?? () {},
@@ -130,6 +131,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     this.selected = false,
+    this.onTap,
     super.key,
   });
 
@@ -137,65 +139,81 @@ class GuestOnboardingOptionTile extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GuestOnboardingCard(
-      color: selected ? AppTheme.dPinkBg.withAlpha(120) : null,
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              icon,
-              color: selected ? Colors.white : AppTheme.dMaroon,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dInk,
-                    fontWeight: FontWeight.w900,
-                  ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: GuestOnboardingCard(
+          color: selected ? AppTheme.dPinkBg.withAlpha(120) : null,
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
-                    height: 1.35,
-                  ),
+                child: Icon(
+                  icon,
+                  color: selected ? Colors.white : AppTheme.dMaroon,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      textAlign: TextAlign.right,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.dInk,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      textAlign: TextAlign.right,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.dInkSoft,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
+            ],
           ),
-          if (selected)
-            const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
-        ],
+        ),
       ),
     );
   }
 }
 
 class GuestOnboardingChipList extends StatelessWidget {
-  const GuestOnboardingChipList({required this.labels, super.key});
+  const GuestOnboardingChipList({
+    required this.labels,
+    this.selectedLabels,
+    this.onChanged,
+    super.key,
+  });
 
   final List<String> labels;
+  final List<String>? selectedLabels;
+  final ValueChanged<List<String>>? onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final selected = selectedLabels ?? labels;
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -203,8 +221,16 @@ class GuestOnboardingChipList extends StatelessWidget {
         for (final label in labels)
           FilterChip(
             label: Text(label),
-            selected: true,
-            onSelected: (_) {},
+            selected: selected.contains(label),
+            onSelected: (isSelected) {
+              final next = [...selected];
+              if (isSelected && !next.contains(label)) {
+                next.add(label);
+              } else if (!isSelected) {
+                next.remove(label);
+              }
+              onChanged?.call(List.unmodifiable(next));
+            },
             selectedColor: AppTheme.dPinkBg,
             checkmarkColor: AppTheme.dMaroon,
           ),

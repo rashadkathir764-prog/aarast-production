@@ -1,30 +1,52 @@
 import 'package:flutter/material.dart';
 
+import '../models/guest_onboarding_draft.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
 
 class ChoosePathScreen extends StatelessWidget {
-  const ChoosePathScreen({super.key});
+  const ChoosePathScreen({
+    this.selectedPath,
+    this.onSelectPath,
+    this.onContinue,
+    this.onBack,
+    super.key,
+  });
+
+  final GuestOnboardingPath? selectedPath;
+  final ValueChanged<GuestOnboardingPath>? onSelectPath;
+  final VoidCallback? onContinue;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
-    return const GuestOnboardingStepScaffold(
+    final effectivePath = selectedPath ?? GuestOnboardingPath.weddingUser;
+
+    return GuestOnboardingStepScaffold(
       title: 'كيف تريد استخدام أعرست؟',
       description:
           'اختر المسار المناسب حتى تبقى تجربة التخطيط منفصلة عن مسار المزودين.',
       continueLabel: 'متابعة',
+      onContinue: onContinue,
+      onBack: onBack,
       child: Column(
         children: [
           GuestOnboardingOptionTile(
+            key: const Key('guest-path-wedding-user'),
             title: 'أريد تنظيم زفافي',
             subtitle: 'مسار تخطيط الزفاف والميزانية والمهام والضيوف.',
             icon: Icons.favorite_rounded,
-            selected: true,
+            selected: effectivePath == GuestOnboardingPath.weddingUser,
+            onTap: () => onSelectPath?.call(GuestOnboardingPath.weddingUser),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           GuestOnboardingOptionTile(
+            key: const Key('guest-path-provider'),
             title: 'أنا مزود خدمة',
-            subtitle: 'مسار منفصل لاحقًا لملف المزود وطلبات العروض.',
+            subtitle:
+                'مسار آمن مؤقت. ملف المزود وطلبات العروض ستفتح لاحقًا بعد اعتمادها.',
             icon: Icons.storefront_rounded,
+            selected: effectivePath == GuestOnboardingPath.provider,
+            onTap: () => onSelectPath?.call(GuestOnboardingPath.provider),
           ),
         ],
       ),

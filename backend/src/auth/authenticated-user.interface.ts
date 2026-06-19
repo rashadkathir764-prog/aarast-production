@@ -1,4 +1,9 @@
-import { UserRole, UserStatus } from '@prisma/client';
+import {
+  OnboardingPath,
+  UserRole,
+  UserStatus,
+  WeddingPersona,
+} from '@prisma/client';
 
 export interface AuthenticatedUser {
   id: string;
@@ -11,6 +16,10 @@ export interface AuthenticatedUser {
   lastLoginAt: Date | null;
   avatarUrl: string | null;
   locale: string;
+  activeWeddingPlanId: string | null;
+  onboardingPath: OnboardingPath | null;
+  persona: WeddingPersona | null;
+  onboardingCompletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -12,6 +12,7 @@
     "smoke:health": "node scripts/smoke/health-smoke.js",
     "smoke:auth": "node scripts/smoke/auth-smoke.js",
     "smoke:wedding-plan": "node scripts/smoke/wedding-plan-smoke.js",
+    "smoke:onboarding-active-plan": "node scripts/smoke/onboarding-active-plan-smoke.js",
     "smoke:budget-expense": "node scripts/smoke/budget-expense-smoke.js",
     "smoke:debt-installment": "node scripts/smoke/debt-installment-smoke.js",
     "smoke:task-timeline": "node scripts/smoke/task-timeline-smoke.js",

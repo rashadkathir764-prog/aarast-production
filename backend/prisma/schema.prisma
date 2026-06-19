@@ -18,6 +18,17 @@ enum UserStatus {
   DISABLED
 }
 
+enum OnboardingPath {
+  USER
+  PROVIDER
+}
+
+enum WeddingPersona {
+  GROOM
+  BRIDE
+  HELPER
+}
+
 enum WeddingPlanStatus {
   PLANNING
   ARCHIVED
@@ -137,9 +148,14 @@ model User {
   lastLoginAt            DateTime?
   avatarUrl              String?
   locale                 String                  @default("ar")
+  activeWeddingPlanId    String?
+  onboardingPath         OnboardingPath?
+  persona                WeddingPersona?
+  onboardingCompletedAt  DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
-  weddingPlans           WeddingPlan[]
+  weddingPlans           WeddingPlan[]           @relation("OwnedWeddingPlans")
+  activeWeddingPlan      WeddingPlan?            @relation("ActiveWeddingPlan", fields: [activeWeddingPlanId], references: [id], onDelete: SetNull)
   sharedWeddingPlans     SharedMember[]
   notificationPreference NotificationPreference?
   notifications          Notification[]
@@ -152,26 +168,34 @@ model User {
 }
 
 model WeddingPlan {
-  id               String            @id @default(cuid())
-  ownerUserId      String
-  title            String
-  city             String?
-  weddingDate      DateTime?
-  estimatedBudget  Decimal?          @db.Decimal(14, 2)
-  currency         String            @default("YER")
-  status           WeddingPlanStatus @default(PLANNING)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  owner            User              @relation(fields: [ownerUserId], references: [id])
-  budgetCategories BudgetCategory[]
-  expenses         Expense[]
-  debts            Debt[]
-  tasks            WeddingTask[]
-  sharedMembers    SharedMember[]
-  quoteRequests    QuoteRequest[]
-  bookingLeads     BookingLead[]
-  notifications    Notification[]
-  guests           Guest[]
+  id                    String            @id @default(cuid())
+  ownerUserId           String
+  title                 String
+  city                  String?
+  location              Json?
+  weddingDate           DateTime?
+  priorities            String[]          @default([])
+  estimatedBudget       Decimal?          @db.Decimal(14, 2)
+  currency              String            @default("YER")
+  onboardingPath        OnboardingPath?
+  persona               WeddingPersona?
+  onboardingCompletedAt DateTime?
+  status                WeddingPlanStatus @default(PLANNING)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  owner                 User              @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
+  activeForUsers        User[]            @relation("ActiveWeddingPlan")
+  budgetCategories      BudgetCategory[]
+  expenses              Expense[]
+  debts                 Debt[]
+  tasks                 WeddingTask[]
+  sharedMembers         SharedMember[]
+  quoteRequests         QuoteRequest[]
+  bookingLeads          BookingLead[]
+  notifications         Notification[]
+  guests                Guest[]
+
+  @@index([ownerUserId, status])
 }
 
 model BudgetCategory {

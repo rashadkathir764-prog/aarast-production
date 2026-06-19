@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
+import { MeModule } from './me/me.module';
 import { WeddingPlansModule } from './wedding-plans/wedding-plans.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { BudgetCategoriesModule } from './budget-categories/budget-categories.module';
 import { ExpensesModule } from './expenses/expenses.module';
 import { DebtsModule } from './debts/debts.module';
@@ -22,7 +24,9 @@ import { GuestsModule } from './guests/guests.module';
   imports: [
     PrismaModule,
     AuthModule,
+    MeModule,
     WeddingPlansModule,
+    OnboardingModule,
     BudgetCategoriesModule,
     ExpensesModule,
     DebtsModule,

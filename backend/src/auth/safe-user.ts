@@ -11,6 +11,10 @@ export interface SafeUser {
   lastLoginAt: Date | null;
   avatarUrl: string | null;
   locale: string;
+  activeWeddingPlanId: string | null;
+  onboardingPath: string | null;
+  persona: string | null;
+  onboardingCompletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,6 +35,10 @@ export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser 
     lastLoginAt: user.lastLoginAt,
     avatarUrl: user.avatarUrl,
     locale: user.locale,
+    activeWeddingPlanId: user.activeWeddingPlanId,
+    onboardingPath: user.onboardingPath,
+    persona: user.persona,
+    onboardingCompletedAt: user.onboardingCompletedAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

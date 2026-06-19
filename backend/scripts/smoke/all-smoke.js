@@ -8,6 +8,7 @@ const smokeScripts = [
   ['smoke:health', 'health-smoke.js'],
   ['smoke:auth', 'auth-smoke.js'],
   ['smoke:wedding-plan', 'wedding-plan-smoke.js'],
+  ['smoke:onboarding-active-plan', 'onboarding-active-plan-smoke.js'],
   ['smoke:budget-expense', 'budget-expense-smoke.js'],
   ['smoke:debt-installment', 'debt-installment-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],

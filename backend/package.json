@@ -29,6 +29,7 @@
     "smoke:marketplace": "node scripts/smoke/marketplace-smoke.js",
     "smoke:providers-quotes": "node scripts/smoke/providers-quotes-smoke.js",
     "smoke:provider-dashboard": "node scripts/smoke/provider-dashboard-smoke.js",
+    "smoke:backend-completion": "node scripts/smoke/backend-completion-smoke.js",
     "smoke:all": "node --env-file=.env scripts/smoke/all-smoke.js",
     "dev:create-admin": "node scripts/dev/create-admin.cjs",
     "seed": "ts-node prisma/seed.ts",

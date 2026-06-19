@@ -1,11 +1,38 @@
-import { PrismaClient, ProviderStatus } from '@prisma/client';
+import {
+  DebtStatus,
+  ExpenseStatus,
+  GuestAttendanceStatus,
+  GuestInvitationStatus,
+  GuestSide,
+  GuestStatus,
+  InstallmentStatus,
+  NotificationType,
+  OnboardingPath,
+  PlanProviderLinkStatus,
+  PrismaClient,
+  ProviderStatus,
+  QuoteOfferStatus,
+  QuoteRequestStatus,
+  UserRole,
+  UserStatus,
+  WeddingPersona,
+  WeddingPlanStatus,
+  WeddingTaskPriority,
+  WeddingTaskStatus,
+} from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PRODUCTION_SEED !== 'true') {
+    throw new Error('Refusing to run seed in production without ALLOW_PRODUCTION_SEED=true');
+  }
+
   const cities = await seedCities();
   const categories = await seedCategories();
   await seedDemoProviders(cities, categories);
+  await seedBackendCompletionDemo(cities, categories);
 }
 
 async function seedCities() {
@@ -315,6 +342,483 @@ async function ensureDemoProvider(input: {
       });
     }
   }
+}
+
+async function seedBackendCompletionDemo(
+  cities: Record<string, string>,
+  categories: Record<string, string>,
+) {
+  const passwordHash = await bcrypt.hash('AarastDev123!', 10);
+  const user = await prisma.user.upsert({
+    where: { phone: '+967700999001' },
+    create: {
+      name: 'Aarast Backend Demo User',
+      phone: '+967700999001',
+      email: 'backend-demo@aarast.local',
+      passwordHash,
+      role: UserRole.USER,
+      status: UserStatus.ACTIVE,
+      phoneVerifiedAt: new Date(),
+      locale: 'ar',
+      onboardingPath: OnboardingPath.USER,
+      persona: WeddingPersona.GROOM,
+      onboardingCompletedAt: new Date(),
+    },
+    update: {
+      name: 'Aarast Backend Demo User',
+      status: UserStatus.ACTIVE,
+      onboardingPath: OnboardingPath.USER,
+      persona: WeddingPersona.GROOM,
+      onboardingCompletedAt: new Date(),
+    },
+  });
+
+  const providerUser = await prisma.user.upsert({
+    where: { phone: '+967700999002' },
+    create: {
+      name: 'Aarast Backend Demo Provider',
+      phone: '+967700999002',
+      email: 'backend-provider@aarast.local',
+      passwordHash,
+      role: UserRole.PROVIDER,
+      status: UserStatus.ACTIVE,
+      phoneVerifiedAt: new Date(),
+      locale: 'ar',
+      onboardingPath: OnboardingPath.PROVIDER,
+      onboardingCompletedAt: new Date(),
+    },
+    update: {
+      name: 'Aarast Backend Demo Provider',
+      role: UserRole.PROVIDER,
+      status: UserStatus.ACTIVE,
+      onboardingPath: OnboardingPath.PROVIDER,
+      onboardingCompletedAt: new Date(),
+    },
+  });
+
+  const plan =
+    (await prisma.weddingPlan.findFirst({
+      where: {
+        ownerUserId: user.id,
+        title: 'Aarast Backend Completion Demo Plan',
+      },
+    })) ??
+    (await prisma.weddingPlan.create({
+      data: {
+        ownerUserId: user.id,
+        title: 'Aarast Backend Completion Demo Plan',
+        city: 'Sanaa',
+        location: {
+          governorate: 'Sanaa',
+          city: 'Sanaa',
+        },
+        weddingDate: new Date('2026-12-31T00:00:00.000Z'),
+        priorities: ['budget', 'tasks', 'guests', 'providers'],
+        estimatedBudget: '1500000',
+        currency: 'YER',
+        onboardingPath: OnboardingPath.USER,
+        persona: WeddingPersona.GROOM,
+        onboardingCompletedAt: new Date(),
+        status: WeddingPlanStatus.PLANNING,
+      },
+    }));
+
+  await prisma.weddingPlan.update({
+    where: { id: plan.id },
+    data: {
+      city: 'Sanaa',
+      weddingDate: new Date('2026-12-31T00:00:00.000Z'),
+      priorities: ['budget', 'tasks', 'guests', 'providers'],
+      estimatedBudget: '1500000',
+      currency: 'YER',
+      status: WeddingPlanStatus.PLANNING,
+    },
+  });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { activeWeddingPlanId: plan.id },
+  });
+
+  const budgetCategory = await upsertBudgetCategory(
+    plan.id,
+    'Backend Completion Hall',
+    '600000',
+  );
+  await upsertExpense(
+    plan.id,
+    budgetCategory.id,
+    'Backend Completion Hall Deposit',
+    '120000',
+  );
+  const debt = await upsertDebt(plan.id);
+  await upsertInstallment(debt.id);
+  const task = await upsertTask(plan.id, user.id);
+  await upsertTaskChecklistItem(task.id);
+  const guestGroup = await upsertGuestGroup(plan.id);
+  await upsertGuest(plan.id, guestGroup.id);
+
+  const provider = await upsertBackendCompletionProvider(
+    providerUser.id,
+    cities.Sanaa,
+    categories['wedding-halls'],
+  );
+  const service = await upsertBackendCompletionService(
+    provider.id,
+    categories['wedding-halls'],
+    cities.Sanaa,
+  );
+  const quoteRequest = await upsertBackendCompletionQuoteRequest(
+    user.id,
+    plan.id,
+    provider.id,
+    service.id,
+    cities.Sanaa,
+  );
+  const quoteOffer = await upsertBackendCompletionQuoteOffer(
+    quoteRequest.id,
+    provider.id,
+  );
+  await upsertBackendCompletionProviderLink(
+    plan.id,
+    provider.id,
+    quoteRequest.id,
+    quoteOffer.id,
+  );
+  await upsertBackendCompletionNotification(user.id, plan.id, quoteRequest.id, quoteOffer.id);
+}
+
+async function upsertBudgetCategory(
+  weddingPlanId: string,
+  name: string,
+  targetAmount: string,
+) {
+  const existing = await prisma.budgetCategory.findFirst({
+    where: { weddingPlanId, name },
+  });
+  if (existing) {
+    return prisma.budgetCategory.update({
+      where: { id: existing.id },
+      data: { targetAmount },
+    });
+  }
+  return prisma.budgetCategory.create({
+    data: { weddingPlanId, name, targetAmount },
+  });
+}
+
+async function upsertExpense(
+  weddingPlanId: string,
+  budgetCategoryId: string,
+  title: string,
+  amount: string,
+) {
+  const existing = await prisma.expense.findFirst({
+    where: { weddingPlanId, title },
+  });
+  const data = {
+    budgetCategoryId,
+    amount,
+    status: ExpenseStatus.PAID,
+    expenseDate: new Date(),
+    note: 'Seeded by backend completion seed',
+  };
+  if (existing) {
+    return prisma.expense.update({ where: { id: existing.id }, data });
+  }
+  return prisma.expense.create({
+    data: { weddingPlanId, title, ...data },
+  });
+}
+
+async function upsertDebt(weddingPlanId: string) {
+  const existing = await prisma.debt.findFirst({
+    where: { weddingPlanId, title: 'Backend Completion Debt' },
+  });
+  const data = {
+    creditorName: 'Backend Completion Creditor',
+    creditorPhone: '+967700999003',
+    totalAmount: '120000',
+    paidAmount: '40000',
+    dueDate: new Date('2026-11-30T00:00:00.000Z'),
+    status: DebtStatus.PARTIALLY_PAID,
+    note: 'Seeded by backend completion seed',
+  };
+  if (existing) {
+    return prisma.debt.update({ where: { id: existing.id }, data });
+  }
+  return prisma.debt.create({
+    data: { weddingPlanId, title: 'Backend Completion Debt', ...data },
+  });
+}
+
+async function upsertInstallment(debtId: string) {
+  const existing = await prisma.installment.findFirst({
+    where: { debtId, note: 'Backend Completion Installment' },
+  });
+  const data = {
+    amount: '40000',
+    dueDate: new Date('2026-10-31T00:00:00.000Z'),
+    paidAt: new Date(),
+    status: InstallmentStatus.PAID,
+    note: 'Backend Completion Installment',
+  };
+  if (existing) {
+    return prisma.installment.update({ where: { id: existing.id }, data });
+  }
+  return prisma.installment.create({ data: { debtId, ...data } });
+}
+
+async function upsertTask(weddingPlanId: string, assigneeUserId: string) {
+  const existing = await prisma.weddingTask.findFirst({
+    where: { weddingPlanId, title: 'Backend Completion Checklist Task' },
+  });
+  const data = {
+    assigneeUserId,
+    description: 'Seeded task for full backend completion smoke.',
+    dueDate: new Date('2026-10-01T00:00:00.000Z'),
+    taskCategory: 'backend-completion',
+    status: WeddingTaskStatus.IN_PROGRESS,
+    priority: WeddingTaskPriority.HIGH,
+  };
+  if (existing) {
+    return prisma.weddingTask.update({ where: { id: existing.id }, data });
+  }
+  return prisma.weddingTask.create({
+    data: { weddingPlanId, title: 'Backend Completion Checklist Task', ...data },
+  });
+}
+
+async function upsertTaskChecklistItem(taskId: string) {
+  const existing = await prisma.weddingTaskChecklistItem.findFirst({
+    where: { taskId, title: 'Backend Completion Checklist Item' },
+  });
+  const data = { isDone: false, sortOrder: 1 };
+  if (existing) {
+    return prisma.weddingTaskChecklistItem.update({
+      where: { id: existing.id },
+      data,
+    });
+  }
+  return prisma.weddingTaskChecklistItem.create({
+    data: { taskId, title: 'Backend Completion Checklist Item', ...data },
+  });
+}
+
+async function upsertGuestGroup(weddingPlanId: string) {
+  const existing = await prisma.guestGroup.findFirst({
+    where: { weddingPlanId, name: 'Backend Completion Guests' },
+  });
+  const data = { notes: 'Seeded guest group', sortOrder: 1 };
+  if (existing) {
+    return prisma.guestGroup.update({ where: { id: existing.id }, data });
+  }
+  return prisma.guestGroup.create({
+    data: { weddingPlanId, name: 'Backend Completion Guests', ...data },
+  });
+}
+
+async function upsertGuest(weddingPlanId: string, groupId: string) {
+  const existing = await prisma.guest.findFirst({
+    where: { weddingPlanId, normalizedPhone: '700999004' },
+  });
+  const data = {
+    groupId,
+    name: 'Backend Completion Guest',
+    normalizedName: 'backend completion guest',
+    phone: '+967700999004',
+    normalizedPhone: '700999004',
+    side: GuestSide.FAMILY,
+    status: GuestStatus.CONFIRMED,
+    invitationStatus: GuestInvitationStatus.SENT,
+    attendanceStatus: GuestAttendanceStatus.CONFIRMED,
+    seatsCount: 2,
+    companionsCount: 1,
+    notes: 'Seeded guest',
+  };
+  if (existing) {
+    return prisma.guest.update({ where: { id: existing.id }, data });
+  }
+  return prisma.guest.create({ data: { weddingPlanId, ...data } });
+}
+
+async function upsertBackendCompletionProvider(
+  userId: string,
+  cityId: string,
+  primaryCategoryId: string,
+) {
+  const provider =
+    (await prisma.provider.findUnique({ where: { userId } })) ??
+    (await prisma.provider.create({
+      data: {
+        userId,
+        cityId,
+        primaryCategoryId,
+        businessName: 'Aarast Backend Demo Provider',
+        ownerName: 'Backend Provider Owner',
+        phone: '+967700999002',
+        whatsapp: '+967700999002',
+        description: 'Seeded active provider for backend completion.',
+        status: ProviderStatus.ACTIVE,
+        isFeatured: true,
+      },
+    }));
+
+  return prisma.provider.update({
+    where: { id: provider.id },
+    data: {
+      cityId,
+      primaryCategoryId,
+      businessName: 'Aarast Backend Demo Provider',
+      ownerName: 'Backend Provider Owner',
+      phone: '+967700999002',
+      whatsapp: '+967700999002',
+      description: 'Seeded active provider for backend completion.',
+      status: ProviderStatus.ACTIVE,
+      isFeatured: true,
+    },
+  });
+}
+
+async function upsertBackendCompletionService(
+  providerId: string,
+  categoryId: string,
+  cityId: string,
+) {
+  const existing = await prisma.providerService.findFirst({
+    where: { providerId, title: 'Backend Completion Provider Service' },
+  });
+  const data = {
+    categoryId,
+    description: 'Seeded service for backend completion.',
+    basePrice: '300000',
+    priceUnit: 'event',
+    currency: 'YER',
+    cityId,
+    isActive: true,
+    isFeatured: true,
+  };
+  if (existing) {
+    return prisma.providerService.update({ where: { id: existing.id }, data });
+  }
+  return prisma.providerService.create({
+    data: { providerId, title: 'Backend Completion Provider Service', ...data },
+  });
+}
+
+async function upsertBackendCompletionQuoteRequest(
+  userId: string,
+  weddingPlanId: string,
+  providerId: string,
+  serviceId: string,
+  cityId: string,
+) {
+  const existing = await prisma.quoteRequest.findFirst({
+    where: { weddingPlanId, providerId, message: 'Backend completion seeded quote' },
+  });
+  const data = {
+    userId,
+    providerId,
+    serviceId,
+    eventDate: new Date('2026-12-31T00:00:00.000Z'),
+    cityId,
+    guestCount: 120,
+    message: 'Backend completion seeded quote',
+    budgetMin: '250000',
+    budgetMax: '450000',
+    status: QuoteRequestStatus.ACCEPTED,
+  };
+  if (existing) {
+    return prisma.quoteRequest.update({ where: { id: existing.id }, data });
+  }
+  return prisma.quoteRequest.create({
+    data: { weddingPlanId, ...data },
+  });
+}
+
+async function upsertBackendCompletionQuoteOffer(
+  quoteRequestId: string,
+  providerId: string,
+) {
+  const existing = await prisma.quoteOffer.findFirst({
+    where: { quoteRequestId, providerId, message: 'Backend completion seeded offer' },
+  });
+  const data = {
+    title: 'Backend Completion Offer',
+    message: 'Backend completion seeded offer',
+    amount: '320000',
+    currency: 'YER',
+    validUntil: new Date('2026-12-01T00:00:00.000Z'),
+    status: QuoteOfferStatus.ACCEPTED,
+  };
+  if (existing) {
+    return prisma.quoteOffer.update({ where: { id: existing.id }, data });
+  }
+  return prisma.quoteOffer.create({
+    data: { quoteRequestId, providerId, ...data },
+  });
+}
+
+async function upsertBackendCompletionProviderLink(
+  weddingPlanId: string,
+  providerId: string,
+  quoteRequestId: string,
+  quoteOfferId: string,
+) {
+  return prisma.planProviderLink.upsert({
+    where: {
+      weddingPlanId_providerId: {
+        weddingPlanId,
+        providerId,
+      },
+    },
+    update: {
+      quoteRequestId,
+      quoteOfferId,
+      status: PlanProviderLinkStatus.ACTIVE,
+    },
+    create: {
+      weddingPlanId,
+      providerId,
+      quoteRequestId,
+      quoteOfferId,
+      status: PlanProviderLinkStatus.ACTIVE,
+    },
+  });
+}
+
+async function upsertBackendCompletionNotification(
+  userId: string,
+  weddingPlanId: string,
+  quoteRequestId: string,
+  quoteOfferId: string,
+) {
+  return prisma.notification.upsert({
+    where: {
+      dedupeKey: `${userId}:backend-completion:quote-offer`,
+    },
+    update: {
+      readAt: null,
+      data: {
+        quoteRequestId,
+        quoteOfferId,
+        weddingPlanId,
+      },
+    },
+    create: {
+      userId,
+      weddingPlanId,
+      type: NotificationType.QUOTE_OFFER_RECEIVED,
+      title: 'Backend completion quote offer',
+      body: 'A seeded quote offer is ready for the backend completion demo.',
+      data: {
+        quoteRequestId,
+        quoteOfferId,
+        weddingPlanId,
+      },
+      dedupeKey: `${userId}:backend-completion:quote-offer`,
+    },
+  });
 }
 
 main()

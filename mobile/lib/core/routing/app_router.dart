@@ -26,6 +26,7 @@ import '../../features/marketplace/screens/quote_request_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/main_shell.dart';
+import '../../features/shell/rebuild/user_rebuild_shell.dart';
 import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
@@ -63,6 +64,7 @@ class AppRouter {
   static const settings = '/settings';
   static const support = '/support';
   static const guestOnboardingPreview = '/dev/guest-onboarding';
+  static const userNavigationShellPreview = '/dev/user-navigation-shell';
 
   static String providerDetails(String id) {
     return '/providers/$id';
@@ -158,7 +160,11 @@ class AppRouter {
     return flags.enableGuestFirstOnboarding ? null : onboarding;
   }
 
-  static GoRouter create() {
+  static String? userNavigationShellRedirect(AppFeatureFlags flags) {
+    return flags.enableNewUserBottomNavigation ? null : home;
+  }
+
+  static GoRouter create({AppFeatureFlags flags = AppFeatureFlags.defaults}) {
     return GoRouter(
       initialLocation: splash,
       routes: [
@@ -173,9 +179,16 @@ class AppRouter {
         GoRoute(
           path: guestOnboardingPreview,
           redirect: (context, state) {
-            return guestOnboardingRedirect(AppFeatureFlags.defaults);
+            return guestOnboardingRedirect(flags);
           },
           builder: (context, state) => const GuestOnboardingFlowScreen(),
+        ),
+        GoRoute(
+          path: userNavigationShellPreview,
+          redirect: (context, state) {
+            return userNavigationShellRedirect(flags);
+          },
+          builder: (context, state) => const UserRebuildShell(),
         ),
         GoRoute(path: login, builder: (context, state) => const LoginScreen()),
         GoRoute(

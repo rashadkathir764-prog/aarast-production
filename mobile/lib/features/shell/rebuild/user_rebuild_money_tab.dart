@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../finance/models/money_flow_readiness.dart';
+
 class UserRebuildMoneyTab extends StatelessWidget {
   const UserRebuildMoneyTab({
     super.key,
+    this.readiness = const MoneyFlowReadiness.empty(),
     this.currentPlanId,
     this.canAccessFinance = true,
   });
 
+  final MoneyFlowReadiness readiness;
   final String? currentPlanId;
   final bool canAccessFinance;
 
@@ -18,7 +22,8 @@ class UserRebuildMoneyTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCurrentPlan = currentPlanId != null && currentPlanId!.isNotEmpty;
+    final effectiveReadiness = _effectiveReadiness;
+    final statusMetrics = _statusMetrics(effectiveReadiness);
 
     return SafeArea(
       child: Center(
@@ -45,19 +50,76 @@ class UserRebuildMoneyTab extends StatelessWidget {
                 const SizedBox(height: 20),
                 _MoneyCapabilityGrid(),
                 const SizedBox(height: 20),
-                _MoneyStateNotice(
-                  message: !hasCurrentPlan
-                      ? noPlanMessage
-                      : canAccessFinance
-                      ? 'سيتم ربط تبويب المال بمصدر الخطة الحالي في مرحلة لاحقة.'
-                      : noPermissionMessage,
-                ),
+                _MoneyStateNotice(message: _messageFor(effectiveReadiness)),
+                if (statusMetrics.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: statusMetrics
+                        .map((metric) => _MoneyCapabilityChip(metric))
+                        .toList(growable: false),
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  MoneyFlowReadiness get _effectiveReadiness {
+    final planId = currentPlanId?.trim();
+    if (planId != null && planId.isNotEmpty) {
+      return MoneyFlowReadiness(
+        currentPlanId: planId,
+        canReadBudget: canAccessFinance,
+        canReadExpenses: canAccessFinance,
+        canReadDebts: canAccessFinance,
+        canManageFinancialRecords: canAccessFinance,
+      );
+    }
+    return readiness;
+  }
+
+  String _messageFor(MoneyFlowReadiness readiness) {
+    return switch (readiness.state) {
+      MoneyFlowReadinessState.missingCurrentPlan => noPlanMessage,
+      MoneyFlowReadinessState.missingPermission => noPermissionMessage,
+      MoneyFlowReadinessState.waitingForSources =>
+        'تبويب المال التجريبي ينتظر مصادر الميزانية والمصروفات والديون',
+      MoneyFlowReadinessState.ready =>
+        'تبويب المال التجريبي جاهز داخلياً بمصادر مالية حقيقية',
+      MoneyFlowReadinessState.offlinePendingSync =>
+        'تبويب المال التجريبي جاهز داخلياً مع تغييرات بانتظار المزامنة',
+      MoneyFlowReadinessState.loading => 'تبويب المال التجريبي قيد التحميل',
+      MoneyFlowReadinessState.blockedByError =>
+        readiness.errorMessage?.trim().isNotEmpty == true
+            ? readiness.errorMessage!.trim()
+            : 'تعذر تجهيز تبويب المال التجريبي',
+    };
+  }
+
+  List<String> _statusMetrics(MoneyFlowReadiness readiness) {
+    final metrics = <String>[];
+    if (readiness.estimatedBudgetLabel != null) {
+      metrics.add(readiness.estimatedBudgetLabel!);
+    }
+    if (readiness.totalPaidLabel != null) {
+      metrics.add('مدفوع: ${readiness.totalPaidLabel}');
+    }
+    if (readiness.remainingDebtLabel != null) {
+      metrics.add('ديون متبقية: ${readiness.remainingDebtLabel}');
+    }
+    if (readiness.dueInstallmentCount != null) {
+      metrics.add('${readiness.dueInstallmentCount} أقساط مستحقة');
+    }
+    if (readiness.pendingSyncCount != null) {
+      metrics.add('${readiness.pendingSyncCount} عمليات بانتظار المزامنة');
+    }
+    return metrics;
   }
 }
 

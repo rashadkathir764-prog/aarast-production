@@ -18,6 +18,7 @@ const smokeScripts = [
   ['smoke:sharing', 'sharing-smoke.js'],
   ['smoke:notifications', 'notifications-smoke.js'],
   ['smoke:guests', 'guests-smoke.js'],
+  ['smoke:guests-apis', 'guests-apis-smoke.js'],
   ['smoke:otp-profile', 'otp-profile-smoke.js'],
   ['smoke:marketplace', 'marketplace-smoke.js'],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],

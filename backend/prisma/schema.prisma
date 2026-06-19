@@ -137,6 +137,18 @@ enum GuestStatus {
   PENDING
 }
 
+enum GuestInvitationStatus {
+  NOT_SENT
+  SENT
+  DELIVERED
+}
+
+enum GuestAttendanceStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
 model User {
   id                     String                  @id @default(cuid())
   name                   String
@@ -196,6 +208,7 @@ model WeddingPlan {
   bookingLeads          BookingLead[]
   notifications         Notification[]
   guests                Guest[]
+  guestGroups           GuestGroup[]
 
   @@index([ownerUserId, status])
 }
@@ -359,23 +372,46 @@ model Notification {
 }
 
 model Guest {
-  id              String      @id @default(cuid())
-  weddingPlanId   String
-  name            String
-  normalizedName  String
-  phone           String?
-  normalizedPhone String?
-  side            GuestSide   @default(OTHER)
-  status          GuestStatus @default(INVITED)
-  seatsCount      Int         @default(1)
-  notes           String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  weddingPlan     WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  id               String                @id @default(cuid())
+  weddingPlanId    String
+  groupId          String?
+  name             String
+  normalizedName   String
+  phone            String?
+  normalizedPhone  String?
+  side             GuestSide             @default(OTHER)
+  status           GuestStatus           @default(INVITED)
+  invitationStatus GuestInvitationStatus @default(NOT_SENT)
+  attendanceStatus GuestAttendanceStatus @default(PENDING)
+  seatsCount       Int                   @default(1)
+  companionsCount  Int                   @default(0)
+  notes            String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  weddingPlan      WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  group            GuestGroup?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@unique([weddingPlanId, normalizedName, normalizedPhone])
   @@index([weddingPlanId, status])
+  @@index([weddingPlanId, invitationStatus])
+  @@index([weddingPlanId, attendanceStatus])
+  @@index([weddingPlanId, groupId])
   @@index([weddingPlanId, normalizedName])
+}
+
+model GuestGroup {
+  id            String      @id @default(cuid())
+  weddingPlanId String
+  name          String
+  notes         String?
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  guests        Guest[]
+
+  @@unique([weddingPlanId, name])
+  @@index([weddingPlanId, sortOrder])
 }
 
 model City {

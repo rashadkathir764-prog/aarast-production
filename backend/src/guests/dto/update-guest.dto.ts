@@ -1,4 +1,9 @@
-import { GuestSide, GuestStatus } from '@prisma/client';
+import {
+  GuestAttendanceStatus,
+  GuestInvitationStatus,
+  GuestSide,
+  GuestStatus,
+} from '@prisma/client';
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class UpdateGuestDto {
@@ -10,6 +15,10 @@ export class UpdateGuestDto {
   @IsOptional()
   phone?: string | null;
 
+  @IsString()
+  @IsOptional()
+  groupId?: string | null;
+
   @IsEnum(GuestSide)
   @IsOptional()
   side?: GuestSide;
@@ -18,11 +27,25 @@ export class UpdateGuestDto {
   @IsOptional()
   status?: GuestStatus;
 
+  @IsEnum(GuestInvitationStatus)
+  @IsOptional()
+  invitationStatus?: GuestInvitationStatus;
+
+  @IsEnum(GuestAttendanceStatus)
+  @IsOptional()
+  attendanceStatus?: GuestAttendanceStatus;
+
   @IsInt()
   @Min(1)
   @Max(20)
   @IsOptional()
   seatsCount?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(20)
+  @IsOptional()
+  companionsCount?: number;
 
   @IsString()
   @IsOptional()

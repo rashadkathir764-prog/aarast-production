@@ -22,6 +22,7 @@
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
     "smoke:notifications": "node scripts/smoke/notifications-smoke.js",
     "smoke:guests": "node scripts/smoke/guests-smoke.js",
+    "smoke:guests-apis": "node scripts/smoke/guests-apis-smoke.js",
     "smoke:otp-profile": "node scripts/smoke/otp-profile-smoke.js",
     "smoke:marketplace": "node scripts/smoke/marketplace-smoke.js",
     "smoke:provider-dashboard": "node scripts/smoke/provider-dashboard-smoke.js",

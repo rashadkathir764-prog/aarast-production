@@ -1,15 +1,34 @@
 import 'package:flutter/foundation.dart';
 
+import '../data/guest_onboarding_storage.dart';
 import '../models/guest_onboarding_draft.dart';
 
 class GuestOnboardingProvider extends ChangeNotifier {
   GuestOnboardingProvider({
     GuestOnboardingDraft initialDraft = const GuestOnboardingDraft.empty(),
-  }) : _draft = initialDraft;
+    GuestOnboardingStorage? storage,
+  }) : _draft = initialDraft,
+       _storage = storage;
 
   GuestOnboardingDraft _draft;
+  final GuestOnboardingStorage? _storage;
 
   GuestOnboardingDraft get draft => _draft;
+
+  Future<GuestOnboardingDraft?> loadSavedDraft() async {
+    final savedDraft = await _storage?.loadDraft();
+    if (savedDraft == null) return null;
+    _setDraft(savedDraft);
+    return savedDraft;
+  }
+
+  Future<void> saveCurrentDraft() async {
+    await _storage?.saveDraft(_draft);
+  }
+
+  Future<void> clearSavedDraft() async {
+    await _storage?.clearDraft();
+  }
 
   void setPath(GuestOnboardingPath path) {
     _setDraft(_draft.copyWith(selectedPath: path));

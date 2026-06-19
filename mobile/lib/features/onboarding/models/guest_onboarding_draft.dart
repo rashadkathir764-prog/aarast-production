@@ -51,12 +51,18 @@ class GuestOnboardingDraft {
   final String? estimatedBudget;
   final List<String> selectedCategoryKeys;
 
+  bool get hasPath => selectedPath != null;
+
+  bool get hasPersona => persona != null;
+
+  bool get hasLocationSeed => _hasText(governorate) || _hasText(city);
+
+  bool get hasTimelineSeed => weddingDate != null || weddingDateUnknown;
+
   bool get isWeddingUser => selectedPath == GuestOnboardingPath.weddingUser;
 
   bool get hasMinimumPlanSeed {
-    final hasLocation = _hasText(governorate) || _hasText(city);
-    final hasDateSignal = weddingDate != null || weddingDateUnknown;
-    return isWeddingUser && persona != null && hasLocation && hasDateSignal;
+    return isWeddingUser && hasPersona && hasLocationSeed && hasTimelineSeed;
   }
 
   bool get canGenerateLocalPreview {
@@ -121,8 +127,78 @@ class GuestOnboardingDraft {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'selectedPath': selectedPath?.name,
+      'persona': persona?.name,
+      'governorate': governorate,
+      'city': city,
+      'district': district,
+      'neighborhood': neighborhood,
+      'street': street,
+      'addressNote': addressNote,
+      'weddingDate': weddingDate?.toIso8601String(),
+      'weddingDateUnknown': weddingDateUnknown,
+      'priorities': priorities,
+      'currency': currency,
+      'estimatedBudget': estimatedBudget,
+      'selectedCategoryKeys': selectedCategoryKeys,
+    };
+  }
+
+  static GuestOnboardingDraft fromJson(Map<String, dynamic> json) {
+    final weddingDateUnknown = json['weddingDateUnknown'] == true;
+    return GuestOnboardingDraft(
+      selectedPath: _enumByName(
+        GuestOnboardingPath.values,
+        json['selectedPath'],
+      ),
+      persona: _enumByName(GuestPersona.values, json['persona']),
+      governorate: _stringOrNull(json['governorate']),
+      city: _stringOrNull(json['city']),
+      district: _stringOrNull(json['district']),
+      neighborhood: _stringOrNull(json['neighborhood']),
+      street: _stringOrNull(json['street']),
+      addressNote: _stringOrNull(json['addressNote']),
+      weddingDate: weddingDateUnknown
+          ? null
+          : _dateTimeOrNull(json['weddingDate']),
+      weddingDateUnknown: weddingDateUnknown,
+      priorities: List.unmodifiable(_stringList(json['priorities'])),
+      currency: _stringOrNull(json['currency']),
+      estimatedBudget: _stringOrNull(json['estimatedBudget']),
+      selectedCategoryKeys: List.unmodifiable(
+        _stringList(json['selectedCategoryKeys']),
+      ),
+    );
+  }
+
   static bool _hasText(String? value) {
     return value != null && value.trim().isNotEmpty;
+  }
+
+  static T? _enumByName<T extends Enum>(List<T> values, Object? name) {
+    if (name is! String) return null;
+    for (final value in values) {
+      if (value.name == name) return value;
+    }
+    return null;
+  }
+
+  static String? _stringOrNull(Object? value) {
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  static DateTime? _dateTimeOrNull(Object? value) {
+    if (value is! String || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value);
+  }
+
+  static List<String> _stringList(Object? value) {
+    if (value is! List) return const [];
+    return value.whereType<String>().toList(growable: false);
   }
 
   @override

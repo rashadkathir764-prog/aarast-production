@@ -1,6 +1,8 @@
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/providers/guest_onboarding_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('GuestOnboardingProvider', () {
@@ -89,5 +91,33 @@ void main() {
 
       expect(notifications, 1);
     });
+
+    test(
+      'saves, loads, and clears draft through explicit persistence',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final storage = GuestOnboardingStorage(preferences);
+        final provider = GuestOnboardingProvider(storage: storage)
+          ..setPath(GuestOnboardingPath.weddingUser)
+          ..setPersona(GuestPersona.bride);
+
+        await provider.saveCurrentDraft();
+
+        final nextProvider = GuestOnboardingProvider(storage: storage);
+        await nextProvider.loadSavedDraft();
+
+        expect(
+          nextProvider.draft.selectedPath,
+          GuestOnboardingPath.weddingUser,
+        );
+        expect(nextProvider.draft.persona, GuestPersona.bride);
+        expect(await storage.hasDraft(), isTrue);
+
+        await nextProvider.clearSavedDraft();
+
+        expect(await storage.hasDraft(), isFalse);
+      },
+    );
   });
 }

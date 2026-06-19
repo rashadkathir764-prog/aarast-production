@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/onboarding/screens/guest_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
@@ -37,6 +38,7 @@ import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
+import '../config/app_feature_flags.dart';
 import '../widgets/coming_soon_screen.dart';
 
 class AppRouter {
@@ -60,6 +62,7 @@ class AppRouter {
   static const notifications = '/notifications';
   static const settings = '/settings';
   static const support = '/support';
+  static const guestOnboardingPreview = '/dev/guest-onboarding';
 
   static String providerDetails(String id) {
     return '/providers/$id';
@@ -151,6 +154,10 @@ class AppRouter {
 
   static const sharedWeddingPlans = '/shared/wedding-plans';
 
+  static String? guestOnboardingRedirect(AppFeatureFlags flags) {
+    return flags.enableGuestFirstOnboarding ? null : onboarding;
+  }
+
   static GoRouter create() {
     return GoRouter(
       initialLocation: splash,
@@ -162,6 +169,13 @@ class AppRouter {
         GoRoute(
           path: onboarding,
           builder: (context, state) => const OnboardingScreen(),
+        ),
+        GoRoute(
+          path: guestOnboardingPreview,
+          redirect: (context, state) {
+            return guestOnboardingRedirect(AppFeatureFlags.defaults);
+          },
+          builder: (context, state) => const GuestWelcomeScreen(),
         ),
         GoRoute(path: login, builder: (context, state) => const LoginScreen()),
         GoRoute(

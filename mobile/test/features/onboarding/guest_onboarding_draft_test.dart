@@ -115,5 +115,32 @@ void main() {
       expect(draft.hasMinimumPlanSeed, isTrue);
       expect(draft.canGenerateLocalPreview, isTrue);
     });
+
+    test('serializes to and from JSON without losing data', () {
+      final draft = GuestOnboardingDraft(
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.helper,
+        governorate: 'Sanaa',
+        city: 'Sanaa City',
+        district: 'District',
+        neighborhood: 'Neighborhood',
+        street: 'Street',
+        addressNote: 'Note',
+        weddingDate: DateTime(2026, 12, 24),
+        weddingDateUnknown: false,
+        priorities: const ['budget', 'tasks'],
+        currency: 'YER',
+        estimatedBudget: '2500000',
+        selectedCategoryKeys: const ['hall', 'food'],
+      );
+
+      final restored = GuestOnboardingDraft.fromJson(draft.toJson());
+
+      expect(restored, draft);
+      expect(restored.hasPath, isTrue);
+      expect(restored.hasPersona, isTrue);
+      expect(restored.hasLocationSeed, isTrue);
+      expect(restored.hasTimelineSeed, isTrue);
+    });
   });
 }

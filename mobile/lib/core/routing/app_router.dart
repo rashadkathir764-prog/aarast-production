@@ -22,6 +22,7 @@ import '../../features/marketplace/screens/provider_dashboard_screen.dart';
 import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
 import '../../features/marketplace/screens/quote_request_screen.dart';
+import '../../features/marketplace/widgets/provider_auth_gate.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/home/screens/dashboard_entry_screen.dart';
@@ -214,13 +215,19 @@ class AppRouter {
         ),
         GoRoute(
           path: providerMarketplace,
-          builder: (context, state) => const ProviderMarketplaceScreen(),
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            child: const ProviderMarketplaceScreen(),
+          ),
         ),
         GoRoute(
           path: '/providers/:id',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return ProviderDetailsScreen(providerId: id);
+            return ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              child: ProviderDetailsScreen(providerId: id),
+            );
           },
         ),
         GoRoute(
@@ -230,9 +237,12 @@ class AppRouter {
             final initialServiceId = state.extra is String
                 ? state.extra! as String
                 : null;
-            return QuoteRequestScreen(
-              providerId: id,
-              initialServiceId: initialServiceId,
+            return ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              child: QuoteRequestScreen(
+                providerId: id,
+                initialServiceId: initialServiceId,
+              ),
             );
           },
         ),
@@ -245,15 +255,27 @@ class AppRouter {
         ),
         GoRoute(
           path: providerApply,
-          builder: (context, state) => const ProviderApplyScreen(),
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            registerAsProvider: true,
+            child: const ProviderApplyScreen(),
+          ),
         ),
         GoRoute(
           path: providerApplyStatus,
-          builder: (context, state) => const ProviderApplyStatusScreen(),
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            registerAsProvider: true,
+            child: const ProviderApplyStatusScreen(),
+          ),
         ),
         GoRoute(
           path: providerDashboard,
-          builder: (context, state) => const ProviderDashboardScreen(),
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            registerAsProvider: true,
+            child: const ProviderDashboardScreen(),
+          ),
         ),
         GoRoute(
           path: legacyProviderDashboard,
@@ -261,11 +283,19 @@ class AppRouter {
         ),
         GoRoute(
           path: providerServiceNew,
-          builder: (context, state) => const AddProviderServiceScreen(),
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            registerAsProvider: true,
+            child: const AddProviderServiceScreen(),
+          ),
         ),
         GoRoute(
           path: providerPackageNew,
-          builder: (context, state) => const AddProviderPackageScreen(),
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            registerAsProvider: true,
+            child: const AddProviderPackageScreen(),
+          ),
         ),
         GoRoute(
           path: notifications,

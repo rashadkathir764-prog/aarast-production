@@ -10,6 +10,7 @@ void main() {
       expect(draft.createdAt, isNull);
       expect(draft.isGuestPlan, isFalse);
       expect(draft.needsSync, isFalse);
+      expect(draft.budgetSkipped, isFalse);
       expect(draft.selectedPath, isNull);
       expect(draft.persona, isNull);
       expect(draft.governorate, isNull);
@@ -91,12 +92,13 @@ void main() {
         currency: 'YER',
         estimatedBudget: '2500000',
       );
-      final skipped = budgeted.copyWith(clearBudget: true);
+      final skipped = budgeted.copyWith(clearBudget: true, budgetSkipped: true);
 
       expect(budgeted.currency, 'YER');
       expect(budgeted.estimatedBudget, '2500000');
       expect(skipped.currency, isNull);
       expect(skipped.estimatedBudget, isNull);
+      expect(skipped.budgetSkipped, isTrue);
     });
 
     test('stores selected category keys', () {
@@ -123,10 +125,11 @@ void main() {
 
     test('serializes to and from JSON without losing data', () {
       final draft = GuestOnboardingDraft(
-        guestPlanId: 'local-guest-1',
+        guestPlanId: 'guest-plan-1',
         createdAt: DateTime.utc(2026, 6, 19),
         isGuestPlan: true,
         needsSync: true,
+        budgetSkipped: true,
         selectedPath: GuestOnboardingPath.weddingUser,
         persona: GuestPersona.helper,
         governorate: 'Sanaa',

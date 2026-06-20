@@ -78,7 +78,7 @@ void main() {
     final dependencies = await _authDependencies();
     await dependencies.guestStorage.saveDraft(
       GuestOnboardingDraft(
-        guestPlanId: 'local-guest-startup',
+        guestPlanId: 'guest-plan-startup',
         createdAt: DateTime.utc(2026, 6, 19),
         isGuestPlan: true,
         needsSync: true,

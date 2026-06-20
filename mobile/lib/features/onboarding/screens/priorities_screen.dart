@@ -26,27 +26,24 @@ class PrioritiesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveSelected = selectedPriorities.isEmpty
-        ? defaultPriorities.take(3).toList(growable: false)
-        : selectedPriorities;
-
     return GuestOnboardingStepScaffold(
       stepNumber: 5,
       title: 'ما أهم ما تريد ترتيبه؟',
       description: 'هذه الأولويات ستساعد لوحة البداية المحلية لاحقًا.',
       continueLabel: 'حفظ الأولويات',
-      onContinue: onContinue,
+      onContinue: selectedPriorities.isEmpty ? null : onContinue,
       onBack: onBack,
       child: Column(
         children: [
           for (var index = 0; index < defaultPriorities.length; index++) ...[
             GuestOnboardingOptionTile(
+              key: Key('guest-priority-$index'),
               title: defaultPriorities[index],
               subtitle: 'اجعلها ضمن أولويات لوحة البداية',
               icon: _priorityIcon(index),
-              selected: effectiveSelected.contains(defaultPriorities[index]),
+              selected: selectedPriorities.contains(defaultPriorities[index]),
               onTap: () {
-                final next = [...effectiveSelected];
+                final next = [...selectedPriorities];
                 final value = defaultPriorities[index];
                 next.contains(value) ? next.remove(value) : next.add(value);
                 onChanged?.call(List.unmodifiable(next));

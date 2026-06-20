@@ -52,6 +52,12 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
     _hydrateDraft();
   }
 
+  @override
+  void dispose() {
+    _provider?.removeListener(_handleDraftChanged);
+    super.dispose();
+  }
+
   Future<void> _hydrateDraft() async {
     final preferences = await SharedPreferences.getInstance();
     final provider = GuestOnboardingProvider(
@@ -59,9 +65,15 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
     );
     await provider.loadOrStartDraft();
     if (!mounted) return;
+    provider.addListener(_handleDraftChanged);
     setState(() {
       _provider = provider;
     });
+  }
+
+  void _handleDraftChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -128,10 +140,11 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
       ),
       GuestOnboardingFlowStep.budget => BudgetSetupScreen(
         draft: draft,
-        onSaveBudget: ({currency, estimatedBudget}) async {
+        onSaveBudget: ({currency, estimatedBudget, skipped = false}) async {
           await provider.updateBudgetAndSave(
             currency: currency,
             estimatedBudget: estimatedBudget,
+            skipped: skipped,
           );
           _goTo(GuestOnboardingFlowStep.categories);
         },
@@ -155,11 +168,6 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
     final provider = _provider;
     if (provider == null) return;
     await provider.updatePathAndSave(path);
-    _goTo(
-      provider.shouldShowProviderPendingBranch
-          ? GuestOnboardingFlowStep.providerPending
-          : GuestOnboardingFlowStep.persona,
-    );
   }
 
   Future<void> _continueFromPath(GuestOnboardingDraft draft) async {
@@ -168,21 +176,21 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
       return;
     }
     if (draft.selectedPath == null) {
-      await _selectPath(GuestOnboardingPath.weddingUser);
       return;
     }
     _goTo(GuestOnboardingFlowStep.persona);
   }
 
   Future<void> _savePersona(GuestOnboardingProvider provider) async {
-    await provider.updatePersonaAndSave(
-      provider.draft.persona ?? GuestPersona.groom,
-    );
+    final persona = provider.draft.persona;
+    if (persona == null) return;
+    await provider.updatePersonaAndSave(persona);
     _goTo(GuestOnboardingFlowStep.location);
   }
 
   Future<void> _saveWeddingDate(GuestOnboardingProvider provider) async {
     final draft = provider.draft;
+    if (!draft.hasTimelineSeed) return;
     await provider.updateWeddingDateAndSave(
       draft.weddingDate,
       unknown: draft.weddingDateUnknown || draft.weddingDate == null,
@@ -191,20 +199,14 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
   }
 
   Future<void> _savePriorities(GuestOnboardingProvider provider) async {
-    final priorities = provider.draft.priorities.isEmpty
-        ? PrioritiesScreen.defaultPriorities.take(3).toList(growable: false)
-        : provider.draft.priorities;
-    await provider.updatePrioritiesAndSave(priorities);
+    if (provider.draft.priorities.isEmpty) return;
+    await provider.updatePrioritiesAndSave(provider.draft.priorities);
     _goTo(GuestOnboardingFlowStep.budget);
   }
 
   Future<void> _saveCategories(GuestOnboardingProvider provider) async {
-    final categories = provider.draft.selectedCategoryKeys.isEmpty
-        ? SuggestedCategoriesScreen.defaultCategories
-              .take(4)
-              .toList(growable: false)
-        : provider.draft.selectedCategoryKeys;
-    await provider.updateCategoriesAndSave(categories);
+    if (provider.draft.selectedCategoryKeys.isEmpty) return;
+    await provider.updateCategoriesAndSave(provider.draft.selectedCategoryKeys);
     _goTo(GuestOnboardingFlowStep.preview);
   }
 
@@ -221,7 +223,7 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
       final now = DateTime.now();
       await guestStorage.saveDraft(
         draft.copyWith(
-          guestPlanId: 'local-guest-${now.microsecondsSinceEpoch}',
+          guestPlanId: 'guest-plan-${now.microsecondsSinceEpoch}',
           createdAt: now,
           isGuestPlan: true,
           needsSync: true,

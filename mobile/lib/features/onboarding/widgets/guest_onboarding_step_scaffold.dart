@@ -78,7 +78,7 @@ class GuestOnboardingStepScaffold extends StatelessWidget {
                             key: const Key('guest-onboarding-primary-action'),
                             label: continueLabel,
                             icon: Icons.arrow_back_rounded,
-                            onPressed: onContinue ?? () {},
+                            onPressed: onContinue,
                           ),
                         ],
                       ),
@@ -204,6 +204,9 @@ class GuestOnboardingOptionTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        mouseCursor: onTap == null
+            ? SystemMouseCursors.basic
+            : SystemMouseCursors.click,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         child: GuestOnboardingCard(
           color: selected ? AppTheme.dPinkBg.withAlpha(120) : null,

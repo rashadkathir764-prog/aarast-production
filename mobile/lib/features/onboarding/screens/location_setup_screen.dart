@@ -50,10 +50,14 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
     _addressNoteController = TextEditingController(
       text: widget.draft.addressNote,
     );
+    _governorateController.addListener(_handleLocationChanged);
+    _cityController.addListener(_handleLocationChanged);
   }
 
   @override
   void dispose() {
+    _governorateController.removeListener(_handleLocationChanged);
+    _cityController.removeListener(_handleLocationChanged);
     _governorateController.dispose();
     _cityController.dispose();
     _districtController.dispose();
@@ -63,6 +67,15 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
     super.dispose();
   }
 
+  void _handleLocationChanged() {
+    setState(() {});
+  }
+
+  bool get _canContinue {
+    return _governorateController.text.trim().isNotEmpty ||
+        _cityController.text.trim().isNotEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GuestOnboardingStepScaffold(
@@ -70,14 +83,16 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
       title: 'أين سيكون الزفاف؟',
       description: 'أدخل الموقع يدويًا. لا يتم طلب إذن الموقع في هذه المرحلة.',
       continueLabel: 'حفظ الموقع',
-      onContinue: () => widget.onSaveLocation?.call(
-        governorate: _governorateController.text,
-        city: _cityController.text,
-        district: _districtController.text,
-        neighborhood: _neighborhoodController.text,
-        street: _streetController.text,
-        addressNote: _addressNoteController.text,
-      ),
+      onContinue: _canContinue
+          ? () => widget.onSaveLocation?.call(
+              governorate: _governorateController.text,
+              city: _cityController.text,
+              district: _districtController.text,
+              neighborhood: _neighborhoodController.text,
+              street: _streetController.text,
+              addressNote: _addressNoteController.text,
+            )
+          : null,
       onBack: widget.onBack,
       child: Column(
         children: [

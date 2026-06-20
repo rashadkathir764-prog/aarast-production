@@ -20,7 +20,7 @@ void main() {
     ).loadSummary();
 
     expect(summary, isNotNull);
-    expect(summary!.plan.guestPlanId, 'local-guest-test');
+    expect(summary!.plan.guestPlanId, 'guest-plan-test');
     expect(summary.taskCount, 0);
     expect(summary.guestCount, 0);
     expect(summary.providerCount, 0);
@@ -70,7 +70,7 @@ void main() {
 
 GuestOnboardingDraft _guestPlan() {
   return GuestOnboardingDraft(
-    guestPlanId: 'local-guest-test',
+    guestPlanId: 'guest-plan-test',
     createdAt: DateTime.utc(2026, 6, 19),
     isGuestPlan: true,
     needsSync: true,

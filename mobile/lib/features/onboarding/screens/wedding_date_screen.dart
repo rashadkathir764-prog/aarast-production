@@ -28,15 +28,16 @@ class WeddingDateScreen extends StatelessWidget {
       title: 'متى موعد الزفاف؟',
       description: 'يمكنك اختيار تاريخ تقريبي أو المتابعة بدون تاريخ الآن.',
       continueLabel: 'متابعة',
-      onContinue: onContinue,
+      onContinue: draft.hasTimelineSeed ? onContinue : null,
       onBack: onBack,
       child: Column(
         children: [
           GuestOnboardingOptionTile(
+            key: const Key('guest-date-unknown'),
             title: 'لا أعرف التاريخ الآن',
             subtitle: 'استخدموا خطة مرنة إلى أن يتم تحديد الموعد.',
             icon: Icons.event_busy_rounded,
-            selected: draft.weddingDateUnknown || draft.weddingDate == null,
+            selected: draft.weddingDateUnknown,
             onTap: () => onSelectDate?.call(null, unknown: true),
           ),
           const SizedBox(height: 12),

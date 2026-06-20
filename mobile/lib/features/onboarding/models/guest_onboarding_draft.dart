@@ -8,6 +8,7 @@ class GuestOnboardingDraft {
     this.createdAt,
     this.isGuestPlan = false,
     this.needsSync = false,
+    this.budgetSkipped = false,
     required this.selectedPath,
     required this.persona,
     required this.governorate,
@@ -29,6 +30,7 @@ class GuestOnboardingDraft {
       createdAt = null,
       isGuestPlan = false,
       needsSync = false,
+      budgetSkipped = false,
       selectedPath = null,
       persona = null,
       governorate = null,
@@ -48,6 +50,7 @@ class GuestOnboardingDraft {
   final DateTime? createdAt;
   final bool isGuestPlan;
   final bool needsSync;
+  final bool budgetSkipped;
   final GuestOnboardingPath? selectedPath;
   final GuestPersona? persona;
   final String? governorate;
@@ -84,7 +87,8 @@ class GuestOnboardingDraft {
   bool get isCompleteGuestPlan {
     return isGuestPlan &&
         needsSync &&
-        guestPlanId?.startsWith('local-guest-') == true &&
+        (guestPlanId?.startsWith('guest-plan-') == true ||
+            guestPlanId?.startsWith('local-guest-') == true) &&
         createdAt != null &&
         canGenerateLocalPreview;
   }
@@ -96,6 +100,7 @@ class GuestOnboardingDraft {
     bool clearCreatedAt = false,
     bool? isGuestPlan,
     bool? needsSync,
+    bool? budgetSkipped,
     GuestOnboardingPath? selectedPath,
     bool clearSelectedPath = false,
     GuestPersona? persona,
@@ -132,6 +137,7 @@ class GuestOnboardingDraft {
       createdAt: clearCreatedAt ? null : createdAt ?? this.createdAt,
       isGuestPlan: isGuestPlan ?? this.isGuestPlan,
       needsSync: needsSync ?? this.needsSync,
+      budgetSkipped: budgetSkipped ?? this.budgetSkipped,
       selectedPath: clearSelectedPath
           ? null
           : selectedPath ?? this.selectedPath,
@@ -163,6 +169,7 @@ class GuestOnboardingDraft {
       'createdAt': createdAt?.toIso8601String(),
       'isGuestPlan': isGuestPlan,
       'needsSync': needsSync,
+      'budgetSkipped': budgetSkipped,
       'selectedPath': selectedPath?.name,
       'persona': persona?.name,
       'governorate': governorate,
@@ -187,6 +194,7 @@ class GuestOnboardingDraft {
       createdAt: _dateTimeOrNull(json['createdAt']),
       isGuestPlan: json['isGuestPlan'] == true,
       needsSync: json['needsSync'] == true,
+      budgetSkipped: json['budgetSkipped'] == true,
       selectedPath: _enumByName(
         GuestOnboardingPath.values,
         json['selectedPath'],
@@ -246,6 +254,7 @@ class GuestOnboardingDraft {
         other.createdAt == createdAt &&
         other.isGuestPlan == isGuestPlan &&
         other.needsSync == needsSync &&
+        other.budgetSkipped == budgetSkipped &&
         other.selectedPath == selectedPath &&
         other.persona == persona &&
         other.governorate == governorate &&
@@ -269,6 +278,7 @@ class GuestOnboardingDraft {
       createdAt,
       isGuestPlan,
       needsSync,
+      budgetSkipped,
       selectedPath,
       persona,
       governorate,

@@ -128,7 +128,7 @@ void main() {
     final guestPlan = await guestStorage.loadGuestPlan();
     expect(apiCallCount, 0);
     expect(guestPlan, isNotNull);
-    expect(guestPlan!.guestPlanId, startsWith('local-guest-'));
+    expect(guestPlan!.guestPlanId, startsWith('guest-plan-'));
     expect(guestPlan.isGuestPlan, isTrue);
     expect(guestPlan.needsSync, isTrue);
     expect(guestPlan.createdAt, isNotNull);

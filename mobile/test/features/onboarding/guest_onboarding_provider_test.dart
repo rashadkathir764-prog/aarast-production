@@ -67,9 +67,10 @@ void main() {
       expect(provider.draft.estimatedBudget, '1800000');
       expect(provider.draft.selectedCategoryKeys, ['hall', 'dress']);
 
-      provider.setBudget(currency: null, estimatedBudget: null);
+      provider.setBudget(currency: null, estimatedBudget: null, skipped: true);
       expect(provider.draft.currency, isNull);
       expect(provider.draft.estimatedBudget, isNull);
+      expect(provider.draft.budgetSkipped, isTrue);
     });
 
     test('reset clears draft', () {
@@ -177,6 +178,7 @@ void main() {
       expect(savedDraft?.weddingDateUnknown, isTrue);
       expect(savedDraft?.priorities, ['budget', 'tasks']);
       expect(savedDraft?.estimatedBudget, '1500000');
+      expect(savedDraft?.budgetSkipped, isFalse);
       expect(savedDraft?.selectedCategoryKeys, ['hall', 'photo']);
     });
 

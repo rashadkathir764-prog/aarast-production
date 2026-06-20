@@ -59,14 +59,14 @@ void main() {
 
       await storage.saveDraft(
         draft.copyWith(
-          guestPlanId: 'local-guest-1',
+          guestPlanId: 'guest-plan-1',
           createdAt: DateTime.utc(2026, 6, 19),
           isGuestPlan: true,
           needsSync: true,
         ),
       );
       expect(await storage.hasGuestPlan(), isTrue);
-      expect((await storage.loadGuestPlan())?.guestPlanId, 'local-guest-1');
+      expect((await storage.loadGuestPlan())?.guestPlanId, 'guest-plan-1');
     });
   });
 }

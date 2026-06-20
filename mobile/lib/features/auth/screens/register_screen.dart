@@ -274,7 +274,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
               onTap: () {
                 if (auth.isSubmitting) return;
                 auth.clearError();
-                context.go(AppRouter.login);
+                final resume = _safeResumeLocation(context);
+                context.go(
+                  _withResume(AppRouter.login, resumeLocation: resume),
+                );
               },
             ),
           ],
@@ -332,6 +335,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (mounted) {
       context.go(AppRouter.otp);
     }
+  }
+
+  String? _safeResumeLocation(BuildContext context) {
+    final resume = GoRouterState.of(context).uri.queryParameters['resume'];
+    if (resume == null || resume.trim().isEmpty) return null;
+    if (!resume.startsWith('/') || resume.startsWith('//')) return null;
+    return resume;
+  }
+
+  String _withResume(String location, {String? resumeLocation}) {
+    if (resumeLocation == null) return location;
+    return Uri.parse(
+      location,
+    ).replace(queryParameters: {'resume': resumeLocation}).toString();
   }
 }
 

@@ -209,7 +209,7 @@ class _ActivePlanOnboardingScreenState
     if (accessToken == null || accessToken.trim().isEmpty) {
       final now = DateTime.now();
       final guestPlan = GuestOnboardingDraft(
-        guestPlanId: 'local-guest-${now.microsecondsSinceEpoch}',
+        guestPlanId: 'guest-plan-${now.microsecondsSinceEpoch}',
         createdAt: now,
         isGuestPlan: true,
         needsSync: true,

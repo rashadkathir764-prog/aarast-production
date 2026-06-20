@@ -129,14 +129,19 @@ class GuestOnboardingProvider extends ChangeNotifier {
     await saveCurrentDraft();
   }
 
-  void setBudget({String? currency, String? estimatedBudget}) {
+  void setBudget({
+    String? currency,
+    String? estimatedBudget,
+    bool skipped = false,
+  }) {
     final cleanCurrency = _cleanText(currency);
     final cleanBudget = _cleanText(estimatedBudget);
     _setDraft(
       _draft.copyWith(
-        currency: cleanCurrency,
-        estimatedBudget: cleanBudget,
-        clearBudget: cleanCurrency == null && cleanBudget == null,
+        currency: skipped ? null : cleanCurrency,
+        estimatedBudget: skipped ? null : cleanBudget,
+        clearBudget: skipped || (cleanCurrency == null && cleanBudget == null),
+        budgetSkipped: skipped,
       ),
     );
   }
@@ -144,8 +149,13 @@ class GuestOnboardingProvider extends ChangeNotifier {
   Future<void> updateBudgetAndSave({
     String? currency,
     String? estimatedBudget,
+    bool skipped = false,
   }) async {
-    setBudget(currency: currency, estimatedBudget: estimatedBudget);
+    setBudget(
+      currency: currency,
+      estimatedBudget: estimatedBudget,
+      skipped: skipped,
+    );
     await saveCurrentDraft();
   }
 

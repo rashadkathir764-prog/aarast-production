@@ -8,6 +8,7 @@ import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
+import '../marketplace/widgets/provider_auth_gate.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
@@ -234,7 +235,14 @@ class _MainShellState extends State<MainShell> {
               ),
 
               // Index 3: Vendors marketplace
-              _buildLazyTab(3, const ProviderMarketplaceScreen(embedded: true)),
+              _buildLazyTab(
+                3,
+                const ProviderAuthGate(
+                  resumeLocation: AppRouter.providerMarketplace,
+                  embedded: true,
+                  child: ProviderMarketplaceScreen(embedded: true),
+                ),
+              ),
 
               // Index 4: More/settings/secondary surfaces
               _buildLazyTab(4, const MoreScreen()),

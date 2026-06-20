@@ -19,15 +19,13 @@ class ChoosePathScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectivePath = selectedPath ?? GuestOnboardingPath.weddingUser;
-
     return GuestOnboardingStepScaffold(
       stepNumber: 1,
       title: 'كيف تريد استخدام أعرست؟',
       description:
           'اختر المسار المناسب حتى تبقى تجربة التخطيط منفصلة عن مسار المزودين.',
       continueLabel: 'متابعة',
-      onContinue: onContinue,
+      onContinue: selectedPath == null ? null : onContinue,
       onBack: onBack,
       child: Column(
         children: [
@@ -36,7 +34,7 @@ class ChoosePathScreen extends StatelessWidget {
             title: 'أريد تنظيم زفافي',
             subtitle: 'مسار تخطيط الزفاف والميزانية والمهام والضيوف.',
             icon: Icons.favorite_rounded,
-            selected: effectivePath == GuestOnboardingPath.weddingUser,
+            selected: selectedPath == GuestOnboardingPath.weddingUser,
             onTap: () => onSelectPath?.call(GuestOnboardingPath.weddingUser),
           ),
           const SizedBox(height: 12),
@@ -46,7 +44,7 @@ class ChoosePathScreen extends StatelessWidget {
             subtitle:
                 'مسار آمن مؤقت. ملف المزود وطلبات العروض ستفتح لاحقًا بعد اعتمادها.',
             icon: Icons.storefront_rounded,
-            selected: effectivePath == GuestOnboardingPath.provider,
+            selected: selectedPath == GuestOnboardingPath.provider,
             onTap: () => onSelectPath?.call(GuestOnboardingPath.provider),
           ),
         ],

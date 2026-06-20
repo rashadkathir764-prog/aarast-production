@@ -29,16 +29,12 @@ class SuggestedCategoriesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveSelected = selectedCategoryKeys.isEmpty
-        ? defaultCategories.take(4).toList(growable: false)
-        : selectedCategoryKeys;
-
     return GuestOnboardingStepScaffold(
       stepNumber: 7,
       title: 'تصنيفات بداية الخطة',
       description: 'اختر تصنيفات أولية حتى لا تبدأ صفحة المال فارغة لاحقًا.',
       continueLabel: 'إنشاء ملخص محلي',
-      onContinue: onContinue,
+      onContinue: selectedCategoryKeys.isEmpty ? null : onContinue,
       onBack: onBack,
       child: GridView.builder(
         shrinkWrap: true,
@@ -52,15 +48,16 @@ class SuggestedCategoriesScreen extends StatelessWidget {
         ),
         itemBuilder: (context, index) {
           final value = defaultCategories[index];
-          final selected = effectiveSelected.contains(value);
+          final selected = selectedCategoryKeys.contains(value);
           return GuestOnboardingOptionTile(
+            key: Key('guest-category-$index'),
             title: value,
             subtitle: selected ? 'مضافة للخطة' : 'اضغط للإضافة',
             icon: _categoryIcon(index),
             selected: selected,
             compact: true,
             onTap: () {
-              final next = [...effectiveSelected];
+              final next = [...selectedCategoryKeys];
               next.contains(value) ? next.remove(value) : next.add(value);
               onChanged?.call(List.unmodifiable(next));
             },

@@ -149,7 +149,10 @@ class _LoginScreenState extends State<LoginScreen> {
               onTap: () {
                 if (auth.isSubmitting) return;
                 auth.clearError();
-                context.go(AppRouter.register);
+                final resume = _safeResumeLocation(context);
+                context.go(
+                  _withResume(AppRouter.register, resumeLocation: resume),
+                );
               },
             ),
             const SizedBox(height: 12),
@@ -178,7 +181,21 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (success && mounted) {
-      context.go(AppRouter.home);
+      context.go(_safeResumeLocation(context) ?? AppRouter.home);
     }
+  }
+
+  String? _safeResumeLocation(BuildContext context) {
+    final resume = GoRouterState.of(context).uri.queryParameters['resume'];
+    if (resume == null || resume.trim().isEmpty) return null;
+    if (!resume.startsWith('/') || resume.startsWith('//')) return null;
+    return resume;
+  }
+
+  String _withResume(String location, {String? resumeLocation}) {
+    if (resumeLocation == null) return location;
+    return Uri.parse(
+      location,
+    ).replace(queryParameters: {'resume': resumeLocation}).toString();
   }
 }

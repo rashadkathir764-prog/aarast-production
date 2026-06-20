@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../core/routing/app_router.dart';
+import '../../../core/storage/auth_storage.dart';
+import '../../wedding_plans/models/onboarding_complete.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../data/guest_onboarding_storage.dart';
 import '../models/guest_onboarding_draft.dart';
 import '../providers/guest_onboarding_provider.dart';
@@ -139,6 +145,7 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
       ),
       GuestOnboardingFlowStep.preview => GeneratedDashboardPreviewScreen(
         draft: draft,
+        onContinue: _completePlan,
         onBack: () => _goTo(GuestOnboardingFlowStep.categories),
       ),
     };
@@ -199,6 +206,66 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
         : provider.draft.selectedCategoryKeys;
     await provider.updateCategoriesAndSave(categories);
     _goTo(GuestOnboardingFlowStep.preview);
+  }
+
+  Future<void> _completePlan() async {
+    final provider = _provider;
+    if (provider == null) return;
+    final draft = provider.draft;
+    final authStorage = context.read<AuthStorage>();
+    final guestStorage = context.read<GuestOnboardingStorage>();
+    final weddingPlansProvider = context.read<WeddingPlansProvider>();
+    final accessToken = await authStorage.readAccessToken();
+
+    if (accessToken == null || accessToken.trim().isEmpty) {
+      final now = DateTime.now();
+      await guestStorage.saveDraft(
+        draft.copyWith(
+          guestPlanId: 'local-guest-${now.microsecondsSinceEpoch}',
+          createdAt: now,
+          isGuestPlan: true,
+          needsSync: true,
+        ),
+      );
+      if (!mounted) return;
+      context.go(AppRouter.home);
+      return;
+    }
+
+    final city = draft.city?.trim();
+    final location = <String, String>{
+      if ((draft.governorate ?? '').trim().isNotEmpty)
+        'governorate': draft.governorate!.trim(),
+      if ((city ?? '').isNotEmpty) 'city': city!,
+      if ((draft.district ?? '').trim().isNotEmpty)
+        'district': draft.district!.trim(),
+      if ((draft.neighborhood ?? '').trim().isNotEmpty)
+        'neighborhood': draft.neighborhood!.trim(),
+      if ((draft.street ?? '').trim().isNotEmpty)
+        'street': draft.street!.trim(),
+    };
+    final response = await weddingPlansProvider.completeOnboarding(
+      OnboardingCompleteRequest(
+        path: 'USER',
+        persona: switch (draft.persona) {
+          GuestPersona.bride => 'BRIDE',
+          GuestPersona.helper => 'HELPER',
+          _ => 'GROOM',
+        },
+        title: (city ?? '').isEmpty ? 'خطة زفافي' : 'خطة زفاف $city',
+        city: (city ?? '').isEmpty ? null : city,
+        location: location,
+        weddingDate: draft.weddingDate?.toIso8601String(),
+        priorities: draft.priorities,
+        estimatedBudget: draft.estimatedBudget,
+        currency: draft.currency ?? 'YER',
+        selectedCategories: draft.selectedCategoryKeys,
+      ),
+    );
+    if (response == null || !mounted) return;
+    await authStorage.saveActivePlanId(response.activePlanId);
+    if (!mounted) return;
+    context.go(AppRouter.home);
   }
 
   void _goTo(GuestOnboardingFlowStep step) {

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../providers/sharing_provider.dart';
 import '../widgets/shared_plan_card.dart';
 
@@ -29,16 +30,14 @@ class _SharedWeddingPlansScreenState extends State<SharedWeddingPlansScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('الخطط المشتركة معي')),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: provider.loadSharedPlans,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _SharedPlansContent(provider: provider),
-          ),
-        ),
+    return AarastPageScaffold(
+      title: 'الخطط المشتركة معي',
+      subtitle: 'الخطط التي منحك أصحابها صلاحية الوصول إليها',
+      showBack: true,
+      child: RefreshIndicator(
+        color: AppTheme.dMaroon,
+        onRefresh: provider.loadSharedPlans,
+        child: _SharedPlansContent(provider: provider),
       ),
     );
   }
@@ -76,15 +75,11 @@ class _SharedPlansContent extends StatelessWidget {
     if (provider.sharedPlans.isEmpty) {
       return ListView(
         children: const [
-          SizedBox(height: 100),
-          Card(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Text(
-                'لا توجد خطط مشتركة معك حاليا.',
-                textAlign: TextAlign.center,
-              ),
-            ),
+          SizedBox(height: 70),
+          AarastEmptyState(
+            icon: Icons.diversity_3_outlined,
+            title: 'لا توجد خطط مشتركة',
+            message: 'ستظهر هنا الخطط التي يشاركها أصحابها معك.',
           ),
         ],
       );

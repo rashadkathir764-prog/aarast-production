@@ -66,6 +66,7 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return GuestOnboardingStepScaffold(
+      stepNumber: 3,
       title: 'أين سيكون الزفاف؟',
       description: 'أدخل الموقع يدويًا. لا يتم طلب إذن الموقع في هذه المرحلة.',
       continueLabel: 'حفظ الموقع',
@@ -88,6 +89,8 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
           ),
           const SizedBox(height: 12),
           _LocationField(controller: _districtController, label: 'الحي'),
+          const SizedBox(height: 12),
+          _LocationField(controller: _neighborhoodController, label: 'المنطقة'),
           const SizedBox(height: 12),
           _LocationField(controller: _streetController, label: 'الشارع'),
           const SizedBox(height: 12),

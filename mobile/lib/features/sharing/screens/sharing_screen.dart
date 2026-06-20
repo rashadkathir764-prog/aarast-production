@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../providers/sharing_provider.dart';
 import '../widgets/shared_member_card.dart';
 
@@ -41,18 +42,16 @@ class _SharingScreenState extends State<SharingScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('المشاركة والصلاحيات')),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => provider.loadMembers(widget.weddingPlanId),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: _SharingContent(
-              provider: provider,
-              weddingPlanId: widget.weddingPlanId,
-            ),
-          ),
+    return AarastPageScaffold(
+      title: 'المشاركة والصلاحيات',
+      subtitle: 'شارك الخطة وحدد ما يمكن لكل عضو رؤيته أو إدارته',
+      showBack: true,
+      child: RefreshIndicator(
+        color: AppTheme.dMaroon,
+        onRefresh: () => provider.loadMembers(widget.weddingPlanId),
+        child: _SharingContent(
+          provider: provider,
+          weddingPlanId: widget.weddingPlanId,
         ),
       ),
     );
@@ -118,8 +117,12 @@ class _SharingContent extends StatelessWidget {
           textAlign: TextAlign.right,
         ),
         if (provider.members.isEmpty) ...[
-          const SizedBox(height: 8),
-          const Text('لا يوجد أعضاء مشاركون بعد.', textAlign: TextAlign.right),
+          const SizedBox(height: 10),
+          const AarastEmptyState(
+            icon: Icons.group_add_outlined,
+            title: 'الخطة خاصة بك الآن',
+            message: 'أضف شخصًا موثوقًا وحدد صلاحياته بوضوح.',
+          ),
         ],
         const SizedBox(height: 8),
         for (final member in provider.members)
@@ -140,27 +143,25 @@ class _PrivacyNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'إدارة الخصوصية',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w800,
-              ),
-              textAlign: TextAlign.right,
+    return AarastCard(
+      color: AppTheme.dCreamBg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'إدارة الخصوصية',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.deepBurgundy,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'هذه الشاشة مخصصة لمالك الخطة. البيانات المالية مثل الميزانية والمصاريف والديون لا تظهر للأعضاء إلا بصلاحية واضحة.',
-              textAlign: TextAlign.right,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'هذه الشاشة مخصصة لمالك الخطة. البيانات المالية مثل الميزانية والمصاريف والديون لا تظهر للأعضاء إلا بصلاحية واضحة.',
+            textAlign: TextAlign.right,
+          ),
+        ],
       ),
     );
   }

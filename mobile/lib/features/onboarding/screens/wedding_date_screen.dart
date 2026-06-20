@@ -24,6 +24,7 @@ class WeddingDateScreen extends StatelessWidget {
     final twelveMonthsLater = DateTime(now.year + 1, now.month, now.day);
 
     return GuestOnboardingStepScaffold(
+      stepNumber: 4,
       title: 'متى موعد الزفاف؟',
       description: 'يمكنك اختيار تاريخ تقريبي أو المتابعة بدون تاريخ الآن.',
       continueLabel: 'متابعة',
@@ -37,6 +38,27 @@ class WeddingDateScreen extends StatelessWidget {
             icon: Icons.event_busy_rounded,
             selected: draft.weddingDateUnknown || draft.weddingDate == null,
             onTap: () => onSelectDate?.call(null, unknown: true),
+          ),
+          const SizedBox(height: 12),
+          GuestOnboardingOptionTile(
+            title: 'اختيار تاريخ من التقويم',
+            subtitle: draft.weddingDate == null
+                ? 'حدد اليوم المناسب لك'
+                : _dateLabel(draft.weddingDate!),
+            icon: Icons.calendar_month_rounded,
+            selected: draft.weddingDate != null && !draft.weddingDateUnknown,
+            onTap: () async {
+              final selected = await showDatePicker(
+                context: context,
+                initialDate: draft.weddingDate ?? sixMonthsLater,
+                firstDate: DateTime(now.year, now.month, now.day),
+                lastDate: DateTime(now.year + 5),
+                helpText: 'اختر موعد الزفاف',
+                cancelText: 'إلغاء',
+                confirmText: 'اعتماد',
+              );
+              if (selected != null) onSelectDate?.call(selected);
+            },
           ),
           const SizedBox(height: 12),
           GuestOnboardingOptionTile(

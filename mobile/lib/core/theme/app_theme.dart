@@ -15,23 +15,23 @@ class AppTheme {
   static const danger = Color(0xFFD32F2F);
 
   // Premium Aarast palette
-  static const dMaroon = Color(0xFF6E0E2C);
-  static const dMaroon2 = Color(0xFF5B0A24);
-  static const dMaroonDeep = Color(0xFF4A0A1E);
-  static const dMaroonBright = Color(0xFF7A1232);
+  static const dMaroon = Color(0xFF7B1232);
+  static const dMaroon2 = Color(0xFF671028);
+  static const dMaroonDeep = Color(0xFF4E0B20);
+  static const dMaroonBright = Color(0xFF8B183B);
 
-  static const dGold = Color(0xFFC5A25A);
-  static const dGold2 = Color(0xFFD8BE86);
-  static const dGoldDeep = Color(0xFFA9863F);
+  static const dGold = Color(0xFFC7A35D);
+  static const dGold2 = Color(0xFFE1CA96);
+  static const dGoldDeep = Color(0xFFA98642);
 
-  static const dBg = Color(0xFFEFEAE4);
-  static const dCard = Color(0xFFFBF9F6);
+  static const dBg = Color(0xFFFBF7F1);
+  static const dCard = Color(0xFFFFFCF8);
   static const dCard2 = Color(0xFFFFFFFF);
 
   static const dInk = Color(0xFF3C2B2F);
   static const dInkSoft = Color(0xFF6C5A5D);
   static const dMuted = Color(0xFFA89C9C);
-  static const dLine = Color(0xFFECE5E0);
+  static const dLine = Color(0xFFE9DED3);
 
   static const dGreen = Color(0xFF4F9A43);
   static const dGreenBg = Color(0xFFE9F1E4);
@@ -60,8 +60,8 @@ class AppTheme {
   // Common sizing
   static const double radiusSm = 12;
   static const double radiusMd = 16;
-  static const double radiusLg = 22;
-  static const double radiusXl = 28;
+  static const double radiusLg = 18;
+  static const double radiusXl = 24;
 
   static const double gapXs = 6;
   static const double gapSm = 10;
@@ -69,7 +69,7 @@ class AppTheme {
   static const double gapLg = 18;
   static const double gapXl = 24;
 
-  static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 24);
+  static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 16);
   static const EdgeInsets compactScreenPadding = EdgeInsets.symmetric(
     horizontal: 16,
   );
@@ -102,9 +102,9 @@ class AppTheme {
   static List<BoxShadow> cardShadow() {
     return [
       BoxShadow(
-        color: dMaroonDeep.withAlpha(16),
-        blurRadius: 18,
-        offset: const Offset(0, 8),
+        color: dMaroonDeep.withAlpha(12),
+        blurRadius: 14,
+        offset: const Offset(0, 5),
       ),
     ];
   }
@@ -185,7 +185,7 @@ class AppTheme {
           backgroundColor: dMaroon,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
           ),
@@ -224,7 +224,7 @@ class AppTheme {
         alignLabelWithHint: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 15,
+          vertical: 13,
         ),
         labelStyle: textTheme.bodyMedium?.copyWith(color: dInkSoft),
         hintStyle: textTheme.bodyMedium?.copyWith(color: dMuted),

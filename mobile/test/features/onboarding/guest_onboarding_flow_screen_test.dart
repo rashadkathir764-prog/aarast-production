@@ -39,9 +39,10 @@ void main() {
       await tester.pumpAndSettle();
 
       for (var step = 0; step < 8; step += 1) {
-        await tester.tap(
-          find.byKey(const Key('guest-onboarding-primary-action')),
-        );
+        final action = find.byKey(const Key('guest-onboarding-primary-action'));
+        await tester.ensureVisible(action);
+        await tester.pumpAndSettle();
+        await tester.tap(action);
         await tester.pumpAndSettle();
       }
 

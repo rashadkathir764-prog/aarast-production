@@ -45,6 +45,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return GuestOnboardingStepScaffold(
+      stepNumber: 6,
       title: 'ميزانية تقريبية',
       description: 'أدخل مبلغًا تقديريًا أو تخط هذه الخطوة الآن.',
       continueLabel: 'حفظ الميزانية',

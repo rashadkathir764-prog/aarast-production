@@ -113,6 +113,22 @@ Response:
 
 Shared members can read basic plan info. Updating or archiving requires owner access or manager-style sharing permission.
 
+## WeddingPlan Dashboard Summary
+
+Protected routes:
+
+- `GET /wedding-plans/:id/dashboard-summary`
+- `GET /api/v1/wedding-plans/:id/dashboard-summary`
+
+The dashboard summary powers the mobile Home / Today Center. Existing count and money fields remain stable, and the response may also include source-backed detail arrays:
+
+- `importantItems`: actionable task/installment/provider cards for "الأهم اليوم".
+- `planProviders`: providers actually linked to the current WeddingPlan.
+- `importantNotifications`: latest user-owned notifications for this WeddingPlan.
+- `generatedAt`: server timestamp used by the mobile sync/status copy.
+
+Financial installment details appear only when the current user has the required debt/financial permission. Notifications are always scoped to the authenticated user. Provider cards are planning/reference data only and do not imply paid booking, deposits, payment status, loans, credit, financing, AI, or chat.
+
 ## Notifications
 
 Protected routes:

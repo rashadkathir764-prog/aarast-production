@@ -232,12 +232,13 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ? provider.plan!.id
         : widget.weddingPlanId;
     return DashboardBottomNav(
-      activeIndex: 4,
-      onMore: () => context.go(AppRouter.home),
+      activeIndex: 0,
+      onHome: () => context.go(AppRouter.home),
+      onMoney: () => context.push(AppRouter.finance(planId)),
       onTasks: () => context.push(AppRouter.tasks(planId)),
       onAdd: () => _showQuickAdd(provider),
-      onPlans: () => context.push(AppRouter.providerMarketplace),
-      onHome: () => context.go(AppRouter.home),
+      onProviders: () => context.push(AppRouter.providerMarketplace),
+      onMore: () => context.push(AppRouter.more),
     );
   }
 

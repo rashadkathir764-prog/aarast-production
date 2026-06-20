@@ -6,6 +6,7 @@ import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
+import '../finance/screens/budget_expense_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
@@ -22,9 +23,10 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  // DashboardBottomNav indices mirror the approved RTL shell:
-  // 4: الرئيسية, 1: المهام, 3: الموردين, 0: المزيد.
-  int _index = 4;
+  // DashboardBottomNav indices mirror the approved user navigation:
+  // 0: الرئيسية, 1: المال, 2: المهام, 3: الموردون, 4: المزيد.
+  int _index = 0;
+  final Set<int> _visitedTabs = {0};
   String? _activePlanId;
 
   @override
@@ -51,6 +53,7 @@ class _MainShellState extends State<MainShell> {
   void _onItemTapped(int index) {
     setState(() {
       _index = index;
+      _visitedTabs.add(index);
     });
   }
 
@@ -129,7 +132,7 @@ class _MainShellState extends State<MainShell> {
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: Text(
-                        'إضافة سريعة',
+                        'إجراءات سريعة!',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
@@ -168,11 +171,11 @@ class _MainShellState extends State<MainShell> {
                     AppRouter.guestList(_activePlanId!),
                   ),
                   tile(
-                    Icons.post_add_rounded,
+                    Icons.request_quote_outlined,
                     AppTheme.dGoldDeep,
                     AppTheme.dCreamBg,
-                    'خطة جديدة',
-                    AppRouter.createWeddingPlan,
+                    'طلب عرض سعر',
+                    AppRouter.providerMarketplace,
                   ),
                 ],
               ),
@@ -187,19 +190,6 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
 
-    // Map DashboardBottomNav indices to the IndexedStack.
-
-    int stackIndex = 0;
-    if (_index == 4) {
-      stackIndex = 0;
-    } else if (_index == 3) {
-      stackIndex = 1;
-    } else if (_index == 1) {
-      stackIndex = 2;
-    } else if (_index == 0) {
-      stackIndex = 3;
-    }
-
     return Theme(
       data: shellTheme,
       child: Directionality(
@@ -207,43 +197,65 @@ class _MainShellState extends State<MainShell> {
         child: Scaffold(
           backgroundColor: Colors.white,
           body: IndexedStack(
-            index: stackIndex,
+            index: _index,
             children: [
-              // Index 0 (Nav 4): Home overview. Plan lists are explicit routes.
-              _activePlanId != null
-                  ? WeddingPlanDashboardScreen(
-                      key: ValueKey('home-$_activePlanId'),
-                      weddingPlanId: _activePlanId!,
-                      embedded: true,
-                    )
-                  : const HomeScreen(embedded: true),
+              // Index 0: Home overview. Plan lists are explicit routes.
+              _buildLazyTab(
+                0,
+                _activePlanId != null
+                    ? WeddingPlanDashboardScreen(
+                        key: ValueKey('home-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                        embedded: true,
+                      )
+                    : const HomeScreen(embedded: true),
+              ),
 
-              // Index 1 (Nav 3): Vendors marketplace
-              const ProviderMarketplaceScreen(embedded: true),
+              // Index 1: Money
+              _buildLazyTab(
+                1,
+                _activePlanId != null
+                    ? BudgetExpenseScreen(
+                        key: ValueKey('money-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                      )
+                    : _buildNoPlanFallback('المال'),
+              ),
 
-              // Index 2 (Nav 1): Tasks
-              _activePlanId != null
-                  ? TaskTimelineScreen(
-                      key: ValueKey('tasks-$_activePlanId'),
-                      weddingPlanId: _activePlanId!,
-                    )
-                  : _buildNoPlanFallback('المهام'),
+              // Index 2: Tasks
+              _buildLazyTab(
+                2,
+                _activePlanId != null
+                    ? TaskTimelineScreen(
+                        key: ValueKey('tasks-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                      )
+                    : _buildNoPlanFallback('المهام'),
+              ),
 
-              // Index 3 (Nav 0): More
-              const MoreScreen(),
+              // Index 3: Vendors marketplace
+              _buildLazyTab(3, const ProviderMarketplaceScreen(embedded: true)),
+
+              // Index 4: More/settings/secondary surfaces
+              _buildLazyTab(4, const MoreScreen()),
             ],
           ),
           bottomNavigationBar: DashboardBottomNav(
             activeIndex: _index,
-            onHome: () => _onItemTapped(4),
-            onPlans: () => _onItemTapped(3),
+            onHome: () => _onItemTapped(0),
+            onMoney: () => _onItemTapped(1),
+            onTasks: () => _onItemTapped(2),
+            onProviders: () => _onItemTapped(3),
+            onMore: () => _onItemTapped(4),
             onAdd: _showQuickAdd,
-            onTasks: () => _onItemTapped(1),
-            onMore: () => _onItemTapped(0),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildLazyTab(int index, Widget child) {
+    return _visitedTabs.contains(index) ? child : const SizedBox.shrink();
   }
 
   Widget _buildNoPlanFallback(String title) {

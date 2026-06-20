@@ -22,6 +22,7 @@ class ChoosePathScreen extends StatelessWidget {
     final effectivePath = selectedPath ?? GuestOnboardingPath.weddingUser;
 
     return GuestOnboardingStepScaffold(
+      stepNumber: 1,
       title: 'كيف تريد استخدام أعرست؟',
       description:
           'اختر المسار المناسب حتى تبقى تجربة التخطيط منفصلة عن مسار المزودين.',

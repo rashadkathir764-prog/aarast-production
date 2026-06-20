@@ -8,11 +8,13 @@ import '../widgets/guest_onboarding_step_scaffold.dart';
 class GeneratedDashboardPreviewScreen extends StatelessWidget {
   const GeneratedDashboardPreviewScreen({
     this.draft = const GuestOnboardingDraft.empty(),
+    this.onContinue,
     this.onBack,
     super.key,
   });
 
   final GuestOnboardingDraft draft;
+  final VoidCallback? onContinue;
   final VoidCallback? onBack;
 
   @override
@@ -20,10 +22,12 @@ class GeneratedDashboardPreviewScreen extends StatelessWidget {
     final seed = GeneratedDashboardSeed.fromDraft(draft);
 
     return GuestOnboardingStepScaffold(
+      stepNumber: 8,
       title: 'ملخص محلي مؤقت',
       description:
           'هذه معاينة هيكلية وليست لوحة التحكم الحقيقية أو خطة محفوظة في الخادم.',
-      continueLabel: 'إنهاء المعاينة',
+      continueLabel: 'إنشاء خطتي',
+      onContinue: onContinue,
       onBack: onBack,
       child: Column(
         children: [

@@ -135,6 +135,10 @@ async function run() {
     check('empty summary has real zero guests', res.body?.guestCount === 0);
     check('empty summary budget comes from plan', res.body?.budgetTotal === '2000.00');
     check('empty summary spent is zero', res.body?.spentTotal === '0.00');
+    check('empty summary importantItems is array', Array.isArray(res.body?.importantItems));
+    check('empty summary planProviders is array', Array.isArray(res.body?.planProviders));
+    check('empty summary importantNotifications is array', Array.isArray(res.body?.importantNotifications));
+    check('empty summary generatedAt exists', typeof res.body?.generatedAt === 'string');
     check('empty summary does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
@@ -213,6 +217,10 @@ async function run() {
     check('summary confirmedGuests is calculated', res.body?.confirmedGuests === 1);
     check('summary quoteRequestsCount is real', res.body?.quoteRequestsCount === (quoteCreated ? 1 : 0));
     check('summary providerCount stays zero before plan-provider model', res.body?.providerCount === 0);
+    check('summary importantItems includes overdue task', res.body?.importantItems?.some((item) => item.type === 'TASK_OVERDUE'));
+    check('summary importantItems includes due installment', res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
+    check('summary planProviders is array', Array.isArray(res.body?.planProviders));
+    check('summary importantNotifications is array', Array.isArray(res.body?.importantNotifications));
     check('summary currentUserRole is OWNER', res.body?.currentUserRole === 'OWNER');
     check('summary owner can view finance', res.body?.permissions?.canViewBudget === true && res.body?.permissions?.canViewDebts === true);
   }
@@ -234,6 +242,7 @@ async function run() {
     check('viewer spent is hidden', res.body?.spentTotal === null);
     check('viewer debt is hidden', res.body?.debtTotal === null);
     check('viewer due installments are hidden', res.body?.dueInstallmentsCount === null);
+    check('viewer importantItems hides installment details', !res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
     check('viewer still sees non-finance task count', res.body?.totalTasks === 3);
     check('viewer still sees guest count', res.body?.guestCount === 2);
     check('viewer summary does not expose passwordHash', !hasPasswordHash(res.body));

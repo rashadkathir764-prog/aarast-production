@@ -8,6 +8,8 @@ class AarastPageScaffold extends StatelessWidget {
     this.title,
     this.subtitle,
     this.actions = const [],
+    this.showBack = false,
+    this.onBack,
     this.padding = AppTheme.screenPadding,
     this.bottomNavigationBar,
     this.floatingActionButton,
@@ -19,6 +21,8 @@ class AarastPageScaffold extends StatelessWidget {
   final String? title;
   final String? subtitle;
   final List<Widget> actions;
+  final bool showBack;
+  final VoidCallback? onBack;
   final EdgeInsetsGeometry padding;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
@@ -26,7 +30,8 @@ class AarastPageScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasHeader = title != null || subtitle != null || actions.isNotEmpty;
+    final hasHeader =
+        title != null || subtitle != null || actions.isNotEmpty || showBack;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -46,8 +51,10 @@ class AarastPageScaffold extends StatelessWidget {
                     title: title,
                     subtitle: subtitle,
                     actions: actions,
+                    showBack: showBack,
+                    onBack: onBack,
                   ),
-                  const SizedBox(height: AppTheme.gapXl),
+                  const SizedBox(height: AppTheme.gapLg),
                 ],
                 Expanded(child: child),
               ],
@@ -64,18 +71,30 @@ class AarastPageHeader extends StatelessWidget {
     this.title,
     this.subtitle,
     this.actions = const [],
+    this.showBack = false,
+    this.onBack,
     super.key,
   });
 
   final String? title;
   final String? subtitle;
   final List<Widget> actions;
+  final bool showBack;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (showBack) ...[
+          IconButton(
+            onPressed: onBack ?? () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_forward_rounded),
+            tooltip: 'رجوع',
+          ),
+          const SizedBox(width: AppTheme.gapSm),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,7 +104,8 @@ class AarastPageHeader extends StatelessWidget {
                   title!,
                   textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.dInk,
+                    fontFamily: AppTheme.displayFontFamily,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -115,7 +135,7 @@ class AarastPageHeader extends StatelessWidget {
 class AarastCard extends StatelessWidget {
   const AarastCard({
     required this.child,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsets.all(16),
     this.margin = EdgeInsets.zero,
     this.color = AppTheme.dCard2,
     this.radius = AppTheme.radiusLg,

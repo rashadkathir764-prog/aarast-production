@@ -2968,20 +2968,22 @@ class SharedPlansCard extends StatelessWidget {
 
 class DashboardBottomNav extends StatelessWidget {
   const DashboardBottomNav({
-    this.onMore,
+    this.onHome,
+    this.onMoney,
     this.onTasks,
     this.onAdd,
-    this.onPlans,
-    this.onHome,
-    this.activeIndex = 4,
+    this.onProviders,
+    this.onMore,
+    this.activeIndex = 0,
     super.key,
   });
 
-  final VoidCallback? onMore;
+  final VoidCallback? onHome;
+  final VoidCallback? onMoney;
   final VoidCallback? onTasks;
   final VoidCallback? onAdd;
-  final VoidCallback? onPlans;
-  final VoidCallback? onHome;
+  final VoidCallback? onProviders;
+  final VoidCallback? onMore;
   final int activeIndex;
 
   @override
@@ -3007,33 +3009,40 @@ class DashboardBottomNav extends StatelessWidget {
             alignment: Alignment.center,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
+                  textDirection: TextDirection.rtl,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _WireNavItem(
                       icon: Icons.home_rounded,
                       label: 'الرئيسية',
-                      active: activeIndex == 4,
+                      active: activeIndex == 0,
                       onTap: onHome,
                     ),
                     _WireNavItem(
-                      icon: Icons.assignment_turned_in_outlined,
-                      label: 'المهام',
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'المال',
                       active: activeIndex == 1,
+                      onTap: onMoney,
+                    ),
+                    _WireNavItem(
+                      icon: Icons.checklist_rounded,
+                      label: 'المهام',
+                      active: activeIndex == 2,
                       onTap: onTasks,
                     ),
-                    const SizedBox(width: 84),
+                    const SizedBox(width: 64),
                     _WireNavItem(
                       icon: Icons.storefront_outlined,
                       label: 'الموردون',
                       active: activeIndex == 3,
-                      onTap: onPlans,
+                      onTap: onProviders,
                     ),
                     _WireNavItem(
                       icon: Icons.grid_view_rounded,
                       label: 'المزيد',
-                      active: activeIndex == 0,
+                      active: activeIndex == 4,
                       onTap: onMore,
                     ),
                   ],
@@ -3048,12 +3057,9 @@ class DashboardBottomNav extends StatelessWidget {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppTheme.dMaroon,
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFD8D8D8),
-                        width: 1,
-                      ),
+                      border: Border.all(color: AppTheme.dGold2, width: 3),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withAlpha(18),
@@ -3064,7 +3070,7 @@ class DashboardBottomNav extends StatelessWidget {
                     ),
                     child: const Icon(
                       Icons.add_rounded,
-                      color: Color(0xFF111111),
+                      color: Colors.white,
                       size: 32,
                     ),
                   ),
@@ -3093,20 +3099,18 @@ class _WireNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFF111111) : const Color(0xFF666666);
+    final color = active ? AppTheme.dMaroon : AppTheme.dMuted;
     return InkResponse(
       onTap: onTap,
       radius: 36,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
-        width: 62,
+        width: 54,
         height: 52,
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFF2F2F2) : Colors.transparent,
+          color: active ? AppTheme.dPinkBg.withAlpha(90) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: active
-              ? Border.all(color: const Color(0xFFE0E0E0), width: 0.8)
-              : null,
+          border: active ? Border.all(color: AppTheme.dLine, width: 0.8) : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

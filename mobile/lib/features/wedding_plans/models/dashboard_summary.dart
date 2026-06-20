@@ -50,6 +50,9 @@ class DashboardSummary {
     required this.providerCount,
     required this.quoteRequestsCount,
     required this.unreadNotificationsCount,
+    required this.importantItems,
+    required this.planProviders,
+    required this.importantNotifications,
     required this.permissions,
     this.weddingDate,
     this.city,
@@ -61,6 +64,7 @@ class DashboardSummary {
     this.paidDebtTotal,
     this.unpaidDebtTotal,
     this.dueInstallmentsCount,
+    this.generatedAt,
     this.currentUserRole,
   });
 
@@ -89,6 +93,16 @@ class DashboardSummary {
       providerCount: _intOrZero(json['providerCount']),
       quoteRequestsCount: _intOrZero(json['quoteRequestsCount']),
       unreadNotificationsCount: _intOrZero(json['unreadNotificationsCount']),
+      importantItems: _listOfMaps(
+        json['importantItems'],
+      ).map(DashboardImportantItem.fromJson).toList(),
+      planProviders: _listOfMaps(
+        json['planProviders'],
+      ).map(DashboardProviderPreview.fromJson).toList(),
+      importantNotifications: _listOfMaps(
+        json['importantNotifications'],
+      ).map(DashboardNotificationPreview.fromJson).toList(),
+      generatedAt: _dateTimeOrNull(json['generatedAt']),
       currentUserRole: json['currentUserRole']?.toString(),
       permissions: DashboardPermissionSummary.fromJson(
         _mapOrEmpty(json['permissions']),
@@ -119,6 +133,10 @@ class DashboardSummary {
   final int providerCount;
   final int quoteRequestsCount;
   final int unreadNotificationsCount;
+  final List<DashboardImportantItem> importantItems;
+  final List<DashboardProviderPreview> planProviders;
+  final List<DashboardNotificationPreview> importantNotifications;
+  final DateTime? generatedAt;
   final String? currentUserRole;
   final DashboardPermissionSummary permissions;
 
@@ -168,4 +186,132 @@ class DashboardSummary {
     if (value is Map) return Map<String, dynamic>.from(value);
     return const {};
   }
+
+  static List<Map<String, dynamic>> _listOfMaps(Object? value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+}
+
+class DashboardImportantItem {
+  const DashboardImportantItem({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.tone,
+    required this.actionLabel,
+    required this.data,
+    this.body,
+    this.dueDate,
+    this.amount,
+    this.route,
+  });
+
+  factory DashboardImportantItem.fromJson(Map<String, dynamic> json) {
+    return DashboardImportantItem(
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'TASK_TODAY',
+      title: json['title']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
+      body: json['body']?.toString(),
+      icon: json['icon']?.toString() ?? 'calendar',
+      tone: json['tone']?.toString() ?? 'info',
+      actionLabel: json['actionLabel']?.toString() ?? 'عرض التفاصيل',
+      dueDate: DashboardSummary._dateTimeOrNull(json['dueDate']),
+      amount: json['amount']?.toString(),
+      route: json['route']?.toString(),
+      data: DashboardSummary._mapOrEmpty(
+        json['data'],
+      ).map((key, value) => MapEntry(key, value?.toString())),
+    );
+  }
+
+  final String id;
+  final String type;
+  final String title;
+  final String subtitle;
+  final String? body;
+  final String icon;
+  final String tone;
+  final String actionLabel;
+  final DateTime? dueDate;
+  final String? amount;
+  final String? route;
+  final Map<String, String?> data;
+}
+
+class DashboardProviderPreview {
+  const DashboardProviderPreview({
+    required this.id,
+    required this.providerId,
+    required this.businessName,
+    required this.ratingAverage,
+    required this.ratingCount,
+    required this.status,
+    this.categoryName,
+    this.serviceTitle,
+    this.imageUrl,
+  });
+
+  factory DashboardProviderPreview.fromJson(Map<String, dynamic> json) {
+    return DashboardProviderPreview(
+      id: json['id']?.toString() ?? '',
+      providerId: json['providerId']?.toString() ?? '',
+      businessName: json['businessName']?.toString() ?? '',
+      categoryName: json['categoryName']?.toString(),
+      serviceTitle: json['serviceTitle']?.toString(),
+      imageUrl: json['imageUrl']?.toString(),
+      ratingAverage: json['ratingAverage']?.toString() ?? '0',
+      ratingCount: DashboardSummary._intOrZero(json['ratingCount']),
+      status: json['status']?.toString() ?? 'ACTIVE',
+    );
+  }
+
+  final String id;
+  final String providerId;
+  final String businessName;
+  final String? categoryName;
+  final String? serviceTitle;
+  final String? imageUrl;
+  final String ratingAverage;
+  final int ratingCount;
+  final String status;
+}
+
+class DashboardNotificationPreview {
+  const DashboardNotificationPreview({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    this.readAt,
+    this.data = const {},
+  });
+
+  factory DashboardNotificationPreview.fromJson(Map<String, dynamic> json) {
+    return DashboardNotificationPreview(
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'GENERAL',
+      title: json['title']?.toString() ?? '',
+      body: json['body']?.toString() ?? '',
+      readAt: DashboardSummary._dateTimeOrNull(json['readAt']),
+      createdAt:
+          DashboardSummary._dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
+      data: DashboardSummary._mapOrEmpty(json['data']),
+    );
+  }
+
+  final String id;
+  final String type;
+  final String title;
+  final String body;
+  final DateTime? readAt;
+  final DateTime createdAt;
+  final Map<String, dynamic> data;
 }

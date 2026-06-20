@@ -261,6 +261,44 @@ class _FinanceContent extends StatelessWidget {
           const SizedBox(height: 14),
         ],
         _BudgetHero(summary: provider.summary),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _FinanceShortcutCard(
+                icon: Icons.receipt_long_outlined,
+                label: 'المصروفات',
+                onTap: canManageFinancialRecords
+                    ? () => _openCreateExpense(context)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _FinanceShortcutCard(
+                icon: Icons.category_outlined,
+                label: 'التصنيفات',
+                onTap: canManageFinancialRecords
+                    ? () => context.push(
+                        AppRouter.createBudgetCategory(weddingPlanId),
+                        extra: sharedMember,
+                      )
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _FinanceShortcutCard(
+                icon: Icons.credit_card_outlined,
+                label: 'الديون والأقساط',
+                onTap: () => context.push(
+                  AppRouter.debts(weddingPlanId),
+                  extra: sharedMember,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
         AarastSectionHeader(
           title: 'تفاصيل المصروفات حسب الفئة',
@@ -484,6 +522,51 @@ class _FinanceContent extends StatelessWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _FinanceShortcutCard extends StatelessWidget {
+  const _FinanceShortcutCard({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: Container(
+          height: 84,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: AppTheme.premiumCardDecoration(radius: AppTheme.radiusMd),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppTheme.dMaroon, size: 24),
+              const SizedBox(height: 7),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppTheme.dInk,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

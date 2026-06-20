@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/onboarding/screens/guest_onboarding_flow_screen.dart';
-import '../../features/onboarding/screens/active_plan_onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
@@ -23,6 +22,7 @@ import '../../features/marketplace/screens/provider_dashboard_screen.dart';
 import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
 import '../../features/marketplace/screens/quote_request_screen.dart';
+import '../../features/more/screens/more_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/home/screens/dashboard_entry_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
@@ -62,6 +62,7 @@ class AppRouter {
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
+  static const more = '/more';
   static const settings = '/settings';
   static const support = '/support';
   static const guestOnboardingPreview = '/dev/guest-onboarding';
@@ -183,7 +184,7 @@ class AppRouter {
         ),
         GoRoute(
           path: onboarding,
-          builder: (context, state) => const ActivePlanOnboardingScreen(),
+          builder: (context, state) => const GuestOnboardingFlowScreen(),
         ),
         GoRoute(
           path: guestOnboardingPreview,
@@ -270,6 +271,7 @@ class AppRouter {
           path: notifications,
           builder: (context, state) => const NotificationsScreen(),
         ),
+        GoRoute(path: more, builder: (context, state) => const MoreScreen()),
         GoRoute(
           path: settings,
           builder: (context, state) => const SettingsScreen(),

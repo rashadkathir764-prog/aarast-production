@@ -4,9 +4,14 @@ import {
   ExpenseStatus,
   GuestStatus,
   InstallmentStatus,
+  NotificationType,
+  PlanProviderLinkStatus,
+  Prisma,
+  ProviderStatus,
   SharedMemberRole,
   WeddingPlan,
   WeddingPlanStatus,
+  WeddingTaskPriority,
   WeddingTaskStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
@@ -48,9 +53,83 @@ export interface WeddingPlanDashboardSummaryResponse {
   providerCount: number;
   quoteRequestsCount: number;
   unreadNotificationsCount: number;
+  importantItems: DashboardImportantItemResponse[];
+  planProviders: DashboardProviderPreviewResponse[];
+  importantNotifications: DashboardNotificationPreviewResponse[];
+  generatedAt: Date;
   currentUserRole: 'OWNER' | SharedMemberRole | null;
   permissions: DashboardPermissionSummary;
 }
+
+export type DashboardImportantItemType =
+  | 'TASK_OVERDUE'
+  | 'TASK_TODAY'
+  | 'INSTALLMENT_DUE'
+  | 'PLAN_PROVIDER';
+
+export interface DashboardImportantItemResponse {
+  id: string;
+  type: DashboardImportantItemType;
+  title: string;
+  subtitle: string;
+  body: string | null;
+  icon: 'calendar' | 'wallet' | 'provider';
+  tone: 'danger' | 'warning' | 'success' | 'info';
+  actionLabel: string;
+  dueDate: Date | null;
+  amount: string | null;
+  route: string | null;
+  data: Record<string, string | null>;
+}
+
+export interface DashboardProviderPreviewResponse {
+  id: string;
+  providerId: string;
+  businessName: string;
+  categoryName: string | null;
+  serviceTitle: string | null;
+  imageUrl: string | null;
+  ratingAverage: string;
+  ratingCount: number;
+  status: PlanProviderLinkStatus;
+}
+
+export interface DashboardNotificationPreviewResponse {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  readAt: Date | null;
+  createdAt: Date;
+  data: Prisma.JsonValue | null;
+}
+
+type DashboardTaskRecord = Prisma.WeddingTaskGetPayload<object>;
+type DashboardInstallmentRecord = Prisma.InstallmentGetPayload<{
+  include: {
+    debt: {
+      select: {
+        id: true;
+        title: true;
+        creditorName: true;
+      };
+    };
+  };
+}>;
+type DashboardPlanProviderLinkRecord = Prisma.PlanProviderLinkGetPayload<{
+  include: {
+    provider: {
+      include: {
+        primaryCategory: true;
+        services: {
+          include: {
+            images: true;
+          };
+        };
+      };
+    };
+  };
+}>;
 
 @Injectable()
 export class DashboardService {
@@ -131,6 +210,8 @@ export class DashboardService {
       expenses,
       debts,
       dueInstallmentsCount,
+      dueInstallments,
+      urgentTasks,
       totalTasks,
       completedTasks,
       overdueTasks,
@@ -138,8 +219,10 @@ export class DashboardService {
       guestCount,
       confirmedGuests,
       providerCount,
+      planProviderLinks,
       quoteRequestsCount,
       unreadNotificationsCount,
+      latestNotifications,
     ] = await Promise.all([
       canViewBudget
         ? this.prisma.budgetCategory.findMany({ where: { weddingPlanId } })
@@ -166,6 +249,39 @@ export class DashboardService {
             },
           })
         : Promise.resolve(null),
+      canViewDebts
+        ? this.prisma.installment.findMany({
+            where: {
+              debt: { weddingPlanId },
+              status: {
+                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
+              },
+              dueDate: { lte: endOfToday },
+            },
+            include: {
+              debt: {
+                select: {
+                  id: true,
+                  title: true,
+                  creditorName: true,
+                },
+              },
+            },
+            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+            take: 2,
+          })
+        : Promise.resolve([]),
+      this.prisma.weddingTask.findMany({
+        where: {
+          weddingPlanId,
+          dueDate: { lte: endOfToday },
+          status: {
+            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
+          },
+        },
+        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        take: 2,
+      }),
       this.prisma.weddingTask.count({ where: { weddingPlanId } }),
       this.prisma.weddingTask.count({
         where: { weddingPlanId, status: WeddingTaskStatus.DONE },
@@ -193,6 +309,33 @@ export class DashboardService {
         where: { weddingPlanId, status: GuestStatus.CONFIRMED },
       }),
       this.prisma.planProviderLink.count({ where: { weddingPlanId } }),
+      this.prisma.planProviderLink.findMany({
+        where: {
+          weddingPlanId,
+          status: PlanProviderLinkStatus.ACTIVE,
+          provider: { status: ProviderStatus.ACTIVE },
+        },
+        include: {
+          provider: {
+            include: {
+              primaryCategory: true,
+              services: {
+                where: { isActive: true },
+                orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+                take: 1,
+                include: {
+                  images: {
+                    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                    take: 1,
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+      }),
       this.prisma.quoteRequest.count({ where: { weddingPlanId } }),
       this.prisma.notification.count({
         where: {
@@ -200,6 +343,14 @@ export class DashboardService {
           weddingPlanId,
           readAt: null,
         },
+      }),
+      this.prisma.notification.findMany({
+        where: {
+          userId: currentUser.id,
+          weddingPlanId,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
       }),
     ]);
 
@@ -257,8 +408,154 @@ export class DashboardService {
       providerCount,
       quoteRequestsCount,
       unreadNotificationsCount,
+      importantItems: this.buildImportantItems({
+        weddingPlanId,
+        tasks: urgentTasks,
+        installments: dueInstallments,
+        providers: planProviderLinks,
+        today,
+      }),
+      planProviders: planProviderLinks.map((link) =>
+        this.toProviderPreviewResponse(link),
+      ),
+      importantNotifications: latestNotifications.map((notification) => ({
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        readAt: notification.readAt,
+        createdAt: notification.createdAt,
+        data: notification.data,
+      })),
+      generatedAt: new Date(),
       currentUserRole: this.currentUserRole(context),
       permissions: this.permissionSummary(context),
+    };
+  }
+
+  private buildImportantItems({
+    weddingPlanId,
+    tasks,
+    installments,
+    providers,
+    today,
+  }: {
+    weddingPlanId: string;
+    tasks: DashboardTaskRecord[];
+    installments: DashboardInstallmentRecord[];
+    providers: DashboardPlanProviderLinkRecord[];
+    today: Date;
+  }): DashboardImportantItemResponse[] {
+    const items: DashboardImportantItemResponse[] = [];
+
+    for (const task of tasks) {
+      const isOverdue = task.dueDate !== null && task.dueDate < today;
+      items.push({
+        id: task.id,
+        type: isOverdue ? 'TASK_OVERDUE' : 'TASK_TODAY',
+        title: isOverdue ? 'مهمة متأخرة' : 'مهمة اليوم',
+        subtitle: task.title,
+        body: task.dueDate
+          ? `${isOverdue ? 'كان موعدها' : 'موعدها'} ${this.formatDateArabic(
+              task.dueDate,
+            )}`
+          : null,
+        icon: 'calendar',
+        tone: isOverdue ? 'danger' : this.toneForTaskPriority(task.priority),
+        actionLabel: 'تنفيذ الآن',
+        dueDate: task.dueDate,
+        amount: null,
+        route: `/wedding-plans/${weddingPlanId}/tasks`,
+        data: {
+          weddingPlanId,
+          taskId: task.id,
+        },
+      });
+    }
+
+    for (const installment of installments) {
+      items.push({
+        id: installment.id,
+        type: 'INSTALLMENT_DUE',
+        title:
+          installment.status === InstallmentStatus.OVERDUE
+            ? 'قسط متأخر'
+            : 'دفعة قادمة',
+        subtitle: installment.debt.title,
+        body: [
+          installment.dueDate
+            ? this.formatDateArabic(installment.dueDate)
+            : null,
+          `${this.moneyOrNull(this.decimalToNumber(installment.amount))} ر.ي`,
+        ]
+          .filter((part): part is string => Boolean(part))
+          .join(' · '),
+        icon: 'wallet',
+        tone:
+          installment.status === InstallmentStatus.OVERDUE
+            ? 'danger'
+            : 'warning',
+        actionLabel: 'عرض التفاصيل',
+        dueDate: installment.dueDate,
+        amount: installment.amount.toString(),
+        route: `/debts/${installment.debtId}`,
+        data: {
+          weddingPlanId,
+          debtId: installment.debtId,
+          installmentId: installment.id,
+        },
+      });
+    }
+
+    const firstProvider = providers[0];
+    if (firstProvider) {
+      const provider = firstProvider.provider;
+      items.push({
+        id: firstProvider.id,
+        type: 'PLAN_PROVIDER',
+        title: 'مزود قريب منك',
+        subtitle: provider.businessName,
+        body: [
+          provider.primaryCategory?.nameAr ?? null,
+          Number(provider.ratingAverage) > 0
+            ? `تقييم ${provider.ratingAverage.toString()}`
+            : null,
+        ]
+          .filter((part): part is string => Boolean(part))
+          .join(' · '),
+        icon: 'provider',
+        tone: 'success',
+        actionLabel: 'عرض الملف',
+        dueDate: null,
+        amount: null,
+        route: `/providers/${provider.id}`,
+        data: {
+          weddingPlanId,
+          providerId: provider.id,
+          planProviderLinkId: firstProvider.id,
+        },
+      });
+    }
+
+    return items.slice(0, 3);
+  }
+
+  private toProviderPreviewResponse(
+    link: DashboardPlanProviderLinkRecord,
+  ): DashboardProviderPreviewResponse {
+    const service = link.provider.services[0];
+    const image = service?.images[0]?.imageUrl ?? null;
+
+    return {
+      id: link.id,
+      providerId: link.providerId,
+      businessName: link.provider.businessName,
+      categoryName: link.provider.primaryCategory?.nameAr ?? null,
+      serviceTitle: service?.title ?? null,
+      imageUrl: link.provider.coverUrl ?? link.provider.logoUrl ?? image,
+      ratingAverage: link.provider.ratingAverage.toString(),
+      ratingCount: link.provider.ratingCount,
+      status: link.status,
     };
   }
 
@@ -435,6 +732,22 @@ export class DashboardService {
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
     }));
+  }
+
+  private toneForTaskPriority(
+    priority: WeddingTaskPriority,
+  ): DashboardImportantItemResponse['tone'] {
+    if (priority === WeddingTaskPriority.URGENT) return 'danger';
+    if (priority === WeddingTaskPriority.HIGH) return 'warning';
+    return 'info';
+  }
+
+  private formatDateArabic(date: Date): string {
+    const formatter = new Intl.DateTimeFormat('ar-YE', {
+      day: 'numeric',
+      month: 'long',
+    });
+    return formatter.format(date);
   }
 
   private toPlanResponse(plan: WeddingPlan) {

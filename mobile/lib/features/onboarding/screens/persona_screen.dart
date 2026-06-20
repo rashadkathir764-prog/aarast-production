@@ -22,6 +22,7 @@ class PersonaScreen extends StatelessWidget {
     final effectivePersona = selectedPersona ?? GuestPersona.groom;
 
     return GuestOnboardingStepScaffold(
+      stepNumber: 2,
       title: 'من يخطط للزفاف؟',
       description: 'اختيار الدور يساعدنا لاحقًا في ضبط نبرة النصائح والخطوات.',
       continueLabel: 'حفظ الدور',

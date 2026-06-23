@@ -1489,7 +1489,7 @@ docs/mobile-ux/PRODUCT_LOGIC_BLUEPRINT.md
 docs/mobile-ux/UX_BLUEPRINT.md
 docs/mobile-ux/NAVIGATION_BLUEPRINT.md
 docs/mobile-ux/DESIGN_SYSTEM.md
-docs/mobile-ux/ERROR_LOADING_EMPTY_GUIDE.md
+docs/mobile-ux/ERROR_LOADING_EMPTY_STATES_GUIDE.md
 docs/mobile-ux/MOBILE_IMPLEMENTATION_PLAN.md
 docs/mobile-ux/VISUAL_SYSTEM.md
 
@@ -1510,7 +1510,7 @@ docs/security/SECURITY_PRIVACY_PLAN.md
 docs/admin/ADMIN_PROVIDER_OPERATIONS.md
 docs/content/ARABIC_COPY_MATRIX.md
 docs/data/SEEDING_PLAN.md
-docs/data/YEMEN_LOCATION_SEED.md
+docs/data/TASK_TEMPLATES.md
 docs/testing/MOBILE_QA_PLAN.md
 docs/analytics/ANALYTICS_PLAN.md
 docs/business/MONETIZATION_LATER.md

@@ -67,3 +67,5 @@ For the Docs Foundation task:
 - Do not run database migrations.
 - Do not create Dockerfiles, docker-compose files, or Dokploy configuration.
 - Do not modify business logic.
+
+## Imported Claude Cowork project instructions

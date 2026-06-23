@@ -1,5 +1,9 @@
 # Aarast UI Design System
 
+> Status: legacy high-level design reference.
+> Current mobile rebuild design rules live in `docs/mobile-ux/DESIGN_SYSTEM.md`; future visual polish rules live in `docs/mobile-ux/VISUAL_SYSTEM.md`.
+> Keep this file short and do not duplicate the rebuild design system here.
+
 ## 1. Brand Identity & Vibe
 - **Core Feeling**: Calm, Trustworthy, Premium, Clear
 - **Cultural Context**: Yemeni wedding traditions, Arabic-first (RTL layout)

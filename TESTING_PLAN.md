@@ -12,7 +12,9 @@ Smoke tests are the first priority. They confirm that the most important units s
 
 Smoke API tests should come before large feature expansion because they protect the project from building new work on unstable foundations.
 
-The backend MVP regression command is `npm run smoke:all` from `backend/`. It runs the current health, auth, WeddingPlan, Budget + Expense, Debt + Installment, Task + Timeline, Sharing, Notifications, Guests, OTP/Profile, Marketplace, and Provider Dashboard smoke scripts in sequence.
+The backend regression command is `npm run smoke:all` from `backend/`. It runs the current health, auth, WeddingPlan, onboarding/active plan, dashboard summary, money APIs, Budget + Expense, Debt + Installment, Task APIs, Task + Timeline, Sharing, Sharing Roles, Notifications, Notification APIs, Guests, Guest APIs, OTP/Profile, Marketplace, Providers/Quotes, Provider Dashboard, and Backend Completion smoke scripts in sequence.
+
+Current caution: the 2026-06-20 backend/API audit found a Docker runtime/source mismatch in `smoke:dashboard-summary`. Rebuild/restart the local runtime and rerun smoke before claiming current runtime readiness.
 
 No smoke-test code is created during the Docs Foundation phase.
 
@@ -54,15 +56,31 @@ Manual QA should validate user journeys that are difficult to trust through auto
 - Reviewing due items.
 - Comparing saved providers or services only as planning references, not paid booking or full marketplace flows.
 
-## Provider Foundation Smoke Coverage
+## Current Focused Smoke Coverage
 
-The provider-reference backend foundation adds these focused smoke scripts:
+The backend currently has these focused smoke scripts:
 
+- `npm run smoke:health` for backend health.
+- `npm run smoke:auth` for register/login/current-user basics.
+- `npm run smoke:wedding-plan` for core WeddingPlan CRUD/access behavior.
+- `npm run smoke:onboarding-active-plan` for authenticated onboarding completion and active plan behavior.
+- `npm run smoke:dashboard-summary` for real plan summary aggregates and permission-aware response fields.
+- `npm run smoke:money-apis` for money detail/pay/summary APIs.
+- `npm run smoke:budget-expense` for budget/expense CRUD and permissions.
+- `npm run smoke:debt-installment` for debt/installment CRUD and permissions.
+- `npm run smoke:tasks-apis` for task detail, checklist, assignment, and summary APIs.
+- `npm run smoke:task-timeline` for task/timeline due behavior.
+- `npm run smoke:sharing` for direct shared-member behavior.
+- `npm run smoke:sharing-roles` for invite/role/permission behavior.
+- `npm run smoke:notifications` for persisted notification listing, unread counts, mark-read/read-all, delete, and task due notification generation.
+- `npm run smoke:notifications-apis` for persisted notification APIs, invite events, and quote offer notifications.
+- `npm run smoke:guests` for persisted guest create/list/update/delete behavior.
+- `npm run smoke:guests-apis` for guest detail, bulk, group, duplicate-prevention, and summary APIs.
 - `npm run smoke:otp-profile` for OTP request/verify, wrong/consumed code rejection, profile update, and settings defaults/update.
 - `npm run smoke:marketplace` for public city/category/provider/service/package reads plus favorites, quote requests, and review ownership.
+- `npm run smoke:providers-quotes` for `/api/v1` provider profile, services, plan quote requests, offers, accept/reject, and plan-provider linking without payments or bookings.
 - `npm run smoke:provider-dashboard` for provider application, provider-owned profile/service/image/package management, quote request reads/status updates, and review reads.
-- `npm run smoke:notifications` for persisted notification listing, unread counts, mark-read/read-all, delete, and task due notification generation.
-- `npm run smoke:guests` for persisted guest create/list/update/delete behavior.
+- `npm run smoke:backend-completion` for the end-to-end backend completion journey.
 
 Marketplace and provider-dashboard smokes may use `SMOKE_DATABASE_URL` to create local ACTIVE fixtures. They must not require external SMS, WhatsApp, payment, deposit, or financing providers.
 

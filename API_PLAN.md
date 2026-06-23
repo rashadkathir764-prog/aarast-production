@@ -1,8 +1,8 @@
 # API Plan
 
-This document describes planned API modules and endpoints at a high level only. It does not implement endpoints or define final route contracts.
+This document describes API modules at a high level. It does not define final route contracts.
 
-The frozen MVP backend API contract for Flutter integration is documented in `API_CONTRACT.md`.
+The current route-level source of truth is `API_CONTRACT.md`. Do not copy full endpoint lists into this planning file.
 
 ## API Principles
 
@@ -21,34 +21,37 @@ The frozen MVP backend API contract for Flutter integration is documented in `AP
 
 | Module | Planned API Surface |
 | --- | --- |
-| Auth | Future Auth foundation after the User model exists; register, login, refresh session, logout, and current-user behavior must not be implemented during User model design alignment. |
-| Users | Planned around the minimal MVP User shape: `id`, `name`, `phone`, `email`, `role`, `status`, `createdAt`, and `updatedAt`. `passwordHash` is storage-only and must never be returned by APIs. Phone is important for Yemen-first usage. |
-| Cities | List active Yemen cities and admin city management. |
-| Categories | List active service categories and admin category management. |
-| Providers | Public provider listing/details and provider profile management. |
-| Services | Public service listing/details and provider/admin service management. |
-| Bookings | Non-binding booking leads or interest requests only if already present. MVP Bookings must not include paid booking, confirmed reservation, deposit, or payment status. |
-| Favorites | Save and remove providers or services for comparison. |
-| Reviews | Later marketplace-phase APIs for creating, listing, or moderating reviews unless already present. Reviews are not required for the Wedding Financial OS MVP. |
-| Packages | Provider service bundles used only as planning references and quote context in the MVP, with no purchase, deposit, or confirmed package booking. |
-| Admin | Protected management endpoints or admin-panel routes for core resources. |
+| Auth | Implemented register/login/current user plus OTP helpers. `passwordHash` is storage-only and must never be returned by APIs. |
+| Users | Implemented current-user profile/settings helpers and lookup support for collaboration flows. Phone remains important for Yemen-first usage. |
+| Cities | Implemented active Yemen city references plus admin city management. |
+| Categories | Implemented provider category references plus admin category management. |
+| Providers | Implemented public provider listing/details, provider profile/dashboard management, and admin review operations. |
+| Services | Implemented public service reads and provider/admin service management. |
+| Bookings | Not an active product flow. Booking-like data must remain non-binding unless explicitly approved; no paid or confirmed booking lifecycle is approved. |
+| Favorites | Implemented save/remove/list provider favorites for planning comparison. |
+| Reviews | Implemented provider review creation/update/delete and provider review reads. |
+| Packages | Implemented provider package references for planning context only, with no purchase, deposit, or confirmed package booking. |
+| Admin | Implemented protected management endpoints for dashboard stats, providers, provider categories, cities, and users; admin smoke coverage remains a follow-up. |
 
 ## Wedding Financial OS Modules
 
 | Module | Planned API Surface |
 | --- | --- |
-| Wedding Plans | Implemented protected MVP endpoints: `POST /wedding-plans`, `GET /wedding-plans/my`, `GET /wedding-plans/:id`, `PATCH /wedding-plans/:id`, and `PATCH /wedding-plans/:id/archive`. All routes require JWT. Owners have full access; shared members can read basic plan info, while update/archive requires `MANAGER`. No DELETE endpoint is implemented yet. |
-| Notifications | Implemented protected persisted notification endpoints: `GET /notifications`, `GET /notifications/unread-count`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all`, and `DELETE /notifications/:id`. Notifications are scoped to the authenticated user and may be filtered by `weddingPlanId`. |
-| Budget Categories | Implemented protected owner-scoped endpoints to create/list categories under a WeddingPlan, update a category, and delete a category. |
-| Expenses | Implemented protected owner-scoped endpoints to create/list expenses under a WeddingPlan, view a simple summary, update an expense, and delete an expense. |
-| Debts | Implemented protected owner-scoped endpoints to create/list debts under a WeddingPlan, view a simple debt summary, update a debt, and delete a debt. |
-| Installments | Implemented protected owner-scoped endpoints to create/list installments under a Debt, view pending/overdue installments due for a WeddingPlan, update an installment, and delete an installment. |
-| Tasks | Implemented protected endpoints to create/list tasks under a WeddingPlan, update a task, and delete a task. Owners have full access; shared members can list tasks, while task create/update/delete requires `canManageTasks` or `MANAGER`. |
-| Sharing | Implemented protected endpoints: `POST /wedding-plans/:weddingPlanId/shared-members`, `GET /wedding-plans/:weddingPlanId/shared-members`, `PATCH /shared-members/:id`, `DELETE /shared-members/:id`, and `GET /shared/wedding-plans`. Owners manage shared members; shared users can list plans shared with them. |
-| Guests | Implemented protected endpoints: `GET /wedding-plans/:weddingPlanId/guests`, `POST /wedding-plans/:weddingPlanId/guests`, `PATCH /guests/:id`, and `DELETE /guests/:id`. Users with plan access can read guests; owners and managers can create/update/delete. |
-| Quote Requests | Create non-binding requests for pricing or package details tied to a plan, category, service, or package; these are not purchase orders or confirmed bookings. |
+| Wedding Plans | Implemented create/list/my/active/read/update/archive/set-active with legacy direct routes and `/api/v1` aliases. All private routes require JWT and plan access checks. |
+| Onboarding | Implemented authenticated completion flow that creates real plan data and active-plan state. Guest-first drafts remain mobile/local until account gate. |
+| Dashboard | Implemented plan-scoped dashboard summary with real aggregates, permissions, notifications, important items, and linked provider counts. Runtime/source alignment must be rechecked after the 2026-06-20 audit mismatch. |
+| Notifications | Implemented persisted list/unread/read/read-all/delete, invite notification, quote-offer notification, and plan filtering. Notifications remain user-owned. |
+| Budget Categories | Implemented protected create/list/update/delete under a WeddingPlan. |
+| Expenses | Implemented protected create/list/detail/summary/update/delete. |
+| Debts | Implemented protected create/list/detail/summary/update/delete. |
+| Installments | Implemented protected create/list/due/pay/update/delete. |
+| Money Summary | Implemented permission-aware money summary for plan-level mobile UI. |
+| Tasks | Implemented create/list/detail/summary/checklist/assign/update/delete and timeline support. |
+| Sharing | Implemented direct sharing, invite acceptance, role/permission updates, permission summary, and shared-plan reads. |
+| Guests | Implemented create/list/detail/bulk/groups/summary/update/delete with duplicate-prevention support. |
+| Quote Requests | Implemented non-binding plan/provider quote requests, provider offers, accept/reject, and plan-provider linking. These are planning leads, not purchase orders or confirmed bookings. |
 | Attachments | Future/planned upload or reference APIs for receipts, agreements, quote files, and supporting images tied to expenses, debts, installments, or quote requests. This is planning-level only and not implementation in this documentation phase. |
-| Timeline | Implemented protected WeddingPlan timeline endpoint with wedding date, upcoming tasks, due debts, and due installments. Owners can view all; shared members can view task timeline items while financial due items remain hidden unless debt permissions allow them. Quote requests and booking leads are not implemented yet. |
+| Timeline | Implemented protected WeddingPlan timeline endpoint with wedding date, upcoming tasks, due debts, and due installments. Owners can view all; shared members can view task timeline items while financial due items remain hidden unless debt permissions allow them. |
 
 ## Future Modules
 
@@ -60,15 +63,14 @@ The frozen MVP backend API contract for Flutter integration is documented in `AP
 | Internal Chat | Excluded from MVP unless explicitly approved later. |
 | Advanced Analytics | Future only after core usage exists. |
 
-## Implemented Backend Foundation Addendum
+## Current Backend Completion Addendum
 
-The backend now includes the approved OTP/profile and provider-reference API foundation:
+The backend has moved beyond the original MVP-only plan. Current source includes the backend completion phases documented in `docs/backend/BACKEND_COMPLETION_FINAL_REPORT.md`.
 
-- Auth OTP: `POST /auth/otp/request`, `POST /auth/otp/verify`.
-- Profile/settings: `PATCH /users/me`, `GET /users/me/settings`, `PATCH /users/me/settings`.
-- Public provider references: `GET /cities`, `GET /provider-categories`, `GET /providers`, `GET /providers/:id`, `GET /providers/:id/services`, `GET /services`, `GET /services/:id`, `GET /providers/:id/packages`, `GET /providers/:id/reviews`.
-- Authenticated marketplace actions: `POST /providers/:id/favorite`, `DELETE /providers/:id/favorite`, `GET /me/favorite-providers`, `POST /providers/:id/quote-requests`, `GET /me/quote-requests`, `GET /me/quote-requests/:id`, `PATCH /me/quote-requests/:id/cancel`, `POST /providers/:id/reviews`, `PATCH /reviews/:id`, `DELETE /reviews/:id`.
-- Provider dashboard: `POST /provider/apply`, `GET /provider/me/profile`, `PATCH /provider/me/profile`, `GET /provider/me/summary`, provider-owned service/image/package management, quote-request reads/status updates, and review reads.
-- Optional mobile aggregation: `GET /dashboard/home`.
+Keep these boundaries:
 
-Public provider/service/package endpoints expose only `ACTIVE` providers and active catalog records. User-owned quote requests, reviews, favorites, and provider dashboard records are scoped by authenticated user ownership. These endpoints remain planning/reference and lead workflows only; they do not create paid bookings, deposits, payment status, loans, credit, financing, AI, or chat behavior.
+- Provider/service/package endpoints expose only approved/active references where relevant.
+- User-owned quote requests, reviews, favorites, and provider dashboard records are scoped by authenticated ownership.
+- Quote-offer accept/reject links providers to a plan as a planning relationship, not as a paid or confirmed booking.
+- The 2026-06-20 audit still recommends tighter quote permissions, admin smoke coverage, guest read-privacy decisions, JWT secret hardening, and server-side phone normalization.
+- Route-level details belong in `API_CONTRACT.md`.

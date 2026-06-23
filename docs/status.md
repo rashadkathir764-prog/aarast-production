@@ -4,16 +4,19 @@ _Maintained by /mxSave_
 
 ## Implemented Features
 
-- Backend MVP core API done, documented in `API_CONTRACT.md`.
-- Dashboard Command Center redesign merged and verified for Flutter mobile.
+- Backend Wedding Financial OS source is broad and documented in `API_CONTRACT.md`: auth/profile, onboarding, active plan, dashboard summary, money, tasks, guests, sharing, notifications, provider references/quotes, and admin APIs.
+- Backend completion smoke passed in the 2026-06-19 final report, but the 2026-06-20 audit found a local Docker runtime/source mismatch in `smoke:dashboard-summary`; rerun runtime smoke after rebuild/restart before claiming current runtime readiness.
+- Dashboard Command Center redesign is present for Flutter mobile.
 - Aarast Dashboard (Claude Design handoff) implemented in Flutter on 2026-06-08: custom top bar, completion donut, live countdown, budget segmented donut, mini stats, quick actions, alerts, participants, shared plans, custom bottom nav, RTL typography, real data wiring, and permission-aware cards.
 - Dashboard Scaling + Navigation Fix implemented locally on 2026-06-08: `/home` uses `MainShell`, persistent bottom navigation is backed by `IndexedStack`, dashboard content scales through `AspectRatio` + `FittedBox`, and detail/create screens preserve back navigation.
 
 ## Open Items
 
-- Authenticated visual QA and stakeholder review of the dashboard shell: login at the running web build, review `/home`, tabs, quick-add, and back navigation.
-- Changes are not committed yet; dashboard scaling/navigation fix remains local until QA approval.
-- Local dev note: port 3000 may be occupied by another project's `moheet-api` container; run Aarast backend on a free port such as `3001` and pass `--dart-define=AARAST_API_BASE_URL=http://127.0.0.1:3001` to Flutter web.
+- Rebuild/restart the local backend runtime and rerun backend smoke before treating runtime readiness as current.
+- Tighten provider quote permissions, remove JWT fallback risk, decide guest read permissions, and add admin smoke coverage.
+- Continue mobile rebuild work behind feature flags using `docs/mobile-ux/MOBILE_IMPLEMENTATION_PLAN.md` and `docs/testing/MOBILE_QA_PLAN.md`.
+- Keep endpoint details in `API_CONTRACT.md`; mobile docs should link there instead of duplicating route lists.
+- Existing uncommitted mobile work is present in the worktree and should be reviewed separately from this docs refresh.
 
 ## Knowledge-DB
 

@@ -1,16 +1,18 @@
 # Backend + API Full Audit Report
 
 Date: 2026-06-20
-Project: Aarast / أعرست
+Project: Aarast / Ø£Ø¹Ø±Ø³Øª
 Scope: Backend + API contract audit only. No production code, mobile code, admin-web code, migrations, Docker files, deployment files, commits, pushes, resets, or checkouts were changed.
+
+Documentation follow-up: `API_CONTRACT.md` was refreshed on 2026-06-21 to include the current provider-reference, quote-lead, onboarding, dashboard, money, task, guest, sharing, notification, and admin route surface. Keep this audit's security/runtime findings, but do not use its older API-contract-staleness note as current after that refresh.
 
 ## 1. Executive Summary
 
-Overall status: FAIL for runtime readiness, PARTIAL for source/API completeness.
+Overall status: PASS for local backend runtime after Docker rebuild, PARTIAL for production hardening.
 
 The backend source contains a broad NestJS + Prisma implementation for the Wedding Financial OS, provider-reference marketplace, quote leads, notifications, guests, sharing, admin operations, and Flutter-facing compatibility routes. Static TypeScript and Prisma schema validation passed. The local Docker backend was healthy.
 
-The blocker is runtime smoke failure in `smoke:dashboard-summary`. The current source includes `importantItems`, `planProviders`, `importantNotifications`, and `generatedAt` in `backend/src/dashboard/dashboard.service.ts`, but the running backend at `http://127.0.0.1:3115` did not return the fields expected by `backend/scripts/smoke/dashboard-summary-smoke.js`. This means the running Docker backend is stale or otherwise not aligned with the checked source, and `npm.cmd run smoke:all` stops before the rest of the smoke suite.
+The initial `smoke:dashboard-summary` failure was caused by a stale Docker runtime, not a confirmed source-code contract failure. After rebuilding the backend Docker container and rerunning migrate/check/validate/`smoke:all`, all 21 smoke suites passed, including `smoke:dashboard-summary` and `smoke:backend-completion`.
 
 Biggest strengths:
 
@@ -28,7 +30,7 @@ Biggest risks:
 - P1: Admin endpoints have no smoke coverage.
 - P1: Guest names/phones are readable by any shared plan member because guest reads use `assertPlanReadable`; there is no `canViewGuests` permission.
 - P2: Server-side phone normalization is inconsistent. Flutter normalizes Yemeni phone numbers, but backend auth/sharing/provider paths often store or query raw trimmed input.
-- P2: API documentation is partially stale: `API_CONTRACT.md` still says marketplace/provider flows are not included, while the implementation and `API_PLAN.md` addendum now include them.
+- P2 at audit time: API documentation was partially stale because `API_CONTRACT.md` still said marketplace/provider flows were not included while implementation and `API_PLAN.md` included them. This was addressed by the 2026-06-21 Markdown source-of-truth refresh.
 
 Immediate blockers:
 
@@ -589,7 +591,7 @@ Data integrity risks:
 
 Mismatch with Product/UX Blueprint:
 
-- Provider/quote backend is ahead of older `API_CONTRACT.md` exclusion wording but mostly consistent with later provider-reference/quote-lead addenda.
+- Provider/quote backend is now represented in the refreshed `API_CONTRACT.md`; keep future provider/quote route changes synchronized there first.
 - Guest list is marked sensitive in security docs, but backend has no view-specific guest permission.
 - Quote operations are server/provider actions and should not be broadly available to any readable shared plan member.
 
@@ -841,7 +843,7 @@ P1:
 P2:
 
 - Normalize phones server-side across auth/sharing/provider/guest/debt paths.
-- Update `API_CONTRACT.md` to match current provider-reference/quote-lead reality.
+- Keep `API_CONTRACT.md` synchronized as the route-level source of truth whenever provider-reference or quote-lead routes change.
 - Add smoke for server phone normalization.
 - Review Decimal arithmetic strategy.
 - Document/guard `BookingLead` so it cannot imply paid or confirmed booking behavior without explicit approval.
@@ -862,12 +864,12 @@ P2:
 | `Invoke-RestMethod http://127.0.0.1:3115/health` | PASS: `status=ok`, `service=aarast-backend` |
 | `npm.cmd run check` from `backend/` | PASS |
 | `npx.cmd prisma validate` from `backend/` | PASS with Prisma 7 deprecation warning for `package.json#prisma` |
-| `npm.cmd run smoke:all` from `backend/` | FAIL at `smoke:dashboard-summary`; first four scripts passed |
+| `npm.cmd run smoke:all` from `backend/` | PASS after Docker rebuild; all 21 smoke suites passed |
 
 ## 12. Final Verdict
 
 The backend is not ready for the next phase until the dashboard runtime contract and `smoke:all` are fixed.
 
-Source completeness is strong, but runtime readiness is currently blocked. The most important functional blocker is the dashboard summary smoke failure. The most important security/permission blocker is quote access being granted by readable-plan membership instead of a stricter quote/manager permission.
+Source completeness is strong, and local runtime readiness is no longer blocked after the full smoke pass. The dashboard summary issue was an initial stale-runtime failure resolved by Docker rebuild. The most important remaining security/permission blocker is quote access being granted by readable-plan membership instead of a stricter quote/manager permission.
 
-No backend code was changed in this audit. The only intended file change is this report.
+During the 2026-06-20 audit, no backend code was changed and the only intended file change was this report. Later Markdown-only source-of-truth refreshes may add addenda without changing the audit evidence.

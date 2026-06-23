@@ -4,6 +4,8 @@ Date: 2026-06-19
 Stage: Testing & QA Plan
 Status: Planning document only
 
+Source-of-truth note: this is the current mobile rebuild QA plan. The root `MOBILE_QA_PLAN.md` remains a legacy MVP manual checklist and should not be expanded with rebuild coverage unless explicitly reopened.
+
 ## 1. Purpose
 
 This plan defines the QA gate for the mobile product rebuild. It complements the existing root `MOBILE_QA_PLAN.md`, `MANUAL_QA_REPORT.md`, `TESTING_PLAN.md`, and `SMOKE_TESTS.md` by adding coverage for guest-first onboarding, route guards, privacy, offline sync, user/provider separation, and single-source dashboard behavior.

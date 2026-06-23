@@ -1,5 +1,9 @@
 # UI Components Specification (Mobile)
 
+> Status: legacy component reference for the original Flutter MVP.
+> Current rebuild component, state, accessibility, and visual rules live in `docs/mobile-ux/DESIGN_SYSTEM.md` and `docs/mobile-ux/VISUAL_SYSTEM.md`.
+> Do not copy new rebuild component inventories into this file unless it is explicitly reopened.
+
 This document defines the reusable UI components for the Aarast / اعّرست mobile application. It ensures a consistent, premium, Arabic-first (RTL) experience across all screens.
 
 ## Design Language Overview

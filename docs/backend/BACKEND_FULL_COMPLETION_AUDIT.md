@@ -1,5 +1,9 @@
 # Aarast Backend Full Completion Audit
 
+> Historical note: this was a pre-completion audit and implementation plan from 2026-06-19.
+> Do not treat the "Missing" sections in this file as current blockers without checking newer docs.
+> Current completion status is summarized in `docs/backend/BACKEND_COMPLETION_FINAL_REPORT.md`, and the latest backend/API risk audit is `docs/backend/BACKEND_API_FULL_AUDIT_REPORT.md`.
+
 Date: 2026-06-19
 Branch: `phase/mobile-home-dashboard-ux-v2`
 Scope: Backend Phase 1 audit and completion plan only.

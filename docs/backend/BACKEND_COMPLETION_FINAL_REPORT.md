@@ -1,5 +1,9 @@
 # Aarast Backend Completion Final Report
 
+> Currentness note: this report records the 2026-06-19 backend completion verification.
+> A later 2026-06-20 backend/API audit found a Docker runtime/source mismatch in dashboard summary smoke plus permission/security follow-ups.
+> Use this file for source completion history, and use `docs/backend/BACKEND_API_FULL_AUDIT_REPORT.md` for the latest risk list.
+
 Date: 2026-06-19
 Branch: `phase/mobile-home-dashboard-ux-v2`
 Status: Implemented and locally verified

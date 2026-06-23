@@ -196,7 +196,7 @@ Classification meanings:
 
 - Rebuilding visual UI before Product/UX/Data/Architecture Blueprints will likely recreate the same dashboard and navigation contradictions.
 - Changing routes before `NAVIGATION_BLUEPRINT.md` could break existing MVP flows and deep links.
-- Changing Prisma/API before `DATA_MODEL_BLUEPRINT.md` and `BACKEND_FLOW_BLUEPRINT.md` could break smoke-tested backend contracts.
+- Changing Prisma/API before `docs/architecture/DATA_MODEL_BLUEPRINT.md` and `docs/architecture/BACKEND_FLOW_BLUEPRINT.md` could break smoke-tested backend contracts.
 - Removing or casually replacing offline code could destroy local/sync behavior the README explicitly says to preserve.
 - Leaving AI/provider/subscription/push/maps style features visible without feature flags risks showing incomplete features to users.
 - Duplicated summary calculations can expose wrong budget/progress/debt/task state across Home, Plans, and Dashboard.
@@ -306,4 +306,3 @@ Reason: these screens already map to backend/API slices or useful MVP user opera
 - Do not change Prisma/API yet.
 - Do not remove offline/sqflite/json storage code.
 - Do not expose AI, subscriptions, push permission prompts, provider marketplace launch assumptions, or payments.
-

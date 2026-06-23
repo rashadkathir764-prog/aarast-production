@@ -1,5 +1,37 @@
 # Current Status
 
+## Current Status Override - 2026-06-21
+
+- Repository root: `D:\projects\aarast`
+- Current worktree path: `D:\projects\aarast`
+- Current branch: `phase/mobile-home-dashboard-ux-v2`
+- Task: Markdown source-of-truth refresh and duplicate-doc cleanup.
+- Scope: Markdown documentation only. No Flutter, backend, admin-web, Prisma, Docker/Dokploy, deployment, package, migration, commit, push, branch, or worktree operation is part of this task.
+
+Current source status:
+
+- Backend source includes Wedding Financial OS APIs plus provider-reference and quote-lead flows: auth/profile, onboarding, active plan, dashboard summary, money, tasks/checklists, guests/groups, sharing/invites/permissions, notifications, provider catalog/dashboard, plan-scoped quotes, and admin APIs.
+- `API_CONTRACT.md` is the route-level source of truth. Other docs should link to it instead of duplicating endpoint lists.
+- `docs/backend/BACKEND_COMPLETION_FINAL_REPORT.md` records a 2026-06-19 local PASS for `npm.cmd run check`, `npx.cmd prisma validate`, seed, `smoke:backend-completion`, and `smoke:all`.
+- `docs/backend/BACKEND_API_FULL_AUDIT_REPORT.md` records a later 2026-06-20 runtime/source mismatch in Docker-backed `smoke:dashboard-summary`, plus follow-up risks for quote permissions, JWT secret fallback, admin smoke coverage, guest read privacy, and server-side phone normalization.
+
+Current mobile/documentation direction:
+
+- Mobile rebuild guidance lives under `docs/mobile-ux/` and `docs/mobile-architecture/`.
+- Current mobile QA source is `docs/testing/MOBILE_QA_PLAN.md`; root `MOBILE_QA_PLAN.md` remains a legacy MVP manual checklist.
+- Root design docs remain legacy references; current rebuild design direction lives in `docs/mobile-ux/DESIGN_SYSTEM.md` and `docs/mobile-ux/VISUAL_SYSTEM.md`.
+
+Known boundaries remain unchanged:
+
+- No payment processing, deposits, paid or confirmed booking flow, loans, credit, financing, AI, internal chat, or broad marketplace monetization is approved.
+- Provider/reference and quote-lead flows are planning flows only.
+- Financial data remains private by default and shared only through explicit permissions.
+
+Worktree note:
+
+- This status update observed existing uncommitted mobile changes before the Markdown refresh. They were not created or modified by this docs task.
+- Sections below this override are historical snapshots from earlier work and should not be treated as current status unless a newer section explicitly repeats them.
+
 ## Current Status Override - 2026-06-14
 
 - Repository root: `D:\projects\aarast`

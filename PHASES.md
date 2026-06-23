@@ -1,5 +1,7 @@
 # Project Phases
 
+Currentness note: this file is the phase blueprint and historical sequencing guide, not the live status dashboard. Current implementation status is tracked in `CURRENT_STATUS.md`, `docs/status.md`, `API_CONTRACT.md`, and the relevant backend/mobile reports. Several backend/provider-reference phases have already been implemented as planning and quote-lead flows, while payments, deposits, confirmed bookings, AI, chat, loans, credit, and financing remain excluded unless explicitly approved.
+
 ## Phase 0: Documentation And Smoke-Test Foundation
 
 Goal: Define the product, scope, technical plan, phase boundaries, and test expectations before expanding implementation.

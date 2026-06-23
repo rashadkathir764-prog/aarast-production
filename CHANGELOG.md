@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-06-21 - Markdown Source-of-Truth Refresh
+
+- Refreshed documentation to make `API_CONTRACT.md` the route-level API source of truth.
+- Reduced risky endpoint duplication in mobile docs by pointing mobile readers to the API contract.
+- Marked older backend completion/audit docs with clearer current-vs-historical context.
+- Clarified current mobile QA/design source documents and preserved legacy root docs as references.
+- Fixed broken Markdown references in the mobile product UX rebuild documentation.
+- Confirmed this was a Markdown-only cleanup; no Flutter, backend, admin-web, Prisma, Docker/Dokploy, deployment, migration, package, Git branch, commit, or push work was included.
+
 ## 2026-06-14 - Dokploy Production Routing Sync
 
 - Synchronized the production Dokploy Compose configuration with the live server fix.

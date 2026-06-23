@@ -1,5 +1,9 @@
 # Mobile QA Plan
 
+> Status: legacy MVP manual QA checklist. Keep this file as a historical/manual checklist for the original Flutter MVP screens.
+> Current mobile rebuild QA gates live in `docs/testing/MOBILE_QA_PLAN.md`.
+> Do not duplicate new rebuild coverage here unless this file is explicitly reopened.
+
 خطة QA يدوية لتطبيق Aarast / اعّرست بعد اكتمال شاشات Flutter MVP الأساسية.
 
 ## 1. المتطلبات قبل الاختبار

@@ -26,10 +26,21 @@ void main() {
     expect(summary.providerCount, 0);
     expect(summary.progressPercent, 0);
     expect(summary.seed.selectedCategories, ['hall', 'photo']);
+
+    final royalSummary = summary.toDashboardSummary();
+    expect(royalSummary.title, 'خطة زفاف صنعاء');
+    expect(royalSummary.city, 'صنعاء، السبعين، حدة');
+    expect(royalSummary.budgetTotal, '1000000');
+    expect(royalSummary.remainingBudget, '1000000');
+    expect(royalSummary.totalTasks, 0);
+    expect(royalSummary.guestCount, 0);
+    expect(royalSummary.providerCount, 0);
+    expect(royalSummary.currentUserRole, 'GUEST');
+    expect(royalSummary.permissions.role, 'GUEST_LOCAL');
   });
 
   testWidgets(
-    'dashboard opens from local plan and protected action asks login',
+    'dashboard opens local guest plan in Royal Home and gates sync on tap',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
@@ -44,21 +55,33 @@ void main() {
       );
 
       expect(find.text('خطة زفاف صنعاء'), findsOneWidget);
-      expect(
-        find.text('خطة محفوظة على جهازك — سجّل الدخول للمزامنة والمشاركة'),
-        findsOneWidget,
-      );
-      expect(find.text('0%'), findsOneWidget);
+      expect(find.text('الأهم اليوم'), findsOneWidget);
 
-      final protectedAction = find.byKey(
-        const Key('guest-dashboard-protected-action'),
-      );
       await tester.scrollUntilVisible(
-        protectedAction,
+        find.text('الخطوة التالية المقترحة'),
         300,
         scrollable: find.byType(Scrollable),
       );
-      await tester.tap(protectedAction);
+      expect(find.text('الخطوة التالية المقترحة'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('المال'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+      expect(find.text('المال'), findsWidgets);
+      expect(find.text('إجراء جديد'), findsOneWidget);
+      expect(
+        find.text('خطة محفوظة على جهازك — سجّل الدخول للمزامنة والمشاركة'),
+        findsNothing,
+      );
+      expect(find.text('0%'), findsOneWidget);
+
+      final syncAction = find.byKey(const Key('royal-local-sync-action'));
+      await tester.drag(find.byType(Scrollable), const Offset(0, 1000));
+      await tester.pumpAndSettle();
+      expect(syncAction, findsOneWidget);
+      await tester.tap(syncAction);
       await tester.pumpAndSettle();
 
       expect(find.text('هذه الخطوة تحتاج حساباً'), findsOneWidget);

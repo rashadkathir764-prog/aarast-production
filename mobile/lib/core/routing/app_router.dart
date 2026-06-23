@@ -309,9 +309,9 @@ class AppRouter {
         GoRoute(
           path: support,
           builder: (context, state) => const AarastComingSoonScreen(
-            title: 'الدعم والمساعدة',
+            title: 'Ø§Ù„Ø¯Ø¹Ù… ÙˆØ§Ù„Ù…Ø³Ø§Ø¹Ø¯Ø©',
             message:
-                'قناة الدعم ستظهر هنا عند اعتماد تجربة التواصل والأسئلة الشائعة.',
+                'Ù‚Ù†Ø§Ø© Ø§Ù„Ø¯Ø¹Ù… Ø³ØªØ¸Ù‡Ø± Ù‡Ù†Ø§ Ø¹Ù†Ø¯ Ø§Ø¹ØªÙ…Ø§Ø¯ ØªØ¬Ø±Ø¨Ø© Ø§Ù„ØªÙˆØ§ØµÙ„ ÙˆØ§Ù„Ø£Ø³Ø¦Ù„Ø© Ø§Ù„Ø´Ø§Ø¦Ø¹Ø©.',
             icon: Icons.support_agent_outlined,
           ),
         ),

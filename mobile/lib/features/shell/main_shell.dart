@@ -14,7 +14,7 @@ import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
-import '../wedding_plans/widgets/aarast_dashboard_widgets.dart';
+import '../wedding_plans/widgets/royal_home_chrome.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -25,7 +25,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   // DashboardBottomNav indices mirror the approved user navigation:
-  // 0: الرئيسية, 1: المال, 2: المهام, 3: الموردون, 4: المزيد.
+  // 0: Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©, 1: Ø§Ù„Ù…Ø§Ù„, 2: Ø§Ù„Ù…Ù‡Ø§Ù…, 3: Ø§Ù„Ù…ÙˆØ±Ø¯ÙˆÙ†, 4: Ø§Ù„Ù…Ø²ÙŠØ¯.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   String? _activePlanId;
@@ -61,130 +61,64 @@ class _MainShellState extends State<MainShell> {
   void _showQuickAdd() {
     if (_activePlanId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء اختيار أو إنشاء خطة زفاف أولاً')),
+        const SnackBar(
+          content: Text(
+            'Ø§Ù„Ø±Ø¬Ø§Ø¡ Ø§Ø®ØªÙŠØ§Ø± Ø£Ùˆ Ø¥Ù†Ø´Ø§Ø¡ Ø®Ø·Ø© Ø²ÙØ§Ù Ø£ÙˆÙ„Ø§Ù‹',
+          ),
+        ),
       );
       return;
     }
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppTheme.dCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        Widget tile(
-          IconData icon,
-          Color color,
-          Color bg,
-          String label,
-          String route, {
-          bool refreshDashboard = false,
-        }) {
-          return ListTile(
-            onTap: () async {
-              Navigator.of(sheetContext).pop();
-              if (!mounted) return;
-              final changed = await context.push<bool>(route);
-              if (refreshDashboard && changed == true && mounted) {
-                await context.read<DashboardSummaryProvider>().loadDashboard(
-                  _activePlanId!,
-                );
-              }
-            },
-            leading: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(13),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            title: Text(
-              label,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppTheme.dInk,
-              ),
-            ),
-          );
-        }
+    showRoyalHomeActionSheet(context, actions: _quickActions(_activePlanId!));
+  }
 
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.dLine,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(20, 6, 20, 6),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'إجراءات سريعة!',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.dInk,
-                        ),
-                      ),
-                    ),
-                  ),
-                  tile(
-                    Icons.account_balance_wallet_outlined,
-                    AppTheme.dMaroon,
-                    AppTheme.dPinkBg,
-                    'إضافة مصروف',
-                    AppRouter.createExpense(_activePlanId!),
-                    refreshDashboard: true,
-                  ),
-                  tile(
-                    Icons.credit_card_rounded,
-                    AppTheme.dMaroon,
-                    AppTheme.dPinkBg,
-                    'إضافة دين',
-                    AppRouter.createDebt(_activePlanId!),
-                  ),
-                  tile(
-                    Icons.check_circle_outline_rounded,
-                    AppTheme.dGreen,
-                    AppTheme.dGreenBg,
-                    'إضافة مهمة',
-                    AppRouter.createTask(_activePlanId!),
-                  ),
-                  tile(
-                    Icons.person_add_alt_1_outlined,
-                    AppTheme.dBlue,
-                    AppTheme.dBlueBg,
-                    'إضافة ضيف',
-                    AppRouter.guestList(_activePlanId!),
-                  ),
-                  tile(
-                    Icons.request_quote_outlined,
-                    AppTheme.dGoldDeep,
-                    AppTheme.dCreamBg,
-                    'طلب عرض سعر',
-                    AppRouter.providerMarketplace,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+  List<RoyalHomeAction> _quickActions(String planId) {
+    Future<void> open(String route, {bool refreshDashboard = false}) async {
+      Navigator.of(context, rootNavigator: true).pop();
+      if (!mounted) return;
+      final changed = await context.push<bool>(route);
+      if (refreshDashboard && changed == true && mounted) {
+        await context.read<DashboardSummaryProvider>().loadDashboard(planId);
+      }
+    }
+
+    return [
+      RoyalHomeAction(
+        icon: Icons.account_balance_wallet_outlined,
+        label: 'Ø¥Ø¶Ø§ÙØ© Ù…ØµØ±ÙˆÙ',
+        onTap: () =>
+            open(AppRouter.createExpense(planId), refreshDashboard: true),
+      ),
+      RoyalHomeAction(
+        icon: Icons.check_circle_outline_rounded,
+        label: 'Ø¥Ø¶Ø§ÙØ© Ù…Ù‡Ù…Ø©',
+        onTap: () => open(AppRouter.createTask(planId)),
+      ),
+      RoyalHomeAction(
+        icon: Icons.group_add_outlined,
+        label: 'Ø¥Ø¶Ø§ÙØ© Ø¶ÙŠÙ',
+        onTap: () => open(AppRouter.guestList(planId)),
+      ),
+      RoyalHomeAction(
+        icon: Icons.attach_money_rounded,
+        label: 'Ø¥Ø¶Ø§ÙØ© Ø¯ÙŠÙ†',
+        onTap: () => open(AppRouter.createDebt(planId)),
+      ),
+      RoyalHomeAction(
+        icon: Icons.request_quote_outlined,
+        label: 'Ø·Ù„Ø¨ Ø¹Ø±Ø¶ Ø³Ø¹Ø±',
+        onTap: () => open(AppRouter.providerMarketplace),
+      ),
+      RoyalHomeAction(
+        icon: Icons.auto_awesome_rounded,
+        label: 'Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯ Ø§Ù„Ø°ÙƒÙŠ',
+        onTap: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('النصائح الذكية لاحقًا')),
+          );
+        },
+      ),
+    ];
   }
 
   @override
@@ -220,7 +154,7 @@ class _MainShellState extends State<MainShell> {
                         key: ValueKey('money-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
                       )
-                    : _buildNoPlanFallback('المال'),
+                    : _buildNoPlanFallback('Ø§Ù„Ù…Ø§Ù„'),
               ),
 
               // Index 2: Tasks
@@ -231,7 +165,7 @@ class _MainShellState extends State<MainShell> {
                         key: ValueKey('tasks-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
                       )
-                    : _buildNoPlanFallback('المهام'),
+                    : _buildNoPlanFallback('Ø§Ù„Ù…Ù‡Ø§Ù…'),
               ),
 
               // Index 3: Vendors marketplace
@@ -248,7 +182,7 @@ class _MainShellState extends State<MainShell> {
               _buildLazyTab(4, const MoreScreen()),
             ],
           ),
-          bottomNavigationBar: DashboardBottomNav(
+          bottomNavigationBar: RoyalDashboardBottomNav(
             activeIndex: _index,
             onHome: () => _onItemTapped(0),
             onMoney: () => _onItemTapped(1),
@@ -276,7 +210,7 @@ class _MainShellState extends State<MainShell> {
             Icon(Icons.info_outline, size: 64, color: AppTheme.dMuted),
             const SizedBox(height: 16),
             Text(
-              'الرجاء اختيار خطة من الرئيسية أولاً',
+              'Ø§Ù„Ø±Ø¬Ø§Ø¡ Ø§Ø®ØªÙŠØ§Ø± Ø®Ø·Ø© Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ© Ø£ÙˆÙ„Ø§Ù‹',
               style: const TextStyle(
                 color: AppTheme.dInk,
                 fontSize: 16,

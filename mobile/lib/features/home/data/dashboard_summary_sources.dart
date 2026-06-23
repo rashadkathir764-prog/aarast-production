@@ -2,6 +2,7 @@ import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/generated_dashboard_seed.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../wedding_plans/models/active_wedding_plan.dart';
+import '../../wedding_plans/models/dashboard_summary.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 
 class BackendDashboardSummarySource {
@@ -64,10 +65,89 @@ class LocalGuestDashboardSummary {
       plan: plan,
       seed: GeneratedDashboardSeed.fromDraft(plan),
       daysRemaining: daysRemaining?.clamp(0, 100000),
+      // TODO(home-dashboard): Replace these zero counters when local/offline
+      // task, guest, and provider summary tables are exposed to Home.
       progressPercent: 0,
       taskCount: 0,
       guestCount: 0,
       providerCount: 0,
     );
   }
+
+  DashboardSummary toDashboardSummary() {
+    final budget = _cleanAmount(plan.estimatedBudget);
+    final localNextStep = _localImportantItem();
+
+    return DashboardSummary(
+      planId: plan.guestPlanId ?? 'local-guest-plan',
+      title: seed.title,
+      weddingDate: plan.weddingDate,
+      city: _locationLabel(plan, fallback: seed.cityLabel),
+      status: 'PLANNING',
+      daysRemaining: daysRemaining,
+      progressPercentage: progressPercent,
+      budgetTotal: budget,
+      spentTotal: budget == null ? null : '0',
+      remainingBudget: budget,
+      debtTotal: '0',
+      paidDebtTotal: '0',
+      unpaidDebtTotal: '0',
+      dueInstallmentsCount: 0,
+      totalTasks: taskCount,
+      completedTasks: 0,
+      overdueTasks: 0,
+      todayTasks: 0,
+      guestCount: guestCount,
+      confirmedGuests: 0,
+      providerCount: providerCount,
+      quoteRequestsCount: 0,
+      unreadNotificationsCount: 0,
+      importantItems: localNextStep == null ? const [] : [localNextStep],
+      planProviders: const [],
+      importantNotifications: const [],
+      generatedAt: plan.createdAt,
+      currentUserRole: 'GUEST',
+      permissions: const DashboardPermissionSummary(
+        isOwner: true,
+        role: 'GUEST_LOCAL',
+        canViewBudget: true,
+        canViewExpenses: true,
+        canViewDebts: true,
+        canManageTasks: true,
+        canManageFinancialRecords: true,
+        canManagePlan: true,
+      ),
+    );
+  }
+
+  DashboardImportantItem? _localImportantItem() {
+    final title = seed.nextBestAction.trim();
+    if (title.isEmpty) return null;
+    return DashboardImportantItem(
+      id: 'local-next-step',
+      type: 'LOCAL_NEXT_STEP',
+      title: title,
+      subtitle: 'خطة محلية',
+      icon: 'calendar',
+      tone: 'info',
+      actionLabel: 'متابعة',
+      data: {
+        'source': 'guest_local',
+        'selectedCategories': seed.selectedCategories.join(','),
+      },
+    );
+  }
+}
+
+String _locationLabel(GuestOnboardingDraft plan, {required String fallback}) {
+  final parts = [plan.city, plan.district, plan.neighborhood]
+      .where((part) => part != null && part.trim().isNotEmpty)
+      .map((part) => part!.trim());
+  final label = parts.join('، ');
+  return label.isEmpty ? fallback : label;
+}
+
+String? _cleanAmount(String? value) {
+  final trimmed = value?.replaceAll(',', '').trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
 }

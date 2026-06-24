@@ -30,6 +30,7 @@ void main() {
               onOpenNotifications: () {},
               onOpenImportantItem: (_) {},
               onOpenNextStep: () {},
+              onOpenTimeline: () {},
             ),
             bottomNavigationBar: RoyalDashboardBottomNav(
               activeIndex: 0,
@@ -45,7 +46,12 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    // Use bounded pumps instead of pumpAndSettle because the dashboard uses
+    // intentionally looping decorations (live countdown dot, breath CTA)
+    // which would otherwise cause pumpAndSettle to hang.
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
 
     expect(find.text('الأهم اليوم'), findsOneWidget);
     expect(find.text('الخطوة التالية المقترحة'), findsOneWidget);
@@ -54,7 +60,9 @@ void main() {
     expect(find.text('الموردون'), findsWidgets);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -420));
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
 
     expect(find.text('الضيوف'), findsWidgets);
     expect(find.text('إشعارات'), findsWidgets);
@@ -104,7 +112,9 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
 
     expect(find.text('إجراء جديد'), findsOneWidget);
     expect(find.text('إضافة مصروف'), findsOneWidget);

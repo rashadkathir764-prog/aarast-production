@@ -213,21 +213,18 @@ class AppRouter {
           path: home,
           builder: (context, state) => const DashboardEntryScreen(),
         ),
+        // Public provider browsing: guests may open the marketplace and
+        // any provider detail without an account. The quote-request route
+        // below is the single login gate for the providers area.
         GoRoute(
           path: providerMarketplace,
-          builder: (context, state) => ProviderAuthGate(
-            resumeLocation: state.uri.toString(),
-            child: const ProviderMarketplaceScreen(),
-          ),
+          builder: (context, state) => const ProviderMarketplaceScreen(),
         ),
         GoRoute(
           path: '/providers/:id',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return ProviderAuthGate(
-              resumeLocation: state.uri.toString(),
-              child: ProviderDetailsScreen(providerId: id),
-            );
+            return ProviderDetailsScreen(providerId: id);
           },
         ),
         GoRoute(

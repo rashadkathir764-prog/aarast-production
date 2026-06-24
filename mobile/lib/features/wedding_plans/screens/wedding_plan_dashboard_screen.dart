@@ -95,48 +95,100 @@ class _WeddingPlanDashboardScreenState
     final bottomPadding = widget.embedded ? 158.0 : 36.0;
 
     if (provider.isLoading && summary == null) {
-      return RoyalHomeTodaySkeleton(bottomPadding: bottomPadding);
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+        child: KeyedSubtree(
+          key: const ValueKey('royal-home-skeleton'),
+          child: RoyalHomeTodaySkeleton(bottomPadding: bottomPadding),
+        ),
+      );
     }
 
     if (provider.errorMessage != null && summary == null) {
-      return _DashboardStateList(
-        bottomPadding: bottomPadding,
-        icon: Icons.error_outline_rounded,
-        title: 'تعذر تحميل الرئيسية',
-        message: provider.errorMessage!,
-        actionLabel: 'إعادة المحاولة',
-        onAction: _load,
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 360),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+        child: KeyedSubtree(
+          key: const ValueKey('royal-home-error'),
+          child: _DashboardStateList(
+            bottomPadding: bottomPadding,
+            icon: Icons.cloud_off_rounded,
+            title: 'تعذر تحميل الرئيسية',
+            message: provider.errorMessage!,
+            actionLabel: 'إعادة المحاولة',
+            onAction: _load,
+            tone: _StateTone.warning,
+          ),
+        ),
       );
     }
 
     if (summary == null) {
-      return _DashboardStateList(
-        bottomPadding: bottomPadding,
-        icon: Icons.event_available_outlined,
-        title: 'ابدأ بإنشاء خطتك',
-        message:
-            'لا توجد خطة فعالة بعد. أنشئ خطة زفافك الأولى حتى يظهر مركز اليوم.',
-        actionLabel: 'فتح البداية',
-        onAction: () => context.go(AppRouter.onboarding),
+      return AnimatedSwitcher(
+        duration: const Duration(milliseconds: 360),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+        child: KeyedSubtree(
+          key: const ValueKey('royal-home-empty'),
+          child: _DashboardStateList(
+            bottomPadding: bottomPadding,
+            icon: Icons.auto_awesome_rounded,
+            title: 'ابدأ رحلتك معنا',
+            message:
+                'لا توجد خطة نشطة بعد. أنشئ خطة زفافك الأولى وسنساعدك على تنظيم كل خطوة بهدوء.',
+            actionLabel: 'إنشاء خطة',
+            onAction: () => context.go(AppRouter.onboarding),
+            tone: _StateTone.warm,
+          ),
+        ),
       );
     }
 
-    return RoyalHomeTodayCenter(
-      summary: summary,
-      userName: auth.user?.name ?? 'صاحب الخطة',
-      bottomPadding: bottomPadding,
-      onNotifications: () =>
-          context.push(AppRouter.planNotifications(summary.planId)),
-      onProfile: () => context.push(AppRouter.more),
-      onOpenPlan: () => context.push(AppRouter.planCenter(summary.planId)),
-      onOpenMoney: () => context.push(AppRouter.finance(summary.planId)),
-      onOpenTasks: () => context.push(AppRouter.tasks(summary.planId)),
-      onOpenProviders: () => context.push(AppRouter.providerMarketplace),
-      onOpenGuests: () => context.push(AppRouter.guestList(summary.planId)),
-      onOpenNotifications: () =>
-          context.push(AppRouter.planNotifications(summary.planId)),
-      onOpenImportantItem: _openDashboardItem,
-      onOpenNextStep: () => _openNextStep(summary),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 380),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: child,
+      ),
+      child: KeyedSubtree(
+        key: ValueKey('royal-home-${summary.planId}'),
+        child: RoyalHomeTodayCenter(
+          summary: summary,
+          userName: auth.user?.name ?? 'صاحب الخطة',
+          bottomPadding: bottomPadding,
+          onNotifications: () =>
+              context.push(AppRouter.planNotifications(summary.planId)),
+          onProfile: () => context.push(AppRouter.more),
+          onOpenPlan: () => context.push(AppRouter.planCenter(summary.planId)),
+          onOpenMoney: () => context.push(AppRouter.finance(summary.planId)),
+          onOpenTasks: () => context.push(AppRouter.tasks(summary.planId)),
+          onOpenProviders: () => context.push(AppRouter.providerMarketplace),
+          onOpenGuests: () => context.push(AppRouter.guestList(summary.planId)),
+          onOpenNotifications: () =>
+              context.push(AppRouter.planNotifications(summary.planId)),
+          onOpenImportantItem: _openDashboardItem,
+          onOpenNextStep: () => _openNextStep(summary),
+          onOpenTimeline: () =>
+              context.push(AppRouter.timeline(summary.planId)),
+        ),
+      ),
     );
   }
 
@@ -239,6 +291,7 @@ class _DashboardStateList extends StatelessWidget {
     required this.message,
     required this.actionLabel,
     required this.onAction,
+    this.tone = _StateTone.warm,
   });
 
   final double bottomPadding;
@@ -247,37 +300,66 @@ class _DashboardStateList extends StatelessWidget {
   final String message;
   final String actionLabel;
   final VoidCallback onAction;
+  final _StateTone tone;
 
   @override
   Widget build(BuildContext context) {
+    final burgundy = const Color(0xFF800020);
+    final gold = const Color(0xFFD4AF37);
+    final ink = const Color(0xFF2D1A1E);
+    final muted = const Color(0xFF8A7B7E);
+    final accent = tone == _StateTone.warning ? burgundy : gold;
+    final buttonColor = tone == _StateTone.warning ? burgundy : const Color(0xFF7A1A2A);
+    final iconBg = Color.alphaBlend(
+      accent.withValues(alpha: 0.10),
+      Colors.white,
+    );
+
     return ListView(
-      padding: EdgeInsets.fromLTRB(20, 22, 20, bottomPadding),
+      padding: EdgeInsets.fromLTRB(20, 32, 20, bottomPadding),
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFFFFFFF), Color(0xFFFBF6F1)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(color: const Color(0xFFEFE4DA)),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF800020).withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 6),
+                color: burgundy.withValues(alpha: 0.05),
+                blurRadius: 22,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Column(
             children: [
-              Icon(icon, color: const Color(0xFFD4AF37), size: 42),
-              const SizedBox(height: 12),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.18),
+                    width: 1,
+                  ),
+                ),
+                child: Icon(icon, color: accent, size: 30),
+              ),
+              const SizedBox(height: 16),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF2D1A1E),
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                style: TextStyle(
+                  color: ink,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                 ),
               ),
@@ -285,26 +367,36 @@ class _DashboardStateList extends StatelessWidget {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF8A7B7E),
+                style: TextStyle(
+                  color: muted,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  height: 1.45,
+                  height: 1.5,
                   letterSpacing: 0,
                 ),
               ),
-              const SizedBox(height: 16),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF800020),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: buttonColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: onAction,
+                  child: Text(
+                    actionLabel,
+                    style: const TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
                   ),
                 ),
-                onPressed: onAction,
-                child: Text(actionLabel),
               ),
             ],
           ),
@@ -313,3 +405,5 @@ class _DashboardStateList extends StatelessWidget {
     );
   }
 }
+
+enum _StateTone { warm, warning }

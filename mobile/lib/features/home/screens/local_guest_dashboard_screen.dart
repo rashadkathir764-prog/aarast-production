@@ -17,6 +17,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dashboardSummary = summary.toDashboardSummary();
+    final planId = dashboardSummary.planId;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -25,13 +26,13 @@ class LocalGuestDashboardScreen extends StatelessWidget {
         bottomNavigationBar: RoyalDashboardBottomNav(
           activeIndex: 0,
           onHome: () {},
-          onMoney: () => _showLocalSoonMessage(context, 'المال'),
-          onTasks: () => _showLocalSoonMessage(context, 'المهام'),
+          onMoney: () => _openLocalBrowse(context, planId),
+          onTasks: () => _openLocalBrowse(context, planId),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onMore: () => context.push(AppRouter.more),
           onAdd: () => showRoyalHomeActionSheet(
             context,
-            actions: _quickActions(context),
+            actions: _quickActions(context, planId),
           ),
         ),
         body: SafeArea(
@@ -49,18 +50,24 @@ class LocalGuestDashboardScreen extends StatelessWidget {
                 ),
                 onNotifications: () => _requireAccountForNotifications(context),
                 onProfile: () => _requireAccountForSync(context),
-                onOpenPlan: () => _showLocalSoonMessage(context, 'الخطة'),
-                onOpenMoney: () => _showLocalSoonMessage(context, 'المال'),
-                onOpenTasks: () => _showLocalSoonMessage(context, 'المهام'),
+                onOpenPlan: () =>
+                    _openLocalBrowse(context, planId, area: 'الخطة'),
+                onOpenMoney: () =>
+                    _openLocalBrowse(context, planId, area: 'المال'),
+                onOpenTasks: () =>
+                    _openLocalBrowse(context, planId, area: 'المهام'),
                 onOpenProviders: () =>
                     context.push(AppRouter.providerMarketplace),
-                onOpenGuests: () => _showLocalSoonMessage(context, 'الضيوف'),
+                onOpenGuests: () =>
+                    _openLocalBrowse(context, planId, area: 'الضيوف'),
                 onOpenNotifications: () =>
                     _requireAccountForNotifications(context),
                 onOpenImportantItem: (item) =>
-                    _openLocalDashboardItem(context, item),
+                    _openLocalDashboardItem(context, planId, item),
                 onOpenNextStep: () =>
-                    _openLocalNextStep(context, dashboardSummary),
+                    _openLocalNextStep(context, planId, dashboardSummary),
+                onOpenTimeline: () =>
+                    _openLocalBrowse(context, planId, area: 'المهام'),
               ),
             ),
           ),
@@ -69,36 +76,43 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     );
   }
 
-  List<RoyalHomeAction> _quickActions(BuildContext context) {
+  List<RoyalHomeAction> _quickActions(
+    BuildContext context,
+    String planId,
+  ) {
     void closeSheet() {
       Navigator.of(context, rootNavigator: true).pop();
     }
 
-    void showLocalAction(String area) {
+    void requireAccountForCreate(String what) {
       closeSheet();
-      _showLocalSoonMessage(context, area);
+      AuthActionGuard.requireAccount(
+        context,
+        reason:
+            'لإضافة $what تحتاج ربط خطتك بحساب حتى نحفظ بياناتك بأمان.',
+      );
     }
 
     return [
       RoyalHomeAction(
         icon: Icons.account_balance_wallet_outlined,
         label: 'إضافة مصروف',
-        onTap: () => showLocalAction('المصروفات'),
+        onTap: () => requireAccountForCreate('مصروف'),
       ),
       RoyalHomeAction(
         icon: Icons.check_circle_outline_rounded,
         label: 'إضافة مهمة',
-        onTap: () => showLocalAction('المهام'),
+        onTap: () => requireAccountForCreate('مهمة'),
       ),
       RoyalHomeAction(
         icon: Icons.group_add_outlined,
         label: 'إضافة ضيف',
-        onTap: () => showLocalAction('الضيوف'),
+        onTap: () => requireAccountForCreate('ضيف'),
       ),
       RoyalHomeAction(
         icon: Icons.attach_money_rounded,
         label: 'إضافة دين',
-        onTap: () => showLocalAction('الديون'),
+        onTap: () => requireAccountForCreate('دين'),
       ),
       RoyalHomeAction(
         icon: Icons.request_quote_outlined,
@@ -111,35 +125,93 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     ];
   }
 
+  // For a local-only guest plan (no server planId) we cannot open the
+  // plan-scoped Tasks / Budget / Guests screens — those routes need a real
+  // backend plan ID. Instead of showing fake "محفوظة محلياً" copy we surface
+  // an honest premium gate that explains the situation and invites the
+  // user to create an account to unlock their plan.
+  void _openLocalBrowse(
+    BuildContext context,
+    String planId, {
+    String area = 'الخطة',
+  }) {
+    final hasBackendPlan = !planId.startsWith('guest-plan-') &&
+        !planId.startsWith('local-guest-') &&
+        planId.isNotEmpty &&
+        planId != 'local-guest-plan';
+    if (hasBackendPlan) {
+      _routeByArea(context, planId, area);
+      return;
+    }
+    AuthActionGuard.requireAccount(
+      context,
+      reason:
+          'خطتك محفوظة على جهازك. أكمل إنشاء حساب لتفتح $area على خوادمنا ونحفظ بياناتك بأمان.',
+    );
+  }
+
+  void _routeByArea(BuildContext context, String planId, String area) {
+    switch (area) {
+      case 'المال':
+        context.push(AppRouter.finance(planId));
+        return;
+      case 'المهام':
+        context.push(AppRouter.tasks(planId));
+        return;
+      case 'الضيوف':
+        context.push(AppRouter.guestList(planId));
+        return;
+      case 'الخطة':
+      default:
+        context.push(AppRouter.planCenter(planId));
+        return;
+    }
+  }
+
   void _openLocalDashboardItem(
     BuildContext context,
+    String planId,
     DashboardImportantItem item,
   ) {
     if (item.type.contains('QUOTE') || item.type.contains('PROVIDER')) {
       context.push(AppRouter.providerMarketplace);
       return;
     }
-    _showLocalSoonMessage(context, 'الخطة');
-  }
-
-  void _openLocalNextStep(BuildContext context, DashboardSummary summary) {
-    if (summary.importantItems.isNotEmpty) {
-      _openLocalDashboardItem(context, summary.importantItems.first);
+    if (item.type.contains('TASK')) {
+      _openLocalBrowse(context, planId, area: 'المهام');
       return;
     }
-    _showLocalSoonMessage(context, 'الخطة');
+    if (item.type.contains('GUEST')) {
+      _openLocalBrowse(context, planId, area: 'الضيوف');
+      return;
+    }
+    if (item.type.contains('INSTALLMENT') ||
+        item.type.contains('BUDGET') ||
+        item.type.contains('MONEY')) {
+      _openLocalBrowse(context, planId, area: 'المال');
+      return;
+    }
+    _openLocalBrowse(context, planId, area: 'الخطة');
   }
 
-  void _showLocalSoonMessage(BuildContext context, String area) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            '$area محفوظة محلياً ضمن خطتك. ستظهر تفاصيل التحرير هنا عند ربط شاشة $area بالبيانات المحلية.',
-          ),
-        ),
-      );
+  void _openLocalNextStep(
+    BuildContext context,
+    String planId,
+    DashboardSummary summary,
+  ) {
+    if (summary.importantItems.isNotEmpty) {
+      _openLocalDashboardItem(context, planId, summary.importantItems.first);
+      return;
+    }
+    if ((summary.dueInstallmentsCount ?? 0) > 0) {
+      _openLocalBrowse(context, planId, area: 'المال');
+      return;
+    }
+    if (summary.overdueTasks > 0 || summary.todayTasks > 0) {
+      _openLocalBrowse(context, planId, area: 'المهام');
+      return;
+    }
+    _openLocalBrowse(context, planId, area: 'الخطة');
   }
 
   Future<bool> _requireAccountForSync(BuildContext context) {

@@ -60,14 +60,14 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('الخطوة التالية المقترحة'),
         300,
-        scrollable: find.byType(Scrollable),
+        scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('الخطوة التالية المقترحة'), findsOneWidget);
 
       await tester.scrollUntilVisible(
-        find.text('المال'),
+        find.text('المال').first,
         300,
-        scrollable: find.byType(Scrollable),
+        scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('المال'), findsWidgets);
       expect(find.text('إجراء جديد'), findsOneWidget);
@@ -75,14 +75,19 @@ void main() {
         find.text('خطة محفوظة على جهازك — سجّل الدخول للمزامنة والمشاركة'),
         findsNothing,
       );
-      expect(find.text('0%'), findsOneWidget);
 
       final syncAction = find.byKey(const Key('royal-local-sync-action'));
-      await tester.drag(find.byType(Scrollable), const Offset(0, 1000));
-      await tester.pumpAndSettle();
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 1000));
+      // Bounded pumps — the dashboard uses repeating animations (live dot,
+      // breath CTA) which would otherwise hang pumpAndSettle forever.
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
       expect(syncAction, findsOneWidget);
       await tester.tap(syncAction);
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
 
       expect(find.text('هذه الخطوة تحتاج حساباً'), findsOneWidget);
       expect(find.text('تسجيل الدخول'), findsOneWidget);

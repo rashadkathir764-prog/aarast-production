@@ -76,26 +76,48 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         IconButton(
                           onPressed: _goBack,
                           icon: const Icon(Icons.arrow_forward_rounded),
                           tooltip: 'رجوع',
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 4),
                         Expanded(
-                          child: Text(
-                            'الديون والأقساط',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(
-                                  color: AppTheme.dMaroonDeep,
-                                  fontWeight: FontWeight.w900,
-                                ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'الديون والأقساط',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      color: AppTheme.dMaroonDeep,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'تابع ديون خطتك وأقساطها المستحقة',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      color: AppTheme.dInkSoft,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         if (canManageFinancialRecords)
                           IconButton(
                             onPressed: () => context.push(

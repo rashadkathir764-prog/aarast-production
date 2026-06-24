@@ -43,76 +43,41 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: Stack(
-                children: [
-                  RefreshIndicator(
-                    color: AppTheme.dMaroon,
-                    onRefresh: () => provider.loadDashboard(),
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              16,
-                              16,
-                              16,
-                              widget.embedded ? 24 : 100,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                HomeTopHeader(
-                                  userName: auth.user?.name,
-                                  notificationCount:
-                                      notifications?.unreadCount ?? 0,
-                                  onNotifications: () {
-                                    final plan = provider.primaryPlan;
-                                    context.push(
-                                      plan == null
-                                          ? AppRouter.notifications
-                                          : AppRouter.planNotifications(
-                                              plan.id,
-                                            ),
-                                    );
-                                  },
-                                  onLogout: () async {
-                                    await context
-                                        .read<AuthController>()
-                                        .logout();
-                                    if (context.mounted) {
-                                      context.go(AppRouter.login);
-                                    }
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 220),
-                                  child:
-                                      provider.isLoading &&
-                                          provider.primaryPlan == null
-                                      ? const HomeLoadingSkeleton()
-                                      : _HomeDashboardBody(
-                                          provider: provider,
-                                          onNeedPlan: () =>
-                                              _showNeedPlanSnackBar(context),
-                                        ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+              child: RefreshIndicator(
+                color: AppTheme.dMaroon,
+                onRefresh: () => provider.loadDashboard(),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    16,
+                    16,
+                    widget.embedded ? 24 : 32,
                   ),
-                  if (!widget.embedded)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: HomeBottomNavigation(
-                        provider: provider,
-                        onNeedPlan: () => _showNeedPlanSnackBar(context),
-                      ),
+                  children: [
+                    HomeTopHeader(
+                      userName: auth.user?.name,
+                      notificationCount: notifications?.unreadCount ?? 0,
+                      onNotifications: () {
+                        context.push(AppRouter.notifications);
+                      },
+                      onProfile: () => context.push(AppRouter.more),
                     ),
-                ],
+                    const SizedBox(height: 22),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 320),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                      child: _buildContent(provider),
+                    ),
+                    const SizedBox(height: 18),
+                    if (!widget.embedded) const HomeSharedPlansCard(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -121,10 +86,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showNeedPlanSnackBar(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('أنشئي خطة أولاً')));
+  Widget _buildContent(HomeDashboardProvider provider) {
+    if (provider.errorMessage != null) {
+      return KeyedSubtree(
+        key: const ValueKey('home-error'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            HomeErrorCard(
+              message: provider.errorMessage!,
+              onRetry: provider.loadDashboard,
+            ),
+            const SizedBox(height: 18),
+            const HomeNoPlanWelcome(),
+          ],
+        ),
+      );
+    }
+    if (provider.isLoading && provider.primaryPlan == null) {
+      return const KeyedSubtree(
+        key: ValueKey('home-skeleton'),
+        child: HomeLoadingSkeleton(),
+      );
+    }
+    return const KeyedSubtree(
+      key: ValueKey('home-welcome'),
+      child: HomeNoPlanWelcome(),
+    );
   }
 }
 
@@ -141,46 +129,5 @@ NotificationsProvider? _maybeWatchNotifications(BuildContext context) {
     return context.watch<NotificationsProvider>();
   } on ProviderNotFoundException {
     return null;
-  }
-}
-
-class _HomeDashboardBody extends StatelessWidget {
-  const _HomeDashboardBody({required this.provider, required this.onNeedPlan});
-
-  final HomeDashboardProvider provider;
-  final VoidCallback onNeedPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasPlan = provider.primaryPlan != null;
-
-    return Column(
-      key: ValueKey(hasPlan ? provider.primaryPlan!.id : 'no-plan'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (provider.errorMessage != null && !hasPlan) ...[
-          HomeErrorCard(
-            message: provider.errorMessage!,
-            onRetry: provider.loadDashboard,
-          ),
-          const SizedBox(height: 16),
-        ],
-        HomeCommandHero(provider: provider),
-        const SizedBox(height: 18),
-        if (hasPlan) ...[
-          const HomePlanControls(),
-          const SizedBox(height: 18),
-          HomeMetricsBudgetSection(provider: provider),
-          const SizedBox(height: 18),
-        ],
-        HomeQuickActions(provider: provider, onNeedPlan: onNeedPlan),
-        const SizedBox(height: 18),
-        if (hasPlan) ...[
-          HomeImportantNotesList(provider: provider),
-          const SizedBox(height: 18),
-        ],
-        if (!hasPlan) ...[HomeSharedPlansCard(provider: provider)],
-      ],
-    );
   }
 }

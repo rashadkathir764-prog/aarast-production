@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/aarast_pressable.dart';
 import '../models/dashboard_summary.dart';
 
 class RoyalHomeTodayCenter extends StatelessWidget {
@@ -18,6 +19,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
     required this.onOpenNotifications,
     required this.onOpenImportantItem,
     required this.onOpenNextStep,
+    required this.onOpenTimeline,
     this.bottomPadding = 156,
     this.notice,
     super.key,
@@ -35,6 +37,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   final VoidCallback onOpenNotifications;
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
   final VoidCallback onOpenNextStep;
+  final VoidCallback onOpenTimeline;
   final double bottomPadding;
   final Widget? notice;
 
@@ -65,7 +68,12 @@ class RoyalHomeTodayCenter extends StatelessWidget {
           const SizedBox(height: 16),
           _Entrance(
             delay: const Duration(milliseconds: 50),
-            child: _HeroPlanCard(summary: summary, onOpenPlan: onOpenPlan),
+            child: _HeroPlanCard(
+              summary: summary,
+              onOpenPlan: onOpenPlan,
+              onOpenTimeline: onOpenTimeline,
+              onOpenProgress: onOpenTasks,
+            ),
           ),
           const SizedBox(height: 22),
           _Entrance(
@@ -194,15 +202,172 @@ class _RoyalHeader extends StatelessWidget {
   }
 }
 
-class _HeroPlanCard extends StatelessWidget {
-  const _HeroPlanCard({required this.summary, required this.onOpenPlan});
+class _CountdownPill extends StatelessWidget {
+  const _CountdownPill({required this.daysRemaining});
 
-  final DashboardSummary summary;
-  final VoidCallback onOpenPlan;
+  final int? daysRemaining;
 
   @override
   Widget build(BuildContext context) {
-    return _Pressable(
+    final label = _daysRemainingLabel(daysRemaining);
+    final isLive = daysRemaining != null && daysRemaining! > 0;
+
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 14, 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.centerStart,
+          end: AlignmentDirectional.centerEnd,
+          colors: [
+            _RoyalColors.gold.withValues(alpha: 0.22),
+            _RoyalColors.gold.withValues(alpha: 0.10),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: _RoyalColors.gold.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isLive) ...[
+            _LiveDot(color: _RoyalColors.gold),
+            const SizedBox(width: 8),
+          ] else ...[
+            Icon(
+              Icons.hourglass_bottom_rounded,
+              size: 15,
+              color: _RoyalColors.gold,
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _RoyalColors.gold,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveDot extends StatefulWidget {
+  const _LiveDot({required this.color});
+
+  final Color color;
+
+  @override
+  State<_LiveDot> createState() => _LiveDotState();
+}
+
+class _LiveDotState extends State<_LiveDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.4, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      ),
+      child: Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: widget.color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: 0.5),
+              blurRadius: 6,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Clickable countdown pill. Opens the wedding timeline when tapped.
+/// Adds a subtle press feedback on top of the existing [_CountdownPill] visual.
+class _HeroCountdownZone extends StatelessWidget {
+  const _HeroCountdownZone({
+    required this.daysRemaining,
+    required this.onTap,
+  });
+
+  final int? daysRemaining;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      scale: 0.97,
+      child: _CountdownPill(daysRemaining: daysRemaining),
+    );
+  }
+}
+
+/// Clickable progress zone. Opens the planning tasks screen when tapped.
+class _ProgressZone extends StatelessWidget {
+  const _ProgressZone({required this.percent, required this.onTap});
+
+  final int percent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(40),
+      scale: 0.96,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: _ProgressColumn(percent: percent),
+      ),
+    );
+  }
+}
+
+class _HeroPlanCard extends StatelessWidget {
+  const _HeroPlanCard({
+    required this.summary,
+    required this.onOpenPlan,
+    required this.onOpenTimeline,
+    required this.onOpenProgress,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenPlan;
+  final VoidCallback onOpenTimeline;
+  final VoidCallback onOpenProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
       onTap: onOpenPlan,
       borderRadius: BorderRadius.circular(24),
       child: Container(
@@ -267,23 +432,19 @@ class _HeroPlanCard extends StatelessWidget {
                                 ? 'غير محدد'
                                 : _formatDate(summary.weddingDate!),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _daysRemainingLabel(summary.daysRemaining),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: _RoyalColors.gold,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0,
-                            ),
+                          const SizedBox(height: 10),
+                          _HeroCountdownZone(
+                            daysRemaining: summary.daysRemaining,
+                            onTap: onOpenTimeline,
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 16),
-                    _ProgressColumn(percent: summary.progressPercentage),
+                    _ProgressZone(
+                      percent: summary.progressPercentage,
+                      onTap: onOpenProgress,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 18),
@@ -387,7 +548,7 @@ class _PriorityCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _toneFor(item.tone);
 
-    return _Pressable(
+    return AarastPressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
       child: Container(
@@ -445,109 +606,186 @@ class _NextStepCard extends StatelessWidget {
     final message = selected == null
         ? 'راجع خطتك وحدد الخطوة التي تحتاج انتباهك اليوم.'
         : _nextStepText(selected);
+    final hasUrgentItem = selected != null && selected.tone == 'danger';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            _RoyalColors.gold.withValues(alpha: 0.11),
-            _RoyalColors.gold.withValues(alpha: 0.03),
+    return _NextStepPressableShell(
+      onTap: onOpenNextStep,
+      hasUrgentItem: hasUrgentItem,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              _RoyalColors.gold.withValues(alpha: 0.11),
+              _RoyalColors.gold.withValues(alpha: 0.03),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.24)),
+          boxShadow: [
+            BoxShadow(
+              color: _RoyalColors.gold.withValues(alpha: 0.07),
+              blurRadius: 16,
+              offset: const Offset(0, 5),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.24)),
-        boxShadow: [
-          BoxShadow(
-            color: _RoyalColors.gold.withValues(alpha: 0.07),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline_rounded,
-                      size: 17,
-                      color: _RoyalColors.burgundy,
-                    ),
-                    SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'الخطوة التالية المقترحة',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _RoyalColors.burgundy,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        hasUrgentItem
+                            ? Icons.priority_high_rounded
+                            : Icons.info_outline_rounded,
+                        size: 17,
+                        color: _RoyalColors.burgundy,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          hasUrgentItem
+                              ? 'يحتاج انتباهك الآن'
+                              : 'الخطوة التالية المقترحة',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: _RoyalColors.burgundy,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  message,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _RoyalColors.ink,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    height: 1.35,
-                    letterSpacing: 0,
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          _Pressable(
-            onTap: onOpenNextStep,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 40,
-              constraints: const BoxConstraints(minWidth: 108),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: _RoyalColors.burgundy,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+                  const SizedBox(height: 6),
                   Text(
-                    actionLabel,
-                    maxLines: 1,
+                    message,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: _RoyalColors.ink,
                       fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
                       letterSpacing: 0,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.chevron_left_rounded,
-                    color: Colors.white,
-                    size: 18,
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 12),
+            _NextStepChevron(label: actionLabel),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Whole-card press wrapper for the next-step card. Triggers a one-shot breath
+/// animation when the wrapped item is urgent (tone = danger).
+class _NextStepPressableShell extends StatefulWidget {
+  const _NextStepPressableShell({
+    required this.onTap,
+    required this.child,
+    required this.hasUrgentItem,
+  });
+
+  final VoidCallback onTap;
+  final Widget child;
+  final bool hasUrgentItem;
+
+  @override
+  State<_NextStepPressableShell> createState() =>
+      _NextStepPressableShellState();
+}
+
+class _NextStepPressableShellState extends State<_NextStepPressableShell>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1800),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.hasUrgentItem) {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final t = _controller.value;
+          final scale = widget.hasUrgentItem && t < 1.0
+              ? 1.0 + 0.035 * (t < 0.5 ? (t * 2) : (1 - (t - 0.5) * 2))
+              : 1.0;
+          return Transform.scale(scale: scale, child: child);
+        },
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Trailing chevron with action label — purely visual cue (whole card is
+/// already pressable via [_NextStepPressableShell]).
+class _NextStepChevron extends StatelessWidget {
+  const _NextStepChevron({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 40,
+      constraints: const BoxConstraints(minWidth: 90),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: _RoyalColors.burgundy,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            Icons.chevron_left_rounded,
+            color: Colors.white,
+            size: 18,
           ),
         ],
       ),
@@ -572,6 +810,13 @@ class _MoneySummaryCard extends StatelessWidget {
       );
     }
 
+    final total = _safeDouble(summary.budgetTotal);
+    final spent = _safeDouble(summary.spentTotal);
+    final obligations =
+        _safeDouble(summary.unpaidDebtTotal ?? summary.debtTotal);
+    final remaining = (total - spent - obligations).clamp(0, double.infinity);
+    final denom = total > 0 ? total : (spent + remaining + obligations);
+    double frac(double v) => denom > 0 ? v / denom : 0;
     final upcoming = _upcomingInstallmentLabel(summary);
 
     return _SummaryCard(
@@ -581,62 +826,68 @@ class _MoneySummaryCard extends StatelessWidget {
       child: Column(
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: _MoneyStat(
-                  label: 'الميزانية',
-                  value: _money(summary.budgetTotal),
-                  color: _RoyalColors.burgundy,
-                  large: true,
-                ),
+              _BudgetDonut(
+                spentFrac: frac(spent),
+                obligationsFrac: frac(obligations),
               ),
+              const SizedBox(width: 16),
               Expanded(
-                child: _MoneyStat(
-                  label: 'المتبقي',
-                  value: _money(summary.remainingBudget),
-                  color: _RoyalColors.gold,
-                  large: true,
-                  alignEnd: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _MoneyStat(
+                      label: 'الميزانية',
+                      value: _money(summary.budgetTotal),
+                      color: _RoyalColors.burgundy,
+                      large: true,
+                    ),
+                    const SizedBox(height: 8),
+                    _MoneyStat(
+                      label: 'المتبقي',
+                      value: _money('$remaining'),
+                      color: _RoyalColors.gold,
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 14),
           const _SoftDivider(),
           Row(
             children: [
               Expanded(
-                child: _MoneyStat(
+                child: _LegendRow(
+                  color: _RoyalColors.burgundy,
                   label: 'المصروف',
                   value: _money(summary.spentTotal),
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
-                child: _MoneyStat(
+                child: _LegendRow(
+                  color: _RoyalColors.gold,
                   label: 'الديون',
                   value: _money(summary.unpaidDebtTotal ?? summary.debtTotal),
-                  alignEnd: true,
                 ),
               ),
             ],
           ),
-          const _SoftDivider(),
+          const SizedBox(height: 12),
           Row(
             children: [
-              const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _SmallDot(color: _RoyalColors.warning),
-                  SizedBox(width: 7),
-                  Text(
-                    'قسط قادم',
-                    style: TextStyle(
-                      color: _RoyalColors.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ],
+              _SmallDot(color: _RoyalColors.warning),
+              const SizedBox(width: 8),
+              const Text(
+                'قسط قادم',
+                style: TextStyle(
+                  color: _RoyalColors.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
               ),
               const Spacer(),
               Flexible(
@@ -660,6 +911,171 @@ class _MoneySummaryCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BudgetDonut extends StatelessWidget {
+  const _BudgetDonut({
+    required this.spentFrac,
+    required this.obligationsFrac,
+  });
+
+  final double spentFrac;
+  final double obligationsFrac;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 88,
+      height: 88,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return CustomPaint(
+            painter: _BudgetDonutPainter(
+              spentFrac: spentFrac * value,
+              obligationsFrac: obligationsFrac * value,
+            ),
+            child: child,
+          );
+        },
+        child: Center(
+          child: Text(
+            'الميزانية',
+            style: TextStyle(
+              color: _RoyalColors.muted,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BudgetDonutPainter extends CustomPainter {
+  _BudgetDonutPainter({
+    required this.spentFrac,
+    required this.obligationsFrac,
+  });
+
+  final double spentFrac;
+  final double obligationsFrac;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    const stroke = 12.0;
+    final radius = (size.shortestSide - stroke) / 2;
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = _RoyalColors.line;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    if (spentFrac <= 0 && obligationsFrac <= 0) return;
+
+    var start = -math.pi / 2;
+
+    if (spentFrac > 0) {
+      final sweep = 2 * math.pi * spentFrac.clamp(0.0, 1.0);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = _RoyalColors.burgundy;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        paint,
+      );
+      start += sweep;
+    }
+
+    if (obligationsFrac > 0) {
+      final sweep = 2 * math.pi * obligationsFrac.clamp(0.0, 1.0);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = _RoyalColors.gold;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        start,
+        sweep,
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _BudgetDonutPainter old) =>
+      old.spentFrac != spentFrac || old.obligationsFrac != obligationsFrac;
+}
+
+class _LegendRow extends StatelessWidget {
+  const _LegendRow({
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+
+  final Color color;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _SmallDot(color: color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _RoyalColors.muted,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textDirection: TextDirection.ltr,
+          style: const TextStyle(
+            color: _RoyalColors.ink,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+double _safeDouble(String? value) {
+  if (value == null) return 0;
+  return double.tryParse(value.replaceAll(',', '').trim()) ?? 0;
 }
 
 class _CompactCardsGrid extends StatelessWidget {
@@ -786,20 +1202,23 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _cardDecoration(radius: 22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CardHeader(
-            title: title,
-            actionLabel: actionLabel,
-            onAction: onAction,
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
+    return AarastPressable(
+      onTap: onAction,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: _cardDecoration(radius: 22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _CardHeader(
+              title: title,
+              actionLabel: actionLabel,
+            ),
+            const SizedBox(height: 14),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -820,29 +1239,32 @@ class _CompactStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 134),
-      padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
-      decoration: _cardDecoration(radius: 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CardHeader(
-            title: title,
-            actionLabel: actionLabel,
-            onAction: onAction,
-            compact: true,
-          ),
-          const SizedBox(height: 22),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (final stat in stats)
-                Expanded(child: _CompactStatView(stat: stat)),
-            ],
-          ),
-        ],
+    return AarastPressable(
+      onTap: onAction,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 134),
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
+        decoration: _cardDecoration(radius: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _CardHeader(
+              title: title,
+              actionLabel: actionLabel,
+              compact: true,
+            ),
+            const SizedBox(height: 22),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                for (final stat in stats)
+                  Expanded(child: _CompactStatView(stat: stat)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -861,41 +1283,44 @@ class _NotificationsCompactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final notifications = summary.importantNotifications.take(2).toList();
 
-    return Container(
-      constraints: const BoxConstraints(minHeight: 134),
-      padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
-      decoration: _cardDecoration(radius: 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CardHeader(
-            title: 'إشعارات',
-            actionLabel: 'الكل',
-            onAction: onAction,
-            compact: true,
-          ),
-          const SizedBox(height: 18),
-          if (notifications.isEmpty)
-            Text(
-              summary.unreadNotificationsCount > 0
-                  ? '${summary.unreadNotificationsCount} تنبيه غير مقروء'
-                  : 'لا توجد تنبيهات مهمة',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _RoyalColors.ink,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
-              ),
-            )
-          else
-            for (var i = 0; i < notifications.length; i++) ...[
-              if (i > 0) const SizedBox(height: 8),
-              _NotificationLine(notification: notifications[i]),
-            ],
-        ],
+    return AarastPressable(
+      onTap: onAction,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 134),
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
+        decoration: _cardDecoration(radius: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _CardHeader(
+              title: 'إشعارات',
+              actionLabel: 'الكل',
+              compact: true,
+            ),
+            const SizedBox(height: 18),
+            if (notifications.isEmpty)
+              Text(
+                summary.unreadNotificationsCount > 0
+                    ? '${summary.unreadNotificationsCount} تنبيه غير مقروء'
+                    : 'لا توجد تنبيهات مهمة',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _RoyalColors.ink,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0,
+                ),
+              )
+            else
+              for (var i = 0; i < notifications.length; i++) ...[
+                if (i > 0) const SizedBox(height: 8),
+                _NotificationLine(notification: notifications[i]),
+              ],
+          ],
+        ),
       ),
     );
   }
@@ -905,13 +1330,11 @@ class _CardHeader extends StatelessWidget {
   const _CardHeader({
     required this.title,
     required this.actionLabel,
-    required this.onAction,
     this.compact = false,
   });
 
   final String title;
   final String actionLabel;
-  final VoidCallback onAction;
   final bool compact;
 
   @override
@@ -931,31 +1354,27 @@ class _CardHeader extends StatelessWidget {
             ),
           ),
         ),
-        _Pressable(
-          onTap: onAction,
-          borderRadius: BorderRadius.circular(10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                actionLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _RoyalColors.gold,
-                  fontSize: compact ? 12 : 13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const SizedBox(width: 2),
-              const Icon(
-                Icons.chevron_left_rounded,
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              actionLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
                 color: _RoyalColors.gold,
-                size: 18,
+                fontSize: compact ? 12 : 13,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.chevron_left_rounded,
+              color: _RoyalColors.gold,
+              size: 18,
+            ),
+          ],
         ),
       ],
     );
@@ -968,21 +1387,17 @@ class _MoneyStat extends StatelessWidget {
     required this.value,
     this.color = _RoyalColors.ink,
     this.large = false,
-    this.alignEnd = false,
   });
 
   final String label;
   final String value;
   final Color color;
   final bool large;
-  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: alignEnd
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
@@ -997,7 +1412,7 @@ class _MoneyStat extends StatelessWidget {
         Text(
           value,
           textDirection: TextDirection.ltr,
-          textAlign: alignEnd ? TextAlign.left : TextAlign.right,
+          textAlign: TextAlign.left,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -1312,7 +1727,7 @@ class _CircleIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Pressable(
+    return AarastPressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Stack(
@@ -1380,47 +1795,6 @@ class _Entrance extends StatelessWidget {
         );
       },
       child: child,
-    );
-  }
-}
-
-class _Pressable extends StatefulWidget {
-  const _Pressable({
-    required this.child,
-    required this.borderRadius,
-    this.onTap,
-  });
-
-  final Widget child;
-  final BorderRadius borderRadius;
-  final VoidCallback? onTap;
-
-  @override
-  State<_Pressable> createState() => _PressableState();
-}
-
-class _PressableState extends State<_Pressable> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (_pressed == value) return;
-    setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      onTapDown: widget.onTap == null ? null : (_) => _setPressed(true),
-      onTapCancel: widget.onTap == null ? null : () => _setPressed(false),
-      onTapUp: widget.onTap == null ? null : (_) => _setPressed(false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.985 : 1,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: widget.child,
-      ),
     );
   }
 }
@@ -1571,6 +1945,18 @@ List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
     );
   }
 
+  // Priority order: overdue tasks first, then payments, then providers, then today.
+  if (summary.overdueTasks > 0) {
+    addFallback(
+      id: 'fallback-overdue-task',
+      type: 'TASK_OVERDUE',
+      title: 'لديك ${summary.overdueTasks} مهمة متأخرة',
+      subtitle: 'متأخر',
+      icon: 'calendar',
+      tone: 'danger',
+      actionLabel: 'فتح المهام',
+    );
+  }
   if ((summary.dueInstallmentsCount ?? 0) > 0) {
     addFallback(
       id: 'fallback-installments',
@@ -1591,17 +1977,6 @@ List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
       icon: 'provider',
       tone: 'success',
       actionLabel: 'مراجعة العرض',
-    );
-  }
-  if (summary.overdueTasks > 0) {
-    addFallback(
-      id: 'fallback-overdue-task',
-      type: 'TASK_OVERDUE',
-      title: 'لديك ${summary.overdueTasks} مهمة متأخرة',
-      subtitle: 'متأخر',
-      icon: 'calendar',
-      tone: 'danger',
-      actionLabel: 'فتح المهام',
     );
   }
   if (summary.todayTasks > 0) {

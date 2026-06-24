@@ -38,12 +38,10 @@ class _MoreScreenState extends State<MoreScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final providerDashboard = context.watch<ProviderDashboardProvider>();
     final notifications = _maybeWatchNotifications(context);
     final user = auth.user;
     final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
-    final hasProviderProfile = providerDashboard.hasProviderProfile;
     final isGuestExploration =
         AppFeatureFlags.devBypassLoginGatesForUxExploration &&
         auth.status != AuthStatus.authenticated;
@@ -110,35 +108,19 @@ class _MoreScreenState extends State<MoreScreen> {
                   _MenuGroup(
                     children: [
                       _MoreActionTile(
-                        title: hasProviderProfile
-                            ? 'لوحة المزود'
-                            : 'طلب الانضمام كمزود',
-                        subtitle: hasProviderProfile
-                            ? 'إدارة الخدمات والباقات وطلبات عروض الأسعار'
-                            : 'أرسلي طلب الانضمام وابدئي تجهيز ملف المزود',
-                        icon: Icons.store_mall_directory_outlined,
-                        iconColor: AppTheme.dGoldDeep,
-                        iconBackground: AppTheme.dCreamBg,
-                        onTap: () => context.push(
-                          hasProviderProfile
-                              ? AppRouter.providerDashboard
-                              : AppRouter.providerApply,
-                        ),
-                      ),
-                      _MoreActionTile(
                         title: 'الإعدادات',
                         subtitle: 'تخصيص التطبيق والتفضيلات',
                         icon: Icons.settings_outlined,
-                        iconColor: AppTheme.dGoldDeep,
-                        iconBackground: AppTheme.dCreamBg,
+                        iconColor: AppTheme.dMaroon,
+                        iconBackground: AppTheme.dPinkBg,
                         onTap: () => context.push(AppRouter.settings),
                       ),
                       _MoreActionTile(
                         title: 'الدعم والمساعدة',
                         subtitle: 'تواصلي معنا أو استعرضي الأسئلة الشائعة',
                         icon: Icons.support_agent_outlined,
-                        iconColor: AppTheme.dGoldDeep,
-                        iconBackground: AppTheme.dCreamBg,
+                        iconColor: AppTheme.dMaroon,
+                        iconBackground: AppTheme.dPinkBg,
                         onTap: () => context.push(AppRouter.support),
                       ),
                     ],
@@ -460,102 +442,12 @@ class _ProfileCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-              color: AppTheme.dCard2,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.dLine),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  child: _ProfileMetric(
-                    label: 'التقدم',
-                    value: '—',
-                    icon: Icons.donut_large_rounded,
-                  ),
-                ),
-                _MetricDivider(),
-                Expanded(
-                  child: _ProfileMetric(
-                    label: 'المهام',
-                    value: '—',
-                    icon: Icons.check_box_outlined,
-                  ),
-                ),
-                _MetricDivider(),
-                Expanded(
-                  child: _ProfileMetric(
-                    label: 'خططي',
-                    value: '—',
-                    icon: Icons.description_outlined,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _ProfileMetric extends StatelessWidget {
-  const _ProfileMetric({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: AppTheme.dMaroon, size: 18),
-            const SizedBox(width: 5),
-            Text(
-              value,
-              textDirection: TextDirection.ltr,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.dMaroon,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 3),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppTheme.dInkSoft,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MetricDivider extends StatelessWidget {
-  const _MetricDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(width: 1, height: 44, color: AppTheme.dLine);
-  }
-}
 
 class _MenuGroup extends StatelessWidget {
   const _MenuGroup({required this.children});

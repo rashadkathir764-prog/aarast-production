@@ -8,6 +8,7 @@ import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
+import '../guests/screens/guest_list_screen.dart';
 import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
@@ -24,7 +25,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   // DashboardBottomNav indices mirror the approved user navigation:
-  // 0: Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ©, 1: Ø§Ù„Ù…Ø§Ù„, 2: Ø§Ù„Ù…Ù‡Ø§Ù…, 3: Ø§Ù„Ù…ÙˆØ±Ø¯ÙˆÙ†, 4: Ø§Ù„Ù…Ø²ÙŠØ¯.
+  // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: الموردون, 5: المزيد.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   String? _activePlanId;
@@ -105,17 +106,8 @@ class _MainShellState extends State<MainShell> {
       ),
       RoyalHomeAction(
         icon: Icons.request_quote_outlined,
-        label: 'Ø·Ù„Ø¨ Ø¹Ø±Ø¶ Ø³Ø¹Ø±',
+        label: 'طلب عرض سعر',
         onTap: () => open(AppRouter.providerMarketplace),
-      ),
-      RoyalHomeAction(
-        icon: Icons.auto_awesome_rounded,
-        label: 'Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯ Ø§Ù„Ø°ÙƒÙŠ',
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('النصائح الذكية لاحقًا')),
-          );
-        },
       ),
     ];
   }
@@ -164,15 +156,26 @@ class _MainShellState extends State<MainShell> {
                         key: ValueKey('tasks-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
                       )
-                    : _buildNoPlanFallback('Ø§Ù„Ù…Ù‡Ø§Ù…'),
+                    : _buildNoPlanFallback('المهام'),
               ),
 
-              // Index 3: Vendors marketplace — public browsing for guests.
-              // Quote submit remains backend-protected without an account.
-              _buildLazyTab(3, const ProviderMarketplaceScreen(embedded: true)),
+              // Index 3: Guests
+              _buildLazyTab(
+                3,
+                _activePlanId != null
+                    ? GuestListScreen(
+                        key: ValueKey('guests-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                      )
+                    : _buildNoPlanFallback('الضيوف'),
+              ),
 
-              // Index 4: More/settings/secondary surfaces
-              _buildLazyTab(4, const MoreScreen()),
+              // Index 4: Vendors marketplace — public browsing for guests.
+              // Quote submit remains backend-protected without an account.
+              _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
+
+              // Index 5: More/settings/secondary surfaces
+              _buildLazyTab(5, const MoreScreen()),
             ],
           ),
           bottomNavigationBar: RoyalDashboardBottomNav(
@@ -180,8 +183,9 @@ class _MainShellState extends State<MainShell> {
             onHome: () => _onItemTapped(0),
             onMoney: () => _onItemTapped(1),
             onTasks: () => _onItemTapped(2),
-            onProviders: () => _onItemTapped(3),
-            onMore: () => _onItemTapped(4),
+            onGuests: () => _onItemTapped(3),
+            onProviders: () => _onItemTapped(4),
+            onMore: () => _onItemTapped(5),
             onAdd: _showQuickAdd,
           ),
         ),

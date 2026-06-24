@@ -29,6 +29,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
           onHome: () {},
           onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
           onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
+          onGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onMore: () => context.push(AppRouter.more),
           onAdd: () => showRoyalHomeActionSheet(

@@ -49,6 +49,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
     this.onHome,
     this.onMoney,
     this.onTasks,
+    this.onGuests,
     this.onProviders,
     this.onMore,
     this.onAdd,
@@ -59,6 +60,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
   final VoidCallback? onHome;
   final VoidCallback? onMoney;
   final VoidCallback? onTasks;
+  final VoidCallback? onGuests;
   final VoidCallback? onProviders;
   final VoidCallback? onMore;
   final VoidCallback? onAdd;
@@ -151,17 +153,24 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                       onTap: onTasks,
                     ),
                     _RoyalNavItem(
+                      icon: Icons.group_outlined,
+                      activeIcon: Icons.group_rounded,
+                      label: 'الضيوف',
+                      active: activeIndex == 3,
+                      onTap: onGuests,
+                    ),
+                    _RoyalNavItem(
                       icon: Icons.grid_view_outlined,
                       activeIcon: Icons.grid_view_rounded,
                       label: 'الموردون',
-                      active: activeIndex == 3,
+                      active: activeIndex == 4,
                       onTap: onProviders,
                     ),
                     _RoyalNavItem(
                       icon: Icons.more_horiz_rounded,
                       activeIcon: Icons.more_horiz_rounded,
                       label: 'المزيد',
-                      active: activeIndex == 4,
+                      active: activeIndex == 5,
                       onTap: onMore,
                     ),
                   ],

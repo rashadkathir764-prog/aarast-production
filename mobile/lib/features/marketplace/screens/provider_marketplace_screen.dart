@@ -79,10 +79,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         _MarketplaceHero(
                           onTap: () => _searchFocusNode.requestFocus(),
                         ),
-                        const SizedBox(height: 14),
-                        _ProviderJoinCta(
-                          onTap: () => context.push(AppRouter.providerApply),
-                        ),
                         const SizedBox(height: 18),
                         _MarketplaceSearch(
                           controller: _searchController,
@@ -191,94 +187,11 @@ class _MarketplaceHeader extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 10),
-        FilledButton.icon(
-          onPressed: onDashboard,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size(0, 44),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-          ),
-          icon: const Icon(Icons.store_mall_directory_outlined, size: 18),
-          label: Text(embedded ? 'كمزود' : 'انضم كمزود'),
-        ),
       ],
     );
   }
 }
 
-class _ProviderJoinCta extends StatelessWidget {
-  const _ProviderJoinCta({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.dCreamBg,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-      child: OutlinedButtonTheme(
-        data: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppTheme.dMaroon,
-            minimumSize: const Size(0, 42),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            side: const BorderSide(color: AppTheme.dMaroon, width: 1.2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppTheme.dCard,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.store_mall_directory_outlined,
-                color: AppTheme.dGoldDeep,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'هل تقدم خدمة زفاف؟',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'انضم كمزود واستقبل طلبات عروض الأسعار من العملاء.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInkSoft,
-                      fontWeight: FontWeight.w700,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            OutlinedButton(onPressed: onTap, child: const Text('انضم كمزود')),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _MarketplaceHero extends StatelessWidget {
   const _MarketplaceHero({required this.onTap});

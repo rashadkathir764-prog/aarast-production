@@ -120,19 +120,6 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                           icon: const Icon(Icons.create_new_folder_outlined),
                           tooltip: 'إضافة تصنيف',
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: canManageFinancialRecords
-                              ? _openCreateExpense
-                              : null,
-                          icon: const Icon(Icons.add_rounded),
-                          tooltip: 'إضافة مصروف',
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppTheme.dMaroon,
-                            foregroundColor: Colors.white,
-                            side: BorderSide.none,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -170,13 +157,6 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     context.go(AppRouter.home);
   }
 
-  Future<void> _openCreateExpense() async {
-    final changed = await context.push<bool>(
-      AppRouter.createExpense(widget.weddingPlanId),
-      extra: widget.sharedMember,
-    );
-    if (changed == true && mounted) _markExpenseChanged();
-  }
 
   void _markExpenseChanged() {
     _hasExpenseChanges = true;
@@ -281,16 +261,6 @@ class _FinanceContent extends StatelessWidget {
           children: [
             Expanded(
               child: _FinanceShortcutCard(
-                icon: Icons.receipt_long_outlined,
-                label: 'المصروفات',
-                onTap: canManageFinancialRecords
-                    ? () => _openCreateExpense(context)
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _FinanceShortcutCard(
                 icon: Icons.category_outlined,
                 label: 'التصنيفات',
                 onTap: canManageFinancialRecords
@@ -385,14 +355,6 @@ class _FinanceContent extends StatelessWidget {
             ),
             const SizedBox(height: 10),
           ],
-        const SizedBox(height: 14),
-        ElevatedButton.icon(
-          onPressed: canManageFinancialRecords
-              ? () => _openCreateExpense(context)
-              : null,
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('إضافة مصروف'),
-        ),
       ],
     );
   }

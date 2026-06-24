@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { OwnershipContextService } from './ownership-context.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { getJwtSecret } from './jwt-secret';
 
 @Module({
   imports: [
@@ -13,7 +14,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => ({
-        secret: process.env.JWT_SECRET ?? 'changeme',
+        secret: getJwtSecret(),
         signOptions: { expiresIn: '7d' },
       }),
     }),

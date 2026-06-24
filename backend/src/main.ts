@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 function getCorsOrigins(): false | (string | RegExp)[] {
@@ -22,6 +23,8 @@ function getCorsOrigins(): false | (string | RegExp)[] {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const port = Number(process.env.PORT ?? 3000);
+
+  app.use(helmet());
 
   app.enableCors({
     origin: getCorsOrigins(),

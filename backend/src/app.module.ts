@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -23,6 +25,12 @@ import { GuestsModule } from './guests/guests.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 1_000,
+      },
+    ]),
     PrismaModule,
     AuthModule,
     MeModule,
@@ -45,5 +53,11 @@ import { GuestsModule } from './guests/guests.module';
     AdminModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

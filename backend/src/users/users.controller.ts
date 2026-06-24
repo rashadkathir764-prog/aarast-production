@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -20,9 +21,8 @@ export class UsersController {
   }
 
   @Get('lookup')
-  lookupByPhone(
-    @Query('phone') phone: string,
-  ) {
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  lookupByPhone(@Query('phone') phone: string) {
     return this.usersService.lookupByPhone(phone);
   }
 

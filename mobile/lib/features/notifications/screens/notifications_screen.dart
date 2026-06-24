@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
 
@@ -16,6 +18,12 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _suppressAccountData = false;
+
+  bool get _isLocalPlanNotifications =>
+      widget.weddingPlanId != null &&
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
   @override
   void initState() {
     super.initState();
@@ -39,9 +47,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<NotificationsProvider>();
-    final unreadInList = provider.notifications
-        .where((item) => item.isUnread)
-        .length;
+    final suppressData = _isLocalPlanNotifications || _suppressAccountData;
+    final notifications = suppressData
+        ? const <AarastNotification>[]
+        : provider.notifications;
+    final unreadInList = notifications.where((item) => item.isUnread).length;
 
     return AarastPageScaffold(
       title: 'التنبيهات',
@@ -62,17 +72,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       child: RefreshIndicator(
         color: AppTheme.dMaroon,
         onRefresh: _load,
-        child: _body(provider),
+        child: _body(provider, notifications: notifications),
       ),
     );
   }
 
-  Widget _body(NotificationsProvider provider) {
-    if (provider.isLoading && provider.notifications.isEmpty) {
+  Widget _body(
+    NotificationsProvider provider, {
+    required List<AarastNotification> notifications,
+  }) {
+    final suppressData = _isLocalPlanNotifications || _suppressAccountData;
+
+    if (!suppressData && provider.isLoading && notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (provider.errorMessage != null && provider.notifications.isEmpty) {
+    if (!suppressData &&
+        provider.errorMessage != null &&
+        notifications.isEmpty) {
       return ListView(
         children: [
           const SizedBox(height: 90),
@@ -90,7 +107,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    if (provider.notifications.isEmpty) {
+    if (notifications.isEmpty) {
       return ListView(
         children: const [
           SizedBox(height: 90),
@@ -105,10 +122,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return ListView.separated(
-      itemCount: provider.notifications.length,
+      itemCount: notifications.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        final notification = provider.notifications[index];
+        final notification = notifications[index];
         return _NotificationCard(
           notification: notification,
           onTap: () => provider.markRead(notification),
@@ -119,6 +136,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() {
+    if (_isLocalPlanNotifications) {
+      if (mounted && !_suppressAccountData) {
+        setState(() => _suppressAccountData = true);
+      }
+      return Future<void>.value();
+    }
+    return _loadAccountNotifications();
+  }
+
+  Future<void> _loadAccountNotifications() async {
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration &&
+        !await AuthActionGuard.hasAccount(context)) {
+      if (mounted && !_suppressAccountData) {
+        setState(() => _suppressAccountData = true);
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (_suppressAccountData) {
+      setState(() => _suppressAccountData = false);
+    }
     return context.read<NotificationsProvider>().loadNotifications(
       weddingPlanId: widget.weddingPlanId,
     );

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../providers/marketplace_provider.dart';
 
 class ProviderApplyScreen extends StatefulWidget {
@@ -28,9 +30,13 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
+      final hasAccount =
+          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          await AuthActionGuard.hasAccount(context);
+      if (!mounted || !hasAccount) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
     });
   }
@@ -72,7 +78,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
         ),
         children: [
-          if (auth.status == AuthStatus.unauthenticated)
+          if (auth.status == AuthStatus.unauthenticated &&
+              !AppFeatureFlags.devBypassLoginGatesForUxExploration)
             _AuthRequiredCard(
               onLogin: () => context.go(AppRouter.login),
               onRegisterProvider: () =>
@@ -234,6 +241,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         _categoryId == null) {
       return;
     }
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+      return;
+    }
+    if (!mounted) return;
 
     final ok = await context.read<ProviderDashboardProvider>().applyProvider(
       businessName: _businessNameController.text,

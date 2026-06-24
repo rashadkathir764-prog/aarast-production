@@ -5,6 +5,7 @@ import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 
@@ -18,11 +19,15 @@ class GuestListScreen extends StatefulWidget {
 }
 
 class _GuestListScreenState extends State<GuestListScreen> {
+  bool get _isLocalExploration =>
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_isLocalExploration) return;
       _load();
     });
   }
@@ -33,6 +38,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        if (_isLocalExploration) return;
         _load();
       });
     }
@@ -54,13 +60,31 @@ class _GuestListScreenState extends State<GuestListScreen> {
       ),
       child: RefreshIndicator(
         color: AppTheme.dMaroon,
-        onRefresh: _load,
+        onRefresh: _isLocalExploration ? () async {} : _load,
         child: _body(provider, planIdReady),
       ),
     );
   }
 
   Widget _body(GuestsProvider provider, bool planIdReady) {
+    if (_isLocalExploration) {
+      return ListView(
+        children: [
+          const SizedBox(height: 48),
+          AarastEmptyState(
+            icon: Icons.people_outline_rounded,
+            title: 'لا توجد بيانات بعد',
+            message: 'ابدأ بإضافة بياناتك لاحقًا.',
+            action: FilledButton.icon(
+              onPressed: () => _showGuestSheet(),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('إضافة ضيف'),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (!planIdReady) {
       return ListView(
         children: const [
@@ -144,6 +168,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
 
     if (result == null || !mounted) return;
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+      return;
+    }
+    if (!mounted) return;
 
     final provider = context.read<GuestsProvider>();
     final ok = guest == null

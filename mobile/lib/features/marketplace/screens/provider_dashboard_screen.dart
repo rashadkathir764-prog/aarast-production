@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -21,10 +23,14 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<ProviderDashboardProvider>().loadDashboard();
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
+      final hasAccount =
+          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          await AuthActionGuard.hasAccount(context);
+      if (!mounted || !hasAccount) return;
+      context.read<ProviderDashboardProvider>().loadDashboard();
     });
   }
 
@@ -55,7 +61,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         onRefresh: dashboard.loadDashboard,
         child: ListView(
           children: [
-            if (auth.status == AuthStatus.unauthenticated)
+            if (auth.status != AuthStatus.authenticated &&
+                AppFeatureFlags.devBypassLoginGatesForUxExploration)
+              _NoProviderProfileCard(
+                onApply: () => context.go(AppRouter.providerApply),
+              )
+            else if (auth.status == AuthStatus.unauthenticated)
               _AuthRequiredCard(onLogin: () => context.go(AppRouter.login))
             else if (dashboard.isLoading && dashboard.profile == null)
               const _DashboardSkeleton()

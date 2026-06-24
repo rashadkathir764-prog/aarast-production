@@ -1,4 +1,8 @@
 class AppFeatureFlags {
+  // TEMP DEV ONLY.
+  // Disable before any real QA, commit finalization, release, or production build.
+  static const bool devBypassLoginGatesForUxExploration = true;
+
   const AppFeatureFlags({
     required this.enableGuestFirstOnboarding,
     required this.enableProviderMode,
@@ -60,6 +64,8 @@ class AppFeatureFlags {
       'enableNewUserBottomNavigation' => enableNewUserBottomNavigation,
       'enableProviderShell' => enableProviderShell,
       'enableSingleDashboardSummary' => enableSingleDashboardSummary,
+      'devBypassLoginGatesForUxExploration' =>
+        devBypassLoginGatesForUxExploration,
       _ => false,
     };
   }
@@ -79,6 +85,8 @@ class AppFeatureFlags {
       'enableNewUserBottomNavigation': enableNewUserBottomNavigation,
       'enableProviderShell': enableProviderShell,
       'enableSingleDashboardSummary': enableSingleDashboardSummary,
+      'devBypassLoginGatesForUxExploration':
+          devBypassLoginGatesForUxExploration,
     };
   }
 

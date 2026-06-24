@@ -17,6 +17,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   String _search = '';
   String? _cityId;
   String? _categoryId;
+  bool _includeAccountData = true;
   List<MarketplaceCity> _cities = const [];
   List<ProviderCategory> _categories = const [];
   List<MarketplaceProvider> _providers = const [];
@@ -43,7 +44,10 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
   List<ProviderReview> reviewsFor(String id) => _reviews[id] ?? const [];
 
-  Future<void> loadMarketplace() async {
+  Future<void> loadMarketplace({bool? includeAccountData}) async {
+    if (includeAccountData != null) {
+      _includeAccountData = includeAccountData;
+    }
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -57,7 +61,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
           cityId: _cityId,
           categoryId: _categoryId,
         ),
-        _safeFavorites(),
+        _includeAccountData
+            ? _safeFavorites()
+            : Future.value(const <FavoriteProvider>[]),
       ]);
 
       _cities = results[0] as List<MarketplaceCity>;

@@ -50,12 +50,40 @@ void main() {
 
       expect(find.byKey(const Key('provider-auth-gate')), findsNothing);
       expect(find.text('providers-opened'), findsOneWidget);
+      expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
       expect(find.text('login'), findsNothing);
     },
   );
 
   testWidgets(
-    'providers quote-request route still gates guest users (Phase 3)',
+    'provider details route is public for guest users in dev exploration mode',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/providers/p-1',
+        routes: [
+          GoRoute(
+            path: AppRouter.login,
+            builder: (context, state) => const Scaffold(body: Text('login')),
+          ),
+          GoRoute(
+            path: '/providers/:id',
+            builder: (context, state) =>
+                const Scaffold(body: Text('provider-details-opened')),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      expect(find.text('provider-details-opened'), findsOneWidget);
+      expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+      expect(find.text('login'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'providers quote-request route opens for guest users in dev exploration mode',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
@@ -92,13 +120,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('provider-auth-gate')), findsOneWidget);
-      expect(find.text('quote-opened'), findsNothing);
-
-      await tester.tap(find.byKey(const Key('provider-auth-gate-login')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('login'), findsOneWidget);
+      expect(find.byKey(const Key('provider-auth-gate')), findsNothing);
+      expect(find.text('quote-opened'), findsOneWidget);
+      expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+      expect(find.text('login'), findsNothing);
     },
   );
 }

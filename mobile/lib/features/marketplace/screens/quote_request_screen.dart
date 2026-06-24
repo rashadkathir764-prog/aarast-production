@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
@@ -41,13 +43,19 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   void initState() {
     super.initState();
     _serviceId = widget.initialServiceId;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadProviderDetails(
         widget.providerId,
       );
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
-      context.read<WeddingPlansProvider>().loadMyWeddingPlans();
+      final hasAccount =
+          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          await AuthActionGuard.hasAccount(context);
+      if (!mounted) return;
+      if (hasAccount) {
+        context.read<WeddingPlansProvider>().loadMyWeddingPlans();
+      }
     });
   }
 
@@ -86,7 +94,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
           ? _QuoteSentState(
               onMarketplace: () => context.go(AppRouter.providerMarketplace),
             )
-          : auth.status == AuthStatus.unauthenticated
+          : auth.status == AuthStatus.unauthenticated &&
+                !AppFeatureFlags.devBypassLoginGatesForUxExploration
           ? _QuoteAuthRequired(onLogin: () => context.go(AppRouter.login))
           : Form(
               key: _formKey,
@@ -267,6 +276,14 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+      context,
+      message: AuthActionGuard.quoteSubmitMessage,
+    )) {
+      return;
+    }
+    if (!mounted) return;
+
     final guestCount = int.tryParse(_guestCountController.text.trim());
     final success = await context
         .read<ProviderMarketplaceProvider>()

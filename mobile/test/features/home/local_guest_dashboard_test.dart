@@ -5,6 +5,7 @@ import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,7 +41,7 @@ void main() {
   });
 
   testWidgets(
-    'dashboard opens local guest plan in Royal Home and gates sync on tap',
+    'dashboard opens local guest plan and shows lightweight protected sync message',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
@@ -56,6 +57,7 @@ void main() {
 
       expect(find.text('خطة زفاف صنعاء'), findsOneWidget);
       expect(find.text('الأهم اليوم'), findsOneWidget);
+      expect(find.text('وضع تجربة التصميم'), findsNothing);
 
       await tester.scrollUntilVisible(
         find.text('الخطوة التالية المقترحة'),
@@ -89,11 +91,112 @@ void main() {
         await tester.pump(const Duration(milliseconds: 80));
       }
 
-      expect(find.text('هذه الخطوة تحتاج حساباً'), findsOneWidget);
-      expect(find.text('تسجيل الدخول'), findsOneWidget);
-      expect(find.text('إنشاء حساب'), findsOneWidget);
+      expect(
+        find.text('هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.'),
+        findsOneWidget,
+      );
+      expect(find.text('تسجيل الدخول'), findsNothing);
     },
   );
+
+  testWidgets('guest opens money and tasks without a login gate', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              LocalGuestDashboardScreen(summary: summary),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/finance',
+          builder: (context, state) =>
+              const Scaffold(body: Text('money-opened')),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/tasks',
+          builder: (context, state) =>
+              const Scaffold(body: Text('tasks-opened')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.tap(find.text('المال').last);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    expect(find.text('money-opened'), findsOneWidget);
+    expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+    expect(find.text('تسجيل الدخول مطلوب'), findsNothing);
+
+    router.go('/');
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    await tester.tap(find.text('المهام').last);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    expect(find.text('tasks-opened'), findsOneWidget);
+    expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+    expect(find.text('تسجيل الدخول مطلوب'), findsNothing);
+  });
+
+  testWidgets('guest action sheet opens guests without a login blocker', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              LocalGuestDashboardScreen(summary: summary),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/guests',
+          builder: (context, state) =>
+              const Scaffold(body: Text('guests-opened')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.tap(find.text('إجراء جديد'));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    await tester.tap(find.text('إضافة ضيف'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('guests-opened'), findsOneWidget);
+    expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+    expect(find.text('تسجيل الدخول مطلوب'), findsNothing);
+  });
 }
 
 GuestOnboardingDraft _guestPlan() {

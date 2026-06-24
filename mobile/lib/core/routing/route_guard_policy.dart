@@ -24,7 +24,8 @@ class RouteGuardPolicy {
     return switch (rule.type) {
       RouteGuardType.guestAllowed => const RouteGuardResult.allow(),
       RouteGuardType.authRequired =>
-        context.isAuthenticated
+        context.isAuthenticated ||
+                context.isFeatureEnabled('devBypassLoginGatesForUxExploration')
             ? const RouteGuardResult.allow()
             : const RouteGuardResult.redirect(
                 targetLocation: '/login',

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../tasks/models/wedding_task.dart';
@@ -28,11 +29,15 @@ class PlanCenterScreen extends StatefulWidget {
 }
 
 class _PlanCenterScreenState extends State<PlanCenterScreen> {
+  bool get _isLocalGuestPlan =>
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_isLocalGuestPlan) return;
       context.read<DashboardSummaryProvider>().loadDashboard(
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
@@ -47,6 +52,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         oldWidget.sharedMember != widget.sharedMember) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        if (_isLocalGuestPlan) return;
         context.read<DashboardSummaryProvider>().loadDashboard(
           widget.weddingPlanId,
           sharedMember: widget.sharedMember,
@@ -71,10 +77,12 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           bottom: false,
           child: RefreshIndicator(
             color: _pcInk,
-            onRefresh: () => provider.loadDashboard(
-              widget.weddingPlanId,
-              sharedMember: widget.sharedMember,
-            ),
+            onRefresh: _isLocalGuestPlan
+                ? () async {}
+                : () => provider.loadDashboard(
+                    widget.weddingPlanId,
+                    sharedMember: widget.sharedMember,
+                  ),
             child: _buildBody(provider, auth, hasCurrentPlan),
           ),
         ),
@@ -88,6 +96,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     bool hasCurrentPlan,
   ) {
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 118;
+
+    if (_isLocalGuestPlan) {
+      return _buildLocalPlanBody(bottomPadding);
+    }
 
     if (provider.isLoading && !hasCurrentPlan) {
       return ListView(
@@ -262,6 +274,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
   }
 
   void _showQuickAdd(DashboardSummaryProvider provider) {
+    if (_isLocalGuestPlan) {
+      _showLocalQuickAdd(widget.weddingPlanId);
+      return;
+    }
     final plan = provider.plan;
     if (plan == null || plan.id != widget.weddingPlanId) return;
     final canManageFinancialRecords =
@@ -379,6 +395,126 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showLocalQuickAdd(String planId) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        Widget tile(IconData icon, String label, String route) {
+          return ListTile(
+            onTap: () {
+              Navigator.of(sheetContext).pop();
+              if (!mounted) return;
+              context.push(route);
+            },
+            leading: _PcIconBox(icon: icon, compact: true),
+            title: Text(
+              label,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                color: _pcInk,
+              ),
+            ),
+          );
+        }
+
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _pcLine,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 6, 20, 6),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'إضافة سريعة',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: _pcInk,
+                        ),
+                      ),
+                    ),
+                  ),
+                  tile(
+                    Icons.account_balance_wallet_outlined,
+                    'إضافة مصروف',
+                    AppRouter.createExpense(planId),
+                  ),
+                  tile(
+                    Icons.credit_card_rounded,
+                    'إضافة دين',
+                    AppRouter.createDebt(planId),
+                  ),
+                  tile(
+                    Icons.check_circle_outline_rounded,
+                    'إضافة مهمة',
+                    AppRouter.createTask(planId),
+                  ),
+                  tile(
+                    Icons.person_add_alt_1_outlined,
+                    'إضافة ضيف',
+                    AppRouter.guestList(planId),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLocalPlanBody(double bottomPadding) {
+    final planId = widget.weddingPlanId;
+    return ListView(
+      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
+      children: [
+        const _PlanCenterHeader(),
+        const SizedBox(height: 10),
+        const _PcCard(
+          padding: EdgeInsets.all(18),
+          child: _PcEmptyState(
+            icon: Icons.event_note_outlined,
+            title: 'لا توجد بيانات بعد',
+            message: 'ابدأ بإضافة بياناتك لاحقًا.',
+          ),
+        ),
+        const SizedBox(height: 10),
+        _PlanSectionsCard(
+          onTasks: () => context.push(AppRouter.tasks(planId)),
+          onBudget: () => context.push(AppRouter.finance(planId)),
+          onDebts: () => context.push(AppRouter.debts(planId)),
+          onGuests: () => context.push(AppRouter.guestList(planId)),
+          onProviders: () => context.push(AppRouter.providerMarketplace),
+          onSharing: () => _showUnavailable(
+            'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
+          ),
+          sharingEnabled: false,
+          budgetEnabled: true,
+          debtsEnabled: true,
+        ),
+      ],
     );
   }
 

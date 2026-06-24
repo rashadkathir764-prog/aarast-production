@@ -60,6 +60,19 @@ void main() {
       expect(result.reason, RouteGuardReason.authRequired);
     });
 
+    test('authRequired allows guest navigation in temporary dev bypass', () {
+      const policy = RouteGuardPolicy([RouteGuardRule.authRequired()]);
+
+      final result = policy.evaluate(
+        const RouteGuardContext(
+          isAuthenticated: false,
+          featureFlags: {'devBypassLoginGatesForUxExploration': true},
+        ),
+      );
+
+      expect(result.outcome, RouteGuardOutcome.allow);
+    });
+
     test('allows when every required guard is satisfied', () {
       const policy = RouteGuardPolicy([
         RouteGuardRule.authRequired(),

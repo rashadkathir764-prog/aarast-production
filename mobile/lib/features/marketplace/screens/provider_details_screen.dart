@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -114,7 +115,14 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                     onBack: () {
                       if (context.canPop()) context.pop();
                     },
-                    onFavorite: () => state.toggleFavorite(provider.id),
+                    onFavorite: () async {
+                      if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+                        context,
+                      )) {
+                        return;
+                      }
+                      await state.toggleFavorite(provider.id);
+                    },
                   ),
                   const SizedBox(height: 12),
                   _ProviderHero(provider: provider),

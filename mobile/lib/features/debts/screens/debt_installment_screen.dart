@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
@@ -29,12 +30,16 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
   final _searchController = TextEditingController();
   _DebtListFilter _selectedFilter = _DebtListFilter.all;
 
+  bool get _isLocalGuestPlan =>
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_handleSearchChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_isLocalGuestPlan) return;
       _loadDebts();
     });
   }
@@ -45,6 +50,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        if (_isLocalGuestPlan) return;
         _loadDebts();
       });
     }
@@ -93,9 +99,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                                 'الديون والأقساط',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
+                                style: Theme.of(context).textTheme.titleLarge
                                     ?.copyWith(
                                       color: AppTheme.dMaroonDeep,
                                       fontWeight: FontWeight.w900,
@@ -106,9 +110,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                                 'تابع ديون خطتك وأقساطها المستحقة',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: AppTheme.dInkSoft,
                                       fontWeight: FontWeight.w600,
@@ -138,7 +140,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                   Expanded(
                     child: RefreshIndicator(
                       color: AppTheme.dMaroon,
-                      onRefresh: _loadDebts,
+                      onRefresh: _isLocalGuestPlan ? () async {} : _loadDebts,
                       child: _canReadDebts
                           ? _DebtInstallmentContent(
                               provider: provider,
@@ -148,6 +150,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                               sharedMember: widget.sharedMember,
                               searchController: _searchController,
                               selectedFilter: _selectedFilter,
+                              suppressErrors: _isLocalGuestPlan,
                               onFilterChanged: (filter) {
                                 setState(() {
                                   _selectedFilter = filter;
@@ -182,6 +185,9 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
       widget.sharedMember!.canManageFinancialRecords;
 
   Future<void> _loadDebts() {
+    if (_isLocalGuestPlan) {
+      return Future<void>.value();
+    }
     if (!_canReadDebts) {
       return Future<void>.value();
     }
@@ -204,6 +210,7 @@ class _DebtInstallmentContent extends StatelessWidget {
     required this.searchController,
     required this.selectedFilter,
     required this.onFilterChanged,
+    this.suppressErrors = false,
   });
 
   final DebtInstallmentProvider provider;
@@ -213,14 +220,21 @@ class _DebtInstallmentContent extends StatelessWidget {
   final TextEditingController searchController;
   final _DebtListFilter selectedFilter;
   final ValueChanged<_DebtListFilter> onFilterChanged;
+  final bool suppressErrors;
 
   @override
   Widget build(BuildContext context) {
-    if (provider.isLoading && provider.debts.isEmpty) {
+    final debts = suppressErrors ? const <Debt>[] : provider.debts;
+    final dueInstallments = suppressErrors
+        ? const <Installment>[]
+        : provider.dueInstallments;
+    final summary = suppressErrors ? DebtSummary.empty() : provider.summary;
+
+    if (!suppressErrors && provider.isLoading && debts.isEmpty) {
       return const _DebtLoadingState();
     }
 
-    if (provider.errorMessage != null && provider.debts.isEmpty) {
+    if (!suppressErrors && provider.errorMessage != null && debts.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
@@ -240,32 +254,29 @@ class _DebtInstallmentContent extends StatelessWidget {
     }
 
     final query = searchController.text.trim();
-    final visibleDebts = provider.debts.where((debt) {
-      return _matchesSearch(debt, query, provider.dueInstallments) &&
-          _matchesFilter(debt, selectedFilter, provider.dueInstallments);
+    final visibleDebts = debts.where((debt) {
+      return _matchesSearch(debt, query, dueInstallments) &&
+          _matchesFilter(debt, selectedFilter, dueInstallments);
     }).toList();
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 124),
       children: [
-        if (provider.errorMessage != null) ...[
+        if (!suppressErrors && provider.errorMessage != null) ...[
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
         _DebtSearchRow(controller: searchController),
         const SizedBox(height: 12),
-        _DebtSummaryGrid(
-          summary: provider.summary,
-          dueInstallments: provider.dueInstallments,
-        ),
+        _DebtSummaryGrid(summary: summary, dueInstallments: dueInstallments),
         const SizedBox(height: 12),
         _DebtFilterChips(
           selectedFilter: selectedFilter,
           onFilterChanged: onFilterChanged,
         ),
         const SizedBox(height: 12),
-        if (provider.debts.isEmpty)
+        if (debts.isEmpty)
           AarastEmptyState(
             title: 'لا توجد ديون بعد',
             message: 'أضف أول دين لتتبع الأقساط',
@@ -291,7 +302,7 @@ class _DebtInstallmentContent extends StatelessWidget {
           for (final debt in visibleDebts) ...[
             _DebtCard(
               debt: debt,
-              dueInstallments: provider.dueInstallments,
+              dueInstallments: dueInstallments,
               onTap: () {
                 provider.selectDebt(debt);
                 context.push(AppRouter.debtDetails(debt.id));
@@ -299,7 +310,7 @@ class _DebtInstallmentContent extends StatelessWidget {
             ),
             const SizedBox(height: 10),
           ],
-        if (canManageFinancialRecords && provider.debts.isNotEmpty) ...[
+        if (canManageFinancialRecords && debts.isNotEmpty) ...[
           const SizedBox(height: 4),
           SizedBox(
             height: 52,

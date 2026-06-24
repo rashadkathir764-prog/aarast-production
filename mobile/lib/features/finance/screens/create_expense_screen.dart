@@ -6,6 +6,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../providers/finance_provider.dart';
@@ -50,6 +51,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId)) return;
       final provider = context.read<FinanceProvider>();
       _loadFinanceForForm(provider);
     });
@@ -455,6 +457,10 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+      return;
+    }
+    if (!mounted) return;
 
     final provider = context.read<FinanceProvider>();
     final note = _noteController.text.trim();

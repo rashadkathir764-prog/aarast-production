@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../../notifications/providers/notifications_provider.dart';
 
@@ -21,7 +23,12 @@ class _MoreScreenState extends State<MoreScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      if (AppFeatureFlags.devBypassLoginGatesForUxExploration &&
+          !await AuthActionGuard.hasAccount(context)) {
+        return;
+      }
       if (!mounted) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
       _maybeReadNotifications(context)?.loadUnreadCount();
@@ -37,6 +44,9 @@ class _MoreScreenState extends State<MoreScreen> {
     final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
     final hasProviderProfile = providerDashboard.hasProviderProfile;
+    final isGuestExploration =
+        AppFeatureFlags.devBypassLoginGatesForUxExploration &&
+        auth.status != AuthStatus.authenticated;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -136,7 +146,12 @@ class _MoreScreenState extends State<MoreScreen> {
                   const SizedBox(height: 16),
                   const _MenuGroup(children: [OfflineSyncNowTile()]),
                   const SizedBox(height: 16),
-                  _LogoutTile(onTap: () => _logout(context)),
+                  if (isGuestExploration)
+                    _OptionalLoginTile(
+                      onTap: () => context.push(AppRouter.login),
+                    )
+                  else
+                    _LogoutTile(onTap: () => _logout(context)),
                   const SizedBox(height: 22),
                   const _VersionFooter(),
                 ],
@@ -684,6 +699,40 @@ class _LogoutTile extends StatelessWidget {
               color: AppTheme.danger,
               size: 24,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OptionalLoginTile extends StatelessWidget {
+  const _OptionalLoginTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: EdgeInsets.zero,
+      color: AppTheme.dCreamBg,
+      onTap: onTap,
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Icon(Icons.login_rounded, color: AppTheme.dGoldDeep),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'تسجيل الدخول لاحقًا (اختياري)',
+                style: TextStyle(
+                  color: AppTheme.dInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_left_rounded, color: AppTheme.dGoldDeep),
           ],
         ),
       ),

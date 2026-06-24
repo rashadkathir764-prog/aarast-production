@@ -167,12 +167,9 @@ class _MainShellState extends State<MainShell> {
                     : _buildNoPlanFallback('Ø§Ù„Ù…Ù‡Ø§Ù…'),
               ),
 
-              // Index 3: Vendors marketplace — public browsing for guests,
-              // the in-marketplace quote CTA is the only login gate.
-              _buildLazyTab(
-                3,
-                const ProviderMarketplaceScreen(embedded: true),
-              ),
+              // Index 3: Vendors marketplace — public browsing for guests.
+              // Quote submit remains backend-protected without an account.
+              _buildLazyTab(3, const ProviderMarketplaceScreen(embedded: true)),
 
               // Index 4: More/settings/secondary surfaces
               _buildLazyTab(4, const MoreScreen()),

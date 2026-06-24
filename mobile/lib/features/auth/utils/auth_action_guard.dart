@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
@@ -9,12 +10,30 @@ import '../../../core/theme/app_theme.dart';
 class AuthActionGuard {
   const AuthActionGuard._();
 
+  static const protectedActionMessage =
+      'هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.';
+  static const quoteSubmitMessage = protectedActionMessage;
+
+  static bool isLocalGuestPlanId(String? planId) {
+    if (!AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
+    final value = planId?.trim() ?? '';
+    return value.isEmpty ||
+        value == 'local-guest-plan' ||
+        value.startsWith('guest-plan-') ||
+        value.startsWith('local-guest-');
+  }
+
+  static Future<bool> hasAccount(BuildContext context) async {
+    final token = await context.read<AuthStorage>().readAccessToken();
+    return token != null && token.trim().isNotEmpty;
+  }
+
   static Future<bool> requireAccount(
     BuildContext context, {
     required String reason,
   }) async {
-    final token = await context.read<AuthStorage>().readAccessToken();
-    if (token != null && token.trim().isNotEmpty) return true;
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) return true;
+    if (await hasAccount(context)) return true;
     if (!context.mounted) return false;
 
     await showModalBottomSheet<void>(
@@ -84,5 +103,19 @@ class AuthActionGuard {
       },
     );
     return false;
+  }
+
+  static Future<bool> blockProtectedSubmitWithoutAccount(
+    BuildContext context, {
+    String message = protectedActionMessage,
+  }) async {
+    if (!AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
+    if (await hasAccount(context)) return false;
+    if (!context.mounted) return true;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+    return true;
   }
 }

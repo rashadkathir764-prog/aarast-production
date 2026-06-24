@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -25,6 +26,10 @@ class ProviderAuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
+      return child;
+    }
+
     final auth = context.watch<AuthController>();
     if (auth.status == AuthStatus.checking) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));

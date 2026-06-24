@@ -6,6 +6,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 
@@ -406,6 +407,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+      return;
+    }
+    if (!mounted) return;
 
     final provider = context.read<TaskTimelineProvider>();
     final description = _descriptionController.text.trim();

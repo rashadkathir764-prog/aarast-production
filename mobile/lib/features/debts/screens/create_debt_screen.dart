@@ -8,6 +8,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../providers/debt_installment_provider.dart';
 
 class CreateDebtScreen extends StatefulWidget {
@@ -345,6 +346,10 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+      return;
+    }
+    if (!mounted) return;
 
     final provider = context.read<DebtInstallmentProvider>();
     final paid = _paidAmountController.text.trim();

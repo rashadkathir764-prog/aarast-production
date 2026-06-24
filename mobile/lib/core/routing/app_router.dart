@@ -214,8 +214,8 @@ class AppRouter {
           builder: (context, state) => const DashboardEntryScreen(),
         ),
         // Public provider browsing: guests may open the marketplace and
-        // any provider detail without an account. The quote-request route
-        // below is the single login gate for the providers area.
+        // any provider detail without an account. ProviderAuthGate remains
+        // in place, but the temporary UX exploration flag bypasses it.
         GoRoute(
           path: providerMarketplace,
           builder: (context, state) => const ProviderMarketplaceScreen(),

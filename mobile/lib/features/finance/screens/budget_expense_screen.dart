@@ -8,6 +8,7 @@ import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
@@ -30,6 +31,9 @@ class BudgetExpenseScreen extends StatefulWidget {
 
 class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   bool _hasExpenseChanges = false;
+
+  bool get _isLocalGuestPlan =>
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
 
   @override
   void initState() {
@@ -135,7 +139,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                   Expanded(
                     child: RefreshIndicator(
                       color: AppTheme.dMaroon,
-                      onRefresh: _loadFinance,
+                      onRefresh: _isLocalGuestPlan ? () async {} : _loadFinance,
                       child: _hasAnyFinanceAccess
                           ? _FinanceContent(
                               provider: provider,
@@ -144,6 +148,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                                   canManageFinancialRecords,
                               sharedMember: widget.sharedMember,
                               onChanged: _markExpenseChanged,
+                              suppressErrors: _isLocalGuestPlan,
                             )
                           : const _FinancialAccessDeniedState(),
                     ),
@@ -191,6 +196,9 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
       widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
 
   Future<void> _loadFinance() {
+    if (_isLocalGuestPlan) {
+      return Future<void>.value();
+    }
     if (!_hasAnyFinanceAccess) {
       return Future<void>.value();
     }
@@ -210,6 +218,7 @@ class _FinanceContent extends StatelessWidget {
     required this.canManageFinancialRecords,
     required this.sharedMember,
     required this.onChanged,
+    this.suppressErrors = false,
   });
 
   final FinanceProvider provider;
@@ -217,18 +226,27 @@ class _FinanceContent extends StatelessWidget {
   final bool canManageFinancialRecords;
   final SharedMember? sharedMember;
   final VoidCallback onChanged;
+  final bool suppressErrors;
 
   @override
   Widget build(BuildContext context) {
-    if (provider.isLoading &&
-        provider.budgetCategories.isEmpty &&
-        provider.expenses.isEmpty) {
+    final budgetCategories = suppressErrors
+        ? const <BudgetCategory>[]
+        : provider.budgetCategories;
+    final expenses = suppressErrors ? const <Expense>[] : provider.expenses;
+    final summary = suppressErrors ? ExpenseSummary.empty() : provider.summary;
+
+    if (!suppressErrors &&
+        provider.isLoading &&
+        budgetCategories.isEmpty &&
+        expenses.isEmpty) {
       return const _FinanceLoadingState();
     }
 
-    if (provider.errorMessage != null &&
-        provider.budgetCategories.isEmpty &&
-        provider.expenses.isEmpty) {
+    if (!suppressErrors &&
+        provider.errorMessage != null &&
+        budgetCategories.isEmpty &&
+        expenses.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
@@ -247,20 +265,17 @@ class _FinanceContent extends StatelessWidget {
       );
     }
 
-    final categoryRows = _buildCategoryRows(
-      provider.budgetCategories,
-      provider.expenses,
-    );
+    final categoryRows = _buildCategoryRows(budgetCategories, expenses);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(20, 2, 20, 124),
       children: [
-        if (provider.errorMessage != null) ...[
+        if (!suppressErrors && provider.errorMessage != null) ...[
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _BudgetHero(summary: provider.summary),
+        _BudgetHero(summary: summary),
         const SizedBox(height: 14),
         Row(
           children: [
@@ -343,7 +358,7 @@ class _FinanceContent extends StatelessWidget {
               : null,
         ),
         const SizedBox(height: 12),
-        if (provider.expenses.isEmpty)
+        if (expenses.isEmpty)
           AarastEmptyState(
             title: 'لا توجد مصاريف بعد',
             message: 'سجلي أول مصروف لتبدأ لوحة الميزانية في قراءة الواقع.',
@@ -357,11 +372,11 @@ class _FinanceContent extends StatelessWidget {
             ),
           )
         else
-          for (final expense in provider.expenses.take(8)) ...[
+          for (final expense in expenses.take(8)) ...[
             _ExpenseRow(
               expense: expense,
               categoryName: _categoryName(
-                provider.budgetCategories,
+                budgetCategories,
                 expense.budgetCategoryId,
               ),
               isBusy: provider.isSubmitting,

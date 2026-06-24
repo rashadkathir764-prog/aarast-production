@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -25,11 +27,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
       _searchController.text = provider.search;
-      provider.loadMarketplace();
+      final includeAccountData =
+          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          await AuthActionGuard.hasAccount(context);
+      if (!mounted) return;
+      provider.loadMarketplace(includeAccountData: includeAccountData);
     });
   }
 
@@ -115,8 +121,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                               isFavorite: provider.favoriteProviderIds.contains(
                                 item.id,
                               ),
-                              onFavorite: () =>
-                                  provider.toggleFavorite(item.id),
+                              onFavorite: () async {
+                                if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+                                  context,
+                                )) {
+                                  return;
+                                }
+                                await provider.toggleFavorite(item.id);
+                              },
                               onTap: () => context.push(
                                 AppRouter.providerDetails(item.id),
                               ),

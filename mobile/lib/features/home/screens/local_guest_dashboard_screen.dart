@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
@@ -26,8 +27,8 @@ class LocalGuestDashboardScreen extends StatelessWidget {
         bottomNavigationBar: RoyalDashboardBottomNav(
           activeIndex: 0,
           onHome: () {},
-          onMoney: () => _openLocalBrowse(context, planId),
-          onTasks: () => _openLocalBrowse(context, planId),
+          onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
+          onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onMore: () => context.push(AppRouter.more),
           onAdd: () => showRoyalHomeActionSheet(
@@ -48,8 +49,8 @@ class LocalGuestDashboardScreen extends StatelessWidget {
                   needsSync: summary.plan.needsSync,
                   onSync: () => _requireAccountForSync(context),
                 ),
-                onNotifications: () => _requireAccountForNotifications(context),
-                onProfile: () => _requireAccountForSync(context),
+                onNotifications: () => _openLocalNotifications(context, planId),
+                onProfile: () => context.push(AppRouter.more),
                 onOpenPlan: () =>
                     _openLocalBrowse(context, planId, area: 'الخطة'),
                 onOpenMoney: () =>
@@ -61,7 +62,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
                 onOpenGuests: () =>
                     _openLocalBrowse(context, planId, area: 'الضيوف'),
                 onOpenNotifications: () =>
-                    _requireAccountForNotifications(context),
+                    _openLocalNotifications(context, planId),
                 onOpenImportantItem: (item) =>
                     _openLocalDashboardItem(context, planId, item),
                 onOpenNextStep: () =>
@@ -76,70 +77,66 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     );
   }
 
-  List<RoyalHomeAction> _quickActions(
-    BuildContext context,
-    String planId,
-  ) {
+  List<RoyalHomeAction> _quickActions(BuildContext context, String planId) {
     void closeSheet() {
       Navigator.of(context, rootNavigator: true).pop();
     }
 
-    void requireAccountForCreate(String what) {
+    void open(String route) {
       closeSheet();
-      AuthActionGuard.requireAccount(
-        context,
-        reason:
-            'لإضافة $what تحتاج ربط خطتك بحساب حتى نحفظ بياناتك بأمان.',
-      );
+      context.push(route);
     }
 
     return [
       RoyalHomeAction(
         icon: Icons.account_balance_wallet_outlined,
         label: 'إضافة مصروف',
-        onTap: () => requireAccountForCreate('مصروف'),
+        onTap: () => open(AppRouter.createExpense(planId)),
       ),
       RoyalHomeAction(
         icon: Icons.check_circle_outline_rounded,
         label: 'إضافة مهمة',
-        onTap: () => requireAccountForCreate('مهمة'),
+        onTap: () => open(AppRouter.createTask(planId)),
       ),
       RoyalHomeAction(
         icon: Icons.group_add_outlined,
         label: 'إضافة ضيف',
-        onTap: () => requireAccountForCreate('ضيف'),
+        onTap: () => open(AppRouter.guestList(planId)),
       ),
       RoyalHomeAction(
         icon: Icons.attach_money_rounded,
         label: 'إضافة دين',
-        onTap: () => requireAccountForCreate('دين'),
+        onTap: () => open(AppRouter.createDebt(planId)),
       ),
       RoyalHomeAction(
         icon: Icons.request_quote_outlined,
         label: 'طلب عرض سعر',
         onTap: () {
           closeSheet();
-          _requireAccountForQuote(context);
+          context.push(AppRouter.providerMarketplace);
         },
       ),
     ];
   }
 
-  // For a local-only guest plan (no server planId) we cannot open the
-  // plan-scoped Tasks / Budget / Guests screens — those routes need a real
-  // backend plan ID. Instead of showing fake "محفوظة محلياً" copy we surface
-  // an honest premium gate that explains the situation and invites the
-  // user to create an account to unlock their plan.
+  // For TEMP mobile UX exploration, local guest plans should open the real
+  // plan-scoped screens. Those screens handle local/read-only empty states
+  // internally and still block protected API submit actions without a token.
   void _openLocalBrowse(
     BuildContext context,
     String planId, {
     String area = 'الخطة',
   }) {
-    final hasBackendPlan = !planId.startsWith('guest-plan-') &&
+    final hasBackendPlan =
+        !planId.startsWith('guest-plan-') &&
         !planId.startsWith('local-guest-') &&
         planId.isNotEmpty &&
         planId != 'local-guest-plan';
     if (hasBackendPlan) {
+      _routeByArea(context, planId, area);
+      return;
+    }
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
       _routeByArea(context, planId, area);
       return;
     }
@@ -148,6 +145,14 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       reason:
           'خطتك محفوظة على جهازك. أكمل إنشاء حساب لتفتح $area على خوادمنا ونحفظ بياناتك بأمان.',
     );
+  }
+
+  void _openLocalNotifications(BuildContext context, String planId) {
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
+      context.push(AppRouter.planNotifications(planId));
+      return;
+    }
+    _requireAccountForNotifications(context);
   }
 
   void _routeByArea(BuildContext context, String planId, String area) {
@@ -215,6 +220,9 @@ class LocalGuestDashboardScreen extends StatelessWidget {
   }
 
   Future<bool> _requireAccountForSync(BuildContext context) {
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
+      return AuthActionGuard.blockProtectedSubmitWithoutAccount(context);
+    }
     return AuthActionGuard.requireAccount(
       context,
       reason:
@@ -227,14 +235,6 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       context,
       reason:
           'الإشعارات الحسابية تحتاج حساباً حتى نربط التنبيهات بخطتك ونحفظها بأمان.',
-    );
-  }
-
-  Future<bool> _requireAccountForQuote(BuildContext context) {
-    return AuthActionGuard.requireAccount(
-      context,
-      reason:
-          'طلب عرض سعر يرسل بيانات لمزوّد خدمة، لذلك نحتاج حساباً قبل المتابعة.',
     );
   }
 }

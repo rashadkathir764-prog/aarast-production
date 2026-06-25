@@ -9,20 +9,24 @@ import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../tasks/models/wedding_task.dart';
+import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
 import '../widgets/aarast_dashboard_widgets.dart';
+import '../widgets/royal_home_chrome.dart';
 
 class PlanCenterScreen extends StatefulWidget {
   const PlanCenterScreen({
     required this.weddingPlanId,
     this.sharedMember,
+    this.initialSummary,
     super.key,
   });
 
   final String weddingPlanId;
   final SharedMember? sharedMember;
+  final DashboardSummary? initialSummary;
 
   @override
   State<PlanCenterScreen> createState() => _PlanCenterScreenState();
@@ -140,8 +144,18 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       );
     }
 
-    final plan = provider.plan;
-    if (plan == null || !hasCurrentPlan) {
+    var plan = provider.plan;
+    var tasksAvailable = provider.tasks != null;
+    var tasks = provider.tasks ?? const <WeddingTask>[];
+    var sharedMembersCount = provider.sharedMembers?.length;
+    
+    if (_isLocalGuestPlan && widget.initialSummary != null) {
+      plan = widget.initialSummary!.toWeddingPlan();
+      tasksAvailable = false;
+      sharedMembersCount = 1;
+    }
+
+    if (plan == null || (!hasCurrentPlan && !_isLocalGuestPlan)) {
       return ListView(
         padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
         children: const [
@@ -158,9 +172,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ],
       );
     }
+    
+    final nonNullPlan = plan;
 
-    final tasksAvailable = provider.tasks != null;
-    final tasks = provider.tasks ?? const <WeddingTask>[];
     final completedTasks = tasks.where((task) => task.isDone).length;
     final remainingTasks = math.max(0, tasks.length - completedTasks);
     final progressPercent = tasksAvailable && tasks.isNotEmpty
@@ -169,7 +183,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ? 0
         : null;
     final isOwner =
-        auth.user?.id == plan.ownerUserId || widget.sharedMember == null;
+        auth.user?.id == nonNullPlan.ownerUserId || widget.sharedMember == null;
     final canManagePlan = isOwner || widget.sharedMember?.role == 'MANAGER';
     final canOpenFinance =
         widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
@@ -183,38 +197,38 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         const _PlanCenterHeader(),
         const SizedBox(height: 10),
         _MainPlanSummaryCard(
-          plan: plan,
+          plan: nonNullPlan,
           progressPercent: progressPercent,
           completedTasks: completedTasks,
           totalTasks: tasksAvailable ? tasks.length : null,
           canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, plan),
+          onEdit: () => _showEditPlanSheet(provider, nonNullPlan),
         ),
         const SizedBox(height: 10),
         _ProgressSummaryCard(
           progressPercent: progressPercent,
           completedTasks: tasksAvailable ? completedTasks : null,
           remainingTasks: tasksAvailable ? remainingTasks : null,
-          lastUpdate: plan.updatedAt,
+          lastUpdate: nonNullPlan.updatedAt,
         ),
         const SizedBox(height: 10),
         const _PlanTimelineCard(),
         const SizedBox(height: 10),
         _PlanSectionsCard(
-          onTasks: () => context.push(AppRouter.tasks(plan.id)),
+          onTasks: () => context.push(AppRouter.tasks(nonNullPlan.id)),
           onBudget: canOpenFinance
-              ? () => _openFinanceOverview(provider, plan.id)
+              ? () => _openFinanceOverview(provider, nonNullPlan.id)
               : _showFinancialAccessDenied,
           onDebts: canOpenDebts
               ? () => context.push(
-                  AppRouter.debts(plan.id),
+                  AppRouter.debts(nonNullPlan.id),
                   extra: widget.sharedMember,
                 )
               : _showFinancialAccessDenied,
-          onGuests: () => context.push(AppRouter.guestList(plan.id)),
+          onGuests: () => context.push(AppRouter.guestList(nonNullPlan.id)),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onSharing: canOpenSharing
-              ? () => context.push(AppRouter.sharing(plan.id))
+              ? () => context.push(AppRouter.sharing(nonNullPlan.id))
               : () => _showUnavailable('إدارة المشاركة متاحة لصاحب الخطة فقط.'),
           sharingEnabled: canOpenSharing,
           budgetEnabled: canOpenFinance,
@@ -223,17 +237,17 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         const SizedBox(height: 10),
         _ParticipantsCard(
           roleLabel: _roleLabel(isOwner, widget.sharedMember),
-          participantsCount: provider.sharedMembers?.length,
+          participantsCount: sharedMembersCount,
           permissionsLabel: _permissionsLabel(isOwner, widget.sharedMember),
           canManageSharing: canOpenSharing,
-          onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
+          onManageSharing: () => context.push(AppRouter.sharing(nonNullPlan.id)),
         ),
         const SizedBox(height: 10),
         _PlanSettingsCard(
-          plan: plan,
+          plan: nonNullPlan,
           canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, plan),
-          onArchive: () => _showArchivePlanSheet(provider, plan),
+          onEdit: () => _showEditPlanSheet(provider, nonNullPlan),
+          onArchive: () => _showArchivePlanSheet(provider, nonNullPlan),
         ),
       ],
     );
@@ -243,14 +257,13 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final planId = provider.plan?.id == widget.weddingPlanId
         ? provider.plan!.id
         : widget.weddingPlanId;
-    return DashboardBottomNav(
+    return RoyalDashboardBottomNav(
       activeIndex: 0,
       onHome: () => context.go(AppRouter.home),
       onMoney: () => context.push(AppRouter.finance(planId)),
-      onTasks: () => context.push(AppRouter.tasks(planId)),
-      onAdd: () => _showQuickAdd(provider),
       onProviders: () => context.push(AppRouter.providerMarketplace),
       onMore: () => context.push(AppRouter.more),
+      onAdd: () => _showQuickAdd(provider),
     );
   }
 

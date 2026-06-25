@@ -28,8 +28,6 @@ class LocalGuestDashboardScreen extends StatelessWidget {
           activeIndex: 0,
           onHome: () {},
           onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
-          onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
-          onGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onMore: () => context.push(AppRouter.more),
           onAdd: () => showRoyalHomeActionSheet(
@@ -62,6 +60,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
                     context.push(AppRouter.providerMarketplace),
                 onOpenGuests: () =>
                     _openLocalBrowse(context, planId, area: 'الضيوف'),
+                onOpenParticipants: () => _requireAccountForSync(context),
                 onOpenNotifications: () =>
                     _openLocalNotifications(context, planId),
                 onOpenImportantItem: (item) =>
@@ -137,6 +136,11 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       _routeByArea(context, planId, area);
       return;
     }
+    if (area == 'الخطة') {
+      _routeByArea(context, planId, area);
+      return;
+    }
+    
     if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
       _routeByArea(context, planId, area);
       return;
@@ -169,7 +173,10 @@ class LocalGuestDashboardScreen extends StatelessWidget {
         return;
       case 'الخطة':
       default:
-        context.push(AppRouter.planCenter(planId));
+        context.push(
+          AppRouter.planCenter(planId),
+          extra: {'summary': summary.toDashboardSummary()},
+        );
         return;
     }
   }
@@ -248,66 +255,57 @@ class _LocalSyncNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.88),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFF0E6DE)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF800020).withValues(alpha: 0.035),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+    return Center(
+      child: GestureDetector(
+        key: const Key('royal-local-sync-action'),
+        onTap: onSync,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF800020).withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF800020).withValues(alpha: 0.1)),
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFD4AF37).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.phone_android_rounded,
-              color: Color(0xFFD4AF37),
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Text(
-              needsSync
-                  ? 'الخطة محفوظة محلياً على جهازك'
-                  : 'الخطة جاهزة على هذا الجهاز',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF2D1A1E),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-                height: 1.35,
-                letterSpacing: 0,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                color: Color(0xFF800020),
+                size: 16,
               ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            key: const Key('royal-local-sync-action'),
-            onPressed: onSync,
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF800020),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
+              const SizedBox(width: 8),
+              Text(
+                needsSync ? 'الخطة محفوظة محلياً' : 'الخطة جاهزة',
+                style: const TextStyle(
+                  color: Color(0xFF800020),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0,
+                ),
               ),
-            ),
-            child: const Text('زامن خطتك أو شاركها'),
+              const SizedBox(width: 8),
+              Container(
+                width: 4,
+                height: 4,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF800020),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'زامن',
+                style: TextStyle(
+                  color: Color(0xFF800020),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

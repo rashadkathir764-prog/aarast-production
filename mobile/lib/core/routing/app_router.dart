@@ -339,10 +339,16 @@ class AppRouter {
             final id = state.pathParameters['id'] ?? '';
             final sharedMember = state.extra is SharedMember
                 ? state.extra! as SharedMember
+                : (state.extra is Map && (state.extra as Map)['sharedMember'] != null)
+                    ? (state.extra as Map)['sharedMember'] as SharedMember
+                    : null;
+            final initialSummary = (state.extra is Map && (state.extra as Map)['summary'] != null)
+                ? (state.extra as Map)['summary']
                 : null;
             return PlanCenterScreen(
               weddingPlanId: id,
               sharedMember: sharedMember,
+              initialSummary: initialSummary,
             );
           },
         ),

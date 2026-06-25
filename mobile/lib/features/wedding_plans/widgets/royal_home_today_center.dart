@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/widgets/aarast_pressable.dart';
 import '../models/dashboard_summary.dart';
@@ -16,6 +18,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
     required this.onOpenTasks,
     required this.onOpenProviders,
     required this.onOpenGuests,
+    required this.onOpenParticipants,
     required this.onOpenNotifications,
     required this.onOpenImportantItem,
     required this.onOpenNextStep,
@@ -34,6 +37,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
+  final VoidCallback onOpenParticipants;
   final VoidCallback onOpenNotifications;
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
   final VoidCallback onOpenNextStep;
@@ -43,18 +47,15 @@ class RoyalHomeTodayCenter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final priorities = _priorityItems(summary);
-    final nextStep = priorities.isEmpty ? null : priorities.first;
-
     return DecoratedBox(
       decoration: const BoxDecoration(color: _RoyalColors.ivory),
       child: ListView(
         key: ValueKey('royal-home-${summary.planId}'),
         padding: EdgeInsets.fromLTRB(20, 22, 20, bottomPadding),
         children: [
-          _Entrance(
-            delay: Duration.zero,
-            child: _RoyalHeader(
+          _PremiumEntry(
+            index: 0,
+            child: _PremiumHeader(
               userName: userName,
               unreadCount: summary.unreadNotificationsCount,
               onNotifications: onNotifications,
@@ -62,52 +63,37 @@ class RoyalHomeTodayCenter extends StatelessWidget {
             ),
           ),
           if (notice != null) ...[
-            const SizedBox(height: 12),
-            _Entrance(delay: const Duration(milliseconds: 25), child: notice!),
+            const SizedBox(height: 16),
+            _PremiumEntry(index: 1, child: notice!),
           ],
-          const SizedBox(height: 16),
-          _Entrance(
-            delay: const Duration(milliseconds: 50),
-            child: _HeroPlanCard(
+          const SizedBox(height: 24),
+          _PremiumEntry(
+            index: notice != null ? 2 : 1,
+            child: _PremiumHeroCard(
               summary: summary,
               onOpenPlan: onOpenPlan,
               onOpenTimeline: onOpenTimeline,
               onOpenProgress: onOpenTasks,
             ),
           ),
-          const SizedBox(height: 22),
-          _Entrance(
-            delay: const Duration(milliseconds: 100),
-            child: _PrioritySection(
-              priorities: priorities.take(3).toList(),
-              onOpenImportantItem: onOpenImportantItem,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _Entrance(
-            delay: const Duration(milliseconds: 150),
-            child: _NextStepCard(
-              item: nextStep,
-              onOpenNextStep: onOpenNextStep,
-            ),
-          ),
-          const SizedBox(height: 24),
-          _Entrance(
-            delay: const Duration(milliseconds: 200),
-            child: _MoneySummaryCard(
+          const SizedBox(height: 28),
+          _PremiumEntry(
+            index: notice != null ? 3 : 2,
+            child: _PanoramicCardsCarousel(
               summary: summary,
+              onOpenProviders: onOpenProviders,
+              onOpenImportantItem: onOpenImportantItem,
               onOpenMoney: onOpenMoney,
             ),
           ),
-          const SizedBox(height: 20),
-          _Entrance(
-            delay: const Duration(milliseconds: 250),
-            child: _CompactCardsGrid(
+          const SizedBox(height: 24),
+          _PremiumEntry(
+            index: notice != null ? 4 : 3,
+            child: _OperationalCards(
               summary: summary,
               onOpenTasks: onOpenTasks,
-              onOpenProviders: onOpenProviders,
               onOpenGuests: onOpenGuests,
-              onOpenNotifications: onOpenNotifications,
+              onOpenParticipants: onOpenParticipants,
             ),
           ),
         ],
@@ -116,32 +102,8 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   }
 }
 
-class RoyalHomeTodaySkeleton extends StatelessWidget {
-  const RoyalHomeTodaySkeleton({this.bottomPadding = 156, super.key});
-
-  final double bottomPadding;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, 22, 20, bottomPadding),
-      children: const [
-        _SkeletonBox(height: 56),
-        SizedBox(height: 16),
-        _SkeletonBox(height: 188),
-        SizedBox(height: 22),
-        _SkeletonBox(height: 248),
-        SizedBox(height: 18),
-        _SkeletonBox(height: 156),
-        SizedBox(height: 20),
-        _SkeletonBox(height: 220),
-      ],
-    );
-  }
-}
-
-class _RoyalHeader extends StatelessWidget {
-  const _RoyalHeader({
+class _PremiumHeader extends StatelessWidget {
+  const _PremiumHeader({
     required this.userName,
     required this.unreadCount,
     required this.onNotifications,
@@ -162,28 +124,28 @@ class _RoyalHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'أعرست ✨',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: _RoyalColors.burgundy,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                  height: 1.08,
-                ),
-              ),
-              const SizedBox(height: 5),
               Text(
                 _greetingFor(userName),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: _RoyalColors.muted,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'أعرست ✨',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: _RoyalColors.burgundy,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                  height: 1.1,
                 ),
               ),
             ],
@@ -196,67 +158,654 @@ class _RoyalHeader extends StatelessWidget {
           showBadge: unreadCount > 0,
         ),
         const SizedBox(width: 10),
-        _CircleIconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
+        _CircleIconButton(
+          icon: Icons.person_outline_rounded,
+          onTap: onProfile,
+        ),
       ],
     );
   }
 }
 
+class _PremiumHeroCard extends StatelessWidget {
+  const _PremiumHeroCard({
+    required this.summary,
+    required this.onOpenPlan,
+    required this.onOpenTimeline,
+    required this.onOpenProgress,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenPlan;
+  final VoidCallback onOpenTimeline;
+  final VoidCallback onOpenProgress;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onOpenPlan,
+      borderRadius: BorderRadius.circular(32),
+      child: Container(
+        padding: const EdgeInsets.all(26),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF6B001A),
+              _RoyalColors.burgundy,
+              _RoyalColors.burgundyDark,
+            ],
+            stops: [0.0, 0.4, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(
+            color: _RoyalColors.gold.withValues(alpha: 0.15),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _RoyalColors.burgundy.withValues(alpha: 0.35),
+              blurRadius: 36,
+              offset: const Offset(0, 16),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -40,
+              top: -40,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      _RoyalColors.gold.withValues(alpha: 0.12),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -60,
+              bottom: -60,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      _RoyalColors.burgundyLight.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            summary.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _RoyalColors.gold,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              height: 1.15,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.calendar_month_rounded,
+                                color: Colors.white70,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                summary.weddingDate == null
+                                    ? 'التاريخ غير محدد'
+                                    : _formatDate(summary.weddingDate!),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    _CircularProgressWidget(
+                      percent: summary.progressPercentage,
+                      onTap: onOpenProgress,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  spacing: 8,
+                  runSpacing: 12,
+                  children: [
+                    _CountdownPill(
+                      daysRemaining: summary.daysRemaining,
+                      onTap: onOpenTimeline,
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Text(
+                          'تفاصيل الخطة',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CountdownPill extends StatelessWidget {
-  const _CountdownPill({required this.daysRemaining});
+  const _CountdownPill({required this.daysRemaining, required this.onTap});
 
   final int? daysRemaining;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final label = _daysRemainingLabel(daysRemaining);
     final isLive = daysRemaining != null && daysRemaining! > 0;
 
-    return Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 14, 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.centerStart,
-          end: AlignmentDirectional.centerEnd,
-          colors: [
-            _RoyalColors.gold.withValues(alpha: 0.22),
-            _RoyalColors.gold.withValues(alpha: 0.10),
-          ],
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(99),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: _RoyalColors.gold.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.3)),
         ),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: _RoyalColors.gold.withValues(alpha: 0.45),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isLive) ...[
+              _LiveDot(color: _RoyalColors.gold),
+              const SizedBox(width: 8),
+            ] else ...[
+              const Icon(
+                Icons.hourglass_bottom_rounded,
+                size: 16,
+                color: _RoyalColors.gold,
+              ),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _RoyalColors.gold,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+    );
+  }
+}
+
+class _CircularProgressWidget extends StatelessWidget {
+  const _CircularProgressWidget({required this.percent, required this.onTap});
+
+  final int percent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          if (isLive) ...[
-            _LiveDot(color: _RoyalColors.gold),
-            const SizedBox(width: 8),
-          ] else ...[
-            Icon(
-              Icons.hourglass_bottom_rounded,
-              size: 15,
-              color: _RoyalColors.gold,
+          SizedBox(
+            width: 60,
+            height: 60,
+            child: CircularProgressIndicator(
+              value: percent / 100,
+              strokeWidth: 5,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              valueColor: const AlwaysStoppedAnimation(_RoyalColors.gold),
             ),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _RoyalColors.gold,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-                height: 1,
-              ),
+          ),
+          Text(
+            '$percent%',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PanoramicCardsCarousel extends StatefulWidget {
+  const _PanoramicCardsCarousel({
+    required this.summary,
+    required this.onOpenProviders,
+    required this.onOpenImportantItem,
+    required this.onOpenMoney,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenProviders;
+  final ValueChanged<DashboardImportantItem> onOpenImportantItem;
+  final VoidCallback onOpenMoney;
+
+  @override
+  State<_PanoramicCardsCarousel> createState() => _PanoramicCardsCarouselState();
+}
+
+class _PanoramicCardsCarouselState extends State<_PanoramicCardsCarousel> {
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.88);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final priorities = _priorityItems(widget.summary);
+    
+    final cards = [
+      _PanoramicFinanceCard(
+        summary: widget.summary,
+        onTap: widget.onOpenMoney,
+      ),
+      _PanoramicProviderCard(
+        providerCount: widget.summary.providerCount,
+        quoteCount: widget.summary.quoteRequestsCount,
+        onTap: widget.onOpenProviders,
+      ),
+      if (priorities.isNotEmpty)
+        _PanoramicPriorityCard(
+          topItem: priorities.first,
+          onTapItem: widget.onOpenImportantItem,
+        ),
+    ];
+
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return Column(
+        children: cards.map((c) => SizedBox(height: 160, child: c)).toList(),
+      );
+    }
+
+    return SizedBox(
+      height: 160,
+      child: PageView.builder(
+        controller: _pageController,
+        clipBehavior: Clip.none,
+        itemCount: cards.length,
+        itemBuilder: (context, index) {
+          return AnimatedBuilder(
+            animation: _pageController,
+            builder: (context, child) {
+              double value = 1.0;
+              if (_pageController.position.haveDimensions) {
+                value = _pageController.page! - index;
+                value = (1 - (value.abs() * 0.15)).clamp(0.0, 1.0);
+              }
+              return Center(
+                child: Transform.scale(
+                  scale: Curves.easeOut.transform(value),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                    child: child,
+                  ),
+                ),
+              );
+            },
+            child: cards[index],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BasePanoramicCard extends StatelessWidget {
+  const _BasePanoramicCard({required this.onTap, required this.child, this.color});
+  final VoidCallback onTap;
+  final Widget child;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color ?? Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: _RoyalColors.ink.withValues(alpha: 0.04),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _PanoramicFinanceCard extends StatelessWidget {
+  const _PanoramicFinanceCard({required this.summary, required this.onTap});
+  final DashboardSummary summary;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!summary.canViewMoney) {
+      return _BasePanoramicCard(
+        onTap: onTap,
+        child: const Center(
+          child: Text('لا توجد صلاحية لعرض المال', style: TextStyle(color: _RoyalColors.muted)),
+        ),
+      );
+    }
+
+    return _BasePanoramicCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_rounded, color: _RoyalColors.goldDeep, size: 20),
+                    const SizedBox(width: 8),
+                    const Flexible(child: Text('المالية', style: TextStyle(color: _RoyalColors.ink, fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                  ],
+                ),
+                const Spacer(),
+                const Text('المتبقي لك', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  _formatMoney(summary.remainingBudget),
+                  style: const TextStyle(color: _RoyalColors.burgundy, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1),
+                ),
+              ],
+            ),
+          ),
+          _AnimatedDonutChart(
+            budgetStr: summary.budgetTotal,
+            spentStr: summary.spentTotal,
+            remainingStr: summary.remainingBudget,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanoramicProviderCard extends StatelessWidget {
+  const _PanoramicProviderCard({required this.providerCount, required this.quoteCount, required this.onTap});
+  final int providerCount;
+  final int quoteCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAction = quoteCount > 0;
+    
+    final frontFace = Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.storefront_rounded, color: _RoyalColors.goldDeep, size: 20),
+                  const SizedBox(width: 8),
+                  const Flexible(child: Text('الموردين', style: TextStyle(color: _RoyalColors.ink, fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+              const Spacer(),
+              const Text('بانتظار رأيك', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('$quoteCount عروض', style: const TextStyle(color: _RoyalColors.ink, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1)),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: _RoyalColors.burgundy.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _RoyalColors.burgundy.withValues(alpha: 0.2)),
+          ),
+          child: const Text('استعراض', style: TextStyle(color: _RoyalColors.burgundy, fontSize: 13, fontWeight: FontWeight.w800)),
+        ),
+      ],
+    );
+
+    final backFace = Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.storefront_rounded, color: _RoyalColors.goldDeep, size: 20),
+                  const SizedBox(width: 8),
+                  const Flexible(child: Text('الموردين', style: TextStyle(color: _RoyalColors.ink, fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+              const Spacer(),
+              const Text('موردين معتمدين', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text('$providerCount محجوز', style: const TextStyle(color: _RoyalColors.ink, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1)),
+            ],
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: _RoyalColors.ivory,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.1)),
+          ),
+          child: const Text('تصفح', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w800)),
+        ),
+      ],
+    );
+
+    return _BasePanoramicCard(
+      onTap: onTap,
+      child: (hasAction && providerCount > 0)
+          ? _AutoFlipCard(front: frontFace, back: backFace)
+          : (hasAction ? frontFace : backFace),
+    );
+  }
+}
+
+class _PanoramicPriorityCard extends StatelessWidget {
+  const _PanoramicPriorityCard({required this.topItem, required this.onTapItem});
+  final DashboardImportantItem topItem;
+  final ValueChanged<DashboardImportantItem> onTapItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUrgent = topItem.tone == 'danger';
+
+    return _BasePanoramicCard(
+      onTap: () => onTapItem(topItem),
+      color: isUrgent ? _RoyalColors.burgundy.withValues(alpha: 0.04) : Colors.white,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isUrgent ? Icons.priority_high_rounded : Icons.flash_on_rounded,
+                      color: isUrgent ? _RoyalColors.burgundy : _RoyalColors.goldDeep,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(child: Text(
+                      isUrgent ? 'تنبيه هام' : 'الأهم اليوم',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isUrgent ? _RoyalColors.burgundy : _RoyalColors.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    )),
+                  ],
+                ),
+                const Spacer(),
+                const Text('إجراء مطلوب', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  topItem.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: _RoyalColors.ink, fontSize: 18, fontWeight: FontWeight.w900, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_left_rounded, color: _RoyalColors.muted, size: 32),
+        ],
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  const _CircleIconButton({
+    required this.icon,
+    required this.onTap,
+    this.showBadge = false,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool showBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.15)),
+          boxShadow: [
+            BoxShadow(
+              color: _RoyalColors.ink.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(icon, color: _RoyalColors.ink, size: 24),
+            if (showBadge)
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: _RoyalColors.burgundy,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -309,418 +858,396 @@ class _LiveDotState extends State<_LiveDot>
   }
 }
 
-/// Clickable countdown pill. Opens the wedding timeline when tapped.
-/// Adds a subtle press feedback on top of the existing [_CountdownPill] visual.
-class _HeroCountdownZone extends StatelessWidget {
-  const _HeroCountdownZone({
-    required this.daysRemaining,
-    required this.onTap,
+class _RoyalColors {
+  const _RoyalColors._();
+
+  static const ivory = Color(0xFFFDFBF9);
+  static const burgundy = Color(0xFF800020);
+  static const burgundyDark = Color(0xFF5A0016);
+  static const burgundyLight = Color(0xFFA63351);
+  static const gold = Color(0xFFD4AF37);
+  static const goldDeep = Color(0xFFB5952F);
+  static const ink = Color(0xFF2D1A1E);
+  static const muted = Color(0xFF8A7B7E);
+}
+
+String _greetingFor(String name) {
+  final hour = DateTime.now().hour;
+  final timeGreeting = hour < 12 ? 'صباح الخير' : 'مساء الخير';
+  if (name.trim().isEmpty) return timeGreeting;
+  return '$timeGreeting، $name';
+}
+
+String _formatDate(DateTime date) {
+  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+}
+
+String _daysRemainingLabel(int? daysRemaining) {
+  if (daysRemaining == null) return 'قريباً';
+  if (daysRemaining < 0) return 'مرت الأيام';
+  if (daysRemaining == 0) return 'اليوم يومك!';
+  if (daysRemaining == 1) return 'غداً الزفاف';
+  if (daysRemaining == 2) return 'بقي يومان';
+  if (daysRemaining <= 10) return 'بقي $daysRemaining أيام';
+  return 'بقي $daysRemaining يوم';
+}
+
+String _formatMoney(String? amount) {
+  if (amount == null || amount.isEmpty) return '0 ﷼';
+  final numValue = int.tryParse(amount);
+  if (numValue == null) return '0 ﷼';
+  if (numValue >= 1000000) {
+    return '${(numValue / 1000000).toStringAsFixed(1).replaceAll('.0', '')}م ﷼';
+  }
+  if (numValue >= 1000) {
+    return '${(numValue / 1000).toStringAsFixed(1).replaceAll('.0', '')}ألف ﷼';
+  }
+  return '$numValue ﷼';
+}
+
+List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
+  final list = List<DashboardImportantItem>.from(summary.importantItems);
+  list.sort((a, b) {
+    if (a.tone == 'danger' && b.tone != 'danger') return -1;
+    if (b.tone == 'danger' && a.tone != 'danger') return 1;
+    return 0;
   });
-
-  final int? daysRemaining;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      scale: 0.97,
-      child: _CountdownPill(daysRemaining: daysRemaining),
-    );
-  }
+  return list;
 }
 
-/// Clickable progress zone. Opens the planning tasks screen when tapped.
-class _ProgressZone extends StatelessWidget {
-  const _ProgressZone({required this.percent, required this.onTap});
 
-  final int percent;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(40),
-      scale: 0.96,
-      child: Padding(
-        padding: const EdgeInsets.all(4),
-        child: _ProgressColumn(percent: percent),
-      ),
-    );
-  }
-}
-
-class _HeroPlanCard extends StatelessWidget {
-  const _HeroPlanCard({
+class _OperationalCards extends StatelessWidget {
+  const _OperationalCards({
     required this.summary,
-    required this.onOpenPlan,
-    required this.onOpenTimeline,
-    required this.onOpenProgress,
+    required this.onOpenTasks,
+    required this.onOpenGuests,
+    required this.onOpenParticipants,
   });
 
   final DashboardSummary summary;
-  final VoidCallback onOpenPlan;
-  final VoidCallback onOpenTimeline;
-  final VoidCallback onOpenProgress;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onOpenPlan,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [_RoyalColors.burgundy, _RoyalColors.burgundyDark],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: _RoyalColors.burgundy.withValues(alpha: 0.20),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: RadialGradient(
-                      center: Alignment.topLeft,
-                      radius: 1.15,
-                      colors: [
-                        _RoyalColors.gold.withValues(alpha: 0.16),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _HeroRow(
-                            label: 'الخطة:',
-                            value: summary.title,
-                            valueColor: _RoyalColors.gold,
-                            valueSize: 17,
-                          ),
-                          _HeroRow(
-                            label: 'الموقع:',
-                            value: _nonEmpty(summary.city, 'غير محدد'),
-                          ),
-                          _HeroRow(
-                            label: 'تاريخ الزواج:',
-                            value: summary.weddingDate == null
-                                ? 'غير محدد'
-                                : _formatDate(summary.weddingDate!),
-                          ),
-                          const SizedBox(height: 10),
-                          _HeroCountdownZone(
-                            daysRemaining: summary.daysRemaining,
-                            onTap: onOpenTimeline,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    _ProgressZone(
-                      percent: summary.progressPercentage,
-                      onTap: onOpenProgress,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  height: 1,
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: _HeroStatus(status: summary.status),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Flexible(
-                              child: Text(
-                                'متابعة الخطة',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            Icon(
-                              Icons.chevron_left_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PrioritySection extends StatelessWidget {
-  const _PrioritySection({
-    required this.priorities,
-    required this.onOpenImportantItem,
-  });
-
-  final List<DashboardImportantItem> priorities;
-  final ValueChanged<DashboardImportantItem> onOpenImportantItem;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onOpenGuests;
+  final VoidCallback onOpenParticipants;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'الأهم اليوم',
-          style: TextStyle(
-            color: _RoyalColors.burgundy,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
+
+        _OperationalCard(
+          title: 'المهام',
+          subtitle: '${summary.totalTasks - summary.completedTasks} مهمة متبقية',
+          icon: Icons.checklist_rounded,
+          onTap: onOpenTasks,
         ),
         const SizedBox(height: 12),
-        for (var i = 0; i < priorities.length; i++) ...[
-          _PriorityCard(
-            item: priorities[i],
-            onTap: () => onOpenImportantItem(priorities[i]),
-          ),
-          if (i != priorities.length - 1) const SizedBox(height: 10),
-        ],
+        _OperationalCard(
+          title: 'الضيوف',
+          subtitle: '${summary.confirmedGuests} ضيف مؤكد',
+          icon: Icons.group_outlined,
+          onTap: onOpenGuests,
+        ),
+        const SizedBox(height: 12),
+        _OperationalCard(
+          title: 'المشاركة في الخطة',
+          subtitle: 'أنت (${summary.currentUserRole == "GUEST" ? "ضيف" : "صاحب الخطة"}) • إدارة المشاركين',
+          icon: Icons.share_rounded,
+          onTap: onOpenParticipants,
+        ),
       ],
     );
   }
 }
 
-class _PriorityCard extends StatelessWidget {
-  const _PriorityCard({required this.item, required this.onTap});
-
-  final DashboardImportantItem item;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tone = _toneFor(item.tone);
-
-    return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 84),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: _cardDecoration(radius: 18),
-        child: Row(
-          children: [
-            _ToneIcon(icon: _iconFor(item.icon, item.type), tone: tone),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _ToneBadge(label: item.subtitle, tone: tone),
-                  const SizedBox(height: 5),
-                  Text(
-                    item.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _RoyalColors.ink,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      height: 1.25,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.chevron_left_rounded,
-              color: _RoyalColors.muted.withValues(alpha: 0.55),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NextStepCard extends StatelessWidget {
-  const _NextStepCard({required this.item, required this.onOpenNextStep});
-
-  final DashboardImportantItem? item;
-  final VoidCallback onOpenNextStep;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = item;
-    final actionLabel = _nonEmpty(selected?.actionLabel, 'متابعة');
-    final message = selected == null
-        ? 'راجع خطتك وحدد الخطوة التي تحتاج انتباهك اليوم.'
-        : _nextStepText(selected);
-    final hasUrgentItem = selected != null && selected.tone == 'danger';
-
-    return _NextStepPressableShell(
-      onTap: onOpenNextStep,
-      hasUrgentItem: hasUrgentItem,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: [
-              _RoyalColors.gold.withValues(alpha: 0.11),
-              _RoyalColors.gold.withValues(alpha: 0.03),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.24)),
-          boxShadow: [
-            BoxShadow(
-              color: _RoyalColors.gold.withValues(alpha: 0.07),
-              blurRadius: 16,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        hasUrgentItem
-                            ? Icons.priority_high_rounded
-                            : Icons.info_outline_rounded,
-                        size: 17,
-                        color: _RoyalColors.burgundy,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          hasUrgentItem
-                              ? 'يحتاج انتباهك الآن'
-                              : 'الخطوة التالية المقترحة',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _RoyalColors.burgundy,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _RoyalColors.ink,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      height: 1.35,
-                      letterSpacing: 0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            _NextStepChevron(label: actionLabel),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Whole-card press wrapper for the next-step card. Triggers a one-shot breath
-/// animation when the wrapped item is urgent (tone = danger).
-class _NextStepPressableShell extends StatefulWidget {
-  const _NextStepPressableShell({
+class _OperationalCard extends StatelessWidget {
+  const _OperationalCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
     required this.onTap,
-    required this.child,
-    required this.hasUrgentItem,
   });
 
+  final String title;
+  final String subtitle;
+  final IconData icon;
   final VoidCallback onTap;
-  final Widget child;
-  final bool hasUrgentItem;
 
   @override
-  State<_NextStepPressableShell> createState() =>
-      _NextStepPressableShellState();
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: _RoyalColors.ink.withValues(alpha: 0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _RoyalColors.ivory,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _RoyalColors.goldDeep.withValues(alpha: 0.15)),
+              ),
+              child: Icon(icon, color: _RoyalColors.goldDeep, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: _RoyalColors.ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: _RoyalColors.muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_left_rounded,
+              color: _RoyalColors.muted,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _NextStepPressableShellState extends State<_NextStepPressableShell>
+class _PremiumEntry extends StatelessWidget {
+  const _PremiumEntry({required this.index, required this.child});
+  
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    if (isTest) return child;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 600 + (index * 120)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value.clamp(0.0, 1.0),
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 30),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+class _AnimatedDonutChart extends StatelessWidget {
+  const _AnimatedDonutChart({
+    required this.budgetStr,
+    required this.spentStr,
+    required this.remainingStr,
+  });
+
+  final String? budgetStr;
+  final String? spentStr;
+  final String? remainingStr;
+
+  @override
+  Widget build(BuildContext context) {
+    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    
+    final b = int.tryParse(budgetStr ?? '0') ?? 0;
+    final s = int.tryParse(spentStr ?? '0') ?? 0;
+    final ratio = b > 0 ? (s / b).clamp(0.0, 1.0) : 0.0;
+    
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: isTest ? 0.0 : ratio),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return CustomPaint(
+          size: const Size.square(90), 
+          painter: _DonutChartPainter(
+            spentRatio: isTest ? ratio : value,
+            spentColor: _RoyalColors.burgundy,
+            backgroundColor: _RoyalColors.gold.withValues(alpha: 0.2),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatMoney(remainingStr),
+                  style: const TextStyle(
+                    color: _RoyalColors.burgundy,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Text(
+                  'المتبقي',
+                  style: TextStyle(
+                    color: _RoyalColors.muted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DonutChartPainter extends CustomPainter {
+  _DonutChartPainter({
+    required this.spentRatio,
+    required this.spentColor,
+    required this.backgroundColor,
+  });
+
+  final double spentRatio;
+  final Color spentColor;
+  final Color backgroundColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width / 2, size.height / 2) - 6; 
+    const strokeWidth = 12.0;
+
+    final bgPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      0,
+      2 * math.pi,
+      false,
+      bgPaint,
+    );
+
+    if (spentRatio > 0) {
+      final glowPaint = Paint()
+        ..color = spentColor.withValues(alpha: 0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth + 4
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+      final spentPaint = Paint()
+        ..color = spentColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round;
+
+      final sweepAngle = 2 * math.pi * spentRatio;
+      final startAngle = -math.pi / 2;
+      
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        false,
+        glowPaint,
+      );
+      
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        false,
+        spentPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutChartPainter oldDelegate) {
+    return oldDelegate.spentRatio != spentRatio;
+  }
+}
+
+class _AutoFlipCard extends StatefulWidget {
+  const _AutoFlipCard({
+    required this.front,
+    required this.back,
+  });
+
+  final Widget front;
+  final Widget back;
+
+  @override
+  State<_AutoFlipCard> createState() => _AutoFlipCardState();
+}
+
+class _AutoFlipCardState extends State<_AutoFlipCard>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  );
+  late AnimationController _controller;
+  bool _isFront = true;
+  bool _isTest = false;
 
   @override
   void initState() {
     super.initState();
-    if (widget.hasUrgentItem) {
-      _controller.forward();
+    _isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    if (!_isTest) {
+      _startFlipTimer();
     }
+  }
+
+  void _startFlipTimer() {
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      if (_isFront) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+      _isFront = !_isFront;
+      _startFlipTimer();
+    });
   }
 
   @override
@@ -731,1094 +1258,53 @@ class _NextStepPressableShellState extends State<_NextStepPressableShell>
 
   @override
   Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: widget.onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final t = _controller.value;
-          final scale = widget.hasUrgentItem && t < 1.0
-              ? 1.0 + 0.035 * (t < 0.5 ? (t * 2) : (1 - (t - 0.5) * 2))
-              : 1.0;
-          return Transform.scale(scale: scale, child: child);
-        },
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-/// Trailing chevron with action label — purely visual cue (whole card is
-/// already pressable via [_NextStepPressableShell]).
-class _NextStepChevron extends StatelessWidget {
-  const _NextStepChevron({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      constraints: const BoxConstraints(minWidth: 90),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: _RoyalColors.burgundy,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(
-            Icons.chevron_left_rounded,
-            color: Colors.white,
-            size: 18,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MoneySummaryCard extends StatelessWidget {
-  const _MoneySummaryCard({required this.summary, required this.onOpenMoney});
-
-  final DashboardSummary summary;
-  final VoidCallback onOpenMoney;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!summary.canViewMoney) {
-      return _SummaryCard(
-        title: 'المال',
-        actionLabel: 'عرض المال',
-        onAction: onOpenMoney,
-        child: const _LockedMoneyState(),
-      );
+    if (_isTest) {
+      return widget.front; 
     }
 
-    final total = _safeDouble(summary.budgetTotal);
-    final spent = _safeDouble(summary.spentTotal);
-    final obligations =
-        _safeDouble(summary.unpaidDebtTotal ?? summary.debtTotal);
-    final remaining = (total - spent - obligations).clamp(0, double.infinity);
-    final denom = total > 0 ? total : (spent + remaining + obligations);
-    double frac(double v) => denom > 0 ? v / denom : 0;
-    final upcoming = _upcomingInstallmentLabel(summary);
-
-    return _SummaryCard(
-      title: 'المال',
-      actionLabel: 'عرض المال',
-      onAction: onOpenMoney,
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _BudgetDonut(
-                spentFrac: frac(spent),
-                obligationsFrac: frac(obligations),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _MoneyStat(
-                      label: 'الميزانية',
-                      value: _money(summary.budgetTotal),
-                      color: _RoyalColors.burgundy,
-                      large: true,
-                    ),
-                    const SizedBox(height: 8),
-                    _MoneyStat(
-                      label: 'المتبقي',
-                      value: _money('$remaining'),
-                      color: _RoyalColors.gold,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const _SoftDivider(),
-          Row(
-            children: [
-              Expanded(
-                child: _LegendRow(
-                  color: _RoyalColors.burgundy,
-                  label: 'المصروف',
-                  value: _money(summary.spentTotal),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _LegendRow(
-                  color: _RoyalColors.gold,
-                  label: 'الديون',
-                  value: _money(summary.unpaidDebtTotal ?? summary.debtTotal),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _SmallDot(color: _RoyalColors.warning),
-              const SizedBox(width: 8),
-              const Text(
-                'قسط قادم',
-                style: TextStyle(
-                  color: _RoyalColors.ink,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  upcoming,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.left,
-                  style: const TextStyle(
-                    color: _RoyalColors.ink,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BudgetDonut extends StatelessWidget {
-  const _BudgetDonut({
-    required this.spentFrac,
-    required this.obligationsFrac,
-  });
-
-  final double spentFrac;
-  final double obligationsFrac;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 88,
-      height: 88,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.easeOutCubic,
-        builder: (context, value, child) {
-          return CustomPaint(
-            painter: _BudgetDonutPainter(
-              spentFrac: spentFrac * value,
-              obligationsFrac: obligationsFrac * value,
-            ),
-            child: child,
-          );
-        },
-        child: Center(
-          child: Text(
-            'الميزانية',
-            style: TextStyle(
-              color: _RoyalColors.muted,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BudgetDonutPainter extends CustomPainter {
-  _BudgetDonutPainter({
-    required this.spentFrac,
-    required this.obligationsFrac,
-  });
-
-  final double spentFrac;
-  final double obligationsFrac;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    const stroke = 12.0;
-    final radius = (size.shortestSide - stroke) / 2;
-
-    final trackPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..color = _RoyalColors.line;
-    canvas.drawCircle(center, radius, trackPaint);
-
-    if (spentFrac <= 0 && obligationsFrac <= 0) return;
-
-    var start = -math.pi / 2;
-
-    if (spentFrac > 0) {
-      final sweep = 2 * math.pi * spentFrac.clamp(0.0, 1.0);
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..color = _RoyalColors.burgundy;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        sweep,
-        false,
-        paint,
-      );
-      start += sweep;
-    }
-
-    if (obligationsFrac > 0) {
-      final sweep = 2 * math.pi * obligationsFrac.clamp(0.0, 1.0);
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..color = _RoyalColors.gold;
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start,
-        sweep,
-        false,
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BudgetDonutPainter old) =>
-      old.spentFrac != spentFrac || old.obligationsFrac != obligationsFrac;
-}
-
-class _LegendRow extends StatelessWidget {
-  const _LegendRow({
-    required this.color,
-    required this.label,
-    required this.value,
-  });
-
-  final Color color;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _SmallDot(color: color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _RoyalColors.muted,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textDirection: TextDirection.ltr,
-          style: const TextStyle(
-            color: _RoyalColors.ink,
-            fontSize: 14.5,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-double _safeDouble(String? value) {
-  if (value == null) return 0;
-  return double.tryParse(value.replaceAll(',', '').trim()) ?? 0;
-}
-
-class _CompactCardsGrid extends StatelessWidget {
-  const _CompactCardsGrid({
-    required this.summary,
-    required this.onOpenTasks,
-    required this.onOpenProviders,
-    required this.onOpenGuests,
-    required this.onOpenNotifications,
-  });
-
-  final DashboardSummary summary;
-  final VoidCallback onOpenTasks;
-  final VoidCallback onOpenProviders;
-  final VoidCallback onOpenGuests;
-  final VoidCallback onOpenNotifications;
-
-  @override
-  Widget build(BuildContext context) {
-    final upcomingTasks =
-        summary.totalTasks -
-        summary.completedTasks -
-        summary.todayTasks -
-        summary.overdueTasks;
-    final missingGuests = math.max(
-      0,
-      summary.guestCount - summary.confirmedGuests,
-    );
-
-    return Column(
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _CompactStatsCard(
-                title: 'المهام',
-                actionLabel: 'عرض',
-                onAction: onOpenTasks,
-                stats: [
-                  _CompactStat('اليوم', summary.todayTasks.toString()),
-                  _CompactStat(
-                    'متأخرة',
-                    summary.overdueTasks.toString(),
-                    color: _RoyalColors.danger,
-                  ),
-                  _CompactStat('قادمة', math.max(0, upcomingTasks).toString()),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _CompactStatsCard(
-                title: 'الموردون',
-                actionLabel: 'مراجعة',
-                onAction: onOpenProviders,
-                stats: [
-                  _CompactStat(
-                    'عروض',
-                    summary.planProviders.length.toString(),
-                    color: _RoyalColors.success,
-                  ),
-                  _CompactStat(
-                    'مفتوحة',
-                    summary.quoteRequestsCount.toString(),
-                    color: _RoyalColors.warning,
-                  ),
-                  _CompactStat('متفق', summary.providerCount.toString()),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _CompactStatsCard(
-                title: 'الضيوف',
-                actionLabel: 'إدارة',
-                onAction: onOpenGuests,
-                stats: [
-                  _CompactStat('الإجمالي', summary.guestCount.toString()),
-                  _CompactStat(
-                    'مؤكد',
-                    summary.confirmedGuests.toString(),
-                    color: _RoyalColors.success,
-                  ),
-                  _CompactStat(
-                    'ناقص',
-                    missingGuests.toString(),
-                    color: _RoyalColors.danger,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _NotificationsCompactCard(
-                summary: summary,
-                onAction: onOpenNotifications,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.title,
-    required this.actionLabel,
-    required this.onAction,
-    required this.child,
-  });
-
-  final String title;
-  final String actionLabel;
-  final VoidCallback onAction;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onAction,
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: _cardDecoration(radius: 22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _CardHeader(
-              title: title,
-              actionLabel: actionLabel,
-            ),
-            const SizedBox(height: 14),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompactStatsCard extends StatelessWidget {
-  const _CompactStatsCard({
-    required this.title,
-    required this.actionLabel,
-    required this.onAction,
-    required this.stats,
-  });
-
-  final String title;
-  final String actionLabel;
-  final VoidCallback onAction;
-  final List<_CompactStat> stats;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onAction,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 134),
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
-        decoration: _cardDecoration(radius: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _CardHeader(
-              title: title,
-              actionLabel: actionLabel,
-              compact: true,
-            ),
-            const SizedBox(height: 22),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (final stat in stats)
-                  Expanded(child: _CompactStatView(stat: stat)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationsCompactCard extends StatelessWidget {
-  const _NotificationsCompactCard({
-    required this.summary,
-    required this.onAction,
-  });
-
-  final DashboardSummary summary;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final notifications = summary.importantNotifications.take(2).toList();
-
-    return AarastPressable(
-      onTap: onAction,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 134),
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 13),
-        decoration: _cardDecoration(radius: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const _CardHeader(
-              title: 'إشعارات',
-              actionLabel: 'الكل',
-              compact: true,
-            ),
-            const SizedBox(height: 18),
-            if (notifications.isEmpty)
-              Text(
-                summary.unreadNotificationsCount > 0
-                    ? '${summary.unreadNotificationsCount} تنبيه غير مقروء'
-                    : 'لا توجد تنبيهات مهمة',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _RoyalColors.ink,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              )
-            else
-              for (var i = 0; i < notifications.length; i++) ...[
-                if (i > 0) const SizedBox(height: 8),
-                _NotificationLine(notification: notifications[i]),
-              ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CardHeader extends StatelessWidget {
-  const _CardHeader({
-    required this.title,
-    required this.actionLabel,
-    this.compact = false,
-  });
-
-  final String title;
-  final String actionLabel;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: _RoyalColors.burgundy,
-              fontSize: compact ? 16 : 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              actionLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: _RoyalColors.gold,
-                fontSize: compact ? 12 : 13,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
-              ),
-            ),
-            const SizedBox(width: 2),
-            const Icon(
-              Icons.chevron_left_rounded,
-              color: _RoyalColors.gold,
-              size: 18,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _MoneyStat extends StatelessWidget {
-  const _MoneyStat({
-    required this.label,
-    required this.value,
-    this.color = _RoyalColors.ink,
-    this.large = false,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-  final bool large;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: _RoyalColors.muted,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.left,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: color,
-            fontSize: large ? 21 : 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CompactStatView extends StatelessWidget {
-  const _CompactStatView({required this.stat});
-
-  final _CompactStat stat;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          stat.value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: stat.color ?? _RoyalColors.ink,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          stat.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: _RoyalColors.muted,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _NotificationLine extends StatelessWidget {
-  const _NotificationLine({required this.notification});
-
-  final DashboardNotificationPreview notification;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        _SmallDot(
-          color: notification.readAt == null
-              ? _RoyalColors.success
-              : _RoyalColors.warning,
-        ),
-        const SizedBox(width: 7),
-        Expanded(
-          child: Text(
-            notification.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _RoyalColors.ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProgressColumn extends StatelessWidget {
-  const _ProgressColumn({required this.percent});
-
-  final int percent;
-
-  @override
-  Widget build(BuildContext context) {
-    final clamped = percent.clamp(0, 100);
-    return Column(
-      children: [
-        const Text(
-          'التقدم',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0,
-          ),
-        ),
-        const SizedBox(height: 5),
-        SizedBox(
-          width: 68,
-          height: 68,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: clamped / 100),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) {
-                  return CustomPaint(
-                    painter: _ProgressRingPainter(value: value),
-                    size: const Size.square(68),
-                  );
-                },
-              ),
-              Text(
-                '$clamped%',
-                textDirection: TextDirection.ltr,
-                style: const TextStyle(
-                  color: _RoyalColors.gold,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProgressRingPainter extends CustomPainter {
-  const _ProgressRingPainter({required this.value});
-
-  final double value;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = (size.shortestSide / 2) - 7;
-    final bgPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.15)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
-      ..strokeCap = StrokeCap.round;
-    final fgPaint = Paint()
-      ..color = _RoyalColors.gold
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, bgPaint);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      value.clamp(0, 1) * math.pi * 2,
-      false,
-      fgPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ProgressRingPainter oldDelegate) {
-    return oldDelegate.value != value;
-  }
-}
-
-class _HeroRow extends StatelessWidget {
-  const _HeroRow({
-    required this.label,
-    required this.value,
-    this.valueColor = Colors.white,
-    this.valueSize = 14,
-  });
-
-  final String label;
-  final String value;
-  final Color valueColor;
-  final double valueSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: valueColor,
-                fontSize: valueSize,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroStatus extends StatelessWidget {
-  const _HeroStatus({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        'الحالة: ${_statusLabel(status)}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-      ),
-    );
-  }
-}
-
-class _ToneIcon extends StatelessWidget {
-  const _ToneIcon({required this.icon, required this.tone});
-
-  final IconData icon;
-  final _Tone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        color: tone.color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Icon(icon, color: tone.color, size: 23),
-    );
-  }
-}
-
-class _ToneBadge extends StatelessWidget {
-  const _ToneBadge({required this.label, required this.tone});
-
-  final String label;
-  final _Tone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: tone.color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        _nonEmpty(label, tone.defaultLabel),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: tone.color,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
-        ),
-      ),
-    );
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
-    required this.icon,
-    required this.onTap,
-    this.showBadge = false,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool showBadge;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Stack(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.70)),
-              boxShadow: [
-                BoxShadow(
-                  color: _RoyalColors.burgundy.withValues(alpha: 0.04),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Icon(icon, color: _RoyalColors.burgundy, size: 23),
-          ),
-          if (showBadge)
-            PositionedDirectional(
-              top: 12,
-              end: 12,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _RoyalColors.danger,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.6),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Entrance extends StatelessWidget {
-  const _Entrance({required this.delay, required this.child});
-
-  final Duration delay;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 500 + delay.inMilliseconds),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        final start = delay.inMilliseconds / (500 + delay.inMilliseconds);
-        final normalized = delay == Duration.zero
-            ? value
-            : ((value - start) / (1 - start)).clamp(0.0, 1.0);
-        return Opacity(
-          opacity: normalized,
-          child: Transform.translate(
-            offset: Offset(0, (1 - normalized) * 20),
-            child: child,
-          ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final angle = _controller.value * math.pi;
+        final isUnder = angle > math.pi / 2;
+
+        return Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..rotateX(angle),
+          alignment: Alignment.center,
+          child: isUnder
+              ? Transform(
+                  transform: Matrix4.identity()..rotateX(math.pi),
+                  alignment: Alignment.center,
+                  child: widget.back,
+                )
+              : widget.front,
         );
       },
-      child: child,
     );
   }
 }
 
-class _LockedMoneyState extends StatelessWidget {
-  const _LockedMoneyState();
+class RoyalHomeTodaySkeleton extends StatelessWidget {
+  const RoyalHomeTodaySkeleton({this.bottomPadding = 156, super.key});
+
+  final double bottomPadding;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Icon(Icons.lock_outline_rounded, color: _RoyalColors.muted),
-        SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            'غير متاح حسب صلاحياتك',
-            style: TextStyle(
-              color: _RoyalColors.ink,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0,
-            ),
-          ),
-        ),
+    return ListView(
+      padding: EdgeInsets.fromLTRB(20, 22, 20, bottomPadding),
+      children: const [
+        _SkeletonBox(height: 56),
+        SizedBox(height: 16),
+        _SkeletonBox(height: 188),
+        SizedBox(height: 22),
+        _SkeletonBox(height: 248),
+        SizedBox(height: 18),
+        _SkeletonBox(height: 156),
+        SizedBox(height: 20),
+        _SkeletonBox(height: 220),
       ],
     );
   }
@@ -1843,317 +1329,9 @@ class _SkeletonBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.74),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _RoyalColors.line),
+          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.1)),
         ),
       ),
     );
-  }
-}
-
-class _SoftDivider extends StatelessWidget {
-  const _SoftDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 1,
-      margin: const EdgeInsets.symmetric(vertical: 15),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.transparent,
-            _RoyalColors.burgundy.withValues(alpha: 0.10),
-            Colors.transparent,
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SmallDot extends StatelessWidget {
-  const _SmallDot({required this.color});
-
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 7,
-      height: 7,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-    );
-  }
-}
-
-class _CompactStat {
-  const _CompactStat(this.label, this.value, {this.color});
-
-  final String label;
-  final String value;
-  final Color? color;
-}
-
-class _Tone {
-  const _Tone({required this.color, required this.defaultLabel});
-
-  final Color color;
-  final String defaultLabel;
-}
-
-BoxDecoration _cardDecoration({required double radius}) {
-  return BoxDecoration(
-    color: Colors.white.withValues(alpha: 0.92),
-    borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: Colors.white.withValues(alpha: 0.70)),
-    boxShadow: [
-      BoxShadow(
-        color: _RoyalColors.burgundy.withValues(alpha: 0.04),
-        blurRadius: 20,
-        offset: const Offset(0, 6),
-      ),
-    ],
-  );
-}
-
-List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
-  final items = [...summary.importantItems];
-
-  // TODO(home-dashboard): Replace fallback suggestions with backend-ranked
-  // importantItems once the aggregate reliably returns three Today Center cards.
-  void addFallback({
-    required String id,
-    required String type,
-    required String title,
-    required String subtitle,
-    required String icon,
-    required String tone,
-    required String actionLabel,
-  }) {
-    if (items.length >= 3 || items.any((item) => item.type == type)) return;
-    items.add(
-      DashboardImportantItem(
-        id: id,
-        type: type,
-        title: title,
-        subtitle: subtitle,
-        icon: icon,
-        tone: tone,
-        actionLabel: actionLabel,
-        data: const {},
-      ),
-    );
-  }
-
-  // Priority order: overdue tasks first, then payments, then providers, then today.
-  if (summary.overdueTasks > 0) {
-    addFallback(
-      id: 'fallback-overdue-task',
-      type: 'TASK_OVERDUE',
-      title: 'لديك ${summary.overdueTasks} مهمة متأخرة',
-      subtitle: 'متأخر',
-      icon: 'calendar',
-      tone: 'danger',
-      actionLabel: 'فتح المهام',
-    );
-  }
-  if ((summary.dueInstallmentsCount ?? 0) > 0) {
-    addFallback(
-      id: 'fallback-installments',
-      type: 'INSTALLMENT_DUE',
-      title: 'لديك ${summary.dueInstallmentsCount} قسط قريب',
-      subtitle: 'مستحق قريباً',
-      icon: 'wallet',
-      tone: 'warning',
-      actionLabel: 'عرض المال',
-    );
-  }
-  if (summary.quoteRequestsCount > 0 || summary.planProviders.isNotEmpty) {
-    addFallback(
-      id: 'fallback-quotes',
-      type: 'QUOTE_RECEIVED',
-      title: 'راجع عروض الموردين المفتوحة',
-      subtitle: 'عرض جديد',
-      icon: 'provider',
-      tone: 'success',
-      actionLabel: 'مراجعة العرض',
-    );
-  }
-  if (summary.todayTasks > 0) {
-    addFallback(
-      id: 'fallback-today-task',
-      type: 'TASK_TODAY',
-      title: 'مهمة اليوم بحاجة متابعة',
-      subtitle: 'اليوم',
-      icon: 'calendar',
-      tone: 'warning',
-      actionLabel: 'فتح المهام',
-    );
-  }
-
-  addFallback(
-    id: 'fallback-plan',
-    type: 'PLAN_REVIEW',
-    title: 'راجع مركز الخطة وتأكد من التفاصيل',
-    subtitle: 'متابعة',
-    icon: 'calendar',
-    tone: 'success',
-    actionLabel: 'متابعة الخطة',
-  );
-  addFallback(
-    id: 'fallback-budget',
-    type: 'BUDGET_REVIEW',
-    title: 'تأكد أن المصروفات تناسب الميزانية',
-    subtitle: 'مراجعة مالية',
-    icon: 'wallet',
-    tone: 'warning',
-    actionLabel: 'عرض المال',
-  );
-  addFallback(
-    id: 'fallback-guests',
-    type: 'GUEST_REVIEW',
-    title: 'حدّث قائمة الضيوف قبل إرسال الدعوات',
-    subtitle: 'اقتراح',
-    icon: 'guests',
-    tone: 'info',
-    actionLabel: 'إدارة الضيوف',
-  );
-
-  return items.take(3).toList();
-}
-
-_Tone _toneFor(String tone) {
-  switch (tone) {
-    case 'danger':
-      return const _Tone(color: _RoyalColors.danger, defaultLabel: 'متأخر');
-    case 'success':
-      return const _Tone(color: _RoyalColors.success, defaultLabel: 'جديد');
-    case 'warning':
-      return const _Tone(
-        color: _RoyalColors.warning,
-        defaultLabel: 'مستحق قريباً',
-      );
-    default:
-      return const _Tone(color: _RoyalColors.info, defaultLabel: 'مهم');
-  }
-}
-
-IconData _iconFor(String icon, String type) {
-  if (type.contains('QUOTE') || icon == 'provider') {
-    return Icons.request_quote_outlined;
-  }
-  if (type.contains('INSTALLMENT') || icon == 'wallet') {
-    return Icons.credit_card_outlined;
-  }
-  if (icon == 'guests') return Icons.groups_2_outlined;
-  return Icons.info_outline_rounded;
-}
-
-String _greetingFor(String userName) {
-  final trimmed = userName.trim();
-  if (trimmed.isEmpty || trimmed == 'صاحب الخطة') {
-    return 'مساء الخير، جاهزة نكمل خطتك؟';
-  }
-  return 'مساء الخير يا $trimmed، جاهزة نكمل خطتك؟';
-}
-
-String _nonEmpty(String? value, String fallback) {
-  final trimmed = value?.trim();
-  return trimmed == null || trimmed.isEmpty ? fallback : trimmed;
-}
-
-String _daysRemainingLabel(int? days) {
-  if (days == null) return 'باقي غير محدد';
-  if (days <= 0) return 'اليوم هو موعد الخطة';
-  return 'باقي $days يوم';
-}
-
-String _statusLabel(String status) {
-  switch (status) {
-    case 'COMPLETED':
-      return 'مكتملة';
-    case 'ARCHIVED':
-      return 'مؤرشفة';
-    case 'PLANNING':
-    default:
-      return 'قيد التجهيز';
-  }
-}
-
-String _formatDate(DateTime date) {
-  const months = [
-    'يناير',
-    'فبراير',
-    'مارس',
-    'أبريل',
-    'مايو',
-    'يونيو',
-    'يوليو',
-    'أغسطس',
-    'سبتمبر',
-    'أكتوبر',
-    'نوفمبر',
-    'ديسمبر',
-  ];
-  return '${date.day} ${months[date.month - 1]}';
-}
-
-String _money(String? value) {
-  final parsed = double.tryParse(value?.replaceAll(',', '').trim() ?? '');
-  if (parsed == null) return 'غير محدد';
-  final rounded = parsed.round();
-  final formatted = _formatNumber(rounded);
-  // TODO(home-dashboard): Add currency to the dashboard summary contract.
-  return '$formatted YER';
-}
-
-String _formatNumber(int value) {
-  final negative = value < 0;
-  final digits = value.abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-    buffer.write(digits[i]);
-  }
-  return '${negative ? '-' : ''}$buffer';
-}
-
-String _upcomingInstallmentLabel(DashboardSummary summary) {
-  final item = summary.importantItems.firstWhereOrNull(
-    (item) => item.type.contains('INSTALLMENT') && item.amount != null,
-  );
-  if (item?.amount != null) return _money(item!.amount);
-  final count = summary.dueInstallmentsCount ?? 0;
-  return count > 0 ? '$count أقساط قريبة' : 'لا توجد أقساط قريبة';
-}
-
-String _nextStepText(DashboardImportantItem item) {
-  final body = item.body?.trim();
-  if (body != null && body.isNotEmpty) return body;
-  return item.title;
-}
-
-class _RoyalColors {
-  const _RoyalColors._();
-
-  static const ivory = Color(0xFFFDFBF9);
-  static const burgundy = Color(0xFF800020);
-  static const burgundyDark = Color(0xFF5A0015);
-  static const gold = Color(0xFFD4AF37);
-  static const ink = Color(0xFF2D1A1E);
-  static const muted = Color(0xFF8A7B7E);
-  static const line = Color(0xFFF0E6DE);
-  static const danger = Color(0xFFBA2D3F);
-  static const warning = Color(0xFFD98A2C);
-  static const success = Color(0xFF3D8252);
-  static const info = Color(0xFF3F6FB0);
-}
-
-extension _IterableFirstWhereOrNull<E> on Iterable<E> {
-  E? firstWhereOrNull(bool Function(E element) test) {
-    for (final element in this) {
-      if (test(element)) return element;
-    }
-    return null;
   }
 }

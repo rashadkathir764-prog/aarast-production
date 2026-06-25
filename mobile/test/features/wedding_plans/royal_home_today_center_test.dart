@@ -27,6 +27,7 @@ void main() {
               onOpenTasks: () {},
               onOpenProviders: () {},
               onOpenGuests: () {},
+                onOpenParticipants: () {},
               onOpenNotifications: () {},
               onOpenImportantItem: (_) {},
               onOpenNextStep: () {},
@@ -36,7 +37,6 @@ void main() {
               activeIndex: 0,
               onHome: () {},
               onMoney: () {},
-              onTasks: () {},
               onProviders: () {},
               onMore: () {},
               onAdd: () {},
@@ -53,19 +53,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    expect(find.text('الأهم اليوم'), findsOneWidget);
-    expect(find.text('الخطوة التالية المقترحة'), findsOneWidget);
-    expect(find.text('المال'), findsWidgets);
-    expect(find.text('المهام'), findsWidgets);
-    expect(find.text('الموردون'), findsWidgets);
+    expect(find.text('تنبيه هام'), findsOneWidget);
+    expect(find.text('المالية'), findsOneWidget);
+    expect(find.text('الموردين'), findsWidgets);
 
     await tester.drag(find.byType(ListView).first, const Offset(0, -420));
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    expect(find.text('الضيوف'), findsWidgets);
-    expect(find.text('إشعارات'), findsWidgets);
     expect(find.text('إجراء جديد'), findsOneWidget);
   });
 

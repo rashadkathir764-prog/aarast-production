@@ -82,7 +82,8 @@ class LocalGuestDashboardSummary {
       planId: plan.guestPlanId ?? 'local-guest-plan',
       title: seed.title,
       weddingDate: plan.weddingDate,
-      city: _locationLabel(plan, fallback: seed.cityLabel),
+      city: plan.weddingLocation.shortLabel ?? seed.shortLocationLabel,
+      location: plan.weddingLocation.toJson(),
       status: 'PLANNING',
       daysRemaining: daysRemaining,
       progressPercentage: progressPercent,
@@ -137,14 +138,6 @@ class LocalGuestDashboardSummary {
       },
     );
   }
-}
-
-String _locationLabel(GuestOnboardingDraft plan, {required String fallback}) {
-  final parts = [plan.city, plan.district, plan.neighborhood]
-      .where((part) => part != null && part.trim().isNotEmpty)
-      .map((part) => part!.trim());
-  final label = parts.join('، ');
-  return label.isEmpty ? fallback : label;
 }
 
 String? _cleanAmount(String? value) {

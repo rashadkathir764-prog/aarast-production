@@ -7,6 +7,7 @@ import {
 import { NotificationPreference } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { SafeUser, toSafeUser } from '../auth/safe-user';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
@@ -62,6 +63,8 @@ export class UsersService {
         ...(dto.locale !== undefined
           ? { locale: this.requiredText(dto.locale, 'locale') }
           : {}),
+        ...(dto.appRole !== undefined ? { appRole: dto.appRole } : {}),
+        ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
       },
     });
 
@@ -69,9 +72,11 @@ export class UsersService {
   }
 
   async lookupByPhone(phone: string): Promise<UserLookupResponse> {
-    const normalizedPhone = this.requiredText(phone, 'phone');
-    const user = await this.prisma.user.findUnique({
-      where: { phone: normalizedPhone },
+    const normalizedPhone = PhoneNormalizer.normalizeRequired(phone);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        phone: { in: PhoneNormalizer.lookupVariants(normalizedPhone) },
+      },
       select: {
         id: true,
         name: true,

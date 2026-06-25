@@ -25,6 +25,8 @@ const smokeScripts = [
   ['smoke:marketplace', 'marketplace-smoke.js'],
   ['smoke:providers-quotes', 'providers-quotes-smoke.js'],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
+  ['smoke:ux-backend-support', 'ux-backend-support-smoke.js'],
+  ['smoke:ux-c4-c7', 'ux-c4-c7-smoke.js'],
   ['smoke:backend-completion', 'backend-completion-smoke.js'],
 ];
 

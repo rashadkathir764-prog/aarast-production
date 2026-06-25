@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
@@ -113,9 +114,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           SizedBox(height: 90),
           AarastEmptyState(
             icon: Icons.notifications_none_rounded,
-            title: 'لا توجد تنبيهات الآن',
+            title: 'لا توجد تنبيهات مهمة الآن.',
             message:
-                'سيظهر هنا كل تنبيه محفوظ مرتبط بمهامك وأقساطك ومشاركات الخطة.',
+                'عند وصول عرض سعر أو اقتراب مهمة ستظهر هنا.',
           ),
         ],
       );
@@ -128,8 +129,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         final notification = notifications[index];
         return _NotificationCard(
           notification: notification,
-          onTap: () => provider.markRead(notification),
-          onDelete: () => _confirmDelete(provider, notification),
+          onTap: () => _openNotification(provider, notification),
+          onArchive: () => provider.archiveNotification(notification),
         );
       },
     );
@@ -162,72 +163,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Future<void> _confirmDelete(
+  Future<void> _openNotification(
     NotificationsProvider provider,
     AarastNotification notification,
   ) async {
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'حذف التنبيه؟',
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(
-                          color: AppTheme.dInk,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'سيتم حذف هذا التنبيه من حسابك فقط.',
-                    style: TextStyle(
-                      color: AppTheme.dInkSoft,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(false),
-                          child: const Text('إلغاء'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.of(sheetContext).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.danger,
-                          ),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('حذف'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (confirmed == true && mounted) {
-      await provider.deleteNotification(notification);
-    }
+    final marked = await provider.markRead(notification);
+    if (!mounted || !marked) return;
+    final target = notification.routeTarget?.trim();
+    if (target == null || !_isSafeRouteTarget(target)) return;
+    await context.push(target);
   }
 }
 
@@ -235,12 +179,12 @@ class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.notification,
     required this.onTap,
-    required this.onDelete,
+    required this.onArchive,
   });
 
   final AarastNotification notification;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final VoidCallback onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -306,22 +250,38 @@ class _NotificationCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _dateLabel(notification.createdAt),
-                  style: const TextStyle(
-                    color: AppTheme.dMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      _dateLabel(notification.createdAt),
+                      style: const TextStyle(
+                        color: AppTheme.dMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (notification.priority == 'HIGH' ||
+                        notification.priority == 'URGENT') ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        notification.priority == 'URGENT' ? 'عاجل' : 'مهم',
+                        style: const TextStyle(
+                          color: AppTheme.dMaroon,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
           const SizedBox(width: 6),
           IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline_rounded),
-            tooltip: 'حذف التنبيه',
+            onPressed: onArchive,
+            icon: const Icon(Icons.archive_outlined),
+            tooltip: 'أرشفة التنبيه',
             color: AppTheme.dMuted,
           ),
         ],
@@ -343,6 +303,13 @@ class _NotificationTone {
 }
 
 _NotificationTone _tone(String type) {
+  if (type.contains('QUOTE')) {
+    return const _NotificationTone(
+      icon: Icons.request_quote_outlined,
+      color: AppTheme.dMaroon,
+      background: AppTheme.dPinkBg,
+    );
+  }
   if (type.contains('INSTALLMENT')) {
     return const _NotificationTone(
       icon: Icons.credit_card_rounded,
@@ -369,6 +336,15 @@ _NotificationTone _tone(String type) {
     color: AppTheme.dMaroon,
     background: AppTheme.dPinkBg,
   );
+}
+
+bool _isSafeRouteTarget(String target) {
+  if (!target.startsWith('/') || target.contains('://')) return false;
+  return target == '/providers' ||
+      target.startsWith('/providers/') ||
+      target.startsWith('/invites/') ||
+      target.startsWith('/wedding-plans/') ||
+      target.startsWith('/debts/');
 }
 
 String _dateLabel(DateTime date) {

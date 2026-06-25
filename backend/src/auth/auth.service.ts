@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { OtpCode, OtpPurpose, User } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
 import { randomInt } from 'crypto';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -45,10 +46,12 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponse> {
+    const phone = PhoneNormalizer.normalizeRequired(dto.phone);
+    const phoneVariants = PhoneNormalizer.lookupVariants(phone);
     const existing = await this.prisma.user.findFirst({
       where: {
         OR: [
-          { phone: dto.phone },
+          { phone: { in: phoneVariants } },
           ...(dto.email ? [{ email: dto.email }] : []),
         ],
       },
@@ -63,7 +66,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
-        phone: dto.phone,
+        phone,
         email: dto.email ?? null,
         passwordHash,
       },
@@ -74,8 +77,9 @@ export class AuthService {
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: { phone: dto.phone },
+    const phone = PhoneNormalizer.normalizeRequired(dto.phone);
+    const user = await this.prisma.user.findFirst({
+      where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
     });
 
     if (!user) {
@@ -101,7 +105,7 @@ export class AuthService {
   }
 
   async requestOtp(dto: RequestOtpDto): Promise<OtpRequestResponse> {
-    const phone = this.requiredText(dto.phone, 'phone');
+    const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const purpose = dto.purpose;
     const code = this.generateOtpCode();
     const codeHash = await bcryptjs.hash(code, 10);
@@ -144,7 +148,7 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<OtpVerifyResponse> {
-    const phone = this.requiredText(dto.phone, 'phone');
+    const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const code = this.requiredText(dto.code, 'code');
     const purpose = dto.purpose;
     const now = new Date();
@@ -200,7 +204,9 @@ export class AuthService {
     purpose: OtpPurpose,
     now: Date,
   ): Promise<User | null> {
-    const user = await this.prisma.user.findUnique({ where: { phone } });
+    const user = await this.prisma.user.findFirst({
+      where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
+    });
 
     if (purpose === OtpPurpose.LOGIN) {
       if (!user || user.status === 'DISABLED') {

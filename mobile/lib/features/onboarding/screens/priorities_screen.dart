@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/guest_onboarding_draft.dart';
+import '../models/persona_copy.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
 
 class PrioritiesScreen extends StatelessWidget {
   const PrioritiesScreen({
+    this.persona,
     this.selectedPriorities = const [],
     this.onChanged,
     this.onContinue,
@@ -11,6 +14,7 @@ class PrioritiesScreen extends StatelessWidget {
     super.key,
   });
 
+  final GuestPersona? persona;
   final List<String> selectedPriorities;
   final ValueChanged<List<String>>? onChanged;
   final VoidCallback? onContinue;
@@ -26,10 +30,12 @@ class PrioritiesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = personaCopyForGuest(persona);
+
     return GuestOnboardingStepScaffold(
       stepNumber: 5,
-      title: 'ما أهم ما تريد ترتيبه؟',
-      description: 'هذه الأولويات ستساعد لوحة البداية المحلية لاحقًا.',
+      title: copy.prioritiesTitle,
+      description: copy.prioritiesDescription,
       continueLabel: 'حفظ الأولويات',
       onContinue: selectedPriorities.isEmpty ? null : onContinue,
       onBack: onBack,

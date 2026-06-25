@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/guest_onboarding_draft.dart';
+import '../models/persona_copy.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
 
 class WeddingDateScreen extends StatelessWidget {
@@ -22,10 +23,11 @@ class WeddingDateScreen extends StatelessWidget {
     final now = DateTime.now();
     final sixMonthsLater = DateTime(now.year, now.month + 6, now.day);
     final twelveMonthsLater = DateTime(now.year + 1, now.month, now.day);
+    final copy = personaCopyForGuest(draft.persona);
 
     return GuestOnboardingStepScaffold(
       stepNumber: 4,
-      title: 'متى موعد الزفاف؟',
+      title: copy.weddingDateTitle,
       description: 'يمكنك اختيار تاريخ تقريبي أو المتابعة بدون تاريخ الآن.',
       continueLabel: 'متابعة',
       onContinue: draft.hasTimelineSeed ? onContinue : null,
@@ -44,7 +46,7 @@ class WeddingDateScreen extends StatelessWidget {
           GuestOnboardingOptionTile(
             title: 'اختيار تاريخ من التقويم',
             subtitle: draft.weddingDate == null
-                ? 'حدد اليوم المناسب لك'
+                ? copy.calendarSubtitle
                 : _dateLabel(draft.weddingDate!),
             icon: Icons.calendar_month_rounded,
             selected: draft.weddingDate != null && !draft.weddingDateUnknown,

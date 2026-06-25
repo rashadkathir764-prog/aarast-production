@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../../shared/models/contact_phone_draft.dart';
 import 'contact_picker_service.dart';
 
 class ContactPhoneFieldSuffix extends StatefulWidget {
   const ContactPhoneFieldSuffix({
     required this.controller,
     this.enabled = true,
+    this.nameController,
+    this.onContactSelected,
     this.onPhoneSelected,
     super.key,
   });
 
   final TextEditingController controller;
   final bool enabled;
+  final TextEditingController? nameController;
+  final ValueChanged<ContactPhoneDraft>? onContactSelected;
   final ValueChanged<String>? onPhoneSelected;
 
   @override
@@ -40,12 +45,21 @@ class _ContactPhoneFieldSuffixState extends State<ContactPhoneFieldSuffix> {
   Future<void> _pickPhone() async {
     setState(() => _isPicking = true);
     try {
-      final phone = await ContactPickerService.pickPhoneNumber(context);
-      if (phone == null || !mounted) return;
+      final contact = await ContactPickerService.pickContact(context);
+      if (contact == null || !mounted) return;
+      final phone = contact.normalizedPhone ?? contact.rawPhone;
       widget.controller.text = phone;
       widget.controller.selection = TextSelection.collapsed(
         offset: widget.controller.text.length,
       );
+      final selectedName = contact.name.trim();
+      if (widget.nameController != null && selectedName.isNotEmpty) {
+        widget.nameController!.text = selectedName;
+        widget.nameController!.selection = TextSelection.collapsed(
+          offset: selectedName.length,
+        );
+      }
+      widget.onContactSelected?.call(contact);
       widget.onPhoneSelected?.call(phone);
     } catch (error) {
       if (!mounted) return;

@@ -202,6 +202,15 @@ export class ProviderDashboardController {
     );
   }
 
+  @Post('quote-requests/:id/offers')
+  createQuoteOffer(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CreateQuoteOfferDto,
+  ) {
+    return this.providerDashboardService.createQuoteOffer(currentUser, id, dto);
+  }
+
   @Get('reviews')
   findReviews(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.providerDashboardService.findReviews(currentUser);

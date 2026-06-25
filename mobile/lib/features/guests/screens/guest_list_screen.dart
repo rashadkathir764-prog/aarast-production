@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/contacts/contact_phone_field_suffix.dart';
-import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/contacts/contact_duplicate_utils.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
@@ -161,10 +162,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
   }
 
   Future<void> _showGuestSheet({Guest? guest}) async {
+    final existingGuests = _isLocalExploration
+        ? const <Guest>[]
+        : context.read<GuestsProvider>().guests;
     final result = await showModalBottomSheet<_GuestSheetResult>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _GuestFormSheet(guest: guest),
+      builder: (_) =>
+          _GuestFormSheet(guest: guest, existingGuests: existingGuests),
     );
 
     if (result == null || !mounted) return;
@@ -287,9 +292,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
 }
 
 class _GuestFormSheet extends StatefulWidget {
-  const _GuestFormSheet({this.guest});
+  const _GuestFormSheet({required this.existingGuests, this.guest});
 
   final Guest? guest;
+  final List<Guest> existingGuests;
 
   @override
   State<_GuestFormSheet> createState() => _GuestFormSheetState();
@@ -311,6 +317,8 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
     _nameController = TextEditingController(text: guest?.name ?? '');
     _phoneController = TextEditingController(text: guest?.phone ?? '');
     _notesController = TextEditingController(text: guest?.notes ?? '');
+    _nameController.addListener(_handleContactChanged);
+    _phoneController.addListener(_handleContactChanged);
     _side = guest?.side ?? 'OTHER';
     _status = guest?.status ?? 'INVITED';
     _seatsCount = guest?.seatsCount ?? 1;
@@ -318,10 +326,36 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
+    _nameController
+      ..removeListener(_handleContactChanged)
+      ..dispose();
+    _phoneController
+      ..removeListener(_handleContactChanged)
+      ..dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  void _handleContactChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Guest? get _duplicatePhoneGuest {
+    return ContactDuplicateUtils.findByPhone(
+      widget.existingGuests,
+      candidatePhone: _phoneController.text,
+      phoneOf: (guest) => guest.phone,
+      exclude: (guest) => guest.id == widget.guest?.id,
+    );
+  }
+
+  bool get _hasSoftNameDuplicate {
+    if (_phoneController.text.trim().isNotEmpty) return false;
+    return widget.existingGuests.any(
+      (guest) =>
+          guest.id != widget.guest?.id &&
+          ContactDuplicateUtils.sameName(guest.name, _nameController.text),
+    );
   }
 
   void _submit() {
@@ -331,11 +365,16 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
       return;
     }
 
+    if (_duplicatePhoneGuest != null) {
+      setState(() => _sheetError = 'هذا الرقم مضاف مسبقًا.');
+      return;
+    }
+
     String? phone;
     try {
-      phone = normalizeOptionalYemeniPhone(_phoneController.text);
+      phone = PhoneNumberUtils.normalizeOptional(_phoneController.text);
     } on FormatException {
-      setState(() => _sheetError = 'رقم الهاتف غير صحيح');
+      setState(() => _sheetError = PhoneNumberUtils.invalidMessage);
       return;
     }
 
@@ -397,21 +436,28 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'رقم التواصل (اختياري)',
-                    prefixIcon: const Icon(Icons.phone_outlined),
-                    suffixIcon: ContactPhoneFieldSuffix(
-                      controller: _phoneController,
-                      onPhoneSelected: (_) {
-                        if (!mounted) return;
-                        setState(() => _sheetError = null);
-                      },
+                ContactPhoneField(
+                  nameController: _nameController,
+                  phoneController: _phoneController,
+                  label: 'رقم الجوال (اختياري)',
+                  duplicateMessage: _duplicatePhoneGuest == null
+                      ? null
+                      : 'هذا الرقم مضاف مسبقًا.',
+                  onDraftChanged: (_) {
+                    if (!mounted) return;
+                    setState(() => _sheetError = null);
+                  },
+                ),
+                if (_hasSoftNameDuplicate) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    'يوجد ضيف بنفس الاسم دون رقم. يمكنك المتابعة إذا كان شخصًا آخر.',
+                    style: TextStyle(
+                      color: AppTheme.dGoldDeep,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ),
+                ],
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _side,
@@ -623,7 +669,8 @@ class _GuestTile extends StatelessWidget {
                     _sideLabel(guest.side),
                     '${guest.seatsCount} مقعد',
                     if (guest.phone?.trim().isNotEmpty == true)
-                      guest.phone!.trim(),
+                      PhoneNumberUtils.display(guest.phone) ??
+                          guest.phone!.trim(),
                   ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

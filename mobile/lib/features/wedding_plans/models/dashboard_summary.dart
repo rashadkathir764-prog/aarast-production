@@ -7,6 +7,9 @@ class DashboardPermissionSummary {
     required this.canViewExpenses,
     required this.canViewDebts,
     required this.canManageTasks,
+    this.canManageGuests = false,
+    this.canManageProviders = false,
+    this.canManageMembers = false,
     required this.canManageFinancialRecords,
     required this.canManagePlan,
     this.role,
@@ -20,6 +23,9 @@ class DashboardPermissionSummary {
       canViewExpenses: json['canViewExpenses'] == true,
       canViewDebts: json['canViewDebts'] == true,
       canManageTasks: json['canManageTasks'] == true,
+      canManageGuests: json['canManageGuests'] == true,
+      canManageProviders: json['canManageProviders'] == true,
+      canManageMembers: json['canManageMembers'] == true,
       canManageFinancialRecords: json['canManageFinancialRecords'] == true,
       canManagePlan: json['canManagePlan'] == true,
     );
@@ -31,6 +37,9 @@ class DashboardPermissionSummary {
   final bool canViewExpenses;
   final bool canViewDebts;
   final bool canManageTasks;
+  final bool canManageGuests;
+  final bool canManageProviders;
+  final bool canManageMembers;
   final bool canManageFinancialRecords;
   final bool canManagePlan;
 }
@@ -47,15 +56,25 @@ class DashboardSummary {
     required this.todayTasks,
     required this.guestCount,
     required this.confirmedGuests,
+    this.pendingGuests = 0,
+    this.declinedGuests = 0,
     required this.providerCount,
     required this.quoteRequestsCount,
+    this.pendingQuoteRequests = 0,
+    this.receivedQuotes = 0,
+    this.acceptedProviders = 0,
+    this.nextProviderAction = 'REQUEST_FIRST_QUOTE',
+    this.participantCount = 1,
+    this.pendingInvites = 0,
     required this.unreadNotificationsCount,
+    this.highPriorityNotificationsCount = 0,
     required this.importantItems,
     required this.planProviders,
     required this.importantNotifications,
     required this.permissions,
     this.weddingDate,
     this.city,
+    this.location,
     this.daysRemaining,
     this.budgetTotal,
     this.spentTotal,
@@ -69,11 +88,13 @@ class DashboardSummary {
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
+    final actions = json['nextBestActions'] ?? json['importantItems'];
     return DashboardSummary(
       planId: json['planId'].toString(),
       title: json['title'].toString(),
       weddingDate: _dateTimeOrNull(json['weddingDate']),
       city: json['city']?.toString(),
+      location: _mapOrNull(json['location']),
       status: json['status']?.toString() ?? 'PLANNING',
       daysRemaining: _intOrNull(json['daysRemaining']),
       progressPercentage: _intOrZero(json['progressPercentage']).clamp(0, 100),
@@ -90,11 +111,25 @@ class DashboardSummary {
       todayTasks: _intOrZero(json['todayTasks']),
       guestCount: _intOrZero(json['guestCount']),
       confirmedGuests: _intOrZero(json['confirmedGuests']),
+      pendingGuests: _intOrZero(json['pendingGuests']),
+      declinedGuests: _intOrZero(json['declinedGuests']),
       providerCount: _intOrZero(json['providerCount']),
       quoteRequestsCount: _intOrZero(json['quoteRequestsCount']),
+      pendingQuoteRequests: _intOrZero(json['pendingQuoteRequests']),
+      receivedQuotes: _intOrZero(json['receivedQuotes']),
+      acceptedProviders:
+          _intOrNull(json['acceptedProviders']) ??
+          _intOrZero(json['providerCount']),
+      nextProviderAction:
+          json['nextProviderAction']?.toString() ?? 'REQUEST_FIRST_QUOTE',
+      participantCount: _intOrNull(json['participantCount']) ?? 1,
+      pendingInvites: _intOrZero(json['pendingInvites']),
       unreadNotificationsCount: _intOrZero(json['unreadNotificationsCount']),
+      highPriorityNotificationsCount: _intOrZero(
+        json['highPriorityNotificationsCount'],
+      ),
       importantItems: _listOfMaps(
-        json['importantItems'],
+        actions,
       ).map(DashboardImportantItem.fromJson).toList(),
       planProviders: _listOfMaps(
         json['planProviders'],
@@ -114,6 +149,7 @@ class DashboardSummary {
   final String title;
   final DateTime? weddingDate;
   final String? city;
+  final Map<String, dynamic>? location;
   final String status;
   final int? daysRemaining;
   final int progressPercentage;
@@ -130,9 +166,18 @@ class DashboardSummary {
   final int todayTasks;
   final int guestCount;
   final int confirmedGuests;
+  final int pendingGuests;
+  final int declinedGuests;
   final int providerCount;
   final int quoteRequestsCount;
+  final int pendingQuoteRequests;
+  final int receivedQuotes;
+  final int acceptedProviders;
+  final String nextProviderAction;
+  final int participantCount;
+  final int pendingInvites;
   final int unreadNotificationsCount;
+  final int highPriorityNotificationsCount;
   final List<DashboardImportantItem> importantItems;
   final List<DashboardProviderPreview> planProviders;
   final List<DashboardNotificationPreview> importantNotifications;
@@ -159,6 +204,7 @@ class DashboardSummary {
       ownerUserId: ownerUserId,
       title: title,
       city: city,
+      location: location,
       weddingDate: weddingDate,
       estimatedBudget: budgetTotal,
       currency: 'YER',
@@ -187,6 +233,12 @@ class DashboardSummary {
     return const {};
   }
 
+  static Map<String, dynamic>? _mapOrNull(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
+  }
+
   static List<Map<String, dynamic>> _listOfMaps(Object? value) {
     if (value is! List) return const [];
     return value
@@ -204,12 +256,15 @@ class DashboardImportantItem {
     required this.subtitle,
     required this.icon,
     required this.tone,
+    this.priority = 'NORMAL',
     required this.actionLabel,
     required this.data,
     this.body,
     this.dueDate,
     this.amount,
     this.route,
+    this.routeTarget,
+    this.entityId,
   });
 
   factory DashboardImportantItem.fromJson(Map<String, dynamic> json) {
@@ -221,10 +276,14 @@ class DashboardImportantItem {
       body: json['body']?.toString(),
       icon: json['icon']?.toString() ?? 'calendar',
       tone: json['tone']?.toString() ?? 'info',
+      priority: json['priority']?.toString() ?? 'NORMAL',
       actionLabel: json['actionLabel']?.toString() ?? 'عرض التفاصيل',
       dueDate: DashboardSummary._dateTimeOrNull(json['dueDate']),
       amount: json['amount']?.toString(),
       route: json['route']?.toString(),
+      routeTarget:
+          json['routeTarget']?.toString() ?? json['route']?.toString(),
+      entityId: json['entityId']?.toString(),
       data: DashboardSummary._mapOrEmpty(
         json['data'],
       ).map((key, value) => MapEntry(key, value?.toString())),
@@ -238,10 +297,13 @@ class DashboardImportantItem {
   final String? body;
   final String icon;
   final String tone;
+  final String priority;
   final String actionLabel;
   final DateTime? dueDate;
   final String? amount;
   final String? route;
+  final String? routeTarget;
+  final String? entityId;
   final Map<String, String?> data;
 }
 
@@ -290,6 +352,10 @@ class DashboardNotificationPreview {
     required this.title,
     required this.body,
     required this.createdAt,
+    this.priority = 'NORMAL',
+    this.entityType,
+    this.entityId,
+    this.routeTarget,
     this.readAt,
     this.data = const {},
   });
@@ -300,6 +366,10 @@ class DashboardNotificationPreview {
       type: json['type']?.toString() ?? 'GENERAL',
       title: json['title']?.toString() ?? '',
       body: json['body']?.toString() ?? '',
+      priority: json['priority']?.toString() ?? 'NORMAL',
+      entityType: json['entityType']?.toString(),
+      entityId: json['entityId']?.toString(),
+      routeTarget: json['routeTarget']?.toString(),
       readAt: DashboardSummary._dateTimeOrNull(json['readAt']),
       createdAt:
           DashboardSummary._dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
@@ -311,6 +381,10 @@ class DashboardNotificationPreview {
   final String type;
   final String title;
   final String body;
+  final String priority;
+  final String? entityType;
+  final String? entityId;
+  final String? routeTarget;
   final DateTime? readAt;
   final DateTime createdAt;
   final Map<String, dynamic> data;

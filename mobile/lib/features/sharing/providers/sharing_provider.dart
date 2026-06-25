@@ -16,9 +16,11 @@ class SharingProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _lookupErrorMessage;
   List<SharedMember> _members = const [];
+  List<PlanInvite> _invites = const [];
   List<SharedWeddingPlan> _sharedPlans = const [];
   SharedMember? _selectedMember;
   SharedUserLookup? _lookupUser;
+  PlanInvite? _selectedInvite;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -26,9 +28,11 @@ class SharingProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get lookupErrorMessage => _lookupErrorMessage;
   List<SharedMember> get members => _members;
+  List<PlanInvite> get invites => _invites;
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
   SharedMember? get selectedMember => _selectedMember;
   SharedUserLookup? get lookupUser => _lookupUser;
+  PlanInvite? get selectedInvite => _selectedInvite;
 
   Future<void> loadMembers(String weddingPlanId) async {
     _isLoading = true;
@@ -36,7 +40,12 @@ class SharingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _members = await _api.getSharedMembers(weddingPlanId);
+      final results = await Future.wait<Object>([
+        _api.getSharedMembers(weddingPlanId),
+        _api.getPlanInvites(weddingPlanId),
+      ]);
+      _members = results[0] as List<SharedMember>;
+      _invites = results[1] as List<PlanInvite>;
       if (_selectedMember != null) {
         _selectedMember = _findMember(_selectedMember!.id);
       }
@@ -146,6 +155,108 @@ class SharingProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إضافة عضو المشاركة.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createInvite({
+    required String weddingPlanId,
+    required String phone,
+    String? name,
+    required String role,
+    required bool canViewBudget,
+    required bool canViewExpenses,
+    required bool canViewDebts,
+    required bool canEditPlan,
+    required bool canManageTasks,
+    required bool canManageGuests,
+    required bool canManageProviders,
+    required bool canInviteMembers,
+    required bool canManageFinancialRecords,
+    required bool receiveNotifications,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final invite = await _api.createPlanInvite(
+        weddingPlanId: weddingPlanId,
+        phone: phone,
+        name: name,
+        role: role,
+        canViewBudget: canViewBudget,
+        canViewExpenses: canViewExpenses,
+        canViewDebts: canViewDebts,
+        canEditPlan: canEditPlan,
+        canManageTasks: canManageTasks,
+        canManageGuests: canManageGuests,
+        canManageProviders: canManageProviders,
+        canInviteMembers: canInviteMembers,
+        canManageFinancialRecords: canManageFinancialRecords,
+        receiveNotifications: receiveNotifications,
+      );
+      _invites = [invite, ..._invites.where((item) => item.id != invite.id)];
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _sharingErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر إرسال دعوة المشاركة.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> cancelInvite(PlanInvite invite) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _api.cancelPlanInvite(
+        weddingPlanId: invite.weddingPlanId,
+        inviteId: invite.id,
+      );
+      _invites = _invites.where((item) => item.id != invite.id).toList();
+      return true;
+    } catch (_) {
+      _errorMessage = 'تعذر إلغاء الدعوة.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadInvite(String token) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _selectedInvite = await _api.getInvite(token);
+    } on ApiException catch (error) {
+      _errorMessage = _sharingErrorMessage(error.message);
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> respondToInvite(String token, {required bool accept}) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _selectedInvite = accept
+          ? await _api.acceptInvite(token)
+          : await _api.declineInvite(token);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _sharingErrorMessage(error.message);
       return false;
     } finally {
       _isSubmitting = false;

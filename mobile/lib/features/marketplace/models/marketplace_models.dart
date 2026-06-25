@@ -1,3 +1,5 @@
+import '../../onboarding/models/wedding_location_draft.dart';
+
 class MarketplaceCity {
   const MarketplaceCity({
     required this.id,
@@ -313,56 +315,200 @@ class QuoteRequest {
     required this.id,
     required this.providerId,
     required this.status,
+    required this.lifecycleStatus,
+    this.weddingPlanId,
     this.userName,
     this.userPhone,
+    this.contactName,
+    this.contactPhone,
     this.weddingPlanTitle,
     this.provider,
     this.service,
     this.eventDate,
+    this.location,
     this.cityId,
     this.guestCount,
     this.message,
     this.budgetMin,
     this.budgetMax,
+    this.offers = const [],
+    this.financialSuggestion,
   });
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
     final user = json['user'];
     final weddingPlan = json['weddingPlan'];
+    final offers = json['offers'];
+    final location = json['location'];
     return QuoteRequest(
       id: json['id'].toString(),
       providerId: json['providerId']?.toString() ?? '',
+      weddingPlanId: json['weddingPlanId']?.toString(),
       userName: user is Map ? user['name']?.toString() : null,
       userPhone: user is Map ? user['phone']?.toString() : null,
+      contactName: json['contactName']?.toString(),
+      contactPhone:
+          json['contactNormalizedPhone']?.toString() ??
+          json['contactPhone']?.toString(),
       weddingPlanTitle: weddingPlan is Map
           ? weddingPlan['title']?.toString()
           : null,
       provider: _mapOrNull(json['provider'], ProviderSummary.fromJson),
       service: _mapOrNull(json['service'], MarketplaceService.fromJson),
       eventDate: _dateOrNull(json['eventDate']),
+      location: location is Map
+          ? WeddingLocationDraft.fromJson(
+              Map<String, dynamic>.from(location),
+            )
+          : null,
       cityId: json['cityId']?.toString(),
       guestCount: _intOrNull(json['guestCount']),
       message: json['message']?.toString(),
       budgetMin: json['budgetMin']?.toString(),
       budgetMax: json['budgetMax']?.toString(),
       status: json['status']?.toString() ?? 'SENT',
+      lifecycleStatus:
+          json['lifecycleStatus']?.toString() ??
+          _quoteLifecycleStatus(json['status']?.toString()),
+      offers: offers is List
+          ? offers
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      QuoteOffer.fromJson(Map<String, dynamic>.from(item)),
+                )
+                .toList()
+          : const [],
+      financialSuggestion: _mapOrNull(
+        json['financialSuggestion'],
+        QuoteFinancialSuggestion.fromJson,
+      ),
     );
   }
 
   final String id;
   final String providerId;
+  final String? weddingPlanId;
   final String? userName;
   final String? userPhone;
+  final String? contactName;
+  final String? contactPhone;
   final String? weddingPlanTitle;
   final ProviderSummary? provider;
   final MarketplaceService? service;
   final DateTime? eventDate;
+  final WeddingLocationDraft? location;
   final String? cityId;
   final int? guestCount;
   final String? message;
   final String? budgetMin;
   final String? budgetMax;
   final String status;
+  final String lifecycleStatus;
+  final List<QuoteOffer> offers;
+  final QuoteFinancialSuggestion? financialSuggestion;
+
+  QuoteOffer? get acceptedOffer {
+    for (final offer in offers) {
+      if (offer.status == 'ACCEPTED') return offer;
+    }
+    return null;
+  }
+
+  QuoteOffer? get pendingOffer {
+    for (final offer in offers) {
+      if (offer.status == 'PENDING') return offer;
+    }
+    return null;
+  }
+
+  bool get canAcceptOrReject =>
+      lifecycleStatus == 'RECEIVED' && pendingOffer != null;
+  bool get canCancel =>
+      lifecycleStatus == 'PENDING_PROVIDER' ||
+      lifecycleStatus == 'READY_TO_SEND';
+}
+
+class QuoteOffer {
+  const QuoteOffer({
+    required this.id,
+    required this.status,
+    this.title,
+    this.message,
+    this.amount,
+    this.currency,
+    this.validUntil,
+  });
+
+  factory QuoteOffer.fromJson(Map<String, dynamic> json) {
+    return QuoteOffer(
+      id: json['id'].toString(),
+      status: json['status']?.toString() ?? 'PENDING',
+      title: json['title']?.toString(),
+      message: json['message']?.toString(),
+      amount: json['amount']?.toString(),
+      currency: json['currency']?.toString(),
+      validUntil: _dateOrNull(json['validUntil']),
+    );
+  }
+
+  final String id;
+  final String status;
+  final String? title;
+  final String? message;
+  final String? amount;
+  final String? currency;
+  final DateTime? validUntil;
+}
+
+class QuoteFinancialSuggestion {
+  const QuoteFinancialSuggestion({
+    required this.providerName,
+    required this.suggestedAction,
+    this.category,
+    this.quotedAmount,
+    this.currency,
+    this.availableActions = const [],
+  });
+
+  factory QuoteFinancialSuggestion.fromJson(Map<String, dynamic> json) {
+    final actions = json['availableActions'];
+    return QuoteFinancialSuggestion(
+      providerName: json['providerName']?.toString() ?? '',
+      category: json['category']?.toString(),
+      quotedAmount: json['quotedAmount']?.toString(),
+      currency: json['currency']?.toString(),
+      suggestedAction: json['suggestedAction']?.toString() ?? 'NONE',
+      availableActions: actions is List
+          ? actions.map((item) => item.toString()).toList()
+          : const [],
+    );
+  }
+
+  final String providerName;
+  final String? category;
+  final String? quotedAmount;
+  final String? currency;
+  final String suggestedAction;
+  final List<String> availableActions;
+}
+
+String _quoteLifecycleStatus(String? status) {
+  switch (status) {
+    case 'SENT':
+    case 'VIEWED':
+      return 'PENDING_PROVIDER';
+    case 'RESPONDED':
+      return 'RECEIVED';
+    case 'ACCEPTED':
+    case 'REJECTED':
+    case 'CANCELLED':
+      return status!;
+    case 'READY_TO_SEND':
+      return 'READY_TO_SEND';
+    default:
+      return 'DRAFT';
+  }
 }
 
 class ProviderDashboardProfile {

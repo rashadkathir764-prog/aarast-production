@@ -31,7 +31,7 @@ class ChoosePathScreen extends StatelessWidget {
         children: [
           GuestOnboardingOptionTile(
             key: const Key('guest-path-wedding-user'),
-            title: 'أريد تنظيم زفافي',
+            title: 'أرتب زفافي',
             subtitle: 'مسار تخطيط الزفاف والميزانية والمهام والضيوف.',
             icon: Icons.favorite_rounded,
             selected: selectedPath == GuestOnboardingPath.weddingUser,
@@ -42,7 +42,7 @@ class ChoosePathScreen extends StatelessWidget {
             key: const Key('guest-path-provider'),
             title: 'أنا مزود خدمة',
             subtitle:
-                'مسار آمن مؤقت. ملف المزود وطلبات العروض ستفتح لاحقًا بعد اعتمادها.',
+                'مسار منفصل لتجهيز ملف خدمتك ومتابعة طلبات العروض لاحقًا.',
             icon: Icons.storefront_rounded,
             selected: selectedPath == GuestOnboardingPath.provider,
             onTap: () => onSelectPath?.call(GuestOnboardingPath.provider),

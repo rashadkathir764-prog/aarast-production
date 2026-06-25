@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/contacts/contact_phone_field_suffix.dart';
-import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/contacts/contact_duplicate_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../shared/widgets/contact_phone_field.dart';
 import '../models/shared_member.dart';
+import '../models/plan_role_permissions.dart';
 import '../providers/sharing_provider.dart';
 
 class AddSharedMemberScreen extends StatefulWidget {
@@ -26,8 +27,14 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   bool _canViewBudget = false;
   bool _canViewExpenses = false;
   bool _canViewDebts = false;
-  bool _canManageTasks = true;
+  bool _canEditPlan = false;
+  bool _canManageTasks = false;
+  bool _canManageGuests = false;
+  bool _canManageProviders = false;
+  bool _canInviteMembers = false;
   bool _canManageFinancialRecords = false;
+  bool _receiveNotifications = true;
+  String? _localPhoneError;
 
   @override
   void dispose() {
@@ -63,32 +70,53 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
               controller: _phoneController,
               isLookingUp: provider.isLookingUp,
               errorMessage: provider.lookupErrorMessage,
+              duplicateMessage:
+                  _localPhoneError ??
+                  _duplicateMemberMessage(provider.members, provider.invites),
               foundUser: foundUser,
-              onChanged: (_) => provider.clearLookup(),
+              onChanged: (_) {
+                provider.clearLookup();
+                setState(() => _localPhoneError = null);
+              },
               onLookup: _lookupUser,
             ),
             const SizedBox(height: 14),
             _RoleDropdown(
               value: _role,
-              onChanged: (value) => setState(() => _role = value),
+              onChanged: _applyRole,
             ),
             const SizedBox(height: 14),
             _PermissionSwitches(
               canViewBudget: _canViewBudget,
               canViewExpenses: _canViewExpenses,
               canViewDebts: _canViewDebts,
+              canEditPlan: _canEditPlan,
               canManageTasks: _canManageTasks,
+              canManageGuests: _canManageGuests,
+              canManageProviders: _canManageProviders,
+              canInviteMembers: _canInviteMembers,
               canManageFinancialRecords: _canManageFinancialRecords,
+              receiveNotifications: _receiveNotifications,
               onViewBudgetChanged: (value) =>
                   setState(() => _canViewBudget = value),
               onViewExpensesChanged: (value) =>
                   setState(() => _canViewExpenses = value),
               onViewDebtsChanged: (value) =>
                   setState(() => _canViewDebts = value),
+              onEditPlanChanged: (value) =>
+                  setState(() => _canEditPlan = value),
               onManageTasksChanged: (value) =>
                   setState(() => _canManageTasks = value),
+              onManageGuestsChanged: (value) =>
+                  setState(() => _canManageGuests = value),
+              onManageProvidersChanged: (value) =>
+                  setState(() => _canManageProviders = value),
+              onInviteMembersChanged: (value) =>
+                  setState(() => _canInviteMembers = value),
               onManageFinancialRecordsChanged: (value) =>
                   setState(() => _canManageFinancialRecords = value),
+              onReceiveNotificationsChanged: (value) =>
+                  setState(() => _receiveNotifications = value),
             ),
             if (provider.errorMessage != null) ...[
               const SizedBox(height: 12),
@@ -96,9 +124,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
             ],
             const SizedBox(height: 18),
             FilledButton.icon(
-              onPressed: provider.isSubmitting || foundUser == null
-                  ? null
-                  : _submit,
+              onPressed: provider.isSubmitting ? null : _submit,
               icon: provider.isSubmitting
                   ? const SizedBox(
                       width: 18,
@@ -106,7 +132,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('إضافة العضو'),
+              label: const Text('إرسال دعوة المشاركة'),
             ),
             const SizedBox(height: 20),
           ],
@@ -117,30 +143,52 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   Future<void> _lookupUser() async {
     if (!_formKey.currentState!.validate()) return;
-    await context.read<SharingProvider>().lookupUserByPhone(
-      _phoneController.text,
+    final provider = context.read<SharingProvider>();
+    final duplicateMessage = _duplicateMemberMessage(
+      provider.members,
+      provider.invites,
     );
+    if (duplicateMessage != null) {
+      setState(() => _localPhoneError = duplicateMessage);
+      return;
+    }
+    await provider.lookupUserByPhone(_phoneController.text);
+    if (!mounted) return;
+    final foundUserId = provider.lookupUser?.id;
+    if (foundUserId != null &&
+        provider.members.any((member) => member.userId == foundUserId)) {
+      provider.clearLookup();
+      setState(() => _localPhoneError = 'هذا الرقم مضاف مسبقًا.');
+    }
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<SharingProvider>();
-    final foundUser = provider.lookupUser;
-    if (foundUser == null) {
-      await provider.lookupUserByPhone(_phoneController.text);
-      if (!mounted || provider.lookupUser == null) return;
+    final duplicateMessage = _duplicateMemberMessage(
+      provider.members,
+      provider.invites,
+    );
+    if (duplicateMessage != null) {
+      setState(() => _localPhoneError = duplicateMessage);
+      return;
     }
-
-    final created = await provider.createMember(
+    final created = await provider.createInvite(
       weddingPlanId: widget.weddingPlanId,
-      userId: provider.lookupUser?.id ?? foundUser?.id,
+      phone: _phoneController.text,
+      name: provider.lookupUser?.name,
       role: _role,
       canViewBudget: _canViewBudget,
       canViewExpenses: _canViewExpenses,
       canViewDebts: _canViewDebts,
+      canEditPlan: _canEditPlan,
       canManageTasks: _canManageTasks,
+      canManageGuests: _canManageGuests,
+      canManageProviders: _canManageProviders,
+      canInviteMembers: _canInviteMembers,
       canManageFinancialRecords: _canManageFinancialRecords,
+      receiveNotifications: _receiveNotifications,
     );
 
     if (!mounted) return;
@@ -153,6 +201,41 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       }
     }
   }
+
+  void _applyRole(String role) {
+    final defaults = PlanRolePermissions.forRole(role);
+    setState(() {
+      _role = role;
+      _canViewBudget = defaults.canViewBudget;
+      _canViewExpenses = defaults.canViewExpenses;
+      _canViewDebts = defaults.canViewDebts;
+      _canEditPlan = defaults.canEditPlan;
+      _canManageTasks = defaults.canManageTasks;
+      _canManageGuests = defaults.canManageGuests;
+      _canManageProviders = defaults.canManageProviders;
+      _canInviteMembers = defaults.canInviteMembers;
+      _canManageFinancialRecords = defaults.canManageFinancialRecords;
+      _receiveNotifications = defaults.receiveNotifications;
+    });
+  }
+
+  String? _duplicateMemberMessage(
+    List<SharedMember> members,
+    List<PlanInvite> invites,
+  ) {
+    final duplicate = ContactDuplicateUtils.findByPhone(
+      members,
+      candidatePhone: _phoneController.text,
+      phoneOf: (member) => member.user?.phone,
+    );
+    if (duplicate != null) return 'هذا الرقم مضاف مسبقًا.';
+    final pendingInvite = ContactDuplicateUtils.findByPhone(
+      invites.where((invite) => invite.isPending),
+      candidatePhone: _phoneController.text,
+      phoneOf: (invite) => invite.phone,
+    );
+    return pendingInvite == null ? null : 'توجد دعوة معلقة لهذا الرقم.';
+  }
 }
 
 class _PhoneLookupCard extends StatelessWidget {
@@ -162,12 +245,14 @@ class _PhoneLookupCard extends StatelessWidget {
     required this.onChanged,
     required this.onLookup,
     this.errorMessage,
+    this.duplicateMessage,
     this.foundUser,
   });
 
   final TextEditingController controller;
   final bool isLookingUp;
   final String? errorMessage;
+  final String? duplicateMessage;
   final SharedUserLookup? foundUser;
   final ValueChanged<String> onChanged;
   final VoidCallback onLookup;
@@ -184,41 +269,15 @@ class _PhoneLookupCard extends StatelessWidget {
             icon: Icons.phone_iphone_rounded,
           ),
           const SizedBox(height: 14),
-          TextFormField(
-            controller: controller,
-            keyboardType: TextInputType.phone,
-            textInputAction: TextInputAction.search,
-            textDirection: TextDirection.ltr,
-            textAlign: TextAlign.right,
-            onChanged: onChanged,
-            onFieldSubmitted: (_) => onLookup(),
-            decoration: InputDecoration(
-              labelText: 'رقم هاتف العضو',
-              hintText: 'مثال: 77xxxxxxx',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: isLookingUp
-                  ? const Padding(
-                      padding: EdgeInsets.all(14),
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : ContactPhoneFieldSuffix(
-                      controller: controller,
-                      onPhoneSelected: onChanged,
-                    ),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'رقم هاتف العضو مطلوب';
-              }
-              if (!isValidYemeniPhoneInput(value)) {
-                return 'أدخلي رقم هاتف صحيح';
-              }
-              return null;
-            },
+          ContactPhoneField(
+            phoneController: controller,
+            label: 'رقم جوال العضو',
+            optional: false,
+            requireYemeni: true,
+            enabled: !isLookingUp,
+            duplicateMessage: duplicateMessage,
+            onDraftChanged: (draft) =>
+                onChanged(draft.normalizedPhone ?? draft.rawPhone),
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -394,8 +453,10 @@ class _RoleDropdown extends StatelessWidget {
         ),
         items: const [
           DropdownMenuItem(value: 'VIEWER', child: Text('مشاهد')),
-          DropdownMenuItem(value: 'CONTRIBUTOR', child: Text('مساهم')),
-          DropdownMenuItem(value: 'MANAGER', child: Text('مدير')),
+          DropdownMenuItem(value: 'GROOM', child: Text('العريس')),
+          DropdownMenuItem(value: 'BRIDE', child: Text('العروس')),
+          DropdownMenuItem(value: 'FAMILY', child: Text('العائلة')),
+          DropdownMenuItem(value: 'HELPER', child: Text('مساعد')),
         ],
         onChanged: (value) {
           if (value != null) onChanged(value);
@@ -410,25 +471,45 @@ class _PermissionSwitches extends StatelessWidget {
     required this.canViewBudget,
     required this.canViewExpenses,
     required this.canViewDebts,
+    required this.canEditPlan,
     required this.canManageTasks,
+    required this.canManageGuests,
+    required this.canManageProviders,
+    required this.canInviteMembers,
     required this.canManageFinancialRecords,
+    required this.receiveNotifications,
     required this.onViewBudgetChanged,
     required this.onViewExpensesChanged,
     required this.onViewDebtsChanged,
+    required this.onEditPlanChanged,
     required this.onManageTasksChanged,
+    required this.onManageGuestsChanged,
+    required this.onManageProvidersChanged,
+    required this.onInviteMembersChanged,
     required this.onManageFinancialRecordsChanged,
+    required this.onReceiveNotificationsChanged,
   });
 
   final bool canViewBudget;
   final bool canViewExpenses;
   final bool canViewDebts;
+  final bool canEditPlan;
   final bool canManageTasks;
+  final bool canManageGuests;
+  final bool canManageProviders;
+  final bool canInviteMembers;
   final bool canManageFinancialRecords;
+  final bool receiveNotifications;
   final ValueChanged<bool> onViewBudgetChanged;
   final ValueChanged<bool> onViewExpensesChanged;
   final ValueChanged<bool> onViewDebtsChanged;
+  final ValueChanged<bool> onEditPlanChanged;
   final ValueChanged<bool> onManageTasksChanged;
+  final ValueChanged<bool> onManageGuestsChanged;
+  final ValueChanged<bool> onManageProvidersChanged;
+  final ValueChanged<bool> onInviteMembersChanged;
   final ValueChanged<bool> onManageFinancialRecordsChanged;
+  final ValueChanged<bool> onReceiveNotificationsChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -448,6 +529,34 @@ class _PermissionSwitches extends StatelessWidget {
             title: 'إدارة المهام',
             subtitle: 'إضافة وتعديل مهام الخطة.',
             icon: Icons.checklist_rtl_rounded,
+          ),
+          _PermissionTile(
+            value: canManageGuests,
+            onChanged: onManageGuestsChanged,
+            title: 'إدارة الضيوف',
+            subtitle: 'إضافة الضيوف وتحديث حضورهم.',
+            icon: Icons.groups_outlined,
+          ),
+          _PermissionTile(
+            value: canManageProviders,
+            onChanged: onManageProvidersChanged,
+            title: 'إدارة الموردين والعروض',
+            subtitle: 'طلب عروض الأسعار وقبولها أو رفضها.',
+            icon: Icons.storefront_outlined,
+          ),
+          _PermissionTile(
+            value: canEditPlan,
+            onChanged: onEditPlanChanged,
+            title: 'تعديل الخطة',
+            subtitle: 'تعديل بيانات الخطة الأساسية.',
+            icon: Icons.edit_calendar_outlined,
+          ),
+          _PermissionTile(
+            value: canInviteMembers,
+            onChanged: onInviteMembersChanged,
+            title: 'دعوة مشاركين',
+            subtitle: 'إرسال الدعوات وإدارة المشاركين.',
+            icon: Icons.person_add_alt_outlined,
           ),
           _PermissionTile(
             value: canViewBudget,
@@ -476,6 +585,13 @@ class _PermissionSwitches extends StatelessWidget {
             title: 'إدارة السجلات المالية',
             subtitle: 'إضافة وتعديل المصاريف والديون.',
             icon: Icons.edit_note_rounded,
+          ),
+          _PermissionTile(
+            value: receiveNotifications,
+            onChanged: onReceiveNotificationsChanged,
+            title: 'استلام تنبيهات الخطة',
+            subtitle: 'إظهار الأحداث المهمة المرتبطة بالخطة.',
+            icon: Icons.notifications_active_outlined,
           ),
         ],
       ),

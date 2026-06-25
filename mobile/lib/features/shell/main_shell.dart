@@ -8,9 +8,7 @@ import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
-import '../guests/screens/guest_list_screen.dart';
 import '../more/screens/more_screen.dart';
-import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
@@ -24,8 +22,8 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  // DashboardBottomNav indices mirror the approved user navigation:
-  // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: الموردون, 5: المزيد.
+  // Bottom-nav indices for the live user shell:
+  // 0: الرئيسية, 1: المال, 2: الموردون, 3: المزيد.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   String? _activePlanId;
@@ -145,47 +143,22 @@ class _MainShellState extends State<MainShell> {
                         key: ValueKey('money-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
                       )
-                    : _buildNoPlanFallback('Ø§Ù„Ù…Ø§Ù„'),
+                    : _buildNoPlanFallback('المال'),
               ),
 
-              // Index 2: Tasks
-              _buildLazyTab(
-                2,
-                _activePlanId != null
-                    ? TaskTimelineScreen(
-                        key: ValueKey('tasks-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
-                      )
-                    : _buildNoPlanFallback('المهام'),
-              ),
+              // Index 2: Vendors marketplace
+              _buildLazyTab(2, const ProviderMarketplaceScreen(embedded: true)),
 
-              // Index 3: Guests
-              _buildLazyTab(
-                3,
-                _activePlanId != null
-                    ? GuestListScreen(
-                        key: ValueKey('guests-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
-                      )
-                    : _buildNoPlanFallback('الضيوف'),
-              ),
-
-              // Index 4: Vendors marketplace — public browsing for guests.
-              // Quote submit remains backend-protected without an account.
-              _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
-
-              // Index 5: More/settings/secondary surfaces
-              _buildLazyTab(5, const MoreScreen()),
+              // Index 3: More
+              _buildLazyTab(3, const MoreScreen()),
             ],
           ),
           bottomNavigationBar: RoyalDashboardBottomNav(
             activeIndex: _index,
             onHome: () => _onItemTapped(0),
             onMoney: () => _onItemTapped(1),
-            onTasks: () => _onItemTapped(2),
-            onGuests: () => _onItemTapped(3),
-            onProviders: () => _onItemTapped(4),
-            onMore: () => _onItemTapped(5),
+            onProviders: () => _onItemTapped(2),
+            onMore: () => _onItemTapped(3),
             onAdd: _showQuickAdd,
           ),
         ),

@@ -1,4 +1,5 @@
 import { Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { NotificationType } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -13,8 +14,15 @@ export class NotificationsController {
   list(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Query('weddingPlanId') weddingPlanId?: string,
+    @Query('type') type?: NotificationType,
+    @Query('unreadOnly') unreadOnly?: string,
   ) {
-    return this.notificationsService.list(currentUser, weddingPlanId);
+    return this.notificationsService.list(
+      currentUser,
+      weddingPlanId,
+      type,
+      unreadOnly === 'true',
+    );
   }
 
   @Get('unread-count')
@@ -47,6 +55,14 @@ export class NotificationsController {
     @Query('weddingPlanId') weddingPlanId?: string,
   ) {
     return this.notificationsService.markAllRead(currentUser, weddingPlanId);
+  }
+
+  @Patch(':id/archive')
+  archive(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.notificationsService.archive(currentUser, id);
   }
 
   @Delete(':id')

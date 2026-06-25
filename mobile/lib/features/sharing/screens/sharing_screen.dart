@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 import '../widgets/shared_member_card.dart';
 
@@ -108,8 +109,29 @@ class _SharingContent extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 18),
+        if (provider.invites.any((invite) => invite.isPending)) ...[
+          Text(
+            'الدعوات المعلقة',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.deepBurgundy,
+              fontWeight: FontWeight.w800,
+            ),
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 8),
+          for (final invite in provider.invites.where(
+            (invite) => invite.isPending,
+          ))
+            _PendingInviteCard(
+              invite: invite,
+              onCancel: provider.isSubmitting
+                  ? null
+                  : () => provider.cancelInvite(invite),
+            ),
+          const SizedBox(height: 14),
+        ],
         Text(
-          'الأعضاء المشاركون',
+          'المشاركون المقبولون',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: AppTheme.deepBurgundy,
             fontWeight: FontWeight.w800,
@@ -128,12 +150,62 @@ class _SharingContent extends StatelessWidget {
         for (final member in provider.members)
           SharedMemberCard(
             member: member,
-            onTap: () {
-              provider.selectMember(member);
-              context.push(AppRouter.editSharedMember(member.id));
-            },
+            onTap: member.isOwner
+                ? null
+                : () {
+                    provider.selectMember(member);
+                    context.push(AppRouter.editSharedMember(member.id));
+                  },
           ),
       ],
+    );
+  }
+}
+
+class _PendingInviteCard extends StatelessWidget {
+  const _PendingInviteCard({required this.invite, required this.onCancel});
+
+  final PlanInvite invite;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AarastCard(
+        color: AppTheme.dCreamBg,
+        child: Row(
+          children: [
+            const Icon(Icons.schedule_send_outlined, color: AppTheme.dGoldDeep),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    invite.displayName,
+                    style: const TextStyle(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    '${sharedMemberRoleLabel(invite.role)} • بانتظار القبول',
+                    style: const TextStyle(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(
+              onPressed: onCancel,
+              child: const Text('إلغاء الدعوة'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

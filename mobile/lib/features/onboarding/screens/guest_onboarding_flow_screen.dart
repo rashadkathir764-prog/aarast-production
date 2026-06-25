@@ -95,6 +95,7 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
         onBack: () => _goTo(GuestOnboardingFlowStep.welcome),
       ),
       GuestOnboardingFlowStep.providerPending => ProviderPathPendingScreen(
+        onContinue: () => context.go(AppRouter.providerApply),
         onBack: () => _goTo(GuestOnboardingFlowStep.choosePath),
       ),
       GuestOnboardingFlowStep.persona => PersonaScreen(
@@ -133,6 +134,7 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
         onBack: () => _goTo(GuestOnboardingFlowStep.location),
       ),
       GuestOnboardingFlowStep.priorities => PrioritiesScreen(
+        persona: draft.persona,
         selectedPriorities: draft.priorities,
         onChanged: provider.setPriorities,
         onContinue: () => _savePriorities(provider),
@@ -151,6 +153,7 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
         onBack: () => _goTo(GuestOnboardingFlowStep.priorities),
       ),
       GuestOnboardingFlowStep.categories => SuggestedCategoriesScreen(
+        persona: draft.persona,
         selectedCategoryKeys: draft.selectedCategoryKeys,
         onChanged: provider.setCategories,
         onContinue: () => _saveCategories(provider),
@@ -234,18 +237,8 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
       return;
     }
 
-    final city = draft.city?.trim();
-    final location = <String, String>{
-      if ((draft.governorate ?? '').trim().isNotEmpty)
-        'governorate': draft.governorate!.trim(),
-      if ((city ?? '').isNotEmpty) 'city': city!,
-      if ((draft.district ?? '').trim().isNotEmpty)
-        'district': draft.district!.trim(),
-      if ((draft.neighborhood ?? '').trim().isNotEmpty)
-        'neighborhood': draft.neighborhood!.trim(),
-      if ((draft.street ?? '').trim().isNotEmpty)
-        'street': draft.street!.trim(),
-    };
+    final location = draft.weddingLocation;
+    final city = location.cityOrDistrict?.trim();
     final response = await weddingPlansProvider.completeOnboarding(
       OnboardingCompleteRequest(
         path: 'USER',
@@ -254,9 +247,11 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
           GuestPersona.helper => 'HELPER',
           _ => 'GROOM',
         },
-        title: (city ?? '').isEmpty ? 'خطة زفافي' : 'خطة زفاف $city',
+        title: (location.shortLabel ?? '').isEmpty
+            ? 'خطة زفافي'
+            : 'خطة زفاف ${location.shortLabel}',
         city: (city ?? '').isEmpty ? null : city,
-        location: location,
+        location: location.toJson(),
         weddingDate: draft.weddingDate?.toIso8601String(),
         priorities: draft.priorities,
         estimatedBudget: draft.estimatedBudget,

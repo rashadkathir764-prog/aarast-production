@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  NotificationPriority,
   NotificationType,
   PlanInvite,
   Prisma,
@@ -15,12 +16,17 @@ import {
 } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePlanInviteDto } from './dto/create-plan-invite.dto';
 import { CreateSharedMemberDto } from './dto/create-shared-member.dto';
 import { UpdateSharedMemberDto } from './dto/update-shared-member.dto';
 import { PermissionService, PlanAccessContext } from './permission.service';
+import {
+  PlanPermissionFlags,
+  rolePermissionDefaults,
+} from './plan-permissions';
 
 export interface SharedMemberResponse {
   id: string;
@@ -31,8 +37,13 @@ export interface SharedMemberResponse {
   canViewBudget: boolean;
   canViewExpenses: boolean;
   canViewDebts: boolean;
+  canEditPlan: boolean;
   canManageTasks: boolean;
+  canManageGuests: boolean;
+  canManageProviders: boolean;
+  canInviteMembers: boolean;
   canManageFinancialRecords: boolean;
+  receiveNotifications: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,18 +72,27 @@ export interface PlanInviteResponse {
   id: string;
   weddingPlanId: string;
   token: string;
+  name: string | null;
   phone: string | null;
+  normalizedPhone: string | null;
+  email: string | null;
   inviteeUserId: string | null;
   inviterUserId: string;
   role: SharedMemberRole;
   canViewBudget: boolean;
   canViewExpenses: boolean;
   canViewDebts: boolean;
+  canEditPlan: boolean;
   canManageTasks: boolean;
+  canManageGuests: boolean;
+  canManageProviders: boolean;
+  canInviteMembers: boolean;
   canManageFinancialRecords: boolean;
-  status: 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED';
+  receiveNotifications: boolean;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
   expiresAt: Date;
   acceptedAt: Date | null;
+  declinedAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -97,9 +117,11 @@ export interface PermissionSummaryResponse {
   canViewDebts: boolean;
   canManageTasks: boolean;
   canManageGuests: boolean;
+  canManageProviders: boolean;
   canManageFinancialRecords: boolean;
   canManagePlan: boolean;
   canManageMembers: boolean;
+  receiveNotifications: boolean;
 }
 
 type PlanInviteWithRelations = PlanInvite & {
@@ -111,14 +133,7 @@ type PlanInviteWithRelations = PlanInvite & {
   invitee?: SafeSharedMemberUser | null;
 };
 
-type PermissionFlags = Pick<
-  SharedMemberResponse,
-  | 'canViewBudget'
-  | 'canViewExpenses'
-  | 'canViewDebts'
-  | 'canManageTasks'
-  | 'canManageFinancialRecords'
->;
+type PermissionFlags = PlanPermissionFlags;
 
 @Injectable()
 export class SharingService {
@@ -133,7 +148,9 @@ export class SharingService {
     weddingPlanId: string,
     dto: CreateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
-    const plan = await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
+    const plan = (
+      await this.permissions.assertMemberManageable(weddingPlanId, currentUser)
+    ).plan;
     const user = await this.findTargetUser(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
     const userId = user.id;
@@ -165,8 +182,12 @@ export class SharingService {
       userId,
       weddingPlanId,
       type: NotificationType.SHARING_INVITATION,
-      title: 'Wedding plan shared',
-      body: `You were added to "${plan.title}" with role ${member.role}.`,
+      priority: NotificationPriority.HIGH,
+      title: 'تمت إضافتك إلى خطة زفاف',
+      body: `أصبحت مشاركًا في "${plan.title}" بدور ${member.role}.`,
+      entityType: 'shared_member',
+      entityId: member.id,
+      routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
       data: {
         sharedMemberId: member.id,
         weddingPlanId,
@@ -182,7 +203,7 @@ export class SharingService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<SharedMemberResponse[]> {
-    await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
+    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
 
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
@@ -201,7 +222,10 @@ export class SharingService {
     dto: UpdateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
     const existing = await this.findMemberOrThrow(id);
-    await this.permissions.assertPlanOwner(existing.weddingPlanId, currentUser);
+    await this.permissions.assertMemberManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
     const role = this.assignableRole(dto.role ?? existing.role);
 
     const member = await this.prisma.sharedMember.update({
@@ -224,8 +248,11 @@ export class SharingService {
       userId: member.userId,
       weddingPlanId: member.weddingPlanId,
       type: NotificationType.SHARING_UPDATED,
-      title: 'Sharing permissions updated',
-      body: `Your permissions were updated for "${plan?.title ?? 'wedding plan'}".`,
+      title: 'تم تحديث صلاحياتك',
+      body: `تغيرت صلاحياتك في "${plan?.title ?? 'خطة الزفاف'}".`,
+      entityType: 'shared_member',
+      entityId: member.id,
+      routeTarget: `/wedding-plans/${member.weddingPlanId}/plan-center`,
       data: {
         sharedMemberId: member.id,
         weddingPlanId: member.weddingPlanId,
@@ -242,7 +269,10 @@ export class SharingService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findMemberOrThrow(id);
-    await this.permissions.assertPlanOwner(existing.weddingPlanId, currentUser);
+    await this.permissions.assertMemberManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
     await this.prisma.sharedMember.delete({ where: { id } });
     return { id, deleted: true };
   }
@@ -268,7 +298,7 @@ export class SharingService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<PlanMemberResponse[]> {
-    await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
+    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
     const plan = await this.findPlanWithOwnerOrThrow(weddingPlanId);
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
@@ -287,7 +317,9 @@ export class SharingService {
     weddingPlanId: string,
     dto: CreatePlanInviteDto,
   ): Promise<PlanInviteResponse> {
-    const plan = await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
+    const plan = (
+      await this.permissions.assertMemberManageable(weddingPlanId, currentUser)
+    ).plan;
     const target = await this.findInviteTarget(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
 
@@ -309,11 +341,36 @@ export class SharingService {
       }
     }
 
+    const duplicateInvite = await this.prisma.planInvite.findFirst({
+      where: {
+        weddingPlanId,
+        acceptedAt: null,
+        declinedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+        OR: [
+          ...(target.user ? [{ inviteeUserId: target.user.id }] : []),
+          ...(target.normalizedPhone
+            ? [{ normalizedPhone: target.normalizedPhone }]
+            : []),
+          ...(target.email ? [{ email: target.email }] : []),
+        ],
+      },
+    });
+    if (duplicateInvite) {
+      throw new ConflictException(
+        'A pending invitation already exists for this participant',
+      );
+    }
+
     const invite = await this.createInviteWithUniqueToken({
       weddingPlanId,
       inviterUserId: currentUser.id,
       inviteeUserId: target.user?.id ?? null,
+      name: this.optionalText(dto.name) ?? target.user?.name ?? null,
       phone: target.phone,
+      normalizedPhone: target.normalizedPhone,
+      email: target.email,
       role,
       ...this.permissionDataForCreate(role, dto),
       expiresAt: this.expiresAt(dto.expiresInDays),
@@ -324,10 +381,15 @@ export class SharingService {
         userId: target.user.id,
         weddingPlanId,
         type: NotificationType.SHARING_INVITATION,
-        title: 'Wedding plan invitation',
-        body: `You received an invitation to "${plan.title}".`,
+        priority: NotificationPriority.HIGH,
+        title: 'دعوة للمشاركة في خطة زفاف',
+        body: `تلقيت دعوة للمشاركة في "${plan.title}".`,
+        entityType: 'plan_invite',
+        entityId: invite.id,
+        routeTarget: `/invites/${invite.token}`,
         data: {
           inviteId: invite.id,
+          inviteToken: invite.token,
           weddingPlanId,
           role: invite.role,
         },
@@ -341,6 +403,41 @@ export class SharingService {
   async getInvite(token: string): Promise<PlanInviteResponse> {
     const invite = await this.findInviteByTokenOrThrow(token);
     return this.toInviteResponse(invite);
+  }
+
+  async findInvitesForPlan(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<PlanInviteResponse[]> {
+    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    const invites = await this.prisma.planInvite.findMany({
+      where: { weddingPlanId },
+      include: this.inviteIncludes(),
+      orderBy: { createdAt: 'desc' },
+    });
+    return invites.map((invite) => this.toInviteResponse(invite));
+  }
+
+  async cancelInvite(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    inviteId: string,
+  ): Promise<PlanInviteResponse> {
+    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    const invite = await this.prisma.planInvite.findFirst({
+      where: { id: inviteId, weddingPlanId },
+      include: this.inviteIncludes(),
+    });
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.acceptedAt || invite.declinedAt || invite.revokedAt) {
+      throw new ConflictException('Invite is no longer pending');
+    }
+    const cancelled = await this.prisma.planInvite.update({
+      where: { id: invite.id },
+      data: { revokedAt: new Date() },
+      include: this.inviteIncludes(),
+    });
+    return this.toInviteResponse(cancelled);
   }
 
   async acceptInvite(
@@ -364,8 +461,13 @@ export class SharingService {
           canViewBudget: invite.canViewBudget,
           canViewExpenses: invite.canViewExpenses,
           canViewDebts: invite.canViewDebts,
+          canEditPlan: invite.canEditPlan,
           canManageTasks: invite.canManageTasks,
+          canManageGuests: invite.canManageGuests,
+          canManageProviders: invite.canManageProviders,
+          canInviteMembers: invite.canInviteMembers,
           canManageFinancialRecords: invite.canManageFinancialRecords,
+          receiveNotifications: invite.receiveNotifications,
         },
         create: {
           weddingPlanId: invite.weddingPlanId,
@@ -374,8 +476,13 @@ export class SharingService {
           canViewBudget: invite.canViewBudget,
           canViewExpenses: invite.canViewExpenses,
           canViewDebts: invite.canViewDebts,
+          canEditPlan: invite.canEditPlan,
           canManageTasks: invite.canManageTasks,
+          canManageGuests: invite.canManageGuests,
+          canManageProviders: invite.canManageProviders,
+          canInviteMembers: invite.canInviteMembers,
           canManageFinancialRecords: invite.canManageFinancialRecords,
+          receiveNotifications: invite.receiveNotifications,
         },
         include: {
           user: { select: { id: true, name: true, phone: true } },
@@ -398,8 +505,12 @@ export class SharingService {
       userId: invite.inviterUserId,
       weddingPlanId: invite.weddingPlanId,
       type: NotificationType.SHARING_INVITE_ACCEPTED,
-      title: 'Invitation accepted',
-      body: `${currentUser.name} accepted your wedding plan invitation.`,
+      priority: NotificationPriority.HIGH,
+      title: 'تم قبول الدعوة',
+      body: `${currentUser.name} قبل دعوة المشاركة في خطة الزفاف.`,
+      entityType: 'plan_invite',
+      entityId: invite.id,
+      routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
       data: {
         inviteId: invite.id,
         sharedMemberId: result.member.id,
@@ -414,13 +525,48 @@ export class SharingService {
     };
   }
 
+  async declineInvite(
+    currentUser: AuthenticatedUser,
+    token: string,
+  ): Promise<PlanInviteResponse> {
+    const invite = await this.findInviteByTokenOrThrow(token);
+    this.assertInviteCanBeAccepted(invite, currentUser);
+
+    const declined = await this.prisma.planInvite.update({
+      where: { id: invite.id },
+      data: {
+        declinedAt: new Date(),
+        inviteeUserId: currentUser.id,
+      },
+      include: this.inviteIncludes(),
+    });
+
+    await this.notifications.createNotification({
+      userId: invite.inviterUserId,
+      weddingPlanId: invite.weddingPlanId,
+      type: NotificationType.SHARING_INVITE_DECLINED,
+      title: 'تم رفض الدعوة',
+      body: `${currentUser.name} رفض دعوة المشاركة في خطة الزفاف.`,
+      entityType: 'plan_invite',
+      entityId: invite.id,
+      routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
+      data: {
+        inviteId: invite.id,
+        weddingPlanId: invite.weddingPlanId,
+      },
+      dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:declined`,
+    });
+
+    return this.toInviteResponse(declined);
+  }
+
   async updateMemberForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
     memberId: string,
     dto: UpdateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
-    await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
+    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
     this.assertNotOwnerMemberId(memberId);
 
     const existing = await this.findMemberForPlanOrThrow(weddingPlanId, memberId);
@@ -442,7 +588,9 @@ export class SharingService {
     weddingPlanId: string,
     memberId: string,
   ): Promise<{ id: string; deleted: true }> {
-    const plan = await this.permissions.assertPlanOwner(weddingPlanId, currentUser);
+    const plan = (
+      await this.permissions.assertMemberManageable(weddingPlanId, currentUser)
+    ).plan;
     if (this.isOwnerMemberId(memberId) || memberId === plan.ownerUserId) {
       throw new BadRequestException('Last owner cannot be removed');
     }
@@ -499,7 +647,9 @@ export class SharingService {
 
   private async findTargetUser(dto: CreateSharedMemberDto): Promise<User> {
     const userId = dto.userId?.trim();
-    const phone = dto.phone?.trim();
+    const phone = dto.phone
+      ? PhoneNormalizer.normalizeRequired(dto.phone)
+      : null;
 
     if (userId && phone) {
       throw new BadRequestException('Provide either userId or phone, not both');
@@ -513,7 +663,9 @@ export class SharingService {
     if (userId) {
       user = await this.prisma.user.findUnique({ where: { id: userId } });
     } else if (phone) {
-      user = await this.prisma.user.findUnique({ where: { phone } });
+      user = await this.prisma.user.findFirst({
+        where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
+      });
     } else {
       user = null;
     }
@@ -531,16 +683,27 @@ export class SharingService {
 
   private async findInviteTarget(
     dto: CreatePlanInviteDto,
-  ): Promise<{ user: User | null; phone: string | null }> {
+  ): Promise<{
+    user: User | null;
+    phone: string | null;
+    normalizedPhone: string | null;
+    email: string | null;
+  }> {
     const userId = this.optionalText(dto.userId);
-    const phone = this.optionalText(dto.phone);
+    const phone = dto.phone
+      ? PhoneNormalizer.normalizeRequired(dto.phone)
+      : null;
+    const email = this.optionalText(dto.email)?.toLowerCase() ?? null;
 
-    if (userId && phone) {
-      throw new BadRequestException('Provide either userId or phone, not both');
+    const identifiers = [userId, phone, email].filter(Boolean);
+    if (identifiers.length > 1) {
+      throw new BadRequestException(
+        'Provide only one of userId, phone, or email',
+      );
     }
 
-    if (!userId && !phone) {
-      throw new BadRequestException('Provide either userId or phone');
+    if (identifiers.length === 0) {
+      throw new BadRequestException('Provide userId, phone, or email');
     }
 
     if (userId) {
@@ -548,13 +711,27 @@ export class SharingService {
       if (!user) {
         throw new BadRequestException('userId must reference an existing user');
       }
-      return { user, phone: user.phone };
+      const normalizedPhone = PhoneNormalizer.normalizeOptional(user.phone);
+      return {
+        user,
+        phone: user.phone,
+        normalizedPhone,
+        email: user.email?.toLowerCase() ?? null,
+      };
     }
 
-    const user = phone
-      ? await this.prisma.user.findUnique({ where: { phone } })
-      : null;
-    return { user, phone };
+    const user = await this.prisma.user.findFirst({
+      where: phone
+        ? { phone: { in: PhoneNormalizer.lookupVariants(phone) } }
+        : { email },
+    });
+    return {
+      user,
+      phone: phone ?? user?.phone ?? null,
+      normalizedPhone:
+        phone ?? PhoneNormalizer.normalizeOptional(user?.phone) ?? null,
+      email: email ?? user?.email?.toLowerCase() ?? null,
+    };
   }
 
   private async createInviteWithUniqueToken(
@@ -621,13 +798,19 @@ export class SharingService {
     if (invite.acceptedAt) {
       throw new ConflictException('Invite has already been accepted');
     }
+    if (invite.declinedAt) {
+      throw new ConflictException('Invite has already been declined');
+    }
     if (invite.expiresAt.getTime() < Date.now()) {
       throw new BadRequestException('Invite has expired');
     }
     if (invite.inviteeUserId && invite.inviteeUserId !== currentUser.id) {
       throw new NotFoundException('Invite not found');
     }
-    if (invite.phone && currentUser.phone !== invite.phone) {
+    if (
+      invite.phone &&
+      !PhoneNormalizer.areEquivalent(currentUser.phone, invite.phone)
+    ) {
       throw new NotFoundException('Invite not found');
     }
   }
@@ -643,14 +826,21 @@ export class SharingService {
     role: SharedMemberRole,
     dto: CreateSharedMemberDto | CreatePlanInviteDto,
   ): PermissionFlags {
-    const defaults = this.rolePermissionDefaults(role);
+    const defaults = rolePermissionDefaults(role);
     return {
       canViewBudget: dto.canViewBudget ?? defaults.canViewBudget,
       canViewExpenses: dto.canViewExpenses ?? defaults.canViewExpenses,
       canViewDebts: dto.canViewDebts ?? defaults.canViewDebts,
+      canEditPlan: dto.canEditPlan ?? defaults.canEditPlan,
       canManageTasks: dto.canManageTasks ?? defaults.canManageTasks,
+      canManageGuests: dto.canManageGuests ?? defaults.canManageGuests,
+      canManageProviders:
+        dto.canManageProviders ?? defaults.canManageProviders,
+      canInviteMembers: dto.canInviteMembers ?? defaults.canInviteMembers,
       canManageFinancialRecords:
         dto.canManageFinancialRecords ?? defaults.canManageFinancialRecords,
+      receiveNotifications:
+        dto.receiveNotifications ?? defaults.receiveNotifications,
     };
   }
 
@@ -660,7 +850,7 @@ export class SharingService {
     role: SharedMemberRole,
   ): PermissionFlags {
     const roleChanged = dto.role !== undefined && dto.role !== existing.role;
-    const defaults = this.rolePermissionDefaults(role);
+    const defaults = rolePermissionDefaults(role);
     return {
       canViewBudget:
         dto.canViewBudget ?? (roleChanged ? defaults.canViewBudget : existing.canViewBudget),
@@ -669,49 +859,32 @@ export class SharingService {
         (roleChanged ? defaults.canViewExpenses : existing.canViewExpenses),
       canViewDebts:
         dto.canViewDebts ?? (roleChanged ? defaults.canViewDebts : existing.canViewDebts),
+      canEditPlan:
+        dto.canEditPlan ?? (roleChanged ? defaults.canEditPlan : existing.canEditPlan),
       canManageTasks:
         dto.canManageTasks ??
         (roleChanged ? defaults.canManageTasks : existing.canManageTasks),
+      canManageGuests:
+        dto.canManageGuests ??
+        (roleChanged ? defaults.canManageGuests : existing.canManageGuests),
+      canManageProviders:
+        dto.canManageProviders ??
+        (roleChanged
+          ? defaults.canManageProviders
+          : existing.canManageProviders),
+      canInviteMembers:
+        dto.canInviteMembers ??
+        (roleChanged ? defaults.canInviteMembers : existing.canInviteMembers),
       canManageFinancialRecords:
         dto.canManageFinancialRecords ??
         (roleChanged
           ? defaults.canManageFinancialRecords
           : existing.canManageFinancialRecords),
-    };
-  }
-
-  private rolePermissionDefaults(role: SharedMemberRole): PermissionFlags {
-    if (role === SharedMemberRole.FINANCE_MANAGER) {
-      return {
-        canViewBudget: true,
-        canViewExpenses: true,
-        canViewDebts: true,
-        canManageTasks: false,
-        canManageFinancialRecords: true,
-      };
-    }
-
-    if (
-      role === SharedMemberRole.EDITOR ||
-      role === SharedMemberRole.HELPER ||
-      role === SharedMemberRole.CONTRIBUTOR ||
-      role === SharedMemberRole.MANAGER
-    ) {
-      return {
-        canViewBudget: false,
-        canViewExpenses: false,
-        canViewDebts: false,
-        canManageTasks: true,
-        canManageFinancialRecords: false,
-      };
-    }
-
-    return {
-      canViewBudget: false,
-      canViewExpenses: false,
-      canViewDebts: false,
-      canManageTasks: false,
-      canManageFinancialRecords: false,
+      receiveNotifications:
+        dto.receiveNotifications ??
+        (roleChanged
+          ? defaults.receiveNotifications
+          : existing.receiveNotifications),
     };
   }
 
@@ -747,8 +920,13 @@ export class SharingService {
       canViewBudget: member.canViewBudget,
       canViewExpenses: member.canViewExpenses,
       canViewDebts: member.canViewDebts,
+      canEditPlan: member.canEditPlan,
       canManageTasks: member.canManageTasks,
+      canManageGuests: member.canManageGuests,
+      canManageProviders: member.canManageProviders,
+      canInviteMembers: member.canInviteMembers,
       canManageFinancialRecords: member.canManageFinancialRecords,
+      receiveNotifications: member.receiveNotifications,
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
     };
@@ -775,8 +953,13 @@ export class SharingService {
       canViewBudget: true,
       canViewExpenses: true,
       canViewDebts: true,
+      canEditPlan: true,
       canManageTasks: true,
+      canManageGuests: true,
+      canManageProviders: true,
+      canInviteMembers: true,
       canManageFinancialRecords: true,
+      receiveNotifications: true,
       isOwner: true,
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt,
@@ -803,18 +986,27 @@ export class SharingService {
       id: invite.id,
       weddingPlanId: invite.weddingPlanId,
       token: invite.token,
+      name: invite.name,
       phone: invite.phone,
+      normalizedPhone: invite.normalizedPhone,
+      email: invite.email,
       inviteeUserId: invite.inviteeUserId,
       inviterUserId: invite.inviterUserId,
       role: invite.role,
       canViewBudget: invite.canViewBudget,
       canViewExpenses: invite.canViewExpenses,
       canViewDebts: invite.canViewDebts,
+      canEditPlan: invite.canEditPlan,
       canManageTasks: invite.canManageTasks,
+      canManageGuests: invite.canManageGuests,
+      canManageProviders: invite.canManageProviders,
+      canInviteMembers: invite.canInviteMembers,
       canManageFinancialRecords: invite.canManageFinancialRecords,
+      receiveNotifications: invite.receiveNotifications,
       status: this.inviteStatus(invite),
       expiresAt: invite.expiresAt,
       acceptedAt: invite.acceptedAt,
+      declinedAt: invite.declinedAt,
       revokedAt: invite.revokedAt,
       createdAt: invite.createdAt,
       updatedAt: invite.updatedAt,
@@ -825,9 +1017,13 @@ export class SharingService {
   }
 
   private inviteStatus(
-    invite: Pick<PlanInvite, 'acceptedAt' | 'revokedAt' | 'expiresAt'>,
+    invite: Pick<
+      PlanInvite,
+      'acceptedAt' | 'declinedAt' | 'revokedAt' | 'expiresAt'
+    >,
   ): PlanInviteResponse['status'] {
-    if (invite.revokedAt) return 'REVOKED';
+    if (invite.revokedAt) return 'CANCELLED';
+    if (invite.declinedAt) return 'DECLINED';
     if (invite.acceptedAt) return 'ACCEPTED';
     if (invite.expiresAt.getTime() < Date.now()) return 'EXPIRED';
     return 'PENDING';
@@ -849,10 +1045,13 @@ export class SharingService {
       canViewDebts: this.permissions.canReadFinancial(context, 'debts'),
       canManageTasks: this.permissions.canManageTasks(context),
       canManageGuests: this.permissions.canManageGuests(context),
+      canManageProviders: this.permissions.canManageProviders(context),
       canManageFinancialRecords:
         this.permissions.canManageFinancialRecords(context),
       canManagePlan: this.permissions.canManagePlan(context),
-      canManageMembers: context.isOwner,
+      canManageMembers: this.permissions.canManageMembers(context),
+      receiveNotifications:
+        context.isOwner || context.sharedMember?.receiveNotifications === true,
     };
   }
 }

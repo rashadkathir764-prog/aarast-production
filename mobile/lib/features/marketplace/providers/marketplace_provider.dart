@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
-import '../../../core/offline/cache_policy.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 
@@ -26,6 +25,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   final Map<String, List<ProviderPackage>> _packages = {};
   final Map<String, List<ProviderReview>> _reviews = {};
   Set<String> _favoriteProviderIds = {};
+  List<QuoteRequest> _quoteRequests = const [];
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -38,11 +38,19 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   List<ProviderCategory> get categories => _categories;
   List<MarketplaceProvider> get providers => _providers;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
+  List<QuoteRequest> get quoteRequests => _quoteRequests;
+  bool get includesAccountData => _includeAccountData;
 
   MarketplaceProvider? providerDetails(String id) => _details[id];
   List<MarketplaceService> servicesFor(String id) => _services[id] ?? const [];
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
   List<ProviderReview> reviewsFor(String id) => _reviews[id] ?? const [];
+  List<QuoteRequest> quotesForProvider(String providerId) => _quoteRequests
+      .where((quote) => quote.providerId == providerId)
+      .toList(growable: false);
+  List<QuoteRequest> quotesForPlan(String weddingPlanId) => _quoteRequests
+      .where((quote) => quote.weddingPlanId == weddingPlanId)
+      .toList(growable: false);
 
   Future<void> loadMarketplace({bool? includeAccountData}) async {
     if (includeAccountData != null) {
@@ -64,6 +72,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
         _includeAccountData
             ? _safeFavorites()
             : Future.value(const <FavoriteProvider>[]),
+        _includeAccountData
+            ? _safeQuoteRequests()
+            : Future.value(const <QuoteRequest>[]),
       ]);
 
       _cities = results[0] as List<MarketplaceCity>;
@@ -71,6 +82,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       _providers = results[2] as List<MarketplaceProvider>;
       final favorites = results[3] as List<FavoriteProvider>;
       _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
+      _quoteRequests = results[4] as List<QuoteRequest>;
     } on ApiException catch (error) {
       _errorMessage = _marketplaceErrorMessage(error.message);
     } catch (_) {
@@ -169,8 +181,11 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
     String? weddingPlanId,
     String? serviceId,
     DateTime? eventDate,
+    Map<String, dynamic>? location,
     String? cityId,
     int? guestCount,
+    String? contactName,
+    String? contactPhone,
     String? message,
     String? budgetMin,
     String? budgetMax,
@@ -185,15 +200,23 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
         weddingPlanId: weddingPlanId,
         serviceId: serviceId,
         eventDate: eventDate,
+        location: location,
         cityId: cityId,
         guestCount: guestCount,
+        contactName: contactName,
+        contactPhone: contactPhone,
         message: message,
         budgetMin: budgetMin,
         budgetMax: budgetMax,
       );
       if (quote.id.startsWith('local-')) {
-        _noticeMessage = CachePolicy.offlineWriteMessage;
+        _noticeMessage =
+            'طلب العرض جاهز للإرسال عند عودة الاتصال. لم يُسجل كطلب مستلم لدى المورد بعد.';
       }
+      _quoteRequests = [
+        quote,
+        ..._quoteRequests.where((item) => item.id != quote.id),
+      ];
       return true;
     } on ApiException catch (error) {
       _errorMessage = _marketplaceErrorMessage(error.message);
@@ -212,6 +235,72 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       return await _api.getFavoriteProviders();
     } catch (_) {
       return const [];
+    }
+  }
+
+  Future<List<QuoteRequest>> _safeQuoteRequests() async {
+    try {
+      return await _api.getMyQuoteRequests();
+    } catch (_) {
+      return _quoteRequests;
+    }
+  }
+
+  Future<void> loadMyQuoteRequests() async {
+    try {
+      _quoteRequests = await _api.getMyQuoteRequests();
+      notifyListeners();
+    } catch (_) {
+      // Plan Center and provider browsing remain usable with cached/current data.
+    }
+  }
+
+  Future<bool> cancelQuote(QuoteRequest quote) async {
+    return _updateQuote(() => _api.cancelQuoteRequest(quote.id));
+  }
+
+  Future<bool> acceptQuote(QuoteRequest quote) async {
+    final offer = quote.pendingOffer;
+    if (offer == null) return false;
+    return _updateQuote(
+      () => _api.acceptQuoteOffer(
+        quoteRequestId: quote.id,
+        quoteOfferId: offer.id,
+      ),
+    );
+  }
+
+  Future<bool> rejectQuote(QuoteRequest quote) async {
+    final offer = quote.pendingOffer;
+    if (offer == null) return false;
+    return _updateQuote(
+      () => _api.rejectQuoteOffer(
+        quoteRequestId: quote.id,
+        quoteOfferId: offer.id,
+      ),
+    );
+  }
+
+  Future<bool> _updateQuote(Future<QuoteRequest> Function() action) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final updated = await action();
+      _quoteRequests = [
+        for (final quote in _quoteRequests)
+          if (quote.id == updated.id) updated else quote,
+      ];
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث حالة عرض السعر.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
     }
   }
 
@@ -465,6 +554,39 @@ class ProviderDashboardProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث حالة الطلب. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createQuoteOffer({
+    required String quoteRequestId,
+    required String message,
+    String? title,
+    String? amount,
+    DateTime? validUntil,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.createQuoteOffer(
+        quoteRequestId: quoteRequestId,
+        message: message,
+        title: title,
+        amount: amount,
+        validUntil: validUntil,
+      );
+      await loadDashboard();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = _marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر إرسال عرض السعر. حاول مرة أخرى.';
       return false;
     } finally {
       _isSubmitting = false;

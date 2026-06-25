@@ -135,5 +135,6 @@ QuoteRequest _quote({required String status}) {
     id: 'quote-$status',
     providerId: 'provider-1',
     status: status,
+    lifecycleStatus: status,
   );
 }

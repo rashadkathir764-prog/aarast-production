@@ -23,6 +23,7 @@ export class CompleteOnboardingDto {
   title?: string;
 
   @IsString()
+  @MaxLength(160)
   @IsOptional()
   city?: string;
 

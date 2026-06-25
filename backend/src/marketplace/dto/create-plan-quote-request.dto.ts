@@ -1,4 +1,12 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreatePlanQuoteRequestDto {
   @IsString()
@@ -13,6 +21,10 @@ export class CreatePlanQuoteRequestDto {
   @IsOptional()
   eventDate?: string | null;
 
+  @IsObject()
+  @IsOptional()
+  location?: Record<string, unknown> | null;
+
   @IsString()
   @IsOptional()
   cityId?: string;
@@ -25,6 +37,16 @@ export class CreatePlanQuoteRequestDto {
   @IsString()
   @IsOptional()
   message?: string | null;
+
+  @IsString()
+  @MaxLength(160)
+  @IsOptional()
+  contactName?: string | null;
+
+  @IsString()
+  @MaxLength(40)
+  @IsOptional()
+  contactPhone?: string | null;
 
   @IsString()
   @IsOptional()

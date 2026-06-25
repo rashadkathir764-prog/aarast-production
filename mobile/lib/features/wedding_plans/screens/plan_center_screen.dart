@@ -7,6 +7,11 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../marketplace/models/marketplace_models.dart';
+import '../../marketplace/providers/marketplace_provider.dart';
+import '../../marketplace/widgets/quote_status_chip.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
+import '../../onboarding/models/persona_copy.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../tasks/models/wedding_task.dart';
 import '../models/dashboard_summary.dart';
@@ -46,6 +51,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
       );
+      _loadPlanQuotes();
     });
   }
 
@@ -61,6 +67,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           widget.weddingPlanId,
           sharedMember: widget.sharedMember,
         );
+        _loadPlanQuotes();
       });
     }
   }
@@ -83,10 +90,13 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
             color: _pcInk,
             onRefresh: _isLocalGuestPlan
                 ? () async {}
-                : () => provider.loadDashboard(
-                    widget.weddingPlanId,
-                    sharedMember: widget.sharedMember,
-                  ),
+                : () async {
+                    await provider.loadDashboard(
+                      widget.weddingPlanId,
+                      sharedMember: widget.sharedMember,
+                    );
+                    await _readMarketplace()?.loadMyQuoteRequests();
+                  },
             child: _buildBody(provider, auth, hasCurrentPlan),
           ),
         ),
@@ -102,7 +112,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 118;
 
     if (_isLocalGuestPlan) {
-      return _buildLocalPlanBody(bottomPadding);
+      return _buildLocalPlanBody(bottomPadding, widget.initialSummary);
     }
 
     if (provider.isLoading && !hasCurrentPlan) {
@@ -144,18 +154,8 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       );
     }
 
-    var plan = provider.plan;
-    var tasksAvailable = provider.tasks != null;
-    var tasks = provider.tasks ?? const <WeddingTask>[];
-    var sharedMembersCount = provider.sharedMembers?.length;
-    
-    if (_isLocalGuestPlan && widget.initialSummary != null) {
-      plan = widget.initialSummary!.toWeddingPlan();
-      tasksAvailable = false;
-      sharedMembersCount = 1;
-    }
-
-    if (plan == null || (!hasCurrentPlan && !_isLocalGuestPlan)) {
+    final plan = provider.plan;
+    if (plan == null || !hasCurrentPlan) {
       return ListView(
         padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
         children: const [
@@ -172,9 +172,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ],
       );
     }
-    
-    final nonNullPlan = plan;
 
+    final tasksAvailable = provider.tasks != null;
+    final tasks = provider.tasks ?? const <WeddingTask>[];
     final completedTasks = tasks.where((task) => task.isDone).length;
     final remainingTasks = math.max(0, tasks.length - completedTasks);
     final progressPercent = tasksAvailable && tasks.isNotEmpty
@@ -183,74 +183,145 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ? 0
         : null;
     final isOwner =
-        auth.user?.id == nonNullPlan.ownerUserId || widget.sharedMember == null;
+        auth.user?.id == plan.ownerUserId || widget.sharedMember == null;
     final canManagePlan = isOwner || widget.sharedMember?.role == 'MANAGER';
     final canOpenFinance =
         widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
     final canOpenDebts =
         widget.sharedMember == null || widget.sharedMember!.canReadDebts;
     final canOpenSharing = widget.sharedMember == null;
+    final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
+    final personaCopy = activePlan?.id == plan.id
+        ? personaCopyForBackend(activePlan?.persona)
+        : null;
+    final planLocation = activePlan?.id == plan.id
+        ? activePlan!.weddingLocation
+        : plan.weddingLocation;
+    final roleLabel = personaCopy?.isKnown == true
+        ? personaCopy!.identityLabel
+        : _roleLabel(isOwner, widget.sharedMember);
+    final marketplace = _watchMarketplace();
+    final planQuotes =
+        marketplace?.quotesForPlan(plan.id) ?? const <QuoteRequest>[];
 
     return ListView(
       padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
       children: [
         const _PlanCenterHeader(),
         const SizedBox(height: 10),
-        _MainPlanSummaryCard(
-          plan: nonNullPlan,
+        _PremiumPlanSummaryHero(
+          plan: plan,
           progressPercent: progressPercent,
           completedTasks: completedTasks,
           totalTasks: tasksAvailable ? tasks.length : null,
           canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, nonNullPlan),
+          onEdit: () => _showEditPlanSheet(provider, plan),
         ),
         const SizedBox(height: 10),
-        _ProgressSummaryCard(
-          progressPercent: progressPercent,
-          completedTasks: tasksAvailable ? completedTasks : null,
-          remainingTasks: tasksAvailable ? remainingTasks : null,
-          lastUpdate: nonNullPlan.updatedAt,
+        _PlanLocationCard(
+          location: planLocation,
+          canManagePlan: canManagePlan,
+          onEdit: () => _showEditPlanSheet(provider, plan),
         ),
         const SizedBox(height: 10),
-        const _PlanTimelineCard(),
-        const SizedBox(height: 10),
+        if (tasksAvailable && tasks.isEmpty)
+          _SetupChecklistCard(
+            onTasks: () => context.push(AppRouter.tasks(plan.id)),
+            onBudget: () => canOpenFinance
+                ? _openFinanceOverview(provider, plan.id)
+                : _showFinancialAccessDenied(),
+            onGuests: () => context.push(AppRouter.guestList(plan.id)),
+            onProviders: () => context.push(AppRouter.providerMarketplace),
+            onEditPlan: () => _showEditPlanSheet(provider, plan),
+          ),
+        if (tasksAvailable && tasks.isNotEmpty) ...[
+          _ProgressSummaryCard(
+            progressPercent: progressPercent,
+            completedTasks: completedTasks,
+            remainingTasks: remainingTasks,
+            lastUpdate: plan.updatedAt,
+          ),
+          const SizedBox(height: 10),
+        ],
         _PlanSectionsCard(
-          onTasks: () => context.push(AppRouter.tasks(nonNullPlan.id)),
+          onTasks: () => context.push(AppRouter.tasks(plan.id)),
           onBudget: canOpenFinance
-              ? () => _openFinanceOverview(provider, nonNullPlan.id)
+              ? () => _openFinanceOverview(provider, plan.id)
               : _showFinancialAccessDenied,
           onDebts: canOpenDebts
               ? () => context.push(
-                  AppRouter.debts(nonNullPlan.id),
+                  AppRouter.debts(plan.id),
                   extra: widget.sharedMember,
                 )
               : _showFinancialAccessDenied,
-          onGuests: () => context.push(AppRouter.guestList(nonNullPlan.id)),
+          onGuests: () => context.push(AppRouter.guestList(plan.id)),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onSharing: canOpenSharing
-              ? () => context.push(AppRouter.sharing(nonNullPlan.id))
+              ? () => context.push(AppRouter.sharing(plan.id))
               : () => _showUnavailable('إدارة المشاركة متاحة لصاحب الخطة فقط.'),
           sharingEnabled: canOpenSharing,
           budgetEnabled: canOpenFinance,
           debtsEnabled: canOpenDebts,
         ),
         const SizedBox(height: 10),
+        _PlanQuotesCard(
+          quotes: planQuotes,
+          canManage: canManagePlan,
+          isSubmitting: marketplace?.isSubmitting ?? false,
+          onBrowseProviders: () =>
+              context.push(AppRouter.providerMarketplace),
+          onAccept: marketplace == null
+              ? null
+              : (quote) async {
+                  await marketplace.acceptQuote(quote);
+                },
+          onReject: marketplace == null
+              ? null
+              : (quote) async {
+                  await marketplace.rejectQuote(quote);
+                },
+          onAddExpense: (quote) =>
+              context.push(AppRouter.createExpense(plan.id)),
+          onAddDebt: (quote) =>
+              context.push(AppRouter.createDebt(plan.id)),
+        ),
+        const SizedBox(height: 10),
         _ParticipantsCard(
-          roleLabel: _roleLabel(isOwner, widget.sharedMember),
-          participantsCount: sharedMembersCount,
+          roleLabel: roleLabel,
+          participantsCount: provider.sharedMembers?.length,
           permissionsLabel: _permissionsLabel(isOwner, widget.sharedMember),
           canManageSharing: canOpenSharing,
-          onManageSharing: () => context.push(AppRouter.sharing(nonNullPlan.id)),
+          onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
         ),
         const SizedBox(height: 10),
         _PlanSettingsCard(
-          plan: nonNullPlan,
+          plan: plan,
           canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, nonNullPlan),
-          onArchive: () => _showArchivePlanSheet(provider, nonNullPlan),
+          onEdit: () => _showEditPlanSheet(provider, plan),
+          onArchive: () => _showArchivePlanSheet(provider, plan),
         ),
       ],
     );
+  }
+
+  ProviderMarketplaceProvider? _readMarketplace() {
+    try {
+      return context.read<ProviderMarketplaceProvider>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  ProviderMarketplaceProvider? _watchMarketplace() {
+    try {
+      return context.watch<ProviderMarketplaceProvider>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  void _loadPlanQuotes() {
+    _readMarketplace()?.loadMyQuoteRequests();
   }
 
   Widget _buildBottomNav(DashboardSummaryProvider provider) {
@@ -498,20 +569,41 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     );
   }
 
-  Widget _buildLocalPlanBody(double bottomPadding) {
+  Widget _buildLocalPlanBody(double bottomPadding, DashboardSummary? summary) {
     final planId = widget.weddingPlanId;
+    final localPlan = summary?.toWeddingPlan();
     return ListView(
       padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
       children: [
         const _PlanCenterHeader(),
         const SizedBox(height: 10),
-        const _PcCard(
-          padding: EdgeInsets.all(18),
-          child: _PcEmptyState(
-            icon: Icons.event_note_outlined,
-            title: 'لا توجد بيانات بعد',
-            message: 'ابدأ بإضافة بياناتك لاحقًا.',
+        if (localPlan != null) ...[
+          _PremiumPlanSummaryHero(
+            plan: localPlan,
+            progressPercent: summary!.progressPercentage,
+            completedTasks: summary.completedTasks,
+            totalTasks: summary.totalTasks,
+            canManagePlan: false,
+            onEdit: () => _showUnavailable(
+              'هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.',
+            ),
           ),
+          const SizedBox(height: 10),
+          _PlanLocationCard(
+            location: localPlan.weddingLocation,
+            canManagePlan: false,
+            onEdit: () =>
+                _showUnavailable('تحتاج لتسجيل الدخول لحفظ بيانات الخطة.'),
+          ),
+          const SizedBox(height: 10),
+        ],
+        _SetupChecklistCard(
+          onTasks: () => context.push(AppRouter.tasks(planId)),
+          onBudget: () => context.push(AppRouter.finance(planId)),
+          onGuests: () => context.push(AppRouter.guestList(planId)),
+          onProviders: () => context.push(AppRouter.providerMarketplace),
+          onEditPlan: () =>
+              _showUnavailable('تحتاج لتسجيل الدخول لحفظ بيانات الخطة.'),
         ),
         const SizedBox(height: 10),
         _PlanSectionsCard(
@@ -527,6 +619,18 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           budgetEnabled: true,
           debtsEnabled: true,
         ),
+        if (summary != null) ...[
+          const SizedBox(height: 10),
+          _ParticipantsCard(
+            roleLabel: 'تجربة محلية',
+            participantsCount: 1,
+            permissionsLabel: 'صلاحيات محلية',
+            canManageSharing: false,
+            onManageSharing: () => _showUnavailable(
+              'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -662,6 +766,14 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  WeddingPlansProvider? _maybeWatchWeddingPlans(BuildContext context) {
+    try {
+      return context.watch<WeddingPlansProvider>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 }
 
@@ -904,8 +1016,8 @@ class _PlanCenterHeader extends StatelessWidget {
   }
 }
 
-class _MainPlanSummaryCard extends StatelessWidget {
-  const _MainPlanSummaryCard({
+class _PremiumPlanSummaryHero extends StatelessWidget {
+  const _PremiumPlanSummaryHero({
     required this.plan,
     required this.progressPercent,
     required this.completedTasks,
@@ -923,172 +1035,212 @@ class _MainPlanSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _PcCard(
-      padding: const EdgeInsets.all(14),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 340;
-          final details = _PlanDetails(
-            plan: plan,
-            canManagePlan: canManagePlan,
-            onEdit: onEdit,
-          );
-          final progress = _PlanProgressBlock(
-            progressPercent: progressPercent,
-            completedTasks: completedTasks,
-            totalTasks: totalTasks,
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                details,
-                const SizedBox(height: 14),
-                const Divider(height: 1, color: _pcLine),
-                const SizedBox(height: 14),
-                progress,
-              ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(flex: 6, child: details),
-              const SizedBox(width: 14),
-              Container(width: 1, height: 128, color: _pcLine),
-              const SizedBox(width: 14),
-              SizedBox(width: 108, child: progress),
-            ],
-          );
-        },
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF6B001A),
+            _RoyalColors.burgundy,
+            _RoyalColors.burgundyDark,
+          ],
+          stops: [0.0, 0.4, 1.0],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _RoyalColors.gold.withValues(alpha: 0.15),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _RoyalColors.burgundy.withValues(alpha: 0.35),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _PlanDetails extends StatelessWidget {
-  const _PlanDetails({
-    required this.plan,
-    required this.canManagePlan,
-    required this.onEdit,
-  });
-
-  final WeddingPlan plan;
-  final bool canManagePlan;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
           children: [
-            Expanded(
-              child: Text(
-                plan.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _pcInk,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
+            Positioned(
+              right: -40,
+              top: -40,
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      _RoyalColors.gold.withValues(alpha: 0.12),
+                      Colors.transparent,
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            const _CurrentPlanBadge(),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 8,
-          children: [
-            _InlineMeta(
-              icon: Icons.calendar_month_outlined,
-              value: _dateLabel(plan.weddingDate),
-            ),
-            _InlineMeta(
-              icon: Icons.location_on_outlined,
-              value: _cityLabel(plan.city),
-            ),
-            _InlineMeta(
-              icon: Icons.timer_outlined,
-              value: _daysRemainingLabel(plan.daysRemaining),
-            ),
-          ],
-        ),
-        if (canManagePlan) ...[
-          const SizedBox(height: 13),
-          SizedBox(
-            height: 39,
-            child: OutlinedButton.icon(
-              style: _pcOutlinedButtonStyle(),
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text(
-                'تعديل بيانات الخطة',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            Positioned(
+              left: -60,
+              bottom: -60,
+              child: Container(
+                width: 180,
+                height: 180,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      _RoyalColors.burgundyLight.withValues(alpha: 0.15),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              plan.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _RoyalColors.gold,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                height: 1.15,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildHeroMetaRow(
+                              Icons.calendar_month_rounded,
+                              _dateLabel(plan.weddingDate),
+                            ),
+                            const SizedBox(height: 6),
+                            _buildHeroMetaRow(
+                              Icons.location_on_rounded,
+                              _cityLabel(
+                                plan.weddingLocation.shortLabel ?? plan.city,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      if (progressPercent != null)
+                        SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(
+                                value: progressPercent! / 100,
+                                strokeWidth: 5,
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.1,
+                                ),
+                                color: _RoyalColors.gold,
+                              ),
+                              Text(
+                                '$progressPercent%',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(child: _buildTimeRemainingCard()),
+                      if (canManagePlan) ...[
+                        const SizedBox(width: 12),
+                        IconButton(
+                          onPressed: onEdit,
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            color: Colors.white,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeroMetaRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 14),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.85),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
-        ],
+        ),
       ],
     );
   }
-}
 
-class _PlanProgressBlock extends StatelessWidget {
-  const _PlanProgressBlock({
-    required this.progressPercent,
-    required this.completedTasks,
-    required this.totalTasks,
-  });
-
-  final int? progressPercent;
-  final int completedTasks;
-  final int? totalTasks;
-
-  @override
-  Widget build(BuildContext context) {
-    final taskValue = totalTasks == null
-        ? 'غير متاح'
-        : '$completedTasks/$totalTasks';
-
-    return Column(
-      children: [
-        _ProgressRing(percent: progressPercent),
-        const SizedBox(height: 10),
-        Text(
-          taskValue,
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: _pcInk,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
+  Widget _buildTimeRemainingCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+          width: 0.5,
         ),
-        const SizedBox(height: 2),
-        const Text(
-          'المهام',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: _pcText,
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.timer_outlined, color: _RoyalColors.gold, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            _daysRemainingLabel(plan.daysRemaining),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1150,52 +1302,164 @@ class _ProgressSummaryCard extends StatelessWidget {
   }
 }
 
-class _PlanTimelineCard extends StatelessWidget {
-  const _PlanTimelineCard();
+class _SetupChecklistCard extends StatelessWidget {
+  const _SetupChecklistCard({
+    required this.onTasks,
+    required this.onBudget,
+    required this.onGuests,
+    required this.onProviders,
+    required this.onEditPlan,
+  });
+
+  final VoidCallback onTasks;
+  final VoidCallback onBudget;
+  final VoidCallback onGuests;
+  final VoidCallback onProviders;
+  final VoidCallback onEditPlan;
 
   @override
   Widget build(BuildContext context) {
-    const steps = [
-      _TimelineStep(
-        icon: Icons.event_available_outlined,
-        title: 'اليوم',
-        subtitle: 'استكمال المهام اليومية',
-        active: true,
-      ),
-      _TimelineStep(
-        icon: Icons.assignment_outlined,
-        title: 'هذا الأسبوع',
-        subtitle: 'ترتيب التفاصيل القريبة',
-      ),
-      _TimelineStep(
-        icon: Icons.cake_outlined,
-        title: 'قبل الزواج',
-        subtitle: 'تحضيرات نهائية ومراجعة',
-      ),
-      _TimelineStep(
-        icon: Icons.favorite_border_rounded,
-        title: 'يوم الزواج',
-        subtitle: 'اليوم الكبير والاحتفال',
-      ),
-    ];
-
     return _PcCard(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _PcSectionTitle(
-            title: 'الخط الزمني',
-            icon: Icons.timeline_rounded,
-          ),
-          const SizedBox(height: 12),
-          Column(
+          Row(
             children: [
-              for (var i = 0; i < steps.length; i++)
-                _TimelineRow(step: steps[i], isLast: i == steps.length - 1),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _RoyalColors.burgundyLight.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.rocket_launch_rounded,
+                  color: _RoyalColors.burgundyLight,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'أهلاً بك في خطتك الجديدة! 🎉',
+                      style: TextStyle(
+                        color: _pcInk,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'خطوات بسيطة للبدء بتجهيز يومك الكبير.',
+                      style: TextStyle(
+                        color: _pcMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
+          const SizedBox(height: 16),
+          _ChecklistItem(
+            icon: Icons.location_on_outlined,
+            title: 'أضف موقع الزفاف',
+            subtitle: 'تحديد المدينة يسهل البحث عن الموردين.',
+            onTap: onEditPlan,
+          ),
+          _ChecklistItem(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'حدد الميزانية',
+            subtitle: 'تظهر مؤشرات الإنفاق عندما تضيف ميزانية تقريبية.',
+            onTap: onBudget,
+          ),
+          _ChecklistItem(
+            icon: Icons.check_box_outlined,
+            title: 'أضف أول مهمة',
+            subtitle: 'رتب أفكارك وابدأ بإنجاز المهام.',
+            onTap: onTasks,
+          ),
+          _ChecklistItem(
+            icon: Icons.person_add_alt_1_outlined,
+            title: 'أضف أول ضيف',
+            subtitle: 'تجهيز قائمة المدعوين لتقدير التكلفة.',
+            onTap: onGuests,
+          ),
+          _ChecklistItem(
+            icon: Icons.storefront_outlined,
+            title: 'استكشف الموردين',
+            subtitle: 'تصفح أفضل القاعات والخدمات وتواصل معهم.',
+            onTap: onProviders,
+            isLast: true,
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _ChecklistItem extends StatelessWidget {
+  const _ChecklistItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.isLast = false,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(bottom: BorderSide(color: _pcLine, width: 0.5)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: _RoyalColors.goldDeep, size: 22),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: _pcInk,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: _pcMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left_rounded, color: _pcMuted, size: 20),
+          ],
+        ),
       ),
     );
   }
@@ -1302,6 +1566,342 @@ class _PlanSectionsCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PlanLocationCard extends StatelessWidget {
+  const _PlanLocationCard({
+    required this.location,
+    required this.canManagePlan,
+    required this.onEdit,
+  });
+
+  final WeddingLocationDraft location;
+  final bool canManagePlan;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLocation = location.hasAnyLocation;
+    final headline =
+        location.fullLabel ??
+        location.mediumLabel ??
+        location.shortLabel ??
+        'لم يضف موقع الزفاف بعد';
+
+    return _PcCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _PcSectionTitle(
+            title: 'موقع الزفاف',
+            icon: Icons.location_on_outlined,
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: hasLocation
+                  ? _RoyalColors.gold.withValues(alpha: 0.08)
+                  : _pcMuted.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(_pcRadius),
+              border: Border.all(color: _pcLine, width: 0.9),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  hasLocation
+                      ? Icons.location_on_rounded
+                      : Icons.add_location_alt_outlined,
+                  color: hasLocation ? _RoyalColors.goldDeep : _pcMuted,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    headline,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: hasLocation ? _pcInk : _pcMuted,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _LocationDetailRow(
+            label: 'المحافظة',
+            value: _locationValue(location.governorate, 'غير محددة'),
+          ),
+          _LocationDetailRow(
+            label: 'المدينة / المديرية',
+            value: _locationValue(location.cityOrDistrict, 'غير محددة'),
+          ),
+          _LocationDetailRow(
+            label: 'الحي / المنطقة',
+            value: _locationValue(location.areaOrNeighborhood, 'لم يضف بعد'),
+          ),
+          _LocationDetailRow(
+            label: 'الشارع',
+            value: _locationValue(location.street, 'اختياري'),
+          ),
+          _LocationDetailRow(
+            label: 'العنوان التفصيلي',
+            value: _locationValue(location.detailedAddress, 'اختياري'),
+          ),
+          if (canManagePlan) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 42,
+              child: OutlinedButton.icon(
+                style: _pcOutlinedButtonStyle(),
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
+                label: const Text(
+                  'تعديل بيانات الخطة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LocationDetailRow extends StatelessWidget {
+  const _LocationDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _pcMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                height: 1.25,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: _pcText,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanQuotesCard extends StatelessWidget {
+  const _PlanQuotesCard({
+    required this.quotes,
+    required this.canManage,
+    required this.isSubmitting,
+    required this.onBrowseProviders,
+    required this.onAccept,
+    required this.onReject,
+    required this.onAddExpense,
+    required this.onAddDebt,
+  });
+
+  final List<QuoteRequest> quotes;
+  final bool canManage;
+  final bool isSubmitting;
+  final VoidCallback onBrowseProviders;
+  final Future<void> Function(QuoteRequest quote)? onAccept;
+  final Future<void> Function(QuoteRequest quote)? onReject;
+  final void Function(QuoteRequest quote) onAddExpense;
+  final void Function(QuoteRequest quote) onAddDebt;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = quotes.take(4).toList(growable: false);
+    return _PcCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.storefront_outlined, color: _pcInk),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'الموردون والعروض',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: _pcInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onBrowseProviders,
+                child: const Text('تصفح الموردين'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (visible.isEmpty)
+            const _PcEmptyState(
+              icon: Icons.request_quote_outlined,
+              title: 'لا توجد طلبات عروض بعد',
+              message:
+                  'عند طلب عرض سعر سيظهر هنا، ثم يمكنك قبول العرض أو رفضه من الخطة.',
+            )
+          else
+            for (final quote in visible) ...[
+              _PlanQuoteRow(
+                quote: quote,
+                canManage: canManage,
+                isSubmitting: isSubmitting,
+                onAccept: onAccept,
+                onReject: onReject,
+                onAddExpense: onAddExpense,
+                onAddDebt: onAddDebt,
+              ),
+              if (quote != visible.last)
+                const Divider(height: 22, color: _pcLine),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PlanQuoteRow extends StatelessWidget {
+  const _PlanQuoteRow({
+    required this.quote,
+    required this.canManage,
+    required this.isSubmitting,
+    required this.onAccept,
+    required this.onReject,
+    required this.onAddExpense,
+    required this.onAddDebt,
+  });
+
+  final QuoteRequest quote;
+  final bool canManage;
+  final bool isSubmitting;
+  final Future<void> Function(QuoteRequest quote)? onAccept;
+  final Future<void> Function(QuoteRequest quote)? onReject;
+  final void Function(QuoteRequest quote) onAddExpense;
+  final void Function(QuoteRequest quote) onAddDebt;
+
+  @override
+  Widget build(BuildContext context) {
+    final offer = quote.pendingOffer ?? quote.acceptedOffer;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                quote.provider?.businessName ??
+                    quote.service?.title ??
+                    'طلب عرض سعر',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _pcInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            QuoteStatusChip(status: quote.lifecycleStatus, compact: true),
+          ],
+        ),
+        if (offer?.amount?.trim().isNotEmpty == true) ...[
+          const SizedBox(height: 6),
+          Text(
+            '${offer!.amount} ${offer.currency ?? 'YER'}',
+            style: const TextStyle(
+              color: _pcMuted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+        if (quote.canAcceptOrReject && canManage) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              FilledButton.icon(
+                onPressed: isSubmitting || onAccept == null
+                    ? null
+                    : () => onAccept!(quote),
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('قبول العرض'),
+              ),
+              OutlinedButton(
+                onPressed: isSubmitting || onReject == null
+                    ? null
+                    : () => onReject!(quote),
+                child: const Text('رفض العرض'),
+              ),
+            ],
+          ),
+        ],
+        if (quote.lifecycleStatus == 'ACCEPTED' && canManage) ...[
+          const SizedBox(height: 10),
+          const Text(
+            'الخطوة التالية اختيارية: تسجيل الالتزام المالي. لن يُنشأ أي سجل تلقائيًا.',
+            style: TextStyle(
+              color: _pcMuted,
+              fontWeight: FontWeight.w700,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => onAddExpense(quote),
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('إضافة كمصروف'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => onAddDebt(quote),
+                icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+                label: const Text('إضافة كدين / دفعة لاحقة'),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1416,8 +2016,10 @@ class _PlanSettingsCard extends StatelessWidget {
           ),
           _SettingsRow(
             icon: Icons.location_on_outlined,
-            title: 'تغيير المدينة',
-            subtitle: disabledSubtitle ?? _cityLabel(plan.city),
+            title: 'تغيير المدينة / الموقع',
+            subtitle:
+                disabledSubtitle ??
+                _cityLabel(plan.weddingLocation.shortLabel ?? plan.city),
             enabled: canManagePlan,
             onTap: onEdit,
           ),
@@ -1633,155 +2235,6 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-class _TimelineRow extends StatelessWidget {
-  const _TimelineRow({required this.step, required this.isLast});
-
-  final _TimelineStep step;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 34,
-          child: Column(
-            children: [
-              Container(
-                width: 18,
-                height: 18,
-                decoration: BoxDecoration(
-                  color: step.active ? _pcInk : Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _pcInk, width: 1),
-                ),
-              ),
-              if (!isLast) Container(width: 1, height: 46, color: _pcLine),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-          child: _PcIconBox(icon: step.icon, compact: true),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  step.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _pcInk,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  step.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _pcMuted,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.15,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _TimelineStep {
-  const _TimelineStep({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.active = false,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool active;
-}
-
-class _ProgressRing extends StatelessWidget {
-  const _ProgressRing({required this.percent});
-
-  final int? percent;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 78,
-      height: 78,
-      child: CustomPaint(
-        painter: _ProgressRingPainter((percent ?? 0) / 100),
-        child: Center(
-          child: Text(
-            percent == null ? '-' : '$percent%',
-            textDirection: TextDirection.ltr,
-            style: const TextStyle(
-              color: _pcInk,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProgressRingPainter extends CustomPainter {
-  const _ProgressRingPainter(this.progress);
-
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = (size.shortestSide - 12) / 2;
-    final track = Paint()
-      ..color = _pcLine
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10;
-    final arc = Paint()
-      ..color = _pcMuted
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.butt
-      ..strokeWidth = 10;
-
-    canvas.drawCircle(center, radius, track);
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      math.pi * 2 * progress.clamp(0.0, 1.0),
-      false,
-      arc,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ProgressRingPainter oldDelegate) {
-    return oldDelegate.progress != progress;
-  }
-}
-
 class _PcCard extends StatelessWidget {
   const _PcCard({required this.child, required this.padding});
 
@@ -1794,7 +2247,14 @@ class _PcCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(_pcRadius),
-        border: Border.all(color: _pcLine, width: 0.9),
+        border: Border.all(color: _pcLine.withValues(alpha: 0.5), width: 0.5),
+        boxShadow: [
+          BoxShadow(
+            color: _pcInk.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       padding: padding,
       child: child,
@@ -1828,63 +2288,6 @@ class _PcSectionTitle extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _InlineMeta extends StatelessWidget {
-  const _InlineMeta({required this.icon, required this.value});
-
-  final IconData icon;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: _pcText, size: 18),
-        const SizedBox(width: 5),
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 136),
-          child: Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _pcInk,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CurrentPlanBadge extends StatelessWidget {
-  const _CurrentPlanBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: _pcSoft,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _pcLine, width: 0.8),
-      ),
-      child: const Text(
-        'الخطة الحالية',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: _pcMuted,
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
     );
   }
 }
@@ -1993,12 +2396,22 @@ class _SkeletonBox extends StatelessWidget {
   }
 }
 
-const _pcInk = Color(0xFF111111);
+const _pcInk = Color(0xFF2D1A1E);
 const _pcText = Color(0xFF333333);
-const _pcMuted = Color(0xFF777777);
-const _pcLine = Color(0xFFD8D8D8);
-const _pcSoft = Color(0xFFF5F5F5);
-const _pcRadius = 10.0;
+const _pcMuted = Color(0xFF8A7B7E);
+const _pcLine = Color(0xFFE5E0E1);
+const _pcSoft = Color(0xFFFDFBF9);
+const _pcRadius = 16.0;
+
+class _RoyalColors {
+  const _RoyalColors._();
+
+  static const burgundy = Color(0xFF800020);
+  static const burgundyDark = Color(0xFF5A0016);
+  static const burgundyLight = Color(0xFFA63351);
+  static const gold = Color(0xFFD4AF37);
+  static const goldDeep = Color(0xFFB5952F);
+}
 
 ButtonStyle _pcOutlinedButtonStyle() {
   return OutlinedButton.styleFrom(
@@ -2017,6 +2430,10 @@ String _dateLabel(DateTime? date) {
 
 String _cityLabel(String? city) {
   return city?.trim().isNotEmpty == true ? city!.trim() : 'غير محددة';
+}
+
+String _locationValue(String? value, String fallback) {
+  return value?.trim().isNotEmpty == true ? value!.trim() : fallback;
 }
 
 String _daysRemainingLabel(int? days) {

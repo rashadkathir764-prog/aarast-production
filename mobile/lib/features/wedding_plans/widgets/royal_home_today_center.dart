@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/widgets/aarast_pressable.dart';
 import '../models/dashboard_summary.dart';
@@ -25,6 +24,8 @@ class RoyalHomeTodayCenter extends StatelessWidget {
     required this.onOpenTimeline,
     this.bottomPadding = 156,
     this.notice,
+    this.personaHeadline,
+    this.personaSupportText,
     super.key,
   });
 
@@ -44,6 +45,8 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   final VoidCallback onOpenTimeline;
   final double bottomPadding;
   final Widget? notice;
+  final String? personaHeadline;
+  final String? personaSupportText;
 
   @override
   Widget build(BuildContext context) {
@@ -71,6 +74,8 @@ class RoyalHomeTodayCenter extends StatelessWidget {
             index: notice != null ? 2 : 1,
             child: _PremiumHeroCard(
               summary: summary,
+              personaHeadline: personaHeadline,
+              personaSupportText: personaSupportText,
               onOpenPlan: onOpenPlan,
               onOpenTimeline: onOpenTimeline,
               onOpenProgress: onOpenTasks,
@@ -158,10 +163,7 @@ class _PremiumHeader extends StatelessWidget {
           showBadge: unreadCount > 0,
         ),
         const SizedBox(width: 10),
-        _CircleIconButton(
-          icon: Icons.person_outline_rounded,
-          onTap: onProfile,
-        ),
+        _CircleIconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
       ],
     );
   }
@@ -173,12 +175,16 @@ class _PremiumHeroCard extends StatelessWidget {
     required this.onOpenPlan,
     required this.onOpenTimeline,
     required this.onOpenProgress,
+    this.personaHeadline,
+    this.personaSupportText,
   });
 
   final DashboardSummary summary;
   final VoidCallback onOpenPlan;
   final VoidCallback onOpenTimeline;
   final VoidCallback onOpenProgress;
+  final String? personaHeadline;
+  final String? personaSupportText;
 
   @override
   Widget build(BuildContext context) {
@@ -258,6 +264,21 @@ class _PremiumHeroCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (_hasText(personaHeadline)) ...[
+                            Text(
+                              personaHeadline!.trim(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                height: 1.25,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           Text(
                             summary.title,
                             maxLines: 2,
@@ -270,6 +291,21 @@ class _PremiumHeroCard extends StatelessWidget {
                               letterSpacing: 0,
                             ),
                           ),
+                          if (_hasText(personaSupportText)) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              personaSupportText!.trim(),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.78),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 10),
                           Row(
                             children: [
@@ -292,6 +328,34 @@ class _PremiumHeroCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                          if (_hasText(summary.city)) ...[
+                            const SizedBox(height: 7),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    summary.city!.trim(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.85,
+                                      ),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -449,7 +513,8 @@ class _PanoramicCardsCarousel extends StatefulWidget {
   final VoidCallback onOpenMoney;
 
   @override
-  State<_PanoramicCardsCarousel> createState() => _PanoramicCardsCarouselState();
+  State<_PanoramicCardsCarousel> createState() =>
+      _PanoramicCardsCarouselState();
 }
 
 class _PanoramicCardsCarouselState extends State<_PanoramicCardsCarousel> {
@@ -470,15 +535,20 @@ class _PanoramicCardsCarouselState extends State<_PanoramicCardsCarousel> {
   @override
   Widget build(BuildContext context) {
     final priorities = _priorityItems(widget.summary);
-    
+
     final cards = [
-      _PanoramicFinanceCard(
-        summary: widget.summary,
-        onTap: widget.onOpenMoney,
-      ),
+      _PanoramicFinanceCard(summary: widget.summary, onTap: widget.onOpenMoney),
       _PanoramicProviderCard(
-        providerCount: widget.summary.providerCount,
-        quoteCount: widget.summary.quoteRequestsCount,
+        pendingCount:
+            widget.summary.pendingQuoteRequests +
+                    widget.summary.receivedQuotes >
+                0
+            ? widget.summary.pendingQuoteRequests
+            : widget.summary.quoteRequestsCount,
+        receivedCount: widget.summary.receivedQuotes,
+        acceptedCount: widget.summary.acceptedProviders > 0
+            ? widget.summary.acceptedProviders
+            : widget.summary.providerCount,
         onTap: widget.onOpenProviders,
       ),
       if (priorities.isNotEmpty)
@@ -530,7 +600,11 @@ class _PanoramicCardsCarouselState extends State<_PanoramicCardsCarousel> {
 }
 
 class _BasePanoramicCard extends StatelessWidget {
-  const _BasePanoramicCard({required this.onTap, required this.child, this.color});
+  const _BasePanoramicCard({
+    required this.onTap,
+    required this.child,
+    this.color,
+  });
   final VoidCallback onTap;
   final Widget child;
   final Color? color;
@@ -571,7 +645,10 @@ class _PanoramicFinanceCard extends StatelessWidget {
       return _BasePanoramicCard(
         onTap: onTap,
         child: const Center(
-          child: Text('لا توجد صلاحية لعرض المال', style: TextStyle(color: _RoyalColors.muted)),
+          child: Text(
+            'لا توجد صلاحية لعرض المال',
+            style: TextStyle(color: _RoyalColors.muted),
+          ),
         ),
       );
     }
@@ -587,17 +664,43 @@ class _PanoramicFinanceCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.account_balance_wallet_rounded, color: _RoyalColors.goldDeep, size: 20),
+                    Icon(
+                      Icons.account_balance_wallet_rounded,
+                      color: _RoyalColors.goldDeep,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
-                    const Flexible(child: Text('المالية', style: TextStyle(color: _RoyalColors.ink, fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                    const Flexible(
+                      child: Text(
+                        'المالية',
+                        style: TextStyle(
+                          color: _RoyalColors.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const Spacer(),
-                const Text('المتبقي لك', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+                const Text(
+                  'المتبقي لك',
+                  style: TextStyle(
+                    color: _RoyalColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   _formatMoney(summary.remainingBudget),
-                  style: const TextStyle(color: _RoyalColors.burgundy, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1),
+                  style: const TextStyle(
+                    color: _RoyalColors.burgundy,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
                 ),
               ],
             ),
@@ -614,15 +717,27 @@ class _PanoramicFinanceCard extends StatelessWidget {
 }
 
 class _PanoramicProviderCard extends StatelessWidget {
-  const _PanoramicProviderCard({required this.providerCount, required this.quoteCount, required this.onTap});
-  final int providerCount;
-  final int quoteCount;
+  const _PanoramicProviderCard({
+    required this.pendingCount,
+    required this.receivedCount,
+    required this.acceptedCount,
+    required this.onTap,
+  });
+  final int pendingCount;
+  final int receivedCount;
+  final int acceptedCount;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final hasAction = quoteCount > 0;
-    
+    final hasAction = receivedCount > 0 || pendingCount > 0;
+    final actionLabel = receivedCount > 0
+        ? 'بانتظار قرارك'
+        : 'بانتظار رد المورد';
+    final actionValue = receivedCount > 0
+        ? '$receivedCount عروض وصلت'
+        : '$pendingCount طلبات معلقة';
+
     final frontFace = Row(
       children: [
         Expanded(
@@ -632,15 +747,44 @@ class _PanoramicProviderCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.storefront_rounded, color: _RoyalColors.goldDeep, size: 20),
+                  Icon(
+                    Icons.storefront_rounded,
+                    color: _RoyalColors.goldDeep,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
-                  const Flexible(child: Text('الموردين', style: TextStyle(color: _RoyalColors.ink, fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                  const Flexible(
+                    child: Text(
+                      'الموردين',
+                      style: TextStyle(
+                        color: _RoyalColors.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const Spacer(),
-              const Text('بانتظار رأيك', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(
+                actionLabel,
+                style: TextStyle(
+                  color: _RoyalColors.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('$quoteCount عروض', style: const TextStyle(color: _RoyalColors.ink, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1)),
+              Text(
+                actionValue,
+                style: const TextStyle(
+                  color: _RoyalColors.ink,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
             ],
           ),
         ),
@@ -649,9 +793,18 @@ class _PanoramicProviderCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: _RoyalColors.burgundy.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _RoyalColors.burgundy.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: _RoyalColors.burgundy.withValues(alpha: 0.2),
+            ),
           ),
-          child: const Text('استعراض', style: TextStyle(color: _RoyalColors.burgundy, fontSize: 13, fontWeight: FontWeight.w800)),
+          child: const Text(
+            'استعراض',
+            style: TextStyle(
+              color: _RoyalColors.burgundy,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
       ],
     );
@@ -665,15 +818,44 @@ class _PanoramicProviderCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(Icons.storefront_rounded, color: _RoyalColors.goldDeep, size: 20),
+                  Icon(
+                    Icons.storefront_rounded,
+                    color: _RoyalColors.goldDeep,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
-                  const Flexible(child: Text('الموردين', style: TextStyle(color: _RoyalColors.ink, fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis)),
+                  const Flexible(
+                    child: Text(
+                      'الموردين',
+                      style: TextStyle(
+                        color: _RoyalColors.ink,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
               const Spacer(),
-              const Text('موردين معتمدين', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+              const Text(
+                'موردون مرتبطون بالخطة',
+                style: TextStyle(
+                  color: _RoyalColors.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('$providerCount محجوز', style: const TextStyle(color: _RoyalColors.ink, fontSize: 24, fontWeight: FontWeight.w900, height: 1.1)),
+              Text(
+                '$acceptedCount مورد مقبول',
+                style: const TextStyle(
+                  color: _RoyalColors.ink,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
             ],
           ),
         ),
@@ -682,16 +864,25 @@ class _PanoramicProviderCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: _RoyalColors.ivory,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.1)),
+            border: Border.all(
+              color: _RoyalColors.muted.withValues(alpha: 0.1),
+            ),
           ),
-          child: const Text('تصفح', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w800)),
+          child: const Text(
+            'تصفح',
+            style: TextStyle(
+              color: _RoyalColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
       ],
     );
 
     return _BasePanoramicCard(
       onTap: onTap,
-      child: (hasAction && providerCount > 0)
+      child: (hasAction && acceptedCount > 0)
           ? _AutoFlipCard(front: frontFace, back: backFace)
           : (hasAction ? frontFace : backFace),
     );
@@ -699,7 +890,10 @@ class _PanoramicProviderCard extends StatelessWidget {
 }
 
 class _PanoramicPriorityCard extends StatelessWidget {
-  const _PanoramicPriorityCard({required this.topItem, required this.onTapItem});
+  const _PanoramicPriorityCard({
+    required this.topItem,
+    required this.onTapItem,
+  });
   final DashboardImportantItem topItem;
   final ValueChanged<DashboardImportantItem> onTapItem;
 
@@ -709,7 +903,9 @@ class _PanoramicPriorityCard extends StatelessWidget {
 
     return _BasePanoramicCard(
       onTap: () => onTapItem(topItem),
-      color: isUrgent ? _RoyalColors.burgundy.withValues(alpha: 0.04) : Colors.white,
+      color: isUrgent
+          ? _RoyalColors.burgundy.withValues(alpha: 0.04)
+          : Colors.white,
       child: Row(
         children: [
           Expanded(
@@ -720,35 +916,59 @@ class _PanoramicPriorityCard extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      isUrgent ? Icons.priority_high_rounded : Icons.flash_on_rounded,
-                      color: isUrgent ? _RoyalColors.burgundy : _RoyalColors.goldDeep,
+                      isUrgent
+                          ? Icons.priority_high_rounded
+                          : Icons.flash_on_rounded,
+                      color: isUrgent
+                          ? _RoyalColors.burgundy
+                          : _RoyalColors.goldDeep,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
-                    Flexible(child: Text(
-                      isUrgent ? 'تنبيه هام' : 'الأهم اليوم',
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isUrgent ? _RoyalColors.burgundy : _RoyalColors.ink,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                    Flexible(
+                      child: Text(
+                        isUrgent ? 'تنبيه هام' : 'الأهم اليوم',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isUrgent
+                              ? _RoyalColors.burgundy
+                              : _RoyalColors.ink,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    )),
+                    ),
                   ],
                 ),
                 const Spacer(),
-                const Text('إجراء مطلوب', style: TextStyle(color: _RoyalColors.muted, fontSize: 13, fontWeight: FontWeight.w600)),
+                const Text(
+                  'إجراء مطلوب',
+                  style: TextStyle(
+                    color: _RoyalColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   topItem.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: _RoyalColors.ink, fontSize: 18, fontWeight: FontWeight.w900, height: 1.3),
+                  style: const TextStyle(
+                    color: _RoyalColors.ink,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    height: 1.3,
+                  ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_left_rounded, color: _RoyalColors.muted, size: 32),
+          const Icon(
+            Icons.chevron_left_rounded,
+            color: _RoyalColors.muted,
+            size: 32,
+          ),
         ],
       ),
     );
@@ -836,9 +1056,10 @@ class _LiveDotState extends State<_LiveDot>
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: Tween<double>(begin: 0.4, end: 1.0).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-      ),
+      opacity: Tween<double>(
+        begin: 0.4,
+        end: 1.0,
+      ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut)),
       child: Container(
         width: 8,
         height: 8,
@@ -878,6 +1099,10 @@ String _greetingFor(String name) {
   return '$timeGreeting، $name';
 }
 
+bool _hasText(String? value) {
+  return value != null && value.trim().isNotEmpty;
+}
+
 String _formatDate(DateTime date) {
   return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
 }
@@ -915,7 +1140,6 @@ List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
   return list;
 }
 
-
 class _OperationalCards extends StatelessWidget {
   const _OperationalCards({
     required this.summary,
@@ -934,30 +1158,46 @@ class _OperationalCards extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-
         _OperationalCard(
           title: 'المهام',
-          subtitle: '${summary.totalTasks - summary.completedTasks} مهمة متبقية',
+          subtitle: summary.overdueTasks > 0
+              ? '${summary.overdueTasks} متأخرة • ${summary.todayTasks} اليوم'
+              : '${summary.todayTasks} اليوم • ${summary.completedTasks} مكتملة',
           icon: Icons.checklist_rounded,
           onTap: onOpenTasks,
         ),
         const SizedBox(height: 12),
         _OperationalCard(
           title: 'الضيوف',
-          subtitle: '${summary.confirmedGuests} ضيف مؤكد',
+          subtitle:
+              '${summary.guestCount} إجمالي • ${summary.confirmedGuests} مؤكد • ${summary.pendingGuests} معلق',
           icon: Icons.group_outlined,
           onTap: onOpenGuests,
         ),
         const SizedBox(height: 12),
         _OperationalCard(
           title: 'المشاركة في الخطة',
-          subtitle: 'أنت (${summary.currentUserRole == "GUEST" ? "ضيف" : "صاحب الخطة"}) • إدارة المشاركين',
+          subtitle:
+              '${summary.participantCount} مشارك • ${summary.pendingInvites} دعوات معلقة • ${_dashboardRoleLabel(summary.currentUserRole)}',
           icon: Icons.share_rounded,
           onTap: onOpenParticipants,
         ),
       ],
     );
   }
+}
+
+String _dashboardRoleLabel(String? role) {
+  return switch (role) {
+    'OWNER' => 'صاحب الخطة',
+    'GROOM' => 'العريس',
+    'BRIDE' => 'العروس',
+    'FAMILY' => 'العائلة',
+    'HELPER' => 'مساعد',
+    'VIEWER' => 'مشاهد',
+    'GUEST' || 'GUEST_LOCAL' => 'تجربة محلية',
+    _ => role ?? 'مشارك',
+  };
 }
 
 class _OperationalCard extends StatelessWidget {
@@ -1001,7 +1241,9 @@ class _OperationalCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: _RoyalColors.ivory,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _RoyalColors.goldDeep.withValues(alpha: 0.15)),
+                border: Border.all(
+                  color: _RoyalColors.goldDeep.withValues(alpha: 0.15),
+                ),
               ),
               child: Icon(icon, color: _RoyalColors.goldDeep, size: 22),
             ),
@@ -1044,7 +1286,7 @@ class _OperationalCard extends StatelessWidget {
 
 class _PremiumEntry extends StatelessWidget {
   const _PremiumEntry({required this.index, required this.child});
-  
+
   final int index;
   final Widget child;
 
@@ -1085,18 +1327,18 @@ class _AnimatedDonutChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isTest = Platform.environment.containsKey('FLUTTER_TEST');
-    
+
     final b = int.tryParse(budgetStr ?? '0') ?? 0;
     final s = int.tryParse(spentStr ?? '0') ?? 0;
     final ratio = b > 0 ? (s / b).clamp(0.0, 1.0) : 0.0;
-    
+
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: isTest ? 0.0 : ratio),
       duration: const Duration(milliseconds: 1500),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         return CustomPaint(
-          size: const Size.square(90), 
+          size: const Size.square(90),
           painter: _DonutChartPainter(
             spentRatio: isTest ? ratio : value,
             spentColor: _RoyalColors.burgundy,
@@ -1145,7 +1387,7 @@ class _DonutChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width / 2, size.height / 2) - 6; 
+    final radius = math.min(size.width / 2, size.height / 2) - 6;
     const strokeWidth = 12.0;
 
     final bgPaint = Paint()
@@ -1178,7 +1420,7 @@ class _DonutChartPainter extends CustomPainter {
 
       final sweepAngle = 2 * math.pi * spentRatio;
       final startAngle = -math.pi / 2;
-      
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
@@ -1186,7 +1428,7 @@ class _DonutChartPainter extends CustomPainter {
         false,
         glowPaint,
       );
-      
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         startAngle,
@@ -1204,10 +1446,7 @@ class _DonutChartPainter extends CustomPainter {
 }
 
 class _AutoFlipCard extends StatefulWidget {
-  const _AutoFlipCard({
-    required this.front,
-    required this.back,
-  });
+  const _AutoFlipCard({required this.front, required this.back});
 
   final Widget front;
   final Widget back;
@@ -1226,7 +1465,7 @@ class _AutoFlipCardState extends State<_AutoFlipCard>
   void initState() {
     super.initState();
     _isTest = Platform.environment.containsKey('FLUTTER_TEST');
-    
+
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -1259,7 +1498,7 @@ class _AutoFlipCardState extends State<_AutoFlipCard>
   @override
   Widget build(BuildContext context) {
     if (_isTest) {
-      return widget.front; 
+      return widget.front;
     }
 
     return AnimatedBuilder(

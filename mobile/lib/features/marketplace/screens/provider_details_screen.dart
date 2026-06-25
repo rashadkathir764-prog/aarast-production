@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
+import '../widgets/quote_status_chip.dart';
 
 class ProviderDetailsScreen extends StatefulWidget {
   const ProviderDetailsScreen({required this.providerId, super.key});
@@ -57,11 +59,50 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               color: AppTheme.dCard2,
               border: Border(top: BorderSide(color: AppTheme.dLine)),
             ),
-            child: FilledButton.icon(
-              onPressed: () =>
-                  context.push(AppRouter.providerQuote(widget.providerId)),
-              icon: const Icon(Icons.chat_bubble_outline_rounded),
-              label: const Text('طلب عرض سعر'),
+            child: Consumer<ProviderMarketplaceProvider>(
+              builder: (context, marketplace, _) {
+                final quotes = marketplace.quotesForProvider(
+                  widget.providerId,
+                );
+                final latest = quotes.isEmpty ? null : quotes.first;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (latest != null) ...[
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'آخر طلب لهذا المورد',
+                              style: TextStyle(
+                                color: AppTheme.dInkSoft,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          QuoteStatusChip(
+                            status: latest.lifecycleStatus,
+                            compact: true,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    FilledButton.icon(
+                      onPressed: () => context.push(
+                        AppRouter.providerQuote(widget.providerId),
+                      ),
+                      icon: const Icon(Icons.chat_bubble_outline_rounded),
+                      label: Text(
+                        latest == null
+                            ? 'اطلب عرض سعر'
+                            : 'طلب عرض سعر جديد',
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -351,7 +392,9 @@ class _AboutCard extends StatelessWidget {
             children: [
               if (provider.phone?.trim().isNotEmpty == true)
                 AarastStatusPill(
-                  label: provider.phone!.trim(),
+                  label:
+                      PhoneNumberUtils.display(provider.phone) ??
+                      provider.phone!.trim(),
                   icon: Icons.phone_outlined,
                   color: AppTheme.dBlue,
                   backgroundColor: AppTheme.dBlueBg,

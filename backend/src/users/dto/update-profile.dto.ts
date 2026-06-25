@@ -1,4 +1,5 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { AppRole, WeddingPersona } from '@prisma/client';
+import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsString()
@@ -16,4 +17,12 @@ export class UpdateProfileDto {
   @IsString()
   @IsOptional()
   locale?: string;
+
+  @IsEnum(AppRole)
+  @IsOptional()
+  appRole?: AppRole;
+
+  @IsEnum(WeddingPersona)
+  @IsOptional()
+  persona?: WeddingPersona | null;
 }

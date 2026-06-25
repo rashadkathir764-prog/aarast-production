@@ -1,0 +1,124 @@
+import 'reflect-metadata';
+
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { PhoneNormalizer } from '../src/common/phone/phone-normalizer';
+import {
+  endOfRiyadhDay,
+  startOfRiyadhDay,
+} from '../src/common/time/business-day';
+import { UpdateProfileDto } from '../src/users/dto/update-profile.dto';
+import {
+  normalizeWeddingLocationInput,
+  weddingLocationResponse,
+} from '../src/wedding-plans/wedding-location';
+
+test('normalizes supported Yemeni phone formats', () => {
+  const expected = '+967777758200';
+  assert.equal(PhoneNormalizer.normalizeRequired('777758200'), expected);
+  assert.equal(PhoneNormalizer.normalizeRequired('0777758200'), expected);
+  assert.equal(PhoneNormalizer.normalizeRequired('+967777758200'), expected);
+  assert.equal(PhoneNormalizer.normalizeRequired('00967777758200'), expected);
+});
+
+test('normalizes Arabic and Persian digits', () => {
+  const expected = '+967777758200';
+  assert.equal(PhoneNormalizer.normalizeRequired('٠٧٧٧٧٥٨٢٠٠'), expected);
+  assert.equal(PhoneNormalizer.normalizeRequired('۰۷۷۷۷۵۸۲۰۰'), expected);
+});
+
+test('preserves valid non-Yemen international numbers', () => {
+  assert.equal(
+    PhoneNormalizer.normalizeRequired('+1 (202) 555-0123'),
+    '+12025550123',
+  );
+  assert.equal(
+    PhoneNormalizer.normalizeRequired('0044 20 7946 0958'),
+    '+442079460958',
+  );
+});
+
+test('provides legacy lookup variants for normalized Yemen phones', () => {
+  assert.deepEqual(
+    PhoneNormalizer.lookupVariants('+967777758200'),
+    [
+      '+967777758200',
+      '00967777758200',
+      '967777758200',
+      '0777758200',
+      '777758200',
+    ],
+  );
+});
+
+test('returns null for empty optional phone and rejects malformed input', () => {
+  assert.equal(PhoneNormalizer.normalizeOptional('   '), null);
+  assert.throws(() => PhoneNormalizer.normalizeRequired('+96712'));
+});
+
+test('normalizes structured location and emits legacy compatibility keys', () => {
+  const location = normalizeWeddingLocationInput({
+    governorate: ' صنعاء ',
+    cityOrDistrict: ' أمانة العاصمة ',
+    areaOrNeighborhood: ' حدة ',
+    street: ' شارع صفر ',
+    detailedAddress: ' بجوار المعلم ',
+  });
+  assert.ok(location);
+  assert.equal(location.governorate, 'صنعاء');
+  assert.equal(location.city, 'أمانة العاصمة');
+  assert.equal(location.district, 'حدة');
+  assert.equal(location.addressNote, 'بجوار المعلم');
+});
+
+test('maps legacy city-only plans into structured location responses', () => {
+  const location = weddingLocationResponse(null, 'عدن');
+  assert.equal(location?.cityOrDistrict, 'عدن');
+  assert.equal(location?.city, 'عدن');
+});
+
+test('requires governorate and city for the structured location contract', () => {
+  assert.throws(() =>
+    normalizeWeddingLocationInput({
+      cityOrDistrict: 'صنعاء',
+      detailedAddress: 'وصف',
+    }),
+  );
+});
+
+test('rejects oversized structured location values', () => {
+  assert.throws(() =>
+    normalizeWeddingLocationInput({
+      governorate: 'صنعاء',
+      cityOrDistrict: 'أمانة العاصمة',
+      detailedAddress: 'x'.repeat(501),
+    }),
+  );
+});
+
+test('validates app role and wedding persona profile values', async () => {
+  const valid = plainToInstance(UpdateProfileDto, {
+    appRole: 'WEDDING_USER',
+    persona: 'BRIDE',
+  });
+  assert.equal((await validate(valid)).length, 0);
+
+  const invalid = plainToInstance(UpdateProfileDto, {
+    appRole: 'RANDOM_ROLE',
+    persona: 'RANDOM_PERSONA',
+  });
+  assert.ok((await validate(invalid)).length >= 2);
+});
+
+test('uses Riyadh calendar-day boundaries independently of server timezone', () => {
+  const start = startOfRiyadhDay(
+    new Date('2026-06-25T22:30:00.000Z'),
+  );
+  assert.equal(start.toISOString(), '2026-06-25T21:00:00.000Z');
+  assert.equal(
+    endOfRiyadhDay(start).toISOString(),
+    '2026-06-26T20:59:59.999Z',
+  );
+});

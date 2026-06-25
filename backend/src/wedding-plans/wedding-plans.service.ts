@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  AppRole,
   BudgetCategory,
   OnboardingPath,
   Prisma,
@@ -14,13 +15,19 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService, PlanAccessContext } from '../sharing/permission.service';
 import { CreateWeddingPlanDto } from './dto/create-wedding-plan.dto';
 import { UpdateWeddingPlanDto } from './dto/update-wedding-plan.dto';
+import {
+  cityFromWeddingLocation,
+  normalizeWeddingLocationInput,
+  WeddingLocationResponse,
+  weddingLocationResponse,
+} from './wedding-location';
 
 export interface WeddingPlanResponse {
   id: string;
   ownerUserId: string;
   title: string;
   city: string | null;
-  location: Prisma.JsonValue | null;
+  location: WeddingLocationResponse | null;
   weddingDate: Date | null;
   priorities: string[];
   estimatedBudget: string | null;
@@ -62,14 +69,20 @@ export class WeddingPlansService {
     const selectedCategories = this.normalizeSelectedCategories(
       dto.selectedCategories,
     );
+    const location =
+      dto.location !== undefined
+        ? normalizeWeddingLocationInput(dto.location, dto.city)
+        : null;
+    const city =
+      this.optionalText(dto.city) ?? cityFromWeddingLocation(location);
 
     const plan = await this.prisma.weddingPlan.create({
       data: {
         ownerUserId: currentUser.id,
         title: this.requiredText(dto.title, 'title'),
-        city: this.optionalText(dto.city),
+        city,
         ...(dto.location !== undefined
-          ? { location: this.optionalLocation(dto.location) }
+          ? { location: location ?? Prisma.DbNull }
           : {}),
         weddingDate: this.optionalDate(dto.weddingDate),
         priorities: this.normalizePriorities(dto.priorities),
@@ -156,7 +169,20 @@ export class WeddingPlansService {
     id: string,
     dto: UpdateWeddingPlanDto,
   ): Promise<WeddingPlanResponse> {
-    await this.permissions.assertPlanManageable(id, currentUser);
+    const context = await this.permissions.assertPlanManageable(id, currentUser);
+    const location =
+      dto.location !== undefined
+        ? normalizeWeddingLocationInput(
+            dto.location,
+            dto.city ?? context.plan.city,
+          )
+        : null;
+    const city =
+      dto.city !== undefined
+        ? this.optionalText(dto.city)
+        : dto.location !== undefined
+          ? cityFromWeddingLocation(location) ?? context.plan.city
+          : undefined;
 
     const plan = await this.prisma.weddingPlan.update({
       where: { id },
@@ -164,7 +190,10 @@ export class WeddingPlansService {
         ...(dto.title !== undefined
           ? { title: this.requiredText(dto.title, 'title') }
           : {}),
-        ...(dto.city !== undefined ? { city: this.optionalText(dto.city) } : {}),
+        ...(city !== undefined ? { city } : {}),
+        ...(dto.location !== undefined
+          ? { location: location ?? Prisma.DbNull }
+          : {}),
         ...(dto.weddingDate !== undefined
           ? { weddingDate: this.optionalDate(dto.weddingDate) }
           : {}),
@@ -174,6 +203,13 @@ export class WeddingPlansService {
         ...(dto.currency !== undefined
           ? { currency: this.requiredText(dto.currency, 'currency') }
           : {}),
+        ...(dto.priorities !== undefined
+          ? { priorities: this.normalizePriorities(dto.priorities) }
+          : {}),
+        ...(dto.onboardingPath !== undefined
+          ? { onboardingPath: dto.onboardingPath }
+          : {}),
+        ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
       },
     });
 
@@ -217,7 +253,12 @@ export class WeddingPlansService {
     dto: CompleteOnboardingDto,
   ): Promise<OnboardingCompletionResponse> {
     const path = dto.path ?? OnboardingPath.USER;
-    const city = this.optionalText(dto.city) ?? this.cityFromLocation(dto.location);
+    const location =
+      dto.location !== undefined
+        ? normalizeWeddingLocationInput(dto.location, dto.city)
+        : null;
+    const city =
+      this.optionalText(dto.city) ?? cityFromWeddingLocation(location);
     const selectedCategories = this.normalizeSelectedCategories(
       dto.selectedCategories,
     );
@@ -232,7 +273,7 @@ export class WeddingPlansService {
             this.defaultOnboardingPlanTitle(dto.persona, city),
           city,
           ...(dto.location !== undefined
-            ? { location: this.optionalLocation(dto.location) }
+            ? { location: location ?? Prisma.DbNull }
             : {}),
           weddingDate: this.optionalDate(dto.weddingDate),
           priorities: this.normalizePriorities(dto.priorities),
@@ -262,6 +303,10 @@ export class WeddingPlansService {
           where: { id: currentUser.id },
           data: {
             activeWeddingPlanId: plan.id,
+            appRole:
+              path === OnboardingPath.PROVIDER
+                ? AppRole.PROVIDER
+                : AppRole.WEDDING_USER,
             onboardingPath: path,
             persona: dto.persona ?? null,
             onboardingCompletedAt: now,
@@ -319,34 +364,6 @@ export class WeddingPlansService {
     return normalized;
   }
 
-  private optionalLocation(
-    value: Record<string, unknown> | undefined,
-  ): Prisma.InputJsonObject | undefined {
-    if (value === undefined) return undefined;
-
-    const normalized: Record<string, Prisma.InputJsonValue> = {};
-    for (const [key, raw] of Object.entries(value)) {
-      if (!key.trim() || raw === undefined || raw === null) continue;
-      if (typeof raw === 'string') {
-        const trimmed = raw.trim();
-        if (trimmed) normalized[key] = trimmed;
-        continue;
-      }
-      if (
-        typeof raw === 'number' ||
-        typeof raw === 'boolean' ||
-        Array.isArray(raw) ||
-        typeof raw === 'object'
-      ) {
-        normalized[key] = raw as Prisma.InputJsonValue;
-      }
-    }
-
-    return Object.keys(normalized).length > 0
-      ? (normalized as Prisma.InputJsonObject)
-      : undefined;
-  }
-
   private normalizePriorities(values: string[] | undefined): string[] {
     return this.normalizeStringList(values, 12);
   }
@@ -374,21 +391,6 @@ export class WeddingPlansService {
     }
 
     return normalized;
-  }
-
-  private cityFromLocation(
-    location: Record<string, unknown> | undefined,
-  ): string | null {
-    if (!location) return null;
-
-    for (const key of ['city', 'district', 'governorate']) {
-      const value = location[key];
-      if (typeof value === 'string' && value.trim()) {
-        return value.trim();
-      }
-    }
-
-    return null;
   }
 
   private defaultOnboardingPlanTitle(
@@ -447,7 +449,7 @@ export class WeddingPlansService {
       ownerUserId: plan.ownerUserId,
       title: plan.title,
       city: plan.city,
-      location: plan.location,
+      location: weddingLocationResponse(plan.location, plan.city),
       weddingDate: plan.weddingDate,
       priorities: plan.priorities,
       estimatedBudget: canViewBudget ? plan.estimatedBudget?.toString() ?? null : null,

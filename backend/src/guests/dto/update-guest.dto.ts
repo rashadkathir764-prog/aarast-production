@@ -4,7 +4,15 @@ import {
   GuestSide,
   GuestStatus,
 } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateGuestDto {
   @IsString()
@@ -12,6 +20,7 @@ export class UpdateGuestDto {
   name?: string;
 
   @IsString()
+  @MaxLength(40)
   @IsOptional()
   phone?: string | null;
 

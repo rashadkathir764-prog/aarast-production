@@ -1,4 +1,11 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateQuoteRequestDto {
   @IsString()
@@ -13,6 +20,10 @@ export class CreateQuoteRequestDto {
   @IsOptional()
   eventDate?: string | null;
 
+  @IsObject()
+  @IsOptional()
+  location?: Record<string, unknown> | null;
+
   @IsString()
   @IsOptional()
   cityId?: string;
@@ -25,6 +36,16 @@ export class CreateQuoteRequestDto {
   @IsString()
   @IsOptional()
   message?: string | null;
+
+  @IsString()
+  @MaxLength(160)
+  @IsOptional()
+  contactName?: string | null;
+
+  @IsString()
+  @MaxLength(40)
+  @IsOptional()
+  contactPhone?: string | null;
 
   @IsString()
   @IsOptional()

@@ -4,7 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
-import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
 import '../models/installment.dart';
@@ -314,9 +314,9 @@ class DebtInstallmentApi {
 
   String? _normalizeOptionalPhone(String? phone) {
     try {
-      return normalizeOptionalYemeniPhone(phone);
+      return PhoneNumberUtils.normalizeOptional(phone);
     } on FormatException {
-      throw const ApiException('رقم الهاتف غير صحيح');
+      throw const ApiException('أدخل رقم جوال صحيح.');
     }
   }
 }

@@ -3,11 +3,15 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
+import '../../wedding_plans/models/wedding_plan.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
@@ -37,7 +41,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   String? _serviceId;
   String? _cityId;
   DateTime? _eventDate;
+  WeddingLocationDraft? _eventLocation;
   bool _sent = false;
+  bool _didApplyInitialPlanContext = false;
 
   @override
   void initState() {
@@ -45,16 +51,30 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     _serviceId = widget.initialServiceId;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      context.read<ProviderMarketplaceProvider>().loadProviderDetails(
-        widget.providerId,
-      );
-      context.read<ProviderMarketplaceProvider>().loadReferenceData();
+      final marketplace = context.read<ProviderMarketplaceProvider>();
+      WeddingPlansProvider? plans;
+      GuestOnboardingStorage? guestStorage;
+      try {
+        plans = context.read<WeddingPlansProvider>();
+      } on ProviderNotFoundException {
+        plans = null;
+      }
+      try {
+        guestStorage = context.read<GuestOnboardingStorage>();
+      } on ProviderNotFoundException {
+        guestStorage = null;
+      }
+      marketplace.loadProviderDetails(widget.providerId);
       final hasAccount =
           !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
           await AuthActionGuard.hasAccount(context);
+      await marketplace.loadReferenceData();
       if (!mounted) return;
       if (hasAccount) {
-        context.read<WeddingPlansProvider>().loadMyWeddingPlans();
+        await plans?.loadActiveWeddingPlan();
+        await plans?.loadMyWeddingPlans();
+      } else {
+        await _loadGuestLocationContext(guestStorage);
       }
     });
   }
@@ -75,6 +95,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
+    _scheduleInitialPlanContext(plans, marketplace);
 
     return AarastPageScaffold(
       title: 'طلب عرض سعر',
@@ -121,9 +142,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                                 ),
                               )
                               .toList(),
-                          onChanged: (value) => setState(() {
-                            _weddingPlanId = value;
-                          }),
+                          onChanged: (value) =>
+                              _selectWeddingPlan(value, plans, marketplace),
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
@@ -167,6 +187,10 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           }),
                         ),
                         const SizedBox(height: 14),
+                        _QuoteLocationContext(location: _eventLocation),
+                        const SizedBox(height: 14),
+                        _QuoteContactContext(phone: auth.user?.phone),
+                        const SizedBox(height: 14),
                         _DateField(value: _eventDate, onTap: _pickDate),
                         const SizedBox(height: 14),
                         TextFormField(
@@ -209,7 +233,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           decoration: const InputDecoration(
                             labelText: 'رسالة للمورد',
                             hintText:
-                                'اكتبي تفاصيل التاريخ، المكان، والاحتياج...',
+                                'اكتبي تفاصيل التاريخ، الموقع، والاحتياج...',
                             prefixIcon: Icon(Icons.notes_outlined),
                           ),
                           validator: (value) {
@@ -259,6 +283,122 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         : null;
   }
 
+  Future<void> _loadGuestLocationContext(
+    GuestOnboardingStorage? guestStorage,
+  ) async {
+    if (guestStorage == null) return;
+    final guestPlan = await guestStorage.loadGuestPlan();
+    if (!mounted || guestPlan == null) return;
+    final location = guestPlan.weddingLocation;
+    if (!location.hasAnyLocation && guestPlan.weddingDate == null) return;
+    setState(() {
+      if (location.hasAnyLocation) {
+        _eventLocation = location;
+      }
+      _eventDate ??= guestPlan.weddingDate;
+    });
+    _prefillLocationMessage(location);
+  }
+
+  void _scheduleInitialPlanContext(
+    WeddingPlansProvider plans,
+    ProviderMarketplaceProvider marketplace,
+  ) {
+    if (_didApplyInitialPlanContext) return;
+    final activePlan = plans.activePlan;
+    if (activePlan == null) return;
+    _didApplyInitialPlanContext = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final location = activePlan.weddingLocation;
+      final matchingCityId = _matchingCityId(marketplace, location);
+      setState(() {
+        _weddingPlanId ??= activePlan.id;
+        _eventDate ??= activePlan.weddingDate;
+        if (location.hasAnyLocation) {
+          _eventLocation ??= location;
+        }
+        _cityId ??= matchingCityId;
+      });
+      _prefillLocationMessage(location);
+    });
+  }
+
+  void _selectWeddingPlan(
+    String? planId,
+    WeddingPlansProvider plans,
+    ProviderMarketplaceProvider marketplace,
+  ) {
+    if (planId == null) {
+      setState(() => _weddingPlanId = null);
+      return;
+    }
+
+    final activePlan = plans.activePlan;
+    WeddingLocationDraft location = const WeddingLocationDraft();
+    DateTime? eventDate;
+
+    if (activePlan?.id == planId) {
+      location = activePlan!.weddingLocation;
+      eventDate = activePlan.weddingDate;
+    } else {
+      final selectedPlan = _findWeddingPlan(plans.plans, planId);
+      if (selectedPlan != null) {
+        location = selectedPlan.weddingLocation;
+        eventDate = selectedPlan.weddingDate;
+      }
+    }
+
+    final matchingCityId = _matchingCityId(marketplace, location);
+    setState(() {
+      _weddingPlanId = planId;
+      if (eventDate != null) {
+        _eventDate = eventDate;
+      }
+      _eventLocation = location.hasAnyLocation ? location : null;
+      if (matchingCityId != null) {
+        _cityId = matchingCityId;
+      }
+    });
+    _prefillLocationMessage(location);
+  }
+
+  WeddingPlan? _findWeddingPlan(List<WeddingPlan> plans, String planId) {
+    for (final plan in plans) {
+      if (plan.id == planId) return plan;
+    }
+    return null;
+  }
+
+  String? _matchingCityId(
+    ProviderMarketplaceProvider marketplace,
+    WeddingLocationDraft location,
+  ) {
+    final candidates = <String>[
+      if (location.cityOrDistrict?.trim().isNotEmpty == true)
+        location.cityOrDistrict!.trim(),
+      if (location.governorate?.trim().isNotEmpty == true)
+        location.governorate!.trim(),
+    ];
+    if (candidates.isEmpty) return null;
+
+    for (final city in marketplace.cities) {
+      final cityName = city.nameAr.trim();
+      if (candidates.any((candidate) => candidate == cityName)) {
+        return city.id;
+      }
+    }
+    return null;
+  }
+
+  void _prefillLocationMessage(WeddingLocationDraft location) {
+    final label = location.mediumLabel ?? location.shortLabel;
+    if (label == null || _messageController.text.trim().isNotEmpty) return;
+    _messageController.text =
+        'موقع الزفاف: $label\nأحتاج عرض سعر مناسب لتفاصيل المناسبة.';
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -292,8 +432,11 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
           weddingPlanId: _weddingPlanId,
           serviceId: _serviceId,
           eventDate: _eventDate,
+          location: _eventLocation?.toJson(),
           cityId: _cityId,
           guestCount: guestCount,
+          contactName: context.read<AuthController>().user?.name,
+          contactPhone: context.read<AuthController>().user?.phone,
           budgetMin: _budgetMinController.text,
           budgetMax: _budgetMaxController.text,
           message: _messageController.text,
@@ -309,6 +452,134 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       }
       setState(() => _sent = true);
     }
+  }
+}
+
+class _QuoteLocationContext extends StatelessWidget {
+  const _QuoteLocationContext({required this.location});
+
+  final WeddingLocationDraft? location;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLocation = location?.hasAnyLocation == true;
+    final title = hasLocation ? 'موقع الزفاف' : 'موقع الزفاف غير مكتمل';
+    final message = hasLocation
+        ? 'سيظهر موقع الزفاف في تفاصيل الطلب حتى يقدّر المورد السعر بدقة. يمكنك تعديل الرسالة قبل الإرسال.'
+        : 'أضيفي موقع الزفاف حتى يفهم المورد مكان المناسبة قبل تسعير الطلب.';
+    final label = location?.fullLabel ?? location?.mediumLabel;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: hasLocation ? AppTheme.success.withValues(alpha: 0.08) : null,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(
+          color: hasLocation
+              ? AppTheme.success.withValues(alpha: 0.22)
+              : AppTheme.dLine,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            hasLocation ? Icons.location_on_outlined : Icons.add_location_alt,
+            color: hasLocation ? AppTheme.success : AppTheme.dMaroon,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (label != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.dMaroon,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuoteContactContext extends StatelessWidget {
+  const _QuoteContactContext({this.phone});
+
+  final String? phone;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayPhone = PhoneNumberUtils.display(phone);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.dCard2,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.dLine),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.phone_in_talk_outlined, color: AppTheme.dMaroon),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'رقم التواصل',
+                  style: TextStyle(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  displayPhone ??
+                      'سيُستخدم رقم الحساب عند إرسال الطلب بعد تسجيل الدخول.',
+                  textDirection: displayPhone == null
+                      ? TextDirection.rtl
+                      : TextDirection.ltr,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

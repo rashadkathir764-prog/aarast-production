@@ -12,7 +12,7 @@ class SharedMemberCard extends StatelessWidget {
   });
 
   final SharedMember member;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

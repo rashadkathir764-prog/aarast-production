@@ -92,6 +92,7 @@ class WeddingPlansProvider extends ChangeNotifier {
   Future<WeddingPlan?> createWeddingPlan({
     required String title,
     String? city,
+    Map<String, dynamic>? location,
     DateTime? weddingDate,
     String? estimatedBudget,
     String currency = 'YER',
@@ -105,6 +106,7 @@ class WeddingPlansProvider extends ChangeNotifier {
       final plan = await _api.createWeddingPlan(
         title: title,
         city: city,
+        location: location,
         weddingDate: weddingDate,
         estimatedBudget: estimatedBudget,
         currency: currency,

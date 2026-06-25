@@ -3,24 +3,43 @@ import 'package:flutter/material.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
 
 class ProviderPathPendingScreen extends StatelessWidget {
-  const ProviderPathPendingScreen({this.onBack, super.key});
+  const ProviderPathPendingScreen({this.onContinue, this.onBack, super.key});
 
+  final VoidCallback? onContinue;
   final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
     return GuestOnboardingStepScaffold(
-      title: 'مسار المزود لاحقًا',
+      title: 'لوحة المزود',
       description:
-          'مسار مزود الخدمة محفوظ كاختيار داخلي فقط. لن نفتح لوحة المزود أو تسجيل مزود حقيقي في هذه المرحلة.',
-      continueLabel: 'العودة لاختيار المسار',
-      onContinue: onBack,
+          'هذا المسار منفصل عن لوحة تنظيم الزفاف. لا نطلب الحساب إلا عند تجهيز ملف الخدمة أو إرسال طلب مزود.',
+      continueLabel: 'تجهيز ملف الخدمة',
+      onContinue: onContinue,
       onBack: onBack,
-      child: const GuestOnboardingCard(
-        child: Text(
-          'سيتم فتح مسار المزود بعد اعتماد شاشة التسجيل والمراجعة ولوحة المزود. هذا الفرع آمن ومخفي خلف العلم الداخلي.',
-          textAlign: TextAlign.right,
-        ),
+      child: const Column(
+        children: [
+          GuestOnboardingOptionTile(
+            title: 'جهّز ملف خدمتك',
+            subtitle: 'أدخل بيانات النشاط والفئة والمدينة عندما تكون جاهزًا.',
+            icon: Icons.badge_outlined,
+            selected: true,
+          ),
+          SizedBox(height: 12),
+          GuestOnboardingOptionTile(
+            title: 'طلبات العروض ستظهر هنا',
+            subtitle:
+                'لا توجد بيانات مزود وهمية أو طلبات تجريبية في هذه المرحلة.',
+            icon: Icons.request_quote_outlined,
+          ),
+          SizedBox(height: 12),
+          GuestOnboardingCard(
+            child: Text(
+              'يمكنك الرجوع لاختيار مسار تنظيم الزفاف في أي وقت. تجهيز ملف المزود يستخدم المسارات الحالية الآمنة فقط.',
+              textAlign: TextAlign.right,
+            ),
+          ),
+        ],
       ),
     );
   }

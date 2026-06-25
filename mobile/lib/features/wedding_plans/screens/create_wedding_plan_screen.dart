@@ -6,6 +6,8 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
+import '../../onboarding/widgets/location_picker_section.dart';
 import '../providers/wedding_plans_provider.dart';
 
 class CreateWeddingPlanScreen extends StatefulWidget {
@@ -21,68 +23,25 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
   final _titleController = TextEditingController();
   final _budgetController = TextEditingController();
   final _currencyController = TextEditingController(text: 'YER');
+  final _governorateController = TextEditingController();
+  final _cityOrDistrictController = TextEditingController();
+  final _areaOrNeighborhoodController = TextEditingController();
+  final _streetController = TextEditingController();
+  final _detailedAddressController = TextEditingController();
 
-  String? _selectedCity;
   DateTime? _weddingDate;
-
-  static const _cities = [
-    'صنعاء',
-    'عدن',
-    'تعز',
-    'الحديدة',
-    'إب',
-    'المكلا',
-    'ذمار',
-    'غير ذلك',
-  ];
 
   @override
   void dispose() {
     _titleController.dispose();
     _budgetController.dispose();
     _currencyController.dispose();
+    _governorateController.dispose();
+    _cityOrDistrictController.dispose();
+    _areaOrNeighborhoodController.dispose();
+    _streetController.dispose();
+    _detailedAddressController.dispose();
     super.dispose();
-  }
-
-  Future<void> _showCityPicker() async {
-    FocusScope.of(context).unfocus();
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _SheetHandle(),
-                  const SizedBox(height: 20),
-                  const AarastSectionHeader(
-                    title: 'اختاري مدينة الزفاف',
-                    icon: Icons.location_on_outlined,
-                  ),
-                  const SizedBox(height: 14),
-                  for (final city in _cities)
-                    _PickerRow(
-                      label: city,
-                      selected: city == _selectedCity,
-                      onTap: () => Navigator.of(sheetContext).pop(city),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (selected != null && mounted) {
-      setState(() => _selectedCity = selected);
-    }
   }
 
   Future<void> _showCalendarPicker() async {
@@ -149,6 +108,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<WeddingPlansProvider>();
     final textTheme = Theme.of(context).textTheme;
+    final location = _locationDraft;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -216,12 +176,17 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                                     },
                                   ),
                                   const SizedBox(height: 14),
-                                  _SelectorField(
-                                    label: 'المدينة (اختياري)',
-                                    value: _selectedCity ?? 'اختاري المدينة',
-                                    icon: Icons.location_on_outlined,
-                                    selected: _selectedCity != null,
-                                    onTap: _showCityPicker,
+                                  LocationPickerSection(
+                                    governorateController:
+                                        _governorateController,
+                                    cityOrDistrictController:
+                                        _cityOrDistrictController,
+                                    areaOrNeighborhoodController:
+                                        _areaOrNeighborhoodController,
+                                    streetController: _streetController,
+                                    detailedAddressController:
+                                        _detailedAddressController,
+                                    onChanged: () => setState(() {}),
                                   ),
                                   const SizedBox(height: 14),
                                   _SelectorField(
@@ -284,7 +249,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                               title: _titleController.text.trim().isEmpty
                                   ? 'خطة زفافنا'
                                   : _titleController.text.trim(),
-                              city: _selectedCity ?? 'غير محدد',
+                              city: location.shortLabel ?? 'غير محدد',
                               budget: _budgetController.text.trim().isEmpty
                                   ? '0'
                                   : _budgetController.text.trim(),
@@ -329,12 +294,24 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final location = _locationDraft;
+    if (!location.hasRequiredLocation) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('حدد المحافظة والمدينة أو المديرية قبل إنشاء الخطة.'),
+          ),
+        );
+      return;
+    }
 
     final provider = context.read<WeddingPlansProvider>();
     final budget = _budgetController.text.trim();
     final plan = await provider.createWeddingPlan(
       title: _titleController.text.trim(),
-      city: _selectedCity,
+      city: location.cityOrDistrict,
+      location: location.toJson(),
       weddingDate: _weddingDate,
       estimatedBudget: budget.isEmpty ? null : budget,
       currency: _currencyController.text.trim().isEmpty
@@ -351,6 +328,16 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       }
       _goBack();
     }
+  }
+
+  WeddingLocationDraft get _locationDraft {
+    return WeddingLocationDraft.fromLegacyFields(
+      governorate: _governorateController.text,
+      city: _cityOrDistrictController.text,
+      district: _areaOrNeighborhoodController.text,
+      street: _streetController.text,
+      addressNote: _detailedAddressController.text,
+    );
   }
 }
 
@@ -557,46 +544,6 @@ class _SelectorField extends StatelessWidget {
               Icons.keyboard_arrow_down_rounded,
               color: AppTheme.dMuted,
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PickerRow extends StatelessWidget {
-  const _PickerRow({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AarastCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
-        border: Border.all(color: selected ? AppTheme.dMaroon : AppTheme.dLine),
-        onTap: onTap,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: selected ? AppTheme.dMaroon : AppTheme.dInk,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            if (selected)
-              const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
           ],
         ),
       ),

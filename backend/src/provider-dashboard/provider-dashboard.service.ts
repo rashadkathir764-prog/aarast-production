@@ -5,8 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  AppRole,
   City,
   NotificationType,
+  NotificationPriority,
   Prisma,
   Provider,
   ProviderCategory,
@@ -24,8 +26,14 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
+import {
+  assertQuoteRequestTransition,
+  quoteLifecycleStatus,
+} from '../marketplace/quote-lifecycle';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { weddingLocationResponse } from '../wedding-plans/wedding-location';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
@@ -88,7 +96,7 @@ export class ProviderDashboardService {
           cityId: dto.cityId,
           primaryCategoryId,
           businessName: this.requiredText(dto.businessName, 'businessName'),
-          phone: this.requiredText(dto.phone, 'phone'),
+          phone: PhoneNormalizer.normalizeRequired(dto.phone),
           description: this.optionalText(dto.description),
           status: ProviderStatus.PENDING,
         },
@@ -97,7 +105,10 @@ export class ProviderDashboardService {
 
       await tx.user.update({
         where: { id: currentUser.id },
-        data: { role: UserRole.PROVIDER },
+        data: {
+          role: UserRole.PROVIDER,
+          appRole: AppRole.PROVIDER,
+        },
       });
 
       return created;
@@ -131,10 +142,15 @@ export class ProviderDashboardService {
           ? { ownerName: this.optionalText(dto.ownerName) }
           : {}),
         ...(dto.phone !== undefined
-          ? { phone: this.requiredText(dto.phone, 'phone') }
+          ? { phone: PhoneNormalizer.normalizeRequired(dto.phone) }
           : {}),
         ...(dto.whatsapp !== undefined
-          ? { whatsapp: this.optionalText(dto.whatsapp) }
+          ? {
+              whatsapp: PhoneNormalizer.normalizeOptional(
+                dto.whatsapp,
+                'whatsapp',
+              ),
+            }
           : {}),
         ...(dto.email !== undefined ? { email: this.optionalText(dto.email) } : {}),
         ...(dto.description !== undefined
@@ -485,10 +501,16 @@ export class ProviderDashboardService {
     if (!existing) {
       throw new NotFoundException('Quote request not found');
     }
+    assertQuoteRequestTransition(existing.status, dto.status, 'provider');
 
     const quote = await this.prisma.quoteRequest.update({
       where: { id },
-      data: { status: dto.status },
+      data: {
+        status: dto.status,
+        ...(dto.status === QuoteRequestStatus.REJECTED
+          ? { rejectedAt: new Date() }
+          : {}),
+      },
       include: this.quoteInclude(),
     });
 
@@ -508,9 +530,11 @@ export class ProviderDashboardService {
     if (!quote) {
       throw new NotFoundException('Quote request not found');
     }
-    if (quote.status === QuoteRequestStatus.CANCELLED) {
-      throw new BadRequestException('Cancelled quote requests cannot receive offers');
-    }
+    assertQuoteRequestTransition(
+      quote.status,
+      QuoteRequestStatus.RESPONDED,
+      'provider_offer',
+    );
 
     const offer = await this.prisma.$transaction(async (tx) => {
       const created = await tx.quoteOffer.create({
@@ -537,8 +561,14 @@ export class ProviderDashboardService {
       userId: quote.userId,
       weddingPlanId: quote.weddingPlanId,
       type: NotificationType.QUOTE_OFFER_RECEIVED,
+      priority: NotificationPriority.HIGH,
       title: 'Quote offer received',
       body: `${provider.businessName} sent an offer for your quote request.`,
+      entityType: 'quote_request',
+      entityId: quoteRequestId,
+      routeTarget: quote.weddingPlanId
+        ? `/wedding-plans/${quote.weddingPlanId}/plan-center`
+        : `/providers/${provider.id}`,
       data: {
         quoteRequestId,
         quoteOfferId: offer.id,
@@ -892,13 +922,21 @@ export class ProviderDashboardService {
           }
         : null,
       eventDate: quote.eventDate,
+      location: weddingLocationResponse(quote.location),
       cityId: quote.cityId,
       guestCount: quote.guestCount,
+      contactName: quote.contactName,
+      contactPhone: quote.contactPhone,
+      contactNormalizedPhone: quote.contactNormalizedPhone,
       message: quote.message,
       budgetMin: quote.budgetMin?.toString() ?? null,
       budgetMax: quote.budgetMax?.toString() ?? null,
       status: quote.status,
+      lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
+      acceptedAt: quote.acceptedAt,
+      rejectedAt: quote.rejectedAt,
+      cancelledAt: quote.cancelledAt,
       createdAt: quote.createdAt,
       updatedAt: quote.updatedAt,
     };

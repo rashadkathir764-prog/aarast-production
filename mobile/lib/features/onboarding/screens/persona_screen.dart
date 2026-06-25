@@ -21,8 +21,8 @@ class PersonaScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return GuestOnboardingStepScaffold(
       stepNumber: 2,
-      title: 'من يخطط للزفاف؟',
-      description: 'اختيار الدور يساعدنا لاحقًا في ضبط نبرة النصائح والخطوات.',
+      title: 'من أنت في الخطة؟',
+      description: 'اختيار الدور يساعدنا نضبط صيغة الخطاب والخطوة التالية.',
       continueLabel: 'حفظ الدور',
       onContinue: selectedPersona == null ? null : onContinue,
       onBack: onBack,
@@ -30,8 +30,8 @@ class PersonaScreen extends StatelessWidget {
         children: [
           GuestOnboardingOptionTile(
             key: const Key('guest-persona-groom'),
-            title: 'عريس',
-            subtitle: 'أريد متابعة الخطة والميزانية والالتزامات.',
+            title: 'العريس',
+            subtitle: 'جاهز نرتب عرسك ونجهز الخطة خطوة بخطوة.',
             icon: Icons.person_rounded,
             selected: selectedPersona == GuestPersona.groom,
             onTap: () => onSelectPersona?.call(GuestPersona.groom),
@@ -39,8 +39,8 @@ class PersonaScreen extends StatelessWidget {
           const SizedBox(height: 12),
           GuestOnboardingOptionTile(
             key: const Key('guest-persona-bride'),
-            title: 'عروسة',
-            subtitle: 'أريد تجربة تخطيط واضحة ومرتبة لكل التفاصيل.',
+            title: 'العروسة',
+            subtitle: 'جاهزة نرتب عرسكِ ونجهز التفاصيل بهدوء.',
             icon: Icons.person_outline_rounded,
             selected: selectedPersona == GuestPersona.bride,
             onTap: () => onSelectPersona?.call(GuestPersona.bride),
@@ -48,8 +48,8 @@ class PersonaScreen extends StatelessWidget {
           const SizedBox(height: 12),
           GuestOnboardingOptionTile(
             key: const Key('guest-persona-helper'),
-            title: 'مساعد',
-            subtitle: 'أساعد العائلة أو الزوجين في ترتيب المهام.',
+            title: 'مساعد / مساهم',
+            subtitle: 'تابع المهام والمشاركات وساعد أصحاب الخطة.',
             icon: Icons.group_rounded,
             selected: selectedPersona == GuestPersona.helper,
             onTap: () => onSelectPersona?.call(GuestPersona.helper),

@@ -6,6 +6,10 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import {
+  endOfRiyadhDay,
+  startOfRiyadhDay,
+} from '../common/time/business-day';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 
@@ -215,13 +219,10 @@ export class MoneySummaryService {
   }
 
   private startOfToday(): Date {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return startOfRiyadhDay();
   }
 
   private endOfToday(today: Date): Date {
-    const end = new Date(today);
-    end.setHours(23, 59, 59, 999);
-    return end;
+    return endOfRiyadhDay(today);
   }
 }

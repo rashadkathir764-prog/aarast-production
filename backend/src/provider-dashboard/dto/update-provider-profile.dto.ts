@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateProviderProfileDto {
   @IsString()
@@ -10,10 +10,12 @@ export class UpdateProviderProfileDto {
   ownerName?: string | null;
 
   @IsString()
+  @MaxLength(40)
   @IsOptional()
   phone?: string;
 
   @IsString()
+  @MaxLength(40)
   @IsOptional()
   whatsapp?: string | null;
 

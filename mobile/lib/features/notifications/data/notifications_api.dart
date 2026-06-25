@@ -45,6 +45,14 @@ class NotificationsApi {
     await _apiClient.deleteJson('/notifications/$id');
   }
 
+  Future<AarastNotification> archiveNotification(String id) async {
+    final json = await _apiClient.patchJson(
+      '/notifications/$id/archive',
+      const {},
+    );
+    return AarastNotification.fromJson(json);
+  }
+
   String _path(String base, String? weddingPlanId) {
     final planId = weddingPlanId?.trim();
     if (planId == null || planId.isEmpty) return base;

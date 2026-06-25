@@ -6,6 +6,7 @@ export interface SafeUser {
   phone: string | null;
   email: string | null;
   role: string;
+  appRole: string;
   status: string;
   phoneVerifiedAt: Date | null;
   lastLoginAt: Date | null;
@@ -30,6 +31,7 @@ export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser 
     phone: user.phone,
     email: user.email,
     role: user.role,
+    appRole: user.appRole,
     status: user.status,
     phoneVerifiedAt: user.phoneVerifiedAt,
     lastLoginAt: user.lastLoginAt,

@@ -101,6 +101,7 @@ class WeddingPlansApi {
   Future<WeddingPlan> createWeddingPlan({
     required String title,
     String? city,
+    Map<String, dynamic>? location,
     DateTime? weddingDate,
     String? estimatedBudget,
     String currency = 'YER',
@@ -108,6 +109,7 @@ class WeddingPlansApi {
     final payload = {
       'title': title,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+      if (location != null && location.isNotEmpty) 'location': location,
       if (weddingDate != null) 'weddingDate': weddingDate.toIso8601String(),
       if (estimatedBudget != null && estimatedBudget.trim().isNotEmpty)
         'estimatedBudget': estimatedBudget.trim(),
@@ -131,6 +133,7 @@ class WeddingPlansApi {
         'ownerUserId': 'local',
         'title': title.trim(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
+        if (location != null && location.isNotEmpty) 'location': location,
         if (weddingDate != null) 'weddingDate': weddingDate.toIso8601String(),
         if (estimatedBudget != null && estimatedBudget.trim().isNotEmpty)
           'estimatedBudget': estimatedBudget.trim(),
@@ -228,6 +231,8 @@ class WeddingPlansApi {
       'ownerUserId': plan.ownerUserId,
       'title': plan.title,
       if (plan.city != null) 'city': plan.city,
+      if (plan.location != null && plan.location!.isNotEmpty)
+        'location': plan.location,
       if (plan.weddingDate != null)
         'weddingDate': plan.weddingDate!.toIso8601String(),
       if (plan.estimatedBudget != null) 'estimatedBudget': plan.estimatedBudget,

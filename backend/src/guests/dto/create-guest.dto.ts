@@ -4,7 +4,16 @@ import {
   GuestSide,
   GuestStatus,
 } from '@prisma/client';
-import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateGuestDto {
   @IsString()
@@ -12,6 +21,7 @@ export class CreateGuestDto {
   name!: string;
 
   @IsString()
+  @MaxLength(40)
   @IsOptional()
   phone?: string | null;
 

@@ -1,5 +1,5 @@
 import '../../../core/network/api_client.dart';
-import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../models/guest.dart';
 
 class GuestsApi {
@@ -82,9 +82,9 @@ class GuestsApi {
 
   String? _normalizeOptionalPhone(String? phone) {
     try {
-      return normalizeOptionalYemeniPhone(phone);
+      return PhoneNumberUtils.normalizeOptional(phone);
     } on FormatException {
-      throw const ApiException('رقم الهاتف غير صحيح');
+      throw const ApiException('أدخل رقم جوال صحيح.');
     }
   }
 }

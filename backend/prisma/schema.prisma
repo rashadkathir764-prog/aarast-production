@@ -13,6 +13,11 @@ enum UserRole {
   PROVIDER
 }
 
+enum AppRole {
+  WEDDING_USER
+  PROVIDER
+}
+
 enum UserStatus {
   ACTIVE
   DISABLED
@@ -70,6 +75,9 @@ enum WeddingTaskPriority {
 
 enum SharedMemberRole {
   OWNER
+  GROOM
+  BRIDE
+  FAMILY
   VIEWER
   EDITOR
   FINANCE_MANAGER
@@ -129,15 +137,29 @@ enum BookingLeadStatus {
 }
 
 enum NotificationType {
+  QUOTE_REQUEST_SUBMITTED
   TASK_DUE_SOON
   TASK_OVERDUE
   INSTALLMENT_DUE_SOON
   INSTALLMENT_OVERDUE
+  DEBT_DUE_SOON
   SHARING_INVITATION
   SHARING_UPDATED
   SHARING_INVITE_ACCEPTED
+  SHARING_INVITE_DECLINED
   QUOTE_OFFER_RECEIVED
+  QUOTE_ACCEPTED
+  QUOTE_REJECTED
+  PLAN_UPDATED
+  SYNC_REQUIRED
   GENERAL
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
 }
 
 enum GuestSide {
@@ -174,6 +196,7 @@ model User {
   email                  String?                 @unique
   passwordHash           String
   role                   UserRole                @default(USER)
+  appRole                AppRole                 @default(WEDDING_USER)
   status                 UserStatus              @default(ACTIVE)
   phoneVerifiedAt        DateTime?
   lastLoginAt            DateTime?
@@ -262,20 +285,21 @@ model Expense {
 }
 
 model Debt {
-  id            String        @id @default(cuid())
-  weddingPlanId String
-  creditorName  String
-  creditorPhone String?
-  title         String
-  totalAmount   Decimal       @db.Decimal(14, 2)
-  paidAmount    Decimal       @default(0) @db.Decimal(14, 2)
-  dueDate       DateTime?
-  status        DebtStatus    @default(OPEN)
-  note          String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  weddingPlan   WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
-  installments  Installment[]
+  id                      String        @id @default(cuid())
+  weddingPlanId           String
+  creditorName            String
+  creditorPhone           String?
+  creditorNormalizedPhone String?
+  title                   String
+  totalAmount             Decimal       @db.Decimal(14, 2)
+  paidAmount              Decimal       @default(0) @db.Decimal(14, 2)
+  dueDate                 DateTime?
+  status                  DebtStatus    @default(OPEN)
+  note                    String?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  weddingPlan             WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  installments            Installment[]
 }
 
 model Installment {
@@ -333,8 +357,13 @@ model SharedMember {
   canViewBudget             Boolean          @default(false)
   canViewExpenses           Boolean          @default(false)
   canViewDebts              Boolean          @default(false)
+  canEditPlan               Boolean          @default(false)
   canManageTasks            Boolean          @default(false)
+  canManageGuests           Boolean          @default(false)
+  canManageProviders        Boolean          @default(false)
+  canInviteMembers          Boolean          @default(false)
   canManageFinancialRecords Boolean          @default(false)
+  receiveNotifications      Boolean          @default(true)
   createdAt                 DateTime         @default(now())
   updatedAt                 DateTime         @updatedAt
   weddingPlan               WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
@@ -348,16 +377,25 @@ model PlanInvite {
   weddingPlanId             String
   inviterUserId             String
   inviteeUserId             String?
+  name                      String?
   phone                     String?
+  normalizedPhone           String?
+  email                     String?
   token                     String           @unique
   role                      SharedMemberRole @default(VIEWER)
   canViewBudget             Boolean          @default(false)
   canViewExpenses           Boolean          @default(false)
   canViewDebts              Boolean          @default(false)
+  canEditPlan               Boolean          @default(false)
   canManageTasks            Boolean          @default(false)
+  canManageGuests           Boolean          @default(false)
+  canManageProviders        Boolean          @default(false)
+  canInviteMembers          Boolean          @default(false)
   canManageFinancialRecords Boolean          @default(false)
+  receiveNotifications      Boolean          @default(true)
   expiresAt                 DateTime
   acceptedAt                DateTime?
+  declinedAt                DateTime?
   revokedAt                 DateTime?
   createdAt                 DateTime         @default(now())
   updatedAt                 DateTime         @updatedAt
@@ -368,6 +406,8 @@ model PlanInvite {
   @@index([weddingPlanId, createdAt])
   @@index([inviteeUserId, acceptedAt])
   @@index([phone, acceptedAt])
+  @@index([weddingPlanId, normalizedPhone])
+  @@index([weddingPlanId, email])
   @@index([expiresAt])
 }
 
@@ -403,22 +443,28 @@ model NotificationPreference {
 }
 
 model Notification {
-  id            String           @id @default(cuid())
+  id            String               @id @default(cuid())
   userId        String
   weddingPlanId String?
   type          NotificationType
+  priority      NotificationPriority @default(NORMAL)
   title         String
-  body          String           @db.Text
+  body          String               @db.Text
+  entityType    String?
+  entityId      String?
+  routeTarget   String?
   data          Json?
-  dedupeKey     String?          @unique
+  dedupeKey     String?              @unique
   readAt        DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weddingPlan   WeddingPlan?     @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
+  archivedAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan   WeddingPlan?         @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
 
-  @@index([userId, readAt, createdAt])
+  @@index([userId, archivedAt, readAt, createdAt])
   @@index([weddingPlanId, createdAt])
+  @@index([entityType, entityId])
 }
 
 model Guest {
@@ -626,32 +672,40 @@ model ProviderReview {
 }
 
 model QuoteRequest {
-  id            String             @id @default(uuid())
-  userId        String
-  weddingPlanId String?
-  providerId    String
-  serviceId     String?
-  eventDate     DateTime?
-  cityId        String?
-  guestCount    Int?
-  message       String?            @db.Text
-  budgetMin     Decimal?           @db.Decimal(14, 2)
-  budgetMax     Decimal?           @db.Decimal(14, 2)
-  status        QuoteRequestStatus @default(SENT)
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weddingPlan   WeddingPlan?       @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
-  provider      Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service       ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  city          City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  bookingLeads  BookingLead[]
-  offers        QuoteOffer[]
-  providerLinks PlanProviderLink[]
+  id                     String             @id @default(uuid())
+  userId                 String
+  weddingPlanId          String?
+  providerId             String
+  serviceId              String?
+  eventDate              DateTime?
+  location               Json?
+  cityId                 String?
+  guestCount             Int?
+  contactName            String?
+  contactPhone           String?
+  contactNormalizedPhone String?
+  message                String?            @db.Text
+  budgetMin              Decimal?           @db.Decimal(14, 2)
+  budgetMax              Decimal?           @db.Decimal(14, 2)
+  status                 QuoteRequestStatus @default(SENT)
+  acceptedAt             DateTime?
+  rejectedAt             DateTime?
+  cancelledAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan            WeddingPlan?       @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider               Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service                ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  city                   City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  bookingLeads           BookingLead[]
+  offers                 QuoteOffer[]
+  providerLinks          PlanProviderLink[]
 
   @@index([userId, status])
   @@index([providerId, status])
   @@index([weddingPlanId])
+  @@index([contactNormalizedPhone])
 }
 
 model QuoteOffer {

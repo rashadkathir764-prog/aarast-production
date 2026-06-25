@@ -3,11 +3,10 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
-import '../../../core/contacts/contact_phone_field_suffix.dart';
-import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../providers/marketplace_provider.dart';
@@ -123,26 +122,11 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                           : null,
                     ),
                     const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                      decoration: InputDecoration(
-                        labelText: 'رقم التواصل',
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        suffixIcon: ContactPhoneFieldSuffix(
-                          controller: _phoneController,
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'رقم التواصل مطلوب';
-                        }
-                        if (!isValidYemeniPhoneInput(value)) {
-                          return 'رقم التواصل غير صحيح';
-                        }
-                        return null;
-                      },
+                    ContactPhoneField(
+                      phoneController: _phoneController,
+                      label: 'رقم التواصل',
+                      optional: false,
+                      requireYemeni: true,
                     ),
                     const SizedBox(height: 14),
                     _ApplyDropdown(

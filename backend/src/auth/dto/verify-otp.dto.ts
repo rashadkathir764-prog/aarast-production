@@ -1,9 +1,10 @@
 import { OtpPurpose } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class VerifyOtpDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(40)
   phone!: string;
 
   @IsString()

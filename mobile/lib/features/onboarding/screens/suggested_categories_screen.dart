@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/guest_onboarding_draft.dart';
+import '../models/persona_copy.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
 
 class SuggestedCategoriesScreen extends StatelessWidget {
   const SuggestedCategoriesScreen({
+    this.persona,
     this.selectedCategoryKeys = const [],
     this.onChanged,
     this.onContinue,
@@ -11,6 +14,7 @@ class SuggestedCategoriesScreen extends StatelessWidget {
     super.key,
   });
 
+  final GuestPersona? persona;
   final List<String> selectedCategoryKeys;
   final ValueChanged<List<String>>? onChanged;
   final VoidCallback? onContinue;
@@ -29,10 +33,12 @@ class SuggestedCategoriesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final copy = personaCopyForGuest(persona);
+
     return GuestOnboardingStepScaffold(
       stepNumber: 7,
       title: 'تصنيفات بداية الخطة',
-      description: 'اختر تصنيفات أولية حتى لا تبدأ صفحة المال فارغة لاحقًا.',
+      description: copy.categoriesDescription,
       continueLabel: 'إنشاء ملخص محلي',
       onContinue: selectedCategoryKeys.isEmpty ? null : onContinue,
       onBack: onBack,

@@ -1,4 +1,5 @@
 import {
+  AppRole,
   OnboardingPath,
   UserRole,
   UserStatus,
@@ -11,6 +12,7 @@ export interface AuthenticatedUser {
   phone: string | null;
   email: string | null;
   role: UserRole;
+  appRole: AppRole;
   status: UserStatus;
   phoneVerifiedAt: Date | null;
   lastLoginAt: Date | null;

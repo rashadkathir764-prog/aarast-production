@@ -1,4 +1,6 @@
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
+import 'package:aarast_mobile/features/onboarding/models/yemen_location_suggestions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -64,6 +66,61 @@ void main() {
       expect(draft.neighborhood, 'Bab Al-Yemen');
       expect(draft.street, 'Market Street');
       expect(draft.addressNote, 'Near the hall');
+    });
+
+    test('exposes structured wedding location labels', () {
+      final draft = const GuestOnboardingDraft.empty().copyWith(
+        governorate: 'صنعاء',
+        city: 'صنعاء',
+        district: 'السبعين',
+        neighborhood: 'حدة',
+        street: 'شارع تعز',
+        addressNote: 'بجوار قاعة كذا',
+      );
+
+      expect(draft.weddingLocation.hasRequiredLocation, isTrue);
+      expect(
+        draft.locationDisplayLabel,
+        'صنعاء - السبعين - حدة - شارع تعز - بجوار قاعة كذا',
+      );
+      expect(draft.weddingLocation.toJson()['shortLabel'], 'صنعاء - السبعين');
+    });
+
+    test('parses structured location json with compatibility labels', () {
+      final location = WeddingLocationDraft.fromJson({
+        'governorate': 'عدن',
+        'cityOrDistrict': 'المنصورة',
+        'areaOrNeighborhood': 'كابوتا',
+        'street': 'شارع التسعين',
+        'detailedAddress': 'قريب من القاعة',
+      });
+
+      expect(location.shortLabel, 'عدن - المنصورة');
+      expect(location.mediumLabel, 'عدن - المنصورة - كابوتا');
+      expect(
+        location.fullLabel,
+        'عدن - المنصورة - كابوتا - شارع التسعين - قريب من القاعة',
+      );
+      expect(location.toJson()['city'], 'المنصورة');
+      expect(location.toJson()['displayLabel'], location.fullLabel);
+    });
+
+    test('provides lightweight Yemen location suggestions', () {
+      expect(
+        YemenLocationSuggestions.governorates,
+        containsAll(['صنعاء', 'عدن', 'تعز', 'إب', 'الحديدة', 'حضرموت']),
+      );
+      expect(
+        YemenLocationSuggestions.cityOrDistrictsFor('صنعاء'),
+        containsAll(['شميلة', 'حدة', 'السبعين']),
+      );
+      expect(
+        YemenLocationSuggestions.areasFor(
+          governorate: 'عدن',
+          cityOrDistrict: 'المنصورة',
+        ),
+        contains('شارع التسعين'),
+      );
     });
 
     test('stores wedding date or unknown date state', () {

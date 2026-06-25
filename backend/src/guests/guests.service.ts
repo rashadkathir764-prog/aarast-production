@@ -14,6 +14,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import { BulkGuestsDto } from './dto/bulk-guests.dto';
@@ -107,7 +108,7 @@ export class GuestsService {
     await this.assertGroupBelongsToPlan(dto.groupId, weddingPlanId);
     const name = this.requiredText(dto.name, 'name');
     const normalizedName = this.normalizeGuestName(name);
-    const phone = this.optionalYemeniPhone(dto.phone);
+    const phone = PhoneNormalizer.normalizeOptional(dto.phone);
 
     await this.assertGuestIsNotDuplicate({
       weddingPlanId,
@@ -177,7 +178,7 @@ export class GuestsService {
     const normalizedName = this.normalizeGuestName(name);
     const phone =
       dto.phone !== undefined
-        ? this.optionalYemeniPhone(dto.phone)
+        ? PhoneNormalizer.normalizeOptional(dto.phone)
         : existing.normalizedPhone;
     const groupId =
       dto.groupId !== undefined ? this.optionalId(dto.groupId) : undefined;
@@ -380,62 +381,8 @@ export class GuestsService {
     return this.optionalText(value);
   }
 
-  private optionalYemeniPhone(value: string | null | undefined): string | null {
-    const phone = this.optionalText(value);
-    if (!phone) return null;
-    return this.normalizeYemeniPhone(phone);
-  }
-
   private normalizeGuestName(value: string): string {
     return value.trim().replace(/\s+/g, ' ');
-  }
-
-  private normalizeYemeniPhone(value: string): string {
-    const asciiValue = this.toAsciiDigits(value).trim();
-    const digits = asciiValue.replace(/[^0-9]/g, '');
-    if (!digits) {
-      throw new BadRequestException('phone must be a valid Yemeni phone number');
-    }
-
-    const local = this.localYemeniDigits(asciiValue, digits);
-    if (local.length !== 9) {
-      throw new BadRequestException('phone must be a valid Yemeni phone number');
-    }
-
-    return `+967${local}`;
-  }
-
-  private localYemeniDigits(value: string, digits: string): string {
-    if (value.startsWith('+')) {
-      if (!digits.startsWith('967')) {
-        throw new BadRequestException('phone must be a valid Yemeni phone number');
-      }
-      return digits.slice(3);
-    }
-
-    if (digits.startsWith('00967')) return digits.slice(5);
-    if (digits.startsWith('967')) return digits.slice(3);
-    if (digits.startsWith('0')) return digits.slice(1);
-    return digits;
-  }
-
-  private toAsciiDigits(value: string): string {
-    let result = '';
-    for (const char of value) {
-      const codePoint = char.codePointAt(0);
-      if (codePoint !== undefined && codePoint >= 0x0660 && codePoint <= 0x0669) {
-        result += String.fromCharCode(0x30 + codePoint - 0x0660);
-      } else if (
-        codePoint !== undefined &&
-        codePoint >= 0x06f0 &&
-        codePoint <= 0x06f9
-      ) {
-        result += String.fromCharCode(0x30 + codePoint - 0x06f0);
-      } else {
-        result += char;
-      }
-    }
-    return result;
   }
 
   private async assertGuestIsNotDuplicate({

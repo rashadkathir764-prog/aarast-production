@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Debt, DebtStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
@@ -11,6 +12,7 @@ export interface DebtResponse {
   weddingPlanId: string;
   creditorName: string;
   creditorPhone: string | null;
+  creditorNormalizedPhone: string | null;
   title: string;
   totalAmount: string;
   paidAmount: string;
@@ -44,12 +46,18 @@ export class DebtsService {
     dto: CreateDebtDto,
   ): Promise<DebtResponse> {
     await this.permissionService.assertFinancialManageable(weddingPlanId, currentUser);
+    const creditorPhone = this.optionalText(dto.creditorPhone);
+    const creditorNormalizedPhone = PhoneNormalizer.normalizeOptional(
+      dto.creditorPhone,
+      'creditorPhone',
+    );
 
     const debt = await this.prisma.debt.create({
       data: {
         weddingPlanId,
         creditorName: this.requiredText(dto.creditorName, 'creditorName'),
-        creditorPhone: this.optionalText(dto.creditorPhone),
+        creditorPhone,
+        creditorNormalizedPhone,
         title: this.requiredText(dto.title, 'title'),
         totalAmount: this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
         paidAmount: this.optionalNonNegativeDecimal(dto.paidAmount, 'paidAmount') ?? '0',
@@ -153,6 +161,14 @@ export class DebtsService {
       existing.weddingPlanId,
       currentUser,
     );
+    const creditorPhone =
+      dto.creditorPhone !== undefined
+        ? this.optionalText(dto.creditorPhone)
+        : undefined;
+    const creditorNormalizedPhone =
+      dto.creditorPhone !== undefined
+        ? PhoneNormalizer.normalizeOptional(dto.creditorPhone, 'creditorPhone')
+        : undefined;
 
     const debt = await this.prisma.debt.update({
       where: { id },
@@ -161,7 +177,7 @@ export class DebtsService {
           ? { creditorName: this.requiredText(dto.creditorName, 'creditorName') }
           : {}),
         ...(dto.creditorPhone !== undefined
-          ? { creditorPhone: this.optionalText(dto.creditorPhone) }
+          ? { creditorPhone, creditorNormalizedPhone }
           : {}),
         ...(dto.title !== undefined
           ? { title: this.requiredText(dto.title, 'title') }
@@ -257,6 +273,7 @@ export class DebtsService {
       weddingPlanId: debt.weddingPlanId,
       creditorName: debt.creditorName,
       creditorPhone: debt.creditorPhone,
+      creditorNormalizedPhone: debt.creditorNormalizedPhone,
       title: debt.title,
       totalAmount: debt.totalAmount.toString(),
       paidAmount: debt.paidAmount.toString(),

@@ -125,6 +125,24 @@ export class PermissionService {
     throw new NotFoundException('Wedding plan not found');
   }
 
+  async assertProviderManageable(
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const context = await this.assertPlanReadable(weddingPlanId, currentUser);
+    if (this.canManageProviders(context)) return context;
+    throw new NotFoundException('Wedding plan not found');
+  }
+
+  async assertMemberManageable(
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const context = await this.assertPlanReadable(weddingPlanId, currentUser);
+    if (this.canManageMembers(context)) return context;
+    throw new NotFoundException('Wedding plan not found');
+  }
+
   canReadFinancial(context: PlanAccessContext, type: FinancialPermissionType): boolean {
     if (context.isOwner) return true;
 
@@ -143,6 +161,9 @@ export class PermissionService {
     const member = context.sharedMember;
     return Boolean(
       member?.canManageTasks ||
+        member?.role === SharedMemberRole.GROOM ||
+        member?.role === SharedMemberRole.BRIDE ||
+        member?.role === SharedMemberRole.FAMILY ||
         member?.role === SharedMemberRole.MANAGER ||
         member?.role === SharedMemberRole.EDITOR ||
         member?.role === SharedMemberRole.HELPER ||
@@ -154,7 +175,11 @@ export class PermissionService {
     if (context.isOwner) return true;
     const member = context.sharedMember;
     return Boolean(
-      member?.role === SharedMemberRole.MANAGER ||
+      member?.canManageGuests ||
+        member?.role === SharedMemberRole.GROOM ||
+        member?.role === SharedMemberRole.BRIDE ||
+        member?.role === SharedMemberRole.FAMILY ||
+        member?.role === SharedMemberRole.MANAGER ||
         member?.role === SharedMemberRole.EDITOR ||
         member?.role === SharedMemberRole.HELPER,
     );
@@ -173,8 +198,29 @@ export class PermissionService {
     if (context.isOwner) return true;
     const member = context.sharedMember;
     return Boolean(
-      member?.role === SharedMemberRole.MANAGER ||
+      member?.canEditPlan ||
+        member?.role === SharedMemberRole.GROOM ||
+        member?.role === SharedMemberRole.BRIDE ||
+        member?.role === SharedMemberRole.MANAGER ||
         member?.role === SharedMemberRole.EDITOR,
     );
+  }
+
+  canManageProviders(context: PlanAccessContext): boolean {
+    if (context.isOwner) return true;
+    const member = context.sharedMember;
+    return Boolean(
+      member?.canManageProviders ||
+        member?.role === SharedMemberRole.GROOM ||
+        member?.role === SharedMemberRole.BRIDE ||
+        member?.role === SharedMemberRole.HELPER ||
+        member?.role === SharedMemberRole.CONTRIBUTOR ||
+        member?.role === SharedMemberRole.MANAGER,
+    );
+  }
+
+  canManageMembers(context: PlanAccessContext): boolean {
+    if (context.isOwner) return true;
+    return Boolean(context.sharedMember?.canInviteMembers);
   }
 }

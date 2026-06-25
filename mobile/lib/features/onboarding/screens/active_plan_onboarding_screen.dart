@@ -7,6 +7,8 @@ import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/guest_onboarding_storage.dart';
 import '../models/guest_onboarding_draft.dart';
+import '../models/wedding_location_draft.dart';
+import '../widgets/location_picker_section.dart';
 import '../../wedding_plans/models/onboarding_complete.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 
@@ -25,6 +27,7 @@ class _ActivePlanOnboardingScreenState
   final _districtController = TextEditingController(text: 'السبعين');
   final _neighborhoodController = TextEditingController(text: 'حدة');
   final _streetController = TextEditingController();
+  final _addressNoteController = TextEditingController();
   final _budgetController = TextEditingController(text: '120000');
 
   int _step = 0;
@@ -77,6 +80,7 @@ class _ActivePlanOnboardingScreenState
     _districtController.dispose();
     _neighborhoodController.dispose();
     _streetController.dispose();
+    _addressNoteController.dispose();
     _budgetController.dispose();
     super.dispose();
   }
@@ -132,9 +136,10 @@ class _ActivePlanOnboardingScreenState
         governorateController: _governorateController,
         cityController: _cityController,
         districtController: _districtController,
-        neighborhoodController: _neighborhoodController,
         streetController: _streetController,
+        addressNoteController: _addressNoteController,
         weddingDate: _weddingDate,
+        onLocationChanged: () => setState(() {}),
         onDateChanged: (date) => setState(() => _weddingDate = date),
         onBack: _previous,
         onContinue: _next,
@@ -191,14 +196,22 @@ class _ActivePlanOnboardingScreenState
       return;
     }
 
-    final city = _cityController.text.trim();
-    final location = {
-      'governorate': _governorateController.text.trim(),
-      'city': city,
-      'district': _districtController.text.trim(),
-      'neighborhood': _neighborhoodController.text.trim(),
-      'street': _streetController.text.trim(),
-    }..removeWhere((key, value) => value.trim().isEmpty);
+    final locationDraft = WeddingLocationDraft.fromLegacyFields(
+      governorate: _governorateController.text,
+      city: _cityController.text,
+      district: _districtController.text,
+      neighborhood: _neighborhoodController.text,
+      street: _streetController.text,
+      addressNote: _addressNoteController.text,
+    );
+    if (!locationDraft.hasRequiredLocation) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('حدد المحافظة والمدينة أو المديرية.')),
+      );
+      return;
+    }
+    final city = locationDraft.cityOrDistrict ?? _cityController.text.trim();
+    final location = locationDraft.toJson();
     final priorities = _priorities.toList(growable: false);
     final categories = _categories.toList(growable: false);
     final authStorage = context.read<AuthStorage>();
@@ -224,7 +237,7 @@ class _ActivePlanOnboardingScreenState
         district: location['district'],
         neighborhood: location['neighborhood'],
         street: location['street'],
-        addressNote: null,
+        addressNote: location['addressNote'],
         weddingDate: _weddingDate,
         weddingDateUnknown: false,
         priorities: priorities,
@@ -242,7 +255,9 @@ class _ActivePlanOnboardingScreenState
       OnboardingCompleteRequest(
         path: 'USER',
         persona: _persona,
-        title: city.isEmpty ? 'خطة زفافي' : 'خطة زفاف $city',
+        title: locationDraft.shortLabel == null
+            ? 'خطة زفافي'
+            : 'خطة زفاف ${locationDraft.shortLabel}',
         city: city.isEmpty ? null : city,
         location: location,
         weddingDate: _weddingDate.toIso8601String(),
@@ -448,9 +463,10 @@ class _LocationDateStep extends StatelessWidget {
     required this.governorateController,
     required this.cityController,
     required this.districtController,
-    required this.neighborhoodController,
     required this.streetController,
+    required this.addressNoteController,
     required this.weddingDate,
+    required this.onLocationChanged,
     required this.onDateChanged,
     required this.onBack,
     required this.onContinue,
@@ -459,9 +475,10 @@ class _LocationDateStep extends StatelessWidget {
   final TextEditingController governorateController;
   final TextEditingController cityController;
   final TextEditingController districtController;
-  final TextEditingController neighborhoodController;
   final TextEditingController streetController;
+  final TextEditingController addressNoteController;
   final DateTime weddingDate;
+  final VoidCallback onLocationChanged;
   final ValueChanged<DateTime> onDateChanged;
   final VoidCallback onBack;
   final VoidCallback onContinue;
@@ -474,15 +491,14 @@ class _LocationDateStep extends StatelessWidget {
       subtitle: 'الموقع والتاريخ يساعدان في بناء خطة واقعية.',
       child: Column(
         children: [
-          _Input(controller: governorateController, label: 'المحافظة'),
-          const SizedBox(height: 10),
-          _Input(controller: cityController, label: 'المدينة / المديرية'),
-          const SizedBox(height: 10),
-          _Input(controller: districtController, label: 'الحي'),
-          const SizedBox(height: 10),
-          _Input(controller: neighborhoodController, label: 'المنطقة'),
-          const SizedBox(height: 10),
-          _Input(controller: streetController, label: 'الشارع'),
+          LocationPickerSection(
+            governorateController: governorateController,
+            cityOrDistrictController: cityController,
+            areaOrNeighborhoodController: districtController,
+            streetController: streetController,
+            detailedAddressController: addressNoteController,
+            onChanged: onLocationChanged,
+          ),
           const SizedBox(height: 16),
           _DatePanel(date: weddingDate, onDateChanged: onDateChanged),
           const SizedBox(height: 18),

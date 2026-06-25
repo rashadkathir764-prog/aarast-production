@@ -1,3 +1,5 @@
+import '../../onboarding/models/wedding_location_draft.dart';
+
 class WeddingPlan {
   const WeddingPlan({
     required this.id,
@@ -8,6 +10,7 @@ class WeddingPlan {
     required this.createdAt,
     required this.updatedAt,
     this.city,
+    this.location,
     this.weddingDate,
     this.estimatedBudget,
   });
@@ -18,6 +21,7 @@ class WeddingPlan {
       ownerUserId: json['ownerUserId'].toString(),
       title: json['title'].toString(),
       city: json['city']?.toString(),
+      location: _mapOrNull(json['location']),
       weddingDate: _dateTimeOrNull(json['weddingDate']),
       estimatedBudget: json['estimatedBudget']?.toString(),
       currency: json['currency']?.toString() ?? 'YER',
@@ -31,6 +35,7 @@ class WeddingPlan {
   final String ownerUserId;
   final String title;
   final String? city;
+  final Map<String, dynamic>? location;
   final DateTime? weddingDate;
   final String? estimatedBudget;
   final String currency;
@@ -55,10 +60,20 @@ class WeddingPlan {
     return weddingDay.difference(currentDate).inDays;
   }
 
+  WeddingLocationDraft get weddingLocation {
+    return WeddingLocationDraft.fromJson(location, cityFallback: city);
+  }
+
   static DateTime? _dateTimeOrNull(Object? value) {
     if (value == null) {
       return null;
     }
     return DateTime.tryParse(value.toString());
+  }
+
+  static Map<String, dynamic>? _mapOrNull(Object? value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
   }
 }

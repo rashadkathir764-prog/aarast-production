@@ -20,9 +20,29 @@ export class UpdateSharedMemberDto {
 
   @IsBoolean()
   @IsOptional()
+  canEditPlan?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   canManageTasks?: boolean;
 
   @IsBoolean()
   @IsOptional()
+  canManageGuests?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  canManageProviders?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  canInviteMembers?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   canManageFinancialRecords?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  receiveNotifications?: boolean;
 }

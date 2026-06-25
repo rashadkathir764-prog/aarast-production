@@ -1,4 +1,5 @@
 import 'wedding_plan.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
 
 class ActiveWeddingPlan {
   const ActiveWeddingPlan({
@@ -56,11 +57,11 @@ class ActiveWeddingPlan {
   final DateTime updatedAt;
 
   String get cityLabel {
-    final value = city?.trim();
-    if (value != null && value.isNotEmpty) return value;
-    final locationCity = location?['city']?.toString().trim();
-    if (locationCity != null && locationCity.isNotEmpty) return locationCity;
-    return 'غير محدد';
+    return weddingLocation.shortLabel ?? 'غير محدد';
+  }
+
+  WeddingLocationDraft get weddingLocation {
+    return WeddingLocationDraft.fromJson(location, cityFallback: city);
   }
 
   WeddingPlan toWeddingPlan() {
@@ -69,6 +70,7 @@ class ActiveWeddingPlan {
       ownerUserId: ownerUserId,
       title: title,
       city: city,
+      location: location,
       weddingDate: weddingDate,
       estimatedBudget: estimatedBudget,
       currency: currency,

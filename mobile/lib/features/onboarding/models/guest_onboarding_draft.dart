@@ -1,3 +1,5 @@
+import 'wedding_location_draft.dart';
+
 enum GuestOnboardingPath { weddingUser, provider }
 
 enum GuestPersona { groom, bride, helper }
@@ -70,7 +72,22 @@ class GuestOnboardingDraft {
 
   bool get hasPersona => persona != null;
 
-  bool get hasLocationSeed => _hasText(governorate) || _hasText(city);
+  WeddingLocationDraft get weddingLocation {
+    return WeddingLocationDraft.fromLegacyFields(
+      governorate: governorate,
+      city: city,
+      district: district,
+      neighborhood: neighborhood,
+      street: street,
+      addressNote: addressNote,
+    );
+  }
+
+  bool get hasLocationSeed => weddingLocation.hasAnyLocation;
+
+  bool get hasStructuredLocation => weddingLocation.hasRequiredLocation;
+
+  String get locationDisplayLabel => weddingLocation.displayLabel;
 
   bool get hasTimelineSeed => weddingDate != null || weddingDateUnknown;
 
@@ -217,10 +234,6 @@ class GuestOnboardingDraft {
         _stringList(json['selectedCategoryKeys']),
       ),
     );
-  }
-
-  static bool _hasText(String? value) {
-    return value != null && value.trim().isNotEmpty;
   }
 
   static T? _enumByName<T extends Enum>(List<T> values, Object? name) {

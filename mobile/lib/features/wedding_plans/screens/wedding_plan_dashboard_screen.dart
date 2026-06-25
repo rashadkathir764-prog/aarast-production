@@ -4,9 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../onboarding/models/persona_copy.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
+import '../providers/wedding_plans_provider.dart';
 import '../widgets/royal_home_chrome.dart';
 import '../widgets/royal_home_today_center.dart';
 
@@ -67,8 +69,6 @@ class _WeddingPlanDashboardScreenState
                 onHome: () {},
                 onMoney: () =>
                     context.push(AppRouter.finance(widget.weddingPlanId)),
-                onTasks: () =>
-                    context.push(AppRouter.tasks(widget.weddingPlanId)),
                 onProviders: () => context.push(AppRouter.providerMarketplace),
                 onMore: () => context.push(AppRouter.more),
                 onAdd: _showQuickActions,
@@ -93,16 +93,15 @@ class _WeddingPlanDashboardScreenState
   Widget _buildBody(DashboardSummaryProvider provider, AuthController auth) {
     final summary = provider.summary;
     final bottomPadding = widget.embedded ? 158.0 : 36.0;
+    final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
 
     if (provider.isLoading && summary == null) {
       return AnimatedSwitcher(
         duration: const Duration(milliseconds: 320),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
           key: const ValueKey('royal-home-skeleton'),
           child: RoyalHomeTodaySkeleton(bottomPadding: bottomPadding),
@@ -115,10 +114,8 @@ class _WeddingPlanDashboardScreenState
         duration: const Duration(milliseconds: 360),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
           key: const ValueKey('royal-home-error'),
           child: _DashboardStateList(
@@ -139,10 +136,8 @@ class _WeddingPlanDashboardScreenState
         duration: const Duration(milliseconds: 360),
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
           key: const ValueKey('royal-home-empty'),
           child: _DashboardStateList(
@@ -163,33 +158,60 @@ class _WeddingPlanDashboardScreenState
       duration: const Duration(milliseconds: 380),
       switchInCurve: Curves.easeOutCubic,
       switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) => FadeTransition(
-        opacity: animation,
-        child: child,
-      ),
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
       child: KeyedSubtree(
         key: ValueKey('royal-home-${summary.planId}'),
-        child: RoyalHomeTodayCenter(
-          summary: summary,
-          userName: auth.user?.name ?? 'صاحب الخطة',
-          bottomPadding: bottomPadding,
-          onNotifications: () =>
-              context.push(AppRouter.planNotifications(summary.planId)),
-          onProfile: () => context.push(AppRouter.more),
-          onOpenPlan: () => context.push(AppRouter.planCenter(summary.planId)),
-          onOpenMoney: () => context.push(AppRouter.finance(summary.planId)),
-          onOpenTasks: () => context.push(AppRouter.tasks(summary.planId)),
-          onOpenProviders: () => context.push(AppRouter.providerMarketplace),
-          onOpenGuests: () => context.push(AppRouter.guestList(summary.planId)),
-          onOpenNotifications: () =>
-              context.push(AppRouter.planNotifications(summary.planId)),
-          onOpenImportantItem: _openDashboardItem,
-          onOpenNextStep: () => _openNextStep(summary),
-          onOpenTimeline: () =>
-              context.push(AppRouter.timeline(summary.planId)),
+        child: Builder(
+          builder: (_) {
+            final personaCopy = activePlan?.id == summary.planId
+                ? personaCopyForBackend(activePlan?.persona)
+                : null;
+            return RoyalHomeTodayCenter(
+              summary: summary,
+              userName: personaCopy?.isKnown == true
+                  ? personaCopy!.label
+                  : auth.user?.name ?? 'صاحب الخطة',
+              personaHeadline: personaCopy?.isKnown == true
+                  ? personaCopy!.dashboardHeadline
+                  : null,
+              personaSupportText: personaCopy?.isKnown == true
+                  ? personaCopy!.dashboardSupport
+                  : null,
+              bottomPadding: bottomPadding,
+              onNotifications: () =>
+                  context.push(AppRouter.planNotifications(summary.planId)),
+              onProfile: () => context.push(AppRouter.more),
+              onOpenPlan: () =>
+                  context.push(AppRouter.planCenter(summary.planId)),
+              onOpenMoney: () =>
+                  context.push(AppRouter.finance(summary.planId)),
+              onOpenTasks: () => context.push(AppRouter.tasks(summary.planId)),
+              onOpenProviders: () =>
+                  context.push(AppRouter.providerMarketplace),
+              onOpenGuests: () =>
+                  context.push(AppRouter.guestList(summary.planId)),
+              onOpenParticipants: () =>
+                  context.push(AppRouter.sharing(summary.planId)),
+              onOpenNotifications: () =>
+                  context.push(AppRouter.planNotifications(summary.planId)),
+              onOpenImportantItem: _openDashboardItem,
+              onOpenNextStep: () => _openNextStep(summary),
+              onOpenTimeline: () =>
+                  context.push(AppRouter.timeline(summary.planId)),
+            );
+          },
         ),
       ),
     );
+  }
+
+  WeddingPlansProvider? _maybeWatchWeddingPlans(BuildContext context) {
+    try {
+      return context.watch<WeddingPlansProvider>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   void _showQuickActions() {
@@ -232,7 +254,7 @@ class _WeddingPlanDashboardScreenState
   }
 
   void _openDashboardItem(DashboardImportantItem item) {
-    final route = item.route;
+    final route = item.routeTarget ?? item.route;
     if (route == null || route.trim().isEmpty) {
       _openNextStepForType(item.type);
       return;
@@ -309,7 +331,9 @@ class _DashboardStateList extends StatelessWidget {
     final ink = const Color(0xFF2D1A1E);
     final muted = const Color(0xFF8A7B7E);
     final accent = tone == _StateTone.warning ? burgundy : gold;
-    final buttonColor = tone == _StateTone.warning ? burgundy : const Color(0xFF7A1A2A);
+    final buttonColor = tone == _StateTone.warning
+        ? burgundy
+        : const Color(0xFF7A1A2A);
     final iconBg = Color.alphaBlend(
       accent.withValues(alpha: 0.10),
       Colors.white,

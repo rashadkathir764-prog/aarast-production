@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { SharingModule } from '../sharing/sharing.module';
 import {
   ApiV1ProviderCategoriesController,
@@ -17,7 +18,7 @@ import {
 import { MarketplaceService } from './marketplace.service';
 
 @Module({
-  imports: [PrismaModule, SharingModule],
+  imports: [PrismaModule, SharingModule, NotificationsModule],
   controllers: [
     CitiesController,
     ProviderCategoriesController,

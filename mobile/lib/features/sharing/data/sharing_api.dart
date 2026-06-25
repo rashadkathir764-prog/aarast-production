@@ -18,7 +18,7 @@ class SharingApi {
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
     try {
       final items = await _getJsonMapList(
-        '/wedding-plans/$weddingPlanId/shared-members',
+        '/api/v1/wedding-plans/$weddingPlanId/members',
       );
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedPlanMembers,
@@ -80,6 +80,83 @@ class SharingApi {
       payload,
     );
     return SharedMember.fromJson(json);
+  }
+
+  Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
+    final items = await _getJsonMapList(
+      '/api/v1/wedding-plans/$weddingPlanId/invites',
+    );
+    return items.map(PlanInvite.fromJson).toList();
+  }
+
+  Future<PlanInvite> createPlanInvite({
+    required String weddingPlanId,
+    required String phone,
+    String? name,
+    required String role,
+    required bool canViewBudget,
+    required bool canViewExpenses,
+    required bool canViewDebts,
+    required bool canEditPlan,
+    required bool canManageTasks,
+    required bool canManageGuests,
+    required bool canManageProviders,
+    required bool canInviteMembers,
+    required bool canManageFinancialRecords,
+    required bool receiveNotifications,
+  }) async {
+    final normalizedPhone = _normalizePhone(phone);
+    final json = await _apiClient.postJson(
+      '/api/v1/wedding-plans/$weddingPlanId/invites',
+      {
+        'phone': normalizedPhone,
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+        'role': role,
+        'canViewBudget': canViewBudget,
+        'canViewExpenses': canViewExpenses,
+        'canViewDebts': canViewDebts,
+        'canEditPlan': canEditPlan,
+        'canManageTasks': canManageTasks,
+        'canManageGuests': canManageGuests,
+        'canManageProviders': canManageProviders,
+        'canInviteMembers': canInviteMembers,
+        'canManageFinancialRecords': canManageFinancialRecords,
+        'receiveNotifications': receiveNotifications,
+      },
+    );
+    return PlanInvite.fromJson(json);
+  }
+
+  Future<void> cancelPlanInvite({
+    required String weddingPlanId,
+    required String inviteId,
+  }) async {
+    await _apiClient.deleteJson(
+      '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId',
+    );
+  }
+
+  Future<PlanInvite> getInvite(String token) async {
+    final json = await _apiClient.getJson('/api/v1/invites/$token');
+    return PlanInvite.fromJson(json);
+  }
+
+  Future<PlanInvite> acceptInvite(String token) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/invites/$token/accept',
+      const {},
+    );
+    return PlanInvite.fromJson(
+      Map<String, dynamic>.from(json['invite'] as Map),
+    );
+  }
+
+  Future<PlanInvite> declineInvite(String token) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/invites/$token/decline',
+      const {},
+    );
+    return PlanInvite.fromJson(json);
   }
 
   Future<SharedMember> updateSharedMember(

@@ -7,6 +7,8 @@ import {
 import {
   City,
   FavoriteProvider,
+  NotificationPriority,
+  NotificationType,
   Prisma,
   Provider,
   ProviderCategory,
@@ -15,6 +17,7 @@ import {
   ProviderService,
   ProviderServiceImage,
   ProviderStatus,
+  PlanProviderLink,
   PlanProviderLinkStatus,
   QuoteOffer,
   QuoteOfferStatus,
@@ -25,14 +28,24 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { PhoneNormalizer } from '../common/phone/phone-normalizer';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
+import {
+  normalizeWeddingLocationInput,
+  weddingLocationResponse,
+} from '../wedding-plans/wedding-location';
 import { CreatePlanQuoteRequestDto } from './dto/create-plan-quote-request.dto';
 import { CreateProviderReviewDto } from './dto/create-provider-review.dto';
 import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
 import { ListProvidersQueryDto } from './dto/list-providers-query.dto';
 import { ListServicesQueryDto } from './dto/list-services-query.dto';
 import { UpdateProviderReviewDto } from './dto/update-provider-review.dto';
+import {
+  assertQuoteRequestTransition,
+  quoteLifecycleStatus,
+} from './quote-lifecycle';
 
 interface Pagination {
   page: number;
@@ -71,6 +84,7 @@ type QuoteWithRelations = QuoteRequest & {
   city?: City | null;
   weddingPlan?: Pick<WeddingPlan, 'id' | 'title' | 'city' | 'weddingDate'> | null;
   offers?: QuoteOffer[];
+  providerLinks?: PlanProviderLink[];
 };
 
 @Injectable()
@@ -78,6 +92,7 @@ export class MarketplaceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async findCities() {
@@ -374,12 +389,19 @@ export class MarketplaceService {
   ) {
     await this.findActiveProviderOrThrow(providerId);
 
+    let plan: WeddingPlan | null = null;
     if (dto.weddingPlanId) {
-      await this.permissions.assertPlanReadable(dto.weddingPlanId, currentUser);
+      plan = (
+        await this.permissions.assertProviderManageable(
+          dto.weddingPlanId,
+          currentUser,
+        )
+      ).plan;
     }
 
+    let city: City | null = null;
     if (dto.cityId) {
-      await this.findActiveCityOrThrow(dto.cityId);
+      city = await this.findActiveCityOrThrow(dto.cityId);
     }
 
     if (dto.serviceId) {
@@ -396,6 +418,25 @@ export class MarketplaceService {
       throw new BadRequestException('budgetMin must be less than or equal to budgetMax');
     }
 
+    const storedPlanLocation =
+      plan?.location &&
+      typeof plan.location === 'object' &&
+      !Array.isArray(plan.location)
+        ? (plan.location as Record<string, unknown>)
+        : undefined;
+    const location = normalizeWeddingLocationInput(
+      dto.location !== undefined ? dto.location ?? undefined : storedPlanLocation,
+      plan?.city ?? city?.nameAr ?? null,
+    );
+    const contactName =
+      this.optionalText(dto.contactName) ?? currentUser.name.trim();
+    const contactPhone =
+      this.optionalText(dto.contactPhone) ?? currentUser.phone;
+    const contactNormalizedPhone = PhoneNormalizer.normalizeOptional(
+      contactPhone,
+      'contactPhone',
+    );
+
     const quote = await this.prisma.quoteRequest.create({
       data: {
         userId: currentUser.id,
@@ -403,13 +444,37 @@ export class MarketplaceService {
         weddingPlanId: dto.weddingPlanId ?? null,
         serviceId: dto.serviceId ?? null,
         eventDate: this.optionalDate(dto.eventDate, 'eventDate'),
+        location: location ?? Prisma.JsonNull,
         cityId: dto.cityId ?? null,
         guestCount: dto.guestCount ?? null,
+        contactName,
+        contactPhone,
+        contactNormalizedPhone,
         message: this.optionalText(dto.message),
         budgetMin,
         budgetMax,
       },
       include: this.quoteInclude(),
+    });
+
+    await this.notifications.createNotification({
+      userId: currentUser.id,
+      weddingPlanId: quote.weddingPlanId,
+      type: NotificationType.QUOTE_REQUEST_SUBMITTED,
+      priority: NotificationPriority.NORMAL,
+      title: 'تم إرسال طلب عرض السعر',
+      body: `تم إرسال طلبك إلى ${quote.provider.businessName}. سنعرض الرد عند وصول عرض حقيقي من المورد.`,
+      entityType: 'quote_request',
+      entityId: quote.id,
+      routeTarget: quote.weddingPlanId
+        ? `/wedding-plans/${quote.weddingPlanId}/plan-center`
+        : `/providers/${quote.providerId}`,
+      data: {
+        quoteRequestId: quote.id,
+        providerId: quote.providerId,
+        weddingPlanId: quote.weddingPlanId,
+      },
+      dedupeKey: `${currentUser.id}:quote-submitted:${quote.id}`,
     });
 
     return this.toQuoteResponse(quote);
@@ -420,7 +485,10 @@ export class MarketplaceService {
     weddingPlanId: string,
     dto: CreatePlanQuoteRequestDto,
   ) {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    await this.permissions.assertProviderManageable(
+      weddingPlanId,
+      currentUser,
+    );
     return this.createQuoteRequest(currentUser, dto.providerId, {
       ...dto,
       weddingPlanId,
@@ -454,9 +522,23 @@ export class MarketplaceService {
     id: string,
   ) {
     const existing = await this.findAccessibleQuoteRequestOrThrow(currentUser, id);
+    if (existing.weddingPlanId) {
+      await this.permissions.assertProviderManageable(
+        existing.weddingPlanId,
+        currentUser,
+      );
+    }
+    assertQuoteRequestTransition(
+      existing.status,
+      QuoteRequestStatus.CANCELLED,
+      'requester',
+    );
     const quote = await this.prisma.quoteRequest.update({
       where: { id: existing.id },
-      data: { status: QuoteRequestStatus.CANCELLED },
+      data: {
+        status: QuoteRequestStatus.CANCELLED,
+        cancelledAt: new Date(),
+      },
       include: this.quoteInclude(),
     });
 
@@ -472,6 +554,18 @@ export class MarketplaceService {
       throw new ConflictException('Quote offer is not pending');
     }
     const weddingPlanId = offer.quoteRequest.weddingPlanId;
+    await this.permissions.assertProviderManageable(
+      weddingPlanId,
+      currentUser,
+    );
+    assertQuoteRequestTransition(
+      offer.quoteRequest.status,
+      QuoteRequestStatus.ACCEPTED,
+      'requester',
+    );
+    if (offer.validUntil && offer.validUntil.getTime() < Date.now()) {
+      throw new ConflictException('Quote offer has expired');
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const acceptedOffer = await tx.quoteOffer.update({
@@ -490,7 +584,10 @@ export class MarketplaceService {
 
       await tx.quoteRequest.update({
         where: { id: offer.quoteRequestId },
-        data: { status: QuoteRequestStatus.ACCEPTED },
+        data: {
+          status: QuoteRequestStatus.ACCEPTED,
+          acceptedAt: new Date(),
+        },
       });
 
       const link = await tx.planProviderLink.upsert({
@@ -517,6 +614,24 @@ export class MarketplaceService {
       return { offer: acceptedOffer, link };
     });
 
+    await this.notifications.createNotification({
+      userId: offer.quoteRequest.userId,
+      weddingPlanId,
+      type: NotificationType.QUOTE_ACCEPTED,
+      priority: NotificationPriority.HIGH,
+      title: 'تم قبول عرض السعر',
+      body: 'أصبح المورد ضمن موردي الخطة المقبولين. لم يتم إنشاء مصروف أو دين تلقائيًا.',
+      entityType: 'quote_request',
+      entityId: offer.quoteRequestId,
+      routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
+      data: {
+        quoteRequestId: offer.quoteRequestId,
+        quoteOfferId: offer.id,
+        providerId: offer.providerId,
+      },
+      dedupeKey: `${offer.quoteRequest.userId}:quote-accepted:${offer.quoteRequestId}`,
+    });
+
     return {
       offer: this.toQuoteOfferResponse(result.offer),
       planProviderLink: {
@@ -537,10 +652,51 @@ export class MarketplaceService {
     if (offer.status !== QuoteOfferStatus.PENDING) {
       throw new ConflictException('Quote offer is not pending');
     }
+    if (offer.quoteRequest.weddingPlanId) {
+      await this.permissions.assertProviderManageable(
+        offer.quoteRequest.weddingPlanId,
+        currentUser,
+      );
+    }
+    assertQuoteRequestTransition(
+      offer.quoteRequest.status,
+      QuoteRequestStatus.REJECTED,
+      'requester',
+    );
 
-    const rejected = await this.prisma.quoteOffer.update({
-      where: { id },
-      data: { status: QuoteOfferStatus.REJECTED },
+    const rejected = await this.prisma.$transaction(async (tx) => {
+      const updatedOffer = await tx.quoteOffer.update({
+        where: { id },
+        data: { status: QuoteOfferStatus.REJECTED },
+      });
+      await tx.quoteRequest.update({
+        where: { id: offer.quoteRequestId },
+        data: {
+          status: QuoteRequestStatus.REJECTED,
+          rejectedAt: new Date(),
+        },
+      });
+      return updatedOffer;
+    });
+
+    await this.notifications.createNotification({
+      userId: offer.quoteRequest.userId,
+      weddingPlanId: offer.quoteRequest.weddingPlanId,
+      type: NotificationType.QUOTE_REJECTED,
+      priority: NotificationPriority.NORMAL,
+      title: 'تم رفض عرض السعر',
+      body: 'تم إغلاق عرض السعر دون إنشاء حجز أو التزام مالي.',
+      entityType: 'quote_request',
+      entityId: offer.quoteRequestId,
+      routeTarget: offer.quoteRequest.weddingPlanId
+        ? `/wedding-plans/${offer.quoteRequest.weddingPlanId}/plan-center`
+        : `/providers/${offer.providerId}`,
+      data: {
+        quoteRequestId: offer.quoteRequestId,
+        quoteOfferId: offer.id,
+        providerId: offer.providerId,
+      },
+      dedupeKey: `${offer.quoteRequest.userId}:quote-rejected:${offer.quoteRequestId}`,
     });
 
     return this.toQuoteOfferResponse(rejected);
@@ -579,10 +735,18 @@ export class MarketplaceService {
     if (!existing) {
       throw new NotFoundException('Quote request not found');
     }
+    assertQuoteRequestTransition(
+      existing.status,
+      QuoteRequestStatus.CANCELLED,
+      'requester',
+    );
 
     const quote = await this.prisma.quoteRequest.update({
       where: { id },
-      data: { status: QuoteRequestStatus.CANCELLED },
+      data: {
+        status: QuoteRequestStatus.CANCELLED,
+        cancelledAt: new Date(),
+      },
       include: this.quoteInclude(),
     });
 
@@ -740,9 +904,15 @@ export class MarketplaceService {
       service: { include: { category: true } },
       city: true,
       weddingPlan: {
-        select: { id: true, title: true, city: true, weddingDate: true },
+        select: {
+          id: true,
+          title: true,
+          city: true,
+          weddingDate: true,
+        },
       },
       offers: { orderBy: { createdAt: 'desc' } },
+      providerLinks: true,
     } satisfies Prisma.QuoteRequestInclude;
   }
 
@@ -1062,14 +1232,27 @@ export class MarketplaceService {
           }
         : null,
       eventDate: quote.eventDate,
+      location: weddingLocationResponse(quote.location),
       cityId: quote.cityId,
       city: quote.city ? this.toCityResponse(quote.city) : null,
       guestCount: quote.guestCount,
+      contactName: quote.contactName,
+      contactPhone: quote.contactPhone,
+      contactNormalizedPhone: quote.contactNormalizedPhone,
       message: quote.message,
       budgetMin: quote.budgetMin?.toString() ?? null,
       budgetMax: quote.budgetMax?.toString() ?? null,
       status: quote.status,
+      lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
+      acceptedPlanProvider:
+        quote.providerLinks?.find(
+          (link) => link.status === PlanProviderLinkStatus.ACTIVE,
+        ) ?? null,
+      financialSuggestion: this.quoteFinancialSuggestion(quote),
+      acceptedAt: quote.acceptedAt,
+      rejectedAt: quote.rejectedAt,
+      cancelledAt: quote.cancelledAt,
       createdAt: quote.createdAt,
       updatedAt: quote.updatedAt,
     };
@@ -1088,6 +1271,29 @@ export class MarketplaceService {
       status: offer.status,
       createdAt: offer.createdAt,
       updatedAt: offer.updatedAt,
+    };
+  }
+
+  private quoteFinancialSuggestion(quote: QuoteWithRelations) {
+    const acceptedOffer = quote.offers?.find(
+      (offer) => offer.status === QuoteOfferStatus.ACCEPTED,
+    );
+    const isAccepted = quote.status === QuoteRequestStatus.ACCEPTED;
+    return {
+      providerId: quote.providerId,
+      providerName: quote.provider.businessName,
+      category:
+        quote.service?.category.nameAr ??
+        quote.provider.primaryCategory?.nameAr ??
+        null,
+      quotedAmount: acceptedOffer?.amount?.toString() ?? null,
+      currency: acceptedOffer?.currency ?? null,
+      suggestedAction:
+        isAccepted && acceptedOffer?.amount ? 'ADD_EXPENSE' : 'NONE',
+      availableActions: isAccepted
+        ? ['ADD_EXPENSE', 'ADD_DEBT']
+        : [],
+      automaticFinancialRecordCreated: false,
     };
   }
 }

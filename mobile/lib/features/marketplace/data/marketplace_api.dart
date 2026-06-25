@@ -258,8 +258,11 @@ class MarketplaceApi {
     String? weddingPlanId,
     String? serviceId,
     DateTime? eventDate,
+    Map<String, dynamic>? location,
     String? cityId,
     int? guestCount,
+    String? contactName,
+    String? contactPhone,
     String? message,
     String? budgetMin,
     String? budgetMax,
@@ -270,8 +273,13 @@ class MarketplaceApi {
       if (serviceId != null && serviceId.trim().isNotEmpty)
         'serviceId': serviceId.trim(),
       if (eventDate != null) 'eventDate': eventDate.toIso8601String(),
+      if (location != null && location.isNotEmpty) 'location': location,
       if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
       if (guestCount != null && guestCount > 0) 'guestCount': guestCount,
+      if (contactName != null && contactName.trim().isNotEmpty)
+        'contactName': contactName.trim(),
+      if (contactPhone != null && contactPhone.trim().isNotEmpty)
+        'contactPhone': contactPhone.trim(),
       if (message != null && message.trim().isNotEmpty)
         'message': message.trim(),
       if (budgetMin != null && budgetMin.trim().isNotEmpty)
@@ -298,7 +306,8 @@ class MarketplaceApi {
         'id': localId,
         'providerId': providerId,
         ...payload,
-        'status': 'SENT',
+        'status': 'READY_TO_SEND',
+        'lifecycleStatus': 'READY_TO_SEND',
         'createdAt': now.toIso8601String(),
         'updatedAt': now.toIso8601String(),
       };
@@ -318,6 +327,61 @@ class MarketplaceApi {
       await _offline.refreshStatus();
       return QuoteRequest.fromJson(localJson);
     }
+  }
+
+  Future<List<QuoteRequest>> getMyQuoteRequests() async {
+    try {
+      final items = await _getJsonMapList('/me/quote-requests');
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedBookings,
+        items: items,
+      );
+      return items.map(QuoteRequest.fromJson).toList();
+    } on Object catch (error) {
+      final cached = await _cachedListOnNetworkFailure(
+        error,
+        table: OfflineTables.cachedBookings,
+      );
+      if (cached != null) return cached.map(QuoteRequest.fromJson).toList();
+      rethrow;
+    }
+  }
+
+  Future<QuoteRequest> getQuoteRequest(String quoteRequestId) async {
+    final json = await _apiClient.getJson(
+      '/api/v1/quote-requests/$quoteRequestId',
+    );
+    return QuoteRequest.fromJson(json);
+  }
+
+  Future<QuoteRequest> cancelQuoteRequest(String quoteRequestId) async {
+    final json = await _apiClient.patchJson(
+      '/api/v1/quote-requests/$quoteRequestId/cancel',
+      const {},
+    );
+    return QuoteRequest.fromJson(json);
+  }
+
+  Future<QuoteRequest> acceptQuoteOffer({
+    required String quoteRequestId,
+    required String quoteOfferId,
+  }) async {
+    await _apiClient.patchJson(
+      '/api/v1/quote-offers/$quoteOfferId/accept',
+      const {},
+    );
+    return getQuoteRequest(quoteRequestId);
+  }
+
+  Future<QuoteRequest> rejectQuoteOffer({
+    required String quoteRequestId,
+    required String quoteOfferId,
+  }) async {
+    await _apiClient.patchJson(
+      '/api/v1/quote-offers/$quoteOfferId/reject',
+      const {},
+    );
+    return getQuoteRequest(quoteRequestId);
   }
 
   String _path(String path, Map<String, String> query) {
@@ -535,6 +599,29 @@ class ProviderDashboardApi {
       {'status': status},
     );
     return QuoteRequest.fromJson(json);
+  }
+
+  Future<QuoteOffer> createQuoteOffer({
+    required String quoteRequestId,
+    required String message,
+    String? title,
+    String? amount,
+    String currency = 'YER',
+    DateTime? validUntil,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/provider/me/quote-requests/$quoteRequestId/offers',
+      {
+        'message': message.trim(),
+        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+        if (amount != null && amount.trim().isNotEmpty)
+          'amount': amount.trim(),
+        'currency': currency,
+        if (validUntil != null)
+          'validUntil': validUntil.toIso8601String(),
+      },
+    );
+    return QuoteOffer.fromJson(json);
   }
 
   String _normalizePhone(String phone) {

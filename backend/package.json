@@ -7,6 +7,7 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "test": "node --test -r ts-node/register test/backend-support.test.ts test/quote-lifecycle.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts",
     "prisma:generate": "prisma generate",
     "smoke": "npm run smoke:health && npm run smoke:auth",
     "smoke:health": "node scripts/smoke/health-smoke.js",
@@ -29,6 +30,8 @@
     "smoke:marketplace": "node scripts/smoke/marketplace-smoke.js",
     "smoke:providers-quotes": "node scripts/smoke/providers-quotes-smoke.js",
     "smoke:provider-dashboard": "node scripts/smoke/provider-dashboard-smoke.js",
+    "smoke:ux-backend-support": "node scripts/smoke/ux-backend-support-smoke.js",
+    "smoke:ux-c4-c7": "node scripts/smoke/ux-c4-c7-smoke.js",
     "smoke:backend-completion": "node scripts/smoke/backend-completion-smoke.js",
     "smoke:all": "node --env-file=.env scripts/smoke/all-smoke.js",
     "dev:create-admin": "node scripts/dev/create-admin.cjs",

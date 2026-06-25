@@ -9,8 +9,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
-import '../../marketplace/providers/marketplace_provider.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/models/guest_onboarding_draft.dart';
+import '../../onboarding/models/persona_copy.dart';
 import '../../notifications/providers/notifications_provider.dart';
+import '../../wedding_plans/models/active_wedding_plan.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -20,6 +24,14 @@ class MoreScreen extends StatefulWidget {
 }
 
 class _MoreScreenState extends State<MoreScreen> {
+  Future<GuestOnboardingDraft?>? _identityDraftFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _identityDraftFuture ??= _loadIdentityDraft();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -30,7 +42,6 @@ class _MoreScreenState extends State<MoreScreen> {
         return;
       }
       if (!mounted) return;
-      context.read<ProviderDashboardProvider>().loadDashboard();
       _maybeReadNotifications(context)?.loadUnreadCount();
     });
   }
@@ -39,6 +50,7 @@ class _MoreScreenState extends State<MoreScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final notifications = _maybeWatchNotifications(context);
+    final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
     final user = auth.user;
     final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
@@ -65,7 +77,21 @@ class _MoreScreenState extends State<MoreScreen> {
                         context.push(AppRouter.notifications),
                   ),
                   const SizedBox(height: 18),
-                  _ProfileCard(name: name, phone: phone),
+                  FutureBuilder<GuestOnboardingDraft?>(
+                    future: _identityDraftFuture,
+                    builder: (context, snapshot) {
+                      final identity = _IdentitySummary.from(
+                        activePlan: activePlan,
+                        draft: snapshot.data,
+                      );
+                      return _ProfileCard(
+                        name: name,
+                        phone: phone,
+                        roleLabel: identity.roleLabel,
+                        personaLabel: identity.personaLabel,
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
                   _MenuGroup(
                     children: [
@@ -92,15 +118,6 @@ class _MoreScreenState extends State<MoreScreen> {
                         iconColor: AppTheme.dMaroon,
                         iconBackground: AppTheme.dPinkBg,
                         onTap: () => context.push(AppRouter.createWeddingPlan),
-                      ),
-                      _MoreActionTile(
-                        title: 'الموردين',
-                        subtitle: 'استكشفي الموردين والخدمات المتاحة لخطتك',
-                        icon: Icons.storefront_outlined,
-                        iconColor: AppTheme.dMaroon,
-                        iconBackground: AppTheme.dPinkBg,
-                        onTap: () =>
-                            context.push(AppRouter.providerMarketplace),
                       ),
                     ],
                   ),
@@ -227,6 +244,14 @@ class _MoreScreenState extends State<MoreScreen> {
       if (context.mounted) context.go(AppRouter.login);
     }
   }
+
+  Future<GuestOnboardingDraft?> _loadIdentityDraft() async {
+    try {
+      return await context.read<GuestOnboardingStorage>().loadDraft();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
 }
 
 NotificationsProvider? _maybeReadNotifications(BuildContext context) {
@@ -243,6 +268,51 @@ NotificationsProvider? _maybeWatchNotifications(BuildContext context) {
   } on ProviderNotFoundException {
     return null;
   }
+}
+
+WeddingPlansProvider? _maybeWatchWeddingPlans(BuildContext context) {
+  try {
+    return context.watch<WeddingPlansProvider>();
+  } on ProviderNotFoundException {
+    return null;
+  }
+}
+
+bool _hasText(String? value) {
+  return value != null && value.trim().isNotEmpty;
+}
+
+class _IdentitySummary {
+  const _IdentitySummary({this.roleLabel, this.personaLabel});
+
+  factory _IdentitySummary.from({
+    ActiveWeddingPlan? activePlan,
+    GuestOnboardingDraft? draft,
+  }) {
+    if (activePlan != null) {
+      final roleLabel = activePlan.onboardingPath?.toUpperCase() == 'PROVIDER'
+          ? 'مسار: مزود خدمة'
+          : 'مسار: أرتب زفافي';
+      final persona = personaCopyForBackend(activePlan.persona);
+      return _IdentitySummary(
+        roleLabel: roleLabel,
+        personaLabel: persona.isKnown ? persona.identityLabel : null,
+      );
+    }
+
+    if (draft != null) {
+      final persona = personaCopyForGuest(draft.persona);
+      return _IdentitySummary(
+        roleLabel: appRoleLabel(draft.selectedPath),
+        personaLabel: persona.isKnown ? persona.identityLabel : null,
+      );
+    }
+
+    return const _IdentitySummary();
+  }
+
+  final String? roleLabel;
+  final String? personaLabel;
 }
 
 class _MoreHeader extends StatelessWidget {
@@ -366,10 +436,17 @@ class _RoundIconButton extends StatelessWidget {
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.name, this.phone});
+  const _ProfileCard({
+    required this.name,
+    this.phone,
+    this.roleLabel,
+    this.personaLabel,
+  });
 
   final String name;
   final String? phone;
+  final String? roleLabel;
+  final String? personaLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -442,12 +519,51 @@ class _ProfileCard extends StatelessWidget {
               ),
             ],
           ),
+          if (_hasText(roleLabel) || _hasText(personaLabel)) ...[
+            const SizedBox(height: 16),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (_hasText(roleLabel)) _IdentityChip(label: roleLabel!),
+                  if (_hasText(personaLabel))
+                    _IdentityChip(label: personaLabel!),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 }
 
+class _IdentityChip extends StatelessWidget {
+  const _IdentityChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppTheme.dPinkBg.withAlpha(110),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.dLine),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: AppTheme.dMaroon,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
 
 class _MenuGroup extends StatelessWidget {
   const _MenuGroup({required this.children});

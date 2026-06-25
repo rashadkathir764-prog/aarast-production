@@ -1,5 +1,12 @@
 import { SharedMemberRole } from '@prisma/client';
-import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateSharedMemberDto {
   @IsString()
@@ -9,6 +16,7 @@ export class CreateSharedMemberDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(40)
   @IsOptional()
   phone?: string;
 
@@ -30,9 +38,29 @@ export class CreateSharedMemberDto {
 
   @IsBoolean()
   @IsOptional()
+  canEditPlan?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   canManageTasks?: boolean;
 
   @IsBoolean()
   @IsOptional()
+  canManageGuests?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  canManageProviders?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  canInviteMembers?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
   canManageFinancialRecords?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  receiveNotifications?: boolean;
 }

@@ -48,8 +48,6 @@ class RoyalDashboardBottomNav extends StatelessWidget {
     required this.activeIndex,
     this.onHome,
     this.onMoney,
-    this.onTasks,
-    this.onGuests,
     this.onProviders,
     this.onMore,
     this.onAdd,
@@ -59,8 +57,6 @@ class RoyalDashboardBottomNav extends StatelessWidget {
   final int activeIndex;
   final VoidCallback? onHome;
   final VoidCallback? onMoney;
-  final VoidCallback? onTasks;
-  final VoidCallback? onGuests;
   final VoidCallback? onProviders;
   final VoidCallback? onMore;
   final VoidCallback? onAdd;
@@ -68,21 +64,22 @@ class RoyalDashboardBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final navHeight = 86.0 + bottomInset;
+    final dockHeight = 76.0;
+    final dockBottom = bottomInset + 16.0;
 
     return Directionality(
       textDirection: TextDirection.rtl,
       child: SizedBox(
-        height: 132 + bottomInset,
+        height: dockBottom + dockHeight + 80,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.bottomCenter,
           children: [
             Positioned(
-              bottom: navHeight - 12,
+              bottom: 0,
               left: 0,
               right: 0,
-              height: 96,
+              height: 140,
               child: IgnorePointer(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
@@ -99,92 +96,80 @@ class RoyalDashboardBottomNav extends StatelessWidget {
               ),
             ),
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: navHeight,
+              bottom: dockBottom,
+              left: 20,
+              right: 20,
+              height: dockHeight,
               child: Container(
-                padding: EdgeInsets.only(
-                  top: 14,
-                  left: 14,
-                  right: 14,
-                  bottom: bottomInset,
-                ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.96),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(32),
-                  ),
-                  border: Border(
-                    top: BorderSide(
-                      color: _RoyalHomeColors.ink.withValues(alpha: 0.05),
-                    ),
-                  ),
+                  borderRadius: BorderRadius.circular(38),
                   boxShadow: [
                     BoxShadow(
-                      color: _RoyalHomeColors.burgundy.withValues(alpha: 0.07),
-                      blurRadius: 40,
-                      offset: const Offset(0, -10),
+                      color: _RoyalHomeColors.ink.withValues(alpha: 0.06),
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _RoyalNavItem(
-                      icon: Icons.home_outlined,
-                      activeIcon: Icons.home_rounded,
-                      label: 'الرئيسية',
-                      active: activeIndex == 0,
-                      onTap: onHome,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(38),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.6),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _RoyalNavItem(
+                            icon: Icons.home_outlined,
+                            activeIcon: Icons.home_rounded,
+                            label: 'الرئيسية',
+                            active: activeIndex == 0,
+                            onTap: onHome,
+                          ),
+                          _RoyalNavItem(
+                            icon: Icons.credit_card_outlined,
+                            activeIcon: Icons.credit_card_rounded,
+                            label: 'المال',
+                            active: activeIndex == 1,
+                            onTap: onMoney,
+                          ),
+                          _RoyalNavItem(
+                            icon: Icons.grid_view_outlined,
+                            activeIcon: Icons.grid_view_rounded,
+                            label: 'الموردون',
+                            active: activeIndex == 2,
+                            onTap: onProviders,
+                          ),
+                          _RoyalNavItem(
+                            icon: Icons.more_horiz_rounded,
+                            activeIcon: Icons.more_horiz_rounded,
+                            label: 'المزيد',
+                            active: activeIndex == 3,
+                            onTap: onMore,
+                          ),
+                        ],
+                      ),
                     ),
-                    _RoyalNavItem(
-                      icon: Icons.credit_card_outlined,
-                      activeIcon: Icons.credit_card_rounded,
-                      label: 'المال',
-                      active: activeIndex == 1,
-                      onTap: onMoney,
-                    ),
-                    _RoyalNavItem(
-                      icon: Icons.check_box_outlined,
-                      activeIcon: Icons.check_box_rounded,
-                      label: 'المهام',
-                      active: activeIndex == 2,
-                      onTap: onTasks,
-                    ),
-                    _RoyalNavItem(
-                      icon: Icons.group_outlined,
-                      activeIcon: Icons.group_rounded,
-                      label: 'الضيوف',
-                      active: activeIndex == 3,
-                      onTap: onGuests,
-                    ),
-                    _RoyalNavItem(
-                      icon: Icons.grid_view_outlined,
-                      activeIcon: Icons.grid_view_rounded,
-                      label: 'الموردون',
-                      active: activeIndex == 4,
-                      onTap: onProviders,
-                    ),
-                    _RoyalNavItem(
-                      icon: Icons.more_horiz_rounded,
-                      activeIcon: Icons.more_horiz_rounded,
-                      label: 'المزيد',
-                      active: activeIndex == 5,
-                      onTap: onMore,
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
             Positioned(
-              bottom: navHeight + 10,
+              bottom: dockBottom + dockHeight + 16,
               child: _PressScale(
                 onTap: onAdd,
-                borderRadius: BorderRadius.circular(26),
+                borderRadius: BorderRadius.circular(24),
                 child: Container(
-                  height: 50,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment.topRight,
@@ -194,16 +179,16 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                         _RoyalHomeColors.goldDeep,
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.72),
-                      width: 2,
+                      color: Colors.white.withValues(alpha: 0.6),
+                      width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _RoyalHomeColors.gold.withValues(alpha: 0.36),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+                        color: _RoyalHomeColors.goldDeep.withValues(alpha: 0.25),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
@@ -214,13 +199,13 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                         'إجراء جديد',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0,
                         ),
                       ),
-                      SizedBox(width: 8),
-                      Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                      SizedBox(width: 6),
+                      Icon(Icons.add_rounded, color: Colors.white, size: 20),
                     ],
                   ),
                 ),
@@ -495,30 +480,44 @@ class _RoyalNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? _RoyalHomeColors.burgundy : _RoyalHomeColors.muted;
+    final activeColor = _RoyalHomeColors.burgundy;
+    final inactiveColor = _RoyalHomeColors.muted;
 
     return _PressScale(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: SizedBox(
-        width: 58,
-        height: 58,
+      borderRadius: BorderRadius.circular(24),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        width: 64,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(active ? activeIcon : icon, color: color, size: 25),
-            const SizedBox(height: 5),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+              child: Icon(
+                active ? activeIcon : icon,
+                key: ValueKey(active),
+                color: active ? activeColor : inactiveColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 4),
             Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: color,
-                fontSize: 10.5,
-                fontWeight: active ? FontWeight.w800 : FontWeight.w700,
-                letterSpacing: 0,
-                height: 1,
+                color: active ? activeColor : inactiveColor,
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w900 : FontWeight.w700,
               ),
             ),
           ],

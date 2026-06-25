@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -10,6 +11,7 @@ import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
+import '../widgets/quote_status_chip.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
@@ -192,6 +194,7 @@ class _ProviderProfileCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       profile.city?.nameAr ??
+                          PhoneNumberUtils.display(profile.phone) ??
                           profile.phone ??
                           'حساب مزود اعّرست',
                       maxLines: 1,
@@ -225,7 +228,9 @@ class _ProviderProfileCard extends StatelessWidget {
             children: [
               if (profile.phone?.trim().isNotEmpty == true)
                 AarastStatusPill(
-                  label: profile.phone!.trim(),
+                  label:
+                      PhoneNumberUtils.display(profile.phone) ??
+                      profile.phone!.trim(),
                   icon: Icons.phone_outlined,
                   color: AppTheme.dBlue,
                   backgroundColor: AppTheme.dBlueBg,
@@ -961,11 +966,17 @@ class _QuoteTile extends StatelessWidget {
                   const SizedBox(height: 8),
                   _SheetLine('العميل', quote.userName ?? 'عميل اعّرست'),
                   if (quote.userPhone?.trim().isNotEmpty == true)
-                    _SheetLine('التواصل', quote.userPhone!.trim()),
+                    _SheetLine(
+                      'التواصل',
+                      PhoneNumberUtils.display(quote.userPhone) ??
+                          quote.userPhone!.trim(),
+                    ),
                   if (quote.weddingPlanTitle?.trim().isNotEmpty == true)
                     _SheetLine('الخطة', quote.weddingPlanTitle!.trim()),
                   if (quote.eventDate != null)
                     _SheetLine('التاريخ', _dateText(quote.eventDate!)),
+                  if (quote.location?.hasAnyLocation == true)
+                    _SheetLine('الموقع', quote.location!.displayLabel),
                   if (quote.guestCount != null)
                     _SheetLine('الضيوف', '${quote.guestCount}'),
                   if (quote.budgetMin?.trim().isNotEmpty == true ||
@@ -987,27 +998,35 @@ class _QuoteTile extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 18),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: QuoteStatusChip(status: quote.lifecycleStatus),
+                  ),
+                  const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: () =>
-                            _updateStatus(sheetContext, quote.id, 'VIEWED'),
-                        icon: const Icon(Icons.visibility_outlined),
-                        label: const Text('قيد الرد'),
-                      ),
-                      FilledButton.icon(
-                        onPressed: () =>
-                            _updateStatus(sheetContext, quote.id, 'RESPONDED'),
-                        icon: const Icon(Icons.reply_rounded),
-                        label: const Text('تم الرد'),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            _updateStatus(sheetContext, quote.id, 'REJECTED'),
-                        child: const Text('إغلاق الطلب'),
-                      ),
+                      if (quote.status == 'SENT')
+                        OutlinedButton.icon(
+                          onPressed: () =>
+                              _updateStatus(sheetContext, quote.id, 'VIEWED'),
+                          icon: const Icon(Icons.visibility_outlined),
+                          label: const Text('قيد الرد'),
+                        ),
+                      if (quote.status == 'SENT' || quote.status == 'VIEWED')
+                        FilledButton.icon(
+                          onPressed: () =>
+                              _showOfferComposer(sheetContext, quote),
+                          icon: const Icon(Icons.request_quote_outlined),
+                          label: const Text('إرسال عرض سعر'),
+                        ),
+                      if (quote.status == 'SENT' || quote.status == 'VIEWED')
+                        TextButton(
+                          onPressed: () =>
+                              _updateStatus(sheetContext, quote.id, 'REJECTED'),
+                          child: const Text('رفض الطلب'),
+                        ),
                     ],
                   ),
                 ],
@@ -1028,6 +1047,102 @@ class _QuoteTile extends StatelessWidget {
         .read<ProviderDashboardProvider>()
         .updateQuoteStatus(quoteRequestId: quoteRequestId, status: status);
     if (context.mounted && ok) Navigator.of(context).pop();
+  }
+
+  Future<void> _showOfferComposer(
+    BuildContext sheetContext,
+    QuoteRequest quote,
+  ) async {
+    final titleController = TextEditingController();
+    final amountController = TextEditingController();
+    final messageController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final sent = await showDialog<bool>(
+      context: sheetContext,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إرسال عرض سعر حقيقي'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'عنوان العرض (اختياري)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'المبلغ (اختياري)',
+                      suffixText: 'YER',
+                    ),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return null;
+                      return num.tryParse(text) == null
+                          ? 'أدخل مبلغًا صحيحًا'
+                          : null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: messageController,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'تفاصيل العرض',
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'تفاصيل العرض مطلوبة'
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final ok = await dialogContext
+                    .read<ProviderDashboardProvider>()
+                    .createQuoteOffer(
+                      quoteRequestId: quote.id,
+                      title: titleController.text,
+                      amount: amountController.text,
+                      message: messageController.text,
+                    );
+                if (dialogContext.mounted && ok) {
+                  Navigator.of(dialogContext).pop(true);
+                }
+              },
+              child: const Text('إرسال العرض'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    titleController.dispose();
+    amountController.dispose();
+    messageController.dispose();
+    if (sent == true && sheetContext.mounted) {
+      Navigator.of(sheetContext).pop();
+    }
   }
 }
 

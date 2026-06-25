@@ -69,7 +69,7 @@ void main() {
       );
 
       expect(find.text('التنبيهات'), findsOneWidget);
-      expect(find.text('لا توجد تنبيهات الآن'), findsOneWidget);
+      expect(find.text('لا توجد تنبيهات مهمة الآن.'), findsOneWidget);
       expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
       expect(find.text('وضع تجربة التصميم'), findsNothing);
     },

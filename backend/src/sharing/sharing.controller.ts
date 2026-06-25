@@ -119,6 +119,27 @@ export class ApiV1WeddingPlanInvitesController {
   ) {
     return this.sharingService.createInvite(currentUser, weddingPlanId, dto);
   }
+
+  @Get()
+  findInvites(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+  ) {
+    return this.sharingService.findInvitesForPlan(currentUser, weddingPlanId);
+  }
+
+  @Delete(':inviteId')
+  cancelInvite(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('weddingPlanId') weddingPlanId: string,
+    @Param('inviteId') inviteId: string,
+  ) {
+    return this.sharingService.cancelInvite(
+      currentUser,
+      weddingPlanId,
+      inviteId,
+    );
+  }
 }
 
 @Controller('api/v1/invites')
@@ -142,6 +163,14 @@ export class ApiV1InviteAcceptController {
     @Param('token') token: string,
   ) {
     return this.sharingService.acceptInvite(currentUser, token);
+  }
+
+  @Post(':token/decline')
+  declineInvite(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('token') token: string,
+  ) {
+    return this.sharingService.declineInvite(currentUser, token);
   }
 }
 

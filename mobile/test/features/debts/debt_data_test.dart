@@ -61,6 +61,36 @@ void main() {
       expect(debt.creditorPhone, '+967777123456');
     });
 
+    test('preserves non-Yemen international creditor phone safely', () async {
+      final apiClient = ApiClient(tokenProvider: () async => 'token');
+      Map<String, dynamic>? capturedPayload;
+      apiClient.dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            capturedPayload = Map<String, dynamic>.from(options.data as Map);
+            handler.resolve(
+              Response<Object?>(
+                requestOptions: options,
+                statusCode: 201,
+                data: _debtJson(creditorPhone: '+966501234567'),
+              ),
+            );
+          },
+        ),
+      );
+      final api = DebtInstallmentApi(apiClient);
+
+      await api.createDebt(
+        weddingPlanId: 'plan-1',
+        creditorName: 'Vendor',
+        creditorPhone: '+966 50 123 4567',
+        title: 'Hall balance',
+        totalAmount: '1000',
+      );
+
+      expect(capturedPayload?['creditorPhone'], '+966501234567');
+    });
+
     test('omits a blank creditorPhone', () async {
       final apiClient = ApiClient(tokenProvider: () async => 'token');
       Map<String, dynamic>? capturedPayload;

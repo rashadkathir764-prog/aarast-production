@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../auth/utils/auth_action_guard.dart';
-import '../../onboarding/models/guest_onboarding_draft.dart';
+import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/royal_home_today_center.dart';
@@ -19,6 +19,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final dashboardSummary = summary.toDashboardSummary();
     final planId = dashboardSummary.planId;
+    final personaCopy = personaCopyForGuest(summary.plan.persona);
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -42,7 +43,9 @@ class LocalGuestDashboardScreen extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 520),
               child: RoyalHomeTodayCenter(
                 summary: dashboardSummary,
-                userName: _guestDisplayName(summary.plan.persona),
+                userName: personaCopy.label,
+                personaHeadline: personaCopy.dashboardHeadline,
+                personaSupportText: personaCopy.dashboardSupport,
                 bottomPadding: 158,
                 notice: _LocalSyncNotice(
                   needsSync: summary.plan.needsSync,
@@ -50,8 +53,10 @@ class LocalGuestDashboardScreen extends StatelessWidget {
                 ),
                 onNotifications: () => _openLocalNotifications(context, planId),
                 onProfile: () => context.push(AppRouter.more),
-                onOpenPlan: () =>
-                    _openLocalBrowse(context, planId, area: 'الخطة'),
+                onOpenPlan: () => context.push(
+                  AppRouter.planCenter(planId),
+                  extra: {'summary': dashboardSummary},
+                ),
                 onOpenMoney: () =>
                     _openLocalBrowse(context, planId, area: 'المال'),
                 onOpenTasks: () =>
@@ -126,6 +131,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     BuildContext context,
     String planId, {
     String area = 'الخطة',
+    DashboardSummary? dashboardSummary,
   }) {
     final hasBackendPlan =
         !planId.startsWith('guest-plan-') &&
@@ -133,16 +139,15 @@ class LocalGuestDashboardScreen extends StatelessWidget {
         planId.isNotEmpty &&
         planId != 'local-guest-plan';
     if (hasBackendPlan) {
-      _routeByArea(context, planId, area);
+      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
       return;
     }
     if (area == 'الخطة') {
-      _routeByArea(context, planId, area);
+      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
       return;
     }
-    
     if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
-      _routeByArea(context, planId, area);
+      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
       return;
     }
     AuthActionGuard.requireAccount(
@@ -160,7 +165,12 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     _requireAccountForNotifications(context);
   }
 
-  void _routeByArea(BuildContext context, String planId, String area) {
+  void _routeByArea(
+    BuildContext context,
+    String planId,
+    String area, {
+    DashboardSummary? dashboardSummary,
+  }) {
     switch (area) {
       case 'المال':
         context.push(AppRouter.finance(planId));
@@ -175,7 +185,9 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       default:
         context.push(
           AppRouter.planCenter(planId),
-          extra: {'summary': summary.toDashboardSummary()},
+          extra: dashboardSummary == null
+              ? null
+              : {'summary': dashboardSummary},
         );
         return;
     }
@@ -224,7 +236,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       _openLocalBrowse(context, planId, area: 'المهام');
       return;
     }
-    _openLocalBrowse(context, planId, area: 'الخطة');
+    _openLocalBrowse(context, planId, area: 'الخطة', dashboardSummary: summary);
   }
 
   Future<bool> _requireAccountForSync(BuildContext context) {
@@ -264,7 +276,9 @@ class _LocalSyncNotice extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF800020).withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF800020).withValues(alpha: 0.1)),
+            border: Border.all(
+              color: const Color(0xFF800020).withValues(alpha: 0.1),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -308,17 +322,5 @@ class _LocalSyncNotice extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-String _guestDisplayName(GuestPersona? persona) {
-  switch (persona) {
-    case GuestPersona.bride:
-      return 'العروس';
-    case GuestPersona.helper:
-      return 'مساعد الخطة';
-    case GuestPersona.groom:
-    case null:
-      return 'صاحب الخطة';
   }
 }

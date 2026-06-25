@@ -1,4 +1,10 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class ApplyProviderDto {
   @IsString()
@@ -7,6 +13,7 @@ export class ApplyProviderDto {
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(40)
   phone!: string;
 
   @IsString()

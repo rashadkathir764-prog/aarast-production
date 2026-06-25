@@ -17,7 +17,7 @@ void main() {
 
       expect(seed.cityLabel, 'Aden');
       expect(seed.estimatedBudgetLabel, 'لم تحدد الميزانية بعد');
-      expect(seed.nextBestAction, 'أضف ميزانية تقريبية');
+      expect(seed.nextBestAction, 'أضيفي ميزانية تقريبية');
     });
 
     test('asks for wedding date when date is unknown', () {
@@ -34,7 +34,7 @@ void main() {
       );
 
       expect(seed.weddingDateLabel, 'التاريخ غير معروف الآن');
-      expect(seed.nextBestAction, 'حدد تاريخ الزفاف');
+      expect(seed.nextBestAction, 'حدد تاريخ العرس');
     });
 
     test('uses selected categories when core seeds are present', () {
@@ -54,7 +54,27 @@ void main() {
       expect(seed.title, 'خطة زفاف Ibb');
       expect(seed.selectedPriorities, ['tasks']);
       expect(seed.selectedCategories, ['hall', 'food']);
-      expect(seed.nextBestAction, 'راجع التصنيفات المقترحة');
+      expect(seed.nextBestAction, 'راجع تصنيفات البداية');
+    });
+
+    test('builds structured location labels from legacy guest fields', () {
+      final seed = GeneratedDashboardSeed.fromDraft(
+        const GuestOnboardingDraft.empty().copyWith(
+          selectedPath: GuestOnboardingPath.weddingUser,
+          persona: GuestPersona.bride,
+          governorate: 'صنعاء',
+          city: 'صنعاء',
+          district: 'السبعين',
+          neighborhood: 'حدة',
+          selectedCategoryKeys: ['hall'],
+        ),
+      );
+
+      expect(seed.title, 'خطة زفاف صنعاء - السبعين');
+      expect(seed.cityLabel, 'صنعاء - السبعين - حدة');
+      expect(seed.shortLocationLabel, 'صنعاء - السبعين');
+      expect(seed.mediumLocationLabel, 'صنعاء - السبعين - حدة');
+      expect(seed.fullLocationLabel, 'صنعاء - السبعين - حدة');
     });
   });
 }

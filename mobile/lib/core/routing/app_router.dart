@@ -25,6 +25,7 @@ import '../../features/marketplace/screens/quote_request_screen.dart';
 import '../../features/marketplace/widgets/provider_auth_gate.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
+import '../../features/sharing/screens/invite_decision_screen.dart';
 import '../../features/home/screens/dashboard_entry_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/shell/rebuild/user_rebuild_shell.dart';
@@ -38,6 +39,7 @@ import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
+import '../../features/wedding_plans/models/dashboard_summary.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../config/app_feature_flags.dart';
@@ -63,6 +65,7 @@ class AppRouter {
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
+  static String inviteDecision(String token) => '/invites/$token';
   static const more = '/more';
   static const settings = '/settings';
   static const support = '/support';
@@ -298,6 +301,12 @@ class AppRouter {
           path: notifications,
           builder: (context, state) => const NotificationsScreen(),
         ),
+        GoRoute(
+          path: '/invites/:token',
+          builder: (context, state) => InviteDecisionScreen(
+            token: state.pathParameters['token'] ?? '',
+          ),
+        ),
         GoRoute(path: more, builder: (context, state) => const MoreScreen()),
         GoRoute(
           path: settings,
@@ -339,11 +348,14 @@ class AppRouter {
             final id = state.pathParameters['id'] ?? '';
             final sharedMember = state.extra is SharedMember
                 ? state.extra! as SharedMember
-                : (state.extra is Map && (state.extra as Map)['sharedMember'] != null)
-                    ? (state.extra as Map)['sharedMember'] as SharedMember
-                    : null;
-            final initialSummary = (state.extra is Map && (state.extra as Map)['summary'] != null)
-                ? (state.extra as Map)['summary']
+                : (state.extra is Map &&
+                      (state.extra as Map)['sharedMember'] is SharedMember)
+                ? (state.extra as Map)['sharedMember'] as SharedMember
+                : null;
+            final initialSummary =
+                state.extra is Map &&
+                    (state.extra as Map)['summary'] is DashboardSummary
+                ? (state.extra as Map)['summary'] as DashboardSummary
                 : null;
             return PlanCenterScreen(
               weddingPlanId: id,

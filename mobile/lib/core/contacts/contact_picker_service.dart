@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
+import '../../shared/models/contact_phone_draft.dart';
+
 class ContactPickerException implements Exception {
   const ContactPickerException(this.message);
 
@@ -14,7 +16,7 @@ class ContactPickerException implements Exception {
 class ContactPickerService {
   const ContactPickerService._();
 
-  static Future<String?> pickPhoneNumber(BuildContext context) async {
+  static Future<ContactPhoneDraft?> pickContact(BuildContext context) async {
     final permission = await FlutterContacts.permissions.request(
       PermissionType.read,
     );
@@ -23,7 +25,7 @@ class ContactPickerService {
     }
 
     final contact = await FlutterContacts.native.showPicker(
-      properties: {ContactProperty.phone},
+      properties: {ContactProperty.name, ContactProperty.phone},
     );
     if (contact == null) return null;
 
@@ -31,9 +33,32 @@ class ContactPickerService {
     if (phones.isEmpty) {
       throw const ContactPickerException('لا يوجد رقم هاتف لهذه الجهة');
     }
-    if (phones.length == 1) return phones.first;
 
-    if (!context.mounted) return null;
+    String? selectedPhone;
+    if (phones.length == 1) {
+      selectedPhone = phones.first;
+    } else {
+      if (!context.mounted) return null;
+      selectedPhone = await _selectPhone(context, phones);
+    }
+    if (selectedPhone == null) return null;
+
+    return ContactPhoneDraft.fromInput(
+      name: contact.displayName ?? '',
+      rawPhone: selectedPhone,
+      source: ContactPhoneSource.deviceContact,
+    );
+  }
+
+  static Future<String?> pickPhoneNumber(BuildContext context) async {
+    final contact = await pickContact(context);
+    return contact?.normalizedPhone ?? contact?.rawPhone;
+  }
+
+  static Future<String?> _selectPhone(
+    BuildContext context,
+    List<String> phones,
+  ) {
     return showModalBottomSheet<String>(
       context: context,
       builder: (sheetContext) {

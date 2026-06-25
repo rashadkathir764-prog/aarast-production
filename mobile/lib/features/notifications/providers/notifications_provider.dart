@@ -124,6 +124,30 @@ class NotificationsProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> archiveNotification(AarastNotification notification) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.archiveNotification(notification.id);
+      _notifications = _notifications
+          .where((item) => item.id != notification.id)
+          .toList();
+      _unreadCount = await _api.getUnreadCount();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر أرشفة التنبيه.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();

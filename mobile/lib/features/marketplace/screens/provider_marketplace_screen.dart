@@ -7,8 +7,12 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
+import '../widgets/quote_status_chip.dart';
 
 class ProviderMarketplaceScreen extends StatefulWidget {
   const ProviderMarketplaceScreen({this.embedded = false, super.key});
@@ -23,6 +27,8 @@ class ProviderMarketplaceScreen extends StatefulWidget {
 class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final _searchController = TextEditingController();
   final _searchFocusNode = FocusNode();
+  WeddingLocationDraft? _weddingLocation;
+  String? _weddingLocationPlanId;
 
   @override
   void initState() {
@@ -35,7 +41,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
           await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
-      provider.loadMarketplace(includeAccountData: includeAccountData);
+      await provider.loadMarketplace(includeAccountData: includeAccountData);
+      if (!mounted) return;
+      await _loadWeddingLocationContext(
+        hasAccount: includeAccountData,
+        marketplace: provider,
+      );
     });
   }
 
@@ -70,15 +81,22 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                         widget.embedded ? 124 : 28,
                       ),
                       children: [
-                        _MarketplaceHeader(
-                          embedded: widget.embedded,
-                          onDashboard: () =>
-                              context.push(AppRouter.providerApply),
-                        ),
+                        _MarketplaceHeader(embedded: widget.embedded),
                         const SizedBox(height: 18),
                         _MarketplaceHero(
                           onTap: () => _searchFocusNode.requestFocus(),
                         ),
+                        const SizedBox(height: 12),
+                        _LocationContextCard(
+                          location: _weddingLocation,
+                          onCompleteLocation: _openLocationCompletion,
+                        ),
+                        if (provider.includesAccountData) ...[
+                          const SizedBox(height: 12),
+                          _QuoteRequestsOverview(
+                            quotes: provider.quoteRequests,
+                          ),
+                        ],
                         const SizedBox(height: 18),
                         _MarketplaceSearch(
                           controller: _searchController,
@@ -101,7 +119,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                             icon: Icons.storefront_outlined,
                             title: 'لا توجد نتائج مطابقة',
                             message:
-                                'جرّبي تغيير المدينة أو الفئة، أو امسحي الفلاتر لاستعراض الموردين المتاحين.',
+                                _weddingLocation?.hasRequiredLocation == true
+                                ? 'جرّبي تغيير المدينة أو الفئة، أو امسحي الفلاتر لاستعراض الموردين المتاحين.'
+                                : 'حدد موقع الزفاف لاقتراح موردين أقرب لك، أو امسحي الفلاتر لاستعراض الموردين المتاحين.',
                             action: OutlinedButton.icon(
                               onPressed: provider.clearFilters,
                               icon: const Icon(Icons.tune_rounded),
@@ -109,7 +129,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                             ),
                           )
                         else ...[
-                          _ResultsHeader(count: provider.providers.length),
+                          _ResultsHeader(
+                            count: provider.providers.length,
+                            location: _weddingLocation,
+                          ),
                           const SizedBox(height: 12),
                           for (final item in provider.providers) ...[
                             _ProviderCard(
@@ -143,13 +166,100 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       ),
     );
   }
+
+  Future<void> _loadWeddingLocationContext({
+    required bool hasAccount,
+    required ProviderMarketplaceProvider marketplace,
+  }) async {
+    WeddingLocationDraft? location;
+    String? planId;
+    GuestOnboardingStorage? guestStorage;
+    WeddingPlansProvider? weddingPlans;
+
+    try {
+      guestStorage = context.read<GuestOnboardingStorage>();
+    } on ProviderNotFoundException {
+      // Some isolated widget tests mount the marketplace without app-level providers.
+    }
+    if (hasAccount) {
+      try {
+        weddingPlans = context.read<WeddingPlansProvider>();
+      } on ProviderNotFoundException {
+        // Marketplace browsing can still work without plan context.
+      }
+    }
+
+    if (guestStorage != null) {
+      final guestPlan = await guestStorage.loadGuestPlan();
+      final guestLocation = guestPlan?.weddingLocation;
+      if (guestLocation?.hasAnyLocation == true) {
+        location = guestLocation;
+        planId = guestPlan?.guestPlanId;
+      }
+    }
+
+    if (location?.hasAnyLocation != true && hasAccount) {
+      if (weddingPlans != null) {
+        if (weddingPlans.activePlan == null) {
+          await weddingPlans.loadActiveWeddingPlan();
+        }
+        final activePlan = weddingPlans.activePlan;
+        final activeLocation = activePlan?.weddingLocation;
+        if (activeLocation?.hasAnyLocation == true) {
+          location = activeLocation;
+          planId = activePlan?.id;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    final matchingCityId = location?.hasRequiredLocation == true
+        ? _matchingCityId(marketplace, location!)
+        : null;
+    setState(() {
+      _weddingLocation = location;
+      _weddingLocationPlanId = planId;
+    });
+    if (matchingCityId != null && marketplace.cityId == null) {
+      await marketplace.setCity(matchingCityId);
+    }
+  }
+
+  String? _matchingCityId(
+    ProviderMarketplaceProvider marketplace,
+    WeddingLocationDraft location,
+  ) {
+    final candidates = <String>[
+      if (location.cityOrDistrict?.trim().isNotEmpty == true)
+        location.cityOrDistrict!.trim(),
+      if (location.governorate?.trim().isNotEmpty == true)
+        location.governorate!.trim(),
+    ];
+    if (candidates.isEmpty) return null;
+
+    for (final city in marketplace.cities) {
+      final cityName = city.nameAr.trim();
+      if (candidates.any((candidate) => candidate == cityName)) {
+        return city.id;
+      }
+    }
+    return null;
+  }
+
+  void _openLocationCompletion() {
+    final planId = _weddingLocationPlanId;
+    if (planId != null && planId.trim().isNotEmpty) {
+      context.push(AppRouter.planCenter(planId));
+      return;
+    }
+    context.push(AppRouter.onboarding);
+  }
 }
 
 class _MarketplaceHeader extends StatelessWidget {
-  const _MarketplaceHeader({required this.embedded, required this.onDashboard});
+  const _MarketplaceHeader({required this.embedded});
 
   final bool embedded;
-  final VoidCallback onDashboard;
 
   @override
   Widget build(BuildContext context) {
@@ -191,7 +301,6 @@ class _MarketplaceHeader extends StatelessWidget {
     );
   }
 }
-
 
 class _MarketplaceHero extends StatelessWidget {
   const _MarketplaceHero({required this.onTap});
@@ -364,6 +473,187 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
+class _LocationContextCard extends StatelessWidget {
+  const _LocationContextCard({
+    required this.location,
+    required this.onCompleteLocation,
+  });
+
+  final WeddingLocationDraft? location;
+  final VoidCallback onCompleteLocation;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLocation = location?.hasRequiredLocation == true;
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      color: hasLocation ? AppTheme.dCreamBg : AppTheme.dCard2,
+      border: Border.all(color: AppTheme.dLine),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: hasLocation ? AppTheme.dGoldDeep : AppTheme.dPinkBg,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Icon(
+              hasLocation ? Icons.near_me_outlined : Icons.add_location_alt,
+              color: hasLocation ? Colors.white : AppTheme.dMaroon,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hasLocation
+                      ? 'موردون قريبون من ${location!.mediumLabel ?? location!.shortLabel}'
+                      : 'حدد موقع الزفاف لاقتراح موردين أقرب لك.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hasLocation
+                      ? 'نستخدم الموقع كفلتر مدينة عند وجود تطابق واضح. لا نعرض مسافات أو ترتيب قريب بدون بيانات حقيقية.'
+                      : 'يمكنك إكمال المحافظة والمدينة/المديرية من مسار الخطة بدون تسجيل دخول.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                    height: 1.45,
+                  ),
+                ),
+                if (!hasLocation) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: OutlinedButton.icon(
+                      onPressed: onCompleteLocation,
+                      icon: const Icon(Icons.place_outlined, size: 18),
+                      label: const Text('إكمال الموقع'),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuoteRequestsOverview extends StatelessWidget {
+  const _QuoteRequestsOverview({required this.quotes});
+
+  final List<QuoteRequest> quotes;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = quotes
+        .where((quote) => quote.lifecycleStatus == 'PENDING_PROVIDER')
+        .length;
+    final received = quotes
+        .where((quote) => quote.lifecycleStatus == 'RECEIVED')
+        .length;
+    final accepted = quotes
+        .where((quote) => quote.lifecycleStatus == 'ACCEPTED')
+        .length;
+    final latest = quotes.isEmpty ? null : quotes.first;
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      color: AppTheme.dCard2,
+      border: Border.all(color: AppTheme.dLine),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.request_quote_outlined, color: AppTheme.dMaroon),
+              const SizedBox(width: 8),
+              Text(
+                'طلبات العروض',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.dInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (latest == null)
+            const Text(
+              'عند طلب عروض الأسعار ستظهر هنا.',
+              style: TextStyle(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          else ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _QuoteCount(label: 'بانتظار الرد', value: pending),
+                _QuoteCount(label: 'وصلت', value: received),
+                _QuoteCount(label: 'مقبولة', value: accepted),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    latest.provider?.businessName ?? 'آخر طلب عرض سعر',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                QuoteStatusChip(
+                  status: latest.lifecycleStatus,
+                  compact: true,
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QuoteCount extends StatelessWidget {
+  const _QuoteCount({required this.label, required this.value});
+
+  final String label;
+  final int value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '$label: $value',
+      style: const TextStyle(
+        color: AppTheme.dInkSoft,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
 class _FilterOption {
   const _FilterOption(this.id, this.label);
 
@@ -404,17 +694,21 @@ class _MenuFilterChip extends StatelessWidget {
 }
 
 class _ResultsHeader extends StatelessWidget {
-  const _ResultsHeader({required this.count});
+  const _ResultsHeader({required this.count, required this.location});
 
   final int count;
+  final WeddingLocationDraft? location;
 
   @override
   Widget build(BuildContext context) {
+    final title = location?.hasRequiredLocation == true
+        ? 'موردون قريبون من ${location!.shortLabel}'
+        : 'الموردون المتاحون';
     return Row(
       children: [
         Expanded(
           child: Text(
-            'الأقرب لخطتك',
+            title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppTheme.dInk,
               fontWeight: FontWeight.w900,

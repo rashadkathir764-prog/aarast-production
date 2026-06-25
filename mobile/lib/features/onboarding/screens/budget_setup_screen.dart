@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/guest_onboarding_draft.dart';
+import '../models/persona_copy.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
 
 class BudgetSetupScreen extends StatefulWidget {
@@ -68,10 +69,12 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final copy = personaCopyForGuest(widget.draft.persona);
+
     return GuestOnboardingStepScaffold(
       stepNumber: 6,
       title: 'ميزانية تقريبية',
-      description: 'أدخل مبلغًا تقديريًا أو اختر تخطي هذه الخطوة الآن.',
+      description: copy.budgetDescription,
       continueLabel: 'حفظ الميزانية',
       onContinue: _canContinue
           ? () => widget.onSaveBudget?.call(

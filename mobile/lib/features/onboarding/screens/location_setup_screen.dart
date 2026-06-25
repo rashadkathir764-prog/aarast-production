@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../models/guest_onboarding_draft.dart';
+import '../models/persona_copy.dart';
+import '../models/wedding_location_draft.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
+import '../widgets/location_picker_section.dart';
 
 class LocationSetupScreen extends StatefulWidget {
   const LocationSetupScreen({
@@ -42,10 +45,10 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
       text: widget.draft.governorate,
     );
     _cityController = TextEditingController(text: widget.draft.city);
-    _districtController = TextEditingController(text: widget.draft.district);
-    _neighborhoodController = TextEditingController(
-      text: widget.draft.neighborhood,
+    _districtController = TextEditingController(
+      text: widget.draft.district ?? widget.draft.neighborhood,
     );
+    _neighborhoodController = TextEditingController();
     _streetController = TextEditingController(text: widget.draft.street);
     _addressNoteController = TextEditingController(
       text: widget.draft.addressNote,
@@ -72,16 +75,25 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
   }
 
   bool get _canContinue {
-    return _governorateController.text.trim().isNotEmpty ||
-        _cityController.text.trim().isNotEmpty;
+    return WeddingLocationDraft.fromLegacyFields(
+      governorate: _governorateController.text,
+      city: _cityController.text,
+      district: _districtController.text,
+      neighborhood: _neighborhoodController.text,
+      street: _streetController.text,
+      addressNote: _addressNoteController.text,
+    ).hasRequiredLocation;
   }
 
   @override
   Widget build(BuildContext context) {
+    final copy = personaCopyForGuest(widget.draft.persona);
+
     return GuestOnboardingStepScaffold(
       stepNumber: 3,
-      title: 'أين سيكون الزفاف؟',
-      description: 'أدخل الموقع يدويًا. لا يتم طلب إذن الموقع في هذه المرحلة.',
+      title: copy.locationTitle,
+      description:
+          'حدد موقع الزفاف خطوة بخطوة. لا نطلب GPS أو خرائط في هذه المرحلة.',
       continueLabel: 'حفظ الموقع',
       onContinue: _canContinue
           ? () => widget.onSaveLocation?.call(
@@ -94,43 +106,14 @@ class _LocationSetupScreenState extends State<LocationSetupScreen> {
             )
           : null,
       onBack: widget.onBack,
-      child: Column(
-        children: [
-          _LocationField(controller: _governorateController, label: 'المحافظة'),
-          const SizedBox(height: 12),
-          _LocationField(
-            controller: _cityController,
-            label: 'المدينة أو المديرية',
-          ),
-          const SizedBox(height: 12),
-          _LocationField(controller: _districtController, label: 'الحي'),
-          const SizedBox(height: 12),
-          _LocationField(controller: _neighborhoodController, label: 'المنطقة'),
-          const SizedBox(height: 12),
-          _LocationField(controller: _streetController, label: 'الشارع'),
-          const SizedBox(height: 12),
-          _LocationField(
-            controller: _addressNoteController,
-            label: 'ملاحظة على العنوان',
-          ),
-        ],
+      child: LocationPickerSection(
+        governorateController: _governorateController,
+        cityOrDistrictController: _cityController,
+        areaOrNeighborhoodController: _districtController,
+        streetController: _streetController,
+        detailedAddressController: _addressNoteController,
+        onChanged: _handleLocationChanged,
       ),
-    );
-  }
-}
-
-class _LocationField extends StatelessWidget {
-  const _LocationField({required this.controller, required this.label});
-
-  final TextEditingController controller;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      textAlign: TextAlign.right,
-      decoration: InputDecoration(labelText: label),
     );
   }
 }

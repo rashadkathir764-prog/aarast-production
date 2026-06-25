@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/contacts/contact_phone_field_suffix.dart';
-import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/contacts/contact_duplicate_utils.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../../shared/models/contact_phone_draft.dart';
+import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../models/debt.dart';
 import '../providers/debt_installment_provider.dart';
 
 class CreateDebtScreen extends StatefulWidget {
@@ -31,11 +34,23 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
 
   DateTime? _dueDate;
   String _status = 'OPEN';
+  String? _localErrorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _creditorNameController.addListener(_handleContactChanged);
+    _creditorPhoneController.addListener(_handleContactChanged);
+  }
 
   @override
   void dispose() {
-    _creditorNameController.dispose();
-    _creditorPhoneController.dispose();
+    _creditorNameController
+      ..removeListener(_handleContactChanged)
+      ..dispose();
+    _creditorPhoneController
+      ..removeListener(_handleContactChanged)
+      ..dispose();
     _titleController.dispose();
     _totalAmountController.dispose();
     _paidAmountController.dispose();
@@ -108,22 +123,21 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                                     validator: _required('اسم الدائن مطلوب'),
                                   ),
                                   const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _creditorPhoneController,
-                                    textAlign: TextAlign.right,
-                                    keyboardType: TextInputType.phone,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: InputDecoration(
-                                      labelText: 'رقم الدائن (اختياري)',
-                                      hintText: 'مثال: 77xxxxxxx',
-                                      prefixIcon: const Icon(
-                                        Icons.phone_outlined,
-                                      ),
-                                      suffixIcon: ContactPhoneFieldSuffix(
-                                        controller: _creditorPhoneController,
-                                      ),
+                                  ContactPhoneField(
+                                    nameController: _creditorNameController,
+                                    phoneController: _creditorPhoneController,
+                                    label: 'رقم جوال الدائن (اختياري)',
+                                    duplicateMessage: _sameCreditorWarning(
+                                      provider.debts,
                                     ),
-                                    validator: _optionalPhone,
+                                    duplicateIsBlocking: false,
+                                    planContacts: _creditorPlanContacts(
+                                      provider.debts,
+                                    ),
+                                    onDraftChanged: (_) {
+                                      if (!mounted) return;
+                                      setState(() => _localErrorMessage = null);
+                                    },
                                   ),
                                   const SizedBox(height: 14),
                                   TextFormField(
@@ -244,10 +258,13 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                                       alignLabelWithHint: true,
                                     ),
                                   ),
-                                  if (provider.errorMessage != null) ...[
+                                  if (_localErrorMessage != null ||
+                                      provider.errorMessage != null) ...[
                                     const SizedBox(height: 14),
                                     AarastStatusPill(
-                                      label: provider.errorMessage!,
+                                      label:
+                                          _localErrorMessage ??
+                                          provider.errorMessage!,
                                       color: AppTheme.danger,
                                       icon: Icons.error_outline_rounded,
                                     ),
@@ -277,6 +294,48 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
   }
 
   void _setStatus(String value) => setState(() => _status = value);
+
+  void _handleContactChanged() {
+    if (mounted) {
+      setState(() => _localErrorMessage = null);
+    }
+  }
+
+  String? _sameCreditorWarning(List<Debt> debts) {
+    final phone = _creditorPhoneController.text;
+    final name = _creditorNameController.text;
+    if (phone.trim().isEmpty || name.trim().isEmpty) return null;
+
+    final duplicate = ContactDuplicateUtils.findByPhone(
+      debts,
+      candidatePhone: phone,
+      phoneOf: (debt) => debt.creditorPhone,
+    );
+    if (duplicate == null ||
+        !ContactDuplicateUtils.sameName(duplicate.creditorName, name)) {
+      return null;
+    }
+    return 'هذا الدائن موجود في دين آخر. يمكنك المتابعة لالتزام مختلف.';
+  }
+
+  List<ContactPhoneDraft> _creditorPlanContacts(List<Debt> debts) {
+    final seen = <String>{};
+    final contacts = <ContactPhoneDraft>[];
+    for (final debt in debts) {
+      final phone = debt.creditorPhone;
+      final key = PhoneNumberUtils.comparisonKey(phone);
+      if (phone == null || key == null || !seen.add(key)) continue;
+      contacts.add(
+        ContactPhoneDraft.fromInput(
+          name: debt.creditorName,
+          rawPhone: phone,
+          source: ContactPhoneSource.planContact,
+          relation: 'دائن',
+        ),
+      );
+    }
+    return contacts;
+  }
 
   Future<void> _showCalendarPicker() async {
     FocusScope.of(context).unfocus();
@@ -346,18 +405,30 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final provider = context.read<DebtInstallmentProvider>();
+    final normalizedPhone = PhoneNumberUtils.normalizeOptional(
+      _creditorPhoneController.text,
+    );
+    if (_isExactDebtDuplicate(provider.debts, normalizedPhone)) {
+      setState(() {
+        _localErrorMessage =
+            'يوجد دين مطابق لنفس الدائن والرقم والعنوان والمبلغ.';
+      });
+      return;
+    }
+
     if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
       return;
     }
     if (!mounted) return;
 
-    final provider = context.read<DebtInstallmentProvider>();
     final paid = _paidAmountController.text.trim();
     final note = _noteController.text.trim();
     final debt = await provider.createDebt(
       weddingPlanId: widget.weddingPlanId,
       creditorName: _creditorNameController.text.trim(),
-      creditorPhone: _creditorPhoneController.text,
+      creditorPhone: normalizedPhone,
       title: _titleController.text.trim(),
       totalAmount: _totalAmountController.text.trim(),
       paidAmount: paid.isEmpty ? null : paid,
@@ -367,6 +438,21 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
     );
 
     if (debt != null && mounted) _goBack();
+  }
+
+  bool _isExactDebtDuplicate(List<Debt> debts, String? normalizedPhone) {
+    final creditorName = _creditorNameController.text;
+    final title = ContactDuplicateUtils.normalizeName(_titleController.text);
+    final totalAmount = num.tryParse(_totalAmountController.text.trim());
+    if (title.isEmpty || totalAmount == null) return false;
+
+    return debts.any((debt) {
+      final debtAmount = num.tryParse(debt.totalAmount);
+      return ContactDuplicateUtils.sameName(debt.creditorName, creditorName) &&
+          PhoneNumberUtils.areEquivalent(debt.creditorPhone, normalizedPhone) &&
+          ContactDuplicateUtils.normalizeName(debt.title) == title &&
+          debtAmount == totalAmount;
+    });
   }
 }
 
@@ -582,10 +668,6 @@ String? _nonNegativeOptional(String? value) {
     return 'المبلغ يجب أن يكون رقماً غير سالب';
   }
   return null;
-}
-
-String? _optionalPhone(String? value) {
-  return isValidOptionalYemeniPhoneInput(value) ? null : 'رقم الهاتف غير صحيح';
 }
 
 String _formatDate(DateTime date) {

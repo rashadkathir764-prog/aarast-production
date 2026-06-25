@@ -1107,15 +1107,15 @@ class _AnimatedDonutChart extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _formatMoney(remainingStr),
+                  '${(ratio * 100).toInt()}%',
                   style: const TextStyle(
                     color: _RoyalColors.burgundy,
-                    fontSize: 16,
+                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const Text(
-                  'المتبقي',
+                  'مُستهلك',
                   style: TextStyle(
                     color: _RoyalColors.muted,
                     fontSize: 10,

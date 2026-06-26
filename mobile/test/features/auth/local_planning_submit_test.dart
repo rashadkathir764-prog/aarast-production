@@ -6,8 +6,10 @@ import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
 import 'package:aarast_mobile/features/debts/data/debt_installment_api.dart';
 import 'package:aarast_mobile/features/debts/providers/debt_installment_provider.dart';
 import 'package:aarast_mobile/features/debts/screens/create_debt_screen.dart';
+import 'package:aarast_mobile/features/debts/screens/debt_installment_screen.dart';
 import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
+import 'package:aarast_mobile/features/finance/screens/budget_expense_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/create_expense_screen.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
@@ -18,6 +20,7 @@ import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
+import 'package:aarast_mobile/features/tasks/screens/task_timeline_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -66,6 +69,7 @@ void main() {
     expect(guestsProvider.guests.single.name, 'محمد علي');
     expect(guestsProvider.guests.single.phone, '+967777123456');
     expect(guestsProvider.noticeMessage, localMessage);
+    expect(find.text('محمد علي'), findsOneWidget);
     expect(find.text(cloudMessage), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -112,6 +116,81 @@ void main() {
     expect(find.text('tasks-target'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'guest/local planning lists reload saved data from local storage',
+    (tester) async {
+      _setTallView(tester);
+      final harness = await _createHarness();
+      final guestsApi = GuestsApi(harness.apiClient, offline: harness.offline);
+      final taskApi = TaskTimelineApi(
+        harness.apiClient,
+        offline: harness.offline,
+      );
+      final financeApi = BudgetExpenseApi(
+        harness.apiClient,
+        offline: harness.offline,
+      );
+      final debtApi = DebtInstallmentApi(
+        harness.apiClient,
+        offline: harness.offline,
+      );
+
+      await guestsApi.createGuest(
+        weddingPlanId: localPlanId,
+        name: 'محمد علي',
+        phone: '777123456',
+        side: 'OTHER',
+        status: 'INVITED',
+        seatsCount: 1,
+      );
+      await taskApi.createTask(weddingPlanId: localPlanId, title: 'حجز القاعة');
+      await financeApi.createExpense(
+        weddingPlanId: localPlanId,
+        title: 'عربون القاعة',
+        amount: '500000',
+      );
+      await debtApi.createDebt(
+        weddingPlanId: localPlanId,
+        creditorName: 'القاعة',
+        title: 'باقي القاعة',
+        totalAmount: '2000000',
+      );
+
+      await _pumpLocalScreen(
+        tester,
+        harness,
+        const GuestListScreen(weddingPlanId: localPlanId),
+      );
+      expect(find.text('محمد علي'), findsOneWidget);
+      expect(find.text(cloudMessage), findsNothing);
+
+      await _pumpLocalScreen(
+        tester,
+        harness,
+        const TaskTimelineScreen(weddingPlanId: localPlanId),
+      );
+      expect(find.text('حجز القاعة'), findsOneWidget);
+      expect(find.text(cloudMessage), findsNothing);
+
+      await _pumpLocalScreen(
+        tester,
+        harness,
+        const BudgetExpenseScreen(weddingPlanId: localPlanId),
+      );
+      expect(find.text('عربون القاعة'), findsOneWidget);
+      expect(find.text(cloudMessage), findsNothing);
+
+      await _pumpLocalScreen(
+        tester,
+        harness,
+        const DebtInstallmentScreen(weddingPlanId: localPlanId),
+      );
+      expect(find.text('باقي القاعة'), findsOneWidget);
+      expect(find.text(cloudMessage), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('guest/local can add expense without login', (tester) async {
     _setTallView(tester);
@@ -249,6 +328,47 @@ Future<_Harness> _createHarness() async {
     apiClient: apiClient,
     offline: offline,
   );
+}
+
+Future<void> _pumpLocalScreen(
+  WidgetTester tester,
+  _Harness harness,
+  Widget screen,
+) async {
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<AuthStorage>.value(value: harness.authStorage),
+        ChangeNotifierProvider<OfflineSyncService>.value(
+          value: harness.offline,
+        ),
+        ChangeNotifierProvider<GuestsProvider>(
+          create: (_) => GuestsProvider(
+            GuestsApi(harness.apiClient, offline: harness.offline),
+          ),
+        ),
+        ChangeNotifierProvider<TaskTimelineProvider>(
+          create: (_) => TaskTimelineProvider(
+            TaskTimelineApi(harness.apiClient, offline: harness.offline),
+          ),
+        ),
+        ChangeNotifierProvider<FinanceProvider>(
+          create: (_) => FinanceProvider(
+            BudgetExpenseApi(harness.apiClient, offline: harness.offline),
+          ),
+        ),
+        ChangeNotifierProvider<DebtInstallmentProvider>(
+          create: (_) => DebtInstallmentProvider(
+            DebtInstallmentApi(harness.apiClient, offline: harness.offline),
+          ),
+        ),
+      ],
+      child: MaterialApp(home: screen),
+    ),
+  );
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 80));
+  }
 }
 
 void _setTallView(WidgetTester tester) {

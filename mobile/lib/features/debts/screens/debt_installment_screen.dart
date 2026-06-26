@@ -6,7 +6,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
@@ -31,16 +30,12 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
   final _searchController = TextEditingController();
   _DebtListFilter _selectedFilter = _DebtListFilter.all;
 
-  bool get _isLocalGuestPlan =>
-      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
-
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_handleSearchChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_isLocalGuestPlan) return;
       _loadDebts();
     });
   }
@@ -51,7 +46,6 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (_isLocalGuestPlan) return;
         _loadDebts();
       });
     }
@@ -133,7 +127,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
           Expanded(
             child: RefreshIndicator(
               color: AppTheme.dMaroon,
-              onRefresh: _isLocalGuestPlan ? () async {} : _loadDebts,
+              onRefresh: _loadDebts,
               child: _canReadDebts
                   ? _DebtInstallmentContent(
                       provider: provider,
@@ -142,7 +136,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                       sharedMember: widget.sharedMember,
                       searchController: _searchController,
                       selectedFilter: _selectedFilter,
-                      suppressErrors: _isLocalGuestPlan,
+                      suppressErrors: false,
                       onFilterChanged: (filter) {
                         setState(() {
                           _selectedFilter = filter;
@@ -173,9 +167,6 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
       widget.sharedMember!.canManageFinancialRecords;
 
   Future<void> _loadDebts() {
-    if (_isLocalGuestPlan) {
-      return Future<void>.value();
-    }
     if (!_canReadDebts) {
       return Future<void>.value();
     }

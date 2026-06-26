@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -13,13 +15,41 @@ import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/royal_home_today_center.dart';
 import '../data/dashboard_summary_sources.dart';
 
-class LocalGuestDashboardScreen extends StatelessWidget {
-  const LocalGuestDashboardScreen({required this.summary, super.key});
+class LocalGuestDashboardScreen extends StatefulWidget {
+  const LocalGuestDashboardScreen({
+    required this.summary,
+    this.summarySource,
+    super.key,
+  });
 
   final LocalGuestDashboardSummary summary;
+  final LocalGuestDashboardSummarySource? summarySource;
+
+  @override
+  State<LocalGuestDashboardScreen> createState() =>
+      _LocalGuestDashboardScreenState();
+}
+
+class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
+  late LocalGuestDashboardSummary _summary;
+
+  @override
+  void initState() {
+    super.initState();
+    _summary = widget.summary;
+  }
+
+  @override
+  void didUpdateWidget(covariant LocalGuestDashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.summary != widget.summary) {
+      _summary = widget.summary;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final summary = _summary;
     final dashboardSummary = summary.toDashboardSummary();
     final planId = dashboardSummary.planId;
     final personaCopy = personaCopyForGuest(summary.plan.persona);
@@ -51,9 +81,11 @@ class LocalGuestDashboardScreen extends StatelessWidget {
         ),
         onNotifications: () => _openLocalNotifications(context, planId),
         onProfile: () => context.push(AppRouter.more),
-        onOpenPlan: () => context.push(
-          AppRouter.planCenter(planId),
-          extra: {'summary': dashboardSummary},
+        onOpenPlan: () => _openLocalBrowse(
+          context,
+          planId,
+          area: 'الخطة',
+          dashboardSummary: dashboardSummary,
         ),
         onOpenMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
         onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
@@ -78,6 +110,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     Future<void> open(String route, {bool refreshDashboard = false}) async {
       closeSheet();
       await context.push(route);
+      await _refreshSummary();
     }
 
     return buildCanonicalQuickAddActions(
@@ -101,14 +134,20 @@ class LocalGuestDashboardScreen extends StatelessWidget {
         planId.isNotEmpty &&
         planId != 'local-guest-plan';
     if (hasBackendPlan) {
-      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
+      unawaited(
+        _routeByArea(context, planId, area, dashboardSummary: dashboardSummary),
+      );
       return;
     }
     if (area == 'الخطة') {
-      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
+      unawaited(
+        _routeByArea(context, planId, area, dashboardSummary: dashboardSummary),
+      );
       return;
     }
-    _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
+    unawaited(
+      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary),
+    );
   }
 
   void _openLocalNotifications(BuildContext context, String planId) {
@@ -119,30 +158,34 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     _requireAccountForNotifications(context);
   }
 
-  void _routeByArea(
+  Future<void> _routeByArea(
     BuildContext context,
     String planId,
     String area, {
     DashboardSummary? dashboardSummary,
-  }) {
+  }) async {
     switch (area) {
       case 'المال':
-        context.push(AppRouter.finance(planId));
+        await context.push(AppRouter.finance(planId));
+        await _refreshSummary();
         return;
       case 'المهام':
-        context.push(AppRouter.tasks(planId));
+        await context.push(AppRouter.tasks(planId));
+        await _refreshSummary();
         return;
       case 'الضيوف':
-        context.push(AppRouter.guestList(planId));
+        await context.push(AppRouter.guestList(planId));
+        await _refreshSummary();
         return;
       case 'الخطة':
       default:
-        context.push(
+        await context.push(
           AppRouter.planCenter(planId),
           extra: dashboardSummary == null
               ? null
               : {'summary': dashboardSummary},
         );
+        await _refreshSummary();
         return;
     }
   }
@@ -210,6 +253,14 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       reason:
           'الإشعارات الحسابية تحتاج حساباً حتى نربط التنبيهات بخطتك ونحفظها بأمان.',
     );
+  }
+
+  Future<void> _refreshSummary() async {
+    final summarySource = widget.summarySource;
+    if (summarySource == null) return;
+    final nextSummary = await summarySource.loadSummary();
+    if (!mounted || nextSummary == null) return;
+    setState(() => _summary = nextSummary);
   }
 }
 

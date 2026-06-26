@@ -9,7 +9,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
@@ -26,15 +25,11 @@ class TaskTimelineScreen extends StatefulWidget {
 class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   _TaskFilter _filter = _TaskFilter.all;
 
-  bool get _isLocalGuestPlan =>
-      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_isLocalGuestPlan) return;
       context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
     });
   }
@@ -45,7 +40,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (_isLocalGuestPlan) return;
         context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
       });
     }
@@ -115,14 +109,12 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
           Expanded(
             child: RefreshIndicator(
               color: AppTheme.dMaroon,
-              onRefresh: _isLocalGuestPlan
-                  ? () async {}
-                  : () => provider.load(widget.weddingPlanId),
+              onRefresh: () => provider.load(widget.weddingPlanId),
               child: _TaskTimelineContent(
                 provider: provider,
                 weddingPlanId: widget.weddingPlanId,
                 filter: _filter,
-                suppressErrors: _isLocalGuestPlan,
+                suppressErrors: false,
                 onFilterChanged: (filter) {
                   setState(() => _filter = filter);
                 },

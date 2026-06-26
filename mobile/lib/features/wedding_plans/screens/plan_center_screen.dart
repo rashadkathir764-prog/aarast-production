@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../home/data/dashboard_summary_sources.dart';
 import '../../marketplace/models/marketplace_models.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../marketplace/widgets/quote_status_chip.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../onboarding/models/persona_copy.dart';
@@ -41,6 +44,8 @@ class PlanCenterScreen extends StatefulWidget {
 }
 
 class _PlanCenterScreenState extends State<PlanCenterScreen> {
+  DashboardSummary? _localSummary;
+
   bool get _isLocalGuestPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
 
@@ -49,7 +54,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_isLocalGuestPlan) return;
+      if (_isLocalGuestPlan) {
+        _loadLocalSummary();
+        return;
+      }
       context.read<DashboardSummaryProvider>().loadDashboard(
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
@@ -65,7 +73,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         oldWidget.sharedMember != widget.sharedMember) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (_isLocalGuestPlan) return;
+        if (_isLocalGuestPlan) {
+          _loadLocalSummary();
+          return;
+        }
         context.read<DashboardSummaryProvider>().loadDashboard(
           widget.weddingPlanId,
           sharedMember: widget.sharedMember,
@@ -89,7 +100,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       child: RefreshIndicator(
         color: AppTheme.dMaroon,
         onRefresh: _isLocalGuestPlan
-            ? () async {}
+            ? _loadLocalSummary
             : () async {
                 await provider.loadDashboard(
                   widget.weddingPlanId,
@@ -110,7 +121,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final bottomPadding = MediaQuery.paddingOf(context).bottom + 118;
 
     if (_isLocalGuestPlan) {
-      return _buildLocalPlanBody(bottomPadding, widget.initialSummary);
+      return _buildLocalPlanBody(
+        bottomPadding,
+        _localSummary ?? widget.initialSummary,
+      );
     }
 
     if (provider.isLoading && !hasCurrentPlan) {
@@ -345,6 +359,33 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
 
   void _loadPlanQuotes() {
     _readMarketplace()?.loadMyQuoteRequests();
+  }
+
+  Future<void> _loadLocalSummary() async {
+    final storage = _guestOnboardingStorageOrNull();
+    if (storage == null) return;
+    final summary = await LocalGuestDashboardSummarySource(
+      storage,
+      database: _localDatabaseOrNull(),
+    ).loadSummary();
+    if (!mounted || summary == null) return;
+    setState(() => _localSummary = summary.toDashboardSummary());
+  }
+
+  GuestOnboardingStorage? _guestOnboardingStorageOrNull() {
+    try {
+      return context.read<GuestOnboardingStorage>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  LocalDatabase? _localDatabaseOrNull() {
+    try {
+      return context.read<LocalDatabase>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   QuoteFinanceContext _quoteFinanceContext(QuoteRequest quote) {

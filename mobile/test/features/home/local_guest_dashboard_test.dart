@@ -1,8 +1,15 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/debts/data/debt_installment_api.dart';
+import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
+import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/home/data/dashboard_summary_sources.dart';
 import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,6 +48,80 @@ void main() {
     expect(royalSummary.currentUserRole, 'GUEST');
     expect(royalSummary.permissions.role, 'GUEST_LOCAL');
   });
+
+  test(
+    'local dashboard source reflects saved planning data after reload',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final authStorage = AuthStorage(preferences);
+      final storage = GuestOnboardingStorage(preferences);
+      final database = JsonLocalDatabase(preferences);
+      await database.initialize();
+      final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+      final offline = OfflineSyncService(
+        database: database,
+        apiClient: apiClient,
+      );
+      const planId = 'guest-plan-test';
+      await storage.saveDraft(_guestPlan());
+
+      await GuestsApi(apiClient, offline: offline).createGuest(
+        weddingPlanId: planId,
+        name: 'محمد علي',
+        phone: '777123456',
+        side: 'OTHER',
+        status: 'INVITED',
+        seatsCount: 1,
+      );
+      await TaskTimelineApi(
+        apiClient,
+        offline: offline,
+      ).createTask(weddingPlanId: planId, title: 'حجز القاعة');
+      await BudgetExpenseApi(apiClient, offline: offline).createExpense(
+        weddingPlanId: planId,
+        title: 'عربون القاعة',
+        amount: '500000',
+      );
+      final debt = await DebtInstallmentApi(apiClient, offline: offline)
+          .createDebt(
+            weddingPlanId: planId,
+            creditorName: 'القاعة',
+            title: 'باقي القاعة',
+            totalAmount: '2000000',
+          );
+      await DebtInstallmentApi(apiClient, offline: offline).createInstallment(
+        debtId: debt.id,
+        amount: '2000000',
+        dueDate: DateTime.now().add(const Duration(days: 7)),
+      );
+
+      final summary = await LocalGuestDashboardSummarySource(
+        storage,
+        database: database,
+      ).loadSummary();
+      final royalSummary = summary!.toDashboardSummary();
+
+      expect(summary.guestCount, 1);
+      expect(summary.taskCount, 1);
+      expect(summary.spentTotal, '500000');
+      expect(summary.debtTotal, '2000000');
+      expect(summary.unpaidDebtTotal, '2000000');
+      expect(summary.dueInstallmentsCount, 1);
+      expect(royalSummary.remainingBudget, '500000');
+      expect(royalSummary.unreadNotificationsCount, 0);
+      expect(royalSummary.importantNotifications, isEmpty);
+      expect(
+        royalSummary.importantItems.map((item) => item.type),
+        containsAll([
+          'LOCAL_GUEST',
+          'LOCAL_TASK',
+          'LOCAL_MONEY_EXPENSE',
+          'LOCAL_MONEY_DEBT',
+        ]),
+      );
+    },
+  );
 
   testWidgets(
     'dashboard opens local guest plan and shows lightweight protected sync message',

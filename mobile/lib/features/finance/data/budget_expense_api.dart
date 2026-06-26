@@ -17,6 +17,16 @@ class BudgetExpenseApi {
 
   Future<List<BudgetCategory>> getBudgetCategories(String weddingPlanId) async {
     const table = OfflineTables.cachedBudgetCategories;
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      final cached = await _offline?.database.readCachedList(
+        table: table,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return (cached ?? const <Map<String, dynamic>>[])
+          .map(BudgetCategory.fromJson)
+          .toList();
+    }
     try {
       final items = await _getJsonMapList(
         '/wedding-plans/$weddingPlanId/budget-categories',
@@ -50,6 +60,12 @@ class BudgetExpenseApi {
       if (targetAmount != null && targetAmount.trim().isNotEmpty)
         'targetAmount': targetAmount.trim(),
     };
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _createLocalBudgetCategory(
+        weddingPlanId: weddingPlanId,
+        payload: payload,
+      );
+    }
     try {
       final json = await _apiClient.postJson(
         '/wedding-plans/$weddingPlanId/budget-categories',
@@ -419,6 +435,27 @@ class BudgetExpenseApi {
     );
     await _offline?.refreshStatus();
     return Expense.fromJson(localJson);
+  }
+
+  Future<BudgetCategory> _createLocalBudgetCategory({
+    required String weddingPlanId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final now = DateTime.now();
+    final localJson = {
+      'id': 'local-budget-category-${now.microsecondsSinceEpoch}',
+      'weddingPlanId': weddingPlanId,
+      ...payload,
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBudgetCategories,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return BudgetCategory.fromJson(localJson);
   }
 
   Future<Expense> _updateLocalExpense({

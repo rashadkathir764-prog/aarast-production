@@ -79,7 +79,9 @@ class FinanceProvider extends ChangeNotifier {
         targetAmount: targetAmount,
       );
       _budgetCategories = [category, ..._budgetCategories];
-      if (category.id.startsWith('local-')) {
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (category.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
       return true;

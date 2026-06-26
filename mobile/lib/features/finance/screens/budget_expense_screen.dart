@@ -9,7 +9,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
@@ -32,9 +31,6 @@ class BudgetExpenseScreen extends StatefulWidget {
 
 class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
   bool _hasExpenseChanges = false;
-
-  bool get _isLocalGuestPlan =>
-      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
 
   @override
   void initState() {
@@ -117,7 +113,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
           Expanded(
             child: RefreshIndicator(
               color: AppTheme.dMaroon,
-              onRefresh: _isLocalGuestPlan ? () async {} : _loadFinance,
+              onRefresh: _loadFinance,
               child: _hasAnyFinanceAccess
                   ? _FinanceContent(
                       provider: provider,
@@ -125,7 +121,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                       canManageFinancialRecords: canManageFinancialRecords,
                       sharedMember: widget.sharedMember,
                       onChanged: _markExpenseChanged,
-                      suppressErrors: _isLocalGuestPlan,
+                      suppressErrors: false,
                     )
                   : const _FinancialAccessDeniedState(),
             ),
@@ -161,9 +157,6 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
       widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
 
   Future<void> _loadFinance() {
-    if (_isLocalGuestPlan) {
-      return Future<void>.value();
-    }
     if (!_hasAnyFinanceAccess) {
       return Future<void>.value();
     }

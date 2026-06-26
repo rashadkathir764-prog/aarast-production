@@ -201,7 +201,7 @@ class DebtInstallmentApi {
   Future<List<Installment>> getDueInstallments(String weddingPlanId) async {
     final key = 'due_installments:$weddingPlanId';
     if (_isLocalGuestPlanId(weddingPlanId)) {
-      return const [];
+      return _localDueInstallmentsForPlan(weddingPlanId);
     }
     try {
       final items = await _getJsonMapList(
@@ -420,6 +420,48 @@ class DebtInstallmentApi {
     );
     await _offline?.refreshStatus();
     return Installment.fromJson(localJson);
+  }
+
+  Future<List<Installment>> _localDueInstallmentsForPlan(
+    String weddingPlanId,
+  ) async {
+    final debts = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedDebts,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    if (debts == null || debts.isEmpty) return const [];
+
+    final dueInstallments = <Installment>[];
+    for (final debt in debts) {
+      final debtId = debt['id']?.toString();
+      if (debtId == null || debtId.isEmpty) continue;
+      final installments = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedInstallments,
+        parentColumn: 'debtId',
+        parentId: debtId,
+      );
+      if (installments == null || installments.isEmpty) continue;
+      dueInstallments.addAll(
+        installments.where(_isDueLocalInstallment).map(Installment.fromJson),
+      );
+    }
+    dueInstallments.sort((a, b) {
+      final aDate = a.dueDate;
+      final bDate = b.dueDate;
+      if (aDate == null && bDate == null) return 0;
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      return aDate.compareTo(bDate);
+    });
+    return dueInstallments;
+  }
+
+  bool _isDueLocalInstallment(Map<String, dynamic> installment) {
+    final status = installment['status']?.toString().toUpperCase() ?? '';
+    return status != 'PAID' &&
+        status != 'CANCELLED' &&
+        installment['dueDate'] != null;
   }
 
   String? _normalizeOptionalPhone(String? phone) {

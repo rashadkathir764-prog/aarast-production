@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -19,13 +20,16 @@ class DashboardEntryScreen extends StatefulWidget {
 
 class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
   Future<LocalGuestDashboardSummary?>? _guestSummary;
+  LocalGuestDashboardSummarySource? _guestSummarySource;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _guestSummary ??= LocalGuestDashboardSummarySource(
+    _guestSummarySource ??= LocalGuestDashboardSummarySource(
       context.read<GuestOnboardingStorage>(),
-    ).loadSummary();
+      database: _localDatabaseOrNull(),
+    );
+    _guestSummary ??= _guestSummarySource!.loadSummary();
   }
 
   @override
@@ -46,7 +50,10 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
         }
         final summary = snapshot.data;
         if (summary != null) {
-          return LocalGuestDashboardScreen(summary: summary);
+          return LocalGuestDashboardScreen(
+            summary: summary,
+            summarySource: _guestSummarySource,
+          );
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) context.go(AppRouter.onboarding);
@@ -54,5 +61,13 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
         return const AarastScaffold(child: AarastScreenLoading());
       },
     );
+  }
+
+  LocalDatabase? _localDatabaseOrNull() {
+    try {
+      return context.read<LocalDatabase>();
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 }

@@ -447,7 +447,10 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+    if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+    )) {
       return;
     }
     if (!mounted) return;

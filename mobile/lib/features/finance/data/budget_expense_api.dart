@@ -104,6 +104,16 @@ class BudgetExpenseApi {
 
   Future<List<Expense>> getExpenses(String weddingPlanId) async {
     const table = OfflineTables.cachedBudgetItems;
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      final cached = await _offline?.database.readCachedList(
+        table: table,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return (cached ?? const <Map<String, dynamic>>[])
+          .map(Expense.fromJson)
+          .toList();
+    }
     try {
       final items = await _getJsonMapList(
         '/wedding-plans/$weddingPlanId/expenses',
@@ -129,6 +139,14 @@ class BudgetExpenseApi {
 
   Future<ExpenseSummary> getExpenseSummary(String weddingPlanId) async {
     final key = 'expense_summary:$weddingPlanId';
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      final expenses = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedBudgetItems,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return _summaryFromExpenses(expenses ?? const <Map<String, dynamic>>[]);
+    }
     try {
       final json = await _apiClient.getJson(
         '/wedding-plans/$weddingPlanId/expenses/summary',
@@ -172,6 +190,12 @@ class BudgetExpenseApi {
       if (expenseDate != null) 'expenseDate': expenseDate.toIso8601String(),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _createLocalExpense(
+        weddingPlanId: weddingPlanId,
+        payload: payload,
+      );
+    }
     try {
       final json = await _apiClient.postJson(
         '/wedding-plans/$weddingPlanId/expenses',
@@ -233,6 +257,14 @@ class BudgetExpenseApi {
       'expenseDate': expenseDate?.toIso8601String(),
       'note': note != null && note.trim().isNotEmpty ? note.trim() : null,
     };
+
+    if (id.startsWith('local-expense-')) {
+      return _updateLocalExpense(
+        id: id,
+        weddingPlanId: weddingPlanId,
+        payload: payload,
+      );
+    }
 
     try {
       final json = await _apiClient.patchJson('/expenses/$id', payload);
@@ -365,5 +397,62 @@ class BudgetExpenseApi {
       countPlanned: countPlanned,
       countCancelled: countCancelled,
     );
+  }
+
+  Future<Expense> _createLocalExpense({
+    required String weddingPlanId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final now = DateTime.now();
+    final localId = 'local-expense-${now.microsecondsSinceEpoch}';
+    final localJson = {
+      'id': localId,
+      'weddingPlanId': weddingPlanId,
+      ...payload,
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBudgetItems,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Expense.fromJson(localJson);
+  }
+
+  Future<Expense> _updateLocalExpense({
+    required String id,
+    required String weddingPlanId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedBudgetItems,
+      id: id,
+    );
+    final now = DateTime.now();
+    final localJson = {
+      ...?cached,
+      ...payload,
+      'id': id,
+      'weddingPlanId': cached?['weddingPlanId'] ?? weddingPlanId,
+      'createdAt': cached?['createdAt'] ?? now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBudgetItems,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Expense.fromJson(localJson);
+  }
+
+  bool _isLocalGuestPlanId(String? planId) {
+    final value = planId?.trim() ?? '';
+    return value.isEmpty ||
+        value == 'local-guest-plan' ||
+        value.startsWith('guest-plan-') ||
+        value.startsWith('local-guest-');
   }
 }

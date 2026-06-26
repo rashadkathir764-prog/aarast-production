@@ -11,8 +11,10 @@ class AuthActionGuard {
   const AuthActionGuard._();
 
   static const protectedActionMessage =
-      'هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.';
+      'سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.';
   static const quoteSubmitMessage = protectedActionMessage;
+  static const localPlanningSaveMessage =
+      'تم الحفظ محليًا. سجّل الدخول لاحقًا لمزامنة خطتك.';
 
   static bool isLocalGuestPlanId(String? planId) {
     final value = planId?.trim() ?? '';
@@ -116,5 +118,13 @@ class AuthActionGuard {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
     return true;
+  }
+
+  static Future<bool> blockCloudSubmitForNonLocalPlanning(
+    BuildContext context, {
+    required String? weddingPlanId,
+  }) {
+    if (isLocalGuestPlanId(weddingPlanId)) return Future<bool>.value(false);
+    return blockProtectedSubmitWithoutAccount(context);
   }
 }

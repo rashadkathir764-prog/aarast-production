@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
 import '../data/debt_installment_api.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
@@ -14,6 +15,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _noticeMessage;
   List<Debt> _debts = const [];
   List<Installment> _dueInstallments = const [];
   List<Installment> _installments = const [];
@@ -23,6 +25,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get noticeMessage => _noticeMessage;
   List<Debt> get debts => _debts;
   List<Installment> get dueInstallments => _dueInstallments;
   List<Installment> get installments => _installments;
@@ -32,6 +35,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
   Future<void> loadDebts(String weddingPlanId) async {
     _isLoading = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -59,6 +63,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
   Future<void> loadDebtDetails(String debtId) async {
     _isLoading = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -92,6 +97,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -110,6 +116,11 @@ class DebtInstallmentProvider extends ChangeNotifier {
       _debts = [debt, ..._debts.where((item) => item.id != debt.id)];
       _summary = await _api.getDebtSummary(weddingPlanId);
       _dueInstallments = await _api.getDueInstallments(weddingPlanId);
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (debt.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
       return debt;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -133,6 +144,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -148,6 +160,11 @@ class DebtInstallmentProvider extends ChangeNotifier {
         installment,
         ..._installments.where((item) => item.id != installment.id),
       ];
+      if (debtId.startsWith('local-debt-')) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (installment.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -163,6 +180,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
   }
 
@@ -174,4 +192,12 @@ class DebtInstallmentProvider extends ChangeNotifier {
     }
     return null;
   }
+}
+
+bool _isLocalGuestPlanId(String? planId) {
+  final value = planId?.trim() ?? '';
+  return value.isEmpty ||
+      value == 'local-guest-plan' ||
+      value.startsWith('guest-plan-') ||
+      value.startsWith('local-guest-');
 }

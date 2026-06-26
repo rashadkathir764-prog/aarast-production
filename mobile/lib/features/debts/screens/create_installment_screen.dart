@@ -318,7 +318,15 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
       note: note.isEmpty ? null : note,
     );
 
-    if (created && mounted) _goBack();
+    if (created && mounted) {
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(notice)));
+      }
+      _goBack();
+    }
   }
 }
 

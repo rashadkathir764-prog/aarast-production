@@ -15,6 +15,16 @@ class TaskTimelineApi {
   final OfflineSyncService? _offline;
 
   Future<List<WeddingTask>> getTasks(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      final cached = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedTasks,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return (cached ?? const <Map<String, dynamic>>[])
+          .map(WeddingTask.fromJson)
+          .toList();
+    }
     try {
       final items = await _getJsonMapList(
         '/wedding-plans/$weddingPlanId/tasks',
@@ -39,6 +49,9 @@ class TaskTimelineApi {
   }
 
   Future<Timeline> getTimeline(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _timelineFromCachedTasks(weddingPlanId);
+    }
     final key = 'timeline:$weddingPlanId';
     try {
       final json = await _apiClient.getJson(
@@ -78,6 +91,9 @@ class TaskTimelineApi {
       if (taskCategory != null && taskCategory.trim().isNotEmpty)
         'taskCategory': taskCategory.trim(),
     };
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _createLocalTask(weddingPlanId: weddingPlanId, payload: payload);
+    }
     try {
       final json = await _apiClient.postJson(
         '/wedding-plans/$weddingPlanId/tasks',
@@ -119,6 +135,9 @@ class TaskTimelineApi {
   }
 
   Future<WeddingTask> updateTask(String id, Map<String, dynamic> data) async {
+    if (id.startsWith('local-task-')) {
+      return _updateLocalTask(id: id, data: data);
+    }
     try {
       final json = await _apiClient.patchJson('/tasks/$id', data);
       await _offline?.database.saveCachedItem(
@@ -227,5 +246,61 @@ class TaskTimelineApi {
       'dueDebts': const [],
       'dueInstallments': const [],
     });
+  }
+
+  Future<WeddingTask> _createLocalTask({
+    required String weddingPlanId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final now = DateTime.now();
+    final localId = 'local-task-${now.microsecondsSinceEpoch}';
+    final localJson = {
+      'id': localId,
+      'weddingPlanId': weddingPlanId,
+      ...payload,
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return WeddingTask.fromJson(localJson);
+  }
+
+  Future<WeddingTask> _updateLocalTask({
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedTasks,
+      id: id,
+    );
+    final now = DateTime.now();
+    final localJson = {
+      ...?cached,
+      ...data,
+      'id': id,
+      'weddingPlanId': cached?['weddingPlanId'] ?? '',
+      'createdAt': cached?['createdAt'] ?? now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return WeddingTask.fromJson(localJson);
+  }
+
+  bool _isLocalGuestPlanId(String? planId) {
+    final value = planId?.trim() ?? '';
+    return value.isEmpty ||
+        value == 'local-guest-plan' ||
+        value.startsWith('guest-plan-') ||
+        value.startsWith('local-guest-');
   }
 }

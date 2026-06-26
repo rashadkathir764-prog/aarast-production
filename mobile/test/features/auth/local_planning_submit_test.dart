@@ -1,0 +1,299 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
+import 'package:aarast_mobile/features/debts/data/debt_installment_api.dart';
+import 'package:aarast_mobile/features/debts/providers/debt_installment_provider.dart';
+import 'package:aarast_mobile/features/debts/screens/create_debt_screen.dart';
+import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
+import 'package:aarast_mobile/features/finance/screens/create_expense_screen.dart';
+import 'package:aarast_mobile/features/guests/data/guests_api.dart';
+import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
+import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
+import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
+import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
+import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
+import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
+import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  const localPlanId = 'guest-plan-qa';
+  const localMessage = AuthActionGuard.localPlanningSaveMessage;
+  const cloudMessage = AuthActionGuard.protectedActionMessage;
+
+  testWidgets('guest/local can add guest without login', (tester) async {
+    _setTallView(tester);
+    final harness = await _createHarness();
+    final guestsProvider = GuestsProvider(
+      GuestsApi(harness.apiClient, offline: harness.offline),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: harness.authStorage),
+          ChangeNotifierProvider<GuestsProvider>.value(value: guestsProvider),
+        ],
+        child: const MaterialApp(
+          home: GuestListScreen(weddingPlanId: localPlanId),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, 'إضافة ضيف'));
+    await tester.pumpAndSettle();
+    await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'محمد علي');
+    await tester.enterText(
+      _textFieldWithLabel('رقم الجوال (اختياري)'),
+      '777123456',
+    );
+    final sheetSubmit = find.widgetWithText(FilledButton, 'إضافة ضيف').last;
+    await tester.ensureVisible(sheetSubmit);
+    await tester.pumpAndSettle();
+    await tester.tap(sheetSubmit);
+    await tester.pumpAndSettle();
+
+    expect(guestsProvider.guests, hasLength(1));
+    expect(guestsProvider.guests.single.name, 'محمد علي');
+    expect(guestsProvider.guests.single.phone, '+967777123456');
+    expect(guestsProvider.noticeMessage, localMessage);
+    expect(find.text(cloudMessage), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('guest/local can add task without login', (tester) async {
+    _setTallView(tester);
+    final harness = await _createHarness();
+    final taskProvider = TaskTimelineProvider(
+      TaskTimelineApi(harness.apiClient, offline: harness.offline),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: harness.authStorage),
+          ChangeNotifierProvider<TaskTimelineProvider>.value(
+            value: taskProvider,
+          ),
+        ],
+        child: MaterialApp.router(
+          routerConfig: _router(
+            start: CreateTaskScreen(weddingPlanId: localPlanId),
+            targetPath: '/wedding-plans/:id/tasks',
+            targetText: 'tasks-target',
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      _textFormFieldWithLabel('عنوان المهمة'),
+      'حجز القاعة',
+    );
+    final submit = find.text('حفظ المهمة');
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(taskProvider.tasks, hasLength(1));
+    expect(taskProvider.tasks.single.title, 'حجز القاعة');
+    expect(taskProvider.noticeMessage, localMessage);
+    expect(find.text(cloudMessage), findsNothing);
+    expect(find.text('tasks-target'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('guest/local can add expense without login', (tester) async {
+    _setTallView(tester);
+    final harness = await _createHarness();
+    final financeProvider = FinanceProvider(
+      BudgetExpenseApi(harness.apiClient, offline: harness.offline),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: harness.authStorage),
+          ChangeNotifierProvider<FinanceProvider>.value(value: financeProvider),
+        ],
+        child: MaterialApp.router(
+          routerConfig: _router(
+            start: CreateExpenseScreen(weddingPlanId: localPlanId),
+            targetPath: '/wedding-plans/:id/finance',
+            targetText: 'finance-target',
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      _textFormFieldWithLabel('عنوان المصروف'),
+      'عربون القاعة',
+    );
+    await tester.enterText(_textFormFieldWithLabel('المبلغ'), '500000');
+    final submit = find.text('حفظ المصروف');
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(financeProvider.expenses, hasLength(1));
+    expect(financeProvider.expenses.single.title, 'عربون القاعة');
+    expect(financeProvider.expenses.single.amount, '500000');
+    expect(financeProvider.noticeMessage, localMessage);
+    expect(find.text(cloudMessage), findsNothing);
+    expect(find.text('finance-target'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('guest/local can add debt without login when local mode exists', (
+    tester,
+  ) async {
+    _setTallView(tester);
+    final harness = await _createHarness();
+    final debtProvider = DebtInstallmentProvider(
+      DebtInstallmentApi(harness.apiClient, offline: harness.offline),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: harness.authStorage),
+          ChangeNotifierProvider<DebtInstallmentProvider>.value(
+            value: debtProvider,
+          ),
+        ],
+        child: MaterialApp.router(
+          routerConfig: _router(
+            start: CreateDebtScreen(weddingPlanId: localPlanId),
+            targetPath: '/wedding-plans/:id/debts',
+            targetText: 'debts-target',
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(_textFormFieldWithLabel('اسم الدائن'), 'القاعة');
+    await tester.enterText(
+      _textFormFieldWithLabel('عنوان الدين'),
+      'باقي القاعة',
+    );
+    await tester.enterText(_textFormFieldWithLabel('إجمالي الدين'), '2000000');
+    final submit = find.text('حفظ الدين');
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(debtProvider.debts, hasLength(1));
+    expect(debtProvider.debts.single.title, 'باقي القاعة');
+    expect(debtProvider.debts.single.totalAmount, '2000000');
+    expect(debtProvider.noticeMessage, localMessage);
+    expect(find.text(cloudMessage), findsNothing);
+    expect(find.text('debts-target'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('protected share invite still requires login', (tester) async {
+    _setTallView(tester);
+    final harness = await _createHarness();
+    final sharingProvider = SharingProvider(SharingApi(harness.apiClient));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: harness.authStorage),
+          ChangeNotifierProvider<SharingProvider>.value(value: sharingProvider),
+        ],
+        child: const MaterialApp(
+          home: AddSharedMemberScreen(weddingPlanId: localPlanId),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(_textFieldWithLabel('رقم جوال العضو'), '777123456');
+    final submit = find.text('إرسال دعوة المشاركة');
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pump();
+
+    expect(find.text(cloudMessage), findsOneWidget);
+    expect(sharingProvider.invites, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+Future<_Harness> _createHarness() async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final authStorage = AuthStorage(preferences);
+  final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+  final database = JsonLocalDatabase(preferences);
+  await database.initialize();
+  final offline = OfflineSyncService(database: database, apiClient: apiClient);
+  await offline.refreshStatus();
+  return _Harness(
+    authStorage: authStorage,
+    apiClient: apiClient,
+    offline: offline,
+  );
+}
+
+void _setTallView(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(1000, 1600);
+  addTearDown(tester.view.reset);
+}
+
+GoRouter _router({
+  required Widget start,
+  required String targetPath,
+  required String targetText,
+}) {
+  return GoRouter(
+    initialLocation: '/start',
+    routes: [
+      GoRoute(path: '/start', builder: (context, state) => start),
+      GoRoute(
+        path: targetPath,
+        builder: (context, state) => Scaffold(body: Text(targetText)),
+      ),
+    ],
+  );
+}
+
+Finder _textFormFieldWithLabel(String label) {
+  return find
+      .ancestor(of: find.text(label), matching: find.byType(TextFormField))
+      .first;
+}
+
+Finder _textFieldWithLabel(String label) {
+  return find
+      .ancestor(of: find.text(label), matching: find.byType(TextField))
+      .first;
+}
+
+class _Harness {
+  const _Harness({
+    required this.authStorage,
+    required this.apiClient,
+    required this.offline,
+  });
+
+  final AuthStorage authStorage;
+  final ApiClient apiClient;
+  final OfflineSyncService offline;
+}

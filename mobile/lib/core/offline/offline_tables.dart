@@ -6,6 +6,7 @@ class OfflineTables {
   static const currentUserProfile = 'current_user_profile';
   static const cachedWeddingPlans = 'cached_wedding_plans';
   static const cachedPlanMembers = 'cached_plan_members';
+  static const cachedGuests = 'cached_guests';
   static const cachedTasks = 'cached_tasks';
   static const cachedBudgetCategories = 'cached_budget_categories';
   static const cachedBudgetItems = 'cached_budget_items';
@@ -23,6 +24,7 @@ class OfflineTables {
     currentUserProfile,
     cachedWeddingPlans,
     cachedPlanMembers,
+    cachedGuests,
     cachedTasks,
     cachedBudgetCategories,
     cachedBudgetItems,
@@ -42,6 +44,7 @@ class OfflineTables {
       'user' => currentUserProfile,
       'wedding_plan' => cachedWeddingPlans,
       'plan_member' => cachedPlanMembers,
+      'guest' => cachedGuests,
       'task' => cachedTasks,
       'budget_category' => cachedBudgetCategories,
       'expense' => cachedBudgetItems,

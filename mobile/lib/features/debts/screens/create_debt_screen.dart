@@ -412,7 +412,10 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
       return;
     }
 
-    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+    if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+    )) {
       return;
     }
     if (!mounted) return;
@@ -431,7 +434,15 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
       note: note.isEmpty ? null : note,
     );
 
-    if (debt != null && mounted) _goBack();
+    if (debt != null && mounted) {
+      final notice = provider.noticeMessage;
+      if (notice != null) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(notice)));
+      }
+      _goBack();
+    }
   }
 
   bool _isExactDebtDuplicate(List<Debt> debts, String? normalizedPhone) {

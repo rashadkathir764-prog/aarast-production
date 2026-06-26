@@ -33,7 +33,7 @@ Future<LocalDatabase> createPlatformLocalDatabase(
 
 class SqliteLocalDatabase implements LocalDatabase {
   static const _databaseName = 'aarast_offline.db';
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 2;
 
   Database? _database;
 
@@ -46,6 +46,17 @@ class SqliteLocalDatabase implements LocalDatabase {
       version: _databaseVersion,
       onCreate: (db, version) async {
         await _createSchema(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          final batch = db.batch();
+          _cacheTable(
+            batch,
+            OfflineTables.cachedGuests,
+            'planId TEXT, name TEXT, phone TEXT, side TEXT, status TEXT',
+          );
+          await batch.commit();
+        }
       },
     );
   }
@@ -300,6 +311,11 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       batch,
       OfflineTables.cachedPlanMembers,
       'planId TEXT, userId TEXT, phone TEXT, role TEXT, permissionsJson TEXT',
+    );
+    _cacheTable(
+      batch,
+      OfflineTables.cachedGuests,
+      'planId TEXT, name TEXT, phone TEXT, side TEXT, status TEXT',
     );
     _cacheTable(
       batch,

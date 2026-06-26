@@ -121,7 +121,9 @@ class FinanceProvider extends ChangeNotifier {
       );
       _expenses = [expense, ..._expenses];
       _summary = _summaryFromExpenses(_expenses);
-      if (expense.id.startsWith('local-')) {
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (expense.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
       return true;
@@ -147,13 +149,6 @@ class FinanceProvider extends ChangeNotifier {
     DateTime? expenseDate,
     String? note,
   }) async {
-    if (expense.id.startsWith('local-')) {
-      _errorMessage =
-          'لا يمكن تعديل مصروف قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
-      notifyListeners();
-      return false;
-    }
-
     _isSubmitting = true;
     _errorMessage = null;
     _noticeMessage = null;
@@ -172,6 +167,11 @@ class FinanceProvider extends ChangeNotifier {
       );
       _replaceExpense(updated);
       _summary = _summaryFromExpenses(_expenses);
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (updated.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -262,4 +262,12 @@ class FinanceProvider extends ChangeNotifier {
       countCancelled: countCancelled,
     );
   }
+}
+
+bool _isLocalGuestPlanId(String? planId) {
+  final value = planId?.trim() ?? '';
+  return value.isEmpty ||
+      value == 'local-guest-plan' ||
+      value.startsWith('guest-plan-') ||
+      value.startsWith('local-guest-');
 }

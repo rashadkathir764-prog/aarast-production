@@ -1,13 +1,20 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../models/guest.dart';
 
 class GuestsApi {
-  const GuestsApi(this._apiClient);
+  const GuestsApi(this._apiClient, {OfflineSyncService? offline})
+    : _offline = offline;
 
   final ApiClient _apiClient;
+  final OfflineSyncService? _offline;
 
   Future<List<Guest>> getGuests(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _cachedGuests(weddingPlanId);
+    }
     final list = await _apiClient.getJsonList(
       '/wedding-plans/$weddingPlanId/guests',
     );
@@ -36,6 +43,9 @@ class GuestsApi {
     };
     if (normalizedPhone != null) {
       payload['phone'] = normalizedPhone;
+    }
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _createLocalGuest(weddingPlanId: weddingPlanId, payload: payload);
     }
     final json = await _apiClient.postJson(
       '/wedding-plans/$weddingPlanId/guests',
@@ -72,11 +82,18 @@ class GuestsApi {
     if (notes != null) {
       payload['notes'] = notes.trim();
     }
+    if (id.startsWith('local-guest-')) {
+      return _updateLocalGuest(id: id, payload: payload);
+    }
     final json = await _apiClient.patchJson('/guests/$id', payload);
     return Guest.fromJson(json);
   }
 
   Future<void> deleteGuest(String id) async {
+    if (id.startsWith('local-guest-')) {
+      await _deleteLocalGuest(id);
+      return;
+    }
     await _apiClient.deleteJson('/guests/$id');
   }
 
@@ -86,5 +103,86 @@ class GuestsApi {
     } on FormatException {
       throw const ApiException('أدخل رقم جوال صحيح.');
     }
+  }
+
+  Future<List<Guest>> _cachedGuests(String weddingPlanId) async {
+    final cached = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedGuests,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return (cached ?? const <Map<String, dynamic>>[])
+        .map(Guest.fromJson)
+        .toList();
+  }
+
+  Future<Guest> _createLocalGuest({
+    required String weddingPlanId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final now = DateTime.now();
+    final localJson = {
+      'id': 'local-guest-${now.microsecondsSinceEpoch}',
+      'weddingPlanId': weddingPlanId,
+      ...payload,
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Guest.fromJson(localJson);
+  }
+
+  Future<Guest> _updateLocalGuest({
+    required String id,
+    required Map<String, dynamic> payload,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedGuests,
+      id: id,
+    );
+    final now = DateTime.now();
+    final localJson = {
+      ...?cached,
+      ...payload,
+      'id': id,
+      'weddingPlanId': cached?['weddingPlanId'] ?? 'local-guest-plan',
+      'createdAt': cached?['createdAt'] ?? now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Guest.fromJson(localJson);
+  }
+
+  Future<void> _deleteLocalGuest(String id) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedGuests,
+      id: id,
+    );
+    if (cached == null) return;
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: cached,
+      dirty: true,
+      deletedLocally: true,
+    );
+    await _offline?.refreshStatus();
+  }
+
+  bool _isLocalGuestPlanId(String? planId) {
+    final value = planId?.trim() ?? '';
+    return value.isEmpty ||
+        value == 'local-guest-plan' ||
+        value.startsWith('guest-plan-') ||
+        value.startsWith('local-guest-');
   }
 }

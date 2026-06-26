@@ -18,7 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets(
-    'protected task submit without token shows dev message and does not save',
+    'non-local task submit without token shows cloud auth message and does not save',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(800, 1200);
@@ -39,7 +39,7 @@ void main() {
             ),
           ],
           child: const MaterialApp(
-            home: CreateTaskScreen(weddingPlanId: 'guest-plan-test'),
+            home: CreateTaskScreen(weddingPlanId: 'plan-test'),
           ),
         ),
       );
@@ -51,7 +51,7 @@ void main() {
       await tester.pump();
 
       expect(
-        find.text('هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.'),
+        find.text('سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.'),
         findsOneWidget,
       );
       expect(taskProvider.tasks, isEmpty);

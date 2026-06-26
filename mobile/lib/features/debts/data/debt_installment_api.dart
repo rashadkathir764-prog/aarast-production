@@ -17,6 +17,16 @@ class DebtInstallmentApi {
   final OfflineSyncService? _offline;
 
   Future<List<Debt>> getDebts(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      final cached = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedDebts,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return (cached ?? const <Map<String, dynamic>>[])
+          .map(Debt.fromJson)
+          .toList();
+    }
     try {
       final items = await _getJsonMapList(
         '/wedding-plans/$weddingPlanId/debts',
@@ -42,6 +52,14 @@ class DebtInstallmentApi {
 
   Future<DebtSummary> getDebtSummary(String weddingPlanId) async {
     final key = 'debt_summary:$weddingPlanId';
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      final debts = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedDebts,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return _summaryFromDebts(debts ?? const <Map<String, dynamic>>[]);
+    }
     try {
       final json = await _apiClient.getJson(
         '/wedding-plans/$weddingPlanId/debts/summary',
@@ -92,6 +110,9 @@ class DebtInstallmentApi {
     if (normalizedCreditorPhone != null) {
       payload['creditorPhone'] = normalizedCreditorPhone;
     }
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _createLocalDebt(weddingPlanId: weddingPlanId, payload: payload);
+    }
     try {
       final json = await _apiClient.postJson(
         '/wedding-plans/$weddingPlanId/debts',
@@ -134,6 +155,9 @@ class DebtInstallmentApi {
   }
 
   Future<Debt> updateDebt(String id, Map<String, dynamic> data) async {
+    if (id.startsWith('local-debt-')) {
+      return _updateLocalDebt(id: id, data: data);
+    }
     final json = await _apiClient.patchJson('/debts/$id', data);
     return Debt.fromJson(json);
   }
@@ -143,6 +167,16 @@ class DebtInstallmentApi {
   }
 
   Future<List<Installment>> getInstallments(String debtId) async {
+    if (debtId.startsWith('local-debt-')) {
+      final cached = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedInstallments,
+        parentColumn: 'debtId',
+        parentId: debtId,
+      );
+      return (cached ?? const <Map<String, dynamic>>[])
+          .map(Installment.fromJson)
+          .toList();
+    }
     try {
       final items = await _getJsonMapList('/debts/$debtId/installments');
       await _offline?.database.replaceCachedList(
@@ -166,6 +200,9 @@ class DebtInstallmentApi {
 
   Future<List<Installment>> getDueInstallments(String weddingPlanId) async {
     final key = 'due_installments:$weddingPlanId';
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return const [];
+    }
     try {
       final items = await _getJsonMapList(
         '/wedding-plans/$weddingPlanId/installments/due',
@@ -201,6 +238,9 @@ class DebtInstallmentApi {
       if (paidAt != null) 'paidAt': paidAt.toIso8601String(),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
+    if (debtId.startsWith('local-debt-')) {
+      return _createLocalInstallment(debtId: debtId, payload: payload);
+    }
     try {
       final json = await _apiClient.postJson(
         '/debts/$debtId/installments',
@@ -312,11 +352,89 @@ class DebtInstallmentApi {
     );
   }
 
+  Future<Debt> _createLocalDebt({
+    required String weddingPlanId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final now = DateTime.now();
+    final localId = 'local-debt-${now.microsecondsSinceEpoch}';
+    final localJson = {
+      'id': localId,
+      'weddingPlanId': weddingPlanId,
+      'paidAmount': '0',
+      ...payload,
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedDebts,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Debt.fromJson(localJson);
+  }
+
+  Future<Debt> _updateLocalDebt({
+    required String id,
+    required Map<String, dynamic> data,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedDebts,
+      id: id,
+    );
+    final now = DateTime.now();
+    final localJson = {
+      ...?cached,
+      ...data,
+      'id': id,
+      'weddingPlanId': cached?['weddingPlanId'] ?? '',
+      'createdAt': cached?['createdAt'] ?? now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedDebts,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Debt.fromJson(localJson);
+  }
+
+  Future<Installment> _createLocalInstallment({
+    required String debtId,
+    required Map<String, dynamic> payload,
+  }) async {
+    final now = DateTime.now();
+    final localJson = {
+      'id': 'local-installment-${now.microsecondsSinceEpoch}',
+      'debtId': debtId,
+      ...payload,
+      'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedInstallments,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return Installment.fromJson(localJson);
+  }
+
   String? _normalizeOptionalPhone(String? phone) {
     try {
       return PhoneNumberUtils.normalizeOptional(phone);
     } on FormatException {
       throw const ApiException('أدخل رقم جوال صحيح.');
     }
+  }
+
+  bool _isLocalGuestPlanId(String? planId) {
+    final value = planId?.trim() ?? '';
+    return value.isEmpty ||
+        value == 'local-guest-plan' ||
+        value.startsWith('guest-plan-') ||
+        value.startsWith('local-guest-');
   }
 }

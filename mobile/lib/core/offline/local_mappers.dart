@@ -56,6 +56,14 @@ LocalCacheRow buildCacheRow({
               json['canManageFinancialRecords'] == true,
         }),
       });
+    case OfflineTables.cachedGuests:
+      base.addAll({
+        'planId': _string(json['weddingPlanId']),
+        'name': _string(json['name']),
+        'phone': _string(json['phone']),
+        'side': _string(json['side']) ?? 'OTHER',
+        'status': _string(json['status']) ?? 'INVITED',
+      });
     case OfflineTables.cachedTasks:
       base.addAll({
         'planId': _string(json['weddingPlanId']),

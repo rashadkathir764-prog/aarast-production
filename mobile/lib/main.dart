@@ -66,7 +66,7 @@ Future<void> main() async {
   final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
   final providerDashboardApi = ProviderDashboardApi(apiClient);
   final notificationsApi = NotificationsApi(apiClient);
-  final guestsApi = GuestsApi(apiClient);
+  final guestsApi = GuestsApi(apiClient, offline: offlineSyncService);
   final settingsApi = SettingsApi(apiClient);
 
   runApp(

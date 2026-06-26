@@ -28,7 +28,6 @@ class _GuestListScreenState extends State<GuestListScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_isLocalExploration) return;
       _load();
     });
   }
@@ -39,7 +38,6 @@ class _GuestListScreenState extends State<GuestListScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (_isLocalExploration) return;
         _load();
       });
     }
@@ -69,6 +67,24 @@ class _GuestListScreenState extends State<GuestListScreen> {
 
   Widget _body(GuestsProvider provider, bool planIdReady) {
     if (_isLocalExploration) {
+      if (provider.guests.isNotEmpty) {
+        return ListView(
+          children: [
+            _GuestSummary(guests: provider.guests),
+            const SizedBox(height: 14),
+            for (final guest in provider.guests) ...[
+              _GuestTile(
+                guest: guest,
+                onEdit: () => _showGuestSheet(guest: guest),
+                onStatus: (status) => _updateStatus(guest, status),
+                onDelete: () => _confirmDelete(guest),
+              ),
+              const SizedBox(height: 10),
+            ],
+            const SizedBox(height: 90),
+          ],
+        );
+      }
       return ListView(
         children: [
           const SizedBox(height: 48),
@@ -173,7 +189,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
 
     if (result == null || !mounted) return;
-    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+    if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+    )) {
       return;
     }
     if (!mounted) return;
@@ -200,9 +219,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
           );
     if (!mounted) return;
     if (ok) {
+      final message = provider.noticeMessage ?? 'تم حفظ الضيف.';
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('تم حفظ الضيف.')));
+        ..showSnackBar(SnackBar(content: Text(message)));
     } else {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()

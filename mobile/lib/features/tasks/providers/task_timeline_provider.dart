@@ -112,7 +112,10 @@ class TaskTimelineProvider extends ChangeNotifier {
         priority: priority,
       );
       _tasks = [task, ..._tasks.where((item) => item.id != task.id)];
-      if (task.id.startsWith('local-')) {
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+        _timeline = await _api.getTimeline(weddingPlanId);
+      } else if (task.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
         _timeline = await _api.getTimeline(weddingPlanId);
       } else {
@@ -229,7 +232,9 @@ class TaskTimelineProvider extends ChangeNotifier {
     try {
       final updated = await _api.updateTask(task.id, payload);
       _replaceTask(updated);
-      if (updated.id.startsWith('local-')) {
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (updated.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
       await _refreshTimeline(weddingPlanId);
@@ -315,4 +320,12 @@ class TaskTimelineProvider extends ChangeNotifier {
     }
     return trimmed;
   }
+}
+
+bool _isLocalGuestPlanId(String? planId) {
+  final value = planId?.trim() ?? '';
+  return value.isEmpty ||
+      value == 'local-guest-plan' ||
+      value.startsWith('guest-plan-') ||
+      value.startsWith('local-guest-');
 }

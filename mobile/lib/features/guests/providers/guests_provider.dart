@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
 import '../data/guests_api.dart';
 import '../models/guest.dart';
 
@@ -12,16 +13,19 @@ class GuestsProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _noticeMessage;
   List<Guest> _guests = const [];
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get noticeMessage => _noticeMessage;
   List<Guest> get guests => _guests;
 
   Future<void> loadGuests(String weddingPlanId) async {
     _isLoading = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -47,6 +51,7 @@ class GuestsProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -60,6 +65,9 @@ class GuestsProvider extends ChangeNotifier {
         notes: notes,
       );
       _guests = [guest, ..._guests];
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = _guestErrorMessage(error);
@@ -84,6 +92,7 @@ class GuestsProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -97,6 +106,9 @@ class GuestsProvider extends ChangeNotifier {
         notes: notes,
       );
       _replace(updated);
+      if (updated.id.startsWith('local-guest-')) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = _guestErrorMessage(error);
@@ -113,11 +125,15 @@ class GuestsProvider extends ChangeNotifier {
   Future<bool> deleteGuest(Guest guest) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
       await _api.deleteGuest(guest.id);
       _guests = _guests.where((item) => item.id != guest.id).toList();
+      if (guest.id.startsWith('local-guest-')) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      }
       return true;
     } on ApiException catch (error) {
       _errorMessage = _guestErrorMessage(error);
@@ -133,6 +149,7 @@ class GuestsProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
   }
 
@@ -141,6 +158,14 @@ class GuestsProvider extends ChangeNotifier {
       for (final item in _guests) item.id == updated.id ? updated : item,
     ];
   }
+}
+
+bool _isLocalGuestPlanId(String? planId) {
+  final value = planId?.trim() ?? '';
+  return value.isEmpty ||
+      value == 'local-guest-plan' ||
+      value.startsWith('guest-plan-') ||
+      value.startsWith('local-guest-');
 }
 
 String _guestErrorMessage(ApiException error) {

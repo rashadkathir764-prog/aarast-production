@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/shared_member.dart';
 import '../models/plan_role_permissions.dart';
 import '../providers/sharing_provider.dart';
@@ -161,6 +162,10 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+      return;
+    }
+    if (!mounted) return;
 
     final provider = context.read<SharingProvider>();
     final duplicateMessage = _duplicateMemberMessage(

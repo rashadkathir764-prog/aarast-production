@@ -27,7 +27,7 @@ void main() {
               onOpenTasks: () {},
               onOpenProviders: () {},
               onOpenGuests: () {},
-                onOpenParticipants: () {},
+              onOpenParticipants: () {},
               onOpenNotifications: () {},
               onOpenImportantItem: (_) {},
               onOpenNextStep: () {},
@@ -119,6 +119,30 @@ void main() {
     expect(find.text('إضافة دين'), findsOneWidget);
     expect(find.text('طلب عرض سعر'), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+  });
+
+  testWidgets('royal bottom nav hides new-action CTA when no action is bound', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            bottomNavigationBar: RoyalDashboardBottomNav(
+              activeIndex: 0,
+              onHome: () {},
+              onMoney: () {},
+              onTasks: () {},
+              onProviders: () {},
+              onMore: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('إجراء جديد'), findsNothing);
   });
 }
 

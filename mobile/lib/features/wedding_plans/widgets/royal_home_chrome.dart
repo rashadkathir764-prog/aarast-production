@@ -171,57 +171,58 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                 ),
               ),
             ),
-            Positioned(
-              bottom: dockBottom + dockHeight + 16,
-              child: _PressScale(
-                onTap: onAdd,
-                borderRadius: BorderRadius.circular(24),
-                child: Container(
-                  height: 48,
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                      colors: [
-                        _RoyalHomeColors.gold,
-                        _RoyalHomeColors.goldDeep,
+            if (onAdd != null)
+              Positioned(
+                bottom: dockBottom + dockHeight + 16,
+                child: _PressScale(
+                  onTap: onAdd,
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          _RoyalHomeColors.gold,
+                          _RoyalHomeColors.goldDeep,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _RoyalHomeColors.goldDeep.withValues(
+                            alpha: 0.25,
+                          ),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      width: 1.5,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'إجراء جديد',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        SizedBox(width: 6),
+                        Icon(Icons.add_rounded, color: Colors.white, size: 20),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _RoyalHomeColors.goldDeep.withValues(
-                          alpha: 0.25,
-                        ),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'إجراء جديد',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                      Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                    ],
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),

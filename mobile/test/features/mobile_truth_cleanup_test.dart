@@ -31,6 +31,82 @@ void main() {
       );
     });
 
+    test('old dashboard widget variants stay deleted or unreachable', () {
+      final legacyDashboardVariant = File(
+        '${mobileRoot}lib/features/wedding_plans/widgets/new_dashboard_widgets.dart',
+      );
+      expect(
+        legacyDashboardVariant.existsSync(),
+        isFalse,
+        reason:
+            'new_dashboard_widgets.dart was an unused dashboard variant. '
+            'The canonical production dashboard lives in '
+            'royal_home_today_center.dart and royal_home_chrome.dart.',
+      );
+
+      final planCenter = File(
+        '${mobileRoot}lib/features/wedding_plans/screens/plan_center_screen.dart',
+      ).readAsStringSync();
+      expect(
+        planCenter,
+        isNot(contains('AppRouter.createWeddingPlan')),
+        reason:
+            'Plan Center must not expose create-plan as a quick operational '
+            'action. Plan creation belongs to onboarding or More -> My Plans.',
+      );
+    });
+
+    test('more screen does not expose operational quick actions', () {
+      final moreScreen = File(
+        '${mobileRoot}lib/features/more/screens/more_screen.dart',
+      ).readAsStringSync();
+      final forbiddenRoutes = <String>[
+        'AppRouter.createExpense',
+        'AppRouter.createDebt',
+        'AppRouter.createTask',
+        'AppRouter.guestList',
+        'AppRouter.providerQuote',
+        'AppRouter.providerQuoteRequest',
+      ];
+
+      for (final route in forbiddenRoutes) {
+        expect(
+          moreScreen,
+          isNot(contains(route)),
+          reason:
+              'More must stay account/settings/support/legal/provider-entry '
+              'only, not an operational dashboard shortcut surface.',
+        );
+      }
+    });
+
+    test(
+      'wedding-user marketplace does not expose provider dashboard actions',
+      () {
+        final marketplace = File(
+          '${mobileRoot}lib/features/marketplace/screens/provider_marketplace_screen.dart',
+        ).readAsStringSync();
+        final forbiddenProviderOps = <String>[
+          'ProviderDashboardScreen',
+          'AddProviderServiceScreen',
+          'AddProviderPackageScreen',
+          'AppRouter.providerDashboard',
+          'AppRouter.providerServiceNew',
+          'AppRouter.providerPackageNew',
+        ];
+
+        for (final operation in forbiddenProviderOps) {
+          expect(
+            marketplace,
+            isNot(contains(operation)),
+            reason:
+                'The wedding-user marketplace must browse providers and request '
+                'quotes, not expose provider business-dashboard operations.',
+          );
+        }
+      },
+    );
+
     test(
       'production screens do not use اختياري as the displayed saved value',
       () {
@@ -39,7 +115,9 @@ void main() {
         for (final entity in libRoot.listSync(recursive: true)) {
           if (entity is! File) continue;
           if (!entity.path.endsWith('.dart')) continue;
-          if (entity.path.contains('${Platform.pathSeparator}test${Platform.pathSeparator}')) {
+          if (entity.path.contains(
+            '${Platform.pathSeparator}test${Platform.pathSeparator}',
+          )) {
             continue;
           }
           // _SelectorField uses value: x == null ? 'اختياري' : ... as the
@@ -70,66 +148,62 @@ void main() {
       },
     );
 
-    test(
-      'production copy does not leak feminine-only CTAs in non-bride '
-      'persona-neutral surfaces',
-      () {
-        final libRoot = Directory('${mobileRoot}lib');
-        final feminineWords = <String>[
-          'تابعي',
-          'اختاري',
-          'أضيفي',
-          'حددي',
-          'تستطيعين',
-          'تواصلي',
-          'ابدئي',
-          'ابحثي',
-          'ارسلي',
-          'افتحي',
-          'راجعي',
-        ];
-        final offenders = <String>[];
-        for (final entity in libRoot.listSync(recursive: true)) {
-          if (entity is! File) continue;
-          if (!entity.path.endsWith('.dart')) continue;
-          // Only audit production-reachable screens and shared widgets.
-          final isScreen =
-              entity.path.contains('${Platform.pathSeparator}screens${Platform.pathSeparator}');
-          final isSharedWidget = entity.path.contains(
-            '${Platform.pathSeparator}shared${Platform.pathSeparator}widgets${Platform.pathSeparator}',
-          );
-          if (!isScreen && !isSharedWidget) continue;
-          // The persona_copy registry legitimately keeps bride-form copy
-          // because it is selected by user persona. Skip it so the
-          // gender-aware branch stays intentional.
-          if (entity.path.endsWith('persona_copy.dart')) continue;
-          // The legacy onboarding_screen.dart has been deleted; this guard
-          // keeps the test green if the file ever returns.
-          if (entity.path.endsWith('auth/screens/onboarding_screen.dart')) {
-            continue;
-          }
+    test('production copy does not leak feminine-only CTAs in non-bride '
+        'persona-neutral surfaces', () {
+      final libRoot = Directory('${mobileRoot}lib');
+      final feminineWords = <String>[
+        'تابعي',
+        'اختاري',
+        'أضيفي',
+        'حددي',
+        'تستطيعين',
+        'تواصلي',
+        'ابدئي',
+        'ابحثي',
+        'ارسلي',
+        'افتحي',
+        'راجعي',
+      ];
+      final offenders = <String>[];
+      for (final entity in libRoot.listSync(recursive: true)) {
+        if (entity is! File) continue;
+        if (!entity.path.endsWith('.dart')) continue;
+        // Only audit production-reachable screens and shared widgets.
+        final isScreen = entity.path.contains(
+          '${Platform.pathSeparator}screens${Platform.pathSeparator}',
+        );
+        final isSharedWidget = entity.path.contains(
+          '${Platform.pathSeparator}shared${Platform.pathSeparator}widgets${Platform.pathSeparator}',
+        );
+        if (!isScreen && !isSharedWidget) continue;
+        // The persona_copy registry legitimately keeps bride-form copy
+        // because it is selected by user persona. Skip it so the
+        // gender-aware branch stays intentional.
+        if (entity.path.endsWith('persona_copy.dart')) continue;
+        // The legacy onboarding_screen.dart has been deleted; this guard
+        // keeps the test green if the file ever returns.
+        if (entity.path.endsWith('auth/screens/onboarding_screen.dart')) {
+          continue;
+        }
 
-          final lines = entity.readAsLinesSync();
-          for (var i = 0; i < lines.length; i++) {
-            final line = lines[i];
-            if (line.trim().startsWith('//')) continue;
-            for (final word in feminineWords) {
-              if (!line.contains(word)) continue;
-              offenders.add(
-                '${entity.path}:${i + 1} [$word]: ${line.trim()}',
-              );
-            }
+        final lines = entity.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          if (line.trim().startsWith('//')) continue;
+          for (final word in feminineWords) {
+            if (!line.contains(word)) continue;
+            offenders.add('${entity.path}:${i + 1} [$word]: ${line.trim()}');
           }
         }
-        expect(
-          offenders,
-          isEmpty,
-          reason:
-              'Production-reachable screens should use neutral Arabic CTAs. '
-              'Bride-form copy is only valid inside persona_copy.dart.',
-        );
-      },
-    );
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Production-reachable screens should use neutral Arabic CTAs. '
+            'Bride-form copy is only valid inside persona_copy.dart.',
+      );
+    });
   });
 }
 

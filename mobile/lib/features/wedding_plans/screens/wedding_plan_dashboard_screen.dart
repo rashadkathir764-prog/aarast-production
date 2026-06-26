@@ -9,6 +9,7 @@ import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
+import '../widgets/quick_add_actions.dart';
 import '../widgets/royal_home_chrome.dart';
 import '../widgets/royal_home_today_center.dart';
 
@@ -221,38 +222,24 @@ class _WeddingPlanDashboardScreenState
   }
 
   List<RoyalHomeAction> _quickActions() {
-    void open(String route) {
+    Future<void> open(String route, {bool refreshDashboard = false}) async {
       Navigator.of(context, rootNavigator: true).pop();
-      context.push(route);
+      if (!mounted) return;
+      final changed = await context.push<bool>(route);
+      if (refreshDashboard && changed == true && mounted) {
+        await context.read<DashboardSummaryProvider>().loadDashboard(
+          widget.weddingPlanId,
+          sharedMember: widget.sharedMember,
+        );
+      }
     }
 
-    return [
-      RoyalHomeAction(
-        icon: Icons.account_balance_wallet_outlined,
-        label: 'إضافة مصروف',
-        onTap: () => open(AppRouter.createExpense(widget.weddingPlanId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.check_circle_outline_rounded,
-        label: 'إضافة مهمة',
-        onTap: () => open(AppRouter.createTask(widget.weddingPlanId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.group_add_outlined,
-        label: 'إضافة ضيف',
-        onTap: () => open(AppRouter.guestList(widget.weddingPlanId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.attach_money_rounded,
-        label: 'إضافة دين',
-        onTap: () => open(AppRouter.createDebt(widget.weddingPlanId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.request_quote_outlined,
-        label: 'طلب عرض سعر',
-        onTap: () => open(AppRouter.providerMarketplace),
-      ),
-    ];
+    return buildCanonicalQuickAddActions(
+      context,
+      planId: widget.weddingPlanId,
+      refreshDashboardOnExpense: true,
+      openRoute: open,
+    );
   }
 
   void _openDashboardItem(DashboardImportantItem item) {

@@ -15,10 +15,10 @@ class UserRebuildMoneyTab extends StatelessWidget {
   final bool canAccessFinance;
 
   static const noPlanMessage =
-      'تبويب المال التجريبي — يحتاج خطة حالية قبل عرض الميزانية والمصروفات';
+      'تبويب المال الداخلي — يحتاج خطة حالية قبل عرض الميزانية والمصروفات';
 
   static const noPermissionMessage =
-      'صلاحية المال غير مفعلة في هذا العرض التجريبي';
+      'صلاحية المال غير مفعلة في هذا العرض الداخلي';
 
   @override
   Widget build(BuildContext context) {
@@ -89,16 +89,16 @@ class UserRebuildMoneyTab extends StatelessWidget {
       MoneyFlowReadinessState.missingCurrentPlan => noPlanMessage,
       MoneyFlowReadinessState.missingPermission => noPermissionMessage,
       MoneyFlowReadinessState.waitingForSources =>
-        'تبويب المال التجريبي ينتظر مصادر الميزانية والمصروفات والديون',
+        'تبويب المال الداخلي ينتظر مصادر الميزانية والمصروفات والديون',
       MoneyFlowReadinessState.ready =>
-        'تبويب المال التجريبي جاهز داخلياً بمصادر مالية حقيقية',
+        'تبويب المال الداخلي جاهز بمصادر مالية حقيقية',
       MoneyFlowReadinessState.offlinePendingSync =>
-        'تبويب المال التجريبي جاهز داخلياً مع تغييرات بانتظار المزامنة',
-      MoneyFlowReadinessState.loading => 'تبويب المال التجريبي قيد التحميل',
+        'تبويب المال الداخلي جاهز مع تغييرات بانتظار المزامنة',
+      MoneyFlowReadinessState.loading => 'تبويب المال الداخلي قيد التحميل',
       MoneyFlowReadinessState.blockedByError =>
         readiness.errorMessage?.trim().isNotEmpty == true
             ? readiness.errorMessage!.trim()
-            : 'تعذر تجهيز تبويب المال التجريبي',
+            : 'تعذر تجهيز تبويب المال الداخلي',
     };
   }
 

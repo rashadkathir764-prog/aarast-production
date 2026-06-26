@@ -125,7 +125,8 @@ class AuthController extends ChangeNotifier {
       if (error.isUnauthorized && unauthorizedMessage != null) {
         _errorMessage = unauthorizedMessage;
       } else if (error.isNetworkFailure) {
-        _errorMessage = 'تعذر الاتصال بالخادم';
+        _errorMessage =
+            'تعذر تسجيل الدخول الآن. تحقق من الاتصال وحاول مرة أخرى.';
       } else {
         _errorMessage = error.message;
       }

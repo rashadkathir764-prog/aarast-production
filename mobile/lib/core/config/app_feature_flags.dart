@@ -1,7 +1,10 @@
 class AppFeatureFlags {
-  // TEMP DEV ONLY.
-  // Disable before any real QA, commit finalization, release, or production build.
-  static const bool devBypassLoginGatesForUxExploration = true;
+  // Explicit local development escape hatch. Normal builds keep account and
+  // provider gates real unless this dart-define is intentionally enabled.
+  static const bool devBypassLoginGatesForUxExploration = bool.fromEnvironment(
+    'AARAST_DEV_BYPASS_LOGIN_GATES',
+    defaultValue: false,
+  );
 
   const AppFeatureFlags({
     required this.enableGuestFirstOnboarding,
@@ -20,7 +23,7 @@ class AppFeatureFlags {
   });
 
   static const defaults = AppFeatureFlags(
-    enableGuestFirstOnboarding: false,
+    enableGuestFirstOnboarding: true,
     enableProviderMode: false,
     enableProviderQuotes: false,
     enableGuestContacts: false,

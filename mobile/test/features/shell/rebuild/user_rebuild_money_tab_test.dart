@@ -14,7 +14,7 @@ void main() {
       expect(find.byType(UserRebuildMoneyTab), findsOneWidget);
       expect(
         find.text(
-          'تبويب المال التجريبي — يحتاج خطة حالية قبل عرض الميزانية والمصروفات',
+          'تبويب المال الداخلي — يحتاج خطة حالية قبل عرض الميزانية والمصروفات',
         ),
         findsOneWidget,
       );
@@ -38,7 +38,7 @@ void main() {
       );
 
       expect(
-        find.text('صلاحية المال غير مفعلة في هذا العرض التجريبي'),
+        find.text('صلاحية المال غير مفعلة في هذا العرض الداخلي'),
         findsOneWidget,
       );
     });
@@ -69,7 +69,7 @@ void main() {
         );
 
         expect(
-          find.text('تبويب المال التجريبي جاهز داخلياً بمصادر مالية حقيقية'),
+          find.text('تبويب المال الداخلي جاهز بمصادر مالية حقيقية'),
           findsOneWidget,
         );
         expect(find.text('500000 YER'), findsOneWidget);

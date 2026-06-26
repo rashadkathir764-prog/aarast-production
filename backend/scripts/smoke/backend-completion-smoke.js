@@ -23,6 +23,7 @@ const OWNER_PHONE = `+96770${suffix}`;
 const PROVIDER_PHONE = `+96771${suffix}`;
 const OUTSIDER_PHONE = `+96772${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
+const PROVIDER_BUSINESS_NAME = `Backend Completion Provider Business ${suffix}`;
 
 let passed = 0;
 let failed = 0;
@@ -117,16 +118,23 @@ async function ensureReferenceData() {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
-    name,
-    phone,
-    password: TEST_PASSWORD,
-  });
+  let currentPhone = phone;
+  let res = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    res = await request('POST', '/auth/register', {
+      name,
+      phone: currentPhone,
+      password: TEST_PASSWORD,
+    });
+    if (res.status === 201) break;
+    currentPhone = `${phone.slice(0, -7)}${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`;
+  }
+
   check(`${name} register - HTTP 201`, res.status === 201);
   check(`${name} register returns token`, typeof res.body?.accessToken === 'string');
   check(`${name} register returns user id`, typeof res.body?.user?.id === 'string');
   check(`${name} register does not expose passwordHash`, !hasPasswordHash(res.body));
-  return { token: res.body?.accessToken, user: res.body?.user };
+  return { token: res.body?.accessToken, user: res.body?.user, phone: currentPhone };
 }
 
 async function run() {
@@ -324,8 +332,8 @@ async function run() {
 
   {
     const res = await request('POST', '/api/v1/provider/profile', {
-      businessName: 'Backend Completion Provider Business',
-      phone: PROVIDER_PHONE,
+      businessName: PROVIDER_BUSINESS_NAME,
+      phone: providerUser.phone,
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'Provider used by backend completion smoke.',
@@ -352,7 +360,8 @@ async function run() {
   });
 
   {
-    const res = await request('GET', '/api/v1/providers', null, owner.token);
+    const search = encodeURIComponent(PROVIDER_BUSINESS_NAME);
+    const res = await request('GET', `/api/v1/providers?search=${search}&limit=100`, null, owner.token);
     check('GET providers - HTTP 200', res.status === 200);
     check('providers include active completion provider', res.body?.items?.some((item) => item.id === providerId));
   }

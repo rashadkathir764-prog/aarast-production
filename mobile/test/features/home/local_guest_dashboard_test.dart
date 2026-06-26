@@ -79,10 +79,12 @@ void main() {
       }
 
       expect(
-        find.text('هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.'),
+        find.text(
+          'المزامنة والمشاركة تحتاجان حساباً لحفظ الصلاحيات والبيانات بأمان.',
+        ),
         findsOneWidget,
       );
-      expect(find.text('تسجيل الدخول'), findsNothing);
+      expect(find.text('تسجيل الدخول'), findsOneWidget);
     },
   );
 

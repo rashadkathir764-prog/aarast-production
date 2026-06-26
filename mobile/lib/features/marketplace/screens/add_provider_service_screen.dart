@@ -53,7 +53,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
 
     return AarastPageScaffold(
       title: 'إضافة خدمة',
-      subtitle: 'أضيفي خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
+      subtitle: 'أضف خدمة واضحة لتظهر ضمن ملف المزود بعد الاعتماد.',
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
@@ -107,7 +107,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           ),
                           validator: (value) =>
                               value == null || value.trim().length < 2
-                              ? 'اكتبي اسم الخدمة'
+                              ? 'اكتب اسم الخدمة'
                               : null,
                         ),
                         const SizedBox(height: 14),
@@ -128,7 +128,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           onChanged: (value) =>
                               setState(() => _categoryId = value),
                           validator: (value) =>
-                              value == null ? 'اختاري الفئة' : null,
+                              value == null ? 'اختر الفئة' : null,
                         ),
                         const SizedBox(height: 14),
                         DropdownButtonFormField<String>(
@@ -261,7 +261,7 @@ class _ServiceIntro extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'اكتبي خدمة حقيقية وواضحة. رفع الصور سيظهر لاحقًا عند ربط نظام الملفات.',
+              'اكتب خدمة حقيقية وواضحة. رفع الصور سيظهر لاحقًا عند ربط نظام الملفات.',
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: AppTheme.dInk,

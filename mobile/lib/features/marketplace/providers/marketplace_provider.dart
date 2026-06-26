@@ -604,7 +604,7 @@ String _marketplaceErrorMessage(String message) {
   final normalized = message.trim();
   if (normalized.contains('هذه الخدمة غير متاحة') ||
       normalized.startsWith('Cannot ')) {
-    return 'خدمة الموردين غير متاحة على الخادم الحالي. تأكد من تحديث وتشغيل الخلفية ثم حاول مرة أخرى.';
+    return 'تعذر تحميل الموردين الآن. تحقق من الاتصال وحاول مرة أخرى.';
   }
   if (normalized.contains('انتهت الجلسة') ||
       normalized.contains('بيانات الدخول')) {

@@ -30,7 +30,7 @@ class OfflineStatusBanner extends StatelessWidget {
     final label = switch (state) {
       SyncState.offline => 'بدون اتصال',
       SyncState.syncing => 'جار المزامنة',
-      SyncState.syncError => 'تعذر الاتصال بالخادم',
+      SyncState.syncError => 'تعذر مزامنة البيانات الآن',
       _ => 'بانتظار المزامنة',
     };
     final lastSync = service.lastSyncedAt == null

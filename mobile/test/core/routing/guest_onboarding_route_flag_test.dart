@@ -3,17 +3,20 @@ import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('guest onboarding dev route flag', () {
-    test('redirects to current onboarding when feature flag is disabled', () {
-      expect(
-        AppRouter.guestOnboardingRedirect(AppFeatureFlags.defaults),
-        AppRouter.onboarding,
-      );
-    });
+  group('guest onboarding route flag', () {
+    test(
+      'does not redirect when guest-first onboarding is enabled by default',
+      () {
+        expect(
+          AppRouter.guestOnboardingRedirect(AppFeatureFlags.defaults),
+          isNull,
+        );
+      },
+    );
 
-    test('does not redirect when feature flag is enabled', () {
+    test('redirects to current onboarding when feature flag is disabled', () {
       const flags = AppFeatureFlags(
-        enableGuestFirstOnboarding: true,
+        enableGuestFirstOnboarding: false,
         enableProviderMode: false,
         enableProviderQuotes: false,
         enableGuestContacts: false,
@@ -28,7 +31,7 @@ void main() {
         enableSingleDashboardSummary: false,
       );
 
-      expect(AppRouter.guestOnboardingRedirect(flags), isNull);
+      expect(AppRouter.guestOnboardingRedirect(flags), AppRouter.onboarding);
     });
   });
 }

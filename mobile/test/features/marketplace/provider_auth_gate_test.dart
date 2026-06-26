@@ -55,75 +55,78 @@ void main() {
     },
   );
 
-  testWidgets(
-    'provider details route is public for guest users in dev exploration mode',
-    (tester) async {
-      final router = GoRouter(
-        initialLocation: '/providers/p-1',
-        routes: [
-          GoRoute(
-            path: AppRouter.login,
-            builder: (context, state) => const Scaffold(body: Text('login')),
-          ),
-          GoRoute(
-            path: '/providers/:id',
-            builder: (context, state) =>
-                const Scaffold(body: Text('provider-details-opened')),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-      await tester.pumpAndSettle();
-
-      expect(find.text('provider-details-opened'), findsOneWidget);
-      expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
-      expect(find.text('login'), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'providers quote-request route opens for guest users in dev exploration mode',
-    (tester) async {
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
-      final authStorage = AuthStorage(preferences);
-      final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
-      final authRepository = AuthRepository(apiClient, authStorage);
-      final authController = AuthController(authRepository)..restoreSession();
-      final router = GoRouter(
-        initialLocation: '/providers/p-1/quote',
-        routes: [
-          GoRoute(
-            path: AppRouter.login,
-            builder: (context, state) => const Scaffold(body: Text('login')),
-          ),
-          GoRoute(
-            path: '/providers/:id/quote',
-            builder: (context, state) => ProviderAuthGate(
-              resumeLocation: state.uri.toString(),
-              child: const Text('quote-opened'),
-            ),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            Provider<AuthStorage>.value(value: authStorage),
-            Provider<AuthRepository>.value(value: authRepository),
-            ChangeNotifierProvider<AuthController>.value(value: authController),
-          ],
-          child: MaterialApp.router(routerConfig: router),
+  testWidgets('provider details route remains public for guest users', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/providers/p-1',
+      routes: [
+        GoRoute(
+          path: AppRouter.login,
+          builder: (context, state) => const Scaffold(body: Text('login')),
         ),
-      );
-      await tester.pumpAndSettle();
+        GoRoute(
+          path: '/providers/:id',
+          builder: (context, state) =>
+              const Scaffold(body: Text('provider-details-opened')),
+        ),
+      ],
+    );
 
-      expect(find.byKey(const Key('provider-auth-gate')), findsNothing);
-      expect(find.text('quote-opened'), findsOneWidget);
-      expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
-      expect(find.text('login'), findsNothing);
-    },
-  );
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.text('provider-details-opened'), findsOneWidget);
+    expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+    expect(find.text('login'), findsNothing);
+  });
+
+  testWidgets('providers quote-request route requires an account by default', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+    final authRepository = AuthRepository(apiClient, authStorage);
+    final authController = AuthController(authRepository)..restoreSession();
+    final router = GoRouter(
+      initialLocation: '/providers/p-1/quote',
+      routes: [
+        GoRoute(
+          path: AppRouter.login,
+          builder: (context, state) => const Scaffold(body: Text('login')),
+        ),
+        GoRoute(
+          path: '/providers/:id/quote',
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            child: const Text('quote-opened'),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: authStorage),
+          Provider<AuthRepository>.value(value: authRepository),
+          ChangeNotifierProvider<AuthController>.value(value: authController),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('provider-auth-gate')), findsOneWidget);
+    expect(find.text('quote-opened'), findsNothing);
+    expect(find.byKey(const Key('provider-auth-gate-login')), findsOneWidget);
+    expect(
+      find.byKey(const Key('provider-auth-gate-register')),
+      findsOneWidget,
+    );
+    expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
+    expect(find.text('login'), findsNothing);
+  });
 }

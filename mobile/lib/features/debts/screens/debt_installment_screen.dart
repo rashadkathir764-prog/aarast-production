@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
@@ -991,7 +992,7 @@ String _formatMoney(num value) {
 }
 
 String _shortDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  return formatArabicCompactDate(date);
 }
 
 String _normalizeSearch(String value) {

@@ -19,10 +19,12 @@ const { PrismaClient, ProviderStatus } = require('@prisma/client');
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
-const PROVIDER_PHONE = `+96760${timestamp.toString().slice(-6)}`;
-const CUSTOMER_PHONE = `+96761${timestamp.toString().slice(-6)}`;
-const OUTSIDER_PHONE = `+96762${timestamp.toString().slice(-6)}`;
+const suffix = `${timestamp.toString().slice(-4)}${Math.floor(Math.random() * 90 + 10)}`;
+const PROVIDER_PHONE = `+96760${suffix}`;
+const CUSTOMER_PHONE = `+96761${suffix}`;
+const OUTSIDER_PHONE = `+96762${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
+const PROVIDER_BUSINESS_NAME = `Phase8 Provider Business ${suffix}`;
 
 let passed = 0;
 let failed = 0;
@@ -142,7 +144,7 @@ async function run() {
 
   {
     const res = await request('POST', '/api/v1/provider/profile', {
-      businessName: 'Phase8 Provider Business',
+      businessName: PROVIDER_BUSINESS_NAME,
       phone: PROVIDER_PHONE,
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
@@ -204,7 +206,8 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/api/v1/providers');
+    const search = encodeURIComponent(PROVIDER_BUSINESS_NAME);
+    const res = await request('GET', `/api/v1/providers?search=${search}&limit=100`);
     check('GET /api/v1/providers - HTTP 200', res.status === 200);
     check('provider listing is paginated', Array.isArray(res.body?.items));
     check('provider listing includes active provider', res.body?.items?.some((item) => item.id === providerId));

@@ -19,11 +19,12 @@ const { PrismaClient, ProviderStatus } = require('@prisma/client');
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
-const OWNER_PHONE = `+96763${timestamp.toString().slice(-6)}`;
-const INVITEE_PHONE = `+96764${timestamp.toString().slice(-6)}`;
-const PROVIDER_PHONE = `+96765${timestamp.toString().slice(-6)}`;
-const CUSTOMER_PHONE = `+96766${timestamp.toString().slice(-6)}`;
-const OUTSIDER_PHONE = `+96767${timestamp.toString().slice(-6)}`;
+const suffix = `${timestamp.toString().slice(-4)}${Math.floor(Math.random() * 90 + 10)}`;
+const OWNER_PHONE = `+96763${suffix}`;
+const INVITEE_PHONE = `+96764${suffix}`;
+const PROVIDER_PHONE = `+96765${suffix}`;
+const CUSTOMER_PHONE = `+96766${suffix}`;
+const OUTSIDER_PHONE = `+96767${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
 
 let passed = 0;

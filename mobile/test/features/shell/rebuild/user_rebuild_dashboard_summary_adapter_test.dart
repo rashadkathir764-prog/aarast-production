@@ -21,11 +21,11 @@ void main() {
 
       expect(
         find.text(
-          'تبويب الرئيسية التجريبي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
+          'تبويب الرئيسية الداخلي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
         ),
         findsOneWidget,
       );
-      expect(find.text('ملخص الخطة التجريبي'), findsNothing);
+      expect(find.text('ملخص الخطة الداخلي'), findsNothing);
     });
 
     testWidgets(
@@ -41,7 +41,7 @@ void main() {
 
         expect(
           find.text(
-            'ملخص الخطة التجريبي يحتاج خطة حالية حقيقية قبل عرض البيانات',
+            'ملخص الخطة الداخلي يحتاج خطة حالية حقيقية قبل عرض البيانات',
           ),
           findsOneWidget,
         );
@@ -61,7 +61,7 @@ void main() {
         ),
       );
 
-      expect(find.text('ملخص الخطة التجريبي'), findsOneWidget);
+      expect(find.text('ملخص الخطة الداخلي'), findsOneWidget);
       expect(find.text('خطة الزفاف'), findsOneWidget);
       expect(find.text('500000 YER'), findsOneWidget);
       expect(find.text('2 مهام'), findsOneWidget);
@@ -77,11 +77,11 @@ void main() {
 
       expect(
         find.text(
-          'تبويب الرئيسية التجريبي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
+          'تبويب الرئيسية الداخلي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
         ),
         findsOneWidget,
       );
-      expect(find.text('ملخص الخطة التجريبي'), findsNothing);
+      expect(find.text('ملخص الخطة الداخلي'), findsNothing);
     });
 
     testWidgets(
@@ -96,7 +96,7 @@ void main() {
           ),
         );
 
-        expect(find.text('ملخص الخطة التجريبي'), findsOneWidget);
+        expect(find.text('ملخص الخطة الداخلي'), findsOneWidget);
         expect(find.text('خطة الزفاف'), findsOneWidget);
       },
     );

@@ -10,10 +10,11 @@ const http = require('http');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3127';
 const timestamp = Date.now();
-const OWNER_PHONE = `+96740${timestamp.toString().slice(-6)}`;
-const DEBT_VIEWER_PHONE = `+96741${timestamp.toString().slice(-6)}`;
-const FINANCE_MANAGER_PHONE = `+96742${timestamp.toString().slice(-6)}`;
-const UNRELATED_PHONE = `+96743${timestamp.toString().slice(-6)}`;
+const suffix = `${timestamp.toString().slice(-4)}${Math.floor(Math.random() * 90 + 10)}`;
+const OWNER_PHONE = `+96740${suffix}`;
+const DEBT_VIEWER_PHONE = `+96741${suffix}`;
+const FINANCE_MANAGER_PHONE = `+96742${suffix}`;
+const UNRELATED_PHONE = `+96743${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
 
 let passed = 0;

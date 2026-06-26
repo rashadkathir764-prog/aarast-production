@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 
@@ -122,5 +123,5 @@ String _statusLabel(String status) {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

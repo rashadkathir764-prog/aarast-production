@@ -9,6 +9,7 @@ import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../more/screens/more_screen.dart';
+import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
@@ -23,7 +24,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   // Bottom-nav indices for the live user shell:
-  // 0: الرئيسية, 1: المال, 2: الموردون, 3: المزيد.
+  // 0: الرئيسية, 1: المال, 2: المهام, 3: الموردون, 4: المزيد.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   String? _activePlanId;
@@ -59,11 +60,7 @@ class _MainShellState extends State<MainShell> {
   void _showQuickAdd() {
     if (_activePlanId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Ø§Ù„Ø±Ø¬Ø§Ø¡ Ø§Ø®ØªÙŠØ§Ø± Ø£Ùˆ Ø¥Ù†Ø´Ø§Ø¡ Ø®Ø·Ø© Ø²ÙØ§Ù Ø£ÙˆÙ„Ø§Ù‹',
-          ),
-        ),
+        const SnackBar(content: Text('اختر أو أنشئ خطة زفاف أولًا.')),
       );
       return;
     }
@@ -83,23 +80,23 @@ class _MainShellState extends State<MainShell> {
     return [
       RoyalHomeAction(
         icon: Icons.account_balance_wallet_outlined,
-        label: 'Ø¥Ø¶Ø§ÙØ© Ù…ØµØ±ÙˆÙ',
+        label: 'إضافة مصروف',
         onTap: () =>
             open(AppRouter.createExpense(planId), refreshDashboard: true),
       ),
       RoyalHomeAction(
         icon: Icons.check_circle_outline_rounded,
-        label: 'Ø¥Ø¶Ø§ÙØ© Ù…Ù‡Ù…Ø©',
+        label: 'إضافة مهمة',
         onTap: () => open(AppRouter.createTask(planId)),
       ),
       RoyalHomeAction(
         icon: Icons.group_add_outlined,
-        label: 'Ø¥Ø¶Ø§ÙØ© Ø¶ÙŠÙ',
+        label: 'إضافة ضيف',
         onTap: () => open(AppRouter.guestList(planId)),
       ),
       RoyalHomeAction(
         icon: Icons.attach_money_rounded,
-        label: 'Ø¥Ø¶Ø§ÙØ© Ø¯ÙŠÙ†',
+        label: 'إضافة دين',
         onTap: () => open(AppRouter.createDebt(planId)),
       ),
       RoyalHomeAction(
@@ -146,19 +143,31 @@ class _MainShellState extends State<MainShell> {
                     : _buildNoPlanFallback('المال'),
               ),
 
-              // Index 2: Vendors marketplace
-              _buildLazyTab(2, const ProviderMarketplaceScreen(embedded: true)),
+              // Index 2: Tasks
+              _buildLazyTab(
+                2,
+                _activePlanId != null
+                    ? TaskTimelineScreen(
+                        key: ValueKey('tasks-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                      )
+                    : _buildNoPlanFallback('المهام'),
+              ),
 
-              // Index 3: More
-              _buildLazyTab(3, const MoreScreen()),
+              // Index 3: Vendors marketplace
+              _buildLazyTab(3, const ProviderMarketplaceScreen(embedded: true)),
+
+              // Index 4: More
+              _buildLazyTab(4, const MoreScreen()),
             ],
           ),
           bottomNavigationBar: RoyalDashboardBottomNav(
             activeIndex: _index,
             onHome: () => _onItemTapped(0),
             onMoney: () => _onItemTapped(1),
-            onProviders: () => _onItemTapped(2),
-            onMore: () => _onItemTapped(3),
+            onTasks: () => _onItemTapped(2),
+            onProviders: () => _onItemTapped(3),
+            onMore: () => _onItemTapped(4),
             onAdd: _showQuickAdd,
           ),
         ),
@@ -180,7 +189,7 @@ class _MainShellState extends State<MainShell> {
             Icon(Icons.info_outline, size: 64, color: AppTheme.dMuted),
             const SizedBox(height: 16),
             Text(
-              'Ø§Ù„Ø±Ø¬Ø§Ø¡ Ø§Ø®ØªÙŠØ§Ø± Ø®Ø·Ø© Ù…Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠØ© Ø£ÙˆÙ„Ø§Ù‹',
+              'اختر خطة من الرئيسية أولًا لفتح $title.',
               style: const TextStyle(
                 color: AppTheme.dInk,
                 fontSize: 16,

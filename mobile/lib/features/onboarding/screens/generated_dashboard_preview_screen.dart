@@ -23,9 +23,9 @@ class GeneratedDashboardPreviewScreen extends StatelessWidget {
 
     return GuestOnboardingStepScaffold(
       stepNumber: 8,
-      title: 'ملخص محلي مؤقت',
+      title: 'مسودة خطة جاهزة للمراجعة',
       description:
-          'هذه معاينة هيكلية وليست لوحة التحكم الحقيقية أو خطة محفوظة في الخادم.',
+          'هذه معاينة لمسودة محفوظة على هذا الجهاز. سجّل الدخول لحفظ الخطة ومزامنتها.',
       continueLabel: 'إنشاء خطتي',
       onContinue: onContinue,
       onBack: onBack,

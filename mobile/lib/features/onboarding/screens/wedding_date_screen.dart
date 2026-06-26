@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/guest_onboarding_draft.dart';
 import '../models/persona_copy.dart';
 import '../widgets/guest_onboarding_step_scaffold.dart';
@@ -91,10 +92,6 @@ class WeddingDateScreen extends StatelessWidget {
   }
 
   static String _dateLabel(DateTime date) {
-    return '${date.year}/${_twoDigits(date.month)}/${_twoDigits(date.day)}';
-  }
-
-  static String _twoDigits(int value) {
-    return value.toString().padLeft(2, '0');
+    return formatArabicCompactDate(date);
   }
 }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
@@ -157,7 +158,6 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     context.go(AppRouter.home);
   }
 
-
   void _markExpenseChanged() {
     _hasExpenseChanges = true;
   }
@@ -300,7 +300,7 @@ class _FinanceContent extends StatelessWidget {
         if (categoryRows.isEmpty)
           AarastEmptyState(
             title: 'لا توجد تصنيفات بعد',
-            message: 'أضيفي تصنيفات مثل القاعة أو الضيافة لتظهر المتابعة هنا.',
+            message: 'أضف تصنيفات مثل القاعة أو الضيافة لتظهر المتابعة هنا.',
             icon: Icons.category_outlined,
             action: OutlinedButton.icon(
               onPressed: canManageFinancialRecords
@@ -374,7 +374,7 @@ class _FinanceContent extends StatelessWidget {
         ..showSnackBar(
           const SnackBar(
             content: Text(
-              'هذا المصروف محفوظ محلياً وقيد المزامنة. انتظر اكتمال المزامنة قبل تعديله.',
+              'هذا المصروف محفوظ على هذا الجهاز وقيد المزامنة. انتظر اكتمال المزامنة قبل تعديله.',
             ),
           ),
         );
@@ -399,7 +399,7 @@ class _FinanceContent extends StatelessWidget {
         ..showSnackBar(
           const SnackBar(
             content: Text(
-              'هذا المصروف محفوظ محلياً وقيد المزامنة. انتظر اكتمال المزامنة قبل حذفه.',
+              'هذا المصروف محفوظ على هذا الجهاز وقيد المزامنة. انتظر اكتمال المزامنة قبل حذفه.',
             ),
           ),
         );
@@ -1283,5 +1283,5 @@ String _formatMoney(num value) {
 }
 
 String _shortDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  return formatArabicCompactDate(date);
 }

@@ -66,7 +66,9 @@ class ApiClient {
       if (data is List) {
         return data;
       }
-      throw const ApiException('استجابة غير متوقعة من الخادم.');
+      throw const ApiException(
+        'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
+      );
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
     }
@@ -112,7 +114,9 @@ class ApiClient {
     if (data is Map) {
       return Map<String, dynamic>.from(data);
     }
-    throw const ApiException('استجابة غير متوقعة من الخادم.');
+    throw const ApiException(
+      'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
+    );
   }
 
   static void _debugAuthLoginRequest(RequestOptions options) {
@@ -165,7 +169,7 @@ class ApiException implements Exception {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {
       return const ApiException(
-        'تعذر الاتصال بالخادم. تأكد من تشغيل الخلفية.',
+        'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
         isNetworkFailure: true,
       );
     }
@@ -192,7 +196,7 @@ class ApiException implements Exception {
         normalized.startsWith('Cannot POST') ||
         normalized.startsWith('Cannot PATCH') ||
         normalized.startsWith('Cannot DELETE')) {
-      return 'هذه الخدمة غير متاحة على الخادم الحالي. تأكد من تشغيل آخر نسخة من الخلفية.';
+      return 'هذه الخدمة غير متاحة الآن. تحقق من الاتصال وحاول مرة أخرى.';
     }
     return normalized;
   }

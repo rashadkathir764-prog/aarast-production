@@ -48,6 +48,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
     required this.activeIndex,
     this.onHome,
     this.onMoney,
+    this.onTasks,
     this.onProviders,
     this.onMore,
     this.onAdd,
@@ -57,6 +58,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
   final int activeIndex;
   final VoidCallback? onHome;
   final VoidCallback? onMoney;
+  final VoidCallback? onTasks;
   final VoidCallback? onProviders;
   final VoidCallback? onMore;
   final VoidCallback? onAdd;
@@ -142,17 +144,24 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                             onTap: onMoney,
                           ),
                           _RoyalNavItem(
+                            icon: Icons.checklist_rtl_outlined,
+                            activeIcon: Icons.checklist_rtl_rounded,
+                            label: 'المهام',
+                            active: activeIndex == 2,
+                            onTap: onTasks,
+                          ),
+                          _RoyalNavItem(
                             icon: Icons.grid_view_outlined,
                             activeIcon: Icons.grid_view_rounded,
                             label: 'الموردون',
-                            active: activeIndex == 2,
+                            active: activeIndex == 3,
                             onTap: onProviders,
                           ),
                           _RoyalNavItem(
                             icon: Icons.more_horiz_rounded,
                             activeIcon: Icons.more_horiz_rounded,
                             label: 'المزيد',
-                            active: activeIndex == 3,
+                            active: activeIndex == 4,
                             onTap: onMore,
                           ),
                         ],
@@ -186,7 +195,9 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: _RoyalHomeColors.goldDeep.withValues(alpha: 0.25),
+                        color: _RoyalHomeColors.goldDeep.withValues(
+                          alpha: 0.25,
+                        ),
                         blurRadius: 16,
                         offset: const Offset(0, 6),
                       ),
@@ -492,7 +503,9 @@ class _RoyalNavItem extends StatelessWidget {
         width: 64,
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: active ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
+          color: active
+              ? activeColor.withValues(alpha: 0.08)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
@@ -501,7 +514,8 @@ class _RoyalNavItem extends StatelessWidget {
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
               child: Icon(
                 active ? activeIcon : icon,
                 key: ValueKey(active),

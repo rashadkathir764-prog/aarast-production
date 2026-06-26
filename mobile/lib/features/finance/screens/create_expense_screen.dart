@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../../shared/models/quote_finance_context.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
@@ -16,12 +18,14 @@ class CreateExpenseScreen extends StatefulWidget {
     required this.weddingPlanId,
     this.expenseId,
     this.initialExpense,
+    this.quoteContext,
     super.key,
   });
 
   final String weddingPlanId;
   final String? expenseId;
   final Expense? initialExpense;
+  final QuoteFinanceContext? quoteContext;
 
   @override
   State<CreateExpenseScreen> createState() => _CreateExpenseScreenState();
@@ -47,6 +51,8 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     final initialExpense = widget.initialExpense;
     if (initialExpense != null) {
       _prefillExpense(initialExpense);
+    } else if (widget.quoteContext != null) {
+      _prefillQuoteContext(widget.quoteContext!);
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -258,7 +264,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                                     decoration: const InputDecoration(
                                       labelText: 'ملاحظات (اختياري)',
                                       hintText:
-                                          'أضيفي تفاصيل الدفعة أو الجهة المستلمة...',
+                                          'أضف تفاصيل الدفعة أو الجهة المستلمة...',
                                       alignLabelWithHint: true,
                                     ),
                                   ),
@@ -336,6 +342,14 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     _budgetCategoryId = expense.budgetCategoryId;
     _status = expense.status;
     _expenseDate = expense.expenseDate;
+    _didPrefill = true;
+  }
+
+  void _prefillQuoteContext(QuoteFinanceContext context) {
+    _titleController.text = context.title;
+    _amountController.text = context.amount?.trim() ?? '';
+    _noteController.text = context.note;
+    _status = 'PLANNED';
     _didPrefill = true;
   }
 
@@ -763,5 +777,5 @@ FormFieldValidator<String> _nonNegativeRequired(String message) {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

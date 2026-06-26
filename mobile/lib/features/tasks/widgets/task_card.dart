@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/wedding_task.dart';
 
 class TaskCard extends StatelessWidget {
@@ -115,5 +116,5 @@ String _priorityLabel(String priority) {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

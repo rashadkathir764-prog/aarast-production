@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
@@ -192,7 +193,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                                   _SelectorField(
                                     label: 'تاريخ الزفاف',
                                     value: _weddingDate == null
-                                        ? 'اختاري التاريخ'
+                                        ? 'اختر التاريخ'
                                         : _formatDate(_weddingDate!),
                                     icon: Icons.calendar_month_rounded,
                                     selected: _weddingDate != null,
@@ -363,7 +364,7 @@ class _CreatePlanHero extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            'ابدئي بخطة واضحة',
+            'ابدأ بخطة واضحة',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.white,
@@ -615,5 +616,5 @@ class _RingsPainter extends CustomPainter {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

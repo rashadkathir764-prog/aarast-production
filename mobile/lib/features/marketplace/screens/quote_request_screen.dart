@@ -66,7 +66,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       }
       marketplace.loadProviderDetails(widget.providerId);
       final hasAccount =
-          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          AppFeatureFlags.devBypassLoginGatesForUxExploration ||
           await AuthActionGuard.hasAccount(context);
       await marketplace.loadReferenceData();
       if (!mounted) return;
@@ -100,7 +100,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     return AarastPageScaffold(
       title: 'طلب عرض سعر',
       subtitle: provider == null
-          ? 'حددي احتياجك للمورد'
+          ? 'حدد احتياجك للمورد'
           : 'إلى ${provider.businessName}',
       actions: [
         IconButton(
@@ -233,12 +233,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           decoration: const InputDecoration(
                             labelText: 'رسالة للمورد',
                             hintText:
-                                'اكتبي تفاصيل التاريخ، الموقع، والاحتياج...',
+                                'اكتب تفاصيل التاريخ، الموقع، والاحتياج...',
                             prefixIcon: Icon(Icons.notes_outlined),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().length < 8) {
-                              return 'اكتبي تفاصيل قصيرة ليفهم المورد طلبك';
+                              return 'اكتب تفاصيل قصيرة ليفهم المورد طلبك';
                             }
                             return null;
                           },
@@ -466,7 +466,7 @@ class _QuoteLocationContext extends StatelessWidget {
     final title = hasLocation ? 'موقع الزفاف' : 'موقع الزفاف غير مكتمل';
     final message = hasLocation
         ? 'سيظهر موقع الزفاف في تفاصيل الطلب حتى يقدّر المورد السعر بدقة. يمكنك تعديل الرسالة قبل الإرسال.'
-        : 'أضيفي موقع الزفاف حتى يفهم المورد مكان المناسبة قبل تسعير الطلب.';
+        : 'أضف موقع الزفاف حتى يفهم المورد مكان المناسبة قبل تسعير الطلب.';
     final label = location?.fullLabel ?? location?.mediumLabel;
 
     return Container(
@@ -633,7 +633,7 @@ class _QuoteAuthRequired extends StatelessWidget {
         AarastEmptyState(
           icon: Icons.lock_outline_rounded,
           title: 'تسجيل الدخول مطلوب',
-          message: 'سجلي الدخول أولاً لإرسال طلب عرض سعر للمزود.',
+          message: 'سجّل الدخول أولاً لإرسال طلب عرض سعر للمزود.',
           action: FilledButton.icon(
             onPressed: onLogin,
             icon: const Icon(Icons.login_rounded),
@@ -672,8 +672,8 @@ class _QuoteIntro extends StatelessWidget {
           Expanded(
             child: Text(
               provider == null
-                  ? 'ارسلي طلبًا واضحًا وسيصل للمورد عبر النظام عند توفر البيانات.'
-                  : 'اكتبي تفاصيلك وسيتم إرسالها إلى ${provider!.businessName} ضمن طلبات عروض الأسعار.',
+                  ? 'أرسل طلبًا واضحًا وسيصل للمورد عند توفر البيانات.'
+                  : 'اكتب التفاصيل وسيتم إرسالها إلى ${provider!.businessName} ضمن طلبات عروض الأسعار.',
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.dInkSoft,
@@ -706,7 +706,7 @@ class _DateField extends StatelessWidget {
         ),
         child: Text(
           value == null
-              ? 'اختاري التاريخ'
+              ? 'اختر التاريخ'
               : '${value!.day}/${value!.month}/${value!.year}',
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.right,

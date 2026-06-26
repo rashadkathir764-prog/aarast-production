@@ -29,7 +29,7 @@ class ProviderPathPendingScreen extends StatelessWidget {
           GuestOnboardingOptionTile(
             title: 'طلبات العروض ستظهر هنا',
             subtitle:
-                'لا توجد بيانات مزود وهمية أو طلبات تجريبية في هذه المرحلة.',
+                'مسار المزود يحتاج إنشاء حساب ومراجعة طلب الانضمام قبل عرض أي طلبات أسعار.',
             icon: Icons.request_quote_outlined,
           ),
           SizedBox(height: 12),

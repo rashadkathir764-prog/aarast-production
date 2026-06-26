@@ -1,3 +1,4 @@
+import '../../../core/utils/arabic_date_formatter.dart';
 import 'guest_onboarding_draft.dart';
 import 'persona_copy.dart';
 
@@ -75,11 +76,7 @@ class GeneratedDashboardSeed {
     if (draft.weddingDateUnknown) return 'التاريخ غير معروف الآن';
     final weddingDate = draft.weddingDate;
     if (weddingDate == null) return 'لم يحدد التاريخ بعد';
-    return '${weddingDate.year}/${_twoDigits(weddingDate.month)}/${_twoDigits(weddingDate.day)}';
-  }
-
-  static String _twoDigits(int value) {
-    return value.toString().padLeft(2, '0');
+    return formatArabicCompactDate(weddingDate);
   }
 
   static bool _hasText(String? value) {

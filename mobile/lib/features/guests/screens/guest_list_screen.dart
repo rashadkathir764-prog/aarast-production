@@ -92,7 +92,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           SizedBox(height: 80),
           AarastEmptyState(
             icon: Icons.event_busy_outlined,
-            title: 'اختاري خطة أولاً',
+            title: 'اختر خطة أولاً',
             message: 'لا يمكن إدارة الضيوف بدون خطة زفاف محددة.',
           ),
         ],
@@ -128,7 +128,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           AarastEmptyState(
             icon: Icons.people_outline_rounded,
             title: 'لا توجد أسماء بعد',
-            message: 'أضيفي أول ضيف ليتم حفظه في الخطة.',
+            message: 'أضف أول ضيف ليتم حفظه في الخطة.',
             action: FilledButton.icon(
               onPressed: () => _showGuestSheet(),
               icon: const Icon(Icons.add_rounded),

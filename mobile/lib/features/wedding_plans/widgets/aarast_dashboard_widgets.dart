@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/sync_status.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 
 // ============================================================================
 // Aarast Dashboard — faithful Flutter recreation of the Claude Design handoff
@@ -14,23 +15,8 @@ import '../../../core/theme/app_theme.dart';
 // actions, alerts, participants, shared plans, custom bottom nav).
 // ============================================================================
 
-const _arMonths = <String>[
-  'يناير',
-  'فبراير',
-  'مارس',
-  'أبريل',
-  'مايو',
-  'يونيو',
-  'يوليو',
-  'أغسطس',
-  'سبتمبر',
-  'أكتوبر',
-  'نوفمبر',
-  'ديسمبر',
-];
-
 String dashFormatArDate(DateTime date) {
-  return '${date.day} ${_arMonths[date.month - 1]} ${date.year}';
+  return formatArabicDate(date);
 }
 
 double dashParseAmount(String? raw) {

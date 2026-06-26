@@ -113,7 +113,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       ),
                       _MoreActionTile(
                         title: 'إنشاء خطة زفاف',
-                        subtitle: 'ابدئي خطة جديدة لتنظيم يومك المميز',
+                        subtitle: 'ابدأ خطة جديدة لتنظيم يومك المميز',
                         icon: Icons.add_circle_outline_rounded,
                         iconColor: AppTheme.dMaroon,
                         iconBackground: AppTheme.dPinkBg,
@@ -134,7 +134,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       ),
                       _MoreActionTile(
                         title: 'الدعم والمساعدة',
-                        subtitle: 'تواصلي معنا أو استعرضي الأسئلة الشائعة',
+                        subtitle: 'تواصل معنا أو استعرض الأسئلة الشائعة',
                         icon: Icons.support_agent_outlined,
                         iconColor: AppTheme.dMaroon,
                         iconBackground: AppTheme.dPinkBg,

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../providers/dashboard_summary_provider.dart';
 
 class DashboardUiColors {
-  static const Color primaryMaroon = Color(0xFF8A1538); 
+  static const Color primaryMaroon = Color(0xFF8A1538);
   static const Color heroMaroonDark = Color(0xFF5A0B22);
   static const Color heroGold = Color(0xFFD4AF37);
   static const Color heroGoldLight = Color(0xFFF3D288);
@@ -16,7 +17,7 @@ class DashboardUiColors {
   static const Color background = Color(0xFFFAF8F6);
   static const Color cardBg = Colors.white;
   static const Color borderLight = Color(0xFFEEEEEE);
-  
+
   static const Color bgGreen = Color(0xFFEBF7EE);
   static const Color iconGreen = Color(0xFF45A259);
   static const Color bgRed = Color(0xFFFAECEE);
@@ -38,15 +39,18 @@ String formatNumber(num value) {
 }
 
 String formatArDate(DateTime date) {
-  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-  return '${date.day} ${months[date.month - 1]} ${date.year}';
+  return formatArabicDate(date);
 }
 
 // -----------------------------------------------------------------------------
 // Top Header (DashboardTopBar equivalent)
 // -----------------------------------------------------------------------------
 class NewDashboardTopHeader extends StatelessWidget {
-  const NewDashboardTopHeader({required this.userName, required this.onProfile, super.key});
+  const NewDashboardTopHeader({
+    required this.userName,
+    required this.onProfile,
+    super.key,
+  });
   final String userName;
   final VoidCallback onProfile;
 
@@ -65,12 +69,32 @@ class NewDashboardTopHeader extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Text('أعرسِت', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: DashboardUiColors.primaryMaroon, fontFamily: 'Amiri', height: 1.2)),
+                  Text(
+                    'أعرسِت',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: DashboardUiColors.primaryMaroon,
+                      fontFamily: 'Amiri',
+                      height: 1.2,
+                    ),
+                  ),
                   SizedBox(width: 4),
-                  Icon(Icons.favorite, color: DashboardUiColors.primaryMaroon, size: 14),
+                  Icon(
+                    Icons.favorite,
+                    color: DashboardUiColors.primaryMaroon,
+                    size: 14,
+                  ),
                 ],
               ),
-              Text('مساء الخير، $firstName 💛', style: const TextStyle(fontSize: 13, color: DashboardUiColors.textDark, fontWeight: FontWeight.w600)),
+              Text(
+                'مساء الخير، $firstName 💛',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: DashboardUiColors.textDark,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           // Left: Icons
@@ -84,9 +108,16 @@ class NewDashboardTopHeader extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: DashboardUiColors.borderLight, width: 1.5),
+                    border: Border.all(
+                      color: DashboardUiColors.borderLight,
+                      width: 1.5,
+                    ),
                   ),
-                  child: const Icon(Icons.person_outline_rounded, color: DashboardUiColors.heroGold, size: 24),
+                  child: const Icon(
+                    Icons.person_outline_rounded,
+                    color: DashboardUiColors.heroGold,
+                    size: 24,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -99,17 +130,35 @@ class NewDashboardTopHeader extends StatelessWidget {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: DashboardUiColors.borderLight, width: 1.5),
+                      border: Border.all(
+                        color: DashboardUiColors.borderLight,
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.notifications_none_rounded, color: DashboardUiColors.primaryMaroon, size: 24),
+                    child: const Icon(
+                      Icons.notifications_none_rounded,
+                      color: DashboardUiColors.primaryMaroon,
+                      size: 24,
+                    ),
                   ),
                   Positioned(
                     top: -2,
                     left: -2,
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: DashboardUiColors.primaryMaroon, shape: BoxShape.circle),
-                      child: const Text('3', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, height: 1)),
+                      decoration: const BoxDecoration(
+                        color: DashboardUiColors.primaryMaroon,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Text(
+                        '3',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          height: 1,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -140,7 +189,9 @@ class NewDashboardHeroCard extends StatelessWidget {
     final progress = totalTasks > 0 ? doneTasks / totalTasks : 0.0;
     final percent = (progress * 100).round();
 
-    final dateStr = plan.weddingDate != null ? formatArDate(plan.weddingDate!) : 'غير محدد';
+    final dateStr = plan.weddingDate != null
+        ? formatArDate(plan.weddingDate!)
+        : 'غير محدد';
     int daysLeft = 0;
     if (plan.weddingDate != null) {
       final diff = plan.weddingDate!.difference(DateTime.now());
@@ -151,12 +202,19 @@ class NewDashboardHeroCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-          colors: [DashboardUiColors.primaryMaroon, DashboardUiColors.heroMaroonDark],
+          colors: [
+            DashboardUiColors.primaryMaroon,
+            DashboardUiColors.heroMaroonDark,
+          ],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
         boxShadow: [
-          BoxShadow(color: DashboardUiColors.primaryMaroon.withAlpha(40), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: DashboardUiColors.primaryMaroon.withAlpha(40),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       padding: const EdgeInsets.all(20),
@@ -172,27 +230,61 @@ class NewDashboardHeroCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.diamond_outlined, color: DashboardUiColors.heroGoldLight, size: 22),
+                        const Icon(
+                          Icons.diamond_outlined,
+                          color: DashboardUiColors.heroGoldLight,
+                          size: 22,
+                        ),
                         const SizedBox(width: 8),
-                        Text(plan.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text(
+                          plan.title,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
+                        ),
                       ],
                     ),
                     Padding(
                       padding: const EdgeInsets.only(right: 30),
-                      child: Text(dateStr, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      child: Text(
+                        dateStr,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.auto_awesome, color: DashboardUiColors.heroGoldLight, size: 18),
+                        const Icon(
+                          Icons.auto_awesome,
+                          color: DashboardUiColors.heroGoldLight,
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('أنت في الطريق الصحيح!', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-                              Text('$doneTasks من $totalTasks مهمة مكتملة', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              const Text(
+                                'أنت في الطريق الصحيح!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                '$doneTasks من $totalTasks مهمة مكتملة',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -212,8 +304,23 @@ class NewDashboardHeroCard extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('$percent%', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, height: 1)),
-                        const Text('مكتمل', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(
+                          '$percent%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                        const Text(
+                          'مكتمل',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -229,9 +336,20 @@ class NewDashboardHeroCard extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('تبقى $daysLeft يوم', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text(
+                    'تبقى $daysLeft يوم',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(width: 6),
-                  const Icon(Icons.calendar_month_outlined, color: DashboardUiColors.heroGoldLight, size: 16),
+                  const Icon(
+                    Icons.calendar_month_outlined,
+                    color: DashboardUiColors.heroGoldLight,
+                    size: 16,
+                  ),
                 ],
               ),
               const SizedBox(width: 12),
@@ -239,12 +357,18 @@ class NewDashboardHeroCard extends StatelessWidget {
               Expanded(
                 child: Container(
                   height: 6,
-                  decoration: BoxDecoration(color: DashboardUiColors.heroMaroonDark, borderRadius: BorderRadius.circular(3)),
+                  decoration: BoxDecoration(
+                    color: DashboardUiColors.heroMaroonDark,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerRight,
                     widthFactor: progress,
                     child: Container(
-                      decoration: BoxDecoration(color: DashboardUiColors.heroGoldLight, borderRadius: BorderRadius.circular(3)),
+                      decoration: BoxDecoration(
+                        color: DashboardUiColors.heroGoldLight,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
                   ),
                 ),
@@ -254,7 +378,10 @@ class NewDashboardHeroCard extends StatelessWidget {
               InkWell(
                 onTap: () => context.push(AppRouter.tasks(plan.id)),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: DashboardUiColors.heroMaroonDark.withAlpha(150),
                     borderRadius: BorderRadius.circular(16),
@@ -263,7 +390,14 @@ class NewDashboardHeroCard extends StatelessWidget {
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('استكمال المهام', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                      Text(
+                        'استكمال المهام',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       SizedBox(width: 4),
                       Icon(Icons.chevron_left, color: Colors.white70, size: 16),
                     ],
@@ -302,9 +436,16 @@ class _HeroDonutPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), -math.pi / 2, 2 * math.pi * progress, false, arcPaint);
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        2 * math.pi * progress,
+        false,
+        arcPaint,
+      );
     }
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
@@ -316,7 +457,8 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
   const NewDashboardStatsBudgetRow({required this.provider, super.key});
   final DashboardSummaryProvider provider;
 
-  double _parseAmt(String? val) => double.tryParse(val?.replaceAll(',', '') ?? '0') ?? 0;
+  double _parseAmt(String? val) =>
+      double.tryParse(val?.replaceAll(',', '') ?? '0') ?? 0;
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +469,7 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
     final totalTasks = allTasks.length;
     final doneTasks = allTasks.where((t) => t.isDone).length;
     final dueInstallments = provider.dueInstallments?.length ?? 0;
-    
+
     final budgetTotal = _parseAmt(plan.estimatedBudget);
     final spent = _parseAmt(provider.expenseSummary?.totalPaid);
     final remaining = math.max(0.0, budgetTotal - spent);
@@ -349,9 +491,20 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.account_balance_wallet_outlined, color: DashboardUiColors.primaryMaroon, size: 18),
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: DashboardUiColors.primaryMaroon,
+                      size: 18,
+                    ),
                     SizedBox(width: 6),
-                    Text('ملخص الميزانية', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: DashboardUiColors.textDark)),
+                    Text(
+                      'ملخص الميزانية',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: DashboardUiColors.textDark,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -361,9 +514,29 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('إجمالي الميزانية', style: TextStyle(fontSize: 11, color: DashboardUiColors.textGray)),
-                          Text(formatNumber(budgetTotal), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: DashboardUiColors.textDark), textDirection: TextDirection.ltr),
-                          const Text('ر.ي', style: TextStyle(fontSize: 10, color: DashboardUiColors.textGray)),
+                          const Text(
+                            'إجمالي الميزانية',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: DashboardUiColors.textGray,
+                            ),
+                          ),
+                          Text(
+                            formatNumber(budgetTotal),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: DashboardUiColors.textDark,
+                            ),
+                            textDirection: TextDirection.ltr,
+                          ),
+                          const Text(
+                            'ر.ي',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: DashboardUiColors.textGray,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -373,23 +546,46 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
                       width: 60,
                       height: 60,
                       child: CustomPaint(
-                        painter: _MiniBudgetPainter(total: budgetTotal > 0 ? budgetTotal : 1, spent: spent, remaining: remaining),
+                        painter: _MiniBudgetPainter(
+                          total: budgetTotal > 0 ? budgetTotal : 1,
+                          spent: spent,
+                          remaining: remaining,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _BudgetRow(label: 'المصروف', amount: spent, color: DashboardUiColors.primaryMaroon),
+                _BudgetRow(
+                  label: 'المصروف',
+                  amount: spent,
+                  color: DashboardUiColors.primaryMaroon,
+                ),
                 const SizedBox(height: 8),
-                _BudgetRow(label: 'المتبقي', amount: remaining, color: DashboardUiColors.heroGoldLight),
+                _BudgetRow(
+                  label: 'المتبقي',
+                  amount: remaining,
+                  color: DashboardUiColors.heroGoldLight,
+                ),
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: () => context.push(AppRouter.finance(plan.id)),
                   child: const Row(
                     children: [
-                      Icon(Icons.chevron_left, color: DashboardUiColors.primaryMaroon, size: 16),
+                      Icon(
+                        Icons.chevron_left,
+                        color: DashboardUiColors.primaryMaroon,
+                        size: 16,
+                      ),
                       SizedBox(width: 4),
-                      Text('عرض التفاصيل', style: TextStyle(color: DashboardUiColors.primaryMaroon, fontSize: 11, fontWeight: FontWeight.w800)),
+                      Text(
+                        'عرض التفاصيل',
+                        style: TextStyle(
+                          color: DashboardUiColors.primaryMaroon,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -403,31 +599,77 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
           flex: 10,
           child: Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: DashboardUiColors.cardBg, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(
+              color: DashboardUiColors.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Column(
               children: [
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.remove_red_eye_outlined, color: DashboardUiColors.primaryMaroon, size: 18),
+                    Icon(
+                      Icons.remove_red_eye_outlined,
+                      color: DashboardUiColors.primaryMaroon,
+                      size: 18,
+                    ),
                     SizedBox(width: 6),
-                    Text('نظرة سريعة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: DashboardUiColors.primaryMaroon)),
+                    Text(
+                      'نظرة سريعة',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: DashboardUiColors.primaryMaroon,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _GlanceCard(title: 'الموردين', value: '12', icon: Icons.group_outlined, iconColor: DashboardUiColors.iconGreen, bgColor: DashboardUiColors.bgGreen)),
+                    Expanded(
+                      child: _GlanceCard(
+                        title: 'الموردين',
+                        value: '12',
+                        icon: Icons.group_outlined,
+                        iconColor: DashboardUiColors.iconGreen,
+                        bgColor: DashboardUiColors.bgGreen,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _GlanceCard(title: 'المهام', value: '$doneTasks/$totalTasks', icon: Icons.assignment_outlined, iconColor: DashboardUiColors.iconRed, bgColor: DashboardUiColors.bgRed)),
+                    Expanded(
+                      child: _GlanceCard(
+                        title: 'المهام',
+                        value: '$doneTasks/$totalTasks',
+                        icon: Icons.assignment_outlined,
+                        iconColor: DashboardUiColors.iconRed,
+                        bgColor: DashboardUiColors.bgRed,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: _GlanceCard(title: 'الضيوف', value: '246', icon: Icons.groups_outlined, iconColor: DashboardUiColors.iconOrange, bgColor: DashboardUiColors.bgOrange)),
+                    Expanded(
+                      child: _GlanceCard(
+                        title: 'الضيوف',
+                        value: '246',
+                        icon: Icons.groups_outlined,
+                        iconColor: DashboardUiColors.iconOrange,
+                        bgColor: DashboardUiColors.bgOrange,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    Expanded(child: _GlanceCard(title: 'المدفوعات', value: '$dueInstallments', icon: Icons.payment_outlined, iconColor: DashboardUiColors.iconPurple, bgColor: DashboardUiColors.bgPurple)),
+                    Expanded(
+                      child: _GlanceCard(
+                        title: 'المدفوعات',
+                        value: '$dueInstallments',
+                        icon: Icons.payment_outlined,
+                        iconColor: DashboardUiColors.iconPurple,
+                        bgColor: DashboardUiColors.bgPurple,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -440,7 +682,13 @@ class NewDashboardStatsBudgetRow extends StatelessWidget {
 }
 
 class _GlanceCard extends StatelessWidget {
-  const _GlanceCard({required this.title, required this.value, required this.icon, required this.iconColor, required this.bgColor});
+  const _GlanceCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.iconColor,
+    required this.bgColor,
+  });
   final String title, value;
   final IconData icon;
   final Color iconColor, bgColor;
@@ -457,12 +705,29 @@ class _GlanceCard extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(fontSize: 11, color: DashboardUiColors.textGray, fontWeight: FontWeight.w600)),
-          Text(value, style: const TextStyle(fontSize: 13, color: DashboardUiColors.textDark, fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              color: DashboardUiColors.textGray,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              color: DashboardUiColors.textDark,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -470,7 +735,11 @@ class _GlanceCard extends StatelessWidget {
 }
 
 class _MiniBudgetPainter extends CustomPainter {
-  _MiniBudgetPainter({required this.total, required this.spent, required this.remaining});
+  _MiniBudgetPainter({
+    required this.total,
+    required this.spent,
+    required this.remaining,
+  });
   final double total, spent, remaining;
 
   @override
@@ -478,29 +747,47 @@ class _MiniBudgetPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 5;
     final stroke = 10.0;
-    
+
     // Background full track (in case there's no spending)
-    final bgPaint = Paint()..color = DashboardUiColors.borderLight..style = PaintingStyle.stroke..strokeWidth = stroke;
+    final bgPaint = Paint()
+      ..color = DashboardUiColors.borderLight
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
     canvas.drawCircle(center, radius, bgPaint);
 
     double startAngle = -math.pi / 2;
     void drawSeg(double value, Color color) {
       if (value <= 0) return;
       final sweepAngle = (value / total) * 2 * math.pi;
-      final paint = Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = stroke..strokeCap = StrokeCap.butt;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: radius), startAngle, sweepAngle, false, paint);
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        startAngle,
+        sweepAngle,
+        false,
+        paint,
+      );
       startAngle += sweepAngle;
     }
 
     drawSeg(spent, DashboardUiColors.primaryMaroon);
     drawSeg(remaining, DashboardUiColors.heroGoldLight);
   }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 class _BudgetRow extends StatelessWidget {
-  const _BudgetRow({required this.label, required this.amount, required this.color});
+  const _BudgetRow({
+    required this.label,
+    required this.amount,
+    required this.color,
+  });
   final String label;
   final double amount;
   final Color color;
@@ -509,13 +796,35 @@ class _BudgetRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 11, color: DashboardUiColors.textGray, fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: DashboardUiColors.textGray,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const Spacer(),
-        Text(formatNumber(amount), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: DashboardUiColors.textDark), textDirection: TextDirection.ltr),
+        Text(
+          formatNumber(amount),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            color: DashboardUiColors.textDark,
+          ),
+          textDirection: TextDirection.ltr,
+        ),
         const SizedBox(width: 4),
-        const Text('ر.ي', style: TextStyle(fontSize: 10, color: DashboardUiColors.textGray)),
+        const Text(
+          'ر.ي',
+          style: TextStyle(fontSize: 10, color: DashboardUiColors.textGray),
+        ),
       ],
     );
   }
@@ -536,9 +845,20 @@ class NewDashboardQuickActions extends StatelessWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.bolt_rounded, color: DashboardUiColors.heroGold, size: 20),
+            Icon(
+              Icons.bolt_rounded,
+              color: DashboardUiColors.heroGold,
+              size: 20,
+            ),
             SizedBox(width: 6),
-            Text('إجراءات سريعة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: DashboardUiColors.textDark)),
+            Text(
+              'إجراءات سريعة',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: DashboardUiColors.textDark,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -547,12 +867,40 @@ class NewDashboardQuickActions extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _QuickActionCircle(icon: Icons.add, label: 'نفقات سريعة', onTap: () => context.push(AppRouter.createExpense(planId))),
-              _QuickActionCircle(icon: Icons.groups_outlined, label: 'قائمة الضيوف', onTap: () => context.push(AppRouter.sharing(planId))),
-              _QuickActionCircle(icon: Icons.calendar_month_outlined, label: 'جدول الزواج', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('قيد الإعداد')))),
-              _QuickActionCircle(icon: Icons.person_search_outlined, label: 'الموردين', onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('قيد الإعداد')))),
-              _QuickActionCircle(icon: Icons.account_balance_wallet_outlined, label: 'الميزانية', onTap: () => context.push(AppRouter.finance(planId))),
-              _QuickActionCircle(icon: Icons.assignment_outlined, label: 'قائمة المهام', onTap: () => context.push(AppRouter.tasks(planId))),
+              _QuickActionCircle(
+                icon: Icons.add,
+                label: 'نفقات سريعة',
+                onTap: () => context.push(AppRouter.createExpense(planId)),
+              ),
+              _QuickActionCircle(
+                icon: Icons.groups_outlined,
+                label: 'قائمة الضيوف',
+                onTap: () => context.push(AppRouter.sharing(planId)),
+              ),
+              _QuickActionCircle(
+                icon: Icons.calendar_month_outlined,
+                label: 'جدول الزواج',
+                onTap: () => ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('قيد الإعداد'))),
+              ),
+              _QuickActionCircle(
+                icon: Icons.person_search_outlined,
+                label: 'الموردين',
+                onTap: () => ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('قيد الإعداد'))),
+              ),
+              _QuickActionCircle(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'الميزانية',
+                onTap: () => context.push(AppRouter.finance(planId)),
+              ),
+              _QuickActionCircle(
+                icon: Icons.assignment_outlined,
+                label: 'قائمة المهام',
+                onTap: () => context.push(AppRouter.tasks(planId)),
+              ),
             ],
           ),
         ),
@@ -562,7 +910,11 @@ class NewDashboardQuickActions extends StatelessWidget {
 }
 
 class _QuickActionCircle extends StatelessWidget {
-  const _QuickActionCircle({required this.icon, required this.label, required this.onTap});
+  const _QuickActionCircle({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -581,12 +933,26 @@ class _QuickActionCircle extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: DashboardUiColors.cardBg,
-                border: Border.all(color: DashboardUiColors.primaryMaroon.withAlpha(50), width: 1),
+                border: Border.all(
+                  color: DashboardUiColors.primaryMaroon.withAlpha(50),
+                  width: 1,
+                ),
               ),
-              child: Icon(icon, color: DashboardUiColors.primaryMaroon, size: 26),
+              child: Icon(
+                icon,
+                color: DashboardUiColors.primaryMaroon,
+                size: 26,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: DashboardUiColors.textDark)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: DashboardUiColors.textDark,
+              ),
+            ),
           ],
         ),
       ),
@@ -605,13 +971,21 @@ class NewDashboardAlertsList extends StatelessWidget {
   Widget build(BuildContext context) {
     // Determine alerts from nearest task and nearest installment
     final allTasks = provider.tasks ?? [];
-    final pendingTasks = allTasks.where((t) => !t.isDone && t.dueDate != null).toList()
-      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
+    final pendingTasks =
+        allTasks.where((t) => !t.isDone && t.dueDate != null).toList()
+          ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
     final nearestTask = pendingTasks.isNotEmpty ? pendingTasks.first : null;
 
     final installments = provider.dueInstallments ?? [];
-    final dueInstallments = List.of(installments)..sort((a, b) => (a.dueDate ?? DateTime(2099)).compareTo(b.dueDate ?? DateTime(2099)));
-    final nearestInst = dueInstallments.isNotEmpty ? dueInstallments.first : null;
+    final dueInstallments = List.of(installments)
+      ..sort(
+        (a, b) => (a.dueDate ?? DateTime(2099)).compareTo(
+          b.dueDate ?? DateTime(2099),
+        ),
+      );
+    final nearestInst = dueInstallments.isNotEmpty
+        ? dueInstallments.first
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -621,14 +995,33 @@ class NewDashboardAlertsList extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.bookmark_outline, color: DashboardUiColors.primaryMaroon, size: 20),
+                Icon(
+                  Icons.bookmark_outline,
+                  color: DashboardUiColors.primaryMaroon,
+                  size: 20,
+                ),
                 SizedBox(width: 6),
-                Text('ملاحظات مهمة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: DashboardUiColors.textDark)),
+                Text(
+                  'ملاحظات مهمة',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: DashboardUiColors.textDark,
+                  ),
+                ),
               ],
             ),
             InkWell(
-              onTap: () => context.push(AppRouter.tasks(provider.plan?.id ?? '')),
-              child: const Text('عرض الكل', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DashboardUiColors.primaryMaroon)),
+              onTap: () =>
+                  context.push(AppRouter.tasks(provider.plan?.id ?? '')),
+              child: const Text(
+                'عرض الكل',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: DashboardUiColors.primaryMaroon,
+                ),
+              ),
             ),
           ],
         ),
@@ -644,22 +1037,35 @@ class NewDashboardAlertsList extends StatelessWidget {
         if (nearestInst != null) ...[
           if (nearestTask != null) const SizedBox(height: 12),
           _NoteCard(
-            title: 'قسط مستحق بقيمة ${formatNumber(double.tryParse(nearestInst.amount) ?? 0)}',
-            timeLabel: 'قبل ${formatArDate(nearestInst.dueDate ?? DateTime.now())}',
+            title:
+                'قسط مستحق بقيمة ${formatNumber(double.tryParse(nearestInst.amount) ?? 0)}',
+            timeLabel:
+                'قبل ${formatArDate(nearestInst.dueDate ?? DateTime.now())}',
             icon: Icons.payment_outlined,
             iconBg: DashboardUiColors.heroGoldLight.withAlpha(50),
             iconColor: DashboardUiColors.heroGold,
           ),
         ],
         if (nearestTask == null && nearestInst == null)
-          const Center(child: Text('لا توجد ملاحظات حالياً', style: TextStyle(color: DashboardUiColors.textGray, fontSize: 13))),
+          const Center(
+            child: Text(
+              'لا توجد ملاحظات حالياً',
+              style: TextStyle(color: DashboardUiColors.textGray, fontSize: 13),
+            ),
+          ),
       ],
     );
   }
 }
 
 class _NoteCard extends StatelessWidget {
-  const _NoteCard({required this.title, required this.timeLabel, required this.icon, required this.iconColor, required this.iconBg});
+  const _NoteCard({
+    required this.title,
+    required this.timeLabel,
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+  });
   final String title, timeLabel;
   final IconData icon;
   final Color iconColor, iconBg;
@@ -668,12 +1074,18 @@ class _NoteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: DashboardUiColors.cardBg, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        color: DashboardUiColors.cardBg,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(16),
+            ),
             child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: 12),
@@ -681,13 +1093,29 @@ class _NoteCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: DashboardUiColors.textDark)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: DashboardUiColors.textDark,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(timeLabel, style: const TextStyle(fontSize: 12, color: DashboardUiColors.textGray)),
+                Text(
+                  timeLabel,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: DashboardUiColors.textGray,
+                  ),
+                ),
               ],
             ),
           ),
-          const Icon(Icons.chevron_left, color: DashboardUiColors.textLightGray),
+          const Icon(
+            Icons.chevron_left,
+            color: DashboardUiColors.textLightGray,
+          ),
         ],
       ),
     );
@@ -711,14 +1139,32 @@ class NewDashboardSharedPlansCard extends StatelessWidget {
           children: [
             const Row(
               children: [
-                Icon(Icons.group_outlined, color: DashboardUiColors.primaryMaroon, size: 20),
+                Icon(
+                  Icons.group_outlined,
+                  color: DashboardUiColors.primaryMaroon,
+                  size: 20,
+                ),
                 SizedBox(width: 6),
-                Text('الخطط المشتركة', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: DashboardUiColors.textDark)),
+                Text(
+                  'الخطط المشتركة',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: DashboardUiColors.textDark,
+                  ),
+                ),
               ],
             ),
             InkWell(
               onTap: () => context.push(AppRouter.sharedWeddingPlans),
-              child: const Text('عرض الكل', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: DashboardUiColors.primaryMaroon)),
+              child: const Text(
+                'عرض الكل',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: DashboardUiColors.primaryMaroon,
+                ),
+              ),
             ),
           ],
         ),
@@ -727,26 +1173,52 @@ class NewDashboardSharedPlansCard extends StatelessWidget {
           onTap: () => context.push(AppRouter.sharedWeddingPlans),
           child: Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: DashboardUiColors.cardBg, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(
+              color: DashboardUiColors.cardBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: DashboardUiColors.primaryMaroon, borderRadius: BorderRadius.circular(16)),
-                  child: const Icon(Icons.people_alt_rounded, color: Colors.white, size: 24),
+                  decoration: BoxDecoration(
+                    color: DashboardUiColors.primaryMaroon,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.people_alt_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('خطة عائلتنا', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: DashboardUiColors.textDark)),
+                      Text(
+                        'خطة عائلتنا',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: DashboardUiColors.textDark,
+                        ),
+                      ),
                       SizedBox(height: 4),
-                      Text('آخر تحديث: اليوم، 9:20 ص', style: TextStyle(fontSize: 12, color: DashboardUiColors.textGray)),
+                      Text(
+                        'آخر تحديث: اليوم، 9:20 ص',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: DashboardUiColors.textGray,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_left, color: DashboardUiColors.textLightGray),
+                const Icon(
+                  Icons.chevron_left,
+                  color: DashboardUiColors.textLightGray,
+                ),
               ],
             ),
           ),
@@ -755,7 +1227,6 @@ class NewDashboardSharedPlansCard extends StatelessWidget {
     );
   }
 }
-
 
 // -----------------------------------------------------------------------------
 // Bottom Navigation
@@ -784,7 +1255,11 @@ class NewDashboardBottomNav extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2)),
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
         ],
       ),
       child: SafeArea(
@@ -798,11 +1273,31 @@ class NewDashboardBottomNav extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _NavItem(icon: Icons.home_filled, label: 'الرئيسية', isActive: activeIndex == 0, onTap: onHome),
-                  _NavItem(icon: Icons.calendar_today_outlined, label: 'المهام', isActive: activeIndex == 1, onTap: onTasks),
+                  _NavItem(
+                    icon: Icons.home_filled,
+                    label: 'الرئيسية',
+                    isActive: activeIndex == 0,
+                    onTap: onHome,
+                  ),
+                  _NavItem(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'المهام',
+                    isActive: activeIndex == 1,
+                    onTap: onTasks,
+                  ),
                   const SizedBox(width: 56), // Space for floating button
-                  _NavItem(icon: Icons.assignment_ind_outlined, label: 'الموردين', isActive: activeIndex == 2, onTap: onVendors),
-                  _NavItem(icon: Icons.grid_view_rounded, label: 'المزيد', isActive: activeIndex == 3, onTap: onMore),
+                  _NavItem(
+                    icon: Icons.assignment_ind_outlined,
+                    label: 'الموردين',
+                    isActive: activeIndex == 2,
+                    onTap: onVendors,
+                  ),
+                  _NavItem(
+                    icon: Icons.grid_view_rounded,
+                    label: 'المزيد',
+                    isActive: activeIndex == 3,
+                    onTap: onMore,
+                  ),
                 ],
               ),
             ),
@@ -818,7 +1313,11 @@ class NewDashboardBottomNav extends StatelessWidget {
                     color: DashboardUiColors.primaryMaroon,
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: DashboardUiColors.primaryMaroon.withAlpha(80), blurRadius: 8, offset: const Offset(0, 4)),
+                      BoxShadow(
+                        color: DashboardUiColors.primaryMaroon.withAlpha(80),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
                     ],
                   ),
                   child: const Icon(Icons.add, color: Colors.white, size: 32),
@@ -833,7 +1332,12 @@ class NewDashboardBottomNav extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.icon, required this.label, required this.isActive, required this.onTap});
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final bool isActive;
@@ -841,7 +1345,9 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isActive ? DashboardUiColors.primaryMaroon : DashboardUiColors.textLightGray;
+    final color = isActive
+        ? DashboardUiColors.primaryMaroon
+        : DashboardUiColors.textLightGray;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -850,7 +1356,14 @@ class _NavItem extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 24),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: isActive ? FontWeight.w800 : FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

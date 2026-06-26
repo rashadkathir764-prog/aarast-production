@@ -46,7 +46,7 @@ void main() {
       expect(router.routeInformationProvider.value.uri.path, AppRouter.splash);
       expect(
         AppRouter.guestOnboardingRedirect(AppFeatureFlags.defaults),
-        AppRouter.onboarding,
+        isNull,
       );
       expect(
         AppRouter.userNavigationShellRedirect(AppFeatureFlags.defaults),

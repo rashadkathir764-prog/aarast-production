@@ -288,7 +288,7 @@ class _MarketplaceHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'اختاري قاعات، تصوير، ضيافة وخدمات موثوقة',
+                'اختر قاعات، تصوير، ضيافة وخدمات موثوقة',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppTheme.dInkSoft,
                   fontWeight: FontWeight.w700,
@@ -349,7 +349,7 @@ class _MarketplaceHero extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: onTap,
                   icon: const Icon(Icons.search_rounded),
-                  label: const Text('ابدئي البحث'),
+                  label: const Text('ابدأ البحث'),
                 ),
               ],
             ),
@@ -396,7 +396,7 @@ class _MarketplaceSearch extends StatelessWidget {
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
           decoration: InputDecoration(
-            hintText: 'ابحثي عن مورد أو خدمة',
+            hintText: 'ابحث عن مورد أو خدمة',
             prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: value.text.isEmpty
                 ? null
@@ -623,10 +623,7 @@ class _QuoteRequestsOverview extends StatelessWidget {
                     ),
                   ),
                 ),
-                QuoteStatusChip(
-                  status: latest.lifecycleStatus,
-                  compact: true,
-                ),
+                QuoteStatusChip(status: latest.lifecycleStatus, compact: true),
               ],
             ),
           ],

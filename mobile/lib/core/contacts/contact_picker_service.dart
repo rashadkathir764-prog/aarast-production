@@ -72,7 +72,7 @@ class ContactPickerService {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'اختاري رقم الهاتف',
+                    'اختر رقم الهاتف',
                     style: TextStyle(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 10),

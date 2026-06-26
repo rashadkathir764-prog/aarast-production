@@ -16,7 +16,7 @@ class UserRebuildDashboardSummaryAdapter extends StatelessWidget {
   final PlanSummaryReadiness readiness;
 
   static const noPlanMessage =
-      'ملخص الخطة التجريبي يحتاج خطة حالية حقيقية قبل عرض البيانات';
+      'ملخص الخطة الداخلي يحتاج خطة حالية حقيقية قبل عرض البيانات';
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +45,7 @@ class UserRebuildDashboardSummaryAdapter extends StatelessWidget {
                   const Icon(Icons.dashboard_customize_outlined, size: 44),
                   const SizedBox(height: 12),
                   const Text(
-                    'ملخص الخطة التجريبي',
+                    'ملخص الخطة الداخلي',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                   ),
@@ -77,7 +77,7 @@ class UserRebuildDashboardSummaryAdapter extends StatelessWidget {
 
   String get _stateMessage {
     if (readiness.isLoading) {
-      return 'ملخص الخطة التجريبي قيد التحميل';
+      return 'ملخص الخطة الداخلي قيد التحميل';
     }
     if (readiness.hasError) {
       return readiness.errorMessage!.trim();
@@ -138,7 +138,7 @@ class _SummaryStateNotice extends StatelessWidget {
                   const Icon(Icons.dashboard_customize_outlined, size: 44),
                   const SizedBox(height: 12),
                   const Text(
-                    'ملخص الخطة التجريبي',
+                    'ملخص الخطة الداخلي',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
                   ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/arabic_date_formatter.dart';
+
 class TimelineDueItemCard extends StatelessWidget {
   const TimelineDueItemCard({
     required this.title,
@@ -83,5 +85,5 @@ String _labelForStatus(String status) {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

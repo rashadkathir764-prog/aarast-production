@@ -57,7 +57,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
 
     return AarastPageScaffold(
       title: 'طلب الانضمام كمزود',
-      subtitle: 'أضيفي نشاطك ليصل إليك عملاء يبحثون عن خدمات الزفاف.',
+      subtitle: 'أضف نشاطك ليصل إليك عملاء يبحثون عن خدمات الزفاف.',
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
@@ -118,7 +118,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                       ),
                       validator: (value) =>
                           value == null || value.trim().length < 2
-                          ? 'اكتبي اسم النشاط'
+                          ? 'اكتب اسم النشاط'
                           : null,
                     ),
                     const SizedBox(height: 14),
@@ -143,7 +143,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                           .toList(),
                       onChanged: (value) => setState(() => _cityId = value),
                       validator: (value) =>
-                          value == null ? 'اختاري المدينة' : null,
+                          value == null ? 'اختر المدينة' : null,
                     ),
                     const SizedBox(height: 14),
                     _ApplyDropdown(
@@ -160,7 +160,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                           .toList(),
                       onChanged: (value) => setState(() => _categoryId = value),
                       validator: (value) =>
-                          value == null ? 'اختاري فئة الخدمة' : null,
+                          value == null ? 'اختر فئة الخدمة' : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -169,7 +169,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                       maxLength: 280,
                       decoration: const InputDecoration(
                         labelText: 'نبذة مختصرة',
-                        hintText: 'اكتبي ما يميز خدمتك ومناطق التغطية...',
+                        hintText: 'اكتب ما يميز خدمتك ومناطق التغطية...',
                         prefixIcon: Icon(Icons.notes_outlined),
                       ),
                     ),
@@ -298,7 +298,7 @@ class _ApplyIntroCard extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود وتستطيعين إدارة الخدمات والباقات وطلبات عروض الأسعار.',
+              'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود ويمكنك إدارة الخدمات والباقات وطلبات عروض الأسعار.',
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: AppTheme.dInk,
@@ -380,7 +380,7 @@ class _ReferenceDataWarning extends StatelessWidget {
     return const AarastCard(
       color: AppTheme.dPinkBg,
       child: Text(
-        'تعذر تحميل المدن أو الفئات حاليًا. تأكدي من تشغيل الخلفية ثم أعيدي المحاولة.',
+        'تعذر تحميل المدن أو الفئات حاليًا. تحقق من الاتصال وحاول مرة أخرى.',
         textAlign: TextAlign.center,
         style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800),
       ),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/aarast_notification.dart';
@@ -115,8 +116,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           AarastEmptyState(
             icon: Icons.notifications_none_rounded,
             title: 'لا توجد تنبيهات مهمة الآن.',
-            message:
-                'عند وصول عرض سعر أو اقتراب مهمة ستظهر هنا.',
+            message: 'عند وصول عرض سعر أو اقتراب مهمة ستظهر هنا.',
           ),
         ],
       );
@@ -348,5 +348,5 @@ bool _isSafeRouteTarget(String target) {
 }
 
 String _dateLabel(DateTime date) {
-  return '${date.day}/${date.month}/${date.year}';
+  return formatArabicCompactDate(date);
 }

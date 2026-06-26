@@ -29,6 +29,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
           activeIndex: 0,
           onHome: () {},
           onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
+          onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
           onProviders: () => context.push(AppRouter.providerMarketplace),
           onMore: () => context.push(AppRouter.more),
           onAdd: () => showRoyalHomeActionSheet(
@@ -124,9 +125,8 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     ];
   }
 
-  // For TEMP mobile UX exploration, local guest plans should open the real
-  // plan-scoped screens. Those screens handle local/read-only empty states
-  // internally and still block protected API submit actions without a token.
+  // Local guest plans open the real plan-scoped surfaces, while protected
+  // submit actions still require an account before cloud sync.
   void _openLocalBrowse(
     BuildContext context,
     String planId, {
@@ -146,15 +146,7 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
       return;
     }
-    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) {
-      _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
-      return;
-    }
-    AuthActionGuard.requireAccount(
-      context,
-      reason:
-          'خطتك محفوظة على جهازك. أكمل إنشاء حساب لتفتح $area على خوادمنا ونحفظ بياناتك بأمان.',
-    );
+    _routeByArea(context, planId, area, dashboardSummary: dashboardSummary);
   }
 
   void _openLocalNotifications(BuildContext context, String planId) {
@@ -289,13 +281,17 @@ class _LocalSyncNotice extends StatelessWidget {
                 size: 16,
               ),
               const SizedBox(width: 8),
-              Text(
-                needsSync ? 'الخطة محفوظة محلياً' : 'الخطة جاهزة',
-                style: const TextStyle(
-                  color: Color(0xFF800020),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0,
+              Flexible(
+                child: Text(
+                  needsSync ? 'مسودة محفوظة على هذا الجهاز' : 'المسودة جاهزة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF800020),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -357,7 +358,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                     decoration: const InputDecoration(
                                       labelText: 'ملاحظات (اختياري)',
                                       hintText:
-                                          'أضيفي أي تفاصيل تساعدك على تنفيذ المهمة...',
+                                          'أضف أي تفاصيل تساعدك على تنفيذ المهمة...',
                                       alignLabelWithHint: true,
                                     ),
                                   ),
@@ -709,5 +710,5 @@ class _TaskCategory {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

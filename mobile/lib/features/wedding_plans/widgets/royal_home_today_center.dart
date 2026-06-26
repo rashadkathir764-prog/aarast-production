@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_pressable.dart';
 import '../models/dashboard_summary.dart';
 
@@ -315,15 +316,19 @@ class _PremiumHeroCard extends StatelessWidget {
                                 size: 14,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                summary.weddingDate == null
-                                    ? 'التاريخ غير محدد'
-                                    : _formatDate(summary.weddingDate!),
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0,
+                              Expanded(
+                                child: Text(
+                                  summary.weddingDate == null
+                                      ? 'التاريخ غير محدد'
+                                      : _formatDate(summary.weddingDate!),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1104,7 +1109,7 @@ bool _hasText(String? value) {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  return formatArabicDate(date);
 }
 
 String _daysRemainingLabel(int? daysRemaining) {
@@ -1195,7 +1200,7 @@ String _dashboardRoleLabel(String? role) {
     'FAMILY' => 'العائلة',
     'HELPER' => 'مساعد',
     'VIEWER' => 'مشاهد',
-    'GUEST' || 'GUEST_LOCAL' => 'تجربة محلية',
+    'GUEST' || 'GUEST_LOCAL' => 'مسودة على الجهاز',
     _ => role ?? 'مشارك',
   };
 }

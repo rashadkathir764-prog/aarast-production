@@ -73,7 +73,9 @@ class AuthRepository {
       if (kDebugMode) {
         debugPrint('[AarastAuth] Failed to parse $operation response: $error');
       }
-      throw const ApiException('تعذر قراءة جلسة تسجيل الدخول من الخادم.');
+      throw const ApiException(
+        'تعذر قراءة جلسة تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى.',
+      );
     }
   }
 }

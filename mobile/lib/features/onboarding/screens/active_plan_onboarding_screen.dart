@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../data/guest_onboarding_storage.dart';
 import '../models/guest_onboarding_draft.dart';
 import '../models/wedding_location_draft.dart';
@@ -626,7 +627,7 @@ class _DatePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = '${date.year}/${date.month}/${date.day}';
+    final label = formatArabicCompactDate(date);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: AppTheme.premiumCardDecoration(radius: AppTheme.radiusMd),

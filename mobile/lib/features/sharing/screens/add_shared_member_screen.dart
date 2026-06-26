@@ -49,7 +49,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
     return AarastPageScaffold(
       title: 'إضافة عضو',
-      subtitle: 'ابحثي برقم الهاتف ثم حددي الصلاحيات قبل المشاركة.',
+      subtitle: 'ابحث برقم الهاتف ثم حدد الصلاحيات قبل المشاركة.',
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
@@ -81,10 +81,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
               onLookup: _lookupUser,
             ),
             const SizedBox(height: 14),
-            _RoleDropdown(
-              value: _role,
-              onChanged: _applyRole,
-            ),
+            _RoleDropdown(value: _role, onChanged: _applyRole),
             const SizedBox(height: 14),
             _PermissionSwitches(
               canViewBudget: _canViewBudget,

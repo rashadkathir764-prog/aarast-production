@@ -15,7 +15,7 @@ class UserRebuildPlaceholderTab extends StatelessWidget {
       UserRebuildTab.home => UserRebuildPlaceholderTab(
         tab: tab,
         message:
-            'تبويب الرئيسية التجريبي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
+            'تبويب الرئيسية الداخلي — سيعرض مركز اليوم عند توفر مصدر الخطة الحالي',
         upcomingAreas: const [
           'ملخص الخطة الحالية',
           'أقرب المهام',
@@ -25,7 +25,7 @@ class UserRebuildPlaceholderTab extends StatelessWidget {
       UserRebuildTab.tasks => UserRebuildPlaceholderTab(
         tab: tab,
         message:
-            'تبويب المهام التجريبي — يحتاج خطة حالية قبل عرض المهام والمواعيد',
+            'تبويب المهام الداخلي — يحتاج خطة حالية قبل عرض المهام والمواعيد',
         upcomingAreas: const [
           'المهام القادمة',
           'المواعيد المهمة',
@@ -35,7 +35,7 @@ class UserRebuildPlaceholderTab extends StatelessWidget {
       UserRebuildTab.providers => UserRebuildPlaceholderTab(
         tab: tab,
         message:
-            'تبويب الموردون التجريبي — يعرض لاحقاً مراجع الموردين وطلبات العروض بدون حجوزات أو مدفوعات',
+            'تبويب الموردون الداخلي — يعرض لاحقاً مراجع الموردين وطلبات العروض بدون حجوزات أو مدفوعات',
         upcomingAreas: const [
           'مراجع الموردين',
           'طلبات العروض',
@@ -45,12 +45,12 @@ class UserRebuildPlaceholderTab extends StatelessWidget {
       UserRebuildTab.more => UserRebuildPlaceholderTab(
         tab: tab,
         message:
-            'تبويب المزيد التجريبي — سيجمع الخطط والإعدادات والدعم بدون تغيير المسارات الحالية',
+            'تبويب المزيد الداخلي — سيجمع الخطط والإعدادات والدعم بدون تغيير المسارات الحالية',
         upcomingAreas: const ['الخطط', 'الإعدادات', 'الدعم'],
       ),
       UserRebuildTab.money => UserRebuildPlaceholderTab(
         tab: tab,
-        message: 'تبويب المال التجريبي مرتبط بواجهة داخلية منفصلة',
+        message: 'تبويب المال الداخلي مرتبط بواجهة داخلية منفصلة',
         upcomingAreas: const ['الميزانية', 'المصروفات', 'الديون'],
       ),
     };

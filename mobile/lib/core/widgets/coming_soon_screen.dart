@@ -49,7 +49,7 @@ class AarastComingSoonScreen extends StatelessWidget {
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'لن نعرض أزرارًا وهمية هنا. عند جاهزية الخدمة ستكون مرتبطة بالبيانات الفعلية.',
+                    'لن نعرض أزرارًا غير مرتبطة ببيانات فعلية. عند جاهزية الخدمة ستظهر هنا بوضوح.',
                     textAlign: TextAlign.right,
                     style: TextStyle(
                       color: AppTheme.dInkSoft,

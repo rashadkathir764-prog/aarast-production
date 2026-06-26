@@ -12,6 +12,7 @@ import '../../marketplace/providers/marketplace_provider.dart';
 import '../../marketplace/widgets/quote_status_chip.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../onboarding/models/persona_copy.dart';
+import '../../../shared/models/quote_finance_context.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../tasks/models/wedding_task.dart';
 import '../models/dashboard_summary.dart';
@@ -173,12 +174,15 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       );
     }
 
-    final tasksAvailable = provider.tasks != null;
+    final summary = provider.summary;
+    final tasksAvailable = summary != null || provider.tasks != null;
     final tasks = provider.tasks ?? const <WeddingTask>[];
-    final completedTasks = tasks.where((task) => task.isDone).length;
-    final remainingTasks = math.max(0, tasks.length - completedTasks);
-    final progressPercent = tasksAvailable && tasks.isNotEmpty
-        ? ((completedTasks / tasks.length) * 100).round().clamp(0, 100)
+    final totalTasks = summary?.totalTasks ?? tasks.length;
+    final completedTasks =
+        summary?.completedTasks ?? tasks.where((task) => task.isDone).length;
+    final remainingTasks = math.max(0, totalTasks - completedTasks);
+    final progressPercent = tasksAvailable && totalTasks > 0
+        ? ((completedTasks / totalTasks) * 100).round().clamp(0, 100)
         : tasksAvailable
         ? 0
         : null;
@@ -203,6 +207,20 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final marketplace = _watchMarketplace();
     final planQuotes =
         marketplace?.quotesForPlan(plan.id) ?? const <QuoteRequest>[];
+    final hasPlanLocation = planLocation.hasAnyLocation;
+    final hasPlanBudget = _hasBudget(plan, summary);
+    final showTaskSetup = tasksAvailable && totalTasks == 0;
+    final showGuestSetup = summary != null && summary.guestCount == 0;
+    final showProviderSetup =
+        summary != null &&
+        summary.quoteRequestsCount == 0 &&
+        summary.acceptedProviders == 0;
+    final showSetupChecklist =
+        !hasPlanLocation ||
+        !hasPlanBudget ||
+        showTaskSetup ||
+        showGuestSetup ||
+        showProviderSetup;
 
     return ListView(
       padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
@@ -213,7 +231,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           plan: plan,
           progressPercent: progressPercent,
           completedTasks: completedTasks,
-          totalTasks: tasksAvailable ? tasks.length : null,
+          totalTasks: tasksAvailable ? totalTasks : null,
           canManagePlan: canManagePlan,
           onEdit: () => _showEditPlanSheet(provider, plan),
         ),
@@ -224,8 +242,13 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           onEdit: () => _showEditPlanSheet(provider, plan),
         ),
         const SizedBox(height: 10),
-        if (tasksAvailable && tasks.isEmpty)
+        if (showSetupChecklist)
           _SetupChecklistCard(
+            showLocation: !hasPlanLocation,
+            showBudget: !hasPlanBudget,
+            showTasks: showTaskSetup,
+            showGuests: showGuestSetup,
+            showProviders: showProviderSetup,
             onTasks: () => context.push(AppRouter.tasks(plan.id)),
             onBudget: () => canOpenFinance
                 ? _openFinanceOverview(provider, plan.id)
@@ -234,7 +257,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
             onProviders: () => context.push(AppRouter.providerMarketplace),
             onEditPlan: () => _showEditPlanSheet(provider, plan),
           ),
-        if (tasksAvailable && tasks.isNotEmpty) ...[
+        if (tasksAvailable && totalTasks > 0) ...[
           _ProgressSummaryCard(
             progressPercent: progressPercent,
             completedTasks: completedTasks,
@@ -268,8 +291,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           quotes: planQuotes,
           canManage: canManagePlan,
           isSubmitting: marketplace?.isSubmitting ?? false,
-          onBrowseProviders: () =>
-              context.push(AppRouter.providerMarketplace),
+          onBrowseProviders: () => context.push(AppRouter.providerMarketplace),
           onAccept: marketplace == null
               ? null
               : (quote) async {
@@ -280,10 +302,14 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
               : (quote) async {
                   await marketplace.rejectQuote(quote);
                 },
-          onAddExpense: (quote) =>
-              context.push(AppRouter.createExpense(plan.id)),
-          onAddDebt: (quote) =>
-              context.push(AppRouter.createDebt(plan.id)),
+          onAddExpense: (quote) => context.push(
+            AppRouter.createExpense(plan.id),
+            extra: _quoteFinanceContext(quote),
+          ),
+          onAddDebt: (quote) => context.push(
+            AppRouter.createDebt(plan.id),
+            extra: _quoteFinanceContext(quote),
+          ),
         ),
         const SizedBox(height: 10),
         _ParticipantsCard(
@@ -324,6 +350,22 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     _readMarketplace()?.loadMyQuoteRequests();
   }
 
+  QuoteFinanceContext _quoteFinanceContext(QuoteRequest quote) {
+    final offer = quote.acceptedOffer ?? quote.pendingOffer;
+    return QuoteFinanceContext(
+      quoteRequestId: quote.id,
+      providerId: quote.providerId,
+      providerName:
+          quote.provider?.businessName ??
+          quote.service?.provider?.businessName ??
+          'المورد',
+      quoteOfferId: offer?.id,
+      serviceTitle: quote.service?.title,
+      amount: offer?.amount,
+      currency: offer?.currency,
+    );
+  }
+
   Widget _buildBottomNav(DashboardSummaryProvider provider) {
     final planId = provider.plan?.id == widget.weddingPlanId
         ? provider.plan!.id
@@ -332,6 +374,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       activeIndex: 0,
       onHome: () => context.go(AppRouter.home),
       onMoney: () => context.push(AppRouter.finance(planId)),
+      onTasks: () => context.push(AppRouter.tasks(planId)),
       onProviders: () => context.push(AppRouter.providerMarketplace),
       onMore: () => context.push(AppRouter.more),
       onAdd: () => _showQuickAdd(provider),
@@ -598,6 +641,15 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           const SizedBox(height: 10),
         ],
         _SetupChecklistCard(
+          showLocation: localPlan?.weddingLocation.hasAnyLocation != true,
+          showBudget: !_positiveMoney(
+            summary?.budgetTotal ?? localPlan?.estimatedBudget,
+          ),
+          showTasks: (summary?.totalTasks ?? 0) == 0,
+          showGuests: (summary?.guestCount ?? 0) == 0,
+          showProviders:
+              (summary?.quoteRequestsCount ?? 0) == 0 &&
+              (summary?.acceptedProviders ?? 0) == 0,
           onTasks: () => context.push(AppRouter.tasks(planId)),
           onBudget: () => context.push(AppRouter.finance(planId)),
           onGuests: () => context.push(AppRouter.guestList(planId)),
@@ -622,9 +674,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         if (summary != null) ...[
           const SizedBox(height: 10),
           _ParticipantsCard(
-            roleLabel: 'تجربة محلية',
+            roleLabel: 'مسودة على الجهاز',
             participantsCount: 1,
-            permissionsLabel: 'صلاحيات محلية',
+            permissionsLabel: 'لم تتم المزامنة بعد',
             canManageSharing: false,
             onManageSharing: () => _showUnavailable(
               'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
@@ -1304,6 +1356,11 @@ class _ProgressSummaryCard extends StatelessWidget {
 
 class _SetupChecklistCard extends StatelessWidget {
   const _SetupChecklistCard({
+    required this.showLocation,
+    required this.showBudget,
+    required this.showTasks,
+    required this.showGuests,
+    required this.showProviders,
     required this.onTasks,
     required this.onBudget,
     required this.onGuests,
@@ -1311,6 +1368,11 @@ class _SetupChecklistCard extends StatelessWidget {
     required this.onEditPlan,
   });
 
+  final bool showLocation;
+  final bool showBudget;
+  final bool showTasks;
+  final bool showGuests;
+  final bool showProviders;
   final VoidCallback onTasks;
   final VoidCallback onBudget;
   final VoidCallback onGuests;
@@ -1319,6 +1381,45 @@ class _SetupChecklistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final items = <_ChecklistItemData>[
+      if (showLocation)
+        _ChecklistItemData(
+          icon: Icons.location_on_outlined,
+          title: 'أكمل موقع الزفاف',
+          subtitle:
+              'تحديد المدينة يساعد في تصفية الموردين وتوضيح طلبات الأسعار.',
+          onTap: onEditPlan,
+        ),
+      if (showBudget)
+        _ChecklistItemData(
+          icon: Icons.account_balance_wallet_outlined,
+          title: 'حدد ميزانية الخطة',
+          subtitle: 'أضف ميزانية حقيقية لعرض المتبقي والمصروف بدقة.',
+          onTap: onBudget,
+        ),
+      if (showTasks)
+        _ChecklistItemData(
+          icon: Icons.check_box_outlined,
+          title: 'أضف أول مهمة',
+          subtitle: 'رتب أفكارك وابدأ بإنجاز المهام.',
+          onTap: onTasks,
+        ),
+      if (showGuests)
+        _ChecklistItemData(
+          icon: Icons.person_add_alt_1_outlined,
+          title: 'أضف أول ضيف',
+          subtitle: 'تجهيز قائمة المدعوين يساعدك على تقدير التكلفة.',
+          onTap: onGuests,
+        ),
+      if (showProviders)
+        _ChecklistItemData(
+          icon: Icons.storefront_outlined,
+          title: 'استكشف الموردين',
+          subtitle: 'تصفح القاعات والخدمات واطلب عرض سعر عند الحاجة.',
+          onTap: onProviders,
+        ),
+    ];
+
     return _PcCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1366,41 +1467,32 @@ class _SetupChecklistCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _ChecklistItem(
-            icon: Icons.location_on_outlined,
-            title: 'أضف موقع الزفاف',
-            subtitle: 'تحديد المدينة يسهل البحث عن الموردين.',
-            onTap: onEditPlan,
-          ),
-          _ChecklistItem(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'حدد الميزانية',
-            subtitle: 'تظهر مؤشرات الإنفاق عندما تضيف ميزانية تقريبية.',
-            onTap: onBudget,
-          ),
-          _ChecklistItem(
-            icon: Icons.check_box_outlined,
-            title: 'أضف أول مهمة',
-            subtitle: 'رتب أفكارك وابدأ بإنجاز المهام.',
-            onTap: onTasks,
-          ),
-          _ChecklistItem(
-            icon: Icons.person_add_alt_1_outlined,
-            title: 'أضف أول ضيف',
-            subtitle: 'تجهيز قائمة المدعوين لتقدير التكلفة.',
-            onTap: onGuests,
-          ),
-          _ChecklistItem(
-            icon: Icons.storefront_outlined,
-            title: 'استكشف الموردين',
-            subtitle: 'تصفح أفضل القاعات والخدمات وتواصل معهم.',
-            onTap: onProviders,
-            isLast: true,
-          ),
+          for (var i = 0; i < items.length; i++)
+            _ChecklistItem(
+              icon: items[i].icon,
+              title: items[i].title,
+              subtitle: items[i].subtitle,
+              onTap: items[i].onTap,
+              isLast: i == items.length - 1,
+            ),
         ],
       ),
     );
   }
+}
+
+class _ChecklistItemData {
+  const _ChecklistItemData({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 }
 
 class _ChecklistItem extends StatelessWidget {
@@ -1584,6 +1676,12 @@ class _PlanLocationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasLocation = location.hasAnyLocation;
+    final street = location.street?.trim() ?? '';
+    final detailedAddress = location.detailedAddress?.trim() ?? '';
+    final hasStreet = street.isNotEmpty;
+    final hasDetailedAddress = detailedAddress.isNotEmpty;
+    final hasOptionalAddressGap =
+        hasLocation && (!hasStreet || !hasDetailedAddress);
     final headline =
         location.fullLabel ??
         location.mediumLabel ??
@@ -1649,14 +1747,12 @@ class _PlanLocationCard extends StatelessWidget {
             label: 'الحي / المنطقة',
             value: _locationValue(location.areaOrNeighborhood, 'لم يضف بعد'),
           ),
-          _LocationDetailRow(
-            label: 'الشارع',
-            value: _locationValue(location.street, 'اختياري'),
-          ),
-          _LocationDetailRow(
-            label: 'العنوان التفصيلي',
-            value: _locationValue(location.detailedAddress, 'اختياري'),
-          ),
+          if (hasStreet) _LocationDetailRow(label: 'الشارع', value: street),
+          if (hasDetailedAddress)
+            _LocationDetailRow(
+              label: 'العنوان التفصيلي',
+              value: detailedAddress,
+            ),
           if (canManagePlan) ...[
             const SizedBox(height: 12),
             SizedBox(
@@ -1665,8 +1761,10 @@ class _PlanLocationCard extends StatelessWidget {
                 style: _pcOutlinedButtonStyle(),
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_location_alt_outlined, size: 18),
-                label: const Text(
-                  'تعديل بيانات الخطة',
+                label: Text(
+                  hasOptionalAddressGap
+                      ? 'أكمل العنوان التفصيلي'
+                      : 'تعديل بيانات الخطة',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1895,7 +1993,10 @@ class _PlanQuoteRow extends StatelessWidget {
               ),
               OutlinedButton.icon(
                 onPressed: () => onAddDebt(quote),
-                icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+                icon: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  size: 18,
+                ),
                 label: const Text('إضافة كدين / دفعة لاحقة'),
               ),
             ],
@@ -2422,6 +2523,17 @@ ButtonStyle _pcOutlinedButtonStyle() {
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
     textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w900),
   );
+}
+
+bool _hasBudget(WeddingPlan plan, DashboardSummary? summary) {
+  return _positiveMoney(summary?.budgetTotal) ||
+      _positiveMoney(plan.estimatedBudget);
+}
+
+bool _positiveMoney(String? value) {
+  if (value == null) return false;
+  final parsed = double.tryParse(value.trim());
+  return parsed != null && parsed > 0;
 }
 
 String _dateLabel(DateTime? date) {

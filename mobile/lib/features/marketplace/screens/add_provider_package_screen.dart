@@ -106,7 +106,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           ),
                           validator: (value) =>
                               value == null || value.trim().length < 2
-                              ? 'اكتبي اسم الباقة'
+                              ? 'اكتب اسم الباقة'
                               : null,
                         ),
                         const SizedBox(height: 14),
@@ -157,7 +157,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           maxLines: 5,
                           decoration: const InputDecoration(
                             labelText: 'المميزات',
-                            hintText: 'اكتبي كل ميزة في سطر مستقل',
+                            hintText: 'اكتب كل ميزة في سطر مستقل',
                             prefixIcon: Icon(Icons.checklist_rtl_rounded),
                           ),
                         ),

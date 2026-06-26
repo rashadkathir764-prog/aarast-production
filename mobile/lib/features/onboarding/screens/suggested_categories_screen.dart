@@ -39,7 +39,7 @@ class SuggestedCategoriesScreen extends StatelessWidget {
       stepNumber: 7,
       title: 'تصنيفات بداية الخطة',
       description: copy.categoriesDescription,
-      continueLabel: 'إنشاء ملخص محلي',
+      continueLabel: 'إنشاء مسودة الخطة',
       onContinue: selectedCategoryKeys.isEmpty ? null : onContinue,
       onBack: onBack,
       child: GridView.builder(

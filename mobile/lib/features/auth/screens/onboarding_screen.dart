@@ -62,7 +62,7 @@ class OnboardingScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           PrimaryActionButton(
-            label: 'ابدئي الآن',
+            label: 'ابدأ الآن',
             icon: Icons.arrow_back_rounded,
             onPressed: () => context.go(AppRouter.register),
           ),

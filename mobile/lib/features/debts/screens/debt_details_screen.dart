@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/debt.dart';
 import '../models/installment.dart';
@@ -172,7 +173,7 @@ class _DebtDetailsContent extends StatelessWidget {
         if (provider.installments.isEmpty)
           AarastEmptyState(
             title: 'لا توجد أقساط لهذا الدين',
-            message: 'أضيفي أول قسط لتتضح مواعيد السداد والمتابعة.',
+            message: 'أضف أول قسط لتتضح مواعيد السداد والمتابعة.',
             icon: Icons.event_note_outlined,
             action: ElevatedButton.icon(
               onPressed: () =>
@@ -621,5 +622,5 @@ String _installmentStatusLabel(String status) {
 }
 
 String _shortDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  return formatArabicCompactDate(date);
 }

@@ -143,7 +143,7 @@ class _NoProviderProfileCard extends StatelessWidget {
       icon: Icons.storefront_rounded,
       title: 'لا يوجد حساب مزود',
       message:
-          'ارسلي طلب الانضمام كمزود. بعد المراجعة ستظهر لوحة المزود وخدماتك هنا.',
+          'أرسل طلب الانضمام كمزود. بعد المراجعة ستظهر لوحة المزود وخدماتك هنا.',
       action: FilledButton.icon(
         onPressed: onApply,
         icon: const Icon(Icons.assignment_ind_outlined),
@@ -479,7 +479,7 @@ class _ProviderServices extends StatelessWidget {
               icon: Icons.design_services_outlined,
               title: 'لا توجد خدمات بعد',
               message: canManageListing
-                  ? 'أضيفي خدمة ليبدأ كتالوج المزود بالظهور للعملاء.'
+                  ? 'أضف خدمة ليبدأ كتالوج المزود بالظهور للعملاء.'
                   : 'ستتمكنين من إضافة الخدمات بعد اعتماد حساب المزود.',
               action: canManageListing
                   ? OutlinedButton.icon(
@@ -1336,7 +1336,7 @@ String _providerStatusMessage(String status) {
     'REJECTED' =>
       'لن يظهر ملف المزود في السوق. يمكنك متابعة الملاحظة أو إعادة التقديم لاحقاً عند دعم التعديل.',
     'SUSPENDED' =>
-      'تم إيقاف الظهور العام مؤقتاً. تواصلي مع الإدارة لمعرفة الخطوة التالية.',
+      'تم إيقاف الظهور العام مؤقتاً. تواصل مع الإدارة لمعرفة الخطوة التالية.',
     _ =>
       'سيتم مراجعة بياناتك من الإدارة. لن يظهر ملفك للعملاء حتى يتم الاعتماد.',
   };

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 import 'permission_chip.dart';
@@ -98,5 +99,5 @@ class _InfoLine extends StatelessWidget {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

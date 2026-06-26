@@ -69,6 +69,8 @@ class _WeddingPlanDashboardScreenState
                 onHome: () {},
                 onMoney: () =>
                     context.push(AppRouter.finance(widget.weddingPlanId)),
+                onTasks: () =>
+                    context.push(AppRouter.tasks(widget.weddingPlanId)),
                 onProviders: () => context.push(AppRouter.providerMarketplace),
                 onMore: () => context.push(AppRouter.more),
                 onAdd: _showQuickActions,

@@ -6,8 +6,10 @@ import '../../../core/contacts/contact_duplicate_utils.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/primary_action_button.dart';
+import '../../../shared/models/quote_finance_context.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -15,9 +17,14 @@ import '../models/debt.dart';
 import '../providers/debt_installment_provider.dart';
 
 class CreateDebtScreen extends StatefulWidget {
-  const CreateDebtScreen({required this.weddingPlanId, super.key});
+  const CreateDebtScreen({
+    required this.weddingPlanId,
+    this.quoteContext,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final QuoteFinanceContext? quoteContext;
 
   @override
   State<CreateDebtScreen> createState() => _CreateDebtScreenState();
@@ -39,6 +46,13 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
   @override
   void initState() {
     super.initState();
+    final quoteContext = widget.quoteContext;
+    if (quoteContext != null) {
+      _creditorNameController.text = quoteContext.providerName;
+      _titleController.text = quoteContext.title;
+      _totalAmountController.text = quoteContext.amount?.trim() ?? '';
+      _noteController.text = quoteContext.note;
+    }
     _creditorNameController.addListener(_handleContactChanged);
     _creditorPhoneController.addListener(_handleContactChanged);
   }
@@ -254,7 +268,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                                     decoration: const InputDecoration(
                                       labelText: 'ملاحظة اختيارية',
                                       hintText:
-                                          'أضيفي تفاصيل الاتفاق أو موعد السداد...',
+                                          'أضف تفاصيل الاتفاق أو موعد السداد...',
                                       alignLabelWithHint: true,
                                     ),
                                   ),
@@ -671,5 +685,5 @@ String? _nonNegativeOptional(String? value) {
 }
 
 String _formatDate(DateTime date) {
-  return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }

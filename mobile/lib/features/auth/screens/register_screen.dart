@@ -92,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             Text(
               providerMode
                   ? 'أرسلي بيانات نشاطك وسيتم مراجعة الطلب قبل ظهور لوحة المزود.'
-                  : 'ابدئي رحلتك بخطة زفاف واضحة ومرتبة.',
+                  : 'ابدأ رحلتك بخطة زفاف واضحة ومرتبة.',
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: AppTheme.dInkSoft,
@@ -187,7 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           .toList(),
                       onChanged: (value) => setState(() => _cityId = value),
                       validator: (value) =>
-                          value == null ? 'اختاري المدينة' : null,
+                          value == null ? 'اختر المدينة' : null,
                     ),
                     const SizedBox(height: 14),
                     _ProviderDropdown(
@@ -203,8 +203,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           )
                           .toList(),
                       onChanged: (value) => setState(() => _categoryId = value),
-                      validator: (value) =>
-                          value == null ? 'اختاري الفئة' : null,
+                      validator: (value) => value == null ? 'اختر الفئة' : null,
                     ),
                     const SizedBox(height: 14),
                     AuthTextField(

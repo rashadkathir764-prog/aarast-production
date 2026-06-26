@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/timeline.dart';
@@ -468,7 +469,7 @@ class _TimelineHero extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       total == 0
-                          ? 'ابدئي بخطوة واضحة اليوم'
+                          ? 'ابدأ بخطوة واضحة اليوم'
                           : '$done من $total مهام مكتملة',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.white.withAlpha(205),
@@ -1241,7 +1242,7 @@ String _emptyTaskTitle(_TaskFilter filter) {
 
 String _emptyTaskMessage(_TaskFilter filter) {
   return switch (filter) {
-    _TaskFilter.all => 'أضيفي أول مهمة لتتحول الخطة إلى خطوات واضحة.',
+    _TaskFilter.all => 'أضف أول مهمة لتتحول الخطة إلى خطوات واضحة.',
     _TaskFilter.today =>
       'كل شيء مرتب لليوم. يمكنك إضافة مهمة جديدة عند الحاجة.',
     _TaskFilter.week => 'لا توجد مهام قريبة غير مكتملة خلال الأيام القادمة.',
@@ -1277,7 +1278,7 @@ String _relativeDueLabel(DateTime date) {
 }
 
 String _shortDate(DateTime date) {
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
+  return formatArabicCompactDate(date);
 }
 
 String _priorityLabel(String priority) {

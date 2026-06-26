@@ -15,7 +15,6 @@ class AuthActionGuard {
   static const quoteSubmitMessage = protectedActionMessage;
 
   static bool isLocalGuestPlanId(String? planId) {
-    if (!AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
     final value = planId?.trim() ?? '';
     return value.isEmpty ||
         value == 'local-guest-plan' ||
@@ -109,7 +108,7 @@ class AuthActionGuard {
     BuildContext context, {
     String message = protectedActionMessage,
   }) async {
-    if (!AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
     if (await hasAccount(context)) return false;
     if (!context.mounted) return true;
 

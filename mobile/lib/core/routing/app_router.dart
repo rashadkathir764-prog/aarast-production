@@ -42,6 +42,7 @@ import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import '../../features/wedding_plans/models/dashboard_summary.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
+import '../../shared/models/quote_finance_context.dart';
 import '../config/app_feature_flags.dart';
 import 'app_route_guard_resolver.dart';
 import '../widgets/coming_soon_screen.dart';
@@ -163,11 +164,8 @@ class AppRouter {
   static const sharedWeddingPlans = '/shared/wedding-plans';
 
   static String? guestOnboardingRedirect(AppFeatureFlags flags) {
-    return AppRouteGuardResolver.featureFlagRedirect(
-      flags: flags,
-      flagName: 'enableGuestFirstOnboarding',
-      disabledRedirect: onboarding,
-    );
+    if (flags.enableGuestFirstOnboarding) return null;
+    return onboarding;
   }
 
   static String? userNavigationShellRedirect(AppFeatureFlags flags) {
@@ -217,8 +215,8 @@ class AppRouter {
           builder: (context, state) => const DashboardEntryScreen(),
         ),
         // Public provider browsing: guests may open the marketplace and
-        // any provider detail without an account. ProviderAuthGate remains
-        // in place, but the temporary UX exploration flag bypasses it.
+        // provider details without an account. Quote/provider management
+        // routes stay behind ProviderAuthGate.
         GoRoute(
           path: providerMarketplace,
           builder: (context, state) => const ProviderMarketplaceScreen(),
@@ -303,9 +301,8 @@ class AppRouter {
         ),
         GoRoute(
           path: '/invites/:token',
-          builder: (context, state) => InviteDecisionScreen(
-            token: state.pathParameters['token'] ?? '',
-          ),
+          builder: (context, state) =>
+              InviteDecisionScreen(token: state.pathParameters['token'] ?? ''),
         ),
         GoRoute(path: more, builder: (context, state) => const MoreScreen()),
         GoRoute(
@@ -315,9 +312,9 @@ class AppRouter {
         GoRoute(
           path: support,
           builder: (context, state) => const AarastComingSoonScreen(
-            title: 'Ø§Ù„Ø¯Ø¹Ù… ÙˆØ§Ù„Ù…Ø³Ø§Ø¹Ø¯Ø©',
+            title: 'الدعم والمساعدة',
             message:
-                'Ù‚Ù†Ø§Ø© Ø§Ù„Ø¯Ø¹Ù… Ø³ØªØ¸Ù‡Ø± Ù‡Ù†Ø§ Ø¹Ù†Ø¯ Ø§Ø¹ØªÙ…Ø§Ø¯ ØªØ¬Ø±Ø¨Ø© Ø§Ù„ØªÙˆØ§ØµÙ„ ÙˆØ§Ù„Ø£Ø³Ø¦Ù„Ø© Ø§Ù„Ø´Ø§Ø¦Ø¹Ø©.',
+                'قناة الدعم ستظهر هنا بعد اعتماد تجربة التواصل والأسئلة الشائعة.',
             icon: Icons.support_agent_outlined,
           ),
         ),
@@ -388,7 +385,13 @@ class AppRouter {
           path: '/wedding-plans/:id/expenses/create',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return CreateExpenseScreen(weddingPlanId: id);
+            final quoteContext = state.extra is QuoteFinanceContext
+                ? state.extra! as QuoteFinanceContext
+                : null;
+            return CreateExpenseScreen(
+              weddingPlanId: id,
+              quoteContext: quoteContext,
+            );
           },
         ),
         GoRoute(
@@ -423,7 +426,13 @@ class AppRouter {
           path: '/wedding-plans/:id/debts/create',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return CreateDebtScreen(weddingPlanId: id);
+            final quoteContext = state.extra is QuoteFinanceContext
+                ? state.extra! as QuoteFinanceContext
+                : null;
+            return CreateDebtScreen(
+              weddingPlanId: id,
+              quoteContext: quoteContext,
+            );
           },
         ),
         GoRoute(

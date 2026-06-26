@@ -60,7 +60,7 @@ void main() {
   );
 
   testWidgets(
-    'quote form opens for guest and submit without token shows lightweight message only',
+    'quote form requires an account before protected submit actions',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(800, 1200);
@@ -98,22 +98,9 @@ void main() {
       }
 
       expect(find.text('طلب عرض سعر'), findsOneWidget);
-      expect(find.text('تسجيل الدخول مطلوب'), findsNothing);
+      expect(find.text('تسجيل الدخول مطلوب'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'رسالة للمورد'), findsNothing);
       expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
-
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'رسالة للمورد'),
-        'نحتاج عرض سعر مناسب لتجربة التصميم.',
-      );
-      final submit = find.text('إرسال الطلب');
-      await tester.ensureVisible(submit);
-      await tester.tap(submit);
-      await tester.pump();
-
-      expect(
-        find.text('هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.'),
-        findsOneWidget,
-      );
       expect(marketplaceProvider.createQuoteAttempted, isFalse);
       expect(tester.takeException(), isNull);
     },

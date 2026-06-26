@@ -5,7 +5,8 @@ const http = require('http');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3124';
 const timestamp = Date.now();
-const TEST_PHONE = `+96773${timestamp.toString().slice(-6)}`;
+const suffix = `${timestamp.toString().slice(-4)}${Math.floor(Math.random() * 90 + 10)}`;
+const TEST_PHONE = `+96773${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
 
 let passed = 0;

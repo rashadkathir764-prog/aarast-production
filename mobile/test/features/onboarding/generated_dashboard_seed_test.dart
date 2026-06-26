@@ -17,7 +17,7 @@ void main() {
 
       expect(seed.cityLabel, 'Aden');
       expect(seed.estimatedBudgetLabel, 'لم تحدد الميزانية بعد');
-      expect(seed.nextBestAction, 'أضيفي ميزانية تقريبية');
+      expect(seed.nextBestAction, 'أضف ميزانية تقريبية');
     });
 
     test('asks for wedding date when date is unknown', () {

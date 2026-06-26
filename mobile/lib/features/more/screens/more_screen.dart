@@ -733,7 +733,7 @@ class _OptionalLoginTile extends StatelessWidget {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'تسجيل الدخول لاحقًا (اختياري)',
+                'تسجيل الدخول لاحقًا',
                 style: TextStyle(
                   color: AppTheme.dInk,
                   fontWeight: FontWeight.w900,

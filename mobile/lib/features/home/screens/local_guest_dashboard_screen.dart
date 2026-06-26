@@ -6,6 +6,7 @@ import '../../../core/routing/app_router.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
+import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/royal_home_today_center.dart';
 import '../data/dashboard_summary_sources.dart';
@@ -88,41 +89,16 @@ class LocalGuestDashboardScreen extends StatelessWidget {
       Navigator.of(context, rootNavigator: true).pop();
     }
 
-    void open(String route) {
+    Future<void> open(String route, {bool refreshDashboard = false}) async {
       closeSheet();
-      context.push(route);
+      await context.push(route);
     }
 
-    return [
-      RoyalHomeAction(
-        icon: Icons.account_balance_wallet_outlined,
-        label: 'إضافة مصروف',
-        onTap: () => open(AppRouter.createExpense(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.check_circle_outline_rounded,
-        label: 'إضافة مهمة',
-        onTap: () => open(AppRouter.createTask(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.group_add_outlined,
-        label: 'إضافة ضيف',
-        onTap: () => open(AppRouter.guestList(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.attach_money_rounded,
-        label: 'إضافة دين',
-        onTap: () => open(AppRouter.createDebt(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.request_quote_outlined,
-        label: 'طلب عرض سعر',
-        onTap: () {
-          closeSheet();
-          context.push(AppRouter.providerMarketplace);
-        },
-      ),
-    ];
+    return buildCanonicalQuickAddActions(
+      context,
+      planId: planId,
+      openRoute: open,
+    );
   }
 
   // Local guest plans open the real plan-scoped surfaces, while protected

@@ -90,7 +90,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                                     ),
                               ),
                               Text(
-                                'تابعي التفاصيل القريبة بثقة وهدوء',
+                                'تابع التفاصيل القريبة بثقة وهدوء',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall

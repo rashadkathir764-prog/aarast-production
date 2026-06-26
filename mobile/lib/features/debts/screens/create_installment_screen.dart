@@ -110,7 +110,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                                       final dueField = _SelectorField(
                                         label: 'الاستحقاق',
                                         value: _dueDate == null
-                                            ? 'اختياري'
+                                            ? 'لم يحدد بعد'
                                             : _formatDate(_dueDate!),
                                         icon: Icons.event_available_rounded,
                                         selected: _dueDate != null,
@@ -121,7 +121,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                                       final paidField = _SelectorField(
                                         label: 'الدفع',
                                         value: _paidAt == null
-                                            ? 'اختياري'
+                                            ? 'لم يحدد بعد'
                                             : _formatDate(_paidAt!),
                                         icon:
                                             Icons.check_circle_outline_rounded,

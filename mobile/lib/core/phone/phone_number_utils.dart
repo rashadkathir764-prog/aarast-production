@@ -31,7 +31,7 @@ class PhoneNumberUtils {
   static const internationalWarningMessage =
       'تعذر التأكد من بلد الرقم؛ احتفظنا به كما أدخلته.';
   static const optionalPhoneMessage =
-      'الرقم اختياري، لكن إضافته تساعدك في الدعوات والتواصل.';
+      'يمكنك إضافة الرقم لاحقًا من شاشة الضيف.';
 
   static PhoneNumberAnalysis analyze(
     String? input, {

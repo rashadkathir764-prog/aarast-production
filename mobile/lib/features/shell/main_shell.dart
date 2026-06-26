@@ -13,6 +13,7 @@ import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
+import '../wedding_plans/widgets/quick_add_actions.dart';
 import '../wedding_plans/widgets/royal_home_chrome.dart';
 
 class MainShell extends StatefulWidget {
@@ -77,34 +78,12 @@ class _MainShellState extends State<MainShell> {
       }
     }
 
-    return [
-      RoyalHomeAction(
-        icon: Icons.account_balance_wallet_outlined,
-        label: 'إضافة مصروف',
-        onTap: () =>
-            open(AppRouter.createExpense(planId), refreshDashboard: true),
-      ),
-      RoyalHomeAction(
-        icon: Icons.check_circle_outline_rounded,
-        label: 'إضافة مهمة',
-        onTap: () => open(AppRouter.createTask(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.group_add_outlined,
-        label: 'إضافة ضيف',
-        onTap: () => open(AppRouter.guestList(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.attach_money_rounded,
-        label: 'إضافة دين',
-        onTap: () => open(AppRouter.createDebt(planId)),
-      ),
-      RoyalHomeAction(
-        icon: Icons.request_quote_outlined,
-        label: 'طلب عرض سعر',
-        onTap: () => open(AppRouter.providerMarketplace),
-      ),
-    ];
+    return buildCanonicalQuickAddActions(
+      context,
+      planId: planId,
+      refreshDashboardOnExpense: true,
+      openRoute: open,
+    );
   }
 
   @override

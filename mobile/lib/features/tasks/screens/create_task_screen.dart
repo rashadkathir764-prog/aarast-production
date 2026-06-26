@@ -279,7 +279,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                       final dateField = _SelectorField(
                                         label: 'التاريخ',
                                         value: _dueDate == null
-                                            ? 'اختياري'
+                                            ? 'لم يحدد بعد'
                                             : _formatDate(_dueDate!),
                                         icon: Icons.calendar_month_rounded,
                                         selected: _dueDate != null,

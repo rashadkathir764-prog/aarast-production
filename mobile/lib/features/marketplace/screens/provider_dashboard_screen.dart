@@ -1332,7 +1332,7 @@ String _providerStatusTitle(String status) {
 String _providerStatusMessage(String status) {
   return switch (status) {
     'NEEDS_CHANGES' =>
-      'راجعي ملاحظة الإدارة ثم حدّثي بيانات الطلب عند توفر شاشة تعديل الملف.',
+      'راجع ملاحظة الإدارة ثم حدّث بيانات الطلب عند توفر شاشة تعديل الملف.',
     'REJECTED' =>
       'لن يظهر ملف المزود في السوق. يمكنك متابعة الملاحظة أو إعادة التقديم لاحقاً عند دعم التعديل.',
     'SUSPENDED' =>

@@ -1974,7 +1974,7 @@ class _PlanQuoteRow extends StatelessWidget {
         if (quote.lifecycleStatus == 'ACCEPTED' && canManage) ...[
           const SizedBox(height: 10),
           const Text(
-            'الخطوة التالية اختيارية: تسجيل الالتزام المالي. لن يُنشأ أي سجل تلقائيًا.',
+            'يمكنك تسجيل المبلغ كمصروف أو كدين لاحقًا، أو تجاهل هذه الخطوة الآن. لن يُنشأ أي سجل تلقائيًا.',
             style: TextStyle(
               color: _pcMuted,
               fontWeight: FontWeight.w700,

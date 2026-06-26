@@ -207,7 +207,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                                   _SelectorField(
                                     label: 'تاريخ الاستحقاق',
                                     value: _dueDate == null
-                                        ? 'اختياري'
+                                        ? 'لم يحدد بعد'
                                         : _formatDate(_dueDate!),
                                     icon: Icons.calendar_month_rounded,
                                     selected: _dueDate != null,

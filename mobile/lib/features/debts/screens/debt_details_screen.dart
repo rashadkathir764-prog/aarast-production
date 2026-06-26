@@ -494,7 +494,7 @@ class _MissingDebtContextCard extends StatelessWidget {
     return const AarastEmptyState(
       title: 'بيانات الدين غير مكتملة',
       message:
-          'يمكن عرض الأقساط هنا، ولرؤية بيانات الدين كاملة افتحي الدين من القائمة.',
+          'يمكن عرض الأقساط هنا، ولرؤية بيانات الدين كاملة افتح الدين من القائمة.',
       icon: Icons.info_outline_rounded,
     );
   }

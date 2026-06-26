@@ -185,7 +185,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                                       final dateField = _SelectorField(
                                         label: 'التاريخ',
                                         value: _expenseDate == null
-                                            ? 'اختياري'
+                                            ? 'لم يحدد بعد'
                                             : _formatDate(_expenseDate!),
                                         icon: Icons.calendar_month_rounded,
                                         selected: _expenseDate != null,
@@ -558,7 +558,7 @@ class _ExpenseHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isEditMode ? 'راجعي تفاصيل المصروف' : 'سجلي كل دفعة بوضوح',
+                  isEditMode ? 'راجع تفاصيل المصروف' : 'سجّل كل دفعة بوضوح',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.dMaroonDeep,
                     fontWeight: FontWeight.w900,

@@ -316,7 +316,7 @@ class _FinanceContent extends StatelessWidget {
         if (expenses.isEmpty)
           AarastEmptyState(
             title: 'لا توجد مصاريف بعد',
-            message: 'سجلي أول مصروف لتبدأ لوحة الميزانية في قراءة الواقع.',
+            message: 'عند تسجيل أول مصروف تبدأ لوحة الميزانية في قراءة الواقع.',
             icon: Icons.receipt_long_outlined,
             action: ElevatedButton.icon(
               onPressed: canManageFinancialRecords

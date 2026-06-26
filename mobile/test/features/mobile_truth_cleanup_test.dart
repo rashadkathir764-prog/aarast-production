@@ -88,11 +88,17 @@ void main() {
         ).readAsStringSync();
         final forbiddenProviderOps = <String>[
           'ProviderDashboardScreen',
+          'ProviderApplyScreen',
+          'ProviderApplyStatusScreen',
           'AddProviderServiceScreen',
           'AddProviderPackageScreen',
+          'AppRouter.providerApply',
+          'AppRouter.providerApplyStatus',
           'AppRouter.providerDashboard',
           'AppRouter.providerServiceNew',
           'AppRouter.providerPackageNew',
+          'طلب الانضمام كمزود',
+          'إنشاء حساب كمزود',
         ];
 
         for (final operation in forbiddenProviderOps) {
@@ -148,15 +154,52 @@ void main() {
       },
     );
 
+    test('production copy does not leak local or permission debug labels', () {
+      final libRoot = Directory('${mobileRoot}lib');
+      final forbiddenPhrases = <String>['تجربة محلية', 'صلاحيات محلية'];
+      final offenders = <String>[];
+
+      for (final entity in libRoot.listSync(recursive: true)) {
+        if (entity is! File) continue;
+        if (!entity.path.endsWith('.dart')) continue;
+
+        final lines = entity.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i];
+          if (line.trim().startsWith('//')) continue;
+          for (final phrase in forbiddenPhrases) {
+            if (!line.contains(phrase)) continue;
+            offenders.add('${entity.path}:${i + 1} [$phrase]: ${line.trim()}');
+          }
+        }
+      }
+
+      expect(
+        offenders,
+        isEmpty,
+        reason:
+            'Production mobile copy must use product language for guest and '
+            'permission states, not local/debug labels.',
+      );
+    });
+
     test('production copy does not leak feminine-only CTAs in non-bride '
         'persona-neutral surfaces', () {
       final libRoot = Directory('${mobileRoot}lib');
       final feminineWords = <String>[
+        'أنشئي',
+        'سجلي',
         'تابعي',
         'اختاري',
+        'اكتشفي',
+        'تأكدي',
+        'تحتاجين',
+        'تحتاجينه',
         'أضيفي',
+        'تضيفي',
         'حددي',
         'تستطيعين',
+        'ستتمكنين',
         'تواصلي',
         'ابدئي',
         'ابحثي',

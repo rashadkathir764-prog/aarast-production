@@ -84,9 +84,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
       _quoteRequests = results[4] as List<QuoteRequest>;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
-      _errorMessage = 'تعذر تحميل الموردين. تأكد من الاتصال وحاول مرة أخرى.';
+      _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -142,9 +142,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       _packages[providerId] = results[1] as List<ProviderPackage>;
       _reviews[providerId] = results[2] as List<ProviderReview>;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
-      _errorMessage = 'تعذر تحميل تفاصيل المورد. حاول مرة أخرى.';
+      _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -167,7 +167,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
         _favoriteProviderIds = {..._favoriteProviderIds, providerId};
       }
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
       _errorMessage = 'تعذر تحديث المفضلة.';
     } finally {
@@ -219,7 +219,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال طلب عرض السعر.';
@@ -293,7 +293,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث حالة عرض السعر.';
@@ -405,10 +405,10 @@ class ProviderDashboardProvider extends ChangeNotifier {
       _quoteRequests = const [];
       _hasProviderProfile = false;
       if (!_isMissingProviderProfile(error.message)) {
-        _errorMessage = _marketplaceErrorMessage(error.message);
+        _errorMessage = marketplaceErrorMessage(error.message);
       }
     } catch (_) {
-      _errorMessage = 'تعذر تحميل لوحة المورد. حاول مرة أخرى.';
+      _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -441,7 +441,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       _quoteRequests = const [];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال طلب الانضمام كمورد.';
@@ -482,7 +482,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إضافة الخدمة. حاول مرة أخرى.';
@@ -521,7 +521,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إضافة الباقة. حاول مرة أخرى.';
@@ -550,7 +550,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث حالة الطلب. حاول مرة أخرى.';
@@ -583,7 +583,7 @@ class ProviderDashboardProvider extends ChangeNotifier {
       await loadDashboard();
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _marketplaceErrorMessage(error.message);
+      _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال عرض السعر. حاول مرة أخرى.';
@@ -600,17 +600,20 @@ class ProviderDashboardProvider extends ChangeNotifier {
   }
 }
 
-String _marketplaceErrorMessage(String message) {
+@visibleForTesting
+String marketplaceErrorMessage(String message) {
   final normalized = message.trim();
-  if (normalized.contains('هذه الخدمة غير متاحة') ||
+  if (normalized.isEmpty ||
+      normalized.contains(aarastBackendConnectionErrorMessage) ||
+      normalized.contains('هذه الخدمة غير متاحة') ||
       normalized.startsWith('Cannot ')) {
-    return 'تعذر تحميل الموردين الآن. تحقق من الاتصال وحاول مرة أخرى.';
+    return aarastBackendConnectionErrorMessage;
   }
   if (normalized.contains('انتهت الجلسة') ||
       normalized.contains('بيانات الدخول')) {
-    return 'تحتاجين إلى تسجيل الدخول للمتابعة.';
+    return 'تحتاج إلى تسجيل الدخول للمتابعة.';
   }
-  return normalized.isEmpty ? 'تعذر تنفيذ الطلب. حاول مرة أخرى.' : normalized;
+  return normalized;
 }
 
 bool _isMissingProviderProfile(String message) {

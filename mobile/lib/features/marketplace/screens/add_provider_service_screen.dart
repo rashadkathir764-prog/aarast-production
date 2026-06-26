@@ -76,7 +76,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                     icon: Icons.lock_clock_outlined,
                     title: 'إضافة الخدمات بعد الاعتماد',
                     message:
-                        'الإدارة تراجع حساب المزود أولاً. ستتمكنين من إضافة الخدمات بعد أن تصبح الحالة نشطة.',
+                        'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الخدمات بعد أن تصبح الحالة نشطة.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
                       icon: const Icon(Icons.dashboard_customize_outlined),

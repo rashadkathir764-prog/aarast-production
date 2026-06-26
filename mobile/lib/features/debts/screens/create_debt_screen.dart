@@ -479,7 +479,7 @@ class _DebtHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'سجلي الالتزام كما هو',
+                  'تسجيل الالتزام كما هو',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.dMaroonDeep,
                     fontWeight: FontWeight.w900,

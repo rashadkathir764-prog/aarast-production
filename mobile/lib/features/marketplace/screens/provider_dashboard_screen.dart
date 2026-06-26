@@ -122,7 +122,7 @@ class _AuthRequiredCard extends StatelessWidget {
     return AarastEmptyState(
       icon: Icons.lock_outline_rounded,
       title: 'تسجيل الدخول مطلوب',
-      message: 'سجلي الدخول لعرض لوحة المزود أو إرسال طلب الانضمام.',
+      message: 'يرجى تسجيل الدخول لعرض لوحة المزود أو إرسال طلب الانضمام.',
       action: FilledButton.icon(
         onPressed: onLogin,
         icon: const Icon(Icons.login_rounded),
@@ -480,7 +480,7 @@ class _ProviderServices extends StatelessWidget {
               title: 'لا توجد خدمات بعد',
               message: canManageListing
                   ? 'أضف خدمة ليبدأ كتالوج المزود بالظهور للعملاء.'
-                  : 'ستتمكنين من إضافة الخدمات بعد اعتماد حساب المزود.',
+                  : 'يمكنك إضافة الخدمات بعد اعتماد حساب المزود.',
               action: canManageListing
                   ? OutlinedButton.icon(
                       onPressed: () =>
@@ -534,8 +534,8 @@ class _ProviderPackages extends StatelessWidget {
               icon: Icons.card_giftcard_rounded,
               title: 'لا توجد باقات بعد',
               message: canManageListing
-                  ? 'أنشئي باقة واضحة لتسهل على العملاء مقارنة عروضك.'
-                  : 'ستتمكنين من إضافة الباقات بعد اعتماد حساب المزود.',
+                  ? 'أضف باقة واضحة لتسهل على العملاء مقارنة عروضك.'
+                  : 'يمكنك إضافة الباقات بعد اعتماد حساب المزود.',
               action: canManageListing
                   ? OutlinedButton.icon(
                       onPressed: () =>

@@ -332,7 +332,7 @@ class _MoreHeader extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'كل ما تحتاجينه في مكان واحد',
+                'كل أدواتك في مكان واحد',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppTheme.dInkSoft,
                   fontWeight: FontWeight.w700,

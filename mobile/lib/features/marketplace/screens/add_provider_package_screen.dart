@@ -75,7 +75,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                     icon: Icons.lock_clock_outlined,
                     title: 'إضافة الباقات بعد الاعتماد',
                     message:
-                        'الإدارة تراجع حساب المزود أولاً. ستتمكنين من إضافة الباقات بعد أن تصبح الحالة نشطة.',
+                        'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الباقات بعد أن تصبح الحالة نشطة.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
                       icon: const Icon(Icons.dashboard_customize_outlined),
@@ -240,7 +240,7 @@ class _PackageIntro extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'الباقات تساعد العملاء على مقارنة العروض بسرعة. لا تضيفي وعود دفع أو حجز مؤكد هنا.',
+              'الباقات تساعد العملاء على مقارنة العروض بسرعة. لا تضع وعود دفع أو حجز مؤكد هنا.',
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: AppTheme.dInk,

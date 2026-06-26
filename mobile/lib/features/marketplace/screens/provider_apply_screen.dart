@@ -327,7 +327,7 @@ class _AuthRequiredCard extends StatelessWidget {
     return AarastEmptyState(
       icon: Icons.lock_outline_rounded,
       title: 'تسجيل الدخول مطلوب',
-      message: 'أنشئي حسابًا أو سجلي الدخول أولًا لإرسال طلب الانضمام كمزود.',
+      message: 'يرجى إنشاء حساب أو تسجيل الدخول أولًا لإرسال طلب الانضمام كمزود.',
       action: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -380,7 +380,7 @@ class _ReferenceDataWarning extends StatelessWidget {
     return const AarastCard(
       color: AppTheme.dPinkBg,
       child: Text(
-        'تعذر تحميل المدن أو الفئات حاليًا. تحقق من الاتصال وحاول مرة أخرى.',
+        'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
         textAlign: TextAlign.center,
         style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800),
       ),

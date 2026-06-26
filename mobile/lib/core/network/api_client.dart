@@ -5,6 +5,9 @@ import '../config/api_config.dart';
 
 typedef TokenProvider = Future<String?> Function();
 
+const aarastBackendConnectionErrorMessage =
+    'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
+
 class ApiClient {
   ApiClient({required TokenProvider tokenProvider})
     : _tokenProvider = tokenProvider,
@@ -66,9 +69,7 @@ class ApiClient {
       if (data is List) {
         return data;
       }
-      throw const ApiException(
-        'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
-      );
+      throw const ApiException(aarastBackendConnectionErrorMessage);
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
     }
@@ -114,9 +115,7 @@ class ApiClient {
     if (data is Map) {
       return Map<String, dynamic>.from(data);
     }
-    throw const ApiException(
-      'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
-    );
+    throw const ApiException(aarastBackendConnectionErrorMessage);
   }
 
   static void _debugAuthLoginRequest(RequestOptions options) {
@@ -169,7 +168,7 @@ class ApiException implements Exception {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {
       return const ApiException(
-        'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
+        aarastBackendConnectionErrorMessage,
         isNetworkFailure: true,
       );
     }
@@ -196,7 +195,7 @@ class ApiException implements Exception {
         normalized.startsWith('Cannot POST') ||
         normalized.startsWith('Cannot PATCH') ||
         normalized.startsWith('Cannot DELETE')) {
-      return 'هذه الخدمة غير متاحة الآن. تحقق من الاتصال وحاول مرة أخرى.';
+      return aarastBackendConnectionErrorMessage;
     }
     return normalized;
   }

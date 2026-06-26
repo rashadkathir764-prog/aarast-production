@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 
 class ProviderAuthGate extends StatelessWidget {
@@ -32,7 +33,7 @@ class ProviderAuthGate extends StatelessWidget {
 
     final auth = context.watch<AuthController>();
     if (auth.status == AuthStatus.checking) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const AarastScaffold(child: AarastScreenLoading());
     }
     if (auth.status == AuthStatus.authenticated) return child;
 
@@ -49,10 +50,9 @@ class ProviderAuthGate extends StatelessWidget {
                 shrinkWrap: true,
                 padding: EdgeInsets.fromLTRB(20, 24, 20, embedded ? 120 : 24),
                 children: [
-                  Container(
+                  AarastCard(
                     key: const Key('provider-auth-gate'),
                     padding: const EdgeInsets.all(20),
-                    decoration: AppTheme.premiumCardDecoration(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -92,17 +92,22 @@ class ProviderAuthGate extends StatelessWidget {
                               ),
                         ),
                         const SizedBox(height: 18),
-                        FilledButton.icon(
+                        AarastButton(
                           key: const Key('provider-auth-gate-login'),
+                          label: 'تسجيل الدخول',
+                          icon: Icons.login_rounded,
                           onPressed: () => context.go(
                             _withResume(AppRouter.login, resumeLocation),
                           ),
-                          icon: const Icon(Icons.login_rounded),
-                          label: const Text('تسجيل الدخول'),
                         ),
                         const SizedBox(height: 10),
-                        OutlinedButton.icon(
+                        AarastButton(
                           key: const Key('provider-auth-gate-register'),
+                          label: registerAsProvider
+                              ? 'إنشاء حساب مزود'
+                              : 'إنشاء حساب',
+                          icon: Icons.person_add_alt_1_rounded,
+                          variant: AarastButtonVariant.secondary,
                           onPressed: () => context.go(
                             _withResume(
                               registerAsProvider
@@ -110,12 +115,6 @@ class ProviderAuthGate extends StatelessWidget {
                                   : AppRouter.register,
                               resumeLocation,
                             ),
-                          ),
-                          icon: const Icon(Icons.person_add_alt_1_rounded),
-                          label: Text(
-                            registerAsProvider
-                                ? 'إنشاء حساب مزود'
-                                : 'إنشاء حساب',
                           ),
                         ),
                       ],

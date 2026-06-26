@@ -1,0 +1,80 @@
+import 'package:flutter/material.dart';
+
+import '../theme/app_theme.dart';
+import 'aarast_ui.dart';
+
+class AarastErrorState extends StatelessWidget {
+  const AarastErrorState({
+    required this.title,
+    required this.message,
+    this.onRetry,
+    this.retryLabel = 'حاول مرة أخرى',
+    super.key,
+  });
+
+  final String title;
+  final String message;
+  final VoidCallback? onRetry;
+  final String retryLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.danger.withAlpha(12),
+      border: Border.all(color: AppTheme.danger.withAlpha(50)),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withAlpha(22),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppTheme.danger,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.dInkSoft,
+              fontWeight: FontWeight.w700,
+              height: 1.45,
+            ),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 16),
+            AarastButton(
+              label: retryLabel,
+              icon: Icons.refresh_rounded,
+              variant: AarastButtonVariant.secondary,
+              onPressed: onRetry,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

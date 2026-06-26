@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_task.dart';
 
 class TaskCard extends StatelessWidget {
@@ -18,61 +19,59 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                _Badge(label: _priorityLabel(task.priority)),
-                const SizedBox(width: 8),
-                _Badge(label: _statusLabel(task.status)),
-                const Spacer(),
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    task.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.deepBurgundy,
-                      fontWeight: FontWeight.w800,
-                    ),
-                    textAlign: TextAlign.right,
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _Badge(label: _priorityLabel(task.priority)),
+              const SizedBox(width: 8),
+              _Badge(label: _statusLabel(task.status)),
+              const Spacer(),
+              Expanded(
+                flex: 4,
+                child: Text(
+                  task.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.deepBurgundy,
+                    fontWeight: FontWeight.w800,
                   ),
+                  textAlign: TextAlign.right,
                 ),
-              ],
-            ),
-            if (task.hasDescription) ...[
-              const SizedBox(height: 8),
-              Text(task.description!, textAlign: TextAlign.right),
-            ],
-            if (task.dueDate != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                'تاريخ الاستحقاق: ${_formatDate(task.dueDate!)}',
-                textAlign: TextAlign.right,
               ),
             ],
+          ),
+          if (task.hasDescription) ...[
             const SizedBox(height: 8),
-            Row(
-              children: [
-                TextButton.icon(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('حذف'),
-                ),
-                const Spacer(),
-                if (!task.isDone && onMarkDone != null)
-                  TextButton.icon(
-                    onPressed: onMarkDone,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('تمت'),
-                  ),
-              ],
+            Text(task.description!, textAlign: TextAlign.right),
+          ],
+          if (task.dueDate != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'تاريخ الاستحقاق: ${_formatDate(task.dueDate!)}',
+              textAlign: TextAlign.right,
             ),
           ],
-        ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('حذف'),
+              ),
+              const Spacer(),
+              if (!task.isDone && onMarkDone != null)
+                TextButton.icon(
+                  onPressed: onMarkDone,
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('تمت'),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -85,13 +84,10 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppTheme.warmGold.withAlpha(45),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+    return AarastStatusBadge(
+      label: label,
+      color: AppTheme.deepBurgundy,
+      backgroundColor: AppTheme.warmGold.withAlpha(45),
     );
   }
 }

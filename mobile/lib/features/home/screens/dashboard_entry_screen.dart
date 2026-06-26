@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../shell/main_shell.dart';
@@ -31,7 +32,7 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     if (auth.status == AuthStatus.checking) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const AarastScaffold(child: AarastScreenLoading());
     }
     if (auth.status == AuthStatus.authenticated) {
       return const MainShell();
@@ -41,9 +42,7 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
       future: _guestSummary,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const AarastScaffold(child: AarastScreenLoading());
         }
         final summary = snapshot.data;
         if (summary != null) {
@@ -52,7 +51,7 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) context.go(AppRouter.onboarding);
         });
-        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        return const AarastScaffold(child: AarastScreenLoading());
       },
     );
   }

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 
@@ -31,17 +32,13 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         provider.selectedMember ?? provider.findMember(widget.sharedMemberId);
 
     if (member == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('تعديل عضو المشاركة')),
-        body: const SafeArea(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(
-              child: Text(
-                'افتح العضو من شاشة المشاركة حتى يمكن تعديل صلاحياته.',
-                textAlign: TextAlign.center,
-              ),
-            ),
+      return const AarastScaffold(
+        title: 'تعديل عضو المشاركة',
+        child: Center(
+          child: AarastEmptyState(
+            title: 'لا يمكن تعديل العضو الآن',
+            message: 'افتح العضو من شاشة المشاركة حتى يمكن تعديل صلاحياته.',
+            icon: Icons.group_outlined,
           ),
         ),
       );
@@ -52,123 +49,122 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     }
     final subtitle = member.displaySubtitle;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('تعديل عضو المشاركة')),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'العضو: ${member.displayName}',
-                      textAlign: TextAlign.right,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        textAlign: TextAlign.right,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _role,
-              decoration: const InputDecoration(labelText: 'الدور'),
-              items: const [
-                DropdownMenuItem(value: 'VIEWER', child: Text('مشاهد')),
-                DropdownMenuItem(value: 'CONTRIBUTOR', child: Text('مساهم')),
-                DropdownMenuItem(value: 'MANAGER', child: Text('مدير')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _role = value);
-                }
-              },
-            ),
-            const SizedBox(height: 12),
-            Card(
+    return AarastScaffold(
+      title: 'تعديل عضو المشاركة',
+      child: ListView(
+        children: [
+          AarastCard(
+            padding: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SwitchListTile(
-                    value: _canViewBudget,
-                    onChanged: (value) =>
-                        setState(() => _canViewBudget = value),
-                    title: const Text(
-                      'يمكنه رؤية الميزانية',
-                      textAlign: TextAlign.right,
-                    ),
+                  Text(
+                    'العضو: ${member.displayName}',
+                    textAlign: TextAlign.right,
                   ),
-                  SwitchListTile(
-                    value: _canViewExpenses,
-                    onChanged: (value) =>
-                        setState(() => _canViewExpenses = value),
-                    title: const Text(
-                      'يمكنه رؤية المصاريف',
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
                       textAlign: TextAlign.right,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  ),
-                  SwitchListTile(
-                    value: _canViewDebts,
-                    onChanged: (value) => setState(() => _canViewDebts = value),
-                    title: const Text(
-                      'يمكنه رؤية الديون والأقساط',
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                  SwitchListTile(
-                    value: _canManageTasks,
-                    onChanged: (value) =>
-                        setState(() => _canManageTasks = value),
-                    title: const Text(
-                      'يمكنه إدارة المهام',
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
-                  SwitchListTile(
-                    value: _canManageFinancialRecords,
-                    onChanged: (value) =>
-                        setState(() => _canManageFinancialRecords = value),
-                    title: const Text(
-                      'يمكنه إدارة السجلات المالية',
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
+                  ],
                 ],
               ),
             ),
-            if (provider.errorMessage != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                provider.errorMessage!,
-                textAlign: TextAlign.right,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _role,
+            decoration: const InputDecoration(labelText: 'الدور'),
+            items: const [
+              DropdownMenuItem(value: 'VIEWER', child: Text('مشاهد')),
+              DropdownMenuItem(value: 'CONTRIBUTOR', child: Text('مساهم')),
+              DropdownMenuItem(value: 'MANAGER', child: Text('مدير')),
             ],
-            const SizedBox(height: 18),
-            ElevatedButton(
-              onPressed: provider.isSubmitting ? null : () => _save(member),
-              child: const Text('حفظ التغييرات'),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _role = value);
+              }
+            },
+          ),
+          const SizedBox(height: 12),
+          AarastCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: _canViewBudget,
+                  onChanged: (value) => setState(() => _canViewBudget = value),
+                  title: const Text(
+                    'يمكنه رؤية الميزانية',
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                SwitchListTile(
+                  value: _canViewExpenses,
+                  onChanged: (value) =>
+                      setState(() => _canViewExpenses = value),
+                  title: const Text(
+                    'يمكنه رؤية المصاريف',
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                SwitchListTile(
+                  value: _canViewDebts,
+                  onChanged: (value) => setState(() => _canViewDebts = value),
+                  title: const Text(
+                    'يمكنه رؤية الديون والأقساط',
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                SwitchListTile(
+                  value: _canManageTasks,
+                  onChanged: (value) => setState(() => _canManageTasks = value),
+                  title: const Text(
+                    'يمكنه إدارة المهام',
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                SwitchListTile(
+                  value: _canManageFinancialRecords,
+                  onChanged: (value) =>
+                      setState(() => _canManageFinancialRecords = value),
+                  title: const Text(
+                    'يمكنه إدارة السجلات المالية',
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: provider.isSubmitting
-                  ? null
-                  : () => _confirmRemove(member),
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('إزالة العضو'),
+          ),
+          if (provider.errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              provider.errorMessage!,
+              textAlign: TextAlign.right,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ],
-        ),
+          const SizedBox(height: 18),
+          AarastButton(
+            label: 'حفظ التغييرات',
+            isLoading: provider.isSubmitting,
+            onPressed: provider.isSubmitting ? null : () => _save(member),
+          ),
+          const SizedBox(height: 10),
+          AarastButton(
+            label: 'إزالة العضو',
+            icon: Icons.delete_outline,
+            variant: AarastButtonVariant.danger,
+            onPressed: provider.isSubmitting
+                ? null
+                : () => _confirmRemove(member),
+          ),
+        ],
       ),
     );
   }

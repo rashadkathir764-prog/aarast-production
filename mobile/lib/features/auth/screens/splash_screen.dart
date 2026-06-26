@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
@@ -68,49 +69,44 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: Stack(
-          children: [
-            const Positioned.fill(child: AuthWeddingBackground()),
-            SafeArea(
-              child: Center(
-                child: FadeTransition(
-                  opacity: _opacityAnimation,
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const WeddingRingsBadge(size: 112),
-                        const SizedBox(height: 28),
-                        const AuthBrandMark(),
-                        const SizedBox(height: 18),
-                        Text(
-                          'خططي لزفافك بكل أناقة ووضوح',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: AppTheme.dInkSoft,
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                        const SizedBox(height: 42),
-                        const SizedBox(
-                          width: 34,
-                          height: 34,
-                          child: CircularProgressIndicator(strokeWidth: 3),
-                        ),
-                      ],
+    return AarastScreenFrame(
+      maxWidth: 560,
+      safeAreaBottom: false,
+      child: Stack(
+        children: [
+          const Positioned.fill(child: AuthWeddingBackground()),
+          Center(
+            child: FadeTransition(
+              opacity: _opacityAnimation,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const WeddingRingsBadge(size: 112),
+                    const SizedBox(height: 28),
+                    const AuthBrandMark(),
+                    const SizedBox(height: 18),
+                    Text(
+                      'خططي لزفافك بكل أناقة ووضوح',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 42),
+                    const SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: CircularProgressIndicator(strokeWidth: 3),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/primary_action_button.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -170,7 +170,7 @@ class _OtpScreenState extends State<OtpScreen> {
                   ),
                 ),
                 const SizedBox(height: 22),
-                PrimaryActionButton(
+                AarastButton(
                   label: 'تأكيد الرمز',
                   icon: Icons.verified_rounded,
                   isLoading: _isVerifying,

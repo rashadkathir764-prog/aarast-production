@@ -1,0 +1,176 @@
+import 'dart:io';
+
+import 'package:aarast_mobile/core/config/app_feature_flags.dart';
+import 'package:aarast_mobile/core/routing/app_router.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('Aarast Premium 2027 production contract', () {
+    test('keeps the official design system files in place', () {
+      const requiredFiles = [
+        'lib/core/theme/aarast_design_tokens.dart',
+        'lib/core/theme/aarast_theme.dart',
+        'lib/core/theme/aarast_motion.dart',
+        'lib/core/widgets/aarast_scaffold.dart',
+        'lib/core/widgets/aarast_screen_frame.dart',
+        'lib/core/widgets/aarast_app_bar.dart',
+        'lib/core/widgets/aarast_card.dart',
+        'lib/core/widgets/aarast_button.dart',
+        'lib/core/widgets/aarast_section_header.dart',
+        'lib/core/widgets/aarast_empty_state.dart',
+        'lib/core/widgets/aarast_loading_state.dart',
+        'lib/core/widgets/aarast_error_state.dart',
+        'lib/core/widgets/aarast_status_badge.dart',
+        'lib/core/widgets/aarast_bottom_sheet.dart',
+        'lib/core/widgets/aarast_metric_tile.dart',
+        'lib/core/widgets/aarast_pressable.dart',
+      ];
+
+      for (final path in requiredFiles) {
+        expect(File(path).existsSync(), isTrue, reason: path);
+      }
+    });
+
+    test(
+      'does not allow direct Material Card usage in production features',
+      () {
+        final roots = [Directory('lib/features'), Directory('lib/shared')];
+        final offenders = <String>[];
+
+        for (final root in roots.where((directory) => directory.existsSync())) {
+          for (final entity in root.listSync(recursive: true)) {
+            if (entity is! File || !entity.path.endsWith('.dart')) continue;
+            final lines = entity.readAsLinesSync();
+            for (var index = 0; index < lines.length; index += 1) {
+              final line = lines[index];
+              final hasRawCardCall = RegExp(r'(^|[^\w])Card\(').hasMatch(line);
+              if (hasRawCardCall) {
+                offenders.add('${entity.path}:${index + 1}: ${line.trim()}');
+              }
+            }
+          }
+        }
+
+        expect(offenders, isEmpty, reason: offenders.join('\n'));
+      },
+    );
+
+    test('routes every production screen through Premium 2027 wrappers', () {
+      const screenFiles = [
+        'lib/core/widgets/coming_soon_screen.dart',
+        'lib/features/auth/screens/splash_screen.dart',
+        'lib/features/auth/screens/login_screen.dart',
+        'lib/features/auth/screens/register_screen.dart',
+        'lib/features/auth/screens/otp_screen.dart',
+        'lib/features/onboarding/screens/guest_onboarding_flow_screen.dart',
+        'lib/features/onboarding/screens/guest_welcome_screen.dart',
+        'lib/features/onboarding/screens/choose_path_screen.dart',
+        'lib/features/onboarding/screens/persona_screen.dart',
+        'lib/features/onboarding/screens/location_setup_screen.dart',
+        'lib/features/onboarding/screens/wedding_date_screen.dart',
+        'lib/features/onboarding/screens/budget_setup_screen.dart',
+        'lib/features/onboarding/screens/priorities_screen.dart',
+        'lib/features/onboarding/screens/suggested_categories_screen.dart',
+        'lib/features/onboarding/screens/generated_dashboard_preview_screen.dart',
+        'lib/features/onboarding/screens/provider_path_pending_screen.dart',
+        'lib/features/onboarding/screens/active_plan_onboarding_screen.dart',
+        'lib/features/home/screens/dashboard_entry_screen.dart',
+        'lib/features/home/screens/home_screen.dart',
+        'lib/features/home/screens/local_guest_dashboard_screen.dart',
+        'lib/features/wedding_plans/screens/my_wedding_plans_screen.dart',
+        'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
+        'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+        'lib/features/wedding_plans/screens/plan_center_screen.dart',
+        'lib/features/finance/screens/budget_expense_screen.dart',
+        'lib/features/finance/screens/create_budget_category_screen.dart',
+        'lib/features/finance/screens/create_expense_screen.dart',
+        'lib/features/debts/screens/debt_installment_screen.dart',
+        'lib/features/debts/screens/create_debt_screen.dart',
+        'lib/features/debts/screens/debt_details_screen.dart',
+        'lib/features/debts/screens/create_installment_screen.dart',
+        'lib/features/tasks/screens/task_timeline_screen.dart',
+        'lib/features/tasks/screens/create_task_screen.dart',
+        'lib/features/guests/screens/guest_list_screen.dart',
+        'lib/features/sharing/screens/sharing_screen.dart',
+        'lib/features/sharing/screens/add_shared_member_screen.dart',
+        'lib/features/sharing/screens/edit_shared_member_screen.dart',
+        'lib/features/sharing/screens/invite_decision_screen.dart',
+        'lib/features/sharing/screens/shared_wedding_plans_screen.dart',
+        'lib/features/marketplace/screens/provider_marketplace_screen.dart',
+        'lib/features/marketplace/screens/provider_details_screen.dart',
+        'lib/features/marketplace/screens/quote_request_screen.dart',
+        'lib/features/marketplace/screens/provider_apply_screen.dart',
+        'lib/features/marketplace/screens/provider_dashboard_screen.dart',
+        'lib/features/marketplace/screens/add_provider_service_screen.dart',
+        'lib/features/marketplace/screens/add_provider_package_screen.dart',
+        'lib/features/notifications/screens/notifications_screen.dart',
+        'lib/features/more/screens/more_screen.dart',
+        'lib/features/settings/screens/settings_screen.dart',
+      ];
+
+      final premiumWrapperPattern = RegExp(
+        r'Aarast(ScreenFrame|PageScaffold|Scaffold)|'
+        r'AuthWeddingScaffold|GuestOnboardingStepScaffold',
+      );
+
+      for (final path in screenFiles) {
+        final file = File(path);
+        expect(file.existsSync(), isTrue, reason: path);
+        final text = file.readAsStringSync();
+        expect(
+          premiumWrapperPattern.hasMatch(text),
+          isTrue,
+          reason: '$path must render through the Premium 2027 system',
+        );
+      }
+    });
+
+    test('does not allow legacy screen shell primitives in routed screens', () {
+      final root = Directory('lib/features');
+      final offenders = <String>[];
+      final directScaffold = RegExp(r'(^|[^\w])Scaffold\(');
+      final rawMaterialCard = RegExp(r'(^|[^\w])Card\(');
+
+      for (final entity in root.listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('_screen.dart')) continue;
+        final lines = entity.readAsLinesSync();
+        for (var index = 0; index < lines.length; index += 1) {
+          final line = lines[index];
+          if (directScaffold.hasMatch(line) ||
+              rawMaterialCard.hasMatch(line) ||
+              line.contains('PrimaryActionButton') ||
+              line.contains('primary_action_button.dart')) {
+            offenders.add('${entity.path}:${index + 1}: ${line.trim()}');
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('keeps rebuild preview routes out of production defaults', () {
+      expect(
+        AppRouter.userNavigationShellRedirect(AppFeatureFlags.defaults),
+        AppRouter.home,
+      );
+    });
+
+    test('documents Premium 2027 as the only final visual source of truth', () {
+      final docs = [
+        File('../docs/mobile-ux/AARAST_PREMIUM_2027_DESIGN_SYSTEM.md'),
+        File('../docs/mobile-ux/AARAST_PREMIUM_2027_SCREEN_CONTRACTS.md'),
+      ];
+
+      for (final doc in docs) {
+        final text = doc.readAsStringSync();
+        expect(
+          text.contains('not final UI references') ||
+              text.contains('not visual references'),
+          isTrue,
+          reason: doc.path,
+        );
+        expect(text, contains('Premium 2027'), reason: doc.path);
+      }
+    });
+  });
+}

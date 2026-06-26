@@ -45,84 +45,71 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<DebtInstallmentProvider>();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: _goBack,
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                          tooltip: 'رجوع',
+    return AarastScreenFrame(
+      maxWidth: 520,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: _goBack,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  tooltip: 'رجوع',
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'تفاصيل الدين',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.dMaroonDeep,
+                          fontWeight: FontWeight.w900,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'تفاصيل الدين',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: AppTheme.dMaroonDeep,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                              ),
-                              Text(
-                                'الأقساط والمبالغ المرتبطة بهذا الالتزام',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.dInkSoft,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        IconButton(
-                          onPressed: () => context.push(
-                            AppRouter.createInstallment(widget.debtId),
-                          ),
-                          icon: const Icon(Icons.add_rounded),
-                          tooltip: 'إضافة قسط',
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppTheme.dMaroon,
-                            foregroundColor: Colors.white,
-                            side: BorderSide.none,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppTheme.dMaroon,
-                      onRefresh: () => provider.loadDebtDetails(widget.debtId),
-                      child: _DebtDetailsContent(
-                        provider: provider,
-                        debtId: widget.debtId,
                       ),
-                    ),
+                      Text(
+                        'الأقساط والمبالغ المرتبطة بهذا الالتزام',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () =>
+                      context.push(AppRouter.createInstallment(widget.debtId)),
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: 'إضافة قسط',
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppTheme.dMaroon,
+                    foregroundColor: Colors.white,
+                    side: BorderSide.none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppTheme.dMaroon,
+              onRefresh: () => provider.loadDebtDetails(widget.debtId),
+              child: _DebtDetailsContent(
+                provider: provider,
+                debtId: widget.debtId,
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

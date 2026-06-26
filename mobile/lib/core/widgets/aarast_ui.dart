@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/aarast_motion.dart';
+import 'aarast_pressable.dart';
+
+export 'aarast_bottom_sheet.dart';
+export 'aarast_button.dart';
+export 'aarast_error_state.dart';
+export 'aarast_loading_state.dart';
+export 'aarast_metric_tile.dart';
+export 'aarast_pressable.dart';
+export 'aarast_status_badge.dart';
 
 class AarastPageScaffold extends StatelessWidget {
   const AarastPageScaffold({
@@ -40,24 +50,98 @@ class AarastPageScaffold extends StatelessWidget {
         bottomNavigationBar: bottomNavigationBar,
         floatingActionButton: floatingActionButton,
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        body: SafeArea(
-          child: Padding(
-            padding: padding,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (hasHeader) ...[
-                  AarastPageHeader(
-                    title: title,
-                    subtitle: subtitle,
-                    actions: actions,
-                    showBack: showBack,
-                    onBack: onBack,
+        body: DecoratedBox(
+          decoration: AppTheme.screenDecoration(),
+          child: SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 560),
+                child: Padding(
+                  padding: padding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (hasHeader) ...[
+                        AarastFadeSlide(
+                          child: AarastPageHeader(
+                            title: title,
+                            subtitle: subtitle,
+                            actions: actions,
+                            showBack: showBack,
+                            onBack: onBack,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.gapLg),
+                      ],
+                      Expanded(child: child),
+                    ],
                   ),
-                  const SizedBox(height: AppTheme.gapLg),
-                ],
-                Expanded(child: child),
-              ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AarastScaffold extends AarastPageScaffold {
+  const AarastScaffold({
+    required super.child,
+    super.title,
+    super.subtitle,
+    super.actions,
+    super.showBack,
+    super.onBack,
+    super.padding,
+    super.bottomNavigationBar,
+    super.floatingActionButton,
+    super.resizeToAvoidBottomInset,
+    super.key,
+  });
+}
+
+class AarastScreenFrame extends StatelessWidget {
+  const AarastScreenFrame({
+    required this.child,
+    this.maxWidth = 560,
+    this.bottomNavigationBar,
+    this.floatingActionButton,
+    this.resizeToAvoidBottomInset,
+    this.safeAreaBottom = true,
+    this.extendBody = false,
+    super.key,
+  });
+
+  final Widget child;
+  final double maxWidth;
+  final Widget? bottomNavigationBar;
+  final Widget? floatingActionButton;
+  final bool? resizeToAvoidBottomInset;
+  final bool safeAreaBottom;
+  final bool extendBody;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.dBg,
+        extendBody: extendBody,
+        bottomNavigationBar: bottomNavigationBar,
+        floatingActionButton: floatingActionButton,
+        resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+        body: DecoratedBox(
+          decoration: AppTheme.screenDecoration(),
+          child: SafeArea(
+            bottom: safeAreaBottom,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                child: child,
+              ),
             ),
           ),
         ),
@@ -103,6 +187,8 @@ class AarastPageHeader extends StatelessWidget {
                 Text(
                   title!,
                   textAlign: TextAlign.right,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: AppTheme.dInk,
                     fontFamily: AppTheme.displayFontFamily,
@@ -114,6 +200,8 @@ class AarastPageHeader extends StatelessWidget {
                 Text(
                   subtitle!,
                   textAlign: TextAlign.right,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppTheme.dInkSoft,
                     fontWeight: FontWeight.w600,
@@ -154,7 +242,9 @@ class AarastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
+    final content = AnimatedContainer(
+      duration: AppTheme.motionFast,
+      curve: Curves.easeOutCubic,
       width: double.infinity,
       margin: margin,
       padding: padding,
@@ -168,13 +258,11 @@ class AarastCard extends StatelessWidget {
 
     if (onTap == null) return content;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(radius),
-        child: content,
-      ),
+    return AarastPressable(
+      onTap: onTap!,
+      borderRadius: BorderRadius.circular(radius),
+      clip: false,
+      child: content,
     );
   }
 }
@@ -239,6 +327,7 @@ class AarastStatusPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor ?? color.withAlpha(24),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withAlpha(42)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

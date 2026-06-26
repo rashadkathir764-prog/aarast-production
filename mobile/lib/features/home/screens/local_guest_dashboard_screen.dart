@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
@@ -22,64 +24,48 @@ class LocalGuestDashboardScreen extends StatelessWidget {
     final planId = dashboardSummary.planId;
     final personaCopy = personaCopyForGuest(summary.plan.persona);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFFDFBF9),
-        bottomNavigationBar: RoyalDashboardBottomNav(
-          activeIndex: 0,
-          onHome: () {},
-          onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
-          onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
-          onProviders: () => context.push(AppRouter.providerMarketplace),
-          onMore: () => context.push(AppRouter.more),
-          onAdd: () => showRoyalHomeActionSheet(
-            context,
-            actions: _quickActions(context, planId),
-          ),
+    return AarastScreenFrame(
+      maxWidth: 520,
+      safeAreaBottom: false,
+      bottomNavigationBar: RoyalDashboardBottomNav(
+        activeIndex: 0,
+        onHome: () {},
+        onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
+        onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
+        onProviders: () => context.push(AppRouter.providerMarketplace),
+        onMore: () => context.push(AppRouter.more),
+        onAdd: () => showRoyalHomeActionSheet(
+          context,
+          actions: _quickActions(context, planId),
         ),
-        body: SafeArea(
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: RoyalHomeTodayCenter(
-                summary: dashboardSummary,
-                userName: personaCopy.label,
-                personaHeadline: personaCopy.dashboardHeadline,
-                personaSupportText: personaCopy.dashboardSupport,
-                bottomPadding: 158,
-                notice: _LocalSyncNotice(
-                  needsSync: summary.plan.needsSync,
-                  onSync: () => _requireAccountForSync(context),
-                ),
-                onNotifications: () => _openLocalNotifications(context, planId),
-                onProfile: () => context.push(AppRouter.more),
-                onOpenPlan: () => context.push(
-                  AppRouter.planCenter(planId),
-                  extra: {'summary': dashboardSummary},
-                ),
-                onOpenMoney: () =>
-                    _openLocalBrowse(context, planId, area: 'المال'),
-                onOpenTasks: () =>
-                    _openLocalBrowse(context, planId, area: 'المهام'),
-                onOpenProviders: () =>
-                    context.push(AppRouter.providerMarketplace),
-                onOpenGuests: () =>
-                    _openLocalBrowse(context, planId, area: 'الضيوف'),
-                onOpenParticipants: () => _requireAccountForSync(context),
-                onOpenNotifications: () =>
-                    _openLocalNotifications(context, planId),
-                onOpenImportantItem: (item) =>
-                    _openLocalDashboardItem(context, planId, item),
-                onOpenNextStep: () =>
-                    _openLocalNextStep(context, planId, dashboardSummary),
-                onOpenTimeline: () =>
-                    _openLocalBrowse(context, planId, area: 'المهام'),
-              ),
-            ),
-          ),
+      ),
+      child: RoyalHomeTodayCenter(
+        summary: dashboardSummary,
+        userName: personaCopy.label,
+        personaHeadline: personaCopy.dashboardHeadline,
+        personaSupportText: personaCopy.dashboardSupport,
+        bottomPadding: 158,
+        notice: _LocalSyncNotice(
+          needsSync: summary.plan.needsSync,
+          onSync: () => _requireAccountForSync(context),
         ),
+        onNotifications: () => _openLocalNotifications(context, planId),
+        onProfile: () => context.push(AppRouter.more),
+        onOpenPlan: () => context.push(
+          AppRouter.planCenter(planId),
+          extra: {'summary': dashboardSummary},
+        ),
+        onOpenMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
+        onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
+        onOpenProviders: () => context.push(AppRouter.providerMarketplace),
+        onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
+        onOpenParticipants: () => _requireAccountForSync(context),
+        onOpenNotifications: () => _openLocalNotifications(context, planId),
+        onOpenImportantItem: (item) =>
+            _openLocalDashboardItem(context, planId, item),
+        onOpenNextStep: () =>
+            _openLocalNextStep(context, planId, dashboardSummary),
+        onOpenTimeline: () => _openLocalBrowse(context, planId, area: 'المهام'),
       ),
     );
   }
@@ -242,18 +228,16 @@ class _LocalSyncNotice extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF800020).withValues(alpha: 0.04),
+            color: AppTheme.dMaroon.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: const Color(0xFF800020).withValues(alpha: 0.1),
-            ),
+            border: Border.all(color: AppTheme.dMaroon.withValues(alpha: 0.1)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.cloud_off_rounded,
-                color: Color(0xFF800020),
+                color: AppTheme.dMaroon,
                 size: 16,
               ),
               const SizedBox(width: 8),
@@ -263,7 +247,7 @@ class _LocalSyncNotice extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Color(0xFF800020),
+                    color: AppTheme.dMaroon,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0,
@@ -275,7 +259,7 @@ class _LocalSyncNotice extends StatelessWidget {
                 width: 4,
                 height: 4,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF800020),
+                  color: AppTheme.dMaroon,
                   shape: BoxShape.circle,
                 ),
               ),

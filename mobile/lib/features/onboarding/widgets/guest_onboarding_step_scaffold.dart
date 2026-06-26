@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/primary_action_button.dart';
+import '../../../core/widgets/aarast_ui.dart';
 
 class GuestOnboardingStepScaffold extends StatelessWidget {
   const GuestOnboardingStepScaffold({
@@ -31,60 +32,67 @@ class GuestOnboardingStepScaffold extends StatelessWidget {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-                    sliver: SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _OnboardingHeader(
-                            onBack: onBack,
-                            stepNumber: stepNumber,
-                            totalSteps: totalSteps,
-                          ),
-                          const SizedBox(height: 22),
-                          Text(
-                            title,
-                            textAlign: TextAlign.right,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(
-                                  color: AppTheme.dInk,
-                                  fontFamily: AppTheme.displayFontFamily,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.w900,
+        body: DecoratedBox(
+          decoration: AppTheme.screenDecoration(),
+          child: SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+                      sliver: SliverToBoxAdapter(
+                        child: AarastFadeSlide(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _OnboardingHeader(
+                                onBack: onBack,
+                                stepNumber: stepNumber,
+                                totalSteps: totalSteps,
+                              ),
+                              const SizedBox(height: 22),
+                              Text(
+                                title,
+                                textAlign: TextAlign.right,
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      color: AppTheme.dInk,
+                                      fontFamily: AppTheme.displayFontFamily,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                description,
+                                textAlign: TextAlign.right,
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
+                                      color: AppTheme.dInkSoft,
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.45,
+                                    ),
+                              ),
+                              const SizedBox(height: 20),
+                              child,
+                              const SizedBox(height: 24),
+                              AarastButton(
+                                key: const Key(
+                                  'guest-onboarding-primary-action',
                                 ),
+                                label: continueLabel,
+                                icon: Icons.arrow_back_rounded,
+                                onPressed: onContinue,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            description,
-                            textAlign: TextAlign.right,
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  color: AppTheme.dInkSoft,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.45,
-                                ),
-                          ),
-                          const SizedBox(height: 20),
-                          child,
-                          const SizedBox(height: 24),
-                          PrimaryActionButton(
-                            key: const Key('guest-onboarding-primary-action'),
-                            label: continueLabel,
-                            icon: Icons.arrow_back_rounded,
-                            onPressed: onContinue,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -166,17 +174,7 @@ class GuestOnboardingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color ?? AppTheme.dCard2,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
-        boxShadow: AppTheme.cardShadow(),
-      ),
-      child: child,
-    );
+    return AarastCard(color: color ?? AppTheme.dCard2, child: child);
   }
 }
 
@@ -200,124 +198,121 @@ class GuestOnboardingOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        mouseCursor: onTap == null
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.click,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: GuestOnboardingCard(
-          color: selected ? AppTheme.dPinkBg.withAlpha(120) : null,
-          child: compact
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppTheme.dMaroon
-                                : AppTheme.dCreamBg,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            icon,
-                            size: 21,
-                            color: selected ? Colors.white : AppTheme.dMaroon,
-                          ),
-                        ),
-                        Icon(
-                          selected
-                              ? Icons.check_circle_rounded
-                              : Icons.circle_outlined,
-                          size: 20,
-                          color: selected ? AppTheme.dMaroon : AppTheme.dLine,
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppTheme.dInk,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppTheme.dInkSoft,
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              : Row(
+    final tile = GuestOnboardingCard(
+      color: selected ? AppTheme.dPinkBg.withAlpha(120) : null,
+      child: compact
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
-                        borderRadius: BorderRadius.circular(13),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         icon,
+                        size: 21,
                         color: selected ? Colors.white : AppTheme.dMaroon,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            textAlign: TextAlign.right,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  color: AppTheme.dInk,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            textAlign: TextAlign.right,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: AppTheme.dInkSoft,
-                                  height: 1.35,
-                                ),
-                          ),
-                        ],
                       ),
                     ),
                     Icon(
                       selected
                           ? Icons.check_circle_rounded
                           : Icons.circle_outlined,
+                      size: 20,
                       color: selected ? AppTheme.dMaroon : AppTheme.dLine,
                     ),
                   ],
                 ),
-        ),
+                const Spacer(),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: selected ? Colors.white : AppTheme.dMaroon,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: AppTheme.dInk,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        textAlign: TextAlign.right,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+                ),
+              ],
+            ),
+    );
+
+    if (onTap == null) return tile;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: AarastPressable(
+        onTap: onTap!,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        clip: false,
+        child: tile,
       ),
     );
   }

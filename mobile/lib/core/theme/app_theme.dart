@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'aarast_design_tokens.dart';
+
 class AppTheme {
   const AppTheme._();
 
@@ -7,42 +9,42 @@ class AppTheme {
   static const displayFontFamily = 'Amiri';
 
   // Core brand colors
-  static const deepBurgundy = Color(0xFF800020);
-  static const warmGold = Color(0xFFD4AF37);
-  static const ivory = Color(0xFFF9F6F0);
+  static const deepBurgundy = AarastDesignTokens.royalMaroon;
+  static const warmGold = AarastDesignTokens.champagneGold;
+  static const ivory = AarastDesignTokens.warmIvory;
   static const charcoal = Color(0xFF333333);
   static const mediumGray = Color(0xFF757575);
-  static const danger = Color(0xFFD32F2F);
+  static const danger = AarastDesignTokens.danger;
 
   // Premium Aarast palette
-  static const dMaroon = Color(0xFF7B1232);
+  static const dMaroon = AarastDesignTokens.royalMaroonMuted;
   static const dMaroon2 = Color(0xFF671028);
-  static const dMaroonDeep = Color(0xFF4E0B20);
-  static const dMaroonBright = Color(0xFF8B183B);
+  static const dMaroonDeep = AarastDesignTokens.royalMaroonDeep;
+  static const dMaroonBright = AarastDesignTokens.royalMaroonSoft;
 
   static const dGold = Color(0xFFC7A35D);
-  static const dGold2 = Color(0xFFE1CA96);
-  static const dGoldDeep = Color(0xFFA98642);
+  static const dGold2 = AarastDesignTokens.champagneGoldSoft;
+  static const dGoldDeep = AarastDesignTokens.champagneGoldDeep;
 
-  static const dBg = Color(0xFFFBF7F1);
-  static const dCard = Color(0xFFFFFCF8);
+  static const dBg = AarastDesignTokens.warmIvory;
+  static const dCard = AarastDesignTokens.pearl;
   static const dCard2 = Color(0xFFFFFFFF);
 
-  static const dInk = Color(0xFF3C2B2F);
-  static const dInkSoft = Color(0xFF6C5A5D);
-  static const dMuted = Color(0xFFA89C9C);
-  static const dLine = Color(0xFFE9DED3);
+  static const dInk = AarastDesignTokens.ink;
+  static const dInkSoft = AarastDesignTokens.inkSoft;
+  static const dMuted = AarastDesignTokens.muted;
+  static const dLine = AarastDesignTokens.hairline;
 
-  static const dGreen = Color(0xFF4F9A43);
-  static const dGreenBg = Color(0xFFE9F1E4);
+  static const dGreen = AarastDesignTokens.success;
+  static const dGreenBg = AarastDesignTokens.successBg;
 
-  static const dOrange = Color(0xFFD6892C);
+  static const dOrange = AarastDesignTokens.warning;
 
-  static const dBlue = Color(0xFF3F6FB0);
-  static const dBlueBg = Color(0xFFE6EDF6);
+  static const dBlue = AarastDesignTokens.info;
+  static const dBlueBg = AarastDesignTokens.infoBg;
 
-  static const dPinkBg = Color(0xFFF6E1E1);
-  static const dCreamBg = Color(0xFFF4ECDD);
+  static const dPinkBg = AarastDesignTokens.mutedRose;
+  static const dCreamBg = AarastDesignTokens.softSand;
   static const dTrack = Color(0xFFCDC6C4);
 
   // Semantic aliases for new UI work
@@ -58,10 +60,10 @@ class AppTheme {
   static const info = dBlue;
 
   // Common sizing
-  static const double radiusSm = 12;
-  static const double radiusMd = 16;
-  static const double radiusLg = 18;
-  static const double radiusXl = 24;
+  static const double radiusSm = AarastDesignTokens.radiusSm;
+  static const double radiusMd = AarastDesignTokens.radiusMd;
+  static const double radiusLg = AarastDesignTokens.radiusLg;
+  static const double radiusXl = AarastDesignTokens.radiusXl;
 
   static const double gapXs = 6;
   static const double gapSm = 10;
@@ -69,25 +71,18 @@ class AppTheme {
   static const double gapLg = 18;
   static const double gapXl = 24;
 
-  static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 16);
-  static const EdgeInsets compactScreenPadding = EdgeInsets.symmetric(
-    horizontal: 16,
-  );
+  static const EdgeInsets screenPadding = AarastDesignTokens.screenPadding;
+  static const EdgeInsets compactScreenPadding =
+      AarastDesignTokens.screenPadding;
 
-  static const Duration motionFast = Duration(milliseconds: 180);
-  static const Duration motionMedium = Duration(milliseconds: 300);
+  static const Duration motionFast = AarastDesignTokens.motionFast;
+  static const Duration motionMedium = AarastDesignTokens.motionStandard;
 
-  static const LinearGradient heroGradient = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [dMaroonBright, dMaroon, dMaroonDeep],
-  );
+  static const LinearGradient heroGradient = AarastDesignTokens.royalGradient;
 
-  static const LinearGradient goldGradient = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [dGold2, dGold, dGoldDeep],
-  );
+  static const LinearGradient goldGradient =
+      AarastDesignTokens.champagneGradient;
+  static const LinearGradient pageGradient = AarastDesignTokens.pageGradient;
 
   static List<BoxShadow> softShadow({double opacity = 0.08}) {
     return [
@@ -122,6 +117,10 @@ class AppTheme {
     );
   }
 
+  static BoxDecoration screenDecoration() {
+    return const BoxDecoration(gradient: pageGradient);
+  }
+
   static BoxDecoration heroDecoration() {
     return BoxDecoration(
       gradient: heroGradient,
@@ -143,11 +142,21 @@ class AppTheme {
       colorScheme: ColorScheme.fromSeed(
         seedColor: dMaroon,
         primary: dMaroon,
+        onPrimary: Colors.white,
         secondary: dGold,
+        onSecondary: dInk,
+        tertiary: dGoldDeep,
         surface: dCard2,
+        onSurface: dInk,
+        surfaceContainerHighest: dCard,
+        outline: dLine,
         error: danger,
+        onError: Colors.white,
       ),
       scaffoldBackgroundColor: dBg,
+      canvasColor: dBg,
+      splashFactory: InkSparkle.splashFactory,
+      visualDensity: VisualDensity.standard,
     );
 
     final textTheme = _buildTextTheme(
@@ -158,8 +167,9 @@ class AppTheme {
       textTheme: textTheme,
       primaryColor: dMaroon,
       scaffoldBackgroundColor: dBg,
+      canvasColor: dBg,
       appBarTheme: AppBarTheme(
-        backgroundColor: dBg,
+        backgroundColor: Colors.transparent,
         foregroundColor: dInk,
         centerTitle: false,
         elevation: 0,
@@ -185,7 +195,8 @@ class AppTheme {
           backgroundColor: dMaroon,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size.fromHeight(50),
+          minimumSize: const Size.fromHeight(52),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
           ),
@@ -195,10 +206,25 @@ class AppTheme {
           ),
         ),
       ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: dMaroon,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(52),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radiusMd),
+          ),
+          textStyle: textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: dMaroon,
-          minimumSize: const Size.fromHeight(50),
+          minimumSize: const Size.fromHeight(52),
           side: const BorderSide(color: dMaroon, width: 1.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
@@ -262,6 +288,25 @@ class AppTheme {
         ),
         margin: EdgeInsets.zero,
       ),
+      chipTheme: baseTheme.chipTheme.copyWith(
+        backgroundColor: dCreamBg,
+        selectedColor: dPinkBg,
+        disabledColor: dLine.withAlpha(120),
+        side: const BorderSide(color: dLine),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+        ),
+        labelStyle: textTheme.labelMedium?.copyWith(
+          color: dInk,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
+        secondaryLabelStyle: textTheme.labelMedium?.copyWith(
+          color: dMaroon,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+      ),
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: dCard,
         surfaceTintColor: Colors.transparent,
@@ -300,6 +345,16 @@ class AppTheme {
         checkColor: WidgetStateProperty.all(Colors.white),
         side: const BorderSide(color: dLine, width: 1.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return dCard2;
+          return dMuted;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return dMaroon;
+          return dLine;
+        }),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
         color: dMaroon,

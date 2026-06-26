@@ -6,7 +6,7 @@ import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/primary_action_button.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     AuthInlineError(message: auth.errorMessage!),
                   ],
                   const SizedBox(height: 20),
-                  PrimaryActionButton(
+                  AarastButton(
                     label: 'تسجيل الدخول',
                     icon: Icons.login_rounded,
                     isLoading: auth.isSubmitting,

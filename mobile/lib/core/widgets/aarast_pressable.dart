@@ -17,6 +17,7 @@ class AarastPressable extends StatefulWidget {
     this.scale = 0.985,
     this.duration = const Duration(milliseconds: 120),
     this.haptic = true,
+    this.clip = true,
     super.key,
   });
 
@@ -26,6 +27,7 @@ class AarastPressable extends StatefulWidget {
   final double scale;
   final Duration duration;
   final bool haptic;
+  final bool clip;
 
   @override
   State<AarastPressable> createState() => _AarastPressableState();
@@ -44,14 +46,18 @@ class _AarastPressableState extends State<AarastPressable> {
   @override
   Widget build(BuildContext context) {
     final radius = widget.borderRadius;
+    final scaledChild = widget.clip
+        ? ClipRRect(
+            borderRadius: radius ?? BorderRadius.circular(20),
+            child: widget.child,
+          )
+        : widget.child;
+
     final core = AnimatedScale(
       scale: _pressed ? widget.scale : 1.0,
       duration: widget.duration,
       curve: Curves.easeOut,
-      child: ClipRRect(
-        borderRadius: radius ?? BorderRadius.circular(20),
-        child: widget.child,
-      ),
+      child: scaledChild,
     );
 
     return GestureDetector(

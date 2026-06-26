@@ -47,139 +47,125 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-            decoration: const BoxDecoration(
-              color: AppTheme.dCard2,
-              border: Border(top: BorderSide(color: AppTheme.dLine)),
-            ),
-            child: Consumer<ProviderMarketplaceProvider>(
-              builder: (context, marketplace, _) {
-                final quotes = marketplace.quotesForProvider(
-                  widget.providerId,
-                );
-                final latest = quotes.isEmpty ? null : quotes.first;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (latest != null) ...[
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'آخر طلب لهذا المورد',
-                              style: TextStyle(
-                                color: AppTheme.dInkSoft,
-                                fontWeight: FontWeight.w800,
-                              ),
+    return AarastScreenFrame(
+      maxWidth: 520,
+      safeAreaBottom: false,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          decoration: const BoxDecoration(
+            color: AppTheme.dCard2,
+            border: Border(top: BorderSide(color: AppTheme.dLine)),
+          ),
+          child: Consumer<ProviderMarketplaceProvider>(
+            builder: (context, marketplace, _) {
+              final quotes = marketplace.quotesForProvider(widget.providerId);
+              final latest = quotes.isEmpty ? null : quotes.first;
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (latest != null) ...[
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'آخر طلب لهذا المورد',
+                            style: TextStyle(
+                              color: AppTheme.dInkSoft,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
-                          QuoteStatusChip(
-                            status: latest.lifecycleStatus,
-                            compact: true,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    FilledButton.icon(
-                      onPressed: () => context.push(
-                        AppRouter.providerQuote(widget.providerId),
-                      ),
-                      icon: const Icon(Icons.chat_bubble_outline_rounded),
-                      label: Text(
-                        latest == null
-                            ? 'اطلب عرض سعر'
-                            : 'طلب عرض سعر جديد',
-                      ),
+                        ),
+                        QuoteStatusChip(
+                          status: latest.lifecycleStatus,
+                          compact: true,
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
                   ],
-                );
-              },
-            ),
-          ),
-        ),
-        body: SafeArea(
-          bottom: false,
-          child: Consumer<ProviderMarketplaceProvider>(
-            builder: (context, state, _) {
-              final provider = state.providerDetails(widget.providerId);
-              final services = state.servicesFor(widget.providerId);
-              final packages = state.packagesFor(widget.providerId);
-              final reviews = state.reviewsFor(widget.providerId);
-
-              if (state.isLoading && provider == null) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (state.errorMessage != null && provider == null) {
-                return _DetailsFrame(
-                  child: AarastEmptyState(
-                    icon: Icons.error_outline_rounded,
-                    title: 'تعذر فتح المورد',
-                    message: state.errorMessage!,
-                    action: OutlinedButton.icon(
-                      onPressed: () =>
-                          state.loadProviderDetails(widget.providerId),
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('إعادة المحاولة'),
+                  AarastButton(
+                    label: latest == null ? 'اطلب عرض سعر' : 'طلب عرض سعر جديد',
+                    icon: Icons.chat_bubble_outline_rounded,
+                    onPressed: () => context.push(
+                      AppRouter.providerQuote(widget.providerId),
                     ),
                   ),
-                );
-              }
-
-              if (provider == null) {
-                return const _DetailsFrame(
-                  child: AarastEmptyState(
-                    icon: Icons.storefront_outlined,
-                    title: 'المورد غير متاح',
-                    message: 'لم نتمكن من العثور على تفاصيل هذا المورد.',
-                  ),
-                );
-              }
-
-              final isFavorite = state.favoriteProviderIds.contains(
-                provider.id,
-              );
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
-                children: [
-                  _DetailsTopBar(
-                    isFavorite: isFavorite,
-                    onBack: () {
-                      if (context.canPop()) context.pop();
-                    },
-                    onFavorite: () async {
-                      if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
-                        context,
-                      )) {
-                        return;
-                      }
-                      await state.toggleFavorite(provider.id);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _ProviderHero(provider: provider),
-                  const SizedBox(height: 18),
-                  _AboutCard(provider: provider),
-                  const SizedBox(height: 18),
-                  _ServicesSection(providerId: provider.id, services: services),
-                  const SizedBox(height: 18),
-                  _PackagesSection(packages: packages),
-                  const SizedBox(height: 18),
-                  _ReviewsSection(reviews: reviews),
                 ],
               );
             },
           ),
         ),
+      ),
+      child: Consumer<ProviderMarketplaceProvider>(
+        builder: (context, state, _) {
+          final provider = state.providerDetails(widget.providerId);
+          final services = state.servicesFor(widget.providerId);
+          final packages = state.packagesFor(widget.providerId);
+          final reviews = state.reviewsFor(widget.providerId);
+
+          if (state.isLoading && provider == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state.errorMessage != null && provider == null) {
+            return _DetailsFrame(
+              child: AarastEmptyState(
+                icon: Icons.error_outline_rounded,
+                title: 'تعذر فتح المورد',
+                message: state.errorMessage!,
+                action: OutlinedButton.icon(
+                  onPressed: () => state.loadProviderDetails(widget.providerId),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('إعادة المحاولة'),
+                ),
+              ),
+            );
+          }
+
+          if (provider == null) {
+            return const _DetailsFrame(
+              child: AarastEmptyState(
+                icon: Icons.storefront_outlined,
+                title: 'المورد غير متاح',
+                message: 'لم نتمكن من العثور على تفاصيل هذا المورد.',
+              ),
+            );
+          }
+
+          final isFavorite = state.favoriteProviderIds.contains(provider.id);
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+            children: [
+              _DetailsTopBar(
+                isFavorite: isFavorite,
+                onBack: () {
+                  if (context.canPop()) context.pop();
+                },
+                onFavorite: () async {
+                  if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+                    context,
+                  )) {
+                    return;
+                  }
+                  await state.toggleFavorite(provider.id);
+                },
+              ),
+              const SizedBox(height: 12),
+              _ProviderHero(provider: provider),
+              const SizedBox(height: 18),
+              _AboutCard(provider: provider),
+              const SizedBox(height: 18),
+              _ServicesSection(providerId: provider.id, services: services),
+              const SizedBox(height: 18),
+              _PackagesSection(packages: packages),
+              const SizedBox(height: 18),
+              _ReviewsSection(reviews: reviews),
+            ],
+          );
+        },
       ),
     );
   }

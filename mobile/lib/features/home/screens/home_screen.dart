@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../notifications/providers/notifications_provider.dart';
 import '../providers/home_dashboard_provider.dart';
@@ -35,52 +36,35 @@ class _HomeScreenState extends State<HomeScreen> {
     final provider = context.watch<HomeDashboardProvider>();
     final notifications = _maybeWatchNotifications(context);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: RefreshIndicator(
-                color: AppTheme.dMaroon,
-                onRefresh: () => provider.loadDashboard(),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    16,
-                    16,
-                    16,
-                    widget.embedded ? 24 : 32,
-                  ),
-                  children: [
-                    HomeTopHeader(
-                      userName: auth.user?.name,
-                      notificationCount: notifications?.unreadCount ?? 0,
-                      onNotifications: () {
-                        context.push(AppRouter.notifications);
-                      },
-                      onProfile: () => context.push(AppRouter.more),
-                    ),
-                    const SizedBox(height: 22),
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 320),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeInCubic,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      ),
-                      child: _buildContent(provider),
-                    ),
-                    const SizedBox(height: 18),
-                    if (!widget.embedded) const HomeSharedPlansCard(),
-                  ],
-                ),
-              ),
+    return AarastScreenFrame(
+      maxWidth: 480,
+      child: RefreshIndicator(
+        color: AppTheme.dMaroon,
+        onRefresh: () => provider.loadDashboard(),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 16, 16, widget.embedded ? 24 : 32),
+          children: [
+            HomeTopHeader(
+              userName: auth.user?.name,
+              notificationCount: notifications?.unreadCount ?? 0,
+              onNotifications: () {
+                context.push(AppRouter.notifications);
+              },
+              onProfile: () => context.push(AppRouter.more),
             ),
-          ),
+            const SizedBox(height: 22),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) =>
+                  FadeTransition(opacity: animation, child: child),
+              child: _buildContent(provider),
+            ),
+            const SizedBox(height: 18),
+            if (!widget.embedded) const HomeSharedPlansCard(),
+          ],
         ),
       ),
     );

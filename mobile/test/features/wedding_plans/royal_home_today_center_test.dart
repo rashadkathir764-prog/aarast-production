@@ -144,6 +144,34 @@ void main() {
 
     expect(find.text('إجراء جديد'), findsNothing);
   });
+  testWidgets('royal bottom nav renders the five production tabs', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            bottomNavigationBar: RoyalDashboardBottomNav(
+              activeIndex: 2,
+              onHome: () {},
+              onMoney: () {},
+              onTasks: () {},
+              onProviders: () {},
+              onMore: () {},
+              onAdd: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('الرئيسية'), findsOneWidget);
+    expect(find.text('المال'), findsOneWidget);
+    expect(find.text('المهام'), findsOneWidget);
+    expect(find.text('الموردون'), findsOneWidget);
+    expect(find.text('المزيد'), findsOneWidget);
+  });
 }
 
 final _summary = DashboardSummary(

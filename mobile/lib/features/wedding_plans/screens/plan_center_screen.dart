@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../marketplace/models/marketplace_models.dart';
@@ -80,27 +82,22 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final plan = provider.plan;
     final hasCurrentPlan = plan?.id == widget.weddingPlanId;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        bottomNavigationBar: _buildBottomNav(provider),
-        body: SafeArea(
-          bottom: false,
-          child: RefreshIndicator(
-            color: _pcInk,
-            onRefresh: _isLocalGuestPlan
-                ? () async {}
-                : () async {
-                    await provider.loadDashboard(
-                      widget.weddingPlanId,
-                      sharedMember: widget.sharedMember,
-                    );
-                    await _readMarketplace()?.loadMyQuoteRequests();
-                  },
-            child: _buildBody(provider, auth, hasCurrentPlan),
-          ),
-        ),
+    return AarastScreenFrame(
+      maxWidth: 560,
+      safeAreaBottom: false,
+      bottomNavigationBar: _buildBottomNav(provider),
+      child: RefreshIndicator(
+        color: AppTheme.dMaroon,
+        onRefresh: _isLocalGuestPlan
+            ? () async {}
+            : () async {
+                await provider.loadDashboard(
+                  widget.weddingPlanId,
+                  sharedMember: widget.sharedMember,
+                );
+                await _readMarketplace()?.loadMyQuoteRequests();
+              },
+        child: _buildBody(provider, auth, hasCurrentPlan),
       ),
     );
   }
@@ -2262,21 +2259,21 @@ class _SkeletonBox extends StatelessWidget {
   }
 }
 
-const _pcInk = Color(0xFF2D1A1E);
-const _pcText = Color(0xFF333333);
-const _pcMuted = Color(0xFF8A7B7E);
-const _pcLine = Color(0xFFE5E0E1);
-const _pcSoft = Color(0xFFFDFBF9);
+const _pcInk = AppTheme.dInk;
+const _pcText = AppTheme.charcoal;
+const _pcMuted = AppTheme.dMuted;
+const _pcLine = AppTheme.dLine;
+const _pcSoft = AppTheme.dCard;
 const _pcRadius = 16.0;
 
 class _RoyalColors {
   const _RoyalColors._();
 
-  static const burgundy = Color(0xFF800020);
-  static const burgundyDark = Color(0xFF5A0016);
-  static const burgundyLight = Color(0xFFA63351);
-  static const gold = Color(0xFFD4AF37);
-  static const goldDeep = Color(0xFFB5952F);
+  static const burgundy = AppTheme.deepBurgundy;
+  static const burgundyDark = AppTheme.dMaroonDeep;
+  static const burgundyLight = AppTheme.dMaroonBright;
+  static const gold = AppTheme.warmGold;
+  static const goldDeep = AppTheme.dGoldDeep;
 }
 
 ButtonStyle _pcOutlinedButtonStyle() {

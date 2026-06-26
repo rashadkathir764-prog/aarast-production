@@ -6,7 +6,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../../core/widgets/primary_action_button.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../onboarding/widgets/location_picker_section.dart';
 import '../providers/wedding_plans_provider.dart';
@@ -87,7 +86,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  PrimaryActionButton(
+                  AarastButton(
                     label: 'تأكيد التاريخ',
                     icon: Icons.check_rounded,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
@@ -111,168 +110,27 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
     final textTheme = Theme.of(context).textTheme;
     final location = _locationDraft;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: _goBack,
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            tooltip: 'رجوع',
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'إنشاء خطة زفاف',
-                              style: textTheme.titleLarge?.copyWith(
-                                color: AppTheme.dMaroonDeep,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return AarastScreenFrame(
+      maxWidth: 480,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _goBack,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    tooltip: 'رجوع',
                   ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    sliver: SliverToBoxAdapter(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const _CreatePlanHero(),
-                            const SizedBox(height: 18),
-                            AarastCard(
-                              padding: const EdgeInsets.all(18),
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _titleController,
-                                    textAlign: TextAlign.right,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: const InputDecoration(
-                                      labelText: 'عنوان الخطة',
-                                      hintText: 'مثال: حفلتنا الكبيرة',
-                                      prefixIcon: Icon(Icons.list_alt_rounded),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'عنوان الخطة مطلوب';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 14),
-                                  LocationPickerSection(
-                                    governorateController:
-                                        _governorateController,
-                                    cityOrDistrictController:
-                                        _cityOrDistrictController,
-                                    areaOrNeighborhoodController:
-                                        _areaOrNeighborhoodController,
-                                    streetController: _streetController,
-                                    detailedAddressController:
-                                        _detailedAddressController,
-                                    onChanged: () => setState(() {}),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  _SelectorField(
-                                    label: 'تاريخ الزفاف',
-                                    value: _weddingDate == null
-                                        ? 'اختر التاريخ'
-                                        : _formatDate(_weddingDate!),
-                                    icon: Icons.calendar_month_rounded,
-                                    selected: _weddingDate != null,
-                                    onTap: _showCalendarPicker,
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: TextFormField(
-                                          controller: _budgetController,
-                                          textAlign: TextAlign.right,
-                                          keyboardType:
-                                              const TextInputType.numberWithOptions(
-                                                decimal: true,
-                                              ),
-                                          decoration: const InputDecoration(
-                                            labelText: 'الميزانية التقديرية',
-                                            hintText: '2,500,000',
-                                            prefixIcon: Icon(
-                                              Icons
-                                                  .account_balance_wallet_outlined,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      SizedBox(
-                                        width: 92,
-                                        child: TextFormField(
-                                          controller: _currencyController,
-                                          textAlign: TextAlign.center,
-                                          decoration: const InputDecoration(
-                                            labelText: 'العملة',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (provider.errorMessage != null) ...[
-                                    const SizedBox(height: 14),
-                                    AarastStatusPill(
-                                      label: provider.errorMessage!,
-                                      color: AppTheme.danger,
-                                      icon: Icons.error_outline_rounded,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _PlanPreviewCard(
-                              title: _titleController.text.trim().isEmpty
-                                  ? 'خطة زفافنا'
-                                  : _titleController.text.trim(),
-                              city: location.shortLabel ?? 'غير محدد',
-                              budget: _budgetController.text.trim().isEmpty
-                                  ? '0'
-                                  : _budgetController.text.trim(),
-                            ),
-                            const SizedBox(height: 18),
-                            PrimaryActionButton(
-                              label: 'إنشاء الخطة',
-                              icon: Icons.chevron_left_rounded,
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'يمكنك تعديل الخطة في أي وقت.',
-                              textAlign: TextAlign.center,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: AppTheme.dInkSoft,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'إنشاء خطة زفاف',
+                      style: textTheme.titleLarge?.copyWith(
+                        color: AppTheme.dMaroonDeep,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -280,7 +138,134 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
               ),
             ),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            sliver: SliverToBoxAdapter(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _CreatePlanHero(),
+                    const SizedBox(height: 18),
+                    AarastCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _titleController,
+                            textAlign: TextAlign.right,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'عنوان الخطة',
+                              hintText: 'مثال: حفلتنا الكبيرة',
+                              prefixIcon: Icon(Icons.list_alt_rounded),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'عنوان الخطة مطلوب';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          LocationPickerSection(
+                            governorateController: _governorateController,
+                            cityOrDistrictController: _cityOrDistrictController,
+                            areaOrNeighborhoodController:
+                                _areaOrNeighborhoodController,
+                            streetController: _streetController,
+                            detailedAddressController:
+                                _detailedAddressController,
+                            onChanged: () => setState(() {}),
+                          ),
+                          const SizedBox(height: 14),
+                          _SelectorField(
+                            label: 'تاريخ الزفاف',
+                            value: _weddingDate == null
+                                ? 'اختر التاريخ'
+                                : _formatDate(_weddingDate!),
+                            icon: Icons.calendar_month_rounded,
+                            selected: _weddingDate != null,
+                            onTap: _showCalendarPicker,
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: TextFormField(
+                                  controller: _budgetController,
+                                  textAlign: TextAlign.right,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'الميزانية التقديرية',
+                                    hintText: '2,500,000',
+                                    prefixIcon: Icon(
+                                      Icons.account_balance_wallet_outlined,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 92,
+                                child: TextFormField(
+                                  controller: _currencyController,
+                                  textAlign: TextAlign.center,
+                                  decoration: const InputDecoration(
+                                    labelText: 'العملة',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (provider.errorMessage != null) ...[
+                            const SizedBox(height: 14),
+                            AarastStatusPill(
+                              label: provider.errorMessage!,
+                              color: AppTheme.danger,
+                              icon: Icons.error_outline_rounded,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _PlanPreviewCard(
+                      title: _titleController.text.trim().isEmpty
+                          ? 'خطة زفافنا'
+                          : _titleController.text.trim(),
+                      city: location.shortLabel ?? 'غير محدد',
+                      budget: _budgetController.text.trim().isEmpty
+                          ? '0'
+                          : _budgetController.text.trim(),
+                    ),
+                    const SizedBox(height: 18),
+                    AarastButton(
+                      label: 'إنشاء الخطة',
+                      icon: Icons.chevron_left_rounded,
+                      isLoading: provider.isSubmitting,
+                      onPressed: _submit,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'يمكنك تعديل الخطة في أي وقت.',
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

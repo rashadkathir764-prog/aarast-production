@@ -64,9 +64,10 @@ class _SharedPlansContent extends StatelessWidget {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
+          AarastButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh_rounded,
             onPressed: provider.loadSharedPlans,
-            child: const Text('إعادة المحاولة'),
           ),
         ],
       );

@@ -81,9 +81,10 @@ class _SharingContent extends StatelessWidget {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           ),
           const SizedBox(height: 16),
-          ElevatedButton(
+          AarastButton(
+            label: 'إعادة المحاولة',
+            icon: Icons.refresh_rounded,
             onPressed: () => provider.loadMembers(weddingPlanId),
-            child: const Text('إعادة المحاولة'),
           ),
         ],
       );
@@ -93,12 +94,12 @@ class _SharingContent extends StatelessWidget {
       children: [
         const _PrivacyNotice(),
         const SizedBox(height: 12),
-        ElevatedButton.icon(
+        AarastButton(
+          label: 'إضافة عضو',
+          icon: Icons.person_add,
           onPressed: provider.isSubmitting
               ? null
               : () => context.push(AppRouter.addSharedMember(weddingPlanId)),
-          icon: const Icon(Icons.person_add),
-          label: const Text('إضافة عضو'),
         ),
         if (provider.errorMessage != null) ...[
           const SizedBox(height: 12),
@@ -199,9 +200,11 @@ class _PendingInviteCard extends StatelessWidget {
                 ],
               ),
             ),
-            TextButton(
+            AarastButton(
+              label: 'إلغاء الدعوة',
+              variant: AarastButtonVariant.ghost,
+              expand: false,
               onPressed: onCancel,
-              child: const Text('إلغاء الدعوة'),
             ),
           ],
         ),

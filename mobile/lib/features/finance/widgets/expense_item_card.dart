@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 
@@ -19,53 +20,51 @@ class ExpenseItemCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final categoryName = _categoryName();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                _StatusBadge(status: expense.status),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    expense.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                    textAlign: TextAlign.right,
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _StatusBadge(status: expense.status),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  expense.title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
                   ),
+                  textAlign: TextAlign.right,
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${expense.amount} ر.ي',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w800,
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${expense.amount} ر.ي',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: AppTheme.deepBurgundy,
+              fontWeight: FontWeight.w800,
+            ),
+            textAlign: TextAlign.right,
+          ),
+          if (categoryName != null) ...[
+            const SizedBox(height: 4),
+            Text('التصنيف: $categoryName', textAlign: TextAlign.right),
+          ],
+          if (expense.expenseDate != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'التاريخ: ${_formatDate(expense.expenseDate!)}',
               textAlign: TextAlign.right,
             ),
-            if (categoryName != null) ...[
-              const SizedBox(height: 4),
-              Text('التصنيف: $categoryName', textAlign: TextAlign.right),
-            ],
-            if (expense.expenseDate != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'التاريخ: ${_formatDate(expense.expenseDate!)}',
-                textAlign: TextAlign.right,
-              ),
-            ],
-            if (expense.hasNote) ...[
-              const SizedBox(height: 4),
-              Text(expense.note!, textAlign: TextAlign.right),
-            ],
           ],
-        ),
+          if (expense.hasNote) ...[
+            const SizedBox(height: 4),
+            Text(expense.note!, textAlign: TextAlign.right),
+          ],
+        ],
       ),
     );
   }
@@ -92,24 +91,15 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (status) {
-      'PAID' => Colors.green,
+      'PAID' => AppTheme.success,
       'CANCELLED' => AppTheme.mediumGray,
       _ => AppTheme.warmGold,
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withAlpha(35),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        _statusLabel(status),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: color == AppTheme.warmGold ? AppTheme.deepBurgundy : color,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
+    return AarastStatusBadge(
+      label: _statusLabel(status),
+      color: color == AppTheme.warmGold ? AppTheme.deepBurgundy : color,
+      backgroundColor: color.withAlpha(35),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/debt_summary.dart';
 
 class DebtSummaryCard extends StatelessWidget {
@@ -10,39 +11,37 @@ class DebtSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'ملخص الديون',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w800,
-              ),
-              textAlign: TextAlign.right,
+    return AarastCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'ملخص الديون',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.deepBurgundy,
+              fontWeight: FontWeight.w800,
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.end,
-              children: [
-                _SummaryTile(label: 'إجمالي الدين', value: summary.totalDebt),
-                _SummaryTile(label: 'المدفوع', value: summary.totalPaid),
-                _SummaryTile(label: 'المتبقي', value: summary.remainingDebt),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'مفتوحة: ${summary.countOpen} | مدفوعة جزئيا: ${summary.countPartiallyPaid} | مدفوعة: ${summary.countPaid} | ملغية: ${summary.countCancelled}',
-              textAlign: TextAlign.right,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.end,
+            children: [
+              _SummaryTile(label: 'إجمالي الدين', value: summary.totalDebt),
+              _SummaryTile(label: 'المدفوع', value: summary.totalPaid),
+              _SummaryTile(label: 'المتبقي', value: summary.remainingDebt),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'مفتوحة: ${summary.countOpen} | مدفوعة جزئيا: ${summary.countPartiallyPaid} | مدفوعة: ${summary.countPaid} | ملغية: ${summary.countCancelled}',
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
       ),
     );
   }

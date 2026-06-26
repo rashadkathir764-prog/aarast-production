@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../wedding_plans/models/onboarding_complete.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../data/guest_onboarding_storage.dart';
@@ -80,7 +81,7 @@ class _GuestOnboardingFlowScreenState extends State<GuestOnboardingFlowScreen> {
   Widget build(BuildContext context) {
     final provider = _provider;
     if (provider == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const AarastScaffold(child: AarastScreenLoading());
     }
 
     final draft = provider.draft;

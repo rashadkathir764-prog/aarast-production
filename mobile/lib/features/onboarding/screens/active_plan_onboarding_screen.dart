@@ -6,6 +6,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../data/guest_onboarding_storage.dart';
 import '../models/guest_onboarding_draft.dart';
 import '../models/wedding_location_draft.dart';
@@ -90,34 +91,24 @@ class _ActivePlanOnboardingScreenState
   Widget build(BuildContext context) {
     final provider = context.watch<WeddingPlansProvider>();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        _Header(step: _step),
-                        const SizedBox(height: 18),
-                        AnimatedSwitcher(
-                          duration: AppTheme.motionMedium,
-                          child: _buildStep(context, provider),
-                        ),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
+    return AarastScreenFrame(
+      maxWidth: 520,
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _Header(step: _step),
+                const SizedBox(height: 18),
+                AnimatedSwitcher(
+                  duration: AppTheme.motionMedium,
+                  child: _buildStep(context, provider),
+                ),
+              ]),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

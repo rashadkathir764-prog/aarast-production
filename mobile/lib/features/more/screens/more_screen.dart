@@ -58,106 +58,93 @@ class _MoreScreenState extends State<MoreScreen> {
         AppFeatureFlags.devBypassLoginGatesForUxExploration &&
         auth.status != AuthStatus.authenticated;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
-                children: [
-                  _MoreHeader(
-                    name: name,
-                    notificationCount: notifications?.unreadCount ?? 0,
-                    onNotifications: () =>
-                        context.push(AppRouter.notifications),
-                  ),
-                  const SizedBox(height: 18),
-                  FutureBuilder<GuestOnboardingDraft?>(
-                    future: _identityDraftFuture,
-                    builder: (context, snapshot) {
-                      final identity = _IdentitySummary.from(
-                        activePlan: activePlan,
-                        draft: snapshot.data,
-                      );
-                      return _ProfileCard(
-                        name: name,
-                        phone: phone,
-                        roleLabel: identity.roleLabel,
-                        personaLabel: identity.personaLabel,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  _MenuGroup(
-                    children: [
-                      _MoreActionTile(
-                        title: 'الخطط المشتركة معي',
-                        subtitle: 'الخطط التي تمت مشاركتها معك للوصول إليها',
-                        icon: Icons.groups_2_outlined,
-                        iconColor: AppTheme.dMaroon,
-                        iconBackground: AppTheme.dPinkBg,
-                        onTap: () => context.push(AppRouter.sharedWeddingPlans),
-                      ),
-                      _MoreActionTile(
-                        title: 'خططي',
-                        subtitle: 'إدارة كل خطط الزفاف الخاصة بك',
-                        icon: Icons.event_note_outlined,
-                        iconColor: AppTheme.dMaroon,
-                        iconBackground: AppTheme.dPinkBg,
-                        onTap: () => context.push(AppRouter.weddingPlans),
-                      ),
-                      _MoreActionTile(
-                        title: 'إنشاء خطة زفاف',
-                        subtitle: 'ابدأ خطة جديدة لتنظيم يومك المميز',
-                        icon: Icons.add_circle_outline_rounded,
-                        iconColor: AppTheme.dMaroon,
-                        iconBackground: AppTheme.dPinkBg,
-                        onTap: () => context.push(AppRouter.createWeddingPlan),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _MenuGroup(
-                    children: [
-                      _MoreActionTile(
-                        title: 'الإعدادات',
-                        subtitle: 'تخصيص التطبيق والتفضيلات',
-                        icon: Icons.settings_outlined,
-                        iconColor: AppTheme.dMaroon,
-                        iconBackground: AppTheme.dPinkBg,
-                        onTap: () => context.push(AppRouter.settings),
-                      ),
-                      _MoreActionTile(
-                        title: 'الدعم والمساعدة',
-                        subtitle: 'تواصل معنا أو استعرض الأسئلة الشائعة',
-                        icon: Icons.support_agent_outlined,
-                        iconColor: AppTheme.dMaroon,
-                        iconBackground: AppTheme.dPinkBg,
-                        onTap: () => context.push(AppRouter.support),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const _MenuGroup(children: [OfflineSyncNowTile()]),
-                  const SizedBox(height: 16),
-                  if (isGuestExploration)
-                    _OptionalLoginTile(
-                      onTap: () => context.push(AppRouter.login),
-                    )
-                  else
-                    _LogoutTile(onTap: () => _logout(context)),
-                  const SizedBox(height: 22),
-                  const _VersionFooter(),
-                ],
-              ),
-            ),
+    return AarastScreenFrame(
+      maxWidth: 520,
+      safeAreaBottom: false,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
+        children: [
+          _MoreHeader(
+            name: name,
+            notificationCount: notifications?.unreadCount ?? 0,
+            onNotifications: () => context.push(AppRouter.notifications),
           ),
-        ),
+          const SizedBox(height: 18),
+          FutureBuilder<GuestOnboardingDraft?>(
+            future: _identityDraftFuture,
+            builder: (context, snapshot) {
+              final identity = _IdentitySummary.from(
+                activePlan: activePlan,
+                draft: snapshot.data,
+              );
+              return _ProfileCard(
+                name: name,
+                phone: phone,
+                roleLabel: identity.roleLabel,
+                personaLabel: identity.personaLabel,
+              );
+            },
+          ),
+          const SizedBox(height: 20),
+          _MenuGroup(
+            children: [
+              _MoreActionTile(
+                title: 'الخطط المشتركة معي',
+                subtitle: 'الخطط التي تمت مشاركتها معك للوصول إليها',
+                icon: Icons.groups_2_outlined,
+                iconColor: AppTheme.dMaroon,
+                iconBackground: AppTheme.dPinkBg,
+                onTap: () => context.push(AppRouter.sharedWeddingPlans),
+              ),
+              _MoreActionTile(
+                title: 'خططي',
+                subtitle: 'إدارة كل خطط الزفاف الخاصة بك',
+                icon: Icons.event_note_outlined,
+                iconColor: AppTheme.dMaroon,
+                iconBackground: AppTheme.dPinkBg,
+                onTap: () => context.push(AppRouter.weddingPlans),
+              ),
+              _MoreActionTile(
+                title: 'إنشاء خطة زفاف',
+                subtitle: 'ابدأ خطة جديدة لتنظيم يومك المميز',
+                icon: Icons.add_circle_outline_rounded,
+                iconColor: AppTheme.dMaroon,
+                iconBackground: AppTheme.dPinkBg,
+                onTap: () => context.push(AppRouter.createWeddingPlan),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _MenuGroup(
+            children: [
+              _MoreActionTile(
+                title: 'الإعدادات',
+                subtitle: 'تخصيص التطبيق والتفضيلات',
+                icon: Icons.settings_outlined,
+                iconColor: AppTheme.dMaroon,
+                iconBackground: AppTheme.dPinkBg,
+                onTap: () => context.push(AppRouter.settings),
+              ),
+              _MoreActionTile(
+                title: 'الدعم والمساعدة',
+                subtitle: 'تواصل معنا أو استعرض الأسئلة الشائعة',
+                icon: Icons.support_agent_outlined,
+                iconColor: AppTheme.dMaroon,
+                iconBackground: AppTheme.dPinkBg,
+                onTap: () => context.push(AppRouter.support),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _MenuGroup(children: [OfflineSyncNowTile()]),
+          const SizedBox(height: 16),
+          if (isGuestExploration)
+            _OptionalLoginTile(onTap: () => context.push(AppRouter.login))
+          else
+            _LogoutTile(onTap: () => _logout(context)),
+          const SizedBox(height: 22),
+          const _VersionFooter(),
+        ],
       ),
     );
   }
@@ -212,21 +199,20 @@ class _MoreScreenState extends State<MoreScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: AarastButton(
+                          label: 'إلغاء',
+                          variant: AarastButtonVariant.secondary,
                           onPressed: () =>
                               Navigator.of(sheetContext).pop(false),
-                          child: const Text('إلغاء'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: AarastButton(
+                          label: 'خروج',
+                          icon: Icons.logout_rounded,
+                          variant: AarastButtonVariant.danger,
                           onPressed: () => Navigator.of(sheetContext).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.danger,
-                          ),
-                          icon: const Icon(Icons.logout_rounded),
-                          label: const Text('خروج'),
                         ),
                       ),
                     ],

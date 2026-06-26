@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
+
 class RoyalHomeAction {
   const RoyalHomeAction({
     required this.icon,
@@ -586,10 +588,10 @@ class _PressScaleState extends State<_PressScale> {
 class _RoyalHomeColors {
   const _RoyalHomeColors._();
 
-  static const ivory = Color(0xFFFDFBF9);
-  static const burgundy = Color(0xFF800020);
-  static const gold = Color(0xFFD4AF37);
-  static const goldDeep = Color(0xFFB5952F);
-  static const ink = Color(0xFF2D1A1E);
-  static const muted = Color(0xFF8A7B7E);
+  static const ivory = AppTheme.dCard;
+  static const burgundy = AppTheme.deepBurgundy;
+  static const gold = AppTheme.warmGold;
+  static const goldDeep = AppTheme.dGoldDeep;
+  static const ink = AppTheme.dInk;
+  static const muted = AppTheme.dMuted;
 }

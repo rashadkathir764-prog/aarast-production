@@ -19,8 +19,8 @@ class PermissionChip extends StatelessWidget {
       ),
       backgroundColor: enabled
           ? AppTheme.warmGold.withAlpha(45)
-          : Colors.grey.withAlpha(25),
-      side: BorderSide.none,
+          : AppTheme.dLine.withAlpha(120),
+      side: BorderSide(color: enabled ? AppTheme.dGold2 : AppTheme.dLine),
       visualDensity: VisualDensity.compact,
     );
   }

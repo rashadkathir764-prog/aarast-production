@@ -70,102 +70,89 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
     final provider = context.watch<DebtInstallmentProvider>();
     final canManageFinancialRecords = _canManageFinancialRecords;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: _goBack,
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                          tooltip: 'رجوع',
+    return AarastScreenFrame(
+      maxWidth: 520,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: _goBack,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  tooltip: 'رجوع',
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'الديون والأقساط',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.dMaroonDeep,
+                          fontWeight: FontWeight.w900,
                         ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'الديون والأقساط',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: AppTheme.dMaroonDeep,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'تابع ديون خطتك وأقساطها المستحقة',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.dInkSoft,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'تابع ديون خطتك وأقساطها المستحقة',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(width: 8),
-                        if (canManageFinancialRecords)
-                          IconButton(
-                            onPressed: () => context.push(
-                              AppRouter.createDebt(widget.weddingPlanId),
-                              extra: widget.sharedMember,
-                            ),
-                            icon: const Icon(Icons.add_rounded),
-                            tooltip: 'إضافة دين',
-                            style: IconButton.styleFrom(
-                              backgroundColor: AppTheme.dMaroon,
-                              foregroundColor: Colors.white,
-                              side: BorderSide.none,
-                            ),
-                          ),
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (canManageFinancialRecords)
+                  IconButton(
+                    onPressed: () => context.push(
+                      AppRouter.createDebt(widget.weddingPlanId),
+                      extra: widget.sharedMember,
+                    ),
+                    icon: const Icon(Icons.add_rounded),
+                    tooltip: 'إضافة دين',
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppTheme.dMaroon,
+                      foregroundColor: Colors.white,
+                      side: BorderSide.none,
                     ),
                   ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppTheme.dMaroon,
-                      onRefresh: _isLocalGuestPlan ? () async {} : _loadDebts,
-                      child: _canReadDebts
-                          ? _DebtInstallmentContent(
-                              provider: provider,
-                              weddingPlanId: widget.weddingPlanId,
-                              canManageFinancialRecords:
-                                  canManageFinancialRecords,
-                              sharedMember: widget.sharedMember,
-                              searchController: _searchController,
-                              selectedFilter: _selectedFilter,
-                              suppressErrors: _isLocalGuestPlan,
-                              onFilterChanged: (filter) {
-                                setState(() {
-                                  _selectedFilter = filter;
-                                });
-                              },
-                            )
-                          : const _DebtAccessDeniedState(),
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
           ),
-        ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppTheme.dMaroon,
+              onRefresh: _isLocalGuestPlan ? () async {} : _loadDebts,
+              child: _canReadDebts
+                  ? _DebtInstallmentContent(
+                      provider: provider,
+                      weddingPlanId: widget.weddingPlanId,
+                      canManageFinancialRecords: canManageFinancialRecords,
+                      sharedMember: widget.sharedMember,
+                      searchController: _searchController,
+                      selectedFilter: _selectedFilter,
+                      suppressErrors: _isLocalGuestPlan,
+                      onFilterChanged: (filter) {
+                        setState(() {
+                          _selectedFilter = filter;
+                        });
+                      },
+                    )
+                  : const _DebtAccessDeniedState(),
+            ),
+          ),
+        ],
       ),
     );
   }

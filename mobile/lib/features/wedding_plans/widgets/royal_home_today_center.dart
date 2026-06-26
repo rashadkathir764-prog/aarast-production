@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_pressable.dart';
 import '../models/dashboard_summary.dart';
@@ -1087,14 +1088,14 @@ class _LiveDotState extends State<_LiveDot>
 class _RoyalColors {
   const _RoyalColors._();
 
-  static const ivory = Color(0xFFFDFBF9);
-  static const burgundy = Color(0xFF800020);
-  static const burgundyDark = Color(0xFF5A0016);
-  static const burgundyLight = Color(0xFFA63351);
-  static const gold = Color(0xFFD4AF37);
-  static const goldDeep = Color(0xFFB5952F);
-  static const ink = Color(0xFF2D1A1E);
-  static const muted = Color(0xFF8A7B7E);
+  static const ivory = AppTheme.dCard;
+  static const burgundy = AppTheme.deepBurgundy;
+  static const burgundyDark = AppTheme.dMaroonDeep;
+  static const burgundyLight = AppTheme.dMaroonBright;
+  static const gold = AppTheme.warmGold;
+  static const goldDeep = AppTheme.dGoldDeep;
+  static const ink = AppTheme.dInk;
+  static const muted = AppTheme.dMuted;
 }
 
 String _greetingFor(String name) {

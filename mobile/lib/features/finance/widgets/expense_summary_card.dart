@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/expense_summary.dart';
 
 class ExpenseSummaryCard extends StatelessWidget {
@@ -10,48 +11,46 @@ class ExpenseSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'ملخص المصاريف',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.deepBurgundy,
-                fontWeight: FontWeight.w800,
+    return AarastCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'ملخص المصاريف',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.deepBurgundy,
+              fontWeight: FontWeight.w800,
+            ),
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.end,
+            children: [
+              _SummaryChip(
+                label: 'مدفوع',
+                amount: summary.totalPaid,
+                count: summary.countPaid,
+                color: AppTheme.success,
               ),
-              textAlign: TextAlign.right,
-            ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.end,
-              children: [
-                _SummaryChip(
-                  label: 'مدفوع',
-                  amount: summary.totalPaid,
-                  count: summary.countPaid,
-                  color: Colors.green,
-                ),
-                _SummaryChip(
-                  label: 'مخطط',
-                  amount: summary.totalPlanned,
-                  count: summary.countPlanned,
-                  color: AppTheme.warmGold,
-                ),
-                _SummaryChip(
-                  label: 'ملغي',
-                  amount: summary.totalCancelled,
-                  count: summary.countCancelled,
-                  color: AppTheme.mediumGray,
-                ),
-              ],
-            ),
-          ],
-        ),
+              _SummaryChip(
+                label: 'مخطط',
+                amount: summary.totalPlanned,
+                count: summary.countPlanned,
+                color: AppTheme.warmGold,
+              ),
+              _SummaryChip(
+                label: 'ملغي',
+                amount: summary.totalCancelled,
+                count: summary.countCancelled,
+                color: AppTheme.mediumGray,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

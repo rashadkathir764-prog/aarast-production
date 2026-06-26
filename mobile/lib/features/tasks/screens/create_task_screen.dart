@@ -6,7 +6,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../../core/widgets/primary_action_button.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
@@ -123,7 +122,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  PrimaryActionButton(
+                  AarastButton(
                     label: 'تأكيد التاريخ',
                     icon: Icons.check_rounded,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
@@ -200,192 +199,27 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     final provider = context.watch<TaskTimelineProvider>();
     final category = _categories.firstWhere((item) => item.id == _category);
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: _goBack,
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            tooltip: 'رجوع',
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _isEditMode ? 'تعديل المهمة' : 'إضافة مهمة',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: AppTheme.dMaroonDeep,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return AarastScreenFrame(
+      maxWidth: 480,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _goBack,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    tooltip: 'رجوع',
                   ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    sliver: SliverToBoxAdapter(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const _TaskHero(),
-                            const SizedBox(height: 18),
-                            AarastCard(
-                              padding: const EdgeInsets.all(18),
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _titleController,
-                                    textAlign: TextAlign.right,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: const InputDecoration(
-                                      labelText: 'عنوان المهمة',
-                                      hintText: 'مثال: تأكيد قائمة المدعوين',
-                                      prefixIcon: Icon(Icons.edit_note_rounded),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null ||
-                                          value.trim().isEmpty) {
-                                        return 'عنوان المهمة مطلوب';
-                                      }
-                                      return null;
-                                    },
-                                  ),
-                                  const SizedBox(height: 14),
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final categoryField = _SelectorField(
-                                        label: 'الفئة',
-                                        value: category.label,
-                                        icon: category.icon,
-                                        selected: true,
-                                        onTap: _showCategoryPicker,
-                                      );
-                                      final dateField = _SelectorField(
-                                        label: 'التاريخ',
-                                        value: _dueDate == null
-                                            ? 'لم يحدد بعد'
-                                            : _formatDate(_dueDate!),
-                                        icon: Icons.calendar_month_rounded,
-                                        selected: _dueDate != null,
-                                        onTap: _showCalendarPicker,
-                                      );
-
-                                      if (constraints.maxWidth < 330) {
-                                        return Column(
-                                          children: [
-                                            categoryField,
-                                            const SizedBox(height: 12),
-                                            dateField,
-                                          ],
-                                        );
-                                      }
-
-                                      return Row(
-                                        children: [
-                                          Expanded(child: categoryField),
-                                          const SizedBox(width: 12),
-                                          Expanded(child: dateField),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 18),
-                                  const Align(
-                                    alignment: AlignmentDirectional.centerStart,
-                                    child: Text(
-                                      'أولوية المهمة',
-                                      style: TextStyle(
-                                        color: AppTheme.dInk,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      _PriorityChip(
-                                        label: 'منخفضة',
-                                        icon: Icons.eco_outlined,
-                                        color: AppTheme.dGreen,
-                                        selected: _priority == 'LOW',
-                                        onTap: () {
-                                          setState(() => _priority = 'LOW');
-                                        },
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _PriorityChip(
-                                        label: 'متوسطة',
-                                        icon: Icons.drag_handle_rounded,
-                                        color: AppTheme.dGoldDeep,
-                                        selected: _priority == 'MEDIUM',
-                                        onTap: () {
-                                          setState(() => _priority = 'MEDIUM');
-                                        },
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _PriorityChip(
-                                        label: 'عاجلة',
-                                        icon: Icons.bolt_rounded,
-                                        color: AppTheme.danger,
-                                        selected: _priority == 'HIGH',
-                                        onTap: () {
-                                          setState(() => _priority = 'HIGH');
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _descriptionController,
-                                    textAlign: TextAlign.right,
-                                    maxLines: 4,
-                                    decoration: const InputDecoration(
-                                      labelText: 'ملاحظات (اختياري)',
-                                      hintText:
-                                          'أضف أي تفاصيل تساعدك على تنفيذ المهمة...',
-                                      alignLabelWithHint: true,
-                                    ),
-                                  ),
-                                  if (provider.errorMessage != null) ...[
-                                    const SizedBox(height: 14),
-                                    AarastStatusPill(
-                                      label: provider.errorMessage!,
-                                      color: AppTheme.danger,
-                                      icon: Icons.error_outline_rounded,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            PrimaryActionButton(
-                              label: _isEditMode
-                                  ? 'حفظ التعديلات'
-                                  : 'حفظ المهمة',
-                              icon: _isEditMode
-                                  ? Icons.save_outlined
-                                  : Icons.event_available_rounded,
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                          ],
-                        ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _isEditMode ? 'تعديل المهمة' : 'إضافة مهمة',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.dMaroonDeep,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -393,7 +227,158 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
               ),
             ),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            sliver: SliverToBoxAdapter(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _TaskHero(),
+                    const SizedBox(height: 18),
+                    AarastCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _titleController,
+                            textAlign: TextAlign.right,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'عنوان المهمة',
+                              hintText: 'مثال: تأكيد قائمة المدعوين',
+                              prefixIcon: Icon(Icons.edit_note_rounded),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'عنوان المهمة مطلوب';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final categoryField = _SelectorField(
+                                label: 'الفئة',
+                                value: category.label,
+                                icon: category.icon,
+                                selected: true,
+                                onTap: _showCategoryPicker,
+                              );
+                              final dateField = _SelectorField(
+                                label: 'التاريخ',
+                                value: _dueDate == null
+                                    ? 'لم يحدد بعد'
+                                    : _formatDate(_dueDate!),
+                                icon: Icons.calendar_month_rounded,
+                                selected: _dueDate != null,
+                                onTap: _showCalendarPicker,
+                              );
+
+                              if (constraints.maxWidth < 330) {
+                                return Column(
+                                  children: [
+                                    categoryField,
+                                    const SizedBox(height: 12),
+                                    dateField,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(child: categoryField),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: dateField),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 18),
+                          const Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'أولوية المهمة',
+                              style: TextStyle(
+                                color: AppTheme.dInk,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              _PriorityChip(
+                                label: 'منخفضة',
+                                icon: Icons.eco_outlined,
+                                color: AppTheme.dGreen,
+                                selected: _priority == 'LOW',
+                                onTap: () {
+                                  setState(() => _priority = 'LOW');
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _PriorityChip(
+                                label: 'متوسطة',
+                                icon: Icons.drag_handle_rounded,
+                                color: AppTheme.dGoldDeep,
+                                selected: _priority == 'MEDIUM',
+                                onTap: () {
+                                  setState(() => _priority = 'MEDIUM');
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _PriorityChip(
+                                label: 'عاجلة',
+                                icon: Icons.bolt_rounded,
+                                color: AppTheme.danger,
+                                selected: _priority == 'HIGH',
+                                onTap: () {
+                                  setState(() => _priority = 'HIGH');
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _descriptionController,
+                            textAlign: TextAlign.right,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'ملاحظات (اختياري)',
+                              hintText:
+                                  'أضف أي تفاصيل تساعدك على تنفيذ المهمة...',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                          if (provider.errorMessage != null) ...[
+                            const SizedBox(height: 14),
+                            AarastStatusPill(
+                              label: provider.errorMessage!,
+                              color: AppTheme.danger,
+                              icon: Icons.error_outline_rounded,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    AarastButton(
+                      label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
+                      icon: _isEditMode
+                          ? Icons.save_outlined
+                          : Icons.event_available_rounded,
+                      isLoading: provider.isSubmitting,
+                      onPressed: _submit,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

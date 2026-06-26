@@ -59,110 +59,93 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          bottom: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Consumer<ProviderMarketplaceProvider>(
-                builder: (context, provider, _) {
-                  return RefreshIndicator(
-                    color: AppTheme.dMaroon,
-                    onRefresh: provider.loadMarketplace,
-                    child: ListView(
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        widget.embedded ? 18 : 20,
-                        16,
-                        widget.embedded ? 124 : 28,
-                      ),
-                      children: [
-                        _MarketplaceHeader(embedded: widget.embedded),
-                        const SizedBox(height: 18),
-                        _MarketplaceHero(
-                          onTap: () => _searchFocusNode.requestFocus(),
-                        ),
-                        const SizedBox(height: 12),
-                        _LocationContextCard(
-                          location: _weddingLocation,
-                          onCompleteLocation: _openLocationCompletion,
-                        ),
-                        if (provider.includesAccountData) ...[
-                          const SizedBox(height: 12),
-                          _QuoteRequestsOverview(
-                            quotes: provider.quoteRequests,
-                          ),
-                        ],
-                        const SizedBox(height: 18),
-                        _MarketplaceSearch(
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          provider: provider,
-                        ),
-                        const SizedBox(height: 12),
-                        _FilterChips(provider: provider),
-                        const SizedBox(height: 18),
-                        if (provider.errorMessage != null)
-                          _ErrorCard(
-                            message: provider.errorMessage!,
-                            onRetry: provider.loadMarketplace,
-                          )
-                        else if (provider.isLoading &&
-                            provider.providers.isEmpty)
-                          const _MarketplaceSkeleton()
-                        else if (provider.providers.isEmpty)
-                          AarastEmptyState(
-                            icon: Icons.storefront_outlined,
-                            title: 'لا توجد نتائج مطابقة',
-                            message:
-                                _weddingLocation?.hasRequiredLocation == true
-                                ? 'جرّبي تغيير المدينة أو الفئة، أو امسحي الفلاتر لاستعراض الموردين المتاحين.'
-                                : 'حدد موقع الزفاف لاقتراح موردين أقرب لك، أو امسحي الفلاتر لاستعراض الموردين المتاحين.',
-                            action: OutlinedButton.icon(
-                              onPressed: provider.clearFilters,
-                              icon: const Icon(Icons.tune_rounded),
-                              label: const Text('مسح الفلاتر'),
-                            ),
-                          )
-                        else ...[
-                          _ResultsHeader(
-                            count: provider.providers.length,
-                            location: _weddingLocation,
-                          ),
-                          const SizedBox(height: 12),
-                          for (final item in provider.providers) ...[
-                            _ProviderCard(
-                              provider: item,
-                              isFavorite: provider.favoriteProviderIds.contains(
-                                item.id,
-                              ),
-                              onFavorite: () async {
-                                if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
-                                  context,
-                                )) {
-                                  return;
-                                }
-                                await provider.toggleFavorite(item.id);
-                              },
-                              onTap: () => context.push(
-                                AppRouter.providerDetails(item.id),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        ],
-                      ],
-                    ),
-                  );
-                },
+    return AarastScreenFrame(
+      maxWidth: 520,
+      safeAreaBottom: false,
+      child: Consumer<ProviderMarketplaceProvider>(
+        builder: (context, provider, _) {
+          return RefreshIndicator(
+            color: AppTheme.dMaroon,
+            onRefresh: provider.loadMarketplace,
+            child: ListView(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                widget.embedded ? 18 : 20,
+                16,
+                widget.embedded ? 124 : 28,
               ),
+              children: [
+                _MarketplaceHeader(embedded: widget.embedded),
+                const SizedBox(height: 18),
+                _MarketplaceHero(onTap: () => _searchFocusNode.requestFocus()),
+                const SizedBox(height: 12),
+                _LocationContextCard(
+                  location: _weddingLocation,
+                  onCompleteLocation: _openLocationCompletion,
+                ),
+                if (provider.includesAccountData) ...[
+                  const SizedBox(height: 12),
+                  _QuoteRequestsOverview(quotes: provider.quoteRequests),
+                ],
+                const SizedBox(height: 18),
+                _MarketplaceSearch(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  provider: provider,
+                ),
+                const SizedBox(height: 12),
+                _FilterChips(provider: provider),
+                const SizedBox(height: 18),
+                if (provider.errorMessage != null)
+                  _ErrorCard(
+                    message: provider.errorMessage!,
+                    onRetry: provider.loadMarketplace,
+                  )
+                else if (provider.isLoading && provider.providers.isEmpty)
+                  const _MarketplaceSkeleton()
+                else if (provider.providers.isEmpty)
+                  AarastEmptyState(
+                    icon: Icons.storefront_outlined,
+                    title: 'لا توجد نتائج مطابقة',
+                    message: _weddingLocation?.hasRequiredLocation == true
+                        ? 'جرّبي تغيير المدينة أو الفئة، أو امسحي الفلاتر لاستعراض الموردين المتاحين.'
+                        : 'حدد موقع الزفاف لاقتراح موردين أقرب لك، أو امسحي الفلاتر لاستعراض الموردين المتاحين.',
+                    action: OutlinedButton.icon(
+                      onPressed: provider.clearFilters,
+                      icon: const Icon(Icons.tune_rounded),
+                      label: const Text('مسح الفلاتر'),
+                    ),
+                  )
+                else ...[
+                  _ResultsHeader(
+                    count: provider.providers.length,
+                    location: _weddingLocation,
+                  ),
+                  const SizedBox(height: 12),
+                  for (final item in provider.providers) ...[
+                    _ProviderCard(
+                      provider: item,
+                      isFavorite: provider.favoriteProviderIds.contains(
+                        item.id,
+                      ),
+                      onFavorite: () async {
+                        if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+                          context,
+                        )) {
+                          return;
+                        }
+                        await provider.toggleFavorite(item.id);
+                      },
+                      onTap: () =>
+                          context.push(AppRouter.providerDetails(item.id)),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+              ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

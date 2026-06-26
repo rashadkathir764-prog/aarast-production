@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AuthWeddingScaffold extends StatelessWidget {
@@ -38,7 +39,7 @@ class AuthWeddingScaffold extends StatelessWidget {
                       child: SingleChildScrollView(
                         physics: const BouncingScrollPhysics(),
                         padding: effectivePadding,
-                        child: child,
+                        child: AarastFadeSlide(child: child),
                       ),
                     ),
                   ),

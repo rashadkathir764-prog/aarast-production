@@ -6,7 +6,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../../core/widgets/primary_action_button.dart';
 import '../providers/debt_installment_provider.dart';
 
 class CreateInstallmentScreen extends StatefulWidget {
@@ -39,196 +38,27 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<DebtInstallmentProvider>();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: _goBack,
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            tooltip: 'رجوع',
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'قسط جديد',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: AppTheme.dMaroonDeep,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return AarastScreenFrame(
+      maxWidth: 500,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _goBack,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    tooltip: 'رجوع',
                   ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-                    sliver: SliverToBoxAdapter(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const _InstallmentHero(),
-                            const SizedBox(height: 18),
-                            AarastCard(
-                              padding: const EdgeInsets.all(18),
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _amountController,
-                                    textAlign: TextAlign.right,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    decoration: const InputDecoration(
-                                      labelText: 'المبلغ',
-                                      suffixText: 'YER',
-                                      prefixIcon: Icon(Icons.payments_outlined),
-                                    ),
-                                    validator: _nonNegativeRequired(
-                                      'المبلغ يجب أن يكون رقماً غير سالب',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final dueField = _SelectorField(
-                                        label: 'الاستحقاق',
-                                        value: _dueDate == null
-                                            ? 'لم يحدد بعد'
-                                            : _formatDate(_dueDate!),
-                                        icon: Icons.event_available_rounded,
-                                        selected: _dueDate != null,
-                                        onTap: () => _showCalendarPicker(
-                                          mode: _DateMode.due,
-                                        ),
-                                      );
-                                      final paidField = _SelectorField(
-                                        label: 'الدفع',
-                                        value: _paidAt == null
-                                            ? 'لم يحدد بعد'
-                                            : _formatDate(_paidAt!),
-                                        icon:
-                                            Icons.check_circle_outline_rounded,
-                                        selected: _paidAt != null,
-                                        onTap: () => _showCalendarPicker(
-                                          mode: _DateMode.paid,
-                                        ),
-                                      );
-
-                                      if (constraints.maxWidth < 330) {
-                                        return Column(
-                                          children: [
-                                            dueField,
-                                            const SizedBox(height: 12),
-                                            paidField,
-                                          ],
-                                        );
-                                      }
-
-                                      return Row(
-                                        children: [
-                                          Expanded(child: dueField),
-                                          const SizedBox(width: 12),
-                                          Expanded(child: paidField),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 18),
-                                  const Align(
-                                    alignment: AlignmentDirectional.centerStart,
-                                    child: Text(
-                                      'حالة القسط',
-                                      style: TextStyle(
-                                        color: AppTheme.dInk,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      _StatusChoice(
-                                        label: 'منتظر',
-                                        value: 'PENDING',
-                                        color: AppTheme.dGoldDeep,
-                                        selected: _status == 'PENDING',
-                                        onTap: _setStatus,
-                                      ),
-                                      _StatusChoice(
-                                        label: 'مدفوع',
-                                        value: 'PAID',
-                                        color: AppTheme.dGreen,
-                                        selected: _status == 'PAID',
-                                        onTap: _setStatus,
-                                      ),
-                                      _StatusChoice(
-                                        label: 'متأخر',
-                                        value: 'OVERDUE',
-                                        color: AppTheme.danger,
-                                        selected: _status == 'OVERDUE',
-                                        onTap: _setStatus,
-                                      ),
-                                      _StatusChoice(
-                                        label: 'ملغي',
-                                        value: 'CANCELLED',
-                                        color: AppTheme.dMuted,
-                                        selected: _status == 'CANCELLED',
-                                        onTap: _setStatus,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _noteController,
-                                    textAlign: TextAlign.right,
-                                    minLines: 3,
-                                    maxLines: 4,
-                                    decoration: const InputDecoration(
-                                      labelText: 'ملاحظة اختيارية',
-                                      hintText:
-                                          'تفاصيل القسط أو طريقة السداد...',
-                                      alignLabelWithHint: true,
-                                    ),
-                                  ),
-                                  if (provider.errorMessage != null) ...[
-                                    const SizedBox(height: 14),
-                                    AarastStatusPill(
-                                      label: provider.errorMessage!,
-                                      color: AppTheme.danger,
-                                      icon: Icons.error_outline_rounded,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            PrimaryActionButton(
-                              label: 'حفظ القسط',
-                              icon: Icons.check_rounded,
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                          ],
-                        ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'قسط جديد',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.dMaroonDeep,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -236,7 +66,160 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
               ),
             ),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+            sliver: SliverToBoxAdapter(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _InstallmentHero(),
+                    const SizedBox(height: 18),
+                    AarastCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _amountController,
+                            textAlign: TextAlign.right,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'المبلغ',
+                              suffixText: 'YER',
+                              prefixIcon: Icon(Icons.payments_outlined),
+                            ),
+                            validator: _nonNegativeRequired(
+                              'المبلغ يجب أن يكون رقماً غير سالب',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final dueField = _SelectorField(
+                                label: 'الاستحقاق',
+                                value: _dueDate == null
+                                    ? 'لم يحدد بعد'
+                                    : _formatDate(_dueDate!),
+                                icon: Icons.event_available_rounded,
+                                selected: _dueDate != null,
+                                onTap: () =>
+                                    _showCalendarPicker(mode: _DateMode.due),
+                              );
+                              final paidField = _SelectorField(
+                                label: 'الدفع',
+                                value: _paidAt == null
+                                    ? 'لم يحدد بعد'
+                                    : _formatDate(_paidAt!),
+                                icon: Icons.check_circle_outline_rounded,
+                                selected: _paidAt != null,
+                                onTap: () =>
+                                    _showCalendarPicker(mode: _DateMode.paid),
+                              );
+
+                              if (constraints.maxWidth < 330) {
+                                return Column(
+                                  children: [
+                                    dueField,
+                                    const SizedBox(height: 12),
+                                    paidField,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(child: dueField),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: paidField),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 18),
+                          const Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'حالة القسط',
+                              style: TextStyle(
+                                color: AppTheme.dInk,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _StatusChoice(
+                                label: 'منتظر',
+                                value: 'PENDING',
+                                color: AppTheme.dGoldDeep,
+                                selected: _status == 'PENDING',
+                                onTap: _setStatus,
+                              ),
+                              _StatusChoice(
+                                label: 'مدفوع',
+                                value: 'PAID',
+                                color: AppTheme.dGreen,
+                                selected: _status == 'PAID',
+                                onTap: _setStatus,
+                              ),
+                              _StatusChoice(
+                                label: 'متأخر',
+                                value: 'OVERDUE',
+                                color: AppTheme.danger,
+                                selected: _status == 'OVERDUE',
+                                onTap: _setStatus,
+                              ),
+                              _StatusChoice(
+                                label: 'ملغي',
+                                value: 'CANCELLED',
+                                color: AppTheme.dMuted,
+                                selected: _status == 'CANCELLED',
+                                onTap: _setStatus,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _noteController,
+                            textAlign: TextAlign.right,
+                            minLines: 3,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'ملاحظة اختيارية',
+                              hintText: 'تفاصيل القسط أو طريقة السداد...',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                          if (provider.errorMessage != null) ...[
+                            const SizedBox(height: 14),
+                            AarastStatusPill(
+                              label: provider.errorMessage!,
+                              color: AppTheme.danger,
+                              icon: Icons.error_outline_rounded,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    AarastButton(
+                      label: 'حفظ القسط',
+                      icon: Icons.check_rounded,
+                      isLoading: provider.isSubmitting,
+                      onPressed: _submit,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -290,7 +273,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  PrimaryActionButton(
+                  AarastButton(
                     label: 'تأكيد التاريخ',
                     icon: Icons.check_rounded,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),

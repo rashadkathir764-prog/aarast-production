@@ -61,91 +61,76 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     final provider = context.watch<FinanceProvider>();
     final canManageFinancialRecords = _canManageFinancialRecords;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: _goBack,
-                          icon: const Icon(Icons.arrow_forward_rounded),
-                          tooltip: 'رجوع',
+    return AarastScreenFrame(
+      maxWidth: 520,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: _goBack,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                  tooltip: 'رجوع',
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'الميزانية والمصاريف',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.dMaroonDeep,
+                          fontWeight: FontWeight.w900,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'الميزانية والمصاريف',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: AppTheme.dMaroonDeep,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                              ),
-                              Text(
-                                'إدارة ميزانيتك ومتابعة المدفوعات',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.dInkSoft,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                              ),
-                            ],
-                          ),
+                      ),
+                      Text(
+                        'إدارة ميزانيتك ومتابعة المدفوعات',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(width: 10),
-                        IconButton(
-                          onPressed: canManageFinancialRecords
-                              ? () => context.push(
-                                  AppRouter.createBudgetCategory(
-                                    widget.weddingPlanId,
-                                  ),
-                                  extra: widget.sharedMember,
-                                )
-                              : null,
-                          icon: const Icon(Icons.create_new_folder_outlined),
-                          tooltip: 'إضافة تصنيف',
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      color: AppTheme.dMaroon,
-                      onRefresh: _isLocalGuestPlan ? () async {} : _loadFinance,
-                      child: _hasAnyFinanceAccess
-                          ? _FinanceContent(
-                              provider: provider,
-                              weddingPlanId: widget.weddingPlanId,
-                              canManageFinancialRecords:
-                                  canManageFinancialRecords,
-                              sharedMember: widget.sharedMember,
-                              onChanged: _markExpenseChanged,
-                              suppressErrors: _isLocalGuestPlan,
-                            )
-                          : const _FinancialAccessDeniedState(),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  onPressed: canManageFinancialRecords
+                      ? () => context.push(
+                          AppRouter.createBudgetCategory(widget.weddingPlanId),
+                          extra: widget.sharedMember,
+                        )
+                      : null,
+                  icon: const Icon(Icons.create_new_folder_outlined),
+                  tooltip: 'إضافة تصنيف',
+                ),
+              ],
             ),
           ),
-        ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AppTheme.dMaroon,
+              onRefresh: _isLocalGuestPlan ? () async {} : _loadFinance,
+              child: _hasAnyFinanceAccess
+                  ? _FinanceContent(
+                      provider: provider,
+                      weddingPlanId: widget.weddingPlanId,
+                      canManageFinancialRecords: canManageFinancialRecords,
+                      sharedMember: widget.sharedMember,
+                      onChanged: _markExpenseChanged,
+                      suppressErrors: _isLocalGuestPlan,
+                    )
+                  : const _FinancialAccessDeniedState(),
+            ),
+          ),
+        ],
       ),
     );
   }

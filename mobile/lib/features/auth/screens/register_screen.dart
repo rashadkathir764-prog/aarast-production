@@ -7,7 +7,6 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../../core/widgets/primary_action_button.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
@@ -255,7 +254,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     AuthInlineError(message: dashboard.errorMessage!),
                   ],
                   const SizedBox(height: 20),
-                  PrimaryActionButton(
+                  AarastButton(
                     label: providerMode ? 'إرسال طلب الانضمام' : 'إنشاء حساب',
                     icon: providerMode
                         ? Icons.assignment_ind_outlined

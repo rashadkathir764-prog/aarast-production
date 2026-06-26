@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_ui.dart';
 
 class TimelineDueItemCard extends StatelessWidget {
   const TimelineDueItemCard({
@@ -18,7 +20,8 @@ class TimelineDueItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return AarastCard(
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -62,12 +65,22 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(_labelForStatus(status)),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
+    return AarastStatusBadge(
+      label: _labelForStatus(status),
+      color: _statusColor(status),
+      backgroundColor: _statusColor(status).withAlpha(28),
     );
   }
+}
+
+Color _statusColor(String status) {
+  return switch (status) {
+    'DONE' || 'PAID' => AppTheme.success,
+    'CANCELLED' => AppTheme.dInkSoft,
+    'PARTIALLY_PAID' || 'IN_PROGRESS' => AppTheme.dGoldDeep,
+    'OVERDUE' => AppTheme.danger,
+    _ => AppTheme.dMaroon,
+  };
 }
 
 String _labelForStatus(String status) {

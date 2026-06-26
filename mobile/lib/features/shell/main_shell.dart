@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/aarast_ui.dart';
 import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
@@ -95,7 +96,7 @@ class _MainShellState extends State<MainShell> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppTheme.dBg,
           body: IndexedStack(
             index: _index,
             children: [
@@ -159,23 +160,12 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildNoPlanFallback(String title) {
-    return Scaffold(
-      backgroundColor: AppTheme.dBg,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.info_outline, size: 64, color: AppTheme.dMuted),
-            const SizedBox(height: 16),
-            Text(
-              'اختر خطة من الرئيسية أولًا لفتح $title.',
-              style: const TextStyle(
-                color: AppTheme.dInk,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
+    return AarastScaffold(
+      child: Center(
+        child: AarastEmptyState(
+          icon: Icons.info_outline_rounded,
+          title: title,
+          message: 'اختر خطة من الرئيسية أولًا لفتح $title.',
         ),
       ),
     );

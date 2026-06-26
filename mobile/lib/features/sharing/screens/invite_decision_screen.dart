@@ -96,20 +96,21 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: AarastButton(
+                  label: 'رفض الدعوة',
+                  variant: AarastButtonVariant.secondary,
                   onPressed: provider.isSubmitting
                       ? null
                       : () => _respond(provider, accept: false),
-                  child: const Text('رفض الدعوة'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: FilledButton(
+                child: AarastButton(
+                  label: 'قبول الدعوة',
                   onPressed: provider.isSubmitting
                       ? null
                       : () => _respond(provider, accept: true),
-                  child: const Text('قبول الدعوة'),
                 ),
               ),
             ],

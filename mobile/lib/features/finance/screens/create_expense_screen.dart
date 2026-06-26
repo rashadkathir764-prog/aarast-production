@@ -6,7 +6,6 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../../core/widgets/primary_action_button.dart';
 import '../../../shared/models/quote_finance_context.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/budget_category.dart';
@@ -86,212 +85,27 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     final category = _selectedCategory(provider.budgetCategories);
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.dBg,
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 500),
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed: _goBack,
-                            icon: const Icon(Icons.arrow_forward_rounded),
-                            tooltip: 'رجوع',
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _isEditMode ? 'تعديل مصروف' : 'إضافة مصروف',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(
-                                    color: AppTheme.dMaroonDeep,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+    return AarastScreenFrame(
+      maxWidth: 500,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _goBack,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    tooltip: 'رجوع',
                   ),
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      0,
-                      20,
-                      28 + keyboardBottom,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _ExpenseHero(isEditMode: _isEditMode),
-                            const SizedBox(height: 18),
-                            AarastCard(
-                              padding: const EdgeInsets.all(18),
-                              child: Column(
-                                children: [
-                                  TextFormField(
-                                    controller: _titleController,
-                                    textAlign: TextAlign.right,
-                                    textInputAction: TextInputAction.next,
-                                    decoration: const InputDecoration(
-                                      labelText: 'عنوان المصروف',
-                                      hintText: 'مثال: دفعة قاعة الأفراح',
-                                      prefixIcon: Icon(
-                                        Icons.receipt_long_outlined,
-                                      ),
-                                    ),
-                                    validator: _required('عنوان المصروف مطلوب'),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _amountController,
-                                    textAlign: TextAlign.right,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    decoration: const InputDecoration(
-                                      labelText: 'المبلغ',
-                                      suffixText: 'ر.ي',
-                                      prefixIcon: Icon(
-                                        Icons.account_balance_wallet_outlined,
-                                      ),
-                                    ),
-                                    validator: _nonNegativeRequired(
-                                      'المبلغ غير صحيح',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      final categoryField = _SelectorField(
-                                        label: 'التصنيف',
-                                        value: category?.name ?? 'بدون تصنيف',
-                                        icon: Icons.folder_outlined,
-                                        selected: category != null,
-                                        onTap: _showCategoryPicker,
-                                      );
-                                      final dateField = _SelectorField(
-                                        label: 'التاريخ',
-                                        value: _expenseDate == null
-                                            ? 'لم يحدد بعد'
-                                            : _formatDate(_expenseDate!),
-                                        icon: Icons.calendar_month_rounded,
-                                        selected: _expenseDate != null,
-                                        onTap: _showCalendarPicker,
-                                      );
-
-                                      if (constraints.maxWidth < 330) {
-                                        return Column(
-                                          children: [
-                                            categoryField,
-                                            const SizedBox(height: 12),
-                                            dateField,
-                                          ],
-                                        );
-                                      }
-
-                                      return Row(
-                                        children: [
-                                          Expanded(child: categoryField),
-                                          const SizedBox(width: 12),
-                                          Expanded(child: dateField),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 18),
-                                  const Align(
-                                    alignment: AlignmentDirectional.centerStart,
-                                    child: Text(
-                                      'حالة المصروف',
-                                      style: TextStyle(
-                                        color: AppTheme.dInk,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      _StatusChip(
-                                        label: 'مخطط',
-                                        icon: Icons.schedule_rounded,
-                                        color: AppTheme.dGoldDeep,
-                                        selected: _status == 'PLANNED',
-                                        onTap: () {
-                                          setState(() => _status = 'PLANNED');
-                                        },
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _StatusChip(
-                                        label: 'مدفوع',
-                                        icon: Icons.check_circle_rounded,
-                                        color: AppTheme.dGreen,
-                                        selected: _status == 'PAID',
-                                        onTap: () {
-                                          setState(() => _status = 'PAID');
-                                        },
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _StatusChip(
-                                        label: 'ملغي',
-                                        icon: Icons.block_rounded,
-                                        color: AppTheme.dMuted,
-                                        selected: _status == 'CANCELLED',
-                                        onTap: () {
-                                          setState(() => _status = 'CANCELLED');
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 14),
-                                  TextFormField(
-                                    controller: _noteController,
-                                    textAlign: TextAlign.right,
-                                    maxLines: 4,
-                                    decoration: const InputDecoration(
-                                      labelText: 'ملاحظات (اختياري)',
-                                      hintText:
-                                          'أضف تفاصيل الدفعة أو الجهة المستلمة...',
-                                      alignLabelWithHint: true,
-                                    ),
-                                  ),
-                                  if (provider.errorMessage != null) ...[
-                                    const SizedBox(height: 14),
-                                    AarastStatusPill(
-                                      label: provider.errorMessage!,
-                                      color: AppTheme.danger,
-                                      icon: Icons.error_outline_rounded,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            PrimaryActionButton(
-                              label: _isEditMode
-                                  ? 'حفظ التعديلات'
-                                  : 'حفظ المصروف',
-                              icon: _isEditMode
-                                  ? Icons.save_outlined
-                                  : Icons.check_rounded,
-                              isLoading: provider.isSubmitting,
-                              onPressed: _submit,
-                            ),
-                          ],
-                        ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _isEditMode ? 'تعديل مصروف' : 'إضافة مصروف',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.dMaroonDeep,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -299,7 +113,169 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
               ),
             ),
           ),
-        ),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, 28 + keyboardBottom),
+            sliver: SliverToBoxAdapter(
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _ExpenseHero(isEditMode: _isEditMode),
+                    const SizedBox(height: 18),
+                    AarastCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _titleController,
+                            textAlign: TextAlign.right,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'عنوان المصروف',
+                              hintText: 'مثال: دفعة قاعة الأفراح',
+                              prefixIcon: Icon(Icons.receipt_long_outlined),
+                            ),
+                            validator: _required('عنوان المصروف مطلوب'),
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _amountController,
+                            textAlign: TextAlign.right,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration: const InputDecoration(
+                              labelText: 'المبلغ',
+                              suffixText: 'ر.ي',
+                              prefixIcon: Icon(
+                                Icons.account_balance_wallet_outlined,
+                              ),
+                            ),
+                            validator: _nonNegativeRequired('المبلغ غير صحيح'),
+                          ),
+                          const SizedBox(height: 14),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final categoryField = _SelectorField(
+                                label: 'التصنيف',
+                                value: category?.name ?? 'بدون تصنيف',
+                                icon: Icons.folder_outlined,
+                                selected: category != null,
+                                onTap: _showCategoryPicker,
+                              );
+                              final dateField = _SelectorField(
+                                label: 'التاريخ',
+                                value: _expenseDate == null
+                                    ? 'لم يحدد بعد'
+                                    : _formatDate(_expenseDate!),
+                                icon: Icons.calendar_month_rounded,
+                                selected: _expenseDate != null,
+                                onTap: _showCalendarPicker,
+                              );
+
+                              if (constraints.maxWidth < 330) {
+                                return Column(
+                                  children: [
+                                    categoryField,
+                                    const SizedBox(height: 12),
+                                    dateField,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(child: categoryField),
+                                  const SizedBox(width: 12),
+                                  Expanded(child: dateField),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 18),
+                          const Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Text(
+                              'حالة المصروف',
+                              style: TextStyle(
+                                color: AppTheme.dInk,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              _StatusChip(
+                                label: 'مخطط',
+                                icon: Icons.schedule_rounded,
+                                color: AppTheme.dGoldDeep,
+                                selected: _status == 'PLANNED',
+                                onTap: () {
+                                  setState(() => _status = 'PLANNED');
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _StatusChip(
+                                label: 'مدفوع',
+                                icon: Icons.check_circle_rounded,
+                                color: AppTheme.dGreen,
+                                selected: _status == 'PAID',
+                                onTap: () {
+                                  setState(() => _status = 'PAID');
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _StatusChip(
+                                label: 'ملغي',
+                                icon: Icons.block_rounded,
+                                color: AppTheme.dMuted,
+                                selected: _status == 'CANCELLED',
+                                onTap: () {
+                                  setState(() => _status = 'CANCELLED');
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _noteController,
+                            textAlign: TextAlign.right,
+                            maxLines: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'ملاحظات (اختياري)',
+                              hintText:
+                                  'أضف تفاصيل الدفعة أو الجهة المستلمة...',
+                              alignLabelWithHint: true,
+                            ),
+                          ),
+                          if (provider.errorMessage != null) ...[
+                            const SizedBox(height: 14),
+                            AarastStatusPill(
+                              label: provider.errorMessage!,
+                              color: AppTheme.danger,
+                              icon: Icons.error_outline_rounded,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    AarastButton(
+                      label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المصروف',
+                      icon: _isEditMode
+                          ? Icons.save_outlined
+                          : Icons.check_rounded,
+                      isLoading: provider.isSubmitting,
+                      onPressed: _submit,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -395,7 +371,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  PrimaryActionButton(
+                  AarastButton(
                     label: 'تأكيد التاريخ',
                     icon: Icons.check_rounded,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),

@@ -7,7 +7,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { OtpCode, OtpPurpose, User } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
-import { randomInt } from 'crypto';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -28,6 +27,7 @@ export interface OtpRequestResponse {
   expiresAt: Date;
   delivery: 'LOCAL_DEV' | 'PROVIDER_PENDING';
   code?: string;
+  message?: string;
 }
 
 export interface OtpVerifyResponse {
@@ -40,6 +40,9 @@ export interface OtpVerifyResponse {
 
 @Injectable()
 export class AuthService {
+  private static readonly otpUnavailableMessage =
+    'خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.';
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -107,7 +110,15 @@ export class AuthService {
   async requestOtp(dto: RequestOtpDto): Promise<OtpRequestResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const purpose = dto.purpose;
-    const code = this.generateOtpCode();
+    const mode = this.getOtpMode();
+
+    if (mode === 'disabled' || mode === 'whatsapp') {
+      throw new BadRequestException(AuthService.otpUnavailableMessage);
+    }
+
+    // Temporary local development bridge until the Meta WhatsApp OTP provider
+    // is wired. Production never reaches dev mode.
+    const code = this.getDevOtpCode();
     const codeHash = await bcryptjs.hash(code, 10);
     const now = new Date();
     const expiresAt = new Date(
@@ -134,16 +145,13 @@ export class AuthService {
       },
     });
 
-    const exposeCode =
-      process.env.NODE_ENV !== 'production' ||
-      process.env.AARAST_EXPOSE_OTP_IN_SMOKE === 'true';
-
     return {
       phone,
       purpose,
       expiresAt,
-      delivery: exposeCode ? 'LOCAL_DEV' : 'PROVIDER_PENDING',
-      ...(exposeCode ? { code } : {}),
+      delivery: 'LOCAL_DEV',
+      code,
+      message: `رمز التحقق مؤقت للتجربة المحلية: ${code}`,
     };
   }
 
@@ -152,6 +160,10 @@ export class AuthService {
     const code = this.requiredText(dto.code, 'code');
     const purpose = dto.purpose;
     const now = new Date();
+
+    if (this.getOtpMode() !== 'dev' && code === this.getDevOtpCode()) {
+      throw new BadRequestException('OTP code is invalid or expired');
+    }
 
     const otp = await this.prisma.otpCode.findFirst({
       where: { phone, purpose, consumedAt: null },
@@ -246,8 +258,21 @@ export class AuthService {
     });
   }
 
-  private generateOtpCode(): string {
-    return randomInt(0, 1_000_000).toString().padStart(6, '0');
+  private getOtpMode(): 'dev' | 'whatsapp' | 'disabled' {
+    const configured = (process.env.AUTH_OTP_MODE ?? '').trim().toLowerCase();
+    if (configured === 'dev') {
+      return process.env.NODE_ENV === 'production' ? 'disabled' : 'dev';
+    }
+    if (configured === 'whatsapp' || configured === 'disabled') {
+      return configured;
+    }
+    return process.env.NODE_ENV === 'production' ? 'disabled' : 'dev';
+  }
+
+  private getDevOtpCode(): string {
+    const configured = (process.env.AUTH_DEV_OTP_CODE ?? '').trim();
+    if (/^\d{6}$/.test(configured)) return configured;
+    return '123456';
   }
 
   private getOtpExpiryMinutes(): number {

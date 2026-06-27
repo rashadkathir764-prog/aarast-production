@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../providers/auth_controller.dart';
+import 'otp_screen.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 enum _AccountType { customer, provider }
@@ -330,9 +331,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    if (mounted) {
-      context.go(AppRouter.otp);
-    }
+    final otp = await auth.requestOtp(
+      phone: normalizedPhone,
+      purpose: 'VERIFY_PHONE',
+    );
+    if (otp == null || !mounted) return;
+
+    context.go(
+      AppRouter.otp,
+      extra: OtpScreenArgs(
+        phone: normalizedPhone,
+        purpose: 'VERIFY_PHONE',
+        devOtpMessage: otp.localDevMessage,
+      ),
+    );
   }
 
   String? _safeResumeLocation(BuildContext context) {

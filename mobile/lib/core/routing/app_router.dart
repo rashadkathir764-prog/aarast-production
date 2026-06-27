@@ -209,7 +209,19 @@ class AppRouter {
             startAsProvider: state.uri.queryParameters['type'] == 'provider',
           ),
         ),
-        GoRoute(path: otp, builder: (context, state) => const OtpScreen()),
+        GoRoute(
+          path: otp,
+          builder: (context, state) {
+            final args = state.extra is OtpScreenArgs
+                ? state.extra! as OtpScreenArgs
+                : null;
+            return OtpScreen(
+              phone: args?.phone,
+              purpose: args?.purpose,
+              devOtpMessage: args?.devOtpMessage,
+            );
+          },
+        ),
         GoRoute(
           path: home,
           builder: (context, state) => const DashboardEntryScreen(),

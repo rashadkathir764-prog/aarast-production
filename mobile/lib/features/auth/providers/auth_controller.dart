@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../data/auth_repository.dart';
+import '../models/auth_otp.dart';
 import '../models/safe_user.dart';
 
 enum AuthStatus { checking, authenticated, unauthenticated }
@@ -21,11 +22,13 @@ class AuthController extends ChangeNotifier {
   SafeUser? _user;
   bool _isSubmitting = false;
   String? _errorMessage;
+  OtpRequestResult? _otpRequest;
 
   AuthStatus get status => _status;
   SafeUser? get user => _user;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  OtpRequestResult? get otpRequest => _otpRequest;
 
   Future<void> restoreSession() async {
     _status = AuthStatus.checking;
@@ -89,6 +92,43 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
       unawaited(_offlineSyncService?.syncPendingChanges());
+    });
+  }
+
+  Future<OtpRequestResult?> requestOtp({
+    required String phone,
+    required String purpose,
+  }) async {
+    OtpRequestResult? result;
+    final success = await _submit(() async {
+      result = await _authRepository.requestOtp(
+        phone: phone.trim(),
+        purpose: purpose,
+      );
+      _otpRequest = result;
+    });
+    return success ? result : null;
+  }
+
+  Future<bool> verifyOtp({
+    required String phone,
+    required String purpose,
+    required String code,
+  }) async {
+    return _submit(() async {
+      final response = await _authRepository.verifyOtp(
+        phone: phone.trim(),
+        purpose: purpose,
+        code: code,
+      );
+      if (response.user != null) {
+        _user = response.user;
+        await _offlineSyncService?.cacheCurrentUser(response.user!);
+      }
+      if (response.accessToken != null) {
+        _status = AuthStatus.authenticated;
+        unawaited(_offlineSyncService?.syncPendingChanges());
+      }
     });
   }
 

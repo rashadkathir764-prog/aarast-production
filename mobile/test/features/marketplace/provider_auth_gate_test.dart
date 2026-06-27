@@ -129,4 +129,57 @@ void main() {
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('login'), findsNothing);
   });
+
+  testWidgets(
+    'providers quote route opens when an authenticated session exists',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final authStorage = AuthStorage(preferences);
+      final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+      final authRepository = AuthRepository(apiClient, authStorage);
+      final authController = _AuthenticatedAuthController(authRepository);
+      final router = GoRouter(
+        initialLocation: '/providers/p-1/quote',
+        routes: [
+          GoRoute(
+            path: AppRouter.login,
+            builder: (context, state) => const Scaffold(body: Text('login')),
+          ),
+          GoRoute(
+            path: '/providers/:id/quote',
+            builder: (context, state) => ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              child: const Text('quote-opened'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: authStorage),
+            Provider<AuthRepository>.value(value: authRepository),
+            ChangeNotifierProvider<AuthController>.value(value: authController),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(find.text('quote-opened'), findsOneWidget);
+      expect(find.byKey(const Key('provider-auth-gate')), findsNothing);
+      expect(find.text('login'), findsNothing);
+    },
+  );
+}
+
+class _AuthenticatedAuthController extends AuthController {
+  _AuthenticatedAuthController(super.authRepository);
+
+  @override
+  AuthStatus get status => AuthStatus.authenticated;
 }

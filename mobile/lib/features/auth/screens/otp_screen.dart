@@ -1,14 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
+class OtpScreenArgs {
+  const OtpScreenArgs({
+    required this.phone,
+    this.purpose = 'VERIFY_PHONE',
+    this.devOtpMessage,
+  });
+
+  final String phone;
+  final String purpose;
+  final String? devOtpMessage;
+}
+
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key});
+  const OtpScreen({this.phone, this.purpose, this.devOtpMessage, super.key});
+
+  final String? phone;
+  final String? purpose;
+  final String? devOtpMessage;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -27,6 +45,13 @@ class _OtpScreenState extends State<OtpScreen> {
   );
 
   bool _isVerifying = false;
+  String? _devOtpMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _devOtpMessage = widget.devOtpMessage;
+  }
 
   @override
   void dispose() {
@@ -59,13 +84,29 @@ class _OtpScreenState extends State<OtpScreen> {
   Future<void> _verifyOtp() async {
     final code = _controllers.map((controller) => controller.text).join();
     if (code.length < _codeLength || _isVerifying) return;
+    final auth = context.read<AuthController>();
+    final phone = widget.phone ?? auth.otpRequest?.phone;
+    final purpose =
+        widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
+    if (phone == null || phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اطلبي رمز تحقق جديد للمتابعة.')),
+      );
+      return;
+    }
 
     setState(() => _isVerifying = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
+    final success = await auth.verifyOtp(
+      phone: phone,
+      purpose: purpose,
+      code: code,
+    );
 
     if (!mounted) return;
     setState(() => _isVerifying = false);
-    context.go(AppRouter.home);
+    if (success) {
+      context.go(AppRouter.home);
+    }
   }
 
   void _goBack() {
@@ -79,6 +120,8 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final auth = context.watch<AuthController>();
+    final devOtpMessage = _devOtpMessage ?? auth.otpRequest?.localDevMessage;
 
     return AuthWeddingScaffold(
       leading: AuthBackButton(onPressed: _goBack),
@@ -114,6 +157,10 @@ class _OtpScreenState extends State<OtpScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (devOtpMessage != null) ...[
+                  _DevOtpNotice(message: devOtpMessage),
+                  const SizedBox(height: 16),
+                ],
                 Directionality(
                   textDirection: TextDirection.ltr,
                   child: Row(
@@ -170,10 +217,14 @@ class _OtpScreenState extends State<OtpScreen> {
                   ),
                 ),
                 const SizedBox(height: 22),
+                if (auth.errorMessage != null) ...[
+                  AuthInlineError(message: auth.errorMessage!),
+                  const SizedBox(height: 14),
+                ],
                 AarastButton(
                   label: 'تأكيد الرمز',
                   icon: Icons.verified_rounded,
-                  isLoading: _isVerifying,
+                  isLoading: _isVerifying || auth.isSubmitting,
                   onPressed: _verifyOtp,
                 ),
               ],
@@ -183,13 +234,55 @@ class _OtpScreenState extends State<OtpScreen> {
           AuthFooterLink(
             prefix: 'لم تستلمي الرمز؟',
             action: 'إعادة الإرسال',
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
+            onTap: () async {
+              final authController = context.read<AuthController>();
+              final messenger = ScaffoldMessenger.of(context);
+              final phone = widget.phone ?? auth.otpRequest?.phone;
+              final purpose =
+                  widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
+              if (phone == null || phone.isEmpty) return;
+              final result = await authController.requestOtp(
+                phone: phone,
+                purpose: purpose,
+              );
+              if (result == null) return;
+              if (result.localDevMessage != null && mounted) {
+                setState(() => _devOtpMessage = result.localDevMessage);
+              }
+              if (!mounted) return;
+              messenger.showSnackBar(
                 const SnackBar(content: Text('تم إعادة إرسال الرمز')),
               );
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DevOtpNotice extends StatelessWidget {
+  const _DevOtpNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.dCreamBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.dLine),
+      ),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: AppTheme.dInk,
+          fontWeight: FontWeight.w900,
+          height: 1.4,
+        ),
       ),
     );
   }

@@ -7,7 +7,7 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "test": "node --test -r ts-node/register test/backend-support.test.ts test/quote-lifecycle.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts",
+    "test": "node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/quote-lifecycle.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts",
     "prisma:generate": "prisma generate",
     "smoke": "npm run smoke:health && npm run smoke:auth",
     "smoke:health": "node scripts/smoke/health-smoke.js",

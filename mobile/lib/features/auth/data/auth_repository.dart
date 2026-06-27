@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../models/auth_otp.dart';
 import '../models/auth_response.dart';
 import '../models/safe_user.dart';
 
@@ -55,6 +56,41 @@ class AuthRepository {
     final user = SafeUser.fromJson(json);
     await _authStorage.saveUser(user);
     return user;
+  }
+
+  Future<OtpRequestResult> requestOtp({
+    required String phone,
+    required String purpose,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    final json = await _apiClient.postJson('/auth/otp/request', {
+      'phone': normalizedPhone,
+      'purpose': purpose,
+    });
+    return OtpRequestResult.fromJson(json);
+  }
+
+  Future<OtpVerifyResult> verifyOtp({
+    required String phone,
+    required String purpose,
+    required String code,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    final json = await _apiClient.postJson('/auth/otp/verify', {
+      'phone': normalizedPhone,
+      'purpose': purpose,
+      'code': code,
+    });
+    final response = OtpVerifyResult.fromJson(json);
+    if (response.accessToken != null && response.user != null) {
+      await _authStorage.saveSession(
+        accessToken: response.accessToken!,
+        user: response.user!,
+      );
+    } else if (response.user != null) {
+      await _authStorage.saveUser(response.user!);
+    }
+    return response;
   }
 
   Future<String?> readAccessToken() => _authStorage.readAccessToken();

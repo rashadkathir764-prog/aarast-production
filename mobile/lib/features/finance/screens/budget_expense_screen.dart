@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,20 +11,25 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../sharing/models/shared_member.dart';
+import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../models/expense_summary.dart';
+import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/yemeni_money_text.dart';
 
 class BudgetExpenseScreen extends StatefulWidget {
   const BudgetExpenseScreen({
     required this.weddingPlanId,
     this.sharedMember,
+    this.embedded = false,
     super.key,
   });
 
   final String weddingPlanId;
   final SharedMember? sharedMember;
+  final bool embedded;
 
   @override
   State<BudgetExpenseScreen> createState() => _BudgetExpenseScreenState();
@@ -65,12 +71,14 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
             child: Row(
               children: [
-                IconButton(
-                  onPressed: _goBack,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  tooltip: 'رجوع',
-                ),
-                const SizedBox(width: 12),
+                if (!widget.embedded) ...[
+                  IconButton(
+                    onPressed: _goBack,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    tooltip: 'رجوع',
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,6 +149,17 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
 
   void _markExpenseChanged() {
     _hasExpenseChanges = true;
+    unawaited(_refreshDashboardSummary());
+  }
+
+  Future<void> _refreshDashboardSummary() async {
+    try {
+      await context.read<DashboardSummaryProvider>().loadDashboard(
+        widget.weddingPlanId,
+      );
+    } on ProviderNotFoundException {
+      return;
+    }
   }
 
   bool get _canReadBudget =>
@@ -192,12 +211,15 @@ class _FinanceContent extends StatelessWidget {
         ? const <BudgetCategory>[]
         : provider.budgetCategories;
     final expenses = suppressErrors ? const <Expense>[] : provider.expenses;
-    final summary = suppressErrors ? ExpenseSummary.empty() : provider.summary;
+    final moneySummary = suppressErrors
+        ? MoneySummary.empty(weddingPlanId)
+        : provider.moneySummary;
 
     if (!suppressErrors &&
         provider.isLoading &&
         budgetCategories.isEmpty &&
-        expenses.isEmpty) {
+        expenses.isEmpty &&
+        !moneySummary.hasAnyData) {
       return const _FinanceLoadingState();
     }
 
@@ -223,7 +245,20 @@ class _FinanceContent extends StatelessWidget {
       );
     }
 
-    final categoryRows = _buildCategoryRows(budgetCategories, expenses);
+    final categoryRows = moneySummary.categorySummaries.isNotEmpty
+        ? moneySummary.categorySummaries
+        : _buildCategoryRows(budgetCategories, expenses)
+              .map(
+                (row) => MoneyCategorySummary(
+                  categoryId: row.id,
+                  name: row.name,
+                  allocated: row.target.toString(),
+                  spent: row.spent.toString(),
+                  remaining: (row.target - row.spent).toString(),
+                  overBudget: row.target > 0 && row.spent > row.target,
+                ),
+              )
+              .toList();
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -233,36 +268,53 @@ class _FinanceContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _BudgetHero(summary: summary),
+        _SuperMoneyHero(summary: moneySummary),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _FinanceShortcutCard(
-                icon: Icons.category_outlined,
-                label: 'التصنيفات',
-                onTap: canManageFinancialRecords
-                    ? () => context.push(
-                        AppRouter.createBudgetCategory(weddingPlanId),
-                        extra: sharedMember,
-                      )
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _FinanceShortcutCard(
-                icon: Icons.credit_card_outlined,
-                label: 'الديون والأقساط',
-                onTap: () => context.push(
-                  AppRouter.debts(weddingPlanId),
-                  extra: sharedMember,
-                ),
-              ),
-            ),
-          ],
+        _BudgetStatusCard(summary: moneySummary),
+        const SizedBox(height: 14),
+        _QuickMoneyActions(
+          canManageFinancialRecords: canManageFinancialRecords,
+          onAddExpense: () => _openCreateExpense(context),
+          onAddDebt: () => _openCreateDebt(context),
+          onRecordInstallment: () => _openDebts(context),
+          onAddCategory: () => _openCreateCategory(context),
         ),
         const SizedBox(height: 20),
+        if (moneySummary.financialWarnings.isNotEmpty) ...[
+          _FinancialWarningsCard(warnings: moneySummary.financialWarnings),
+          const SizedBox(height: 18),
+        ],
+        if (moneySummary.categoriesCount == -1) ...[
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _FinanceShortcutCard(
+                  icon: Icons.category_outlined,
+                  label: 'التصنيفات',
+                  onTap: canManageFinancialRecords
+                      ? () => context.push(
+                          AppRouter.createBudgetCategory(weddingPlanId),
+                          extra: sharedMember,
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FinanceShortcutCard(
+                  icon: Icons.credit_card_outlined,
+                  label: 'الديون والأقساط',
+                  onTap: () => context.push(
+                    AppRouter.debts(weddingPlanId),
+                    extra: sharedMember,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+        ],
         AarastSectionHeader(
           title: 'تفاصيل المصروفات حسب الفئة',
           icon: Icons.pie_chart_outline_rounded,
@@ -293,7 +345,7 @@ class _FinanceContent extends StatelessWidget {
           )
         else
           for (final row in categoryRows) ...[
-            _BudgetCategoryProgressRow(row: row),
+            _MoneyCategoryProgressRow(row: row),
             const SizedBox(height: 10),
           ],
         const SizedBox(height: 18),
@@ -333,7 +385,26 @@ class _FinanceContent extends StatelessWidget {
             ),
             const SizedBox(height: 10),
           ],
+        const SizedBox(height: 18),
+        _DebtCommitmentSection(
+          summary: moneySummary,
+          canManageFinancialRecords: canManageFinancialRecords,
+          onAddDebt: () => _openCreateDebt(context),
+          onViewDebts: () => _openDebts(context),
+          onRecordInstallment: () => _openDebts(context),
+        ),
+        const SizedBox(height: 18),
+        _UpcomingInstallmentsSection(summary: moneySummary),
+        const SizedBox(height: 18),
+        _InstallmentActivitySection(summary: moneySummary),
       ],
+    );
+  }
+
+  void _openCreateCategory(BuildContext context) {
+    context.push(
+      AppRouter.createBudgetCategory(weddingPlanId),
+      extra: sharedMember,
     );
   }
 
@@ -342,7 +413,27 @@ class _FinanceContent extends StatelessWidget {
       AppRouter.createExpense(weddingPlanId),
       extra: sharedMember,
     );
-    if (changed == true && context.mounted) onChanged();
+    if (changed == true && context.mounted) {
+      onChanged();
+      await provider.loadFinance(weddingPlanId);
+    }
+  }
+
+  Future<void> _openCreateDebt(BuildContext context) async {
+    await context.push(
+      AppRouter.createDebt(weddingPlanId),
+      extra: sharedMember,
+    );
+    if (!context.mounted) return;
+    onChanged();
+    await provider.loadFinance(weddingPlanId);
+  }
+
+  Future<void> _openDebts(BuildContext context) async {
+    await context.push(AppRouter.debts(weddingPlanId), extra: sharedMember);
+    if (!context.mounted) return;
+    onChanged();
+    await provider.loadFinance(weddingPlanId);
   }
 
   Future<void> _openEditExpense(BuildContext context, Expense expense) async {
@@ -480,6 +571,767 @@ class _FinanceContent extends StatelessWidget {
   }
 }
 
+class _SuperMoneyHero extends StatelessWidget {
+  const _SuperMoneyHero({required this.summary});
+
+  final MoneySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final spendingRatio = summary.spendingRatio.clamp(0.0, 1.0);
+    final percent = (summary.spendingRatio * 100).round();
+    final hasUsableBudget = summary.hasUsableBudget;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: AppTheme.heroDecoration(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final chart = _SpendingDonut(
+            ratio: hasUsableBudget ? spendingRatio : 0,
+            label: hasUsableBudget ? '$percent%' : 'بدون',
+            caption: hasUsableBudget ? 'نسبة الصرف' : 'بدون ميزانية',
+          );
+          final stats = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'المال / الميزانية',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'إدارة ميزانيتك ومتابعة مصروفاتك',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withAlpha(210),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _MoneyStatTile(
+                    label: 'معك',
+                    value: summary.totalBudget,
+                    color: AppTheme.dGold,
+                  ),
+                  _MoneyStatTile(
+                    label: 'صرفت',
+                    value: summary.totalSpent,
+                    color: AppTheme.dPinkBg,
+                  ),
+                  _MoneyStatTile(
+                    label: 'باقي',
+                    value: summary.remainingBudget,
+                    color: AppTheme.dGreen,
+                  ),
+                  _MoneyStatTile(
+                    label: 'ديون',
+                    value: summary.debtRemaining ?? summary.totalDebts,
+                    color: AppTheme.danger,
+                  ),
+                ],
+              ),
+            ],
+          );
+
+          if (constraints.maxWidth < 355) {
+            return Column(children: [chart, const SizedBox(height: 18), stats]);
+          }
+          return Row(
+            children: [
+              Expanded(child: stats),
+              const SizedBox(width: 16),
+              chart,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SpendingDonut extends StatelessWidget {
+  const _SpendingDonut({
+    required this.ratio,
+    required this.label,
+    required this.caption,
+  });
+
+  final double ratio;
+  final String label;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 126,
+      height: 126,
+      child: CustomPaint(
+        painter: _BudgetDonutPainter(paidRatio: ratio),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                textDirection: label.contains('%')
+                    ? TextDirection.ltr
+                    : TextDirection.rtl,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                caption,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white.withAlpha(205),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoneyStatTile extends StatelessWidget {
+  const _MoneyStatTile({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String? value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 138,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(18),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: Colors.white.withAlpha(32)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Colors.white.withAlpha(210),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          YemeniMoneyText(
+            _moneyValue(value ?? '0'),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BudgetStatusCard extends StatelessWidget {
+  const _BudgetStatusCard({required this.summary});
+
+  final MoneySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = summary.budgetStatus;
+    final color = switch (status) {
+      'OVER_BUDGET' || 'DANGER' => AppTheme.danger,
+      'WARNING' => AppTheme.dGoldDeep,
+      _ => AppTheme.dGreen,
+    };
+    final label = switch (status) {
+      'OVER_BUDGET' => 'تجاوزت الميزانية',
+      'DANGER' => 'خطر',
+      'WARNING' => 'انتبه',
+      _ => 'آمن',
+    };
+    final message = switch (status) {
+      'OVER_BUDGET' => 'المصروفات أعلى من الميزانية الحالية.',
+      'DANGER' => 'توجد التزامات مالية تحتاج متابعة قريبة.',
+      'WARNING' => 'اقتربت من حدود الميزانية أو لديك تنبيه مالي.',
+      _ => 'المصروفات ضمن الحدود المتاحة حتى الآن.',
+    };
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: color.withAlpha(18),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Icon(Icons.shield_outlined, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AarastStatusPill(label: label, color: color),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickMoneyActions extends StatelessWidget {
+  const _QuickMoneyActions({
+    required this.canManageFinancialRecords,
+    required this.onAddExpense,
+    required this.onAddDebt,
+    required this.onRecordInstallment,
+    required this.onAddCategory,
+  });
+
+  final bool canManageFinancialRecords;
+  final VoidCallback onAddExpense;
+  final VoidCallback onAddDebt;
+  final VoidCallback onRecordInstallment;
+  final VoidCallback onAddCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _MoneyActionChip(
+          icon: Icons.add_card_rounded,
+          label: 'إضافة مصروف',
+          onTap: canManageFinancialRecords ? onAddExpense : null,
+        ),
+        _MoneyActionChip(
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'إضافة دين',
+          onTap: canManageFinancialRecords ? onAddDebt : null,
+        ),
+        _MoneyActionChip(
+          icon: Icons.event_available_outlined,
+          label: 'تسجيل قسط',
+          onTap: canManageFinancialRecords ? onRecordInstallment : null,
+        ),
+        _MoneyActionChip(
+          icon: Icons.category_outlined,
+          label: 'إضافة تصنيف',
+          onTap: canManageFinancialRecords ? onAddCategory : null,
+        ),
+      ],
+    );
+  }
+}
+
+class _MoneyActionChip extends StatelessWidget {
+  const _MoneyActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Icon(icon, size: 17, color: AppTheme.dMaroon),
+      label: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: onTap == null ? AppTheme.dMuted : AppTheme.dInk,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      backgroundColor: onTap == null ? AppTheme.dCard2 : AppTheme.dCreamBg,
+      side: BorderSide(
+        color: onTap == null ? AppTheme.dLine : AppTheme.dGold.withAlpha(55),
+      ),
+      onPressed: onTap,
+    );
+  }
+}
+
+class _FinancialWarningsCard extends StatelessWidget {
+  const _FinancialWarningsCard({required this.warnings});
+
+  final List<MoneyFinancialWarning> warnings;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      color: AppTheme.danger.withAlpha(12),
+      border: Border.all(color: AppTheme.danger.withAlpha(32)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AarastSectionHeader(
+            title: 'تنبيهات مالية',
+            icon: Icons.warning_amber_rounded,
+          ),
+          const SizedBox(height: 10),
+          for (final warning in warnings.take(4)) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  color: warning.severity == 'DANGER'
+                      ? AppTheme.danger
+                      : AppTheme.dGoldDeep,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _warningCopy(warning),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneyCategoryProgressRow extends StatelessWidget {
+  const _MoneyCategoryProgressRow({required this.row});
+
+  final MoneyCategorySummary row;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = row.percentUsed;
+    final color = progress >= 1
+        ? AppTheme.danger
+        : progress >= .75
+        ? AppTheme.dGoldDeep
+        : AppTheme.dMaroon;
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: color.withAlpha(20),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Icon(_categoryIcon(row.name), color: color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  row.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                '${(progress * 100).round()}%',
+                textDirection: TextDirection.ltr,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              minHeight: 7,
+              backgroundColor: AppTheme.dLine,
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MoneyStatusPill(
+                label: 'المخصص',
+                value: _moneyValue(row.allocated ?? '0'),
+                color: AppTheme.dGoldDeep,
+              ),
+              _MoneyStatusPill(
+                label: 'المصروف',
+                value: _moneyValue(row.spent ?? '0'),
+                color: AppTheme.dMaroon,
+              ),
+              _MoneyStatusPill(
+                label: 'الباقي',
+                value: _moneyValue(row.remaining ?? '0'),
+                color: row.overBudget == true
+                    ? AppTheme.danger
+                    : AppTheme.dGreen,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneyStatusPill extends StatelessWidget {
+  const _MoneyStatusPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final num value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.labelMedium?.copyWith(
+      color: color,
+      fontWeight: FontWeight.w800,
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(24),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withAlpha(42)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: style),
+          const SizedBox(width: 5),
+          YemeniMoneyText(value, style: style),
+        ],
+      ),
+    );
+  }
+}
+
+class _DebtCommitmentSection extends StatelessWidget {
+  const _DebtCommitmentSection({
+    required this.summary,
+    required this.canManageFinancialRecords,
+    required this.onAddDebt,
+    required this.onViewDebts,
+    required this.onRecordInstallment,
+  });
+
+  final MoneySummary summary;
+  final bool canManageFinancialRecords;
+  final VoidCallback onAddDebt;
+  final VoidCallback onViewDebts;
+  final VoidCallback onRecordInstallment;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AarastSectionHeader(
+            title: 'الديون والالتزامات',
+            icon: Icons.account_balance_outlined,
+            actionLabel: 'عرض الديون',
+            onAction: onViewDebts,
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _CompactMetric(
+                label: 'إجمالي الديون',
+                moneyValue: _moneyValue(summary.totalDebts ?? '0'),
+              ),
+              _CompactMetric(
+                label: 'المتبقي',
+                moneyValue: _moneyValue(summary.debtRemaining ?? '0'),
+              ),
+              _CompactMetric(
+                label: 'عدد الديون',
+                value: '${summary.debtsCount ?? 0}',
+              ),
+              _CompactMetric(
+                label: 'القسط القادم',
+                value: summary.nextInstallment == null ? 'لا يوجد' : null,
+                moneyValue: summary.nextInstallment == null
+                    ? null
+                    : _moneyValue(summary.nextInstallment!.amount),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: canManageFinancialRecords ? onAddDebt : null,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('إضافة دين'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onViewDebts,
+                icon: const Icon(Icons.list_alt_rounded),
+                label: const Text('عرض الديون'),
+              ),
+              OutlinedButton.icon(
+                onPressed: canManageFinancialRecords
+                    ? onRecordInstallment
+                    : null,
+                icon: const Icon(Icons.event_available_outlined),
+                label: const Text('تسجيل قسط'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingInstallmentsSection extends StatelessWidget {
+  const _UpcomingInstallmentsSection({required this.summary});
+
+  final MoneySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final installment = summary.nextInstallment;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AarastSectionHeader(
+          title: 'الأقساط القادمة',
+          icon: Icons.event_note_outlined,
+        ),
+        const SizedBox(height: 12),
+        if (installment == null)
+          const AarastEmptyState(
+            title: 'لا توجد أقساط قادمة',
+            message: 'أي قسط مرتبط بدين سيظهر هنا عند توفر تاريخ استحقاق.',
+            icon: Icons.event_available_outlined,
+          )
+        else
+          AarastCard(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                const Icon(Icons.payments_outlined, color: AppTheme.dMaroon),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        installment.debtTitle ?? 'قسط مرتبط بدين',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppTheme.dInk,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        [
+                          if (installment.creditorName != null)
+                            installment.creditorName!,
+                          if (installment.dueAt != null)
+                            _shortDate(installment.dueAt!),
+                          _installmentStateLabel(installment),
+                        ].join(' · '),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.dInkSoft,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                YemeniMoneyText(
+                  _moneyValue(installment.amount),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dMaroonDeep,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _InstallmentActivitySection extends StatelessWidget {
+  const _InstallmentActivitySection({required this.summary});
+
+  final MoneySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = summary.paidInstallmentsCount ?? 0;
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          const Icon(Icons.history_rounded, color: AppTheme.dGoldDeep),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'آخر الأقساط المسجلة',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  paid == 0
+                      ? 'لا توجد أقساط مدفوعة مسجلة بعد، ولا توجد قائمة مدفوعات وهمية.'
+                      : 'الأقساط المدفوعة المسجلة: $paid',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactMetric extends StatelessWidget {
+  const _CompactMetric({required this.label, this.value, this.moneyValue});
+
+  final String label;
+  final String? value;
+  final num? moneyValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 138,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.dCreamBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.dLine),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppTheme.dInkSoft,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (moneyValue == null)
+            Text(
+              value ?? '',
+              textDirection: TextDirection.ltr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w900,
+              ),
+            )
+          else
+            YemeniMoneyText(
+              moneyValue!,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.dInk,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FinanceShortcutCard extends StatelessWidget {
   const _FinanceShortcutCard({
     required this.icon,
@@ -525,6 +1377,7 @@ class _FinanceShortcutCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _BudgetHero extends StatelessWidget {
   const _BudgetHero({required this.summary});
 
@@ -763,6 +1616,7 @@ class _HeroFinanceTile extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _BudgetCategoryProgressRow extends StatelessWidget {
   const _BudgetCategoryProgressRow({required this.row});
 
@@ -1167,12 +2021,14 @@ class _MoneyText extends StatelessWidget {
 
 class _CategorySpendRow {
   const _CategorySpendRow({
+    required this.id,
     required this.name,
     required this.spent,
     required this.target,
     required this.progress,
   });
 
+  final String id;
   final String name;
   final num spent;
   final num target;
@@ -1199,6 +2055,7 @@ List<_CategorySpendRow> _buildCategoryRows(
     final denominator = target > 0 ? target : totalSpent;
     final progress = denominator <= 0 ? 0.0 : spent / denominator;
     return _CategorySpendRow(
+      id: category.id,
       name: category.name,
       spent: spent,
       target: target,
@@ -1258,6 +2115,32 @@ String _formatMoney(num value) {
     buffer.write(digits[i]);
   }
   return '${negative ? '-' : ''}$buffer';
+}
+
+String _warningCopy(MoneyFinancialWarning warning) {
+  return switch (warning.type) {
+    'BUDGET_EXCEEDED' => 'ميزانيتك تجاوزت الحد',
+    'CATEGORY_EXCEEDED' => 'تصنيف في الميزانية تجاوز المخصص',
+    'INSTALLMENT_OVERDUE' => 'قسط متأخر يحتاج متابعة',
+    'INSTALLMENT_DUE_SOON' => 'قسط قريب يحتاج متابعة',
+    'EXPENSE_WITHOUT_CATEGORY' => 'مصروف بدون تصنيف يحتاج ترتيب',
+    _ =>
+      warning.message.trim().isEmpty
+          ? 'تنبيه مالي يحتاج متابعة'
+          : warning.message,
+  };
+}
+
+String _installmentStateLabel(MoneyNextInstallment installment) {
+  if (installment.status == 'PAID') return 'مدفوع';
+  final dueAt = installment.dueAt;
+  if (dueAt == null) return 'قيد المتابعة';
+  final today = DateTime.now();
+  final startOfToday = DateTime(today.year, today.month, today.day);
+  final dueDay = DateTime(dueAt.year, dueAt.month, dueAt.day);
+  if (dueDay.isBefore(startOfToday)) return 'متأخر';
+  if (dueDay.difference(startOfToday).inDays <= 7) return 'قريب';
+  return 'قادم';
 }
 
 String _shortDate(DateTime date) {

@@ -6,6 +6,7 @@ import '../data/budget_expense_api.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../models/expense_summary.dart';
+import '../models/money_summary.dart';
 
 class FinanceProvider extends ChangeNotifier {
   FinanceProvider(this._api);
@@ -19,6 +20,7 @@ class FinanceProvider extends ChangeNotifier {
   List<BudgetCategory> _budgetCategories = const [];
   List<Expense> _expenses = const [];
   ExpenseSummary _summary = ExpenseSummary.empty();
+  MoneySummary _moneySummary = MoneySummary.empty('');
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -27,6 +29,7 @@ class FinanceProvider extends ChangeNotifier {
   List<BudgetCategory> get budgetCategories => _budgetCategories;
   List<Expense> get expenses => _expenses;
   ExpenseSummary get summary => _summary;
+  MoneySummary get moneySummary => _moneySummary;
 
   Future<void> loadFinance(
     String weddingPlanId, {
@@ -48,10 +51,12 @@ class FinanceProvider extends ChangeNotifier {
         canReadExpenses
             ? _api.getExpenseSummary(weddingPlanId)
             : Future<ExpenseSummary>.value(ExpenseSummary.empty()),
+        _api.getMoneySummary(weddingPlanId),
       ]);
       _budgetCategories = results[0] as List<BudgetCategory>;
       _expenses = results[1] as List<Expense>;
       _summary = results[2] as ExpenseSummary;
+      _moneySummary = results[3] as MoneySummary;
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -79,6 +84,7 @@ class FinanceProvider extends ChangeNotifier {
         targetAmount: targetAmount,
       );
       _budgetCategories = [category, ..._budgetCategories];
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
       if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       } else if (category.id.startsWith('local-')) {
@@ -123,6 +129,7 @@ class FinanceProvider extends ChangeNotifier {
       );
       _expenses = [expense, ..._expenses];
       _summary = _summaryFromExpenses(_expenses);
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
       if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       } else if (expense.id.startsWith('local-')) {
@@ -169,6 +176,7 @@ class FinanceProvider extends ChangeNotifier {
       );
       _replaceExpense(updated);
       _summary = _summaryFromExpenses(_expenses);
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
       if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       } else if (updated.id.startsWith('local-')) {
@@ -207,6 +215,7 @@ class FinanceProvider extends ChangeNotifier {
       await _api.deleteExpense(expense.id);
       _expenses = _expenses.where((item) => item.id != expense.id).toList();
       _summary = _summaryFromExpenses(_expenses);
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;

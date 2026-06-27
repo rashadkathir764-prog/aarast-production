@@ -119,6 +119,7 @@ class _MainShellState extends State<MainShell> {
                     ? BudgetExpenseScreen(
                         key: ValueKey('money-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
+                        embedded: true,
                       )
                     : _buildNoPlanFallback('المال'),
               ),

@@ -6,6 +6,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../finance/widgets/yemeni_money_text.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
@@ -267,7 +268,7 @@ class _DebtInstallmentContent extends StatelessWidget {
                       extra: sharedMember,
                     ),
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('+ إضافة دين جديد'),
+                    label: const Text('إضافة دين جديد'),
                   )
                 : null,
           )
@@ -299,7 +300,7 @@ class _DebtInstallmentContent extends StatelessWidget {
                 extra: sharedMember,
               ),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('+ إضافة دين جديد'),
+              label: const Text('إضافة دين جديد'),
             ),
           ),
         ],
@@ -371,21 +372,21 @@ class _DebtSummaryGrid extends StatelessWidget {
             _SummaryTile(
               width: itemWidth,
               label: 'إجمالي الديون',
-              value: _formatCompactMoney(_moneyValue(summary.totalDebt)),
+              moneyValue: _moneyValue(summary.totalDebt),
               color: AppTheme.dMaroon,
               icon: Icons.account_balance_wallet_outlined,
             ),
             _SummaryTile(
               width: itemWidth,
               label: 'المدفوع',
-              value: _formatCompactMoney(_moneyValue(summary.totalPaid)),
+              moneyValue: _moneyValue(summary.totalPaid),
               color: AppTheme.dGreen,
               icon: Icons.check_circle_outline_rounded,
             ),
             _SummaryTile(
               width: itemWidth,
               label: 'المتبقي',
-              value: _formatCompactMoney(_moneyValue(summary.remainingDebt)),
+              moneyValue: _moneyValue(summary.remainingDebt),
               color: AppTheme.danger,
               icon: Icons.pending_actions_rounded,
             ),
@@ -410,15 +411,17 @@ class _SummaryTile extends StatelessWidget {
   const _SummaryTile({
     required this.width,
     required this.label,
-    required this.value,
     required this.color,
     required this.icon,
+    this.value,
+    this.moneyValue,
     this.ltrValue = false,
   });
 
   final double width;
   final String label;
-  final String value;
+  final String? value;
+  final num? moneyValue;
   final Color color;
   final IconData icon;
   final bool ltrValue;
@@ -457,16 +460,25 @@ class _SummaryTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 3),
-                  Text(
-                    value,
-                    textDirection: ltrValue ? TextDirection.ltr : null,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w900,
+                  if (moneyValue == null)
+                    Text(
+                      value ?? '',
+                      textDirection: ltrValue ? TextDirection.ltr : null,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    )
+                  else
+                    YemeniMoneyText(
+                      moneyValue!,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -601,19 +613,19 @@ class _DebtCard extends StatelessWidget {
                   _DebtMiniMetric(
                     width: itemWidth,
                     label: 'إجمالي الدين',
-                    value: _formatCompactMoney(_moneyValue(debt.totalAmount)),
+                    moneyValue: _moneyValue(debt.totalAmount),
                     color: AppTheme.dInk,
                   ),
                   _DebtMiniMetric(
                     width: itemWidth,
                     label: 'المدفوع',
-                    value: _formatCompactMoney(_moneyValue(debt.paidAmount)),
+                    moneyValue: _moneyValue(debt.paidAmount),
                     color: AppTheme.dGreen,
                   ),
                   _DebtMiniMetric(
                     width: itemWidth,
                     label: 'المتبقي',
-                    value: _formatCompactMoney(remaining),
+                    moneyValue: remaining,
                     color: remaining <= 0 ? AppTheme.dGreen : AppTheme.danger,
                   ),
                   _DebtMiniMetric(
@@ -680,14 +692,16 @@ class _DebtMiniMetric extends StatelessWidget {
   const _DebtMiniMetric({
     required this.width,
     required this.label,
-    required this.value,
     required this.color,
+    this.value,
+    this.moneyValue,
     this.ltrValue = false,
   });
 
   final double width;
   final String label;
-  final String value;
+  final String? value;
+  final num? moneyValue;
   final Color color;
   final bool ltrValue;
 
@@ -715,16 +729,25 @@ class _DebtMiniMetric extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 3),
-            Text(
-              value,
-              textDirection: ltrValue ? TextDirection.ltr : null,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w900,
+            if (moneyValue == null)
+              Text(
+                value ?? '',
+                textDirection: ltrValue ? TextDirection.ltr : null,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
+              )
+            else
+              YemeniMoneyText(
+                moneyValue!,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -936,38 +959,6 @@ Color _debtUiStatusColor(_DebtUiStatus status) {
 
 num _moneyValue(String value) =>
     num.tryParse(value.replaceAll(',', '').trim()) ?? 0;
-
-String _formatCompactMoney(num value) {
-  final rounded = value.round();
-  final negative = rounded < 0;
-  final absValue = rounded.abs();
-  final prefix = negative ? '-' : '';
-  if (absValue >= 1000000) {
-    return '$prefix${_compactNumber(absValue / 1000000)}M ر.ي';
-  }
-  if (absValue >= 1000) {
-    return '$prefix${_compactNumber(absValue / 1000)}K ر.ي';
-  }
-  return '$prefix${_formatMoney(absValue)} ر.ي';
-}
-
-String _compactNumber(num value) {
-  final fixed = value >= 10
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(1);
-  return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
-}
-
-String _formatMoney(num value) {
-  final rounded = value.round();
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-    buffer.write(digits[i]);
-  }
-  return buffer.toString();
-}
 
 String _shortDate(DateTime date) {
   return formatArabicCompactDate(date);

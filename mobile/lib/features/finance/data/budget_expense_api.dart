@@ -7,6 +7,7 @@ import '../../../core/offline/offline_tables.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../models/expense_summary.dart';
+import '../models/money_summary.dart';
 
 class BudgetExpenseApi {
   const BudgetExpenseApi(this._apiClient, {OfflineSyncService? offline})
@@ -185,6 +186,30 @@ class BudgetExpenseApi {
       );
       if (expenses.isNotEmpty) return _summaryFromExpenses(expenses);
       rethrow;
+    }
+  }
+
+  Future<MoneySummary> getMoneySummary(String weddingPlanId) async {
+    final key = 'money_summary:$weddingPlanId';
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _localMoneySummary(weddingPlanId);
+    }
+    try {
+      final json = await _apiClient.getJson(
+        '/api/v1/wedding-plans/$weddingPlanId/money-summary',
+      );
+      await _offline?.database.setMeta(key, jsonEncode(json));
+      return MoneySummary.fromJson(json);
+    } on Object catch (error) {
+      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await _offline.database.getMeta(key);
+      if (cached != null) {
+        return MoneySummary.fromJson(
+          Map<String, dynamic>.from(jsonDecode(cached) as Map),
+        );
+      }
+      return _localMoneySummary(weddingPlanId);
     }
   }
 
@@ -368,6 +393,168 @@ class BudgetExpenseApi {
         .toList();
   }
 
+  Future<MoneySummary> _localMoneySummary(String weddingPlanId) async {
+    final categories =
+        await _offline?.database.readCachedList(
+          table: OfflineTables.cachedBudgetCategories,
+          parentColumn: 'planId',
+          parentId: weddingPlanId,
+        ) ??
+        const <Map<String, dynamic>>[];
+    final expenses =
+        await _offline?.database.readCachedList(
+          table: OfflineTables.cachedBudgetItems,
+          parentColumn: 'planId',
+          parentId: weddingPlanId,
+        ) ??
+        const <Map<String, dynamic>>[];
+    final debts =
+        await _offline?.database.readCachedList(
+          table: OfflineTables.cachedDebts,
+          parentColumn: 'planId',
+          parentId: weddingPlanId,
+        ) ??
+        const <Map<String, dynamic>>[];
+
+    final installments = <Map<String, dynamic>>[];
+    for (final debt in debts) {
+      final debtId = debt['id']?.toString();
+      if (debtId == null || debtId.isEmpty) continue;
+      final debtInstallments = await _offline?.database.readCachedList(
+        table: OfflineTables.cachedInstallments,
+        parentColumn: 'debtId',
+        parentId: debtId,
+      );
+      if (debtInstallments != null) installments.addAll(debtInstallments);
+    }
+
+    final totalBudget = categories.fold<num>(
+      0,
+      (sum, category) => sum + _moneyValue(category['targetAmount']),
+    );
+    final totalSpent = expenses.fold<num>(0, (sum, expense) {
+      if (expense['status']?.toString() != 'PAID') return sum;
+      return sum + _moneyValue(expense['amount']);
+    });
+    final totalDebts = debts.fold<num>(
+      0,
+      (sum, debt) => sum + _moneyValue(debt['totalAmount']),
+    );
+    final paidDebts = debts.fold<num>(
+      0,
+      (sum, debt) => sum + _moneyValue(debt['paidAmount']),
+    );
+    final debtRemaining = (totalDebts - paidDebts).clamp(0, totalDebts);
+    final remainingBudget = totalBudget - totalSpent;
+    final categorySummaries = categories.map((category) {
+      final id = category['id']?.toString() ?? '';
+      final allocated = _moneyValue(category['targetAmount']);
+      final categoryExpenses = expenses.where(
+        (expense) => expense['budgetCategoryId']?.toString() == id,
+      );
+      final spent = categoryExpenses.fold<num>(0, (sum, expense) {
+        if (expense['status']?.toString() != 'PAID') return sum;
+        return sum + _moneyValue(expense['amount']);
+      });
+      return MoneyCategorySummary(
+        categoryId: id,
+        name: category['name']?.toString() ?? '',
+        allocated: _moneyOrNull(allocated),
+        spent: _moneyOrNull(spent),
+        remaining: _moneyOrNull(allocated - spent),
+        expensesCount: categoryExpenses.length,
+        overBudget: allocated > 0 && spent > allocated,
+      );
+    }).toList();
+
+    final now = DateTime.now();
+    final unpaidInstallments =
+        installments.where((installment) {
+          final status = installment['status']?.toString();
+          return status != 'PAID' && status != 'CANCELLED';
+        }).toList()..sort((a, b) {
+          final aDate = DateTime.tryParse(a['dueDate']?.toString() ?? '');
+          final bDate = DateTime.tryParse(b['dueDate']?.toString() ?? '');
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+          return aDate.compareTo(bDate);
+        });
+    final overdueCount = unpaidInstallments.where((installment) {
+      final dueDate = DateTime.tryParse(
+        installment['dueDate']?.toString() ?? '',
+      );
+      return dueDate != null &&
+          dueDate.isBefore(DateTime(now.year, now.month, now.day));
+    }).length;
+    final dueSoonCount = unpaidInstallments.where((installment) {
+      final dueDate = DateTime.tryParse(
+        installment['dueDate']?.toString() ?? '',
+      );
+      if (dueDate == null) return false;
+      final days = dueDate.difference(now).inDays;
+      return days >= 0 && days <= 7;
+    }).length;
+    final warnings = <MoneyFinancialWarning>[
+      if (remainingBudget < 0)
+        MoneyFinancialWarning(
+          type: 'BUDGET_EXCEEDED',
+          severity: 'DANGER',
+          message: 'ميزانيتك تجاوزت الحد',
+          amount: _moneyOrNull(remainingBudget.abs()),
+        ),
+      if (categorySummaries.any((category) => category.overBudget == true))
+        MoneyFinancialWarning(
+          type: 'CATEGORY_EXCEEDED',
+          severity: 'WARNING',
+          message: 'تصنيف في الميزانية تجاوز المخصص',
+          count: categorySummaries
+              .where((category) => category.overBudget == true)
+              .length,
+        ),
+      if (overdueCount > 0)
+        MoneyFinancialWarning(
+          type: 'INSTALLMENT_OVERDUE',
+          severity: 'DANGER',
+          message: 'قسط متأخر يحتاج متابعة',
+          count: overdueCount,
+        ),
+      if (dueSoonCount > 0)
+        MoneyFinancialWarning(
+          type: 'INSTALLMENT_DUE_SOON',
+          severity: 'WARNING',
+          message: 'قسط قريب يحتاج متابعة',
+          count: dueSoonCount,
+        ),
+    ];
+
+    final nextInstallment = unpaidInstallments.isEmpty
+        ? null
+        : MoneyNextInstallment.fromJson(unpaidInstallments.first);
+
+    return MoneySummary(
+      weddingPlanId: weddingPlanId,
+      totalBudget: _moneyOrNull(totalBudget),
+      totalSpent: _moneyOrNull(totalSpent),
+      remainingBudget: _moneyOrNull(remainingBudget),
+      totalDebts: _moneyOrNull(totalDebts),
+      debtRemaining: _moneyOrNull(debtRemaining),
+      paidInstallmentsCount: installments
+          .where((installment) => installment['status']?.toString() == 'PAID')
+          .length,
+      remainingInstallmentsCount: unpaidInstallments.length,
+      overdueInstallmentsCount: overdueCount,
+      dueInstallmentsCount: dueSoonCount,
+      nextInstallment: nextInstallment,
+      categorySummaries: categorySummaries,
+      financialWarnings: warnings,
+      categoriesCount: categories.length,
+      expensesCount: expenses.length,
+      debtsCount: debts.length,
+      installmentsCount: installments.length,
+    );
+  }
+
   Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(
     Object error, {
     required String table,
@@ -413,6 +600,16 @@ class BudgetExpenseApi {
       countPlanned: countPlanned,
       countCancelled: countCancelled,
     );
+  }
+
+  num _moneyValue(Object? value) {
+    return num.tryParse(value?.toString().replaceAll(',', '').trim() ?? '') ??
+        0;
+  }
+
+  String? _moneyOrNull(num? value) {
+    if (value == null) return null;
+    return value.toStringAsFixed(2);
   }
 
   Future<Expense> _createLocalExpense({

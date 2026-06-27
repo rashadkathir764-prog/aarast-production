@@ -4,12 +4,15 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
 
 class TaskTimelineApi {
   const TaskTimelineApi(this._apiClient, {OfflineSyncService? offline})
     : _offline = offline;
+
+  static int _localTaskSequence = 0;
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
@@ -72,12 +75,43 @@ class TaskTimelineApi {
     }
   }
 
+  Future<TaskSummary> getTaskSummary(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return _taskSummaryFromCachedTasks(weddingPlanId);
+    }
+    final key = 'task-summary:$weddingPlanId';
+    try {
+      final json = await _apiClient.getJson(
+        '/wedding-plans/$weddingPlanId/tasks/summary',
+      );
+      await _offline?.database.setMeta(key, jsonEncode(json));
+      return TaskSummary.fromJson(json);
+    } on Object catch (error) {
+      if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
+      await _offline.noteNetworkFailure((error as ApiException).message);
+      final cached = await _offline.database.getMeta(key);
+      if (cached != null) {
+        return TaskSummary.fromJson(
+          Map<String, dynamic>.from(jsonDecode(cached) as Map),
+        );
+      }
+      return _taskSummaryFromCachedTasks(weddingPlanId);
+    }
+  }
+
   Future<WeddingTask> createTask({
     required String weddingPlanId,
     required String title,
     String? description,
     DateTime? dueDate,
     String? taskCategory,
+    String? assigneeUserId,
+    String? assigneeName,
+    String? assigneePhone,
+    String? assigneeRole,
+    String? responsibleName,
+    String? responsiblePhone,
+    String? responsibleSource,
     String status = 'TODO',
     String priority = 'MEDIUM',
   }) async {
@@ -91,24 +125,47 @@ class TaskTimelineApi {
       if (taskCategory != null && taskCategory.trim().isNotEmpty)
         'taskCategory': taskCategory.trim(),
     };
+    final localResponsibility = _responsibilityPayload(
+      assigneeUserId: assigneeUserId,
+      assigneeName: assigneeName,
+      assigneePhone: assigneePhone,
+      assigneeRole: assigneeRole,
+      responsibleName: responsibleName,
+      responsiblePhone: responsiblePhone,
+      responsibleSource: responsibleSource,
+    );
     if (_isLocalGuestPlanId(weddingPlanId)) {
-      return _createLocalTask(weddingPlanId: weddingPlanId, payload: payload);
+      return _createLocalTask(
+        weddingPlanId: weddingPlanId,
+        payload: {...payload, ...localResponsibility},
+      );
     }
     try {
       final json = await _apiClient.postJson(
         '/wedding-plans/$weddingPlanId/tasks',
         payload,
       );
+      var taskJson = Map<String, dynamic>.from(json);
+      if (_hasValue(assigneeUserId)) {
+        final assigned = await assignTask(
+          json['id'].toString(),
+          assigneeUserId: assigneeUserId,
+          assigneeName: assigneeName,
+          assigneePhone: assigneePhone,
+          assigneeRole: assigneeRole,
+        );
+        taskJson = _taskToCacheJson(assigned);
+      }
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedTasks,
-        json: json,
+        json: taskJson,
       );
       await _offline?.syncPendingChanges();
-      return WeddingTask.fromJson(json);
+      return WeddingTask.fromJson(taskJson);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
       final now = DateTime.now();
-      final localId = 'local-task-${now.microsecondsSinceEpoch}';
+      final localId = _nextLocalTaskId(now);
       final localJson = {
         'id': localId,
         'weddingPlanId': weddingPlanId,
@@ -132,6 +189,42 @@ class TaskTimelineApi {
       await _offline.refreshStatus();
       return WeddingTask.fromJson(localJson);
     }
+  }
+
+  Future<WeddingTask> assignTask(
+    String id, {
+    String? assigneeUserId,
+    String? assigneeName,
+    String? assigneePhone,
+    String? assigneeRole,
+  }) async {
+    final payload = {'assigneeUserId': _trimmedOrNull(assigneeUserId)};
+    final localData = {
+      ...payload,
+      if (_hasValue(assigneeName)) 'assigneeName': assigneeName!.trim(),
+      if (_hasValue(assigneePhone)) 'assigneePhone': assigneePhone!.trim(),
+      if (_hasValue(assigneeRole)) 'assigneeRole': assigneeRole!.trim(),
+      'responsibleName': null,
+      'responsiblePhone': null,
+      'responsibleSource': null,
+    };
+    if (id.startsWith('local-task-')) {
+      return _updateLocalTask(id: id, data: localData);
+    }
+
+    final json = await _apiClient.patchJson('/tasks/$id/assign', payload);
+    final hydratedJson = {
+      ...Map<String, dynamic>.from(json),
+      if (_hasValue(assigneeName)) 'assigneeName': assigneeName!.trim(),
+      if (_hasValue(assigneePhone)) 'assigneePhone': assigneePhone!.trim(),
+      if (_hasValue(assigneeRole)) 'assigneeRole': assigneeRole!.trim(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: hydratedJson,
+    );
+    await _offline?.syncPendingChanges();
+    return WeddingTask.fromJson(hydratedJson);
   }
 
   Future<WeddingTask> updateTask(String id, Map<String, dynamic> data) async {
@@ -248,12 +341,26 @@ class TaskTimelineApi {
     });
   }
 
+  Future<TaskSummary> _taskSummaryFromCachedTasks(String weddingPlanId) async {
+    final tasks = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedTasks,
+      parentColumn: 'planId',
+      parentId: weddingPlanId,
+    );
+    return TaskSummary.fromTasks(
+      weddingPlanId: weddingPlanId,
+      tasks: (tasks ?? const <Map<String, dynamic>>[])
+          .map(WeddingTask.fromJson)
+          .toList(),
+    );
+  }
+
   Future<WeddingTask> _createLocalTask({
     required String weddingPlanId,
     required Map<String, dynamic> payload,
   }) async {
     final now = DateTime.now();
-    final localId = 'local-task-${now.microsecondsSinceEpoch}';
+    final localId = _nextLocalTaskId(now);
     final localJson = {
       'id': localId,
       'weddingPlanId': weddingPlanId,
@@ -302,5 +409,71 @@ class TaskTimelineApi {
         value == 'local-guest-plan' ||
         value.startsWith('guest-plan-') ||
         value.startsWith('local-guest-');
+  }
+
+  static String _nextLocalTaskId(DateTime now) {
+    _localTaskSequence += 1;
+    return 'local-task-${now.microsecondsSinceEpoch}-$_localTaskSequence';
+  }
+
+  Map<String, dynamic> _responsibilityPayload({
+    String? assigneeUserId,
+    String? assigneeName,
+    String? assigneePhone,
+    String? assigneeRole,
+    String? responsibleName,
+    String? responsiblePhone,
+    String? responsibleSource,
+  }) {
+    if (_hasValue(assigneeUserId)) {
+      return {
+        'assigneeUserId': assigneeUserId!.trim(),
+        if (_hasValue(assigneeName)) 'assigneeName': assigneeName!.trim(),
+        if (_hasValue(assigneePhone)) 'assigneePhone': assigneePhone!.trim(),
+        if (_hasValue(assigneeRole)) 'assigneeRole': assigneeRole!.trim(),
+      };
+    }
+
+    return {
+      if (_hasValue(responsibleName))
+        'responsibleName': responsibleName!.trim(),
+      if (_hasValue(responsiblePhone))
+        'responsiblePhone': responsiblePhone!.trim(),
+      if (_hasValue(responsibleSource))
+        'responsibleSource': responsibleSource!.trim(),
+    };
+  }
+
+  Map<String, dynamic> _taskToCacheJson(WeddingTask task) {
+    return {
+      'id': task.id,
+      'weddingPlanId': task.weddingPlanId,
+      'title': task.title,
+      'status': task.status,
+      'priority': task.priority,
+      if (task.description != null) 'description': task.description,
+      if (task.dueDate != null) 'dueDate': task.dueDate!.toIso8601String(),
+      if (task.taskCategory != null) 'taskCategory': task.taskCategory,
+      if (task.assigneeUserId != null) 'assigneeUserId': task.assigneeUserId,
+      if (task.assigneeName != null) 'assigneeName': task.assigneeName,
+      if (task.assigneePhone != null) 'assigneePhone': task.assigneePhone,
+      if (task.assigneeRole != null) 'assigneeRole': task.assigneeRole,
+      if (task.responsibleName != null) 'responsibleName': task.responsibleName,
+      if (task.responsiblePhone != null)
+        'responsiblePhone': task.responsiblePhone,
+      if (task.responsibleSource != null)
+        'responsibleSource': task.responsibleSource,
+      'createdAt': task.createdAt.toIso8601String(),
+      'updatedAt': task.updatedAt.toIso8601String(),
+    };
+  }
+
+  bool _hasValue(String? value) {
+    return value != null && value.trim().isNotEmpty;
+  }
+
+  String? _trimmedOrNull(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 }

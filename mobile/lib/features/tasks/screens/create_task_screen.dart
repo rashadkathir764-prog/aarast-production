@@ -4,9 +4,14 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../shared/models/contact_phone_draft.dart';
+import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../sharing/models/shared_member.dart';
+import '../../sharing/providers/sharing_provider.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 
@@ -30,19 +35,32 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _responsibleNameController = TextEditingController(text: 'أنا');
+  final _responsiblePhoneController = TextEditingController();
 
   DateTime? _dueDate;
   String _priority = 'MEDIUM';
   String _category = 'GENERAL';
   String _status = 'TODO';
+  String? _selectedAssigneeUserId;
+  String? _selectedAssigneeName;
+  String? _selectedAssigneePhone;
+  String? _selectedAssigneeRole;
+  ContactPhoneSource _responsibleSource = ContactPhoneSource.manual;
   bool _didPrefill = false;
+  bool _didRequestMembers = false;
 
   static const _categories = [
     _TaskCategory('GENERAL', 'عامة', Icons.dashboard_customize_outlined),
     _TaskCategory('VENUE', 'القاعة', Icons.apartment_rounded),
-    _TaskCategory('CATERING', 'الضيافة', Icons.room_service_outlined),
-    _TaskCategory('ATTIRE', 'الملابس', Icons.checkroom_outlined),
     _TaskCategory('GUESTS', 'الضيوف', Icons.groups_outlined),
+    _TaskCategory('MONEY', 'المال', Icons.account_balance_wallet_outlined),
+    _TaskCategory('PROVIDERS', 'الموردين', Icons.storefront_outlined),
+    _TaskCategory('ATTIRE', 'الملابس', Icons.checkroom_outlined),
+    _TaskCategory('PHOTOGRAPHY', 'التصوير', Icons.photo_camera_outlined),
+    _TaskCategory('CATERING', 'الضيافة', Icons.room_service_outlined),
+    _TaskCategory('DECOR', 'الزينة', Icons.local_florist_outlined),
+    _TaskCategory('DOCUMENTS', 'المستندات', Icons.description_outlined),
   ];
 
   bool get _isEditMode => widget.taskId != null || widget.initialTask != null;
@@ -59,16 +77,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _loadMembersIfAvailable();
+
     if (!_isEditMode || _didPrefill) return;
 
     final taskId = widget.taskId;
-    if (taskId == null) return;
-
-    final provider = context.read<TaskTimelineProvider>();
-    for (final task in provider.tasks) {
-      if (task.id == taskId) {
-        _prefillTask(task);
-        return;
+    if (taskId != null) {
+      final provider = context.read<TaskTimelineProvider>();
+      for (final task in provider.tasks) {
+        if (task.id == taskId) {
+          _prefillTask(task);
+          return;
+        }
       }
     }
   }
@@ -77,6 +97,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _responsibleNameController.dispose();
+    _responsiblePhoneController.dispose();
     super.dispose();
   }
 
@@ -180,6 +202,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   void _prefillTask(WeddingTask task) {
     _titleController.text = task.title;
     _descriptionController.text = task.description ?? '';
+    _responsibleNameController.text = task.responsibleLabel;
+    _responsiblePhoneController.text =
+        task.responsiblePhone ?? task.assigneePhone ?? '';
+    _selectedAssigneeUserId = task.assigneeUserId;
+    _selectedAssigneeName = task.assigneeName;
+    _selectedAssigneePhone = task.assigneePhone;
+    _selectedAssigneeRole = task.assigneeRole;
+    _responsibleSource = _sourceFromTask(task);
     _dueDate = task.dueDate;
     _priority = task.priority;
     _category = _categoryExists(task.taskCategory)
@@ -197,7 +227,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
+    final sharingProvider = context.watch<SharingProvider?>();
     final category = _categories.firstWhere((item) => item.id == _category);
+    final participants = _membersForPlan(
+      sharingProvider?.members ?? const <SharedMember>[],
+      widget.weddingPlanId,
+    );
 
     return AarastScreenFrame(
       maxWidth: 480,
@@ -341,6 +376,21 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 18),
+                          _ResponsibleSection(
+                            participants: participants,
+                            selectedAssigneeUserId: _selectedAssigneeUserId,
+                            selectedAssigneeRole: _selectedAssigneeRole,
+                            responsibleNameController:
+                                _responsibleNameController,
+                            responsiblePhoneController:
+                                _responsiblePhoneController,
+                            canInviteResponsible: _canInviteResponsible,
+                            onSelectParticipant: _showParticipantPicker,
+                            onManualChanged: _clearSelectedParticipant,
+                            onDraftChanged: _handleResponsibleDraft,
+                            onInvite: _inviteResponsibleAsParticipant,
+                          ),
                           const SizedBox(height: 14),
                           TextFormField(
                             controller: _descriptionController,
@@ -404,6 +454,26 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     final provider = context.read<TaskTimelineProvider>();
     final description = _descriptionController.text.trim();
     final normalizedDescription = description.isEmpty ? null : description;
+    final normalizedResponsiblePhone = _normalizedResponsiblePhone();
+    final hasParticipant = _selectedAssigneeUserId?.trim().isNotEmpty == true;
+    final responsibleName = hasParticipant
+        ? null
+        : _responsibleNameForPayload();
+    final responsibleSource = hasParticipant ? null : _responsibleSource.name;
+    if (!AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
+        !hasParticipant &&
+        (responsibleName != null || normalizedResponsiblePhone != null)) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'حفظ مسؤول يدوي للحسابات يحتاج دعماً من الخادم؛ اختر مشاركاً من الخطة أو احفظ المهمة بدون رقم.',
+            ),
+          ),
+        );
+      return;
+    }
     final task = _editingTask(provider);
     final saved = _isEditMode
         ? task != null &&
@@ -414,6 +484,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 description: normalizedDescription,
                 dueDate: _dueDate,
                 taskCategory: _category,
+                assigneeUserId: _selectedAssigneeUserId,
+                assigneeName: _selectedAssigneeName,
+                assigneePhone: _selectedAssigneePhone,
+                assigneeRole: _selectedAssigneeRole,
+                responsibleName: responsibleName,
+                responsiblePhone: hasParticipant
+                    ? null
+                    : normalizedResponsiblePhone,
+                responsibleSource: responsibleSource,
                 status: _status,
                 priority: _priority,
               )
@@ -423,6 +502,15 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             description: normalizedDescription,
             dueDate: _dueDate,
             taskCategory: _category,
+            assigneeUserId: _selectedAssigneeUserId,
+            assigneeName: _selectedAssigneeName,
+            assigneePhone: _selectedAssigneePhone,
+            assigneeRole: _selectedAssigneeRole,
+            responsibleName: responsibleName,
+            responsiblePhone: hasParticipant
+                ? null
+                : normalizedResponsiblePhone,
+            responsibleSource: responsibleSource,
             status: 'TODO',
             priority: _priority,
           );
@@ -443,6 +531,120 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       }
       _goBack();
     }
+  }
+
+  Future<void> _showParticipantPicker(List<SharedMember> participants) async {
+    FocusScope.of(context).unfocus();
+    if (participants.isEmpty) return;
+
+    final selected = await showModalBottomSheet<SharedMember>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
+              children: [
+                const _SheetHandle(),
+                const SizedBox(height: 20),
+                const AarastSectionHeader(
+                  title: 'اختيار مسؤول من المشاركين',
+                  icon: Icons.groups_2_outlined,
+                ),
+                const SizedBox(height: 12),
+                for (final member in participants) ...[
+                  _ParticipantRow(
+                    member: member,
+                    selected: member.userId == _selectedAssigneeUserId,
+                    onTap: () => Navigator.of(sheetContext).pop(member),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected == null || !mounted) return;
+    setState(() {
+      _selectedAssigneeUserId = selected.userId;
+      _selectedAssigneeName = selected.displayName;
+      _selectedAssigneePhone = selected.user?.phone;
+      _selectedAssigneeRole = selected.role;
+      _responsibleNameController.text = selected.displayName;
+      _responsiblePhoneController.text = selected.user?.phone ?? '';
+      _responsibleSource = ContactPhoneSource.planContact;
+    });
+  }
+
+  void _handleResponsibleDraft(ContactPhoneDraft draft) {
+    setState(() {
+      _responsibleSource = draft.source;
+      if (draft.source != ContactPhoneSource.planContact) {
+        _clearSelectedParticipant(updateState: false);
+      }
+    });
+  }
+
+  void _clearSelectedParticipant({bool updateState = true}) {
+    void clear() {
+      _selectedAssigneeUserId = null;
+      _selectedAssigneeName = null;
+      _selectedAssigneePhone = null;
+      _selectedAssigneeRole = null;
+      if (_responsibleSource == ContactPhoneSource.planContact) {
+        _responsibleSource = ContactPhoneSource.manual;
+      }
+    }
+
+    if (updateState) {
+      setState(clear);
+    } else {
+      clear();
+    }
+  }
+
+  Future<void> _inviteResponsibleAsParticipant() async {
+    final allowed = await AuthActionGuard.requireAccount(
+      context,
+      reason: 'دعوة مسؤول المهمة كمشارك في الخطة تحتاج حساباً وصلاحيات مشاركة.',
+    );
+    if (!allowed || !mounted) return;
+    context.push(AppRouter.addSharedMember(widget.weddingPlanId));
+  }
+
+  String? _normalizedResponsiblePhone() {
+    return PhoneNumberUtils.normalizeOptional(_responsiblePhoneController.text);
+  }
+
+  String? _responsibleNameForPayload() {
+    final value = _responsibleNameController.text.trim();
+    if (value.isEmpty || value == 'أنا') return null;
+    return value;
+  }
+
+  bool get _canInviteResponsible {
+    if (_selectedAssigneeUserId?.trim().isNotEmpty == true) return false;
+    return _responsiblePhoneController.text.trim().isNotEmpty;
+  }
+
+  void _loadMembersIfAvailable() {
+    if (_didRequestMembers ||
+        AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId)) {
+      return;
+    }
+    final sharingProvider = context.read<SharingProvider?>();
+    if (sharingProvider == null) return;
+    _didRequestMembers = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      sharingProvider.loadMembers(widget.weddingPlanId);
+    });
   }
 
   WeddingTask? _editingTask(TaskTimelineProvider provider) {
@@ -506,6 +708,222 @@ class _TaskHero extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ResponsibleSection extends StatelessWidget {
+  const _ResponsibleSection({
+    required this.participants,
+    required this.selectedAssigneeUserId,
+    required this.selectedAssigneeRole,
+    required this.responsibleNameController,
+    required this.responsiblePhoneController,
+    required this.canInviteResponsible,
+    required this.onSelectParticipant,
+    required this.onManualChanged,
+    required this.onDraftChanged,
+    required this.onInvite,
+  });
+
+  final List<SharedMember> participants;
+  final String? selectedAssigneeUserId;
+  final String? selectedAssigneeRole;
+  final TextEditingController responsibleNameController;
+  final TextEditingController responsiblePhoneController;
+  final bool canInviteResponsible;
+  final ValueChanged<List<SharedMember>> onSelectParticipant;
+  final VoidCallback onManualChanged;
+  final ValueChanged<ContactPhoneDraft> onDraftChanged;
+  final VoidCallback onInvite;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedParticipant = _findSelectedParticipant(
+      participants,
+      selectedAssigneeUserId,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.dCreamBg,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.person_pin_circle_outlined,
+                color: AppTheme.dMaroon,
+                size: 21,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'المسؤول عن المهمة',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (selectedParticipant != null)
+                _ParticipantBadge(role: selectedAssigneeRole),
+            ],
+          ),
+          if (participants.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _SelectorField(
+              label: 'مشارك من الخطة',
+              value: selectedParticipant == null
+                  ? 'اختر مشاركاً موجوداً'
+                  : selectedParticipant.displayName,
+              icon: Icons.groups_2_outlined,
+              selected: selectedParticipant != null,
+              onTap: () => onSelectParticipant(participants),
+            ),
+          ],
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: responsibleNameController,
+            textAlign: TextAlign.right,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => onManualChanged(),
+            decoration: const InputDecoration(
+              labelText: 'اسم المسؤول',
+              hintText: 'أنا أو اسم الشخص المسؤول',
+              prefixIcon: Icon(Icons.person_outline_rounded),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ContactPhoneField(
+            phoneController: responsiblePhoneController,
+            nameController: responsibleNameController,
+            label: 'رقم المسؤول',
+            hintText: '77xxxxxxx',
+            helperText: 'يمكن ترك الرقم فارغاً؛ يظهر كرقم متابعة للمسؤول فقط.',
+            onDraftChanged: onDraftChanged,
+          ),
+          if (canInviteResponsible) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.dMaroon,
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onInvite,
+                icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                label: const Text('دعوته كمشارك في الخطة'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ParticipantRow extends StatelessWidget {
+  const _ParticipantRow({
+    required this.member,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final SharedMember member;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            border: Border.all(
+              color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.person_outline_rounded,
+                color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      member.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.dInk,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      sharedMemberRoleLabel(member.role),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ParticipantBadge extends StatelessWidget {
+  const _ParticipantBadge({this.role});
+
+  final String? role;
+
+  @override
+  Widget build(BuildContext context) {
+    final roleLabel = role?.trim().isNotEmpty == true
+        ? sharedMemberRoleLabel(role!.trim())
+        : null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.dGold.withAlpha(20),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.dGold.withAlpha(70)),
+      ),
+      child: Text(
+        roleLabel == null ? 'مشارك في الخطة' : 'مشارك في الخطة',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: AppTheme.dMaroon,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
@@ -699,4 +1117,35 @@ class _TaskCategory {
 
 String _formatDate(DateTime date) {
   return formatArabicCompactDate(date);
+}
+
+ContactPhoneSource _sourceFromTask(WeddingTask task) {
+  if (task.hasResponsibleParticipant) return ContactPhoneSource.planContact;
+  final source = task.responsibleSource?.trim();
+  return switch (source) {
+    'deviceContact' => ContactPhoneSource.deviceContact,
+    'planContact' => ContactPhoneSource.planContact,
+    _ => ContactPhoneSource.manual,
+  };
+}
+
+List<SharedMember> _membersForPlan(
+  List<SharedMember> members,
+  String weddingPlanId,
+) {
+  return members
+      .where((member) => member.weddingPlanId == weddingPlanId)
+      .toList(growable: false);
+}
+
+SharedMember? _findSelectedParticipant(
+  List<SharedMember> members,
+  String? assigneeUserId,
+) {
+  final id = assigneeUserId?.trim();
+  if (id == null || id.isEmpty) return null;
+  for (final member in members) {
+    if (member.userId == id) return member;
+  }
+  return null;
 }

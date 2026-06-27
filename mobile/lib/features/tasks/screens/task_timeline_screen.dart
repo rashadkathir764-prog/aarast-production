@@ -9,7 +9,10 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../models/timeline.dart';
+import '../../auth/utils/auth_action_guard.dart';
+import '../../sharing/models/shared_member.dart';
+import '../../sharing/providers/sharing_provider.dart';
+import '../models/task_summary.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 
@@ -24,6 +27,7 @@ class TaskTimelineScreen extends StatefulWidget {
 
 class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   _TaskFilter _filter = _TaskFilter.all;
+  bool _didRequestMembers = false;
 
   @override
   void initState() {
@@ -31,6 +35,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
+      _loadMembersIfAvailable();
     });
   }
 
@@ -41,6 +46,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
+        _didRequestMembers = false;
+        _loadMembersIfAvailable();
       });
     }
   }
@@ -48,6 +55,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
+    final sharingProvider = context.watch<SharingProvider?>();
 
     return AarastScreenFrame(
       maxWidth: 520,
@@ -68,7 +76,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'المهام والجدول الزمني',
+                        'المهام',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -77,7 +85,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                         ),
                       ),
                       Text(
-                        'تابع التفاصيل القريبة بثقة وهدوء',
+                        'تابع تجهيزات زفافك خطوة بخطوة',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -113,6 +121,10 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               child: _TaskTimelineContent(
                 provider: provider,
                 weddingPlanId: widget.weddingPlanId,
+                sharedMembers: _membersForPlan(
+                  sharingProvider?.members ?? const <SharedMember>[],
+                  widget.weddingPlanId,
+                ),
                 filter: _filter,
                 suppressErrors: false,
                 onFilterChanged: (filter) {
@@ -133,12 +145,24 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     }
     context.go(AppRouter.home);
   }
+
+  void _loadMembersIfAvailable() {
+    if (_didRequestMembers ||
+        AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId)) {
+      return;
+    }
+    final sharingProvider = context.read<SharingProvider?>();
+    if (sharingProvider == null) return;
+    _didRequestMembers = true;
+    sharingProvider.loadMembers(widget.weddingPlanId);
+  }
 }
 
 class _TaskTimelineContent extends StatelessWidget {
   const _TaskTimelineContent({
     required this.provider,
     required this.weddingPlanId,
+    required this.sharedMembers,
     required this.filter,
     required this.onFilterChanged,
     this.suppressErrors = false,
@@ -146,6 +170,7 @@ class _TaskTimelineContent extends StatelessWidget {
 
   final TaskTimelineProvider provider;
   final String weddingPlanId;
+  final List<SharedMember> sharedMembers;
   final _TaskFilter filter;
   final ValueChanged<_TaskFilter> onFilterChanged;
   final bool suppressErrors;
@@ -181,9 +206,13 @@ class _TaskTimelineContent extends StatelessWidget {
         ? const <WeddingTask>[]
         : provider.tasks
               .where((task) => task.weddingPlanId == weddingPlanId)
+              .map((task) => _hydrateTaskParticipant(task, sharedMembers))
               .toList();
     final visibleTasks = _filteredTasks(tasks, filter);
-    final timeline = suppressErrors ? Timeline.empty() : provider.timeline;
+    final summary = suppressErrors
+        ? TaskSummary.empty(weddingPlanId)
+        : _summaryForPlan(provider.summary, weddingPlanId, tasks);
+    final importantTasks = _importantTasks(tasks);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -193,12 +222,26 @@ class _TaskTimelineContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _TimelineHero(tasks: tasks, timeline: timeline),
-        const SizedBox(height: 18),
+        _TasksHeader(
+          summary: summary,
+          isLocalPlan: _isLocalGuestPlanId(weddingPlanId),
+        ),
+        const SizedBox(height: 12),
+        _TaskStatusOverviewCard(summary: summary),
+        const SizedBox(height: 12),
+        _ImportantNowCard(
+          tasks: importantTasks,
+          onOpenTask: (task) => context.push(
+            AppRouter.editTask(weddingPlanId, task.id),
+            extra: task,
+          ),
+          onOpenFilter: onFilterChanged,
+        ),
+        const SizedBox(height: 14),
         _TimelineFilterBar(selected: filter, onChanged: onFilterChanged),
         const SizedBox(height: 20),
         AarastSectionHeader(
-          title: 'قائمة المهام',
+          title: _taskListTitle(filter),
           icon: Icons.checklist_rtl_rounded,
           actionLabel: 'إضافة',
           onAction: provider.isSubmitting
@@ -238,13 +281,6 @@ class _TaskTimelineContent extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-        const SizedBox(height: 16),
-        const AarastSectionHeader(
-          title: 'الاستحقاقات القريبة',
-          icon: Icons.event_note_rounded,
-        ),
-        const SizedBox(height: 12),
-        _TimelineDueList(timeline: timeline),
       ],
     );
   }
@@ -389,29 +425,14 @@ class _TaskTimelineContent extends StatelessWidget {
   }
 }
 
-class _TimelineHero extends StatelessWidget {
-  const _TimelineHero({required this.tasks, required this.timeline});
+class _TasksHeader extends StatelessWidget {
+  const _TasksHeader({required this.summary, required this.isLocalPlan});
 
-  final List<WeddingTask> tasks;
-  final Timeline timeline;
+  final TaskSummary summary;
+  final bool isLocalPlan;
 
   @override
   Widget build(BuildContext context) {
-    final hasTaskList = tasks.isNotEmpty;
-    final done = hasTaskList
-        ? tasks.where((task) => task.isDone).length
-        : timeline.upcomingTasks.where((task) => task.status == 'DONE').length;
-    final total = hasTaskList ? tasks.length : timeline.upcomingTasks.length;
-    final pending = total - done;
-    final late = hasTaskList
-        ? tasks.where(_isLateTask).length
-        : timeline.upcomingTasks.where(_isLateTimelineTask).length;
-    final progress = total == 0 ? 0.0 : done / total;
-    final dueCount =
-        timeline.upcomingTasks.length +
-        timeline.dueDebts.length +
-        timeline.dueInstallments.length;
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: AppTheme.heroDecoration(),
@@ -429,7 +450,7 @@ class _TimelineHero extends StatelessWidget {
                   border: Border.all(color: Colors.white.withAlpha(36)),
                 ),
                 child: const Icon(
-                  Icons.auto_awesome_rounded,
+                  Icons.task_alt_rounded,
                   color: AppTheme.dGold,
                   size: 28,
                 ),
@@ -440,7 +461,7 @@ class _TimelineHero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'لوحة إنجاز الزفاف',
+                      'المهام',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
@@ -448,9 +469,7 @@ class _TimelineHero extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      total == 0
-                          ? 'ابدأ بخطوة واضحة اليوم'
-                          : '$done من $total مهام مكتملة',
+                      'تابع تجهيزات زفافك خطوة بخطوة',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.white.withAlpha(205),
                         fontWeight: FontWeight.w700,
@@ -459,20 +478,95 @@ class _TimelineHero extends StatelessWidget {
                   ],
                 ),
               ),
-              _ProgressSeal(value: progress),
+              _ProgressSeal(value: summary.completionRatio),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 245),
+                child: Text(
+                  summary.total == 0
+                      ? 'لم تضف أي مهمة بعد'
+                      : '${summary.completed} من ${summary.total} مهام مكتملة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withAlpha(220),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              AarastStatusPill(
+                label: isLocalPlan ? 'تخطيط محلي' : 'حساب محفوظ',
+                color: AppTheme.dGold,
+                backgroundColor: Colors.white.withAlpha(24),
+                icon: isLocalPlan
+                    ? Icons.phone_iphone_rounded
+                    : Icons.verified_user_outlined,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TaskStatusOverviewCard extends StatelessWidget {
+  const _TaskStatusOverviewCard({required this.summary});
+
+  final TaskSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.insights_rounded,
+                color: AppTheme.dMaroon,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'إنجاز المهام',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Text(
+                '${summary.completionPercent}%',
+                textDirection: TextDirection.ltr,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppTheme.dMaroon,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: LinearProgressIndicator(
-              value: progress,
+              value: summary.completionRatio,
               minHeight: 8,
-              backgroundColor: Colors.black.withAlpha(35),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dGold),
+              backgroundColor: AppTheme.dLine,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dMaroon),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
               final itemWidth = constraints.maxWidth < 330
@@ -482,34 +576,271 @@ class _TimelineHero extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _HeroMetric(
+                  _StatusMetric(
                     width: itemWidth,
-                    label: 'المتبقي',
-                    value: pending.toString(),
+                    label: 'الإجمالي',
+                    value: summary.total.toString(),
+                    icon: Icons.format_list_bulleted_rounded,
+                  ),
+                  _StatusMetric(
+                    width: itemWidth,
+                    label: 'مكتملة',
+                    value: summary.completed.toString(),
+                    icon: Icons.check_circle_outline_rounded,
+                    color: AppTheme.dGreen,
+                  ),
+                  _StatusMetric(
+                    width: itemWidth,
+                    label: 'قيد التنفيذ',
+                    value: summary.pendingInProgress.toString(),
                     icon: Icons.pending_actions_rounded,
+                    color: AppTheme.dGoldDeep,
                   ),
-                  _HeroMetric(
+                  _StatusMetric(
                     width: itemWidth,
-                    label: 'استحقاقات',
-                    value: dueCount.toString(),
-                    icon: Icons.event_available_rounded,
-                  ),
-                  _HeroMetric(
-                    width: itemWidth,
-                    label: 'متأخر',
-                    value: late.toString(),
+                    label: 'متأخرة',
+                    value: summary.overdue.toString(),
                     icon: Icons.warning_amber_rounded,
+                    color: summary.overdue > 0
+                        ? AppTheme.danger
+                        : AppTheme.dInkSoft,
                   ),
-                  _HeroMetric(
+                  _StatusMetric(
                     width: itemWidth,
-                    label: 'الأقرب',
-                    value: _nearestDueLabel(tasks, timeline),
-                    icon: Icons.timer_outlined,
+                    label: 'اليوم',
+                    value: summary.dueToday.toString(),
+                    icon: Icons.today_rounded,
+                    color: AppTheme.dMaroon,
+                  ),
+                  _StatusMetric(
+                    width: itemWidth,
+                    label: 'عالية الأولوية',
+                    value: summary.highPriority.toString(),
+                    icon: Icons.flag_rounded,
+                    color: AppTheme.danger,
                   ),
                 ],
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusMetric extends StatelessWidget {
+  const _StatusMetric({
+    required this.width,
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.color = AppTheme.dMaroon,
+  });
+
+  final double width;
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withAlpha(16),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: color.withAlpha(38)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppTheme.dInkSoft,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              value,
+              textDirection: TextDirection.ltr,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImportantNowCard extends StatelessWidget {
+  const _ImportantNowCard({
+    required this.tasks,
+    required this.onOpenTask,
+    required this.onOpenFilter,
+  });
+
+  final List<WeddingTask> tasks;
+  final ValueChanged<WeddingTask> onOpenTask;
+  final ValueChanged<_TaskFilter> onOpenFilter;
+
+  @override
+  Widget build(BuildContext context) {
+    if (tasks.isEmpty) {
+      return AarastCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppTheme.dGreen.withAlpha(18),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: const Icon(
+                Icons.check_circle_outline_rounded,
+                color: AppTheme.dGreen,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'مهام تحتاج انتباهك الآن',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppTheme.dInk,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'لا توجد مهام عاجلة الآن',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Icon(Icons.priority_high_rounded, color: AppTheme.dMaroon),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 210),
+                child: Text(
+                  'أهم ما يحتاج تنفيذ اليوم',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: () => onOpenFilter(_TaskFilter.overdue),
+                child: const Text('المتأخرة'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final task in tasks) ...[
+            _ImportantTaskRow(task: task, onTap: () => onOpenTask(task)),
+            if (task != tasks.last) const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportantTaskRow extends StatelessWidget {
+  const _ImportantTaskRow({required this.task, required this.onTap});
+
+  final WeddingTask task;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _isLateTask(task)
+        ? AppTheme.danger
+        : task.priority == 'HIGH' || task.priority == 'URGENT'
+        ? AppTheme.dGoldDeep
+        : AppTheme.dMaroon;
+
+    return AarastCard(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      color: AppTheme.dCreamBg,
+      border: Border.all(color: color.withAlpha(38)),
+      radius: AppTheme.radiusMd,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(_taskAttentionIcon(task), color: color, size: 19),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _taskAttentionLabel(task),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.dInkSoft,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_left_rounded, color: AppTheme.dMuted),
         ],
       ),
     );
@@ -544,65 +875,6 @@ class _ProgressSeal extends StatelessWidget {
   }
 }
 
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({
-    required this.width,
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final double width;
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(22),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: Colors.white.withAlpha(30)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppTheme.dGold, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white.withAlpha(190),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _TimelineFilterBar extends StatelessWidget {
   const _TimelineFilterBar({required this.selected, required this.onChanged});
 
@@ -617,6 +889,7 @@ class _TimelineFilterBar extends StatelessWidget {
         children: [
           for (final item in _filterItems) ...[
             _FilterButton(
+              key: ValueKey('task-filter-${item.filter.name}'),
               label: item.label,
               icon: item.icon,
               selected: selected == item.filter,
@@ -636,6 +909,7 @@ class _FilterButton extends StatelessWidget {
     required this.icon,
     required this.selected,
     required this.onTap,
+    super.key,
   });
 
   final String label;
@@ -703,10 +977,16 @@ class _PremiumTaskCard extends StatelessWidget {
     final isDone = task.isDone;
     final priorityColor = _priorityColor(task.priority);
     final isLate = _isLateTask(task);
+    final statusColor = isDone
+        ? AppTheme.dGreen
+        : isLate
+        ? AppTheme.danger
+        : AppTheme.dMaroon;
 
     return AarastCard(
       padding: EdgeInsets.zero,
       color: isDone ? AppTheme.dCard : AppTheme.dCard2,
+      onTap: onEdit,
       border: Border.all(
         color: isLate
             ? AppTheme.danger.withAlpha(70)
@@ -777,33 +1057,45 @@ class _PremiumTaskCard extends StatelessWidget {
                                 ),
                           ),
                         ],
-                        const SizedBox(height: 11),
+                        const SizedBox(height: 10),
+                        _TaskResponsibleLine(task: task, isDone: isDone),
+                        const SizedBox(height: 10),
                         Wrap(
-                          spacing: 7,
-                          runSpacing: 7,
+                          spacing: 6,
+                          runSpacing: 6,
                           children: [
-                            AarastStatusPill(
+                            _TaskMetaPill(
+                              label: _categoryLabel(task.taskCategory),
+                              color: AppTheme.dMaroon,
+                              icon: Icons.sell_outlined,
+                            ),
+                            _TaskMetaPill(
                               label: _priorityLabel(task.priority),
                               color: priorityColor,
                               icon: Icons.flag_rounded,
                             ),
-                            AarastStatusPill(
-                              label: _statusLabel(task.status),
-                              color: isDone
-                                  ? AppTheme.dGreen
-                                  : AppTheme.dMaroon,
+                            _TaskMetaPill(
+                              label: isLate
+                                  ? 'متأخرة'
+                                  : _statusLabel(task.status),
+                              color: statusColor,
                               icon: isDone
                                   ? Icons.check_circle_rounded
+                                  : isLate
+                                  ? Icons.warning_amber_rounded
                                   : Icons.radio_button_unchecked_rounded,
                             ),
-                            if (task.dueDate != null)
-                              AarastStatusPill(
-                                label: _relativeDueLabel(task.dueDate!),
-                                color: isLate
-                                    ? AppTheme.danger
-                                    : AppTheme.dGoldDeep,
-                                icon: Icons.calendar_month_rounded,
-                              ),
+                            _TaskMetaPill(
+                              label: task.dueDate == null
+                                  ? 'بدون موعد'
+                                  : _relativeDueLabel(task.dueDate!),
+                              color: task.dueDate == null
+                                  ? AppTheme.dInkSoft
+                                  : isLate
+                                  ? AppTheme.danger
+                                  : AppTheme.dGoldDeep,
+                              icon: Icons.calendar_month_rounded,
+                            ),
                             OfflinePendingBadge(
                               entityType: 'task',
                               entityId: task.id,
@@ -919,143 +1211,124 @@ class _TaskCheckButton extends StatelessWidget {
   }
 }
 
-class _TimelineDueList extends StatelessWidget {
-  const _TimelineDueList({required this.timeline});
+class _TaskResponsibleLine extends StatelessWidget {
+  const _TaskResponsibleLine({required this.task, required this.isDone});
 
-  final Timeline timeline;
+  final WeddingTask task;
+  final bool isDone;
 
   @override
   Widget build(BuildContext context) {
-    final isEmpty =
-        timeline.upcomingTasks.isEmpty &&
-        timeline.dueDebts.isEmpty &&
-        timeline.dueInstallments.isEmpty;
+    final phone = task.responsiblePhoneDisplay;
+    final textColor = isDone ? AppTheme.dInkSoft : AppTheme.dInk;
 
-    if (isEmpty) {
-      return const AarastEmptyState(
-        title: 'لا توجد استحقاقات قريبة',
-        message: 'سيظهر هنا أقرب موعد أو قسط أو مهمة بمجرد إضافتها.',
-        icon: Icons.event_available_rounded,
-      );
-    }
-
-    return Column(
-      children: [
-        for (final task in timeline.upcomingTasks) ...[
-          _TimelineDueCard(
-            title: task.title,
-            subtitle: 'مهمة قريبة',
-            status: _statusLabel(task.status),
-            dueDate: task.dueDate,
-            icon: Icons.task_alt_rounded,
-            color: _priorityColor(task.priority),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.dCreamBg.withAlpha(isDone ? 90 : 180),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.dGold.withAlpha(34)),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Icon(
+            Icons.person_outline_rounded,
+            size: 17,
+            color: isDone ? AppTheme.dMuted : AppTheme.dMaroon,
           ),
-          const SizedBox(height: 10),
-        ],
-        for (final debt in timeline.dueDebts) ...[
-          _TimelineDueCard(
-            title: debt.title,
-            subtitle:
-                '${debt.creditorName} • ${_formatMoney(debt.remainingAmount)} ر.ي',
-            status: _debtStatusLabel(debt.status),
-            dueDate: debt.dueDate,
-            icon: Icons.account_balance_wallet_outlined,
-            color: AppTheme.danger,
+          Text(
+            'المسؤول: ${task.responsibleLabel}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-          const SizedBox(height: 10),
+          if (phone != null)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 188),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.phone_iphone_rounded,
+                    size: 15,
+                    color: AppTheme.dInkSoft,
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      phone,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.ltr,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppTheme.dInkSoft,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (task.hasResponsibleParticipant)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppTheme.dGold.withAlpha(22),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppTheme.dGold.withAlpha(65)),
+              ),
+              child: Text(
+                'مشارك في الخطة',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppTheme.dMaroon,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
         ],
-        for (final installment in timeline.dueInstallments) ...[
-          _TimelineDueCard(
-            title: 'قسط مستحق',
-            subtitle: '${_formatMoney(installment.amount)} ر.ي',
-            status: _installmentStatusLabel(installment.status),
-            dueDate: installment.dueDate,
-            icon: Icons.payments_outlined,
-            color: AppTheme.dOrange,
-          ),
-          const SizedBox(height: 10),
-        ],
-      ],
+      ),
     );
   }
 }
 
-class _TimelineDueCard extends StatelessWidget {
-  const _TimelineDueCard({
-    required this.title,
-    required this.subtitle,
-    required this.status,
-    required this.icon,
+class _TaskMetaPill extends StatelessWidget {
+  const _TaskMetaPill({
+    required this.label,
     required this.color,
-    this.dueDate,
+    required this.icon,
   });
 
-  final String title;
-  final String subtitle;
-  final String status;
-  final IconData icon;
+  final String label;
   final Color color;
-  final DateTime? dueDate;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      border: Border.all(color: color.withAlpha(38)),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withAlpha(13),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withAlpha(34)),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withAlpha(22),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w900,
             ),
-            child: Icon(icon, color: color, size: 23),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              AarastStatusPill(label: status, color: color),
-              if (dueDate != null) ...[
-                const SizedBox(height: 6),
-                Text(
-                  _shortDate(dueDate!),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.dMuted,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ],
           ),
         ],
       ),
@@ -1155,7 +1428,7 @@ class _SheetHandle extends StatelessWidget {
   }
 }
 
-enum _TaskFilter { all, today, week, late }
+enum _TaskFilter { all, today, week, overdue, completed, highPriority }
 
 class _FilterItem {
   const _FilterItem(this.filter, this.label, this.icon);
@@ -1168,8 +1441,10 @@ class _FilterItem {
 const _filterItems = [
   _FilterItem(_TaskFilter.all, 'الكل', Icons.grid_view_rounded),
   _FilterItem(_TaskFilter.today, 'اليوم', Icons.today_rounded),
-  _FilterItem(_TaskFilter.week, 'الأسبوع', Icons.date_range_rounded),
-  _FilterItem(_TaskFilter.late, 'متأخر', Icons.warning_amber_rounded),
+  _FilterItem(_TaskFilter.week, 'هذا الأسبوع', Icons.date_range_rounded),
+  _FilterItem(_TaskFilter.overdue, 'متأخرة', Icons.warning_amber_rounded),
+  _FilterItem(_TaskFilter.completed, 'مكتملة', Icons.check_circle_rounded),
+  _FilterItem(_TaskFilter.highPriority, 'عالية الأولوية', Icons.flag_rounded),
 ];
 
 List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
@@ -1187,19 +1462,18 @@ List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
       return !due.isBefore(today) &&
           due.isBefore(today.add(const Duration(days: 8)));
     }).toList(),
-    _TaskFilter.late => tasks.where(_isLateTask).toList(),
+    _TaskFilter.overdue => tasks.where(_isLateTask).toList(),
+    _TaskFilter.completed => tasks.where((task) => task.isDone).toList(),
+    _TaskFilter.highPriority =>
+      tasks
+          .where((task) => task.priority == 'HIGH' || task.priority == 'URGENT')
+          .toList(),
   };
 }
 
 bool _isLateTask(WeddingTask task) {
   final dueDate = task.dueDate;
   if (dueDate == null || task.isDone) return false;
-  return _dateOnly(dueDate).isBefore(_dateOnly(DateTime.now()));
-}
-
-bool _isLateTimelineTask(TimelineTask task) {
-  final dueDate = task.dueDate;
-  if (dueDate == null || task.status == 'DONE') return false;
   return _dateOnly(dueDate).isBefore(_dateOnly(DateTime.now()));
 }
 
@@ -1213,10 +1487,12 @@ DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
 String _emptyTaskTitle(_TaskFilter filter) {
   return switch (filter) {
-    _TaskFilter.all => 'لا توجد مهام بعد',
+    _TaskFilter.all => 'لم تضف أي مهمة بعد',
     _TaskFilter.today => 'لا توجد مهام لليوم',
     _TaskFilter.week => 'الأسبوع هادئ',
-    _TaskFilter.late => 'لا توجد مهام متأخرة',
+    _TaskFilter.overdue => 'لا توجد مهام متأخرة',
+    _TaskFilter.completed => 'لم تكتمل أي مهمة بعد',
+    _TaskFilter.highPriority => 'لا توجد مهام عالية الأولوية',
   };
 }
 
@@ -1226,24 +1502,99 @@ String _emptyTaskMessage(_TaskFilter filter) {
     _TaskFilter.today =>
       'كل شيء مرتب لليوم. يمكنك إضافة مهمة جديدة عند الحاجة.',
     _TaskFilter.week => 'لا توجد مهام قريبة غير مكتملة خلال الأيام القادمة.',
-    _TaskFilter.late => 'رائع، لا توجد مهام تحتاج متابعة عاجلة الآن.',
+    _TaskFilter.overdue => 'رائع، لا توجد مهام تحتاج متابعة عاجلة الآن.',
+    _TaskFilter.completed => 'عند إنجاز مهمة ستظهر هنا بنمط هادئ.',
+    _TaskFilter.highPriority => 'المهام العادية تبقى في القائمة الرئيسية.',
   };
 }
 
-String _nearestDueLabel(List<WeddingTask> tasks, Timeline timeline) {
-  final dates = <DateTime>[
-    for (final task in tasks)
-      if (!task.isDone && task.dueDate != null) task.dueDate!,
-    for (final task in timeline.upcomingTasks)
-      if (task.dueDate != null) task.dueDate!,
-    for (final debt in timeline.dueDebts)
-      if (debt.dueDate != null) debt.dueDate!,
-    for (final installment in timeline.dueInstallments)
-      if (installment.dueDate != null) installment.dueDate!,
-  ]..sort();
+String _taskListTitle(_TaskFilter filter) {
+  return switch (filter) {
+    _TaskFilter.all => 'قائمة المهام',
+    _TaskFilter.today => 'مهام اليوم',
+    _TaskFilter.week => 'مهام هذا الأسبوع',
+    _TaskFilter.overdue => 'المهام المتأخرة',
+    _TaskFilter.completed => 'المهام المكتملة',
+    _TaskFilter.highPriority => 'مهام عالية الأولوية',
+  };
+}
 
-  if (dates.isEmpty) return 'غير محدد';
-  return _relativeDueLabel(dates.first);
+TaskSummary _summaryForPlan(
+  TaskSummary summary,
+  String weddingPlanId,
+  List<WeddingTask> tasks,
+) {
+  if (summary.weddingPlanId == weddingPlanId) return summary;
+  return TaskSummary.fromTasks(weddingPlanId: weddingPlanId, tasks: tasks);
+}
+
+List<WeddingTask> _importantTasks(List<WeddingTask> tasks) {
+  final candidates = tasks.where((task) {
+    if (task.isDone || task.status == 'CANCELLED') return false;
+    final dueDate = task.dueDate;
+    return _isLateTask(task) ||
+        (dueDate != null && _isSameDay(dueDate, DateTime.now())) ||
+        task.priority == 'HIGH' ||
+        task.priority == 'URGENT' ||
+        _isNearDueTask(task);
+  }).toList();
+
+  candidates.sort((first, second) {
+    final firstScore = _attentionScore(first);
+    final secondScore = _attentionScore(second);
+    if (firstScore != secondScore) return secondScore.compareTo(firstScore);
+    final firstDue = first.dueDate;
+    final secondDue = second.dueDate;
+    if (firstDue == null && secondDue == null) return 0;
+    if (firstDue == null) return 1;
+    if (secondDue == null) return -1;
+    return firstDue.compareTo(secondDue);
+  });
+
+  return candidates.take(3).toList();
+}
+
+int _attentionScore(WeddingTask task) {
+  if (_isLateTask(task)) return 40;
+  final dueDate = task.dueDate;
+  if (dueDate != null && _isSameDay(dueDate, DateTime.now())) return 35;
+  if (task.priority == 'HIGH' || task.priority == 'URGENT') return 30;
+  if (_isNearDueTask(task)) return 20;
+  return 0;
+}
+
+bool _isNearDueTask(WeddingTask task) {
+  final dueDate = task.dueDate;
+  if (dueDate == null || task.isDone) return false;
+  final today = _dateOnly(DateTime.now());
+  final due = _dateOnly(dueDate);
+  return !due.isBefore(today) &&
+      due.isBefore(today.add(const Duration(days: 8)));
+}
+
+IconData _taskAttentionIcon(WeddingTask task) {
+  if (_isLateTask(task)) return Icons.warning_amber_rounded;
+  final dueDate = task.dueDate;
+  if (dueDate != null && _isSameDay(dueDate, DateTime.now())) {
+    return Icons.today_rounded;
+  }
+  if (task.priority == 'HIGH' || task.priority == 'URGENT') {
+    return Icons.flag_rounded;
+  }
+  return Icons.event_available_rounded;
+}
+
+String _taskAttentionLabel(WeddingTask task) {
+  if (_isLateTask(task)) return 'متأخرة وتحتاج متابعة';
+  final dueDate = task.dueDate;
+  if (dueDate != null && _isSameDay(dueDate, DateTime.now())) {
+    return 'مطلوبة اليوم';
+  }
+  if (task.priority == 'HIGH' || task.priority == 'URGENT') {
+    return 'عالية الأولوية';
+  }
+  if (dueDate != null) return 'قريبة: ${_relativeDueLabel(dueDate)}';
+  return 'تحتاج متابعة';
 }
 
 String _relativeDueLabel(DateTime date) {
@@ -1265,7 +1616,8 @@ String _priorityLabel(String priority) {
   return switch (priority) {
     'LOW' => 'منخفضة',
     'MEDIUM' => 'متوسطة',
-    'HIGH' => 'عاجلة',
+    'HIGH' => 'عالية',
+    'URGENT' => 'عالية',
     _ => priority,
   };
 }
@@ -1275,6 +1627,7 @@ Color _priorityColor(String priority) {
     'LOW' => AppTheme.dGreen,
     'MEDIUM' => AppTheme.dGoldDeep,
     'HIGH' => AppTheme.danger,
+    'URGENT' => AppTheme.danger,
     _ => AppTheme.dMuted,
   };
 }
@@ -1282,33 +1635,59 @@ Color _priorityColor(String priority) {
 String _statusLabel(String status) {
   return switch (status) {
     'DONE' => 'مكتملة',
-    'IN_PROGRESS' => 'جارية',
-    'TODO' => 'مفتوحة',
+    'IN_PROGRESS' => 'قيد التنفيذ',
+    'TODO' => 'لم تبدأ',
+    'CANCELLED' => 'ملغية',
     _ => status,
   };
 }
 
-String _debtStatusLabel(String status) {
-  return switch (status) {
-    'PAID' => 'مسدد',
-    'PARTIALLY_PAID' => 'جزئي',
-    'OPEN' => 'مفتوح',
-    _ => status,
+String _categoryLabel(String? category) {
+  final value = category?.trim();
+  if (value == null || value.isEmpty || value == 'GENERAL') return 'أخرى';
+  return switch (value) {
+    'VENUE' => 'القاعة',
+    'GUESTS' => 'الضيوف',
+    'MONEY' => 'المال',
+    'PROVIDERS' => 'الموردين',
+    'ATTIRE' => 'الملابس',
+    'PHOTOGRAPHY' => 'التصوير',
+    'CATERING' => 'الضيافة',
+    'DECOR' => 'الزينة',
+    'DOCUMENTS' => 'المستندات',
+    _ => value,
   };
 }
 
-String _installmentStatusLabel(String status) {
-  return switch (status) {
-    'PAID' => 'مسدد',
-    'PENDING' => 'مستحق',
-    'OVERDUE' => 'متأخر',
-    _ => status,
-  };
+List<SharedMember> _membersForPlan(
+  List<SharedMember> members,
+  String weddingPlanId,
+) {
+  return members
+      .where((member) => member.weddingPlanId == weddingPlanId)
+      .toList(growable: false);
 }
 
-String _formatMoney(String raw) {
-  final value = num.tryParse(raw);
-  if (value == null) return raw;
-  if (value == value.roundToDouble()) return value.toInt().toString();
-  return value.toStringAsFixed(2);
+WeddingTask _hydrateTaskParticipant(
+  WeddingTask task,
+  List<SharedMember> members,
+) {
+  if (!task.hasResponsibleParticipant) return task;
+  for (final member in members) {
+    if (member.userId != task.assigneeUserId) continue;
+    return task.copyWith(
+      assigneeName: member.displayName,
+      assigneePhone: member.user?.phone,
+      assigneeRole: member.role,
+    );
+  }
+  return task;
+}
+
+bool _isLocalGuestPlanId(String? planId) {
+  final value = planId?.trim() ?? '';
+  return value.isEmpty ||
+      value == 'local-guest-plan' ||
+      value.startsWith('guest-plan-') ||
+      value.startsWith('local-guest-');
 }

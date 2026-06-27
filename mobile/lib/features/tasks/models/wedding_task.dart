@@ -1,3 +1,5 @@
+import '../../../core/phone/phone_number_utils.dart';
+
 class WeddingTask {
   const WeddingTask({
     required this.id,
@@ -10,9 +12,18 @@ class WeddingTask {
     this.description,
     this.dueDate,
     this.taskCategory,
+    this.assigneeUserId,
+    this.assigneeName,
+    this.assigneePhone,
+    this.assigneeRole,
+    this.responsibleName,
+    this.responsiblePhone,
+    this.responsibleSource,
   });
 
   factory WeddingTask.fromJson(Map<String, dynamic> json) {
+    final assignee = json['assignee'];
+    final assigneeUser = assignee is Map ? assignee['user'] : null;
     return WeddingTask(
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
@@ -20,6 +31,27 @@ class WeddingTask {
       description: json['description']?.toString(),
       dueDate: _dateTimeOrNull(json['dueDate']),
       taskCategory: json['taskCategory']?.toString(),
+      assigneeUserId: json['assigneeUserId']?.toString(),
+      assigneeName:
+          json['assigneeName']?.toString() ??
+          json['assigneeDisplayName']?.toString() ??
+          json['assigneeUserName']?.toString() ??
+          (assignee is Map ? assignee['name']?.toString() : null),
+      assigneePhone:
+          json['assigneePhone']?.toString() ??
+          json['assigneeUserPhone']?.toString() ??
+          (assignee is Map ? assignee['phone']?.toString() : null) ??
+          (assigneeUser is Map ? assigneeUser['phone']?.toString() : null),
+      assigneeRole:
+          json['assigneeRole']?.toString() ??
+          (assignee is Map ? assignee['role']?.toString() : null),
+      responsibleName:
+          json['responsibleName']?.toString() ??
+          json['responsibleDisplayName']?.toString(),
+      responsiblePhone:
+          json['responsiblePhone']?.toString() ??
+          json['responsibleNormalizedPhone']?.toString(),
+      responsibleSource: json['responsibleSource']?.toString(),
       status: json['status']?.toString() ?? 'TODO',
       priority: json['priority']?.toString() ?? 'MEDIUM',
       createdAt: _dateTimeOrNow(json['createdAt']),
@@ -33,6 +65,13 @@ class WeddingTask {
   final String? description;
   final DateTime? dueDate;
   final String? taskCategory;
+  final String? assigneeUserId;
+  final String? assigneeName;
+  final String? assigneePhone;
+  final String? assigneeRole;
+  final String? responsibleName;
+  final String? responsiblePhone;
+  final String? responsibleSource;
   final String status;
   final String priority;
   final DateTime createdAt;
@@ -43,11 +82,38 @@ class WeddingTask {
 
   bool get isDone => status == 'DONE';
 
+  bool get hasResponsibleParticipant {
+    final assigneeId = assigneeUserId?.trim();
+    return assigneeId != null && assigneeId.isNotEmpty;
+  }
+
+  String get responsibleLabel {
+    final manualName = responsibleName?.trim();
+    if (manualName != null && manualName.isNotEmpty) return manualName;
+    final name = assigneeName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    if (hasResponsibleParticipant) return 'عضو مشارك';
+    return 'أنا';
+  }
+
+  String? get responsiblePhoneDisplay {
+    final phone = (responsiblePhone ?? assigneePhone)?.trim();
+    if (phone == null || phone.isEmpty) return null;
+    return PhoneNumberUtils.display(phone) ?? phone;
+  }
+
   WeddingTask copyWith({
     String? title,
     Object? description = _unchanged,
     Object? dueDate = _unchanged,
     Object? taskCategory = _unchanged,
+    Object? assigneeUserId = _unchanged,
+    Object? assigneeName = _unchanged,
+    Object? assigneePhone = _unchanged,
+    Object? assigneeRole = _unchanged,
+    Object? responsibleName = _unchanged,
+    Object? responsiblePhone = _unchanged,
+    Object? responsibleSource = _unchanged,
     String? status,
     String? priority,
     DateTime? updatedAt,
@@ -69,6 +135,27 @@ class WeddingTask {
       taskCategory: identical(taskCategory, _unchanged)
           ? this.taskCategory
           : taskCategory as String?,
+      assigneeUserId: identical(assigneeUserId, _unchanged)
+          ? this.assigneeUserId
+          : assigneeUserId as String?,
+      assigneeName: identical(assigneeName, _unchanged)
+          ? this.assigneeName
+          : assigneeName as String?,
+      assigneePhone: identical(assigneePhone, _unchanged)
+          ? this.assigneePhone
+          : assigneePhone as String?,
+      assigneeRole: identical(assigneeRole, _unchanged)
+          ? this.assigneeRole
+          : assigneeRole as String?,
+      responsibleName: identical(responsibleName, _unchanged)
+          ? this.responsibleName
+          : responsibleName as String?,
+      responsiblePhone: identical(responsiblePhone, _unchanged)
+          ? this.responsiblePhone
+          : responsiblePhone as String?,
+      responsibleSource: identical(responsibleSource, _unchanged)
+          ? this.responsibleSource
+          : responsibleSource as String?,
     );
   }
 }

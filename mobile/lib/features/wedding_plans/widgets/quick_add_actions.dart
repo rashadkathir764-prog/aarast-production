@@ -15,7 +15,9 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   BuildContext context, {
   required String planId,
   bool refreshDashboardOnExpense = false,
-  required Future<void> Function(String route, {bool refreshDashboard}) openRoute,
+  VoidCallback? onRequestQuote,
+  required Future<void> Function(String route, {bool refreshDashboard})
+  openRoute,
 }) {
   return [
     RoyalHomeAction(
@@ -44,7 +46,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     RoyalHomeAction(
       icon: Icons.request_quote_outlined,
       label: 'طلب عرض سعر',
-      onTap: () => openRoute(AppRouter.providerMarketplace),
+      onTap: onRequestQuote ?? () => openRoute(AppRouter.providerMarketplace),
     ),
   ];
 }

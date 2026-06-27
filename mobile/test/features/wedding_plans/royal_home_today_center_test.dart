@@ -32,6 +32,11 @@ void main() {
               onOpenImportantItem: (_) {},
               onOpenNextStep: () {},
               onOpenTimeline: () {},
+              onAddExpense: () {},
+              onAddTask: () {},
+              onAddGuest: () {},
+              onAddDebt: () {},
+              onRequestQuote: () {},
             ),
             bottomNavigationBar: RoyalDashboardBottomNav(
               activeIndex: 0,
@@ -39,7 +44,6 @@ void main() {
               onMoney: () {},
               onProviders: () {},
               onMore: () {},
-              onAdd: () {},
             ),
           ),
         ),
@@ -52,17 +56,130 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
+    expect(find.text('أهم ما يحتاج متابعة اليوم'), findsOneWidget);
+    expect(find.text('ملخص المال'), findsOneWidget);
 
-    expect(find.text('تنبيه هام'), findsOneWidget);
-    expect(find.text('المالية'), findsOneWidget);
-    expect(find.text('الموردين'), findsWidgets);
-
-    await tester.drag(find.byType(ListView).first, const Offset(0, -420));
+    await tester.dragUntilVisible(
+      find.text('نظرة سريعة'),
+      find.byType(ListView).first,
+      const Offset(0, -420),
+    );
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    expect(find.text('إجراء جديد'), findsOneWidget);
+    expect(find.text('نظرة سريعة'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.text('إجراءات سريعة'),
+      find.byType(ListView).first,
+      const Offset(0, -420),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('إجراءات سريعة'), findsOneWidget);
+    expect(find.text('إجراء جديد'), findsNothing);
+  });
+
+  testWidgets('dashboard currency formatting keeps Yemeni suffix readable', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: RoyalHomeTodayCenter(
+              summary: _moneySummary,
+              userName: 'رشاد',
+              onNotifications: () {},
+              onProfile: () {},
+              onOpenPlan: () {},
+              onOpenMoney: () {},
+              onOpenTasks: () {},
+              onOpenProviders: () {},
+              onOpenGuests: () {},
+              onOpenParticipants: () {},
+              onOpenNotifications: () {},
+              onOpenImportantItem: (_) {},
+              onOpenNextStep: () {},
+              onOpenTimeline: () {},
+              onAddExpense: () {},
+              onAddTask: () {},
+              onAddGuest: () {},
+              onAddDebt: () {},
+              onRequestQuote: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('120م ر.ي'), findsOneWidget);
+    expect(find.text('1.6م ر.ي'), findsOneWidget);
+    expect(find.text('118.4م ر.ي'), findsOneWidget);
+    expect(find.text('5.3م ر.ي'), findsOneWidget);
+    expect(find.textContaining('م120'), findsNothing);
+    expect(find.textContaining('م1.6'), findsNothing);
+  });
+
+  testWidgets('dashboard phone width has no floating CTA overflow mark', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 760);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            body: RoyalHomeTodayCenter(
+              summary: _summary,
+              userName: 'رشاد',
+              onNotifications: () {},
+              onProfile: () {},
+              onOpenPlan: () {},
+              onOpenMoney: () {},
+              onOpenTasks: () {},
+              onOpenProviders: () {},
+              onOpenGuests: () {},
+              onOpenParticipants: () {},
+              onOpenNotifications: () {},
+              onOpenImportantItem: (_) {},
+              onOpenNextStep: () {},
+              onOpenTimeline: () {},
+              onAddExpense: () {},
+              onAddTask: () {},
+              onAddGuest: () {},
+              onAddDebt: () {},
+              onRequestQuote: () {},
+            ),
+            bottomNavigationBar: RoyalDashboardBottomNav(
+              activeIndex: 0,
+              onHome: () {},
+              onMoney: () {},
+              onTasks: () {},
+              onProviders: () {},
+              onMore: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('إجراء جديد'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('royal action sheet exposes the approved quick actions', (
@@ -258,6 +375,39 @@ final _summary = DashboardSummary(
     ),
   ],
   permissions: DashboardPermissionSummary(
+    isOwner: true,
+    canViewBudget: true,
+    canViewExpenses: true,
+    canViewDebts: true,
+    canManageTasks: true,
+    canManageFinancialRecords: true,
+    canManagePlan: true,
+  ),
+);
+
+final _moneySummary = DashboardSummary(
+  planId: 'plan-money',
+  title: 'زفاف صنعاء',
+  status: 'PLANNING',
+  progressPercentage: 20,
+  budgetTotal: '120000000',
+  spentTotal: '1600000',
+  remainingBudget: '118400000',
+  debtTotal: '5300000',
+  dueInstallmentsCount: 0,
+  totalTasks: 0,
+  completedTasks: 0,
+  overdueTasks: 0,
+  todayTasks: 0,
+  guestCount: 0,
+  confirmedGuests: 0,
+  providerCount: 0,
+  quoteRequestsCount: 0,
+  unreadNotificationsCount: 0,
+  importantItems: const [],
+  planProviders: const [],
+  importantNotifications: const [],
+  permissions: const DashboardPermissionSummary(
     isOwner: true,
     canViewBudget: true,
     canViewExpenses: true,

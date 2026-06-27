@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:io' show Platform;
 import 'dart:math' as math;
 
@@ -24,6 +26,11 @@ class RoyalHomeTodayCenter extends StatelessWidget {
     required this.onOpenImportantItem,
     required this.onOpenNextStep,
     required this.onOpenTimeline,
+    this.onAddExpense,
+    this.onAddTask,
+    this.onAddGuest,
+    this.onAddDebt,
+    this.onRequestQuote,
     this.bottomPadding = 156,
     this.notice,
     this.personaHeadline,
@@ -45,6 +52,11 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
   final VoidCallback onOpenNextStep;
   final VoidCallback onOpenTimeline;
+  final VoidCallback? onAddExpense;
+  final VoidCallback? onAddTask;
+  final VoidCallback? onAddGuest;
+  final VoidCallback? onAddDebt;
+  final VoidCallback? onRequestQuote;
   final double bottomPadding;
   final Widget? notice;
   final String? personaHeadline;
@@ -86,23 +98,76 @@ class RoyalHomeTodayCenter extends StatelessWidget {
           const SizedBox(height: 28),
           _PremiumEntry(
             index: notice != null ? 3 : 2,
-            child: _PanoramicCardsCarousel(
+            child: _ImportantNowCard(
               summary: summary,
-              onOpenProviders: onOpenProviders,
               onOpenImportantItem: onOpenImportantItem,
-              onOpenMoney: onOpenMoney,
             ),
           ),
           const SizedBox(height: 24),
           _PremiumEntry(
             index: notice != null ? 4 : 3,
-            child: _OperationalCards(
+            child: _MoneySummaryCard(
               summary: summary,
+              onOpenMoney: onOpenMoney,
+              onAddExpense: onAddExpense,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _PremiumEntry(
+            index: notice != null ? 5 : 4,
+            child: _QuickOverviewGrid(
+              summary: summary,
+              onOpenMoney: onOpenMoney,
               onOpenTasks: onOpenTasks,
               onOpenGuests: onOpenGuests,
+              onOpenProviders: onOpenProviders,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _PremiumEntry(
+            index: notice != null ? 6 : 5,
+            child: _DashboardQuickActionsCard(
+              onAddExpense: onAddExpense,
+              onAddTask: onAddTask,
+              onAddGuest: onAddGuest,
+              onAddDebt: onAddDebt,
+              onRequestQuote: onRequestQuote,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _PremiumEntry(
+            index: notice != null ? 7 : 6,
+            child: _RecentActivityCard(
+              summary: summary,
+              onOpenImportantItem: onOpenImportantItem,
+            ),
+          ),
+          const SizedBox(height: 18),
+          _PremiumEntry(
+            index: notice != null ? 8 : 7,
+            child: _SharingPermissionsCard(
+              summary: summary,
               onOpenParticipants: onOpenParticipants,
             ),
           ),
+          const SizedBox(height: 18),
+          _PremiumEntry(
+            index: notice != null ? 9 : 8,
+            child: _SyncStatusCard(summary: summary),
+          ),
+          if (_smartWarnings(summary).isNotEmpty) ...[
+            const SizedBox(height: 18),
+            _PremiumEntry(
+              index: notice != null ? 10 : 9,
+              child: _SmartWarningsCard(
+                summary: summary,
+                onOpenPlan: onOpenPlan,
+                onOpenMoney: onOpenMoney,
+                onOpenTasks: onOpenTasks,
+                onOpenGuests: onOpenGuests,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -162,7 +227,7 @@ class _PremiumHeader extends StatelessWidget {
         _CircleIconButton(
           icon: Icons.notifications_none_rounded,
           onTap: onNotifications,
-          showBadge: unreadCount > 0,
+          badgeCount: unreadCount,
         ),
         const SizedBox(width: 10),
         _CircleIconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
@@ -362,6 +427,32 @@ class _PremiumHeroCard extends StatelessWidget {
                               ],
                             ),
                           ],
+                          const SizedBox(height: 9),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.16),
+                                ),
+                              ),
+                              child: Text(
+                                summary.dataStateLabel,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -981,16 +1072,832 @@ class _PanoramicPriorityCard extends StatelessWidget {
   }
 }
 
+class _DashboardSectionCard extends StatelessWidget {
+  const _DashboardSectionCard({
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.icon,
+    this.onTap,
+  });
+
+  final String title;
+  final String? subtitle;
+  final IconData? icon;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: _RoyalColors.ink.withValues(alpha: 0.035),
+            blurRadius: 14,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, color: _RoyalColors.goldDeep, size: 20),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _RoyalColors.ink,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_hasText(subtitle)) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle!.trim(),
+              style: const TextStyle(
+                color: _RoyalColors.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                height: 1.35,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          child,
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+    return AarastPressable(
+      onTap: onTap!,
+      borderRadius: BorderRadius.circular(22),
+      child: content,
+    );
+  }
+}
+
+class _ImportantNowCard extends StatelessWidget {
+  const _ImportantNowCard({
+    required this.summary,
+    required this.onOpenImportantItem,
+  });
+
+  final DashboardSummary summary;
+  final ValueChanged<DashboardImportantItem> onOpenImportantItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _priorityItems(summary).take(3).toList();
+    return _DashboardSectionCard(
+      title: 'أهم ما يحتاج متابعة اليوم',
+      subtitle: items.isEmpty
+          ? 'لا توجد أشياء عاجلة الآن.'
+          : 'أشياء تحتاج انتباهك الآن.',
+      icon: Icons.flash_on_rounded,
+      child: items.isEmpty
+          ? const _EmptySectionText(
+              text: 'كل شيء هادئ الآن. أضف بيانات أكثر عندما تبدأ الخطة.',
+            )
+          : Column(
+              children: [
+                for (final item in items)
+                  _CompactLineItem(
+                    icon: _iconForImportantItem(item),
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    tone: item.tone,
+                    onTap: () => onOpenImportantItem(item),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _MoneySummaryCard extends StatelessWidget {
+  const _MoneySummaryCard({
+    required this.summary,
+    required this.onOpenMoney,
+    this.onAddExpense,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenMoney;
+  final VoidCallback? onAddExpense;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!summary.canViewMoney) {
+      return _DashboardSectionCard(
+        title: 'المال',
+        icon: Icons.lock_outline_rounded,
+        onTap: onOpenMoney,
+        child: const _EmptySectionText(
+          text: 'البيانات المالية خاصة ولا تظهر لهذا الدور.',
+        ),
+      );
+    }
+
+    final warnings = summary.financialWarnings.take(2).toList();
+    return _DashboardSectionCard(
+      title: 'ملخص المال',
+      subtitle: summary.nextInstallmentDue == null
+          ? 'ميزانية ومصاريف وديون من المصدر الحالي.'
+          : 'القسط القادم: ${_formatMoney(summary.nextInstallmentDue!.amount)}',
+      icon: Icons.account_balance_wallet_rounded,
+      child: Column(
+        children: [
+          _MoneyRow(
+            label: 'الميزانية',
+            value: _formatMoney(summary.totalBudgetForDisplay),
+          ),
+          _MoneyRow(
+            label: 'المصروف',
+            value: _formatMoney(summary.spentTotalForDisplay),
+          ),
+          _MoneyRow(
+            label: 'المتبقي',
+            value: _formatMoney(summary.remainingBudgetForDisplay),
+          ),
+          _MoneyRow(
+            label: 'الديون',
+            value: _formatMoney(summary.debtTotalForDisplay),
+          ),
+          if (warnings.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            for (final warning in warnings)
+              _WarningPill(
+                text: _warningDashboardCopy(warning),
+                danger: warning.severity == 'DANGER',
+              ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _SmallCommandButton(
+                  label: 'عرض المال',
+                  icon: Icons.arrow_back_rounded,
+                  onTap: onOpenMoney,
+                ),
+              ),
+              if (onAddExpense != null) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _SmallCommandButton(
+                    label: 'إضافة مصروف',
+                    icon: Icons.add_rounded,
+                    onTap: onAddExpense!,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickOverviewGrid extends StatelessWidget {
+  const _QuickOverviewGrid({
+    required this.summary,
+    required this.onOpenMoney,
+    required this.onOpenTasks,
+    required this.onOpenGuests,
+    required this.onOpenProviders,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenMoney;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onOpenGuests;
+  final VoidCallback onOpenProviders;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardSectionCard(
+      title: 'نظرة سريعة',
+      icon: Icons.dashboard_customize_rounded,
+      child: GridView.count(
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.55,
+        children: [
+          _OverviewTile(
+            title: 'المهام',
+            value: '${summary.completedTasks}/${summary.totalTasks}',
+            subtitle: '${summary.overdueTasks} متأخرة',
+            icon: Icons.checklist_rounded,
+            onTap: onOpenTasks,
+          ),
+          _OverviewTile(
+            title: 'الضيوف',
+            value: '${summary.confirmedGuests}/${summary.guestCount}',
+            subtitle: '${summary.incompleteGuestsCount} ناقص',
+            icon: Icons.group_outlined,
+            onTap: onOpenGuests,
+          ),
+          _OverviewTile(
+            title: 'العروض',
+            value: '${summary.receivedQuotes}',
+            subtitle: '${summary.acceptedProviders} مقبول',
+            icon: Icons.storefront_rounded,
+            onTap: onOpenProviders,
+          ),
+          _OverviewTile(
+            title: 'الأقساط',
+            value: '${summary.dueInstallmentsCount ?? 0}',
+            subtitle: 'ديون ${_formatMoney(summary.debtTotalForDisplay)}',
+            icon: Icons.payments_outlined,
+            onTap: onOpenMoney,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardQuickActionsCard extends StatelessWidget {
+  const _DashboardQuickActionsCard({
+    this.onAddExpense,
+    this.onAddTask,
+    this.onAddGuest,
+    this.onAddDebt,
+    this.onRequestQuote,
+  });
+
+  final VoidCallback? onAddExpense;
+  final VoidCallback? onAddTask;
+  final VoidCallback? onAddGuest;
+  final VoidCallback? onAddDebt;
+  final VoidCallback? onRequestQuote;
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = [
+      _QuickActionSpec(
+        'إضافة مصروف',
+        Icons.account_balance_wallet_outlined,
+        onAddExpense,
+      ),
+      _QuickActionSpec(
+        'إضافة مهمة',
+        Icons.check_circle_outline_rounded,
+        onAddTask,
+      ),
+      _QuickActionSpec('إضافة ضيف', Icons.group_add_outlined, onAddGuest),
+      _QuickActionSpec('إضافة دين', Icons.attach_money_rounded, onAddDebt),
+      _QuickActionSpec(
+        'طلب عرض سعر',
+        Icons.request_quote_outlined,
+        onRequestQuote,
+      ),
+    ].where((action) => action.onTap != null).toList();
+    if (actions.isEmpty) return const SizedBox.shrink();
+    return _DashboardSectionCard(
+      title: 'إجراءات سريعة',
+      subtitle: 'إنشاء فقط، بدون تكرار مسارات مختلفة.',
+      icon: Icons.add_circle_outline_rounded,
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          for (final action in actions)
+            _ActionChipButton(
+              label: action.label,
+              icon: action.icon,
+              onTap: action.onTap!,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentActivityCard extends StatelessWidget {
+  const _RecentActivityCard({
+    required this.summary,
+    required this.onOpenImportantItem,
+  });
+
+  final DashboardSummary summary;
+  final ValueChanged<DashboardImportantItem> onOpenImportantItem;
+
+  @override
+  Widget build(BuildContext context) {
+    final activity = summary.recentActivity.take(3).toList();
+    final hasMore = summary.recentActivity.length > activity.length;
+    return _DashboardSectionCard(
+      title: 'آخر التحديثات',
+      icon: Icons.history_rounded,
+      child: activity.isEmpty
+          ? const _EmptySectionText(
+              text:
+                  'لا توجد تحديثات بعد. أضف ضيفاً أو مهمة أو مصروفاً ليظهر هنا.',
+            )
+          : Column(
+              children: [
+                for (final item in activity)
+                  _CompactLineItem(
+                    icon: _iconForImportantItem(item),
+                    title: item.title,
+                    subtitle: item.subtitle,
+                    tone: item.tone,
+                    onTap: () => onOpenImportantItem(item),
+                  ),
+                if (hasMore)
+                  const _EmptySectionText(text: 'عرض الكل من القسم المناسب'),
+              ],
+            ),
+    );
+  }
+}
+
+class _SharingPermissionsCard extends StatelessWidget {
+  const _SharingPermissionsCard({
+    required this.summary,
+    required this.onOpenParticipants,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenParticipants;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardSectionCard(
+      title: 'المشاركة والصلاحيات',
+      subtitle: summary.isLocalOnly
+          ? 'سجل الدخول لمشاركة الخطة وحفظ الصلاحيات.'
+          : '${summary.participantCount} مشارك • ${summary.pendingInvites} دعوات معلقة',
+      icon: Icons.share_rounded,
+      onTap: onOpenParticipants,
+      child: _CompactLineItem(
+        icon: Icons.verified_user_outlined,
+        title: _dashboardRoleLabel(summary.currentUserRole),
+        subtitle: summary.isLocalOnly
+            ? 'مشاركة الخطة تحتاج حساباً'
+            : 'إدارة المشاركين والصلاحيات',
+        tone: 'info',
+        onTap: onOpenParticipants,
+      ),
+    );
+  }
+}
+
+class _SyncStatusCard extends StatelessWidget {
+  const _SyncStatusCard({required this.summary});
+
+  final DashboardSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DashboardSectionCard(
+      title: 'حالة الحفظ',
+      icon: summary.isLocalOnly
+          ? Icons.phone_iphone_rounded
+          : Icons.cloud_done_rounded,
+      child: Text(
+        summary.isLocalOnly
+            ? 'الخطة محفوظة محلياً على هذا الجهاز. سجل الدخول للمزامنة والمشاركة.'
+            : 'الخطة مرتبطة بالحساب وتعرض آخر ملخص متاح من الخادم.',
+        style: const TextStyle(
+          color: _RoyalColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          height: 1.45,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _SmartWarningsCard extends StatelessWidget {
+  const _SmartWarningsCard({
+    required this.summary,
+    required this.onOpenPlan,
+    required this.onOpenMoney,
+    required this.onOpenTasks,
+    required this.onOpenGuests,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenPlan;
+  final VoidCallback onOpenMoney;
+  final VoidCallback onOpenTasks;
+  final VoidCallback onOpenGuests;
+
+  @override
+  Widget build(BuildContext context) {
+    final warnings = _smartWarnings(summary).take(4).toList();
+    return _DashboardSectionCard(
+      title: 'تنبيهات ذكية',
+      icon: Icons.warning_amber_rounded,
+      child: Column(
+        children: [
+          for (final warning in warnings)
+            _CompactLineItem(
+              icon: warning.severity == 'DANGER'
+                  ? Icons.priority_high_rounded
+                  : Icons.info_outline_rounded,
+              title: _warningDashboardCopy(warning),
+              subtitle: warning.count == null
+                  ? 'راجع الخطة'
+                  : '${warning.count} عنصر',
+              tone: warning.severity == 'DANGER' ? 'danger' : 'warning',
+              onTap: () => _openWarning(
+                warning,
+                onOpenPlan: onOpenPlan,
+                onOpenMoney: onOpenMoney,
+                onOpenTasks: onOpenTasks,
+                onOpenGuests: onOpenGuests,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoneyRow extends StatelessWidget {
+  const _MoneyRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _RoyalColors.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: _RoyalColors.ink,
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverviewTile extends StatelessWidget {
+  const _OverviewTile({
+    required this.title,
+    required this.value,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final String value;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _RoyalColors.ivory,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _RoyalColors.goldDeep.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: _RoyalColors.goldDeep, size: 18),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _RoyalColors.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _RoyalColors.burgundy,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
+            ),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _RoyalColors.muted,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactLineItem extends StatelessWidget {
+  const _CompactLineItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.tone,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String tone;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _toneColor(tone);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: AarastPressable(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.fade,
+                    style: const TextStyle(
+                      color: _RoyalColors.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _RoyalColors.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left_rounded, color: _RoyalColors.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptySectionText extends StatelessWidget {
+  const _EmptySectionText({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        color: _RoyalColors.muted,
+        fontSize: 13,
+        fontWeight: FontWeight.w700,
+        height: 1.45,
+        letterSpacing: 0,
+      ),
+    );
+  }
+}
+
+class _SmallCommandButton extends StatelessWidget {
+  const _SmallCommandButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: 42,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: _RoyalColors.burgundy,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 17),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionChipButton extends StatelessWidget {
+  const _ActionChipButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: _RoyalColors.ivory,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: _RoyalColors.goldDeep.withValues(alpha: 0.18),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: _RoyalColors.goldDeep, size: 17),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: _RoyalColors.ink,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WarningPill extends StatelessWidget {
+  const _WarningPill({required this.text, required this.danger});
+
+  final String text;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? _RoyalColors.burgundy : _RoyalColors.goldDeep;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.fade,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionSpec {
+  const _QuickActionSpec(this.label, this.icon, this.onTap);
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+}
+
 class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
     required this.icon,
     required this.onTap,
-    this.showBadge = false,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
   final VoidCallback onTap;
-  final bool showBadge;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1016,17 +1923,30 @@ class _CircleIconButton extends StatelessWidget {
           alignment: Alignment.center,
           children: [
             Icon(icon, color: _RoyalColors.ink, size: 24),
-            if (showBadge)
+            if (badgeCount > 0)
               Positioned(
-                top: 10,
-                right: 10,
+                top: 7,
+                right: 6,
                 child: Container(
-                  width: 10,
-                  height: 10,
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
                     color: _RoyalColors.burgundy,
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    badgeCount > 99 ? '99+' : '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
                   ),
                 ),
               ),
@@ -1124,16 +2044,29 @@ String _daysRemainingLabel(int? daysRemaining) {
 }
 
 String _formatMoney(String? amount) {
-  if (amount == null || amount.isEmpty) return '0 ﷼';
-  final numValue = int.tryParse(amount);
-  if (numValue == null) return '0 ﷼';
-  if (numValue >= 1000000) {
-    return '${(numValue / 1000000).toStringAsFixed(1).replaceAll('.0', '')}م ﷼';
+  final cleaned = amount?.replaceAll(',', '').trim();
+  if (cleaned == null || cleaned.isEmpty) return '0 ر.ي';
+  final value = num.tryParse(cleaned);
+  if (value == null) return '0 ر.ي';
+  if (value.abs() >= 1000000) {
+    return '${_trimDecimal(value / 1000000)}م ر.ي';
   }
-  if (numValue >= 1000) {
-    return '${(numValue / 1000).toStringAsFixed(1).replaceAll('.0', '')}ألف ﷼';
+  return '${_formatWholeNumber(value)} ر.ي';
+}
+
+String _trimDecimal(num value) {
+  return value.toStringAsFixed(1).replaceAll('.0', '');
+}
+
+String _formatWholeNumber(num value) {
+  final rounded = value.round().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < rounded.length; i++) {
+    final remaining = rounded.length - i;
+    buffer.write(rounded[i]);
+    if (remaining > 1 && remaining % 3 == 1) buffer.write(',');
   }
-  return '$numValue ﷼';
+  return buffer.toString();
 }
 
 List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
@@ -1144,6 +2077,109 @@ List<DashboardImportantItem> _priorityItems(DashboardSummary summary) {
     return 0;
   });
   return list;
+}
+
+IconData _iconForImportantItem(DashboardImportantItem item) {
+  if (item.type.contains('TASK')) return Icons.checklist_rounded;
+  if (item.type.contains('GUEST')) return Icons.group_outlined;
+  if (item.type.contains('QUOTE') || item.type.contains('PROVIDER')) {
+    return Icons.storefront_rounded;
+  }
+  if (item.type.contains('INSTALLMENT') ||
+      item.type.contains('BUDGET') ||
+      item.type.contains('MONEY') ||
+      item.type.contains('DEBT')) {
+    return Icons.account_balance_wallet_rounded;
+  }
+  return Icons.info_outline_rounded;
+}
+
+Color _toneColor(String tone) {
+  return switch (tone) {
+    'danger' => _RoyalColors.burgundy,
+    'warning' => _RoyalColors.goldDeep,
+    'success' => const Color(0xFF2E7D57),
+    _ => _RoyalColors.goldDeep,
+  };
+}
+
+String _warningDashboardCopy(DashboardFinancialWarning warning) {
+  return switch (warning.type) {
+    'INCOMPLETE_GUESTS' => 'ضيوف بدون أرقام تواصل',
+    'TASK_OVERDUE' => 'مهام متأخرة تحتاج مراجعة',
+    'INSTALLMENT_DUE_SOON' || 'INSTALLMENT_OVERDUE' => 'قسط قريب يحتاج متابعة',
+    'MISSING_BUDGET' => 'الميزانية تحتاج تحديد',
+    'MISSING_LOCATION' => 'موقع الزفاف يحتاج تحديد',
+    'BUDGET_EXCEEDED' => 'الميزانية تجاوزت الحد',
+    _ => warning.message,
+  };
+}
+
+List<DashboardFinancialWarning> _smartWarnings(DashboardSummary summary) {
+  final warnings = <DashboardFinancialWarning>[...summary.financialWarnings];
+  if (!_hasText(summary.city)) {
+    warnings.add(
+      const DashboardFinancialWarning(
+        type: 'MISSING_LOCATION',
+        severity: 'WARNING',
+        message: 'موقع الزفاف غير مكتمل.',
+      ),
+    );
+  }
+  if (!_hasText(summary.totalBudgetForDisplay)) {
+    warnings.add(
+      const DashboardFinancialWarning(
+        type: 'MISSING_BUDGET',
+        severity: 'WARNING',
+        message: 'الميزانية غير محددة بعد.',
+      ),
+    );
+  }
+  if (summary.incompleteGuestsCount > 0 &&
+      warnings.every((warning) => warning.type != 'INCOMPLETE_GUESTS')) {
+    warnings.add(
+      DashboardFinancialWarning(
+        type: 'INCOMPLETE_GUESTS',
+        severity: 'WARNING',
+        message: 'يوجد ضيوف ببيانات تواصل ناقصة.',
+        count: summary.incompleteGuestsCount,
+      ),
+    );
+  }
+  if (summary.overdueTasks > 0 &&
+      warnings.every((warning) => warning.type != 'TASK_OVERDUE')) {
+    warnings.add(
+      DashboardFinancialWarning(
+        type: 'TASK_OVERDUE',
+        severity: 'WARNING',
+        message: 'يوجد مهام متأخرة.',
+        count: summary.overdueTasks,
+      ),
+    );
+  }
+  return warnings.where((warning) => _hasText(warning.message)).toList();
+}
+
+void _openWarning(
+  DashboardFinancialWarning warning, {
+  required VoidCallback onOpenPlan,
+  required VoidCallback onOpenMoney,
+  required VoidCallback onOpenTasks,
+  required VoidCallback onOpenGuests,
+}) {
+  if (warning.type.contains('GUEST')) {
+    onOpenGuests();
+    return;
+  }
+  if (warning.type.contains('TASK')) {
+    onOpenTasks();
+    return;
+  }
+  if (warning.type.contains('BUDGET') || warning.type.contains('INSTALLMENT')) {
+    onOpenMoney();
+    return;
+  }
+  onOpenPlan();
 }
 
 class _OperationalCards extends StatelessWidget {

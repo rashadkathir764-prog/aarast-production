@@ -148,7 +148,7 @@ class _MainShellState extends State<MainShell> {
             onTasks: () => _onItemTapped(2),
             onProviders: () => _onItemTapped(3),
             onMore: () => _onItemTapped(4),
-            onAdd: _showQuickAdd,
+            onAdd: _index == 0 ? null : _showQuickAdd,
           ),
         ),
       ),

@@ -10,7 +10,6 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
-import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/royal_home_today_center.dart';
 import '../data/dashboard_summary_sources.dart';
@@ -64,10 +63,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onProviders: () => context.push(AppRouter.providerMarketplace),
         onMore: () => context.push(AppRouter.more),
-        onAdd: () => showRoyalHomeActionSheet(
-          context,
-          actions: _quickActions(context, planId),
-        ),
       ),
       child: RoyalHomeTodayCenter(
         summary: dashboardSummary,
@@ -98,25 +93,12 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenNextStep: () =>
             _openLocalNextStep(context, planId, dashboardSummary),
         onOpenTimeline: () => _openLocalBrowse(context, planId, area: 'المهام'),
+        onAddExpense: () => context.push(AppRouter.createExpense(planId)),
+        onAddTask: () => context.push(AppRouter.createTask(planId)),
+        onAddGuest: () => context.push(AppRouter.guestList(planId)),
+        onAddDebt: () => context.push(AppRouter.createDebt(planId)),
+        onRequestQuote: () => _requireAccountForQuote(context),
       ),
-    );
-  }
-
-  List<RoyalHomeAction> _quickActions(BuildContext context, String planId) {
-    void closeSheet() {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
-
-    Future<void> open(String route, {bool refreshDashboard = false}) async {
-      closeSheet();
-      await context.push(route);
-      await _refreshSummary();
-    }
-
-    return buildCanonicalQuickAddActions(
-      context,
-      planId: planId,
-      openRoute: open,
     );
   }
 
@@ -252,6 +234,14 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       context,
       reason:
           'الإشعارات الحسابية تحتاج حساباً حتى نربط التنبيهات بخطتك ونحفظها بأمان.',
+    );
+  }
+
+  Future<bool> _requireAccountForQuote(BuildContext context) {
+    return AuthActionGuard.requireAccount(
+      context,
+      reason:
+          'طلب عرض سعر يحتاج حساباً حتى نربطه بخطتك ونحفظ ردود الموردين بأمان.',
     );
   }
 

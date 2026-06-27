@@ -74,6 +74,13 @@ void main() {
         status: 'INVITED',
         seatsCount: 1,
       );
+      await GuestsApi(apiClient, offline: offline).createGuest(
+        weddingPlanId: planId,
+        name: 'guest-without-phone',
+        side: 'OTHER',
+        status: 'INVITED',
+        seatsCount: 1,
+      );
       await TaskTimelineApi(
         apiClient,
         offline: offline,
@@ -102,17 +109,23 @@ void main() {
       ).loadSummary();
       final royalSummary = summary!.toDashboardSummary();
 
-      expect(summary.guestCount, 1);
+      expect(summary.guestCount, 2);
+      expect(summary.incompleteGuestCount, 1);
       expect(summary.taskCount, 1);
       expect(summary.spentTotal, '500000');
       expect(summary.debtTotal, '2000000');
       expect(summary.unpaidDebtTotal, '2000000');
       expect(summary.dueInstallmentsCount, 1);
       expect(royalSummary.remainingBudget, '500000');
+      expect(royalSummary.incompleteGuestsCount, 1);
       expect(royalSummary.unreadNotificationsCount, 0);
       expect(royalSummary.importantNotifications, isEmpty);
       expect(
         royalSummary.importantItems.map((item) => item.type),
+        contains('INSTALLMENT_DUE'),
+      );
+      expect(
+        royalSummary.recentActivity.map((item) => item.type),
         containsAll([
           'LOCAL_GUEST',
           'LOCAL_TASK',
@@ -285,7 +298,7 @@ void main() {
     expect(find.text('tasks-opened'), findsOneWidget);
   });
 
-  testWidgets('guest action sheet opens guests without a login blocker', (
+  testWidgets('guest quick actions card opens guests without a login blocker', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -315,9 +328,12 @@ void main() {
       ),
     );
 
-    // Test the action sheet which is part of the bottom navigation!
-    expect(find.text('إجراء جديد'), findsOneWidget);
-    await tester.tap(find.text('إجراء جديد'), warnIfMissed: false);
+    expect(find.text('إجراء جديد'), findsNothing);
+    await tester.dragUntilVisible(
+      find.text('إضافة ضيف'),
+      find.byKey(const Key('royal-home-guest-plan-test')),
+      const Offset(0, -500),
+    );
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
@@ -329,6 +345,38 @@ void main() {
     }
 
     expect(find.text('guests-opened'), findsOneWidget);
+  });
+
+  testWidgets('guest quick actions quote request remains account-gated', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp(home: LocalGuestDashboardScreen(summary: summary)),
+      ),
+    );
+
+    await tester.dragUntilVisible(
+      find.text('طلب عرض سعر'),
+      find.byKey(const Key('royal-home-guest-plan-test')),
+      const Offset(0, -500),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    await tester.tap(find.text('طلب عرض سعر'), warnIfMissed: false);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
 }
 

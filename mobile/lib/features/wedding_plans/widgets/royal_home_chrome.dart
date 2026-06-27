@@ -131,40 +131,50 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _RoyalNavItem(
-                            icon: Icons.home_outlined,
-                            activeIcon: Icons.home_rounded,
-                            label: 'الرئيسية',
-                            active: activeIndex == 0,
-                            onTap: onHome,
+                          Expanded(
+                            child: _RoyalNavItem(
+                              icon: Icons.home_outlined,
+                              activeIcon: Icons.home_rounded,
+                              label: 'الرئيسية',
+                              active: activeIndex == 0,
+                              onTap: onHome,
+                            ),
                           ),
-                          _RoyalNavItem(
-                            icon: Icons.credit_card_outlined,
-                            activeIcon: Icons.credit_card_rounded,
-                            label: 'المال',
-                            active: activeIndex == 1,
-                            onTap: onMoney,
+                          Expanded(
+                            child: _RoyalNavItem(
+                              icon: Icons.credit_card_outlined,
+                              activeIcon: Icons.credit_card_rounded,
+                              label: 'المال',
+                              active: activeIndex == 1,
+                              onTap: onMoney,
+                            ),
                           ),
-                          _RoyalNavItem(
-                            icon: Icons.checklist_rtl_outlined,
-                            activeIcon: Icons.checklist_rtl_rounded,
-                            label: 'المهام',
-                            active: activeIndex == 2,
-                            onTap: onTasks,
+                          Expanded(
+                            child: _RoyalNavItem(
+                              icon: Icons.checklist_rtl_outlined,
+                              activeIcon: Icons.checklist_rtl_rounded,
+                              label: 'المهام',
+                              active: activeIndex == 2,
+                              onTap: onTasks,
+                            ),
                           ),
-                          _RoyalNavItem(
-                            icon: Icons.grid_view_outlined,
-                            activeIcon: Icons.grid_view_rounded,
-                            label: 'الموردون',
-                            active: activeIndex == 3,
-                            onTap: onProviders,
+                          Expanded(
+                            child: _RoyalNavItem(
+                              icon: Icons.grid_view_outlined,
+                              activeIcon: Icons.grid_view_rounded,
+                              label: 'الموردون',
+                              active: activeIndex == 3,
+                              onTap: onProviders,
+                            ),
                           ),
-                          _RoyalNavItem(
-                            icon: Icons.more_horiz_rounded,
-                            activeIcon: Icons.more_horiz_rounded,
-                            label: 'المزيد',
-                            active: activeIndex == 4,
-                            onTap: onMore,
+                          Expanded(
+                            child: _RoyalNavItem(
+                              icon: Icons.more_horiz_rounded,
+                              activeIcon: Icons.more_horiz_rounded,
+                              label: 'المزيد',
+                              active: activeIndex == 4,
+                              onTap: onMore,
+                            ),
                           ),
                         ],
                       ),
@@ -503,7 +513,7 @@ class _RoyalNavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        width: 64,
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
           color: active

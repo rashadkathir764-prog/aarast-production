@@ -46,6 +46,8 @@ class DashboardPermissionSummary {
 
 class DashboardSummary {
   const DashboardSummary({
+    this.dataScope = 'ACCOUNT_BACKED',
+    this.accountBacked = true,
     required this.planId,
     required this.title,
     required this.status,
@@ -58,19 +60,25 @@ class DashboardSummary {
     required this.confirmedGuests,
     this.pendingGuests = 0,
     this.declinedGuests = 0,
+    this.incompleteGuestsCount = 0,
     required this.providerCount,
     required this.quoteRequestsCount,
     this.pendingQuoteRequests = 0,
     this.receivedQuotes = 0,
     this.acceptedProviders = 0,
+    this.quoteStatusBreakdown = const {},
     this.nextProviderAction = 'REQUEST_FIRST_QUOTE',
     this.participantCount = 1,
     this.pendingInvites = 0,
     required this.unreadNotificationsCount,
     this.highPriorityNotificationsCount = 0,
     required this.importantItems,
+    this.recentActivity = const [],
     required this.planProviders,
     required this.importantNotifications,
+    this.nextInstallmentDue,
+    this.moneySummary = const DashboardMoneySummary(),
+    this.financialWarnings = const [],
     required this.permissions,
     this.weddingDate,
     this.city,
@@ -89,7 +97,15 @@ class DashboardSummary {
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
     final actions = json['nextBestActions'] ?? json['importantItems'];
+    final taskSummary = _mapOrEmpty(json['taskSummary']);
+    final guestSummary = _mapOrEmpty(json['guestSummary']);
+    final providerQuoteSummary = _mapOrEmpty(json['providerQuoteSummary']);
+    final participantSummary = _mapOrEmpty(json['participantSummary']);
+    final notificationSummary = _mapOrEmpty(json['notificationSummary']);
+    final quoteStatusBreakdown = _intMapOrEmpty(json['quoteStatusBreakdown']);
     return DashboardSummary(
+      dataScope: json['dataScope']?.toString() ?? 'ACCOUNT_BACKED',
+      accountBacked: json['accountBacked'] != false,
       planId: json['planId'].toString(),
       title: json['title'].toString(),
       weddingDate: _dateTimeOrNull(json['weddingDate']),
@@ -105,31 +121,69 @@ class DashboardSummary {
       paidDebtTotal: json['paidDebtTotal']?.toString(),
       unpaidDebtTotal: json['unpaidDebtTotal']?.toString(),
       dueInstallmentsCount: _intOrNull(json['dueInstallmentsCount']),
-      totalTasks: _intOrZero(json['totalTasks']),
-      completedTasks: _intOrZero(json['completedTasks']),
-      overdueTasks: _intOrZero(json['overdueTasks']),
-      todayTasks: _intOrZero(json['todayTasks']),
-      guestCount: _intOrZero(json['guestCount']),
-      confirmedGuests: _intOrZero(json['confirmedGuests']),
-      pendingGuests: _intOrZero(json['pendingGuests']),
-      declinedGuests: _intOrZero(json['declinedGuests']),
+      totalTasks:
+          _intOrNull(json['totalTasks']) ?? _intOrZero(taskSummary['total']),
+      completedTasks:
+          _intOrNull(json['completedTasks']) ??
+          _intOrZero(taskSummary['completed']),
+      overdueTasks:
+          _intOrNull(json['overdueTasks']) ??
+          _intOrZero(taskSummary['overdue']),
+      todayTasks:
+          _intOrNull(json['todayTasks']) ?? _intOrZero(taskSummary['dueToday']),
+      guestCount:
+          _intOrNull(json['guestCount']) ?? _intOrZero(guestSummary['total']),
+      confirmedGuests:
+          _intOrNull(json['confirmedGuests']) ??
+          _intOrZero(guestSummary['confirmed']),
+      pendingGuests:
+          _intOrNull(json['pendingGuests']) ??
+          _intOrZero(guestSummary['pending']),
+      declinedGuests:
+          _intOrNull(json['declinedGuests']) ??
+          _intOrZero(guestSummary['declined']),
+      incompleteGuestsCount:
+          _intOrNull(json['incompleteGuestsCount']) ??
+          _intOrZero(guestSummary['incompleteGuestsCount']),
       providerCount: _intOrZero(json['providerCount']),
       quoteRequestsCount: _intOrZero(json['quoteRequestsCount']),
-      pendingQuoteRequests: _intOrZero(json['pendingQuoteRequests']),
-      receivedQuotes: _intOrZero(json['receivedQuotes']),
+      pendingQuoteRequests:
+          _intOrNull(json['pendingQuoteRequests']) ??
+          _intOrNull(providerQuoteSummary['pending']) ??
+          _intOrZero(quoteStatusBreakdown['pending']),
+      receivedQuotes:
+          _intOrNull(json['receivedQuotes']) ??
+          _intOrNull(providerQuoteSummary['received']) ??
+          _intOrNull(providerQuoteSummary['offered']) ??
+          _intOrZero(quoteStatusBreakdown['offered']),
       acceptedProviders:
+          _intOrNull(json['acceptedProvidersCount']) ??
           _intOrNull(json['acceptedProviders']) ??
+          _intOrNull(providerQuoteSummary['accepted']) ??
           _intOrZero(json['providerCount']),
+      quoteStatusBreakdown: quoteStatusBreakdown,
       nextProviderAction:
-          json['nextProviderAction']?.toString() ?? 'REQUEST_FIRST_QUOTE',
-      participantCount: _intOrNull(json['participantCount']) ?? 1,
-      pendingInvites: _intOrZero(json['pendingInvites']),
-      unreadNotificationsCount: _intOrZero(json['unreadNotificationsCount']),
-      highPriorityNotificationsCount: _intOrZero(
-        json['highPriorityNotificationsCount'],
-      ),
+          json['nextProviderAction']?.toString() ??
+          providerQuoteSummary['nextAction']?.toString() ??
+          'REQUEST_FIRST_QUOTE',
+      participantCount:
+          _intOrNull(json['participantCount']) ??
+          _intOrNull(participantSummary['count']) ??
+          1,
+      pendingInvites:
+          _intOrNull(json['pendingInvites']) ??
+          _intOrZero(participantSummary['pendingInvites']),
+      unreadNotificationsCount:
+          _intOrNull(json['unreadNotificationsCount']) ??
+          _intOrZero(notificationSummary['unread']),
+      highPriorityNotificationsCount:
+          _intOrNull(json['highPriorityNotificationsCount']) ??
+          _intOrZero(notificationSummary['highPriority']),
       importantItems: _listOfMaps(
         actions,
+      ).map(DashboardImportantItem.fromJson).toList(),
+      recentActivity: _listOfMaps(
+        json['recentActivity'],
       ).map(DashboardImportantItem.fromJson).toList(),
       planProviders: _listOfMaps(
         json['planProviders'],
@@ -137,14 +191,27 @@ class DashboardSummary {
       importantNotifications: _listOfMaps(
         json['importantNotifications'],
       ).map(DashboardNotificationPreview.fromJson).toList(),
+      nextInstallmentDue: DashboardNextInstallment.fromJsonOrNull(
+        json['nextInstallmentDue'],
+      ),
+      moneySummary: DashboardMoneySummary.fromJson(
+        _mapOrEmpty(json['moneySummary']),
+      ),
+      financialWarnings: _listOfMaps(
+        json['financialWarnings'],
+      ).map(DashboardFinancialWarning.fromJson).toList(),
       generatedAt: _dateTimeOrNull(json['generatedAt']),
-      currentUserRole: json['currentUserRole']?.toString(),
+      currentUserRole:
+          json['currentUserRole']?.toString() ??
+          participantSummary['currentUserRole']?.toString(),
       permissions: DashboardPermissionSummary.fromJson(
         _mapOrEmpty(json['permissions']),
       ),
     );
   }
 
+  final String dataScope;
+  final bool accountBacked;
   final String planId;
   final String title;
   final DateTime? weddingDate;
@@ -168,19 +235,25 @@ class DashboardSummary {
   final int confirmedGuests;
   final int pendingGuests;
   final int declinedGuests;
+  final int incompleteGuestsCount;
   final int providerCount;
   final int quoteRequestsCount;
   final int pendingQuoteRequests;
   final int receivedQuotes;
   final int acceptedProviders;
+  final Map<String, int> quoteStatusBreakdown;
   final String nextProviderAction;
   final int participantCount;
   final int pendingInvites;
   final int unreadNotificationsCount;
   final int highPriorityNotificationsCount;
   final List<DashboardImportantItem> importantItems;
+  final List<DashboardImportantItem> recentActivity;
   final List<DashboardProviderPreview> planProviders;
   final List<DashboardNotificationPreview> importantNotifications;
+  final DashboardNextInstallment? nextInstallmentDue;
+  final DashboardMoneySummary moneySummary;
+  final List<DashboardFinancialWarning> financialWarnings;
   final DateTime? generatedAt;
   final String? currentUserRole;
   final DashboardPermissionSummary permissions;
@@ -196,6 +269,20 @@ class DashboardSummary {
         todayTasks > 0 ||
         (dueInstallmentsCount ?? 0) > 0;
   }
+
+  bool get isLocalOnly => !accountBacked || dataScope == 'LOCAL';
+
+  String get dataStateLabel {
+    if (isLocalOnly) return 'محفوظ محلياً';
+    if (dataScope == 'SYNCED') return 'متزامن';
+    return 'حساب محفوظ';
+  }
+
+  String? get totalBudgetForDisplay => moneySummary.totalBudget ?? budgetTotal;
+  String? get spentTotalForDisplay => moneySummary.totalSpent ?? spentTotal;
+  String? get remainingBudgetForDisplay =>
+      moneySummary.remainingBudget ?? remainingBudget;
+  String? get debtTotalForDisplay => moneySummary.totalDebts ?? debtTotal;
 
   WeddingPlan toWeddingPlan({String ownerUserId = ''}) {
     final now = DateTime.now();
@@ -246,6 +333,93 @@ class DashboardSummary {
         .map((item) => Map<String, dynamic>.from(item))
         .toList();
   }
+
+  static Map<String, int> _intMapOrEmpty(Object? value) {
+    final map = _mapOrEmpty(value);
+    return map.map((key, value) => MapEntry(key, _intOrZero(value)));
+  }
+}
+
+class DashboardMoneySummary {
+  const DashboardMoneySummary({
+    this.totalBudget,
+    this.totalSpent,
+    this.remainingBudget,
+    this.totalDebts,
+    this.overBudget,
+  });
+
+  factory DashboardMoneySummary.fromJson(Map<String, dynamic> json) {
+    return DashboardMoneySummary(
+      totalBudget: json['totalBudget']?.toString(),
+      totalSpent: json['totalSpent']?.toString(),
+      remainingBudget: json['remainingBudget']?.toString(),
+      totalDebts: json['totalDebts']?.toString(),
+      overBudget: json['overBudget'] is bool
+          ? json['overBudget'] as bool
+          : null,
+    );
+  }
+
+  final String? totalBudget;
+  final String? totalSpent;
+  final String? remainingBudget;
+  final String? totalDebts;
+  final bool? overBudget;
+}
+
+class DashboardNextInstallment {
+  const DashboardNextInstallment({
+    required this.id,
+    required this.debtId,
+    required this.amount,
+    required this.status,
+    this.dueAt,
+  });
+
+  static DashboardNextInstallment? fromJsonOrNull(Object? value) {
+    final json = DashboardSummary._mapOrEmpty(value);
+    if (json.isEmpty) return null;
+    return DashboardNextInstallment(
+      id: json['id']?.toString() ?? '',
+      debtId: json['debtId']?.toString() ?? '',
+      amount: json['amount']?.toString() ?? '0',
+      dueAt: DashboardSummary._dateTimeOrNull(json['dueAt']),
+      status: json['status']?.toString() ?? 'PENDING',
+    );
+  }
+
+  final String id;
+  final String debtId;
+  final String amount;
+  final DateTime? dueAt;
+  final String status;
+}
+
+class DashboardFinancialWarning {
+  const DashboardFinancialWarning({
+    required this.type,
+    required this.severity,
+    required this.message,
+    this.count,
+    this.amount,
+  });
+
+  factory DashboardFinancialWarning.fromJson(Map<String, dynamic> json) {
+    return DashboardFinancialWarning(
+      type: json['type']?.toString() ?? 'BUDGET_EXCEEDED',
+      severity: json['severity']?.toString() ?? 'WARNING',
+      message: json['message']?.toString() ?? '',
+      count: DashboardSummary._intOrNull(json['count']),
+      amount: json['amount']?.toString(),
+    );
+  }
+
+  final String type;
+  final String severity;
+  final String message;
+  final int? count;
+  final String? amount;
 }
 
 class DashboardImportantItem {
@@ -281,8 +455,7 @@ class DashboardImportantItem {
       dueDate: DashboardSummary._dateTimeOrNull(json['dueDate']),
       amount: json['amount']?.toString(),
       route: json['route']?.toString(),
-      routeTarget:
-          json['routeTarget']?.toString() ?? json['route']?.toString(),
+      routeTarget: json['routeTarget']?.toString() ?? json['route']?.toString(),
       entityId: json['entityId']?.toString(),
       data: DashboardSummary._mapOrEmpty(
         json['data'],

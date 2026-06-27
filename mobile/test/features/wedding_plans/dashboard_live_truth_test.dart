@@ -102,4 +102,83 @@ void main() {
     expect(summary.planProviders, isEmpty);
     expect(summary.importantNotifications, isEmpty);
   });
+
+  test('dashboard parses Super 1 backend contract fields', () {
+    final summary = DashboardSummary.fromJson({
+      'dataScope': 'ACCOUNT_BACKED',
+      'accountBacked': true,
+      'planId': 'plan-1',
+      'title': 'Ø®Ø·Ø©',
+      'status': 'PLANNING',
+      'progressPercentage': 0,
+      'moneySummary': {
+        'totalBudget': '1000000',
+        'totalSpent': '250000',
+        'remainingBudget': '750000',
+        'totalDebts': '300000',
+        'overBudget': false,
+      },
+      'taskSummary': {'total': 4, 'completed': 1, 'overdue': 2, 'dueToday': 1},
+      'guestSummary': {
+        'total': 10,
+        'confirmed': 5,
+        'pending': 4,
+        'declined': 1,
+        'incompleteGuestsCount': 3,
+      },
+      'providerCount': 1,
+      'quoteRequestsCount': 2,
+      'acceptedProvidersCount': 1,
+      'quoteStatusBreakdown': {
+        'pending': 1,
+        'offered': 1,
+        'accepted': 1,
+        'rejectedClosed': 0,
+      },
+      'nextInstallmentDue': {
+        'id': 'installment-1',
+        'debtId': 'debt-1',
+        'amount': '50000',
+        'status': 'PENDING',
+      },
+      'financialWarnings': [
+        {
+          'type': 'INSTALLMENT_DUE_SOON',
+          'severity': 'WARNING',
+          'message': 'ØªÙ†Ø¨ÙŠÙ‡ Ù…Ø§Ù„ÙŠ',
+          'count': 1,
+          'amount': '50000',
+        },
+      ],
+      'participantSummary': {
+        'count': 2,
+        'pendingInvites': 1,
+        'currentUserRole': 'OWNER',
+      },
+      'notificationSummary': {'unread': 2, 'highPriority': 1},
+      'permissions': {
+        'isOwner': true,
+        'canViewBudget': true,
+        'canViewExpenses': true,
+        'canViewDebts': true,
+        'canManageTasks': true,
+        'canManageFinancialRecords': true,
+        'canManagePlan': true,
+      },
+    });
+
+    expect(summary.dataScope, 'ACCOUNT_BACKED');
+    expect(summary.accountBacked, isTrue);
+    expect(summary.totalBudgetForDisplay, '1000000');
+    expect(summary.totalTasks, 4);
+    expect(summary.completedTasks, 1);
+    expect(summary.incompleteGuestsCount, 3);
+    expect(summary.quoteStatusBreakdown['offered'], 1);
+    expect(summary.acceptedProviders, 1);
+    expect(summary.nextInstallmentDue?.amount, '50000');
+    expect(summary.financialWarnings, hasLength(1));
+    expect(summary.participantCount, 2);
+    expect(summary.pendingInvites, 1);
+    expect(summary.unreadNotificationsCount, 2);
+  });
 }

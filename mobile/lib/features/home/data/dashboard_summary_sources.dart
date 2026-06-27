@@ -55,6 +55,7 @@ class LocalGuestDashboardSummary {
     required this.confirmedGuestCount,
     required this.pendingGuestCount,
     required this.declinedGuestCount,
+    required this.incompleteGuestCount,
     required this.providerCount,
     required this.spentTotal,
     required this.debtTotal,
@@ -62,6 +63,8 @@ class LocalGuestDashboardSummary {
     required this.unpaidDebtTotal,
     required this.dueInstallmentsCount,
     required this.localImportantItems,
+    required this.localRecentActivity,
+    required this.financialWarnings,
   });
 
   final GuestOnboardingDraft plan;
@@ -76,6 +79,7 @@ class LocalGuestDashboardSummary {
   final int confirmedGuestCount;
   final int pendingGuestCount;
   final int declinedGuestCount;
+  final int incompleteGuestCount;
   final int providerCount;
   final String spentTotal;
   final String debtTotal;
@@ -83,6 +87,8 @@ class LocalGuestDashboardSummary {
   final String unpaidDebtTotal;
   final int dueInstallmentsCount;
   final List<DashboardImportantItem> localImportantItems;
+  final List<DashboardImportantItem> localRecentActivity;
+  final List<DashboardFinancialWarning> financialWarnings;
 
   factory LocalGuestDashboardSummary.fromPlan(
     GuestOnboardingDraft plan, {
@@ -112,6 +118,7 @@ class LocalGuestDashboardSummary {
       confirmedGuestCount: metrics.confirmedGuestCount,
       pendingGuestCount: metrics.pendingGuestCount,
       declinedGuestCount: metrics.declinedGuestCount,
+      incompleteGuestCount: metrics.incompleteGuestCount,
       providerCount: 0,
       spentTotal: _amountString(metrics.spentTotal),
       debtTotal: _amountString(metrics.debtTotal),
@@ -119,6 +126,11 @@ class LocalGuestDashboardSummary {
       unpaidDebtTotal: _amountString(metrics.unpaidDebtTotal),
       dueInstallmentsCount: metrics.dueInstallmentsCount,
       localImportantItems: metrics.importantItems,
+      localRecentActivity: metrics.recentActivity,
+      financialWarnings: metrics.financialWarnings(
+        budget: _cleanAmount(plan.estimatedBudget),
+        hasLocation: plan.weddingLocation.shortLabel != null,
+      ),
     );
   }
 
@@ -132,14 +144,9 @@ class LocalGuestDashboardSummary {
               double.infinity,
             ),
           );
-    final fallbackImportantItem = _localImportantItem();
-    final importantItems = localImportantItems.isEmpty
-        ? fallbackImportantItem == null
-              ? const <DashboardImportantItem>[]
-              : [fallbackImportantItem]
-        : localImportantItems;
-
     return DashboardSummary(
+      dataScope: 'LOCAL',
+      accountBacked: false,
       planId: plan.guestPlanId ?? 'local-guest-plan',
       title: seed.title,
       weddingDate: plan.weddingDate,
@@ -163,12 +170,35 @@ class LocalGuestDashboardSummary {
       confirmedGuests: confirmedGuestCount,
       pendingGuests: pendingGuestCount,
       declinedGuests: declinedGuestCount,
+      incompleteGuestsCount: incompleteGuestCount,
       providerCount: providerCount,
       quoteRequestsCount: 0,
+      pendingQuoteRequests: 0,
+      receivedQuotes: 0,
+      acceptedProviders: 0,
+      quoteStatusBreakdown: const {
+        'pending': 0,
+        'offered': 0,
+        'accepted': 0,
+        'rejectedClosed': 0,
+      },
+      participantCount: 1,
+      pendingInvites: 0,
       unreadNotificationsCount: 0,
-      importantItems: importantItems,
+      importantItems: localImportantItems,
+      recentActivity: localRecentActivity,
       planProviders: const [],
       importantNotifications: const [],
+      moneySummary: DashboardMoneySummary(
+        totalBudget: budget,
+        totalSpent: spentTotal,
+        remainingBudget: remainingBudget ?? budget,
+        totalDebts: debtTotal,
+        overBudget: budget == null
+            ? null
+            : _moneyValue(spentTotal) > _moneyValue(budget),
+      ),
+      financialWarnings: financialWarnings,
       generatedAt: plan.createdAt,
       currentUserRole: 'GUEST',
       permissions: const DashboardPermissionSummary(
@@ -185,6 +215,7 @@ class LocalGuestDashboardSummary {
     );
   }
 
+  // ignore: unused_element
   DashboardImportantItem? _localImportantItem() {
     final title = seed.nextBestAction.trim();
     if (title.isEmpty) return null;
@@ -219,12 +250,14 @@ class LocalDashboardMetrics {
     required this.confirmedGuestCount,
     required this.pendingGuestCount,
     required this.declinedGuestCount,
+    required this.incompleteGuestCount,
     required this.spentTotal,
     required this.debtTotal,
     required this.paidDebtTotal,
     required this.unpaidDebtTotal,
     required this.dueInstallmentsCount,
     required this.importantItems,
+    required this.recentActivity,
   });
 
   static const empty = LocalDashboardMetrics(
@@ -236,12 +269,14 @@ class LocalDashboardMetrics {
     confirmedGuestCount: 0,
     pendingGuestCount: 0,
     declinedGuestCount: 0,
+    incompleteGuestCount: 0,
     spentTotal: 0,
     debtTotal: 0,
     paidDebtTotal: 0,
     unpaidDebtTotal: 0,
     dueInstallmentsCount: 0,
     importantItems: [],
+    recentActivity: [],
   );
 
   final int taskCount;
@@ -252,12 +287,14 @@ class LocalDashboardMetrics {
   final int confirmedGuestCount;
   final int pendingGuestCount;
   final int declinedGuestCount;
+  final int incompleteGuestCount;
   final num spentTotal;
   final num debtTotal;
   final num paidDebtTotal;
   final num unpaidDebtTotal;
   final int dueInstallmentsCount;
   final List<DashboardImportantItem> importantItems;
+  final List<DashboardImportantItem> recentActivity;
 
   int get progressPercent {
     if (taskCount == 0) return 0;
@@ -341,12 +378,14 @@ class LocalDashboardMetrics {
       (sum, debt) => sum + _moneyValue(debt['paidAmount']),
     );
     final unpaidDebtTotal = (debtTotal - paidDebtTotal).clamp(0, debtTotal);
-    final dueInstallmentsCount = installments.where((installment) {
+    final dueInstallments = installments.where((installment) {
       final status = _statusOf(installment);
       return status != 'PAID' &&
           status != 'CANCELLED' &&
           _dateTimeOrNull(installment['dueDate']) != null;
-    }).length;
+    }).toList();
+    final dueInstallmentsCount = dueInstallments.length;
+    final incompleteGuestCount = guests.where(_isIncompleteGuest).length;
 
     return LocalDashboardMetrics(
       taskCount: activeTasks.length,
@@ -363,12 +402,18 @@ class LocalDashboardMetrics {
       declinedGuestCount: guests
           .where((guest) => _statusOf(guest) == 'DECLINED')
           .length,
+      incompleteGuestCount: incompleteGuestCount,
       spentTotal: spentTotal,
       debtTotal: debtTotal,
       paidDebtTotal: paidDebtTotal,
       unpaidDebtTotal: unpaidDebtTotal,
       dueInstallmentsCount: dueInstallmentsCount,
-      importantItems: _localActivityItems(
+      importantItems: _localPriorityItems(
+        guests: guests,
+        tasks: activeTasks,
+        installments: dueInstallments,
+      ),
+      recentActivity: _localActivityItems(
         guests: guests,
         tasks: activeTasks,
         expenses: activeExpenses,
@@ -376,6 +421,142 @@ class LocalDashboardMetrics {
       ),
     );
   }
+
+  List<DashboardFinancialWarning> financialWarnings({
+    required String? budget,
+    required bool hasLocation,
+  }) {
+    final warnings = <DashboardFinancialWarning>[];
+    final budgetValue = _moneyValue(budget);
+    if (!hasLocation) {
+      warnings.add(
+        const DashboardFinancialWarning(
+          type: 'MISSING_LOCATION',
+          severity: 'WARNING',
+          message: 'أضف موقع الزفاف حتى تصبح الخطة أوضح للمشاركين.',
+        ),
+      );
+    }
+    if (budget == null || budgetValue == 0) {
+      warnings.add(
+        const DashboardFinancialWarning(
+          type: 'MISSING_BUDGET',
+          severity: 'WARNING',
+          message: 'أضف الميزانية المتوقعة حتى نعرض المتبقي بدقة.',
+        ),
+      );
+    } else if (spentTotal > budgetValue) {
+      warnings.add(
+        DashboardFinancialWarning(
+          type: 'BUDGET_EXCEEDED',
+          severity: 'DANGER',
+          message: 'المصروفات أعلى من الميزانية الحالية.',
+          amount: _amountString(spentTotal - budgetValue),
+        ),
+      );
+    }
+    if (overdueTaskCount > 0) {
+      warnings.add(
+        DashboardFinancialWarning(
+          type: 'TASK_OVERDUE',
+          severity: 'WARNING',
+          message: 'لديك مهام متأخرة تحتاج مراجعة.',
+          count: overdueTaskCount,
+        ),
+      );
+    }
+    if (dueInstallmentsCount > 0) {
+      warnings.add(
+        DashboardFinancialWarning(
+          type: 'INSTALLMENT_DUE_SOON',
+          severity: 'WARNING',
+          message: 'هناك أقساط قادمة ضمن الخطة.',
+          count: dueInstallmentsCount,
+        ),
+      );
+    }
+    if (incompleteGuestCount > 0) {
+      warnings.add(
+        DashboardFinancialWarning(
+          type: 'INCOMPLETE_GUESTS',
+          severity: 'WARNING',
+          message: 'بعض الضيوف ينقصهم رقم هاتف أو بيانات تواصل.',
+          count: incompleteGuestCount,
+        ),
+      );
+    }
+    return warnings;
+  }
+}
+
+List<DashboardImportantItem> _localPriorityItems({
+  required List<Map<String, dynamic>> guests,
+  required List<Map<String, dynamic>> tasks,
+  required List<Map<String, dynamic>> installments,
+}) {
+  final today = _dateOnly(DateTime.now());
+  final priorities = <DashboardImportantItem>[];
+  final overdueTask = _firstOrNull(
+    tasks.where((task) {
+      final dueDate = _dateTimeOrNull(task['dueDate']);
+      return _statusOf(task) != 'DONE' &&
+          dueDate != null &&
+          _dateOnly(dueDate).isBefore(today);
+    }),
+  );
+  if (overdueTask != null) {
+    priorities.add(
+      DashboardImportantItem(
+        id: overdueTask['id']?.toString() ?? 'local-overdue-task',
+        type: 'TASK_OVERDUE',
+        title: _textValue(overdueTask['title'], fallback: 'مهمة متأخرة'),
+        subtitle: 'مهمة تحتاج متابعة',
+        icon: 'calendar',
+        tone: 'danger',
+        priority: 'URGENT',
+        actionLabel: 'فتح المهام',
+        data: const {'source': 'guest_local'},
+      ),
+    );
+  }
+
+  final nextInstallment = _firstOrNull(installments);
+  if (nextInstallment != null) {
+    priorities.add(
+      DashboardImportantItem(
+        id: nextInstallment['id']?.toString() ?? 'local-due-installment',
+        type: 'INSTALLMENT_DUE',
+        title: 'قسط قادم في الخطة',
+        subtitle: 'استحقاق مالي',
+        icon: 'wallet',
+        tone: 'warning',
+        priority: 'HIGH',
+        actionLabel: 'عرض المال',
+        amount: _amountString(_moneyValue(nextInstallment['amount'])),
+        data: const {'source': 'guest_local'},
+      ),
+    );
+  }
+
+  final incompleteGuest = _firstOrNull(guests.where(_isIncompleteGuest));
+  if (incompleteGuest != null) {
+    priorities.add(
+      DashboardImportantItem(
+        id: incompleteGuest['id']?.toString() ?? 'local-incomplete-guest',
+        type: 'GUEST_INCOMPLETE',
+        title:
+            'ضيف يحتاج رقم هاتف: ${_textValue(incompleteGuest['name'], fallback: 'ضيف')}',
+        subtitle: 'بيانات ضيف ناقصة',
+        icon: 'people',
+        tone: 'info',
+        priority: 'NORMAL',
+        actionLabel: 'عرض الضيوف',
+        data: const {'source': 'guest_local'},
+      ),
+    );
+  }
+
+  return priorities.take(3).toList();
 }
 
 List<DashboardImportantItem> _localActivityItems({
@@ -479,6 +660,16 @@ class _LocalActivityRow {
 
 String _statusOf(Map<String, dynamic> json) =>
     json['status']?.toString().trim().toUpperCase() ?? '';
+
+bool _isIncompleteGuest(Map<String, dynamic> guest) {
+  final phone = guest['phone']?.toString().trim();
+  return phone == null || phone.isEmpty;
+}
+
+T? _firstOrNull<T>(Iterable<T> values) {
+  final iterator = values.iterator;
+  return iterator.moveNext() ? iterator.current : null;
+}
 
 String _textValue(Object? value, {required String fallback}) {
   final trimmed = value?.toString().trim();

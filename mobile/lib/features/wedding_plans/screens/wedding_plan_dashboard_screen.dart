@@ -11,7 +11,6 @@ import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/quick_add_actions.dart';
 import '../widgets/royal_home_chrome.dart';
 import '../widgets/royal_home_today_center.dart';
 
@@ -75,7 +74,6 @@ class _WeddingPlanDashboardScreenState
                   context.push(AppRouter.tasks(widget.weddingPlanId)),
               onProviders: () => context.push(AppRouter.providerMarketplace),
               onMore: () => context.push(AppRouter.more),
-              onAdd: _showQuickActions,
             ),
       child: RefreshIndicator(
         color: AppTheme.dMaroon,
@@ -194,6 +192,15 @@ class _WeddingPlanDashboardScreenState
               onOpenNextStep: () => _openNextStep(summary),
               onOpenTimeline: () =>
                   context.push(AppRouter.timeline(summary.planId)),
+              onAddExpense: () =>
+                  context.push(AppRouter.createExpense(summary.planId)),
+              onAddTask: () =>
+                  context.push(AppRouter.createTask(summary.planId)),
+              onAddGuest: () =>
+                  context.push(AppRouter.guestList(summary.planId)),
+              onAddDebt: () =>
+                  context.push(AppRouter.createDebt(summary.planId)),
+              onRequestQuote: () => context.push(AppRouter.providerMarketplace),
             );
           },
         ),
@@ -207,31 +214,6 @@ class _WeddingPlanDashboardScreenState
     } on ProviderNotFoundException {
       return null;
     }
-  }
-
-  void _showQuickActions() {
-    showRoyalHomeActionSheet(context, actions: _quickActions());
-  }
-
-  List<RoyalHomeAction> _quickActions() {
-    Future<void> open(String route, {bool refreshDashboard = false}) async {
-      Navigator.of(context, rootNavigator: true).pop();
-      if (!mounted) return;
-      final changed = await context.push<bool>(route);
-      if (refreshDashboard && changed == true && mounted) {
-        await context.read<DashboardSummaryProvider>().loadDashboard(
-          widget.weddingPlanId,
-          sharedMember: widget.sharedMember,
-        );
-      }
-    }
-
-    return buildCanonicalQuickAddActions(
-      context,
-      planId: widget.weddingPlanId,
-      refreshDashboardOnExpense: true,
-      openRoute: open,
-    );
   }
 
   void _openDashboardItem(DashboardImportantItem item) {

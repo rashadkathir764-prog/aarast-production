@@ -240,12 +240,21 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
     check('GET /api/v1 money-summary - HTTP 200', res.status === 200);
     check('money summary budgetTotal is real', res.body?.budgetTotal === '1200.00');
+    check('money summary totalBudget alias is stable', res.body?.totalBudget === '1200.00');
     check('money summary category target is real', res.body?.categoryTargetTotal === '1100.00');
     check('money summary spentTotal is real', res.body?.spentTotal === '350.00');
+    check('money summary totalSpent alias is stable', res.body?.totalSpent === '350.00');
     check('money summary remainingBudget is real', res.body?.remainingBudget === '850.00');
     check('money summary debtTotal is real', res.body?.debtTotal === '500.00');
+    check('money summary totalDebts alias is stable', res.body?.totalDebts === '500.00');
     check('money summary paidDebtTotal is real', res.body?.paidDebtTotal === '300.00');
     check('money summary unpaidDebtTotal is real', res.body?.unpaidDebtTotal === '200.00');
+    check('money summary debtRemaining alias is stable', res.body?.debtRemaining === '200.00');
+    check('money summary paid installments are counted', res.body?.paidInstallmentsCount === 1);
+    check('money summary remaining installments are counted', res.body?.remainingInstallmentsCount === 0);
+    check('money summary next installment is explicit when absent', res.body?.nextInstallment === null);
+    check('money summary includes category summaries', Array.isArray(res.body?.categorySummaries) && res.body.categorySummaries[0]?.allocated === '1100.00');
+    check('money summary financialWarnings is stable array', Array.isArray(res.body?.financialWarnings));
     check('money summary due count reflects paid installment', res.body?.dueInstallmentsCount === 0);
     check('money summary does not expose passwordHash', !hasPasswordHash(res.body));
   }

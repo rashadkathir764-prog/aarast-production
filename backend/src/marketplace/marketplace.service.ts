@@ -644,6 +644,20 @@ export class MarketplaceService {
         createdAt: result.link.createdAt,
         updatedAt: result.link.updatedAt,
       },
+      automaticFinancialRecordCreated: false,
+      financialSuggestion: {
+        recommendedAction: result.offer.amount ? 'RECORD_EXPENSE_OR_DEBT' : 'NONE',
+        message:
+          'Offer acceptance links the provider to the plan only. Record an expense, debt, or follow-up task separately if needed.',
+        quotedAmount: result.offer.amount?.toString() ?? null,
+        currency: result.offer.currency ?? null,
+      },
+      nextActions: [
+        'recordExpense',
+        'recordDebt',
+        'createFollowUpTask',
+        'viewAcceptedProvider',
+      ],
     };
   }
 

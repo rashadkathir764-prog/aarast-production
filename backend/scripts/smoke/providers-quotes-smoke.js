@@ -300,6 +300,9 @@ async function run() {
     check('PATCH /api/v1/quote-offers/:id/accept - HTTP 200', res.status === 200);
     check('accepted offer status is ACCEPTED', res.body?.offer?.status === 'ACCEPTED');
     check('accept creates plan provider link', res.body?.planProviderLink?.providerId === providerId);
+    check('accept declares no automatic finance record', res.body?.automaticFinancialRecordCreated === false);
+    check('accept returns financial suggestion', res.body?.financialSuggestion?.recommendedAction === 'RECORD_EXPENSE_OR_DEBT');
+    check('accept returns next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('recordExpense'));
   }
 
   {

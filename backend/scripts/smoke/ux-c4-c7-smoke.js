@@ -209,6 +209,15 @@ async function run() {
     acceptResponse.body?.planProviderLink?.providerId === providerId,
   );
   check(
+    'accepted quote response declares no automatic financial record',
+    acceptResponse.body?.automaticFinancialRecordCreated === false,
+  );
+  check(
+    'accepted quote response includes next actions',
+    Array.isArray(acceptResponse.body?.nextActions) &&
+      acceptResponse.body.nextActions.includes('recordDebt'),
+  );
+  check(
     'accept creates no automatic expense',
     (await prisma.expense.count({ where: { weddingPlanId: planId } })) === financeBefore,
   );

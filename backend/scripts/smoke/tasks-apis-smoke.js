@@ -209,9 +209,16 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/tasks/summary`, null, owner.token);
     check('GET task summary - HTTP 200', res.status === 200);
     check('summary totalTasks is real', res.body?.totalTasks === 3);
+    check('summary total alias is stable', res.body?.total === 3);
     check('summary completedTasks is real', res.body?.completedTasks === 1);
+    check('summary completed alias is stable', res.body?.completed === 1);
     check('summary overdueTasks is real', res.body?.overdueTasks === 1);
+    check('summary overdue alias is stable', res.body?.overdue === 1);
     check('summary todayTasks is real', res.body?.todayTasks === 1);
+    check('summary dueToday alias is stable', res.body?.dueToday === 1);
+    check('summary pendingInProgress is real', res.body?.pendingInProgress === 2);
+    check('summary highPriority is real', res.body?.highPriority === 2);
+    check('summary assigneeSummary is explicit', res.body?.assigneeSummary?.assignedCount === 1);
     check('summary byPriority includes URGENT', res.body?.byPriority?.URGENT === 1);
     check('summary does not expose passwordHash', !hasPasswordHash(res.body));
   }

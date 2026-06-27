@@ -170,7 +170,6 @@ async function run() {
         },
         {
           name: 'Pending Guest',
-          phone: '+967700100003',
           side: 'FRIEND',
           attendanceStatus: 'PENDING',
           invitationStatus: 'NOT_SENT',
@@ -197,11 +196,19 @@ async function run() {
     check('GET /api/v1 guests summary - HTTP 200', res.status === 200);
     check('summary totalGuests is real', res.body?.totalGuests === 3);
     check('summary confirmedGuests is real', res.body?.confirmedGuests === 1);
+    check('summary confirmed alias is stable', res.body?.confirmed === 1);
     check('summary declinedGuests is real', res.body?.declinedGuests === 1);
+    check('summary notAttending alias is stable', res.body?.notAttending === 1);
     check('summary pendingGuests is real', res.body?.pendingGuests === 1);
+    check('summary waiting alias is stable', res.body?.waiting === 1);
+    check('summary missingPhoneCount is real', res.body?.missingPhoneCount === 1);
+    check('summary incompleteGuestsCount is real', res.body?.incompleteGuestsCount === 1);
     check('summary groupsCount is real', res.body?.groupsCount === 1);
     check('summary seatsTotal is real', res.body?.seatsTotal === 5);
+    check('summary expectedSeatsCount alias is stable', res.body?.expectedSeatsCount === 5);
     check('summary companionsTotal is real', res.body?.companionsTotal === 3);
+    check('summary bySideForSuper includes unknown bucket', res.body?.bySideForSuper?.unknown === 1);
+    check('summary byGroup includes created group', res.body?.byGroup?.['Main Family'] === 2);
     check('summary does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

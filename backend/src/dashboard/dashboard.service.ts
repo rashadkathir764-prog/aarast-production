@@ -44,6 +44,8 @@ export interface DashboardPermissionSummary {
 }
 
 export interface WeddingPlanDashboardSummaryResponse {
+  dataScope: 'ACCOUNT_BACKED';
+  accountBacked: true;
   planId: string;
   title: string;
   weddingDate: Date | null;
@@ -67,11 +69,19 @@ export interface WeddingPlanDashboardSummaryResponse {
   confirmedGuests: number;
   pendingGuests: number;
   declinedGuests: number;
+  incompleteGuestsCount: number;
   providerCount: number;
   quoteRequestsCount: number;
   pendingQuoteRequests: number;
   receivedQuotes: number;
   acceptedProviders: number;
+  acceptedProvidersCount: number;
+  quoteStatusBreakdown: {
+    pending: number;
+    offered: number;
+    accepted: number;
+    rejectedClosed: number;
+  };
   nextProviderAction: string;
   participantCount: number;
   pendingInvites: number;
@@ -102,9 +112,20 @@ export interface WeddingPlanDashboardSummaryResponse {
     totalDebts: string | null;
     overBudget: boolean | null;
   };
+  financialWarnings: {
+    type:
+      | 'BUDGET_EXCEEDED'
+      | 'INSTALLMENT_OVERDUE'
+      | 'INSTALLMENT_DUE_SOON';
+    severity: 'WARNING' | 'DANGER';
+    message: string;
+    count: number | null;
+    amount: string | null;
+  }[];
   taskSummary: {
     total: number;
     completed: number;
+    pendingInProgress: number;
     overdue: number;
     dueToday: number;
   };
@@ -113,11 +134,14 @@ export interface WeddingPlanDashboardSummaryResponse {
     confirmed: number;
     pending: number;
     declined: number;
+    incompleteGuestsCount: number;
   };
   providerQuoteSummary: {
     pending: number;
     received: number;
+    offered: number;
     accepted: number;
+    rejectedClosed: number;
     nextAction: string;
   };
   participantSummary: {
@@ -303,17 +327,21 @@ export class DashboardService {
       nextTask,
       totalTasks,
       completedTasks,
+      openTasks,
       overdueTasks,
       todayTasks,
       guestCount,
       confirmedGuests,
       pendingGuests,
       declinedGuests,
+      incompleteGuestsCount,
       providerCount,
       planProviderLinks,
       quoteRequestsCount,
       pendingQuoteRequests,
       receivedQuotes,
+      acceptedQuoteRequests,
+      rejectedClosedQuoteRequests,
       participantMembersCount,
       pendingInvites,
       unreadNotificationsCount,
@@ -406,6 +434,14 @@ export class DashboardService {
       this.prisma.weddingTask.count({
         where: {
           weddingPlanId,
+          status: {
+            in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS],
+          },
+        },
+      }),
+      this.prisma.weddingTask.count({
+        where: {
+          weddingPlanId,
           dueDate: { lt: today },
           status: {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
@@ -433,6 +469,12 @@ export class DashboardService {
       }),
       this.prisma.guest.count({
         where: { weddingPlanId, status: GuestStatus.DECLINED },
+      }),
+      this.prisma.guest.count({
+        where: {
+          weddingPlanId,
+          OR: [{ phone: null }, { phone: '' }, { name: '' }],
+        },
       }),
       this.prisma.planProviderLink.count({
         where: {
@@ -478,6 +520,17 @@ export class DashboardService {
       }),
       this.prisma.quoteRequest.count({
         where: { weddingPlanId, status: QuoteRequestStatus.RESPONDED },
+      }),
+      this.prisma.quoteRequest.count({
+        where: { weddingPlanId, status: QuoteRequestStatus.ACCEPTED },
+      }),
+      this.prisma.quoteRequest.count({
+        where: {
+          weddingPlanId,
+          status: {
+            in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED],
+          },
+        },
       }),
       this.prisma.sharedMember.count({ where: { weddingPlanId } }),
       this.prisma.planInvite.count({
@@ -567,6 +620,10 @@ export class DashboardService {
       receivedQuotes,
       providerCount,
     );
+    const financialWarnings = this.buildFinancialWarnings({
+      remainingBudget: remainingBudgetNumber,
+      dueInstallmentsCount,
+    });
     const importantItems = this.buildImportantItems({
       weddingPlanId,
       tasks: urgentTasks,
@@ -588,6 +645,8 @@ export class DashboardService {
     );
 
     return {
+      dataScope: 'ACCOUNT_BACKED',
+      accountBacked: true,
       planId: context.plan.id,
       title: context.plan.title,
       weddingDate: context.plan.weddingDate,
@@ -611,11 +670,19 @@ export class DashboardService {
       confirmedGuests,
       pendingGuests,
       declinedGuests,
+      incompleteGuestsCount,
       providerCount,
       quoteRequestsCount,
       pendingQuoteRequests,
       receivedQuotes,
       acceptedProviders: providerCount,
+      acceptedProvidersCount: providerCount,
+      quoteStatusBreakdown: {
+        pending: pendingQuoteRequests,
+        offered: receivedQuotes,
+        accepted: acceptedQuoteRequests,
+        rejectedClosed: rejectedClosedQuoteRequests,
+      },
       nextProviderAction,
       participantCount: participantMembersCount + 1,
       pendingInvites,
@@ -655,9 +722,11 @@ export class DashboardService {
         overBudget:
           remainingBudgetNumber === null ? null : remainingBudgetNumber < 0,
       },
+      financialWarnings,
       taskSummary: {
         total: totalTasks,
         completed: completedTasks,
+        pendingInProgress: openTasks,
         overdue: overdueTasks,
         dueToday: todayTasks,
       },
@@ -666,11 +735,14 @@ export class DashboardService {
         confirmed: confirmedGuests,
         pending: pendingGuests,
         declined: declinedGuests,
+        incompleteGuestsCount,
       },
       providerQuoteSummary: {
         pending: pendingQuoteRequests,
         received: receivedQuotes,
+        offered: receivedQuotes,
         accepted: providerCount,
+        rejectedClosed: rejectedClosedQuoteRequests,
         nextAction: nextProviderAction,
       },
       participantSummary: {
@@ -969,6 +1041,37 @@ export class DashboardService {
     if (pending > 0) return 'WAIT_FOR_PROVIDER_RESPONSE';
     if (accepted > 0) return 'MANAGE_ACCEPTED_PROVIDERS';
     return 'REQUEST_FIRST_QUOTE';
+  }
+
+  private buildFinancialWarnings({
+    remainingBudget,
+    dueInstallmentsCount,
+  }: {
+    remainingBudget: number | null;
+    dueInstallmentsCount: number | null;
+  }): WeddingPlanDashboardSummaryResponse['financialWarnings'] {
+    const warnings: WeddingPlanDashboardSummaryResponse['financialWarnings'] = [];
+
+    if (remainingBudget !== null && remainingBudget < 0) {
+      warnings.push({
+        type: 'BUDGET_EXCEEDED',
+        severity: 'DANGER',
+        message: 'Spent total is above the available wedding budget.',
+        count: null,
+        amount: this.moneyOrNull(Math.abs(remainingBudget)),
+      });
+    }
+    if (dueInstallmentsCount !== null && dueInstallmentsCount > 0) {
+      warnings.push({
+        type: 'INSTALLMENT_DUE_SOON',
+        severity: 'WARNING',
+        message: 'There are installments due soon.',
+        count: dueInstallmentsCount,
+        amount: null,
+      });
+    }
+
+    return warnings;
   }
 
   private toNotificationPreview(

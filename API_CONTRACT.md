@@ -164,6 +164,12 @@ Protected routes:
 
 The dashboard summary powers the mobile Home / Today Center. Existing count and money fields remain stable, and the response may also include source-backed detail arrays:
 
+- `dataScope: "ACCOUNT_BACKED"` and `accountBacked: true` to distinguish server/account-backed data from local guest preview data.
+- `incompleteGuestsCount`: persisted guests missing basic planning contact/name fields.
+- `quoteStatusBreakdown`: `pending`, `offered`, `accepted`, and `rejectedClosed` counts.
+- `acceptedProvidersCount`: stable alias for accepted/active `PlanProviderLink` count.
+- `financialWarnings`: simple computable warnings such as budget exceeded or installment due soon.
+
 - `importantItems`: actionable task/installment/provider cards for "Ø§Ù„Ø£Ù‡Ù… Ø§Ù„ÙŠÙˆÙ…".
 - `planProviders`: providers actually linked to the current WeddingPlan.
 - `importantNotifications`: latest user-owned notifications for this WeddingPlan.
@@ -325,6 +331,15 @@ Protected routes:
 
 Money summaries must remain permission-aware. Shared users without financial permissions must not receive private budget, expense, debt, or installment details.
 
+Super Money UI should consume the `/api/v1` route and may use stable aliases in addition to existing fields:
+
+- `totalBudget`, `totalSpent`, `totalDebts`, and `debtRemaining`.
+- `paidInstallmentsCount`, `remainingInstallmentsCount`, and `nextInstallment`.
+- `categorySummaries` with allocated/spent/remaining values when category and expense permissions allow them.
+- `financialWarnings` for budget exceeded, category exceeded, overdue/due-soon installments, or uncategorized expenses when computable.
+
+Day/week/month financial reports are not a current contract. The backend exposes current aggregate totals only.
+
 ## Tasks
 
 Protected routes:
@@ -355,6 +370,10 @@ Create request:
 Owners can manage tasks. Shared members can list tasks and can manage tasks only when `canManageTasks` is true or their role is `MANAGER`.
 
 Current `/api/v1/wedding-plans/:weddingPlanId/tasks` and `/api/v1/tasks/:id` aliases exist for create/list/summary/get/checklist/assign/update/delete.
+
+Task summary also exposes Super UI aliases: `total`, `completed`, `pendingInProgress`, `overdue`, `dueToday`, `highPriority`, and `assigneeSummary`.
+
+Task records currently support `assigneeUserId` and assignment counts. Money/guest/provider entity links are not part of the current task model and must not be faked by clients.
 
 ## Timeline
 
@@ -483,6 +502,16 @@ Users with readable plan access can list guests. Creating, updating, and deletin
 
 Current `/api/v1` aliases exist for guest list/create/bulk/summary/groups/get/update/delete.
 
+Guest summary also exposes Super UI aliases and cleanup fields:
+
+- `confirmed`, `pending`, `waiting`, `declined`, and `notAttending`.
+- `missingPhoneCount`, `missingNameCount`, and `incompleteGuestsCount`.
+- `expectedSeatsCount` and `companionsExpectedCount`.
+- `bySideForSuper` with `groom`, `bride`, and `unknown` buckets while preserving the existing enum-keyed `bySide`.
+- `byGroup` counts when guest groups exist.
+
+Incomplete guest detection is informational only. It must not block saving guests.
+
 ## Provider References And Quote Leads
 
 Current provider routes are planning/reference and lead workflows. They do not create paid bookings, deposits, payment status, loans, credit, financing, AI, or chat.
@@ -523,6 +552,14 @@ Plan-scoped `/api/v1` quote routes:
 - `PATCH /api/v1/quote-requests/:id/cancel`
 - `PATCH /api/v1/quote-offers/:id/accept`
 - `PATCH /api/v1/quote-offers/:id/reject`
+
+Accepting an offer returns the accepted offer and `planProviderLink`, and explicitly returns:
+
+- `automaticFinancialRecordCreated: false`
+- `financialSuggestion`
+- `nextActions`, including `recordExpense`, `recordDebt`, `createFollowUpTask`, and `viewAcceptedProvider`
+
+Accepting an offer must not silently create expenses, debts, installments, tasks, payments, deposits, or confirmed bookings.
 
 Provider dashboard routes:
 

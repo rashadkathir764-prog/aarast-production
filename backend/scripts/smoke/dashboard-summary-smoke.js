@@ -134,6 +134,7 @@ async function run() {
     check('empty summary has real zero tasks', res.body?.totalTasks === 0);
     check('empty summary has real zero guests', res.body?.guestCount === 0);
     check('empty summary budget comes from plan', res.body?.budgetTotal === '2000.00');
+    check('empty summary marks account-backed data', res.body?.accountBacked === true && res.body?.dataScope === 'ACCOUNT_BACKED');
     check('empty summary spent is zero', res.body?.spentTotal === '0.00');
     check('empty summary importantItems is array', Array.isArray(res.body?.importantItems));
     check('empty summary planProviders is array', Array.isArray(res.body?.planProviders));
@@ -192,7 +193,6 @@ async function run() {
     }, owner.token);
     await request('POST', `/wedding-plans/${planId}/guests`, {
       name: 'Pending Guest',
-      phone: '+967700000002',
       status: 'PENDING',
       seatsCount: 2,
     }, owner.token);
@@ -215,8 +215,12 @@ async function run() {
     check('summary overdueTasks is calculated', res.body?.overdueTasks === 1);
     check('summary guestCount is calculated', res.body?.guestCount === 2);
     check('summary confirmedGuests is calculated', res.body?.confirmedGuests === 1);
+    check('summary incompleteGuestsCount is calculated', res.body?.incompleteGuestsCount === 1);
     check('summary quoteRequestsCount is real', res.body?.quoteRequestsCount === (quoteCreated ? 1 : 0));
     check('summary providerCount stays zero before plan-provider model', res.body?.providerCount === 0);
+    check('summary acceptedProvidersCount mirrors real links', res.body?.acceptedProvidersCount === 0);
+    check('summary quote breakdown is explicit', typeof res.body?.quoteStatusBreakdown?.pending === 'number' && typeof res.body?.quoteStatusBreakdown?.offered === 'number');
+    check('summary financialWarnings is array', Array.isArray(res.body?.financialWarnings));
     check('summary importantItems includes overdue task', res.body?.importantItems?.some((item) => item.type === 'TASK_OVERDUE'));
     check('summary importantItems includes due installment', res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
     check('summary planProviders is array', Array.isArray(res.body?.planProviders));
@@ -245,6 +249,7 @@ async function run() {
     check('viewer importantItems hides installment details', !res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
     check('viewer still sees non-finance task count', res.body?.totalTasks === 3);
     check('viewer still sees guest count', res.body?.guestCount === 2);
+    check('viewer still sees incomplete guest count', res.body?.incompleteGuestsCount === 1);
     check('viewer summary does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

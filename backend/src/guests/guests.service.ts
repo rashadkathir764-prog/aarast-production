@@ -58,13 +58,29 @@ export interface GuestsSummaryResponse {
   weddingPlanId: string;
   totalGuests: number;
   confirmedGuests: number;
+  confirmed: number;
   declinedGuests: number;
+  declined: number;
+  notAttending: number;
   pendingGuests: number;
+  pending: number;
+  waiting: number;
   invitedGuests: number;
+  missingPhoneCount: number;
+  missingNameCount: number;
+  incompleteGuestsCount: number;
   groupsCount: number;
   seatsTotal: number;
+  expectedSeatsCount: number;
   companionsTotal: number;
+  companionsExpectedCount: number;
   bySide: Record<GuestSide, number>;
+  bySideForSuper: {
+    groom: number;
+    bride: number;
+    unknown: number;
+  };
+  byGroup: Record<string, number>;
   byInvitationStatus: Record<GuestInvitationStatus, number>;
   byAttendanceStatus: Record<GuestAttendanceStatus, number>;
 }
@@ -313,14 +329,21 @@ export class GuestsService {
   ): Promise<GuestsSummaryResponse> {
     await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
     const [guests, groupsCount] = await Promise.all([
-      this.prisma.guest.findMany({ where: { weddingPlanId } }),
+      this.prisma.guest.findMany({
+        where: { weddingPlanId },
+        include: { group: { select: { name: true } } },
+      }),
       this.prisma.guestGroup.count({ where: { weddingPlanId } }),
     ]);
     const bySide = this.emptySideCounts();
     const byInvitationStatus = this.emptyInvitationStatusCounts();
     const byAttendanceStatus = this.emptyAttendanceStatusCounts();
+    const byGroup: Record<string, number> = {};
     let seatsTotal = 0;
     let companionsTotal = 0;
+    let missingPhoneCount = 0;
+    let missingNameCount = 0;
+    let incompleteGuestsCount = 0;
 
     for (const guest of guests) {
       bySide[guest.side]++;
@@ -328,23 +351,54 @@ export class GuestsService {
       byAttendanceStatus[guest.attendanceStatus]++;
       seatsTotal += guest.seatsCount;
       companionsTotal += guest.companionsCount;
+      const groupKey = guest.group?.name ?? 'ungrouped';
+      byGroup[groupKey] = (byGroup[groupKey] ?? 0) + 1;
+      if (!guest.phone) missingPhoneCount++;
+      if (!guest.name.trim()) missingNameCount++;
+      if (this.isIncompleteGuest(guest)) incompleteGuestsCount++;
     }
+    const confirmed = byAttendanceStatus[GuestAttendanceStatus.CONFIRMED];
+    const declined = byAttendanceStatus[GuestAttendanceStatus.DECLINED];
+    const pending = byAttendanceStatus[GuestAttendanceStatus.PENDING];
 
     return {
       weddingPlanId,
       totalGuests: guests.length,
-      confirmedGuests: byAttendanceStatus[GuestAttendanceStatus.CONFIRMED],
-      declinedGuests: byAttendanceStatus[GuestAttendanceStatus.DECLINED],
-      pendingGuests: byAttendanceStatus[GuestAttendanceStatus.PENDING],
+      confirmedGuests: confirmed,
+      confirmed,
+      declinedGuests: declined,
+      declined,
+      notAttending: declined,
+      pendingGuests: pending,
+      pending,
+      waiting: pending,
       invitedGuests: guests.filter((guest) => guest.status === GuestStatus.INVITED)
         .length,
+      missingPhoneCount,
+      missingNameCount,
+      incompleteGuestsCount,
       groupsCount,
       seatsTotal,
+      expectedSeatsCount: seatsTotal,
       companionsTotal,
+      companionsExpectedCount: companionsTotal,
       bySide,
+      bySideForSuper: {
+        groom: bySide[GuestSide.GROOM],
+        bride: bySide[GuestSide.BRIDE],
+        unknown:
+          bySide[GuestSide.FAMILY] +
+          bySide[GuestSide.FRIEND] +
+          bySide[GuestSide.OTHER],
+      },
+      byGroup,
       byInvitationStatus,
       byAttendanceStatus,
     };
+  }
+
+  private isIncompleteGuest(guest: { name: string; phone: string | null }): boolean {
+    return !guest.name.trim() || !guest.phone;
   }
 
   private async findGuestOrThrow(id: string): Promise<Guest> {

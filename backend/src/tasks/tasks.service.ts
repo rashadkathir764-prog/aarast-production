@@ -46,11 +46,22 @@ export interface ChecklistItemResponse {
 export interface TaskSummaryResponse {
   weddingPlanId: string;
   totalTasks: number;
+  total: number;
   completedTasks: number;
+  completed: number;
   openTasks: number;
+  pendingInProgress: number;
   overdueTasks: number;
+  overdue: number;
   todayTasks: number;
+  dueToday: number;
+  highPriority: number;
   assignedToMe: number;
+  assigneeSummary: {
+    assignedToMe: number;
+    assignedCount: number;
+    unassignedCount: number;
+  };
   byStatus: Record<WeddingTaskStatus, number>;
   byPriority: Record<WeddingTaskPriority, number>;
 }
@@ -242,12 +253,14 @@ export class TasksService {
     let overdueTasks = 0;
     let todayTasks = 0;
     let assignedToMe = 0;
+    let assignedCount = 0;
 
     for (const task of tasks) {
       byStatus[task.status]++;
       byPriority[task.priority]++;
       if (task.status === WeddingTaskStatus.DONE) completedTasks++;
       if (task.assigneeUserId === currentUser.id) assignedToMe++;
+      if (task.assigneeUserId) assignedCount++;
       if (
         task.dueDate &&
         task.dueDate < today &&
@@ -270,15 +283,30 @@ export class TasksService {
     return {
       weddingPlanId,
       totalTasks: tasks.length,
+      total: tasks.length,
       completedTasks,
+      completed: completedTasks,
       openTasks: tasks.filter(
         (task) =>
           task.status !== WeddingTaskStatus.DONE &&
           task.status !== WeddingTaskStatus.CANCELLED,
       ).length,
+      pendingInProgress:
+        byStatus[WeddingTaskStatus.TODO] +
+        byStatus[WeddingTaskStatus.IN_PROGRESS],
       overdueTasks,
+      overdue: overdueTasks,
       todayTasks,
+      dueToday: todayTasks,
+      highPriority:
+        byPriority[WeddingTaskPriority.HIGH] +
+        byPriority[WeddingTaskPriority.URGENT],
       assignedToMe,
+      assigneeSummary: {
+        assignedToMe,
+        assignedCount,
+        unassignedCount: tasks.length - assignedCount,
+      },
       byStatus,
       byPriority,
     };

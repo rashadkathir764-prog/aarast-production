@@ -417,6 +417,8 @@ async function run() {
     const res = await request('PATCH', `/api/v1/quote-offers/${offerId}/accept`, null, owner.token);
     check('PATCH quote offer accept - HTTP 200', res.status === 200);
     check('accept creates provider link', res.body?.planProviderLink?.providerId === providerId);
+    check('accept declares no automatic financial record', res.body?.automaticFinancialRecordCreated === false);
+    check('accept exposes next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createFollowUpTask'));
   }
 
   {

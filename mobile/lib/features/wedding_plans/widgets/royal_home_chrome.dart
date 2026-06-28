@@ -51,9 +51,8 @@ class RoyalDashboardBottomNav extends StatelessWidget {
     this.onHome,
     this.onMoney,
     this.onTasks,
+    this.onGuests,
     this.onProviders,
-    this.onMore,
-    this.onAdd,
     super.key,
   });
 
@@ -61,9 +60,8 @@ class RoyalDashboardBottomNav extends StatelessWidget {
   final VoidCallback? onHome;
   final VoidCallback? onMoney;
   final VoidCallback? onTasks;
+  final VoidCallback? onGuests;
   final VoidCallback? onProviders;
-  final VoidCallback? onMore;
-  final VoidCallback? onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +72,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: SizedBox(
-        height: dockBottom + dockHeight + 80,
+        height: dockBottom + dockHeight + 24,
         child: Stack(
           clipBehavior: Clip.none,
           alignment: Alignment.bottomCenter,
@@ -162,18 +160,18 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                             child: _RoyalNavItem(
                               icon: Icons.grid_view_outlined,
                               activeIcon: Icons.grid_view_rounded,
-                              label: 'الموردون',
+                              label: 'الضيوف',
                               active: activeIndex == 3,
-                              onTap: onProviders,
+                              onTap: onGuests,
                             ),
                           ),
                           Expanded(
                             child: _RoyalNavItem(
-                              icon: Icons.more_horiz_rounded,
-                              activeIcon: Icons.more_horiz_rounded,
-                              label: 'المزيد',
+                              icon: Icons.storefront_outlined,
+                              activeIcon: Icons.storefront_rounded,
+                              label: 'الموردون',
                               active: activeIndex == 4,
-                              onTap: onMore,
+                              onTap: onProviders,
                             ),
                           ),
                         ],
@@ -183,59 +181,65 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                 ),
               ),
             ),
-            if (onAdd != null)
-              Positioned(
-                bottom: dockBottom + dockHeight + 16,
-                child: _PressScale(
-                  onTap: onAdd,
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [
-                          _RoyalHomeColors.gold,
-                          _RoyalHomeColors.goldDeep,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _RoyalHomeColors.goldDeep.withValues(
-                            alpha: 0.25,
-                          ),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'إجراء جديد',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                        SizedBox(width: 6),
-                        Icon(Icons.add_rounded, color: Colors.white, size: 20),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class RoyalSmartFloatingActionButton extends StatelessWidget {
+  const RoyalSmartFloatingActionButton({required this.onPressed, super.key});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Tooltip(
+        message: 'إجراء جديد',
+        child: Semantics(
+          button: true,
+          label: 'إجراء جديد',
+          child: _PressScale(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(30),
+            child: Container(
+              key: const ValueKey('royal-smart-fab'),
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [_RoyalHomeColors.gold, _RoyalHomeColors.goldDeep],
+                ),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  width: 1.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _RoyalHomeColors.goldDeep.withValues(alpha: 0.30),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                  BoxShadow(
+                    color: _RoyalHomeColors.burgundy.withValues(alpha: 0.10),
+                    blurRadius: 30,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          ),
         ),
       ),
     );

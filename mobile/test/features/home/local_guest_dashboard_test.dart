@@ -298,7 +298,7 @@ void main() {
     expect(find.text('tasks-opened'), findsOneWidget);
   });
 
-  testWidgets('guest quick actions card opens guests without a login blocker', (
+  testWidgets('guest smart plus opens guests without a login blocker', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -328,16 +328,10 @@ void main() {
       ),
     );
 
-    expect(find.text('إجراء جديد'), findsNothing);
-    await tester.dragUntilVisible(
-      find.text('إضافة ضيف'),
-      find.byKey(const Key('royal-home-guest-plan-test')),
-      const Offset(0, -500),
-    );
+    await tester.tap(find.byKey(const ValueKey('royal-smart-fab')));
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
-
     expect(find.text('إضافة ضيف'), findsOneWidget);
     await tester.tap(find.text('إضافة ضيف'), warnIfMissed: false);
     for (var i = 0; i < 10; i++) {
@@ -347,7 +341,7 @@ void main() {
     expect(find.text('guests-opened'), findsOneWidget);
   });
 
-  testWidgets('guest quick actions quote request remains account-gated', (
+  testWidgets('guest smart plus quote request remains account-gated', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -362,11 +356,7 @@ void main() {
       ),
     );
 
-    await tester.dragUntilVisible(
-      find.text('طلب عرض سعر'),
-      find.byKey(const Key('royal-home-guest-plan-test')),
-      const Offset(0, -500),
-    );
+    await tester.tap(find.byKey(const ValueKey('royal-smart-fab')));
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }

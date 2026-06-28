@@ -413,8 +413,8 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       onHome: () => context.go(AppRouter.home),
       onMoney: () => context.push(AppRouter.finance(planId)),
       onTasks: () => context.push(AppRouter.tasks(planId)),
+      onGuests: () => context.push(AppRouter.guestList(planId)),
       onProviders: () => context.push(AppRouter.providerMarketplace),
-      onMore: () => context.push(AppRouter.more),
     );
   }
 

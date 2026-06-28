@@ -28,7 +28,7 @@ void main() {
         'إضافة مصروف',
         'إضافة مهمة',
         'إضافة ضيف',
-        'إضافة دين',
+        'إضافة دين/قسط',
         'طلب عرض سعر',
       ]);
     });
@@ -80,6 +80,47 @@ void main() {
       for (var i = 1; i < calls.length; i++) {
         expect(calls[i].endsWith('|rf=false'), isTrue, reason: calls[i]);
       }
+    });
+
+    test('orders the first action by the active tab context', () {
+      Future<void> open(String route, {bool refreshDashboard = false}) async {}
+
+      expect(
+        buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'plan-1',
+          contextOrder: QuickAddContext.money,
+          openRoute: open,
+        ).first.label,
+        'إضافة مصروف',
+      );
+      expect(
+        buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'plan-1',
+          contextOrder: QuickAddContext.tasks,
+          openRoute: open,
+        ).first.label,
+        'إضافة مهمة',
+      );
+      expect(
+        buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'plan-1',
+          contextOrder: QuickAddContext.guests,
+          openRoute: open,
+        ).first.label,
+        'إضافة ضيف',
+      );
+      expect(
+        buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'plan-1',
+          contextOrder: QuickAddContext.providers,
+          openRoute: open,
+        ).first.label,
+        'طلب عرض سعر',
+      );
     });
   });
 }

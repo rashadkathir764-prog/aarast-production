@@ -27,10 +27,6 @@ class RoyalHomeTodayCenter extends StatelessWidget {
     required this.onOpenNextStep,
     required this.onOpenTimeline,
     this.onAddExpense,
-    this.onAddTask,
-    this.onAddGuest,
-    this.onAddDebt,
-    this.onRequestQuote,
     this.bottomPadding = 156,
     this.notice,
     this.personaHeadline,
@@ -53,10 +49,6 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   final VoidCallback onOpenNextStep;
   final VoidCallback onOpenTimeline;
   final VoidCallback? onAddExpense;
-  final VoidCallback? onAddTask;
-  final VoidCallback? onAddGuest;
-  final VoidCallback? onAddDebt;
-  final VoidCallback? onRequestQuote;
   final double bottomPadding;
   final Widget? notice;
   final String? personaHeadline;
@@ -68,11 +60,12 @@ class RoyalHomeTodayCenter extends StatelessWidget {
       decoration: const BoxDecoration(color: _RoyalColors.ivory),
       child: ListView(
         key: ValueKey('royal-home-${summary.planId}'),
-        padding: EdgeInsets.fromLTRB(20, 22, 20, bottomPadding),
+        padding: EdgeInsets.fromLTRB(18, 18, 18, bottomPadding),
         children: [
           _PremiumEntry(
             index: 0,
             child: _PremiumHeader(
+              summary: summary,
               userName: userName,
               unreadCount: summary.unreadNotificationsCount,
               onNotifications: onNotifications,
@@ -80,22 +73,20 @@ class RoyalHomeTodayCenter extends StatelessWidget {
             ),
           ),
           if (notice != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _PremiumEntry(index: 1, child: notice!),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 18),
           _PremiumEntry(
             index: notice != null ? 2 : 1,
-            child: _PremiumHeroCard(
+            child: _CompactPlanHeroCard(
               summary: summary,
               personaHeadline: personaHeadline,
               personaSupportText: personaSupportText,
               onOpenPlan: onOpenPlan,
-              onOpenTimeline: onOpenTimeline,
-              onOpenProgress: onOpenTasks,
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 16),
           _PremiumEntry(
             index: notice != null ? 3 : 2,
             child: _ImportantNowCard(
@@ -103,7 +94,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
               onOpenImportantItem: onOpenImportantItem,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
           _PremiumEntry(
             index: notice != null ? 4 : 3,
             child: _MoneySummaryCard(
@@ -112,62 +103,25 @@ class RoyalHomeTodayCenter extends StatelessWidget {
               onAddExpense: onAddExpense,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           _PremiumEntry(
             index: notice != null ? 5 : 4,
             child: _QuickOverviewGrid(
               summary: summary,
-              onOpenMoney: onOpenMoney,
               onOpenTasks: onOpenTasks,
               onOpenGuests: onOpenGuests,
               onOpenProviders: onOpenProviders,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           _PremiumEntry(
             index: notice != null ? 6 : 5,
-            child: _DashboardQuickActionsCard(
-              onAddExpense: onAddExpense,
-              onAddTask: onAddTask,
-              onAddGuest: onAddGuest,
-              onAddDebt: onAddDebt,
-              onRequestQuote: onRequestQuote,
-            ),
-          ),
-          const SizedBox(height: 18),
-          _PremiumEntry(
-            index: notice != null ? 7 : 6,
-            child: _RecentActivityCard(
+            child: _SharingUpdatesRow(
               summary: summary,
+              onOpenParticipants: onOpenParticipants,
               onOpenImportantItem: onOpenImportantItem,
             ),
           ),
-          const SizedBox(height: 18),
-          _PremiumEntry(
-            index: notice != null ? 8 : 7,
-            child: _SharingPermissionsCard(
-              summary: summary,
-              onOpenParticipants: onOpenParticipants,
-            ),
-          ),
-          const SizedBox(height: 18),
-          _PremiumEntry(
-            index: notice != null ? 9 : 8,
-            child: _SyncStatusCard(summary: summary),
-          ),
-          if (_smartWarnings(summary).isNotEmpty) ...[
-            const SizedBox(height: 18),
-            _PremiumEntry(
-              index: notice != null ? 10 : 9,
-              child: _SmartWarningsCard(
-                summary: summary,
-                onOpenPlan: onOpenPlan,
-                onOpenMoney: onOpenMoney,
-                onOpenTasks: onOpenTasks,
-                onOpenGuests: onOpenGuests,
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -176,12 +130,14 @@ class RoyalHomeTodayCenter extends StatelessWidget {
 
 class _PremiumHeader extends StatelessWidget {
   const _PremiumHeader({
+    required this.summary,
     required this.userName,
     required this.unreadCount,
     required this.onNotifications,
     required this.onProfile,
   });
 
+  final DashboardSummary summary;
   final String userName;
   final int unreadCount;
   final VoidCallback onNotifications;
@@ -192,9 +148,22 @@ class _PremiumHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        _CircleIconButton(
+          key: const ValueKey('royal-home-profile-button'),
+          icon: Icons.person_outline_rounded,
+          onTap: onProfile,
+        ),
+        const SizedBox(width: 8),
+        _CircleIconButton(
+          key: const ValueKey('royal-home-notifications-button'),
+          icon: Icons.notifications_none_rounded,
+          onTap: onNotifications,
+          badgeCount: unreadCount,
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 _greetingFor(userName),
@@ -209,7 +178,7 @@ class _PremiumHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'أعرست ✨',
+                'اعّرست',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -220,18 +189,246 @@ class _PremiumHeader extends StatelessWidget {
                   height: 1.1,
                 ),
               ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: _StatePill(label: summary.dataStateLabel),
+              ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
-        _CircleIconButton(
-          icon: Icons.notifications_none_rounded,
-          onTap: onNotifications,
-          badgeCount: unreadCount,
-        ),
-        const SizedBox(width: 10),
-        _CircleIconButton(icon: Icons.person_outline_rounded, onTap: onProfile),
       ],
+    );
+  }
+}
+
+class _CompactPlanHeroCard extends StatelessWidget {
+  const _CompactPlanHeroCard({
+    required this.summary,
+    required this.onOpenPlan,
+    this.personaHeadline,
+    this.personaSupportText,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenPlan;
+  final String? personaHeadline;
+  final String? personaSupportText;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onOpenPlan,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF6B001A),
+              _RoyalColors.burgundy,
+              _RoyalColors.burgundyDark,
+            ],
+            stops: [0.0, 0.45, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.18)),
+          boxShadow: [
+            BoxShadow(
+              color: _RoyalColors.burgundy.withValues(alpha: 0.22),
+              blurRadius: 26,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_hasText(personaHeadline)) ...[
+                        Text(
+                          personaHeadline!.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            height: 1.25,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                      Text(
+                        summary.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _RoyalColors.gold,
+                          fontSize: 21,
+                          fontWeight: FontWeight.w900,
+                          height: 1.15,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _HeroMetaLine(
+                        icon: Icons.calendar_month_rounded,
+                        label: summary.weddingDate == null
+                            ? 'التاريخ غير محدد'
+                            : _formatDate(summary.weddingDate!),
+                      ),
+                      if (_hasText(_shortLocation(summary))) ...[
+                        const SizedBox(height: 6),
+                        _HeroMetaLine(
+                          icon: Icons.location_on_rounded,
+                          label: _shortLocation(summary)!,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _CircularProgressWidget(percent: summary.progressPercentage),
+              ],
+            ),
+            if (_hasText(personaSupportText)) ...[
+              const SizedBox(height: 10),
+              Text(
+                personaSupportText!.trim(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  letterSpacing: 0,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _CountdownPill(daysRemaining: summary.daysRemaining),
+                _HeroCta(onTap: onOpenPlan),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroMetaLine extends StatelessWidget {
+  const _HeroMetaLine({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 14),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroCta extends StatelessWidget {
+  const _HeroCta({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(99),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'متابعة الخطة',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
+            ),
+            SizedBox(width: 5),
+            Icon(Icons.arrow_back_rounded, color: Colors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatePill extends StatelessWidget {
+  const _StatePill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _RoyalColors.burgundy.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: _RoyalColors.burgundy.withValues(alpha: 0.10),
+        ),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: _RoyalColors.burgundy,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+      ),
     );
   }
 }
@@ -242,14 +439,14 @@ class _PremiumHeroCard extends StatelessWidget {
     required this.onOpenPlan,
     required this.onOpenTimeline,
     required this.onOpenProgress,
-    this.personaHeadline,
-    this.personaSupportText,
+    required this.personaHeadline,
+    required this.personaSupportText,
   });
 
   final DashboardSummary summary;
   final VoidCallback onOpenPlan;
-  final VoidCallback onOpenTimeline;
-  final VoidCallback onOpenProgress;
+  final VoidCallback? onOpenTimeline;
+  final VoidCallback? onOpenProgress;
   final String? personaHeadline;
   final String? personaSupportText;
 
@@ -257,9 +454,9 @@ class _PremiumHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastPressable(
       onTap: onOpenPlan,
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(26),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -271,7 +468,7 @@ class _PremiumHeroCard extends StatelessWidget {
             ],
             stops: [0.0, 0.4, 1.0],
           ),
-          borderRadius: BorderRadius.circular(32),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: _RoyalColors.gold.withValues(alpha: 0.15),
             width: 1,
@@ -459,7 +656,7 @@ class _PremiumHeroCard extends StatelessWidget {
                     const SizedBox(width: 16),
                     _CircularProgressWidget(
                       percent: summary.progressPercentage,
-                      onTap: onOpenProgress,
+                      onTap: onOpenProgress ?? onOpenPlan,
                     ),
                   ],
                 ),
@@ -472,7 +669,7 @@ class _PremiumHeroCard extends StatelessWidget {
                   children: [
                     _CountdownPill(
                       daysRemaining: summary.daysRemaining,
-                      onTap: onOpenTimeline,
+                      onTap: onOpenTimeline ?? onOpenPlan,
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -505,93 +702,99 @@ class _PremiumHeroCard extends StatelessWidget {
 }
 
 class _CountdownPill extends StatelessWidget {
-  const _CountdownPill({required this.daysRemaining, required this.onTap});
+  const _CountdownPill({required this.daysRemaining, this.onTap});
 
   final int? daysRemaining;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final label = _daysRemainingLabel(daysRemaining);
     final isLive = daysRemaining != null && daysRemaining! > 0;
 
-    return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(99),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: _RoyalColors.gold.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isLive) ...[
-              _LiveDot(color: _RoyalColors.gold),
-              const SizedBox(width: 8),
-            ] else ...[
-              const Icon(
-                Icons.hourglass_bottom_rounded,
-                size: 16,
-                color: _RoyalColors.gold,
-              ),
-              const SizedBox(width: 6),
-            ],
-            Flexible(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: _RoyalColors.gold,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+    final pill = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      decoration: BoxDecoration(
+        color: _RoyalColors.gold.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.3)),
       ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isLive) ...[
+            _LiveDot(color: _RoyalColors.gold),
+            const SizedBox(width: 8),
+          ] else ...[
+            const Icon(
+              Icons.hourglass_bottom_rounded,
+              size: 15,
+              color: _RoyalColors.gold,
+            ),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _RoyalColors.gold,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                height: 1,
+                letterSpacing: 0,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return pill;
+    return AarastPressable(
+      onTap: onTap!,
+      borderRadius: BorderRadius.circular(99),
+      child: pill,
     );
   }
 }
 
 class _CircularProgressWidget extends StatelessWidget {
-  const _CircularProgressWidget({required this.percent, required this.onTap});
+  const _CircularProgressWidget({required this.percent, this.onTap});
 
   final int percent;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final progress = Stack(
+      alignment: Alignment.center,
+      children: [
+        SizedBox(
+          width: 54,
+          height: 54,
+          child: CircularProgressIndicator(
+            value: percent / 100,
+            strokeWidth: 5,
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
+            valueColor: const AlwaysStoppedAnimation(_RoyalColors.gold),
+          ),
+        ),
+        Text(
+          '$percent%',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0,
+          ),
+        ),
+      ],
+    );
+    if (onTap == null) return progress;
     return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: 60,
-            height: 60,
-            child: CircularProgressIndicator(
-              value: percent / 100,
-              strokeWidth: 5,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              valueColor: const AlwaysStoppedAnimation(_RoyalColors.gold),
-            ),
-          ),
-          Text(
-            '$percent%',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
+      onTap: onTap!,
+      borderRadius: BorderRadius.circular(28),
+      child: progress,
     );
   }
 }
@@ -1185,6 +1388,7 @@ class _ImportantNowCard extends StatelessWidget {
                     title: item.title,
                     subtitle: item.subtitle,
                     tone: item.tone,
+                    actionLabel: item.actionLabel,
                     onTap: () => onOpenImportantItem(item),
                   ),
               ],
@@ -1217,11 +1421,10 @@ class _MoneySummaryCard extends StatelessWidget {
       );
     }
 
-    final warnings = summary.financialWarnings.take(2).toList();
     return _DashboardSectionCard(
       title: 'ملخص المال',
       subtitle: summary.nextInstallmentDue == null
-          ? 'ميزانية ومصاريف وديون من المصدر الحالي.'
+          ? null
           : 'القسط القادم: ${_formatMoney(summary.nextInstallmentDue!.amount)}',
       icon: Icons.account_balance_wallet_rounded,
       child: Column(
@@ -1242,20 +1445,12 @@ class _MoneySummaryCard extends StatelessWidget {
             label: 'الديون',
             value: _formatMoney(summary.debtTotalForDisplay),
           ),
-          if (warnings.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            for (final warning in warnings)
-              _WarningPill(
-                text: _warningDashboardCopy(warning),
-                danger: warning.severity == 'DANGER',
-              ),
-          ],
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: _SmallCommandButton(
-                  label: 'عرض المال',
+                  label: 'عرض التفاصيل',
                   icon: Icons.arrow_back_rounded,
                   onTap: onOpenMoney,
                 ),
@@ -1281,20 +1476,59 @@ class _MoneySummaryCard extends StatelessWidget {
 class _QuickOverviewGrid extends StatelessWidget {
   const _QuickOverviewGrid({
     required this.summary,
-    required this.onOpenMoney,
     required this.onOpenTasks,
     required this.onOpenGuests,
     required this.onOpenProviders,
   });
 
   final DashboardSummary summary;
-  final VoidCallback onOpenMoney;
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenGuests;
   final VoidCallback onOpenProviders;
 
   @override
   Widget build(BuildContext context) {
+    final providerValue = summary.receivedQuotes > 0
+        ? summary.receivedQuotes
+        : summary.quoteRequestsCount;
+    final tiles = [
+      _OverviewTile(
+        title: 'المهام',
+        value: '${summary.completedTasks}/${summary.totalTasks}',
+        subtitle: summary.overdueTasks > 0
+            ? '${summary.overdueTasks} متأخرة'
+            : '${summary.todayTasks} اليوم',
+        icon: Icons.checklist_rounded,
+        onTap: onOpenTasks,
+      ),
+      _OverviewTile(
+        title: 'الضيوف',
+        value: '${summary.guestCount}',
+        subtitle: summary.incompleteGuestsCount > 0
+            ? '${summary.incompleteGuestsCount} ناقص'
+            : '${summary.confirmedGuests} مؤكد',
+        icon: Icons.group_outlined,
+        onTap: onOpenGuests,
+      ),
+      _OverviewTile(
+        title: 'العروض',
+        value: '$providerValue',
+        subtitle: summary.pendingQuoteRequests > 0
+            ? '${summary.pendingQuoteRequests} قيد المتابعة'
+            : '${summary.acceptedProviders} مقبول',
+        icon: Icons.request_quote_outlined,
+        onTap: onOpenProviders,
+      ),
+      if (summary.acceptedProviders > 0)
+        _OverviewTile(
+          title: 'الموردون',
+          value: '${summary.acceptedProviders}',
+          subtitle: 'مقبولون في الخطة',
+          icon: Icons.storefront_rounded,
+          onTap: onOpenProviders,
+        ),
+    ];
+
     return _DashboardSectionCard(
       title: 'نظرة سريعة',
       icon: Icons.dashboard_customize_rounded,
@@ -1305,94 +1539,212 @@ class _QuickOverviewGrid extends StatelessWidget {
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
         childAspectRatio: 1.55,
-        children: [
-          _OverviewTile(
-            title: 'المهام',
-            value: '${summary.completedTasks}/${summary.totalTasks}',
-            subtitle: '${summary.overdueTasks} متأخرة',
-            icon: Icons.checklist_rounded,
-            onTap: onOpenTasks,
-          ),
-          _OverviewTile(
-            title: 'الضيوف',
-            value: '${summary.confirmedGuests}/${summary.guestCount}',
-            subtitle: '${summary.incompleteGuestsCount} ناقص',
-            icon: Icons.group_outlined,
-            onTap: onOpenGuests,
-          ),
-          _OverviewTile(
-            title: 'العروض',
-            value: '${summary.receivedQuotes}',
-            subtitle: '${summary.acceptedProviders} مقبول',
-            icon: Icons.storefront_rounded,
-            onTap: onOpenProviders,
-          ),
-          _OverviewTile(
-            title: 'الأقساط',
-            value: '${summary.dueInstallmentsCount ?? 0}',
-            subtitle: 'ديون ${_formatMoney(summary.debtTotalForDisplay)}',
-            icon: Icons.payments_outlined,
-            onTap: onOpenMoney,
-          ),
-        ],
+        children: tiles,
       ),
     );
   }
 }
 
-class _DashboardQuickActionsCard extends StatelessWidget {
-  const _DashboardQuickActionsCard({
-    this.onAddExpense,
-    this.onAddTask,
-    this.onAddGuest,
-    this.onAddDebt,
-    this.onRequestQuote,
+class _SharingUpdatesRow extends StatelessWidget {
+  const _SharingUpdatesRow({
+    required this.summary,
+    required this.onOpenParticipants,
+    required this.onOpenImportantItem,
   });
 
-  final VoidCallback? onAddExpense;
-  final VoidCallback? onAddTask;
-  final VoidCallback? onAddGuest;
-  final VoidCallback? onAddDebt;
-  final VoidCallback? onRequestQuote;
+  final DashboardSummary summary;
+  final VoidCallback onOpenParticipants;
+  final ValueChanged<DashboardImportantItem> onOpenImportantItem;
 
   @override
   Widget build(BuildContext context) {
-    final actions = [
-      _QuickActionSpec(
-        'إضافة مصروف',
-        Icons.account_balance_wallet_outlined,
-        onAddExpense,
-      ),
-      _QuickActionSpec(
-        'إضافة مهمة',
-        Icons.check_circle_outline_rounded,
-        onAddTask,
-      ),
-      _QuickActionSpec('إضافة ضيف', Icons.group_add_outlined, onAddGuest),
-      _QuickActionSpec('إضافة دين', Icons.attach_money_rounded, onAddDebt),
-      _QuickActionSpec(
-        'طلب عرض سعر',
-        Icons.request_quote_outlined,
-        onRequestQuote,
-      ),
-    ].where((action) => action.onTap != null).toList();
-    if (actions.isEmpty) return const SizedBox.shrink();
-    return _DashboardSectionCard(
-      title: 'إجراءات سريعة',
-      subtitle: 'إنشاء فقط، بدون تكرار مسارات مختلفة.',
-      icon: Icons.add_circle_outline_rounded,
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          for (final action in actions)
-            _ActionChipButton(
-              label: action.label,
-              icon: action.icon,
-              onTap: action.onTap!,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sharing = _MiniDashboardCard(
+          title: 'مشاركة الخطة',
+          icon: Icons.share_rounded,
+          subtitle: _sharingSubtitle(summary),
+          onTap: onOpenParticipants,
+          child: _MiniCardText(_dashboardRoleLabel(summary.currentUserRole)),
+        );
+        final updates = _MiniDashboardCard(
+          title: 'آخر التحديثات',
+          icon: Icons.history_rounded,
+          subtitle: _latestUpdatesSubtitle(summary),
+          child: _LatestUpdatesMiniList(
+            items: summary.recentActivity.take(2).toList(),
+            onOpenImportantItem: onOpenImportantItem,
+          ),
+        );
+        if (constraints.maxWidth < 340) {
+          return Column(
+            children: [sharing, const SizedBox(height: 10), updates],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: sharing),
+            const SizedBox(width: 10),
+            Expanded(child: updates),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MiniDashboardCard extends StatelessWidget {
+  const _MiniDashboardCard({
+    required this.title,
+    required this.icon,
+    required this.subtitle,
+    required this.child,
+    this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final String subtitle;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Container(
+      constraints: const BoxConstraints(minHeight: 142),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: _RoyalColors.ink.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
         ],
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: _RoyalColors.goldDeep, size: 18),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _RoyalColors.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: _RoyalColors.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return AarastPressable(
+      onTap: onTap!,
+      borderRadius: BorderRadius.circular(20),
+      child: content,
+    );
+  }
+}
+
+class _MiniCardText extends StatelessWidget {
+  const _MiniCardText(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        color: _RoyalColors.burgundy,
+        fontSize: 13,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 0,
+      ),
+    );
+  }
+}
+
+class _LatestUpdatesMiniList extends StatelessWidget {
+  const _LatestUpdatesMiniList({
+    required this.items,
+    required this.onOpenImportantItem,
+  });
+
+  final List<DashboardImportantItem> items;
+  final ValueChanged<DashboardImportantItem> onOpenImportantItem;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _MiniCardText('لا توجد تحديثات بعد');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items)
+          AarastPressable(
+            onTap: () => onOpenImportantItem(item),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    _iconForImportantItem(item),
+                    color: _toneColor(item.tone),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _RoyalColors.ink,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1668,6 +2020,7 @@ class _CompactLineItem extends StatelessWidget {
     required this.subtitle,
     required this.tone,
     required this.onTap,
+    this.actionLabel,
   });
 
   final IconData icon;
@@ -1675,6 +2028,7 @@ class _CompactLineItem extends StatelessWidget {
   final String subtitle;
   final String tone;
   final VoidCallback onTap;
+  final String? actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1726,7 +2080,27 @@ class _CompactLineItem extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left_rounded, color: _RoyalColors.muted),
+            if (_hasText(actionLabel))
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  actionLabel!.trim(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0,
+                  ),
+                ),
+              )
+            else
+              const Icon(Icons.chevron_left_rounded, color: _RoyalColors.muted),
           ],
         ),
       ),
@@ -1802,52 +2176,6 @@ class _SmallCommandButton extends StatelessWidget {
   }
 }
 
-class _ActionChipButton extends StatelessWidget {
-  const _ActionChipButton({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastPressable(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: _RoyalColors.ivory,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: _RoyalColors.goldDeep.withValues(alpha: 0.18),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: _RoyalColors.goldDeep, size: 17),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                color: _RoyalColors.ink,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _WarningPill extends StatelessWidget {
   const _WarningPill({required this.text, required this.danger});
 
@@ -1880,19 +2208,12 @@ class _WarningPill extends StatelessWidget {
   }
 }
 
-class _QuickActionSpec {
-  const _QuickActionSpec(this.label, this.icon, this.onTap);
-
-  final String label;
-  final IconData icon;
-  final VoidCallback? onTap;
-}
-
 class _CircleIconButton extends StatelessWidget {
   const _CircleIconButton({
     required this.icon,
     required this.onTap,
     this.badgeCount = 0,
+    super.key,
   });
 
   final IconData icon;
@@ -2031,6 +2352,26 @@ bool _hasText(String? value) {
 
 String _formatDate(DateTime date) {
   return formatArabicDate(date);
+}
+
+String? _shortLocation(DashboardSummary summary) {
+  final fullLabel = summary.location?['fullLabel']?.toString().trim();
+  if (_hasText(fullLabel)) {
+    final parts = fullLabel!
+        .split(RegExp(r'\s*-\s*'))
+        .where((part) => part.trim().isNotEmpty)
+        .toList();
+    if (parts.length >= 2) return '${parts[0]} - ${parts[1]}';
+    return fullLabel;
+  }
+  final city = summary.city?.trim();
+  if (!_hasText(city)) return null;
+  final parts = city!
+      .split(RegExp(r'\s*-\s*'))
+      .where((part) => part.trim().isNotEmpty)
+      .toList();
+  if (parts.length >= 2) return '${parts[0]} - ${parts[1]}';
+  return city;
 }
 
 String _daysRemainingLabel(int? daysRemaining) {
@@ -2240,6 +2581,23 @@ String _dashboardRoleLabel(String? role) {
     'GUEST' || 'GUEST_LOCAL' => 'مسودة على الجهاز',
     _ => role ?? 'مشارك',
   };
+}
+
+String _sharingSubtitle(DashboardSummary summary) {
+  if (summary.isLocalOnly) return 'تسجيل الدخول مطلوب للمشاركة';
+  if (summary.participantCount <= 1 && summary.pendingInvites == 0) {
+    return 'لم تُشارك بعد';
+  }
+  if (summary.pendingInvites > 0) {
+    return '${summary.participantCount} مشارك • ${summary.pendingInvites} دعوات';
+  }
+  return '${summary.participantCount} مشارك';
+}
+
+String _latestUpdatesSubtitle(DashboardSummary summary) {
+  if (summary.recentActivity.isEmpty) return 'لا يوجد نشاط حقيقي بعد';
+  final count = summary.recentActivity.length.clamp(0, 2).toInt();
+  return count == 1 ? 'تحديث واحد' : '$count تحديثات';
 }
 
 class _OperationalCard extends StatelessWidget {

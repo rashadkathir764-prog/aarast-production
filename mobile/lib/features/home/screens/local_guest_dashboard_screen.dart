@@ -10,6 +10,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
+import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
 import '../../wedding_plans/widgets/royal_home_today_center.dart';
 import '../data/dashboard_summary_sources.dart';
@@ -56,13 +57,16 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
+      floatingActionButton: RoyalSmartFloatingActionButton(
+        onPressed: () => _showQuickAdd(context, planId),
+      ),
       bottomNavigationBar: RoyalDashboardBottomNav(
         activeIndex: 0,
         onHome: () {},
         onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
         onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
+        onGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
         onProviders: () => context.push(AppRouter.providerMarketplace),
-        onMore: () => context.push(AppRouter.more),
       ),
       child: RoyalHomeTodayCenter(
         summary: dashboardSummary,
@@ -94,10 +98,31 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
             _openLocalNextStep(context, planId, dashboardSummary),
         onOpenTimeline: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onAddExpense: () => context.push(AppRouter.createExpense(planId)),
-        onAddTask: () => context.push(AppRouter.createTask(planId)),
-        onAddGuest: () => context.push(AppRouter.guestList(planId)),
-        onAddDebt: () => context.push(AppRouter.createDebt(planId)),
-        onRequestQuote: () => _requireAccountForQuote(context),
+      ),
+    );
+  }
+
+  void _showQuickAdd(BuildContext context, String planId) {
+    Future<void> open(String route, {bool refreshDashboard = false}) async {
+      Navigator.of(context, rootNavigator: true).pop();
+      if (!mounted) return;
+      await context.push(route);
+      if (mounted) await _refreshSummary();
+    }
+
+    void requestQuote() {
+      Navigator.of(context, rootNavigator: true).pop();
+      if (!mounted) return;
+      _requireAccountForQuote(context);
+    }
+
+    showRoyalHomeActionSheet(
+      context,
+      actions: buildCanonicalQuickAddActions(
+        context,
+        planId: planId,
+        openRoute: open,
+        onRequestQuote: requestQuote,
       ),
     );
   }

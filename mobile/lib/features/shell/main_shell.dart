@@ -8,8 +8,8 @@ import '../../core/widgets/aarast_ui.dart';
 import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
+import '../guests/screens/guest_list_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
-import '../more/screens/more_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
 import '../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../wedding_plans/providers/wedding_plans_provider.dart';
@@ -26,7 +26,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   // Bottom-nav indices for the live user shell:
-  // 0: الرئيسية, 1: المال, 2: المهام, 3: الموردون, 4: المزيد.
+  // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: الموردون.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   String? _activePlanId;
@@ -82,9 +82,20 @@ class _MainShellState extends State<MainShell> {
     return buildCanonicalQuickAddActions(
       context,
       planId: planId,
+      contextOrder: _quickAddContextForIndex(_index),
       refreshDashboardOnExpense: true,
       openRoute: open,
     );
+  }
+
+  QuickAddContext _quickAddContextForIndex(int index) {
+    return switch (index) {
+      1 => QuickAddContext.money,
+      2 => QuickAddContext.tasks,
+      3 => QuickAddContext.guests,
+      4 => QuickAddContext.providers,
+      _ => QuickAddContext.dashboard,
+    };
   }
 
   @override
@@ -135,21 +146,32 @@ class _MainShellState extends State<MainShell> {
                     : _buildNoPlanFallback('المهام'),
               ),
 
-              // Index 3: Vendors marketplace
-              _buildLazyTab(3, const ProviderMarketplaceScreen(embedded: true)),
+              // Index 3: Guests
+              _buildLazyTab(
+                3,
+                _activePlanId != null
+                    ? GuestListScreen(
+                        key: ValueKey('guests-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                      )
+                    : _buildNoPlanFallback('الضيوف'),
+              ),
 
-              // Index 4: More
-              _buildLazyTab(4, const MoreScreen()),
+              // Index 4: Vendors marketplace
+              _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
             ],
           ),
+          floatingActionButton: _activePlanId == null
+              ? null
+              : RoyalSmartFloatingActionButton(onPressed: _showQuickAdd),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           bottomNavigationBar: RoyalDashboardBottomNav(
             activeIndex: _index,
             onHome: () => _onItemTapped(0),
             onMoney: () => _onItemTapped(1),
             onTasks: () => _onItemTapped(2),
-            onProviders: () => _onItemTapped(3),
-            onMore: () => _onItemTapped(4),
-            onAdd: _index == 0 ? null : _showQuickAdd,
+            onGuests: () => _onItemTapped(3),
+            onProviders: () => _onItemTapped(4),
           ),
         ),
       ),

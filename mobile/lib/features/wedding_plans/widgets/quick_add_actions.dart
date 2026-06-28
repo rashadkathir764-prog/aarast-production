@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/routing/app_router.dart';
 import 'royal_home_chrome.dart';
 
+enum QuickAddContext { dashboard, money, tasks, guests, providers }
+
 /// Canonical quick-add actions for any active wedding plan.
 ///
 /// Used by:
@@ -14,39 +16,46 @@ import 'royal_home_chrome.dart';
 List<RoyalHomeAction> buildCanonicalQuickAddActions(
   BuildContext context, {
   required String planId,
+  QuickAddContext contextOrder = QuickAddContext.dashboard,
   bool refreshDashboardOnExpense = false,
   VoidCallback? onRequestQuote,
   required Future<void> Function(String route, {bool refreshDashboard})
   openRoute,
 }) {
-  return [
-    RoyalHomeAction(
-      icon: Icons.account_balance_wallet_outlined,
-      label: 'إضافة مصروف',
-      onTap: () => openRoute(
-        AppRouter.createExpense(planId),
-        refreshDashboard: refreshDashboardOnExpense,
-      ),
+  final expense = RoyalHomeAction(
+    icon: Icons.account_balance_wallet_outlined,
+    label: 'إضافة مصروف',
+    onTap: () => openRoute(
+      AppRouter.createExpense(planId),
+      refreshDashboard: refreshDashboardOnExpense,
     ),
-    RoyalHomeAction(
-      icon: Icons.check_circle_outline_rounded,
-      label: 'إضافة مهمة',
-      onTap: () => openRoute(AppRouter.createTask(planId)),
-    ),
-    RoyalHomeAction(
-      icon: Icons.group_add_outlined,
-      label: 'إضافة ضيف',
-      onTap: () => openRoute(AppRouter.guestList(planId)),
-    ),
-    RoyalHomeAction(
-      icon: Icons.attach_money_rounded,
-      label: 'إضافة دين',
-      onTap: () => openRoute(AppRouter.createDebt(planId)),
-    ),
-    RoyalHomeAction(
-      icon: Icons.request_quote_outlined,
-      label: 'طلب عرض سعر',
-      onTap: onRequestQuote ?? () => openRoute(AppRouter.providerMarketplace),
-    ),
-  ];
+  );
+  final task = RoyalHomeAction(
+    icon: Icons.check_circle_outline_rounded,
+    label: 'إضافة مهمة',
+    onTap: () => openRoute(AppRouter.createTask(planId)),
+  );
+  final guest = RoyalHomeAction(
+    icon: Icons.group_add_outlined,
+    label: 'إضافة ضيف',
+    onTap: () => openRoute(AppRouter.guestList(planId)),
+  );
+  final debt = RoyalHomeAction(
+    icon: Icons.attach_money_rounded,
+    label: 'إضافة دين/قسط',
+    onTap: () => openRoute(AppRouter.createDebt(planId)),
+  );
+  final quote = RoyalHomeAction(
+    icon: Icons.request_quote_outlined,
+    label: 'طلب عرض سعر',
+    onTap: onRequestQuote ?? () => openRoute(AppRouter.providerMarketplace),
+  );
+
+  return switch (contextOrder) {
+    QuickAddContext.money => [expense, debt, task, guest, quote],
+    QuickAddContext.tasks => [task, expense, guest, debt, quote],
+    QuickAddContext.guests => [guest, task, expense, debt, quote],
+    QuickAddContext.providers => [quote, expense, task, guest, debt],
+    QuickAddContext.dashboard => [expense, task, guest, debt, quote],
+  };
 }

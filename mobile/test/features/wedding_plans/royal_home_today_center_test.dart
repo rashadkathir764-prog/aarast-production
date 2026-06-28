@@ -33,17 +33,13 @@ void main() {
               onOpenNextStep: () {},
               onOpenTimeline: () {},
               onAddExpense: () {},
-              onAddTask: () {},
-              onAddGuest: () {},
-              onAddDebt: () {},
-              onRequestQuote: () {},
             ),
             bottomNavigationBar: RoyalDashboardBottomNav(
               activeIndex: 0,
               onHome: () {},
               onMoney: () {},
               onProviders: () {},
-              onMore: () {},
+              onGuests: () {},
             ),
           ),
         ),
@@ -69,16 +65,9 @@ void main() {
     }
 
     expect(find.text('نظرة سريعة'), findsOneWidget);
-    await tester.dragUntilVisible(
-      find.text('إجراءات سريعة'),
-      find.byType(ListView).first,
-      const Offset(0, -420),
-    );
-    for (var i = 0; i < 6; i++) {
-      await tester.pump(const Duration(milliseconds: 80));
-    }
-
-    expect(find.text('إجراءات سريعة'), findsOneWidget);
+    expect(find.text('إجراءات سريعة'), findsNothing);
+    expect(find.text('مشاركة الخطة'), findsOneWidget);
+    expect(find.text('آخر التحديثات'), findsOneWidget);
     expect(find.text('إجراء جديد'), findsNothing);
   });
 
@@ -106,10 +95,6 @@ void main() {
               onOpenNextStep: () {},
               onOpenTimeline: () {},
               onAddExpense: () {},
-              onAddTask: () {},
-              onAddGuest: () {},
-              onAddDebt: () {},
-              onRequestQuote: () {},
             ),
           ),
         ),
@@ -156,10 +141,6 @@ void main() {
               onOpenNextStep: () {},
               onOpenTimeline: () {},
               onAddExpense: () {},
-              onAddTask: () {},
-              onAddGuest: () {},
-              onAddDebt: () {},
-              onRequestQuote: () {},
             ),
             bottomNavigationBar: RoyalDashboardBottomNav(
               activeIndex: 0,
@@ -167,7 +148,7 @@ void main() {
               onMoney: () {},
               onTasks: () {},
               onProviders: () {},
-              onMore: () {},
+              onGuests: () {},
             ),
           ),
         ),
@@ -210,7 +191,7 @@ void main() {
                 ),
                 RoyalHomeAction(
                   icon: Icons.attach_money_rounded,
-                  label: 'إضافة دين',
+                  label: 'إضافة دين/قسط',
                   onTap: () {},
                 ),
                 RoyalHomeAction(
@@ -233,9 +214,66 @@ void main() {
     expect(find.text('إضافة مصروف'), findsOneWidget);
     expect(find.text('إضافة مهمة'), findsOneWidget);
     expect(find.text('إضافة ضيف'), findsOneWidget);
-    expect(find.text('إضافة دين'), findsOneWidget);
+    expect(find.text('إضافة دين/قسط'), findsOneWidget);
     expect(find.text('طلب عرض سعر'), findsOneWidget);
     expect(find.byIcon(Icons.close_rounded), findsOneWidget);
+  });
+
+  testWidgets('smart floating plus opens the approved action sheet', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            floatingActionButton: RoyalSmartFloatingActionButton(
+              onPressed: () {
+                showRoyalHomeActionSheet(
+                  tester.element(find.byType(Scaffold)),
+                  actions: [
+                    RoyalHomeAction(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'إضافة مصروف',
+                      onTap: () {},
+                    ),
+                    RoyalHomeAction(
+                      icon: Icons.check_circle_outline_rounded,
+                      label: 'إضافة مهمة',
+                      onTap: () {},
+                    ),
+                    RoyalHomeAction(
+                      icon: Icons.group_add_outlined,
+                      label: 'إضافة ضيف',
+                      onTap: () {},
+                    ),
+                    RoyalHomeAction(
+                      icon: Icons.attach_money_rounded,
+                      label: 'إضافة دين/قسط',
+                      onTap: () {},
+                    ),
+                    RoyalHomeAction(
+                      icon: Icons.request_quote_outlined,
+                      label: 'طلب عرض سعر',
+                      onTap: () {},
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('royal-smart-fab')));
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('إجراء جديد'), findsOneWidget);
+    expect(find.text('إضافة مصروف'), findsOneWidget);
+    expect(find.text('طلب عرض سعر'), findsOneWidget);
   });
 
   testWidgets('royal bottom nav hides new-action CTA when no action is bound', (
@@ -252,7 +290,7 @@ void main() {
               onMoney: () {},
               onTasks: () {},
               onProviders: () {},
-              onMore: () {},
+              onGuests: () {},
             ),
           ),
         ),
@@ -274,9 +312,8 @@ void main() {
               onHome: () {},
               onMoney: () {},
               onTasks: () {},
+              onGuests: () {},
               onProviders: () {},
-              onMore: () {},
-              onAdd: () {},
             ),
           ),
         ),
@@ -286,8 +323,9 @@ void main() {
     expect(find.text('الرئيسية'), findsOneWidget);
     expect(find.text('المال'), findsOneWidget);
     expect(find.text('المهام'), findsOneWidget);
+    expect(find.text('الضيوف'), findsOneWidget);
     expect(find.text('الموردون'), findsOneWidget);
-    expect(find.text('المزيد'), findsOneWidget);
+    expect(find.text('المزيد'), findsNothing);
   });
 }
 

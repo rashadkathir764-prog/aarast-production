@@ -54,8 +54,8 @@ void main() {
       const GuestListScreen(weddingPlanId: localPlanId),
     );
 
-    expect(find.text('قائمة الضيوف'), findsOneWidget);
-    expect(find.text('لا توجد بيانات بعد'), findsOneWidget);
+    expect(find.text('الضيوف'), findsWidgets);
+    expect(find.text('لم تضف أي ضيف بعد'), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });

@@ -24,23 +24,70 @@ class GuestsApi {
         .toList();
   }
 
+  Future<GuestSummary> getSummary({
+    required String weddingPlanId,
+    List<Guest>? localGuests,
+    List<GuestGroup>? localGroups,
+  }) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return GuestSummary.fromGuests(
+        weddingPlanId: weddingPlanId,
+        guests: localGuests ?? await _cachedGuests(weddingPlanId),
+        groups: localGroups ?? const [],
+      );
+    }
+    final json = await _apiClient.getJson(
+      '/wedding-plans/$weddingPlanId/guests/summary',
+    );
+    return GuestSummary.fromJson(json);
+  }
+
+  Future<List<GuestGroup>> getGroups(String weddingPlanId) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) return const [];
+    final list = await _apiClient.getJsonList(
+      '/wedding-plans/$weddingPlanId/guest-groups',
+    );
+    return list
+        .whereType<Map>()
+        .map((item) => GuestGroup.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
   Future<Guest> createGuest({
     required String weddingPlanId,
     required String name,
     String? phone,
+    String? groupId,
     required String side,
     required String status,
+    String? attendanceStatus,
     required int seatsCount,
+    int? companionsCount,
     String? notes,
   }) async {
     final normalizedPhone = _normalizeOptionalPhone(phone);
+    final normalizedGroupId = groupId?.trim();
     final payload = {
       'name': name.trim(),
       'side': side,
       'status': status,
       'seatsCount': seatsCount,
-      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
     };
+    if (normalizedGroupId != null && normalizedGroupId.isNotEmpty) {
+      payload['groupId'] = normalizedGroupId;
+    }
+    final normalizedAttendanceStatus = attendanceStatus?.trim();
+    if (normalizedAttendanceStatus != null &&
+        normalizedAttendanceStatus.isNotEmpty) {
+      payload['attendanceStatus'] = normalizedAttendanceStatus;
+    }
+    if (companionsCount != null) {
+      payload['companionsCount'] = companionsCount;
+    }
+    final normalizedNotes = notes?.trim();
+    if (normalizedNotes != null && normalizedNotes.isNotEmpty) {
+      payload['notes'] = normalizedNotes;
+    }
     if (normalizedPhone != null) {
       payload['phone'] = normalizedPhone;
     }
@@ -58,9 +105,12 @@ class GuestsApi {
     required String id,
     String? name,
     String? phone,
+    String? groupId,
     String? side,
     String? status,
+    String? attendanceStatus,
     int? seatsCount,
+    int? companionsCount,
     String? notes,
   }) async {
     final payload = <String, dynamic>{};
@@ -70,14 +120,23 @@ class GuestsApi {
     if (phone != null) {
       payload['phone'] = _normalizeOptionalPhone(phone);
     }
+    if (groupId != null) {
+      payload['groupId'] = groupId.trim().isEmpty ? null : groupId.trim();
+    }
     if (side != null) {
       payload['side'] = side;
     }
     if (status != null) {
       payload['status'] = status;
     }
+    if (attendanceStatus != null) {
+      payload['attendanceStatus'] = attendanceStatus;
+    }
     if (seatsCount != null) {
       payload['seatsCount'] = seatsCount;
+    }
+    if (companionsCount != null) {
+      payload['companionsCount'] = companionsCount;
     }
     if (notes != null) {
       payload['notes'] = notes.trim();

@@ -15,12 +15,22 @@ class GuestsProvider extends ChangeNotifier {
   String? _errorMessage;
   String? _noticeMessage;
   List<Guest> _guests = const [];
+  List<GuestGroup> _groups = const [];
+  GuestSummary? _summary;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
   String? get noticeMessage => _noticeMessage;
   List<Guest> get guests => _guests;
+  List<GuestGroup> get groups => _groups;
+  GuestSummary get summary =>
+      _summary ??
+      GuestSummary.fromGuests(
+        weddingPlanId: _guests.isEmpty ? '' : _guests.first.weddingPlanId,
+        guests: _guests,
+        groups: _groups,
+      );
 
   Future<void> loadGuests(String weddingPlanId) async {
     _isLoading = true;
@@ -30,6 +40,12 @@ class GuestsProvider extends ChangeNotifier {
 
     try {
       _guests = await _api.getGuests(weddingPlanId);
+      _groups = await _api.getGroups(weddingPlanId);
+      _summary = await _api.getSummary(
+        weddingPlanId: weddingPlanId,
+        localGuests: _guests,
+        localGroups: _groups,
+      );
     } on ApiException catch (error) {
       _errorMessage = _guestErrorMessage(error);
     } catch (_) {
@@ -44,9 +60,12 @@ class GuestsProvider extends ChangeNotifier {
     required String weddingPlanId,
     required String name,
     String? phone,
+    String? groupId,
     required String side,
     required String status,
+    String? attendanceStatus,
     required int seatsCount,
+    int? companionsCount,
     String? notes,
   }) async {
     _isSubmitting = true;
@@ -59,12 +78,16 @@ class GuestsProvider extends ChangeNotifier {
         weddingPlanId: weddingPlanId,
         name: name,
         phone: phone,
+        groupId: groupId,
         side: side,
         status: status,
+        attendanceStatus: attendanceStatus,
         seatsCount: seatsCount,
+        companionsCount: companionsCount,
         notes: notes,
       );
       _guests = [guest, ..._guests];
+      _refreshSummary(weddingPlanId);
       if (_isLocalGuestPlanId(weddingPlanId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
@@ -85,9 +108,12 @@ class GuestsProvider extends ChangeNotifier {
     required Guest guest,
     String? name,
     String? phone,
+    String? groupId,
     String? side,
     String? status,
+    String? attendanceStatus,
     int? seatsCount,
+    int? companionsCount,
     String? notes,
   }) async {
     _isSubmitting = true;
@@ -100,12 +126,16 @@ class GuestsProvider extends ChangeNotifier {
         id: guest.id,
         name: name,
         phone: phone,
+        groupId: groupId,
         side: side,
         status: status,
+        attendanceStatus: attendanceStatus,
         seatsCount: seatsCount,
+        companionsCount: companionsCount,
         notes: notes,
       );
       _replace(updated);
+      _refreshSummary(updated.weddingPlanId);
       if (updated.id.startsWith('local-guest-')) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
@@ -131,6 +161,7 @@ class GuestsProvider extends ChangeNotifier {
     try {
       await _api.deleteGuest(guest.id);
       _guests = _guests.where((item) => item.id != guest.id).toList();
+      _refreshSummary(guest.weddingPlanId);
       if (guest.id.startsWith('local-guest-')) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
@@ -157,6 +188,14 @@ class GuestsProvider extends ChangeNotifier {
     _guests = [
       for (final item in _guests) item.id == updated.id ? updated : item,
     ];
+  }
+
+  void _refreshSummary(String weddingPlanId) {
+    _summary = GuestSummary.fromGuests(
+      weddingPlanId: weddingPlanId,
+      guests: _guests,
+      groups: _groups,
+    );
   }
 }
 

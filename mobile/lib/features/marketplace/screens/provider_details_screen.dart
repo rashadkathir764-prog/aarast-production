@@ -271,13 +271,14 @@ class _ProviderHero extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      AarastStatusPill(
-                        label:
-                            '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
-                        icon: Icons.star_rounded,
-                        color: AppTheme.dGoldDeep,
-                        backgroundColor: AppTheme.dCreamBg,
-                      ),
+                      if (provider.ratingCount > 0)
+                        AarastStatusPill(
+                          label:
+                              '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
+                          icon: Icons.star_rounded,
+                          color: AppTheme.dGoldDeep,
+                          backgroundColor: AppTheme.dCreamBg,
+                        ),
                       if (provider.city?.nameAr != null)
                         AarastStatusPill(
                           label: provider.city!.nameAr,
@@ -705,6 +706,6 @@ class _RoundButton extends StatelessWidget {
 
 String _priceText(String? value, String? currency) {
   final clean = value?.trim();
-  if (clean == null || clean.isEmpty) return 'حسب الطلب';
+  if (clean == null || clean.isEmpty) return 'السعر غير منشور';
   return '$clean ${currency ?? 'ر.س'}';
 }

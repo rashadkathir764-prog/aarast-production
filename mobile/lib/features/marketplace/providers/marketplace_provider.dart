@@ -192,6 +192,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _noticeMessage = null;
     notifyListeners();
 
     try {
@@ -209,10 +210,6 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
         budgetMin: budgetMin,
         budgetMax: budgetMax,
       );
-      if (quote.id.startsWith('local-')) {
-        _noticeMessage =
-            'طلب العرض جاهز للإرسال عند عودة الاتصال. لم يُسجل كطلب مستلم لدى المورد بعد.';
-      }
       _quoteRequests = [
         quote,
         ..._quoteRequests.where((item) => item.id != quote.id),

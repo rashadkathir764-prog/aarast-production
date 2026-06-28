@@ -298,34 +298,8 @@ class MarketplaceApi {
       );
       await _offline?.syncPendingChanges();
       return QuoteRequest.fromJson(json);
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final now = DateTime.now();
-      final localId = 'local-quote-${now.microsecondsSinceEpoch}';
-      final localJson = {
-        'id': localId,
-        'providerId': providerId,
-        ...payload,
-        'status': 'READY_TO_SEND',
-        'lifecycleStatus': 'READY_TO_SEND',
-        'createdAt': now.toIso8601String(),
-        'updatedAt': now.toIso8601String(),
-      };
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedBookings,
-        json: localJson,
-        dirty: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'quote_request',
-        operation: 'create',
-        endpoint: '/providers/$providerId/quote-requests',
-        method: 'POST',
-        payload: payload,
-        localEntityId: localId,
-      );
-      await _offline.refreshStatus();
-      return QuoteRequest.fromJson(localJson);
+    } on Object {
+      rethrow;
     }
   }
 
@@ -614,11 +588,9 @@ class ProviderDashboardApi {
       {
         'message': message.trim(),
         if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
-        if (amount != null && amount.trim().isNotEmpty)
-          'amount': amount.trim(),
+        if (amount != null && amount.trim().isNotEmpty) 'amount': amount.trim(),
         'currency': currency,
-        if (validUntil != null)
-          'validUntil': validUntil.toIso8601String(),
+        if (validUntil != null) 'validUntil': validUntil.toIso8601String(),
       },
     );
     return QuoteOffer.fromJson(json);

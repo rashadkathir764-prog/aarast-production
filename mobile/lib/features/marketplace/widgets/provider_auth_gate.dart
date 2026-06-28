@@ -17,8 +17,7 @@ class ProviderAuthGate extends StatelessWidget {
     super.key,
   });
 
-  static const message =
-      'تصفح الموردين وطلب عروض الأسعار يحتاج حسابًا لحفظ طلباتك ومتابعتها.';
+  static const message = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
 
   final Widget child;
   final String resumeLocation;

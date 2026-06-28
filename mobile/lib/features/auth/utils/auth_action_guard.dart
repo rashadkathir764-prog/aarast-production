@@ -12,7 +12,7 @@ class AuthActionGuard {
 
   static const protectedActionMessage =
       'سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.';
-  static const quoteSubmitMessage = protectedActionMessage;
+  static const quoteSubmitMessage = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
   static const localPlanningSaveMessage =
       'تم الحفظ محليًا. سجّل الدخول لاحقًا لمزامنة خطتك.';
 

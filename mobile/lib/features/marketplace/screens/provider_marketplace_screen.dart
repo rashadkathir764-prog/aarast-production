@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -29,6 +28,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final _searchFocusNode = FocusNode();
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
+  List<String> _neededServiceLabels = const [];
 
   @override
   void initState() {
@@ -37,9 +37,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
       _searchController.text = provider.search;
-      final includeAccountData =
-          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
-          await AuthActionGuard.hasAccount(context);
+      final includeAccountData = await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
       await provider.loadMarketplace(includeAccountData: includeAccountData);
       if (!mounted) return;
@@ -75,18 +73,31 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 widget.embedded ? 124 : 28,
               ),
               children: [
-                _MarketplaceHeader(embedded: widget.embedded),
-                const SizedBox(height: 18),
-                _MarketplaceHero(onTap: () => _searchFocusNode.requestFocus()),
+                _ProvidersHeader(embedded: widget.embedded, provider: provider),
+                const SizedBox(height: 14),
+                _MarketplaceHero(
+                  provider: provider,
+                  neededServiceLabels: _neededServiceLabels,
+                  onTap: () => _searchFocusNode.requestFocus(),
+                ),
+                const SizedBox(height: 12),
+                _ServiceCategoriesSection(
+                  categories: provider.categories,
+                  selectedLabels: _neededServiceLabels,
+                  selectedCategoryId: provider.categoryId,
+                  onSelect: provider.setCategory,
+                ),
+                const SizedBox(height: 12),
+                _ImportantNowCard(
+                  quotes: provider.quoteRequests,
+                  includesAccountData: provider.includesAccountData,
+                  onOpenPlanCenter: _openPlanCenterForQuote,
+                ),
                 const SizedBox(height: 12),
                 _LocationContextCard(
                   location: _weddingLocation,
                   onCompleteLocation: _openLocationCompletion,
                 ),
-                if (provider.includesAccountData) ...[
-                  const SizedBox(height: 12),
-                  _QuoteRequestsOverview(quotes: provider.quoteRequests),
-                ],
                 const SizedBox(height: 18),
                 _MarketplaceSearch(
                   controller: _searchController,
@@ -106,10 +117,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 else if (provider.providers.isEmpty)
                   AarastEmptyState(
                     icon: Icons.storefront_outlined,
-                    title: 'لا توجد نتائج مطابقة',
+                    title: 'لا يوجد موردون متاحون حاليًا',
                     message: _weddingLocation?.hasRequiredLocation == true
-                        ? 'جرّبي تغيير المدينة أو الفئة، أو امسحي الفلاتر لاستعراض الموردين المتاحين.'
-                        : 'حدد موقع الزفاف لاقتراح موردين أقرب لك، أو امسحي الفلاتر لاستعراض الموردين المتاحين.',
+                        ? 'غيّر المدينة أو الفئة، أو امسح الفلاتر لاستعراض الموردين المتاحين.'
+                        : 'أضف موقع الزفاف لتحسين تصفية المدينة، أو امسح الفلاتر لاستعراض الموردين المتاحين.',
                     action: OutlinedButton.icon(
                       onPressed: provider.clearFilters,
                       icon: const Icon(Icons.tune_rounded),
@@ -138,10 +149,18 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                       },
                       onTap: () =>
                           context.push(AppRouter.providerDetails(item.id)),
+                      onRequestQuote: () =>
+                          context.push(AppRouter.providerQuote(item.id)),
                     ),
                     const SizedBox(height: 12),
                   ],
                 ],
+                const SizedBox(height: 8),
+                _QuoteRequestsOverview(
+                  quotes: provider.quoteRequests,
+                  includesAccountData: provider.includesAccountData,
+                  onOpenPlanCenter: _openPlanCenterForQuote,
+                ),
               ],
             ),
           );
@@ -179,6 +198,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         location = guestLocation;
         planId = guestPlan?.guestPlanId;
       }
+      _neededServiceLabels = _cleanLabels(
+        guestPlan?.selectedCategoryKeys ?? const [],
+      );
     }
 
     if (location?.hasAnyLocation != true && hasAccount) {
@@ -237,15 +259,33 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     }
     context.push(AppRouter.onboarding);
   }
+
+  void _openPlanCenterForQuote(QuoteRequest quote) {
+    final planId = quote.weddingPlanId;
+    if (planId == null || planId.trim().isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('افتح مركز الخطة بعد ربط طلب العرض بخطة زفاف.'),
+          ),
+        );
+      return;
+    }
+    context.push(AppRouter.planCenter(planId));
+  }
 }
 
-class _MarketplaceHeader extends StatelessWidget {
-  const _MarketplaceHeader({required this.embedded});
+class _ProvidersHeader extends StatelessWidget {
+  const _ProvidersHeader({required this.embedded, required this.provider});
 
   final bool embedded;
+  final ProviderMarketplaceProvider provider;
 
   @override
   Widget build(BuildContext context) {
+    final offersReceived = _offersReceivedCount(provider.quoteRequests);
+    final acceptedProviders = _acceptedProviderCount(provider.quoteRequests);
     return Row(
       children: [
         if (!embedded) ...[
@@ -262,7 +302,7 @@ class _MarketplaceHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'الموردين',
+                'الموردون والعروض',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: AppTheme.dMaroonDeep,
                   fontFamily: AppTheme.displayFontFamily,
@@ -271,7 +311,9 @@ class _MarketplaceHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'اختر قاعات، تصوير، ضيافة وخدمات موثوقة',
+                'اختر خدمات زفافك واطلب عروضًا مناسبة بدون حجز أو دفع داخل التطبيق',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppTheme.dInkSoft,
                   fontWeight: FontWeight.w700,
@@ -280,79 +322,605 @@ class _MarketplaceHeader extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _MiniCount(label: 'فئات', value: provider.categories.length),
+            const SizedBox(height: 6),
+            _MiniCount(
+              label: 'عروض',
+              value: provider.includesAccountData ? offersReceived : null,
+            ),
+            const SizedBox(height: 6),
+            _MiniCount(
+              label: 'مقبول',
+              value: provider.includesAccountData ? acceptedProviders : null,
+            ),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _MarketplaceHero extends StatelessWidget {
-  const _MarketplaceHero({required this.onTap});
+class _MiniCount extends StatelessWidget {
+  const _MiniCount({required this.label, required this.value});
 
+  final String label;
+  final int? value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          value?.toString() ?? '—',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppTheme.dMaroon,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: AppTheme.dInkSoft,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  const _HeroMetric({
+    required this.width,
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final double width;
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(22),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: Colors.white.withAlpha(34)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.dGold, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white.withAlpha(210),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MarketplaceHero extends StatelessWidget {
+  const _MarketplaceHero({
+    required this.provider,
+    required this.neededServiceLabels,
+    required this.onTap,
+  });
+
+  final ProviderMarketplaceProvider provider;
+  final List<String> neededServiceLabels;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final quotes = provider.quoteRequests;
+    final offersReceived = _offersReceivedCount(quotes);
+    final acceptedProviders = _acceptedProviderCount(quotes);
+    final pendingDecisions = _pendingDecisionCount(quotes);
+
     return Container(
-      decoration: AppTheme.premiumCardDecoration(
-        color: AppTheme.dCard,
-        radius: AppTheme.radiusXl,
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      child: Row(
+      decoration: AppTheme.heroDecoration(),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AarastStatusPill(
-                  label: 'ميزة الموردين',
-                  icon: Icons.verified_outlined,
-                  color: AppTheme.dGoldDeep,
-                  backgroundColor: AppTheme.dCreamBg,
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(28),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(color: Colors.white.withAlpha(36)),
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  'استكشفي أفضل الموردين المناسبين لذوقك وميزانيتك',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.dMaroonDeep,
-                    fontWeight: FontWeight.w900,
-                    height: 1.25,
-                  ),
+                child: const Icon(
+                  Icons.storefront_outlined,
+                  color: AppTheme.dGold,
+                  size: 28,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'بحث وفلاتر وتفاصيل خدمات وطلب عرض سعر مباشرة من التطبيق.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.dInkSoft,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'مركز الموردين والعروض',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      provider.includesAccountData
+                          ? 'طلباتك وعروضك من بيانات الحساب'
+                          : 'تصفح عام، وطلب العرض يحتاج تسجيل دخول',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withAlpha(210),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: onTap,
-                  icon: const Icon(Icons.search_rounded),
-                  label: const Text('ابدأ البحث'),
-                ),
-              ],
-            ),
+              ),
+              AarastStatusPill(
+                label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
+                color: AppTheme.dGold,
+                backgroundColor: Colors.white.withAlpha(24),
+                icon: provider.includesAccountData
+                    ? Icons.verified_user_outlined
+                    : Icons.visibility_outlined,
+              ),
+            ],
           ),
-          const SizedBox(width: 14),
-          Container(
-            width: 98,
-            height: 122,
-            decoration: BoxDecoration(
-              gradient: AppTheme.goldGradient,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            ),
-            child: const Icon(
-              Icons.local_florist_rounded,
-              color: Colors.white,
-              size: 44,
-            ),
+          const SizedBox(height: 16),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final tileWidth = constraints.maxWidth < 330
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 10) / 2;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _HeroMetric(
+                    width: tileWidth,
+                    label: 'خدمات تحتاج متابعة',
+                    value: neededServiceLabels.length.toString(),
+                    icon: Icons.category_outlined,
+                  ),
+                  _HeroMetric(
+                    width: tileWidth,
+                    label: 'طلبات مرسلة',
+                    value: provider.includesAccountData
+                        ? quotes.length.toString()
+                        : '0',
+                    icon: Icons.outbox_outlined,
+                  ),
+                  _HeroMetric(
+                    width: tileWidth,
+                    label: 'عروض وصلت',
+                    value: provider.includesAccountData
+                        ? offersReceived.toString()
+                        : '0',
+                    icon: Icons.mark_email_unread_outlined,
+                  ),
+                  _HeroMetric(
+                    width: tileWidth,
+                    label: 'قرارات معلقة',
+                    value: provider.includesAccountData
+                        ? pendingDecisions.toString()
+                        : '0',
+                    icon: Icons.rule_rounded,
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  acceptedProviders == 0 || !provider.includesAccountData
+                      ? 'لم تعتمد أي مورد بعد'
+                      : '$acceptedProviders مورد معتمد في الخطة',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withAlpha(225),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: onTap,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withAlpha(90)),
+                  minimumSize: const Size(0, 42),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                icon: const Icon(Icons.search_rounded, size: 18),
+                label: const Text('بحث'),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ServiceCategoriesSection extends StatelessWidget {
+  const _ServiceCategoriesSection({
+    required this.categories,
+    required this.selectedLabels,
+    required this.selectedCategoryId,
+    required this.onSelect,
+  });
+
+  final List<ProviderCategory> categories;
+  final List<String> selectedLabels;
+  final String? selectedCategoryId;
+  final Future<void> Function(String?) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AarastSectionHeader(
+            title: 'الخدمات التي قد تحتاجها',
+            icon: Icons.category_outlined,
+          ),
+          const SizedBox(height: 10),
+          if (selectedLabels.isEmpty)
+            Text(
+              'لم تحدد خدمات مطلوبة في الخطة بعد. استخدم الفئات كتصفح فقط، بدون أرقام أو ترشيحات غير مؤكدة.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w700,
+                height: 1.45,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final label in selectedLabels)
+                  _NeededServiceChip(label: label),
+              ],
+            ),
+          const SizedBox(height: 12),
+          if (categories.isEmpty)
+            const AarastEmptyState(
+              icon: Icons.category_outlined,
+              title: 'لا توجد فئات خدمات متاحة حاليًا',
+              message: 'عند توفر فئات الموردين ستظهر هنا للتصفح.',
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = constraints.maxWidth < 330
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - 10) / 2;
+                return Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final category in categories)
+                      _CategoryCard(
+                        width: itemWidth,
+                        category: category,
+                        selected: category.id == selectedCategoryId,
+                        needed: selectedLabels.any(
+                          (label) =>
+                              _looselySameArabicLabel(label, category.nameAr),
+                        ),
+                        onTap: () => onSelect(
+                          category.id == selectedCategoryId
+                              ? null
+                              : category.id,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NeededServiceChip extends StatelessWidget {
+  const _NeededServiceChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: const Icon(Icons.check_circle_outline_rounded, size: 16),
+      label: Text(label),
+      backgroundColor: AppTheme.dPinkBg,
+      side: BorderSide(color: AppTheme.dMaroon.withAlpha(28)),
+      labelStyle: const TextStyle(
+        color: AppTheme.dMaroon,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({
+    required this.width,
+    required this.category,
+    required this.selected,
+    required this.needed,
+    required this.onTap,
+  });
+
+  final double width;
+  final ProviderCategory category;
+  final bool selected;
+  final bool needed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.dMaroon : AppTheme.dCard2,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            border: Border.all(
+              color: selected
+                  ? AppTheme.dMaroon
+                  : needed
+                  ? AppTheme.dGoldDeep.withAlpha(70)
+                  : AppTheme.dLine,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : needed
+                    ? Icons.flag_outlined
+                    : Icons.category_outlined,
+                color: selected
+                    ? Colors.white
+                    : needed
+                    ? AppTheme.dGoldDeep
+                    : AppTheme.dMaroon,
+                size: 22,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  category.nameAr,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: selected ? Colors.white : AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ImportantNowCard extends StatelessWidget {
+  const _ImportantNowCard({
+    required this.quotes,
+    required this.includesAccountData,
+    required this.onOpenPlanCenter,
+  });
+
+  final List<QuoteRequest> quotes;
+  final bool includesAccountData;
+  final void Function(QuoteRequest quote) onOpenPlanCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    final important = _importantQuotes(quotes);
+    final title = important.isEmpty
+        ? 'لا توجد متابعة عاجلة الآن'
+        : 'أهم ما يحتاج قرار الآن';
+    final message = !includesAccountData
+        ? 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود.'
+        : important.isEmpty
+        ? 'لا توجد عروض حقيقية تحتاج قبولًا أو رفضًا في هذه اللحظة.'
+        : 'راجع العروض الواصلة أو الطلبات المنتظرة بناءً على بيانات حسابك.';
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      color: important.isEmpty ? AppTheme.dCard2 : AppTheme.dPinkBg,
+      border: Border.all(
+        color: important.isEmpty
+            ? AppTheme.dLine
+            : AppTheme.dMaroon.withAlpha(35),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(
+                important.isEmpty
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.priority_high_rounded,
+                color: important.isEmpty ? AppTheme.dGreen : AppTheme.dMaroon,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.dInkSoft,
+              fontWeight: FontWeight.w700,
+              height: 1.45,
+            ),
+          ),
+          if (important.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (final quote in important) ...[
+              _ImportantQuoteRow(
+                quote: quote,
+                onOpenPlanCenter: () => onOpenPlanCenter(quote),
+              ),
+              if (quote != important.last)
+                const Divider(height: 18, color: AppTheme.dLine),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ImportantQuoteRow extends StatelessWidget {
+  const _ImportantQuoteRow({
+    required this.quote,
+    required this.onOpenPlanCenter,
+  });
+
+  final QuoteRequest quote;
+  final VoidCallback onOpenPlanCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    final action = _quoteNextActionLabel(quote);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            border: Border.all(color: AppTheme.dLine),
+          ),
+          child: const Icon(
+            Icons.request_quote_outlined,
+            color: AppTheme.dMaroon,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _quoteProviderLabel(quote),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.dInk,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  QuoteStatusChip(status: quote.lifecycleStatus, compact: true),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                action,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.dInkSoft,
+                  fontWeight: FontWeight.w800,
+                  height: 1.35,
+                ),
+              ),
+              if (quote.weddingPlanId?.trim().isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: onOpenPlanCenter,
+                  icon: const Icon(Icons.event_note_outlined, size: 18),
+                  label: const Text('فتح مركز الخطة'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -494,8 +1062,8 @@ class _LocationContextCard extends StatelessWidget {
               children: [
                 Text(
                   hasLocation
-                      ? 'موردون قريبون من ${location!.mediumLabel ?? location!.shortLabel}'
-                      : 'حدد موقع الزفاف لاقتراح موردين أقرب لك.',
+                      ? 'تصفية حسب موقع الزفاف: ${location!.mediumLabel ?? location!.shortLabel}'
+                      : 'أضف موقع الزفاف لتحسين تصفية المدينة.',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -507,7 +1075,7 @@ class _LocationContextCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   hasLocation
-                      ? 'نستخدم الموقع كفلتر مدينة عند وجود تطابق واضح. لا نعرض مسافات أو ترتيب قريب بدون بيانات حقيقية.'
+                      ? 'نستخدم الموقع كفلتر مدينة عند وجود تطابق واضح. لا نعرض مسافات أو ترتيبًا حسب القرب بدون بيانات حقيقية.'
                       : 'يمكنك إكمال المحافظة والمدينة/المديرية من مسار الخطة بدون تسجيل دخول.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.dInkSoft,
@@ -536,9 +1104,15 @@ class _LocationContextCard extends StatelessWidget {
 }
 
 class _QuoteRequestsOverview extends StatelessWidget {
-  const _QuoteRequestsOverview({required this.quotes});
+  const _QuoteRequestsOverview({
+    required this.quotes,
+    required this.includesAccountData,
+    required this.onOpenPlanCenter,
+  });
 
   final List<QuoteRequest> quotes;
+  final bool includesAccountData;
+  final void Function(QuoteRequest quote) onOpenPlanCenter;
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +1125,7 @@ class _QuoteRequestsOverview extends StatelessWidget {
     final accepted = quotes
         .where((quote) => quote.lifecycleStatus == 'ACCEPTED')
         .length;
-    final latest = quotes.isEmpty ? null : quotes.first;
+    final visibleQuotes = quotes.take(3).toList();
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
@@ -564,54 +1138,134 @@ class _QuoteRequestsOverview extends StatelessWidget {
             children: [
               const Icon(Icons.request_quote_outlined, color: AppTheme.dMaroon),
               const SizedBox(width: 8),
-              Text(
-                'طلبات العروض',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.dInk,
-                  fontWeight: FontWeight.w900,
+              Expanded(
+                child: Text(
+                  'طلبات العروض والردود',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.dInk,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          if (latest == null)
-            const Text(
-              'عند طلب عروض الأسعار ستظهر هنا.',
-              style: TextStyle(
-                color: AppTheme.dInkSoft,
-                fontWeight: FontWeight.w700,
-              ),
+          if (!includesAccountData)
+            const _QuoteOverviewMessage(
+              text: 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود',
             )
+          else if (quotes.isEmpty)
+            const _QuoteOverviewMessage(text: 'لم ترسل أي طلب عرض بعد')
           else ...[
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 _QuoteCount(label: 'بانتظار الرد', value: pending),
-                _QuoteCount(label: 'وصلت', value: received),
+                _QuoteCount(label: 'عروض وصلت', value: received),
                 _QuoteCount(label: 'مقبولة', value: accepted),
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    latest.provider?.businessName ?? 'آخر طلب عرض سعر',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTheme.dInk,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                QuoteStatusChip(status: latest.lifecycleStatus, compact: true),
-              ],
-            ),
+            for (final quote in visibleQuotes) ...[
+              _QuoteRequestTile(
+                quote: quote,
+                onOpenPlanCenter: () => onOpenPlanCenter(quote),
+              ),
+              if (quote != visibleQuotes.last)
+                const Divider(height: 18, color: AppTheme.dLine),
+            ],
           ],
         ],
       ),
+    );
+  }
+}
+
+class _QuoteOverviewMessage extends StatelessWidget {
+  const _QuoteOverviewMessage({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: AppTheme.dInkSoft,
+        fontWeight: FontWeight.w800,
+        height: 1.45,
+      ),
+    );
+  }
+}
+
+class _QuoteRequestTile extends StatelessWidget {
+  const _QuoteRequestTile({
+    required this.quote,
+    required this.onOpenPlanCenter,
+  });
+
+  final QuoteRequest quote;
+  final VoidCallback onOpenPlanCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    final providerName = _quoteProviderLabel(quote);
+    final serviceName = _quoteServiceLabel(quote);
+    final amount = _quoteAmountLabel(quote);
+    final nextAction = _quoteNextActionLabel(quote);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                providerName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.dInk,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            QuoteStatusChip(status: quote.lifecycleStatus, compact: true),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          amount == null ? serviceName : '$serviceName · $amount',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppTheme.dInkSoft,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          nextAction,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppTheme.dInkSoft,
+            fontWeight: FontWeight.w800,
+            height: 1.4,
+          ),
+        ),
+        if (quote.weddingPlanId?.trim().isNotEmpty == true) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton.icon(
+              onPressed: onOpenPlanCenter,
+              icon: const Icon(Icons.event_note_outlined, size: 18),
+              label: const Text('فتح مركز الخطة'),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -682,7 +1336,7 @@ class _ResultsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = location?.hasRequiredLocation == true
-        ? 'موردون قريبون من ${location!.shortLabel}'
+        ? 'موردون ضمن مدينة ${location!.shortLabel}'
         : 'الموردون المتاحون';
     return Row(
       children: [
@@ -707,16 +1361,23 @@ class _ProviderCard extends StatelessWidget {
     required this.isFavorite,
     required this.onFavorite,
     required this.onTap,
+    required this.onRequestQuote,
   });
 
   final MarketplaceProvider provider;
   final bool isFavorite;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
+  final VoidCallback onRequestQuote;
 
   @override
   Widget build(BuildContext context) {
     final service = provider.services.isEmpty ? null : provider.services.first;
+    final category = service?.category?.nameAr.trim();
+    final serviceTitle = service?.title.trim();
+    final location = _providerLocationLabel(provider);
+    final hasRating = provider.ratingCount > 0;
+
     return AarastCard(
       padding: const EdgeInsets.all(12),
       onTap: onTap,
@@ -730,64 +1391,154 @@ class _ProviderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         provider.businessName,
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               color: AppTheme.dInk,
                               fontWeight: FontWeight.w900,
+                              height: 1.25,
                             ),
                       ),
                     ),
                     IconButton(
+                      tooltip: 'حفظ المورد',
                       onPressed: onFavorite,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 38,
+                        height: 38,
+                      ),
+                      padding: EdgeInsets.zero,
                       icon: Icon(
                         isFavorite
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
+                        color: isFavorite
+                            ? AppTheme.dMaroon
+                            : AppTheme.dInkSoft,
                       ),
                     ),
                   ],
                 ),
-                if (service?.category?.nameAr != null)
+                if (category != null && category.isNotEmpty) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    service!.category!.nameAr,
+                    category,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.dMaroon,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
+                ],
+                if (serviceTitle != null && serviceTitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    serviceTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.dInkSoft,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
-                _MetaLine(
-                  icon: Icons.star_rounded,
-                  text:
-                      '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
-                  color: AppTheme.dGoldDeep,
-                ),
-                const SizedBox(height: 5),
-                _MetaLine(
-                  icon: Icons.place_outlined,
-                  text: provider.city?.nameAr ?? provider.address ?? 'غير محدد',
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    if (hasRating)
+                      _ProviderFactPill(
+                        icon: Icons.star_rounded,
+                        text:
+                            '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
+                        color: AppTheme.dGoldDeep,
+                      ),
+                    if (location != null)
+                      _ProviderFactPill(
+                        icon: Icons.place_outlined,
+                        text: location,
+                        color: AppTheme.dInkSoft,
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 10),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: FilledButton(
-                    onPressed: onTap,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(120, 38),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: onTap,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      icon: const Icon(Icons.info_outline_rounded, size: 18),
+                      label: const Text('التفاصيل'),
                     ),
-                    child: const Text('عرض التفاصيل'),
-                  ),
+                    FilledButton.icon(
+                      key: Key('super5-provider-quote-${provider.id}'),
+                      onPressed: onRequestQuote,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 38),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                      ),
+                      icon: const Icon(Icons.request_quote_outlined, size: 18),
+                      label: const Text('طلب عرض'),
+                    ),
+                  ],
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProviderFactPill extends StatelessWidget {
+  const _ProviderFactPill({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.dCard2,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: AppTheme.dLine),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 15),
+          const SizedBox(width: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppTheme.dInkSoft,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
@@ -807,8 +1558,8 @@ class _ProviderImage extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
-        width: 108,
-        height: 108,
+        width: 84,
+        height: 84,
         color: AppTheme.dCreamBg,
         child: imageUrl == null || imageUrl.isEmpty
             ? const Icon(
@@ -830,37 +1581,109 @@ class _ProviderImage extends StatelessWidget {
   }
 }
 
-class _MetaLine extends StatelessWidget {
-  const _MetaLine({
-    required this.icon,
-    required this.text,
-    this.color = AppTheme.dInkSoft,
-  });
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.dInkSoft,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
-    );
+List<String> _cleanLabels(List<String> labels) {
+  final seen = <String>{};
+  final cleaned = <String>[];
+  for (final raw in labels) {
+    final label = raw.trim();
+    if (label.isEmpty) continue;
+    final key = _normalizeArabicLabel(label);
+    if (seen.add(key)) cleaned.add(label);
   }
+  return cleaned;
+}
+
+bool _looselySameArabicLabel(String left, String right) {
+  final a = _normalizeArabicLabel(left);
+  final b = _normalizeArabicLabel(right);
+  if (a.isEmpty || b.isEmpty) return false;
+  return a == b || a.contains(b) || b.contains(a);
+}
+
+String _normalizeArabicLabel(String value) {
+  return value
+      .trim()
+      .replaceAll(RegExp(r'[إأآا]'), 'ا')
+      .replaceAll('ة', 'ه')
+      .replaceAll('ى', 'ي')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .toLowerCase();
+}
+
+int _offersReceivedCount(List<QuoteRequest> quotes) {
+  return quotes.where((quote) {
+    return quote.lifecycleStatus == 'RECEIVED' ||
+        quote.lifecycleStatus == 'ACCEPTED' ||
+        quote.lifecycleStatus == 'REJECTED' ||
+        quote.offers.isNotEmpty;
+  }).length;
+}
+
+int _acceptedProviderCount(List<QuoteRequest> quotes) {
+  return quotes.where((quote) => quote.lifecycleStatus == 'ACCEPTED').length;
+}
+
+int _pendingDecisionCount(List<QuoteRequest> quotes) {
+  return quotes.where((quote) => quote.canAcceptOrReject).length;
+}
+
+List<QuoteRequest> _importantQuotes(List<QuoteRequest> quotes) {
+  return quotes
+      .where(
+        (quote) =>
+            quote.canAcceptOrReject ||
+            quote.lifecycleStatus == 'RECEIVED' ||
+            quote.lifecycleStatus == 'PENDING_PROVIDER',
+      )
+      .take(2)
+      .toList();
+}
+
+String _quoteProviderLabel(QuoteRequest quote) {
+  final providerName = quote.provider?.businessName.trim();
+  if (providerName != null && providerName.isNotEmpty) return providerName;
+  return 'طلب عرض';
+}
+
+String _quoteServiceLabel(QuoteRequest quote) {
+  final serviceTitle = quote.service?.title.trim();
+  if (serviceTitle != null && serviceTitle.isNotEmpty) return serviceTitle;
+  final category = quote.service?.category?.nameAr.trim();
+  if (category != null && category.isNotEmpty) return category;
+  return 'خدمة غير محددة';
+}
+
+String? _quoteAmountLabel(QuoteRequest quote) {
+  final offer = quote.acceptedOffer ?? quote.pendingOffer;
+  final amount = offer?.amount?.trim();
+  if (amount == null || amount.isEmpty) return null;
+  final currency = offer?.currency?.trim();
+  if (currency == null || currency.isEmpty) return amount;
+  return '$amount $currency';
+}
+
+String _quoteNextActionLabel(QuoteRequest quote) {
+  if (quote.canAcceptOrReject) {
+    return 'افتح مركز الخطة لقبول أو رفض العرض. لا يوجد حجز أو دفع داخل التطبيق.';
+  }
+  if (quote.lifecycleStatus == 'ACCEPTED') {
+    return 'العرض مقبول. افتح مركز الخطة لإضافة مصروف أو دين عند الحاجة. لن يُنشأ أي سجل تلقائيًا.';
+  }
+  if (quote.lifecycleStatus == 'PENDING_PROVIDER') {
+    return 'بانتظار رد المورد. لا توجد إجراءات مالية حتى يصل عرض حقيقي.';
+  }
+  if (quote.lifecycleStatus == 'READY_TO_SEND') {
+    return 'هذا طلب قديم غير مرسل. أعد الإرسال عند توفر الاتصال والخادم.';
+  }
+  return 'تابع حالة الطلب من مركز الخطة عند الحاجة.';
+}
+
+String? _providerLocationLabel(MarketplaceProvider provider) {
+  final city = provider.city?.nameAr.trim();
+  if (city != null && city.isNotEmpty) return city;
+  final address = provider.address?.trim();
+  if (address != null && address.isNotEmpty) return address;
+  return null;
 }
 
 class _CircleButton extends StatelessWidget {

@@ -266,7 +266,7 @@ class _DebtOverviewCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
               minHeight: 8,
-              backgroundColor: Colors.black.withAlpha(35),
+              backgroundColor: AppTheme.dLine,
               valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dGold),
             ),
           ),

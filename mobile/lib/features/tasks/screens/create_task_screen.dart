@@ -6,6 +6,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
@@ -463,15 +464,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (!AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
         !hasParticipant &&
         (responsibleName != null || normalizedResponsiblePhone != null)) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text(
-              'حفظ مسؤول يدوي للحسابات يحتاج دعماً من الخادم؛ اختر مشاركاً من الخطة أو احفظ المهمة بدون رقم.',
-            ),
-          ),
-        );
+      AarastToast.showError(
+        context,
+        'حفظ مسؤول يدوي للحسابات يحتاج دعماً من الخادم؛ اختر مشاركاً من الخطة أو احفظ المهمة بدون رقم.',
+      );
       return;
     }
     final task = _editingTask(provider);
@@ -516,18 +512,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           );
 
     if (_isEditMode && task == null && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المهمة للتعديل')));
+      AarastToast.showError(context, 'تعذر فتح المهمة للتعديل');
       return;
     }
 
     if (saved && mounted) {
       final notice = provider.noticeMessage;
       if (notice != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(notice)));
+        AarastToast.showSuccess(context, notice);
       }
       _goBack();
     }

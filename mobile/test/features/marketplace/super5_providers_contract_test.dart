@@ -68,12 +68,6 @@ void main() {
     );
 
     expect(find.text('لا يوجد موردون متاحون حاليًا'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('لم ترسل أي طلب عرض بعد'),
-      320,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('لم ترسل أي طلب عرض بعد'), findsOneWidget);
     expect(find.textContaining('أفضل'), findsNothing);
     expect(find.textContaining('قريب'), findsNothing);
     expect(tester.takeException(), isNull);

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/quote_finance_context.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -481,9 +482,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
           );
 
     if (_isEditMode && editingExpense == null && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('تعذر فتح المصروف للتعديل')));
+      AarastToast.showError(context, 'تعذر فتح المصروف للتعديل');
       return;
     }
 
@@ -492,9 +491,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
       final message =
           notice ??
           (_isEditMode ? 'تم حفظ التعديلات بنجاح' : 'تم حفظ المصروف بنجاح');
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
+      AarastToast.showSuccess(context, message);
       _goBack(changed: true);
     }
   }

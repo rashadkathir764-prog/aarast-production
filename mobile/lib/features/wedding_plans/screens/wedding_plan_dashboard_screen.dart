@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/utils/auth_action_guard.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../home/data/dashboard_summary_sources.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/quick_add_actions.dart';
-import '../widgets/royal_home_chrome.dart';
 import '../widgets/royal_home_today_center.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
@@ -34,6 +36,13 @@ class WeddingPlanDashboardScreen extends StatefulWidget {
 
 class _WeddingPlanDashboardScreenState
     extends State<WeddingPlanDashboardScreen> {
+  LocalGuestDashboardSummary? _localSummary;
+  bool _localLoading = false;
+  String? _localErrorMessage;
+
+  bool get _isLocalGuestPlan =>
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
   @override
   void initState() {
     super.initState();
@@ -50,10 +59,39 @@ class _WeddingPlanDashboardScreenState
 
   Future<void> _load() async {
     if (!mounted) return;
+    if (_isLocalGuestPlan) {
+      await _loadLocalDashboard();
+      return;
+    }
     await context.read<DashboardSummaryProvider>().loadDashboard(
       widget.weddingPlanId,
       sharedMember: widget.sharedMember,
     );
+  }
+
+  Future<void> _loadLocalDashboard() async {
+    setState(() {
+      _localLoading = true;
+      _localErrorMessage = null;
+    });
+    try {
+      final source = LocalGuestDashboardSummarySource(
+        context.read<GuestOnboardingStorage>(),
+        database: _localDatabaseOrNull(),
+      );
+      final summary = await source.loadSummary();
+      if (!mounted) return;
+      setState(() => _localSummary = summary);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _localErrorMessage = 'تعذر تحميل بيانات اللوحة المحلية.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _localLoading = false);
+      }
+    }
   }
 
   @override
@@ -64,24 +102,6 @@ class _WeddingPlanDashboardScreenState
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
-      floatingActionButton: widget.embedded
-          ? null
-          : RoyalSmartFloatingActionButton(
-              onPressed: () => _showQuickAdd(widget.weddingPlanId),
-            ),
-      bottomNavigationBar: widget.embedded
-          ? null
-          : RoyalDashboardBottomNav(
-              activeIndex: 0,
-              onHome: () {},
-              onMoney: () =>
-                  context.push(AppRouter.finance(widget.weddingPlanId)),
-              onTasks: () =>
-                  context.push(AppRouter.tasks(widget.weddingPlanId)),
-              onGuests: () =>
-                  context.push(AppRouter.guestList(widget.weddingPlanId)),
-              onProviders: () => context.push(AppRouter.providerMarketplace),
-            ),
       child: RefreshIndicator(
         color: AppTheme.dMaroon,
         onRefresh: _load,
@@ -91,11 +111,17 @@ class _WeddingPlanDashboardScreenState
   }
 
   Widget _buildBody(DashboardSummaryProvider provider, AuthController auth) {
-    final summary = provider.summary;
+    final summary = _isLocalGuestPlan
+        ? _localSummary?.toDashboardSummary()
+        : provider.summary;
+    final isLoading = _isLocalGuestPlan ? _localLoading : provider.isLoading;
+    final errorMessage = _isLocalGuestPlan
+        ? _localErrorMessage
+        : provider.errorMessage;
     final bottomPadding = widget.embedded ? 158.0 : 36.0;
     final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
 
-    if (provider.isLoading && summary == null) {
+    if (isLoading && summary == null) {
       return AnimatedSwitcher(
         duration: const Duration(milliseconds: 320),
         switchInCurve: Curves.easeOutCubic,
@@ -109,7 +135,7 @@ class _WeddingPlanDashboardScreenState
       );
     }
 
-    if (provider.errorMessage != null && summary == null) {
+    if (errorMessage != null && summary == null) {
       return AnimatedSwitcher(
         duration: const Duration(milliseconds: 360),
         switchInCurve: Curves.easeOutCubic,
@@ -122,7 +148,7 @@ class _WeddingPlanDashboardScreenState
             bottomPadding: bottomPadding,
             icon: Icons.cloud_off_rounded,
             title: 'تعذر تحميل الرئيسية',
-            message: provider.errorMessage!,
+            message: errorMessage,
             actionLabel: 'إعادة المحاولة',
             onAction: _load,
             tone: _StateTone.warning,
@@ -185,12 +211,12 @@ class _WeddingPlanDashboardScreenState
               onOpenPlan: () =>
                   context.push(AppRouter.planCenter(summary.planId)),
               onOpenMoney: () =>
-                  context.push(AppRouter.finance(summary.planId)),
-              onOpenTasks: () => context.push(AppRouter.tasks(summary.planId)),
+                  context.go(AppRouter.finance(summary.planId)),
+              onOpenTasks: () => context.go(AppRouter.tasks(summary.planId)),
               onOpenProviders: () =>
-                  context.push(AppRouter.providerMarketplace),
+                  context.go(AppRouter.planProviders(summary.planId)),
               onOpenGuests: () =>
-                  context.push(AppRouter.guestList(summary.planId)),
+                  context.go(AppRouter.guestList(summary.planId)),
               onOpenParticipants: () =>
                   context.push(AppRouter.sharing(summary.planId)),
               onOpenNotifications: () =>
@@ -216,6 +242,14 @@ class _WeddingPlanDashboardScreenState
     }
   }
 
+  LocalDatabase? _localDatabaseOrNull() {
+    try {
+      return context.read<LocalDatabase>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
   void _openDashboardItem(DashboardImportantItem item) {
     final route = item.routeTarget ?? item.route;
     if (route == null || route.trim().isEmpty) {
@@ -234,14 +268,14 @@ class _WeddingPlanDashboardScreenState
       return;
     }
     if ((summary.dueInstallmentsCount ?? 0) > 0) {
-      context.push(AppRouter.finance(summary.planId));
+      context.go(AppRouter.finance(summary.planId));
     } else if (summary.overdueTasks > 0 || summary.todayTasks > 0) {
-      context.push(AppRouter.tasks(summary.planId));
+      context.go(AppRouter.tasks(summary.planId));
     } else if (summary.quoteRequestsCount > 0 ||
         summary.planProviders.isNotEmpty) {
-      context.push(AppRouter.providerMarketplace);
+      context.go(AppRouter.planProviders(summary.planId));
     } else {
-      context.push(AppRouter.planCenter(summary.planId));
+      context.go(AppRouter.planCenter(summary.planId));
     }
   }
 
@@ -249,44 +283,24 @@ class _WeddingPlanDashboardScreenState
     if (type.contains('INSTALLMENT') ||
         type.contains('BUDGET') ||
         type.contains('MONEY')) {
-      context.push(AppRouter.finance(widget.weddingPlanId));
+      context.go(AppRouter.finance(widget.weddingPlanId));
       return;
     }
     if (type.contains('TASK')) {
-      context.push(AppRouter.tasks(widget.weddingPlanId));
+      context.go(AppRouter.tasks(widget.weddingPlanId));
       return;
     }
     if (type.contains('QUOTE') || type.contains('PROVIDER')) {
-      context.push(AppRouter.providerMarketplace);
+      context.go(AppRouter.planProviders(widget.weddingPlanId));
       return;
     }
     if (type.contains('GUEST')) {
-      context.push(AppRouter.guestList(widget.weddingPlanId));
+      context.go(AppRouter.guestList(widget.weddingPlanId));
       return;
     }
-    context.push(AppRouter.planCenter(widget.weddingPlanId));
+    context.go(AppRouter.planCenter(widget.weddingPlanId));
   }
 
-  void _showQuickAdd(String planId) {
-    Future<void> open(String route, {bool refreshDashboard = false}) async {
-      Navigator.of(context, rootNavigator: true).pop();
-      if (!mounted) return;
-      final changed = await context.push<bool>(route);
-      if (refreshDashboard && changed == true && mounted) {
-        await context.read<DashboardSummaryProvider>().loadDashboard(planId);
-      }
-    }
-
-    showRoyalHomeActionSheet(
-      context,
-      actions: buildCanonicalQuickAddActions(
-        context,
-        planId: planId,
-        openRoute: open,
-        refreshDashboardOnExpense: true,
-      ),
-    );
-  }
 }
 
 class _DashboardStateList extends StatelessWidget {

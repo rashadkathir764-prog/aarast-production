@@ -10,6 +10,12 @@ import '../../../core/theme/app_theme.dart';
 class AuthActionGuard {
   const AuthActionGuard._();
 
+  static const sharingLoginGateTitle = 'سجّل الدخول لمشاركة الخطة';
+  static const sharingLoginGateBody =
+      'تسجيل الدخول يتيح لك دعوة العائلة وتحديد الصلاحيات ومزامنة الخطة.';
+  static const sessionExpiredTitle = 'انتهت الجلسة';
+  static const sharingSessionExpiredBody =
+      'سجّل الدخول مرة أخرى لمتابعة مشاركة الخطة.';
   static const protectedActionMessage =
       'سجّل الدخول لحفظ هذا الإجراء على حسابك ومزامنته.';
   static const quoteSubmitMessage = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
@@ -27,6 +33,20 @@ class AuthActionGuard {
   static Future<bool> hasAccount(BuildContext context) async {
     final token = await context.read<AuthStorage>().readAccessToken();
     return token != null && token.trim().isNotEmpty;
+  }
+
+  static Future<bool> shouldGateAccountOnly(BuildContext context) async {
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
+    return !await hasAccount(context);
+  }
+
+  static Future<bool> shouldGateProtectedSharing(
+    BuildContext context, {
+    required String? weddingPlanId,
+  }) async {
+    if (AppFeatureFlags.devBypassLoginGatesForUxExploration) return false;
+    if (isLocalGuestPlanId(weddingPlanId)) return true;
+    return !await hasAccount(context);
   }
 
   static Future<bool> requireAccount(
@@ -126,5 +146,81 @@ class AuthActionGuard {
   }) {
     if (isLocalGuestPlanId(weddingPlanId)) return Future<bool>.value(false);
     return blockProtectedSubmitWithoutAccount(context);
+  }
+}
+
+class AuthGatePanel extends StatelessWidget {
+  const AuthGatePanel({
+    required this.title,
+    required this.body,
+    this.icon = Icons.lock_outline_rounded,
+    super.key,
+  });
+
+  final String title;
+  final String body;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final canPop = Navigator.of(context).canPop();
+
+    return ListView(
+      key: const Key('sharing-auth-gate'),
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        const SizedBox(height: 72),
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: AppTheme.dCard,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppTheme.dLine),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(icon, size: 44, color: AppTheme.dMaroon),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.dInk,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.dInkSoft,
+                  fontWeight: FontWeight.w700,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                key: const Key('sharing-auth-gate-login'),
+                onPressed: () => context.go(AppRouter.login),
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('تسجيل الدخول'),
+              ),
+              if (canPop) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  key: const Key('sharing-auth-gate-back'),
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.chevron_right_rounded),
+                  label: const Text('رجوع'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

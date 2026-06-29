@@ -2,6 +2,7 @@
 
 import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -111,6 +112,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
               onOpenTasks: onOpenTasks,
               onOpenGuests: onOpenGuests,
               onOpenProviders: onOpenProviders,
+              onOpenMoney: onOpenMoney,
             ),
           ),
           const SizedBox(height: 14),
@@ -146,24 +148,11 @@ class _PremiumHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CircleIconButton(
-          key: const ValueKey('royal-home-profile-button'),
-          icon: Icons.person_outline_rounded,
-          onTap: onProfile,
-        ),
-        const SizedBox(width: 8),
-        _CircleIconButton(
-          key: const ValueKey('royal-home-notifications-button'),
-          icon: Icons.notifications_none_rounded,
-          onTap: onNotifications,
-          badgeCount: unreadCount,
-        ),
-        const SizedBox(width: 12),
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 _greetingFor(userName),
@@ -176,26 +165,36 @@ class _PremiumHeader extends StatelessWidget {
                   letterSpacing: 0,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               const Text(
                 'اعّرست',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: _RoyalColors.burgundy,
+                  color: _RoyalColors.gold,
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                   height: 1.1,
                 ),
               ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: _StatePill(label: summary.dataStateLabel),
-              ),
+              const SizedBox(height: 6),
+              _StatePill(label: summary.dataStateLabel),
             ],
           ),
+        ),
+        const SizedBox(width: 12),
+        _CircleIconButton(
+          key: const ValueKey('royal-home-notifications-button'),
+          icon: Icons.notifications_none_rounded,
+          onTap: onNotifications,
+          badgeCount: unreadCount,
+        ),
+        const SizedBox(width: 8),
+        _CircleIconButton(
+          key: const ValueKey('royal-home-profile-button'),
+          icon: Icons.person_outline_rounded,
+          onTap: onProfile,
         ),
       ],
     );
@@ -217,41 +216,52 @@ class _CompactPlanHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    int? days;
+    int? hours;
+    if (summary.weddingDate != null) {
+      final now = DateTime.now();
+      final diff = summary.weddingDate!.difference(now);
+      if (diff.isNegative) {
+        days = 0;
+        hours = 0;
+      } else {
+        days = diff.inDays;
+        hours = diff.inHours % 24;
+      }
+    }
+
+    final String locationText = _shortLocation(summary) ?? 'المكان غير محدد';
+
     return AarastPressable(
       onTap: onOpenPlan,
       borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF6B001A),
-              _RoyalColors.burgundy,
-              _RoyalColors.burgundyDark,
-            ],
-            stops: [0.0, 0.45, 1.0],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.18)),
-          boxShadow: [
-            BoxShadow(
-              color: _RoyalColors.burgundy.withValues(alpha: 0.22),
-              blurRadius: 26,
-              offset: const Offset(0, 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_hasText(personaHeadline)) ...[
                         Text(
@@ -259,11 +269,9 @@ class _CompactPlanHeroCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.88),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            height: 1.25,
-                            letterSpacing: 0,
+                            color: Colors.white.withValues(alpha: 0.7),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -274,24 +282,70 @@ class _CompactPlanHeroCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: _RoyalColors.gold,
-                          fontSize: 21,
+                          fontSize: 20,
                           fontWeight: FontWeight.w900,
-                          height: 1.15,
-                          letterSpacing: 0,
+                          height: 1.2,
                         ),
                       ),
                       const SizedBox(height: 10),
-                      _HeroMetaLine(
-                        icon: Icons.calendar_month_rounded,
-                        label: summary.weddingDate == null
-                            ? 'التاريخ غير محدد'
-                            : _formatDate(summary.weddingDate!),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.5), size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              summary.weddingDate == null
+                                  ? 'التاريخ غير محدد'
+                                  : _formatDate(summary.weddingDate!),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      if (_hasText(_shortLocation(summary))) ...[
-                        const SizedBox(height: 6),
-                        _HeroMetaLine(
-                          icon: Icons.location_on_rounded,
-                          label: _shortLocation(summary)!,
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_rounded, color: Colors.white.withValues(alpha: 0.5), size: 14),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              locationText,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (days != null) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(Icons.hourglass_bottom_rounded, color: const Color(0xFF00FF66).withValues(alpha: 0.7), size: 14),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'متبقي $days يوم و $hours ساعة',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0xFF00FF66),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ],
@@ -301,38 +355,14 @@ class _CompactPlanHeroCard extends StatelessWidget {
                 _CircularProgressWidget(percent: summary.progressPercentage),
               ],
             ),
-            if (_hasText(personaSupportText)) ...[
-              const SizedBox(height: 10),
-              Text(
-                personaSupportText!.trim(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.72),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  height: 1.35,
-                  letterSpacing: 0,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _CountdownPill(daysRemaining: summary.daysRemaining),
-                _HeroCta(onTap: onOpenPlan),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+
 
 class _HeroMetaLine extends StatelessWidget {
   const _HeroMetaLine({required this.icon, required this.label});
@@ -412,10 +442,10 @@ class _StatePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _RoyalColors.burgundy.withValues(alpha: 0.06),
+        color: _RoyalColors.gold.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: _RoyalColors.burgundy.withValues(alpha: 0.10),
+          color: _RoyalColors.gold.withValues(alpha: 0.15),
         ),
       ),
       child: Text(
@@ -423,7 +453,7 @@ class _StatePill extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          color: _RoyalColors.burgundy,
+          color: _RoyalColors.gold,
           fontSize: 11,
           fontWeight: FontWeight.w900,
           letterSpacing: 0,
@@ -769,15 +799,36 @@ class _CircularProgressWidget extends StatelessWidget {
     final progress = Stack(
       alignment: Alignment.center,
       children: [
-        SizedBox(
-          width: 54,
-          height: 54,
-          child: CircularProgressIndicator(
-            value: percent / 100,
-            strokeWidth: 5,
-            backgroundColor: Colors.white.withValues(alpha: 0.1),
-            valueColor: const AlwaysStoppedAnimation(_RoyalColors.gold),
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF00FF66).withValues(alpha: 0.3),
+                blurRadius: 12,
+              )
+            ],
           ),
+        ),
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: percent / 100),
+          duration: const Duration(milliseconds: 1500),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, _) {
+            return SizedBox(
+              width: 58,
+              height: 58,
+              child: CircularProgressIndicator(
+                value: value,
+                strokeWidth: 6,
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFF00FF66)),
+                strokeCap: StrokeCap.round,
+              ),
+            );
+          },
         ),
         Text(
           '$percent%',
@@ -914,21 +965,20 @@ class _BasePanoramicCard extends StatelessWidget {
     return AarastPressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: color ?? Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
-          boxShadow: [
-            BoxShadow(
-              color: _RoyalColors.ink.withValues(alpha: 0.04),
-              blurRadius: 16,
-              offset: const Offset(0, 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: color ?? const Color(0x99191919),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
-          ],
+            child: child,
+          ),
         ),
-        child: child,
       ),
     );
   }
@@ -993,8 +1043,8 @@ class _PanoramicFinanceCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  _formatMoney(summary.remainingBudget),
+                _AnimatedMoneyText(
+                  value: summary.remainingBudget ?? '0',
                   style: const TextStyle(
                     color: _RoyalColors.burgundy,
                     fontSize: 24,
@@ -1292,20 +1342,17 @@ class _DashboardSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: _RoyalColors.ink.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
+    final content = ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: const Color(0x99191919),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -1347,7 +1394,7 @@ class _DashboardSectionCard extends StatelessWidget {
           child,
         ],
       ),
-    );
+    )));
 
     if (onTap == null) return content;
     return AarastPressable(
@@ -1369,30 +1416,83 @@ class _ImportantNowCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = _priorityItems(summary).take(3).toList();
-    return _DashboardSectionCard(
-      title: 'أهم ما يحتاج متابعة اليوم',
-      subtitle: items.isEmpty
-          ? 'لا توجد أشياء عاجلة الآن.'
-          : 'أشياء تحتاج انتباهك الآن.',
-      icon: Icons.flash_on_rounded,
-      child: items.isEmpty
-          ? const _EmptySectionText(
-              text: 'كل شيء هادئ الآن. أضف بيانات أكثر عندما تبدأ الخطة.',
-            )
-          : Column(
-              children: [
-                for (final item in items)
-                  _CompactLineItem(
-                    icon: _iconForImportantItem(item),
-                    title: item.title,
-                    subtitle: item.subtitle,
-                    tone: item.tone,
-                    actionLabel: item.actionLabel,
-                    onTap: () => onOpenImportantItem(item),
-                  ),
-              ],
+    final items = _priorityItems(summary).take(5).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Text(
+            'مهام النانو السريعة',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
             ),
+          ),
+        ),
+        if (items.isEmpty)
+          const _EmptySectionText(text: 'كل شيء هادئ الآن.')
+        else
+          SizedBox(
+            height: 90,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: items.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                final isUrgent = item.tone == 'danger';
+                return AarastPressable(
+                  onTap: () => onOpenImportantItem(item),
+                  borderRadius: BorderRadius.circular(16),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        width: 100,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isUrgent ? const Color(0x33FF2A55) : const Color(0x3300FF66),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isUrgent ? const Color(0x66FF2A55) : const Color(0x6600FF66),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _iconForImportantItem(item),
+                              color: isUrgent ? const Color(0xFFFF2A55) : const Color(0xFF00FF66),
+                              size: 20,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              item.title,
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                height: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }
@@ -1429,23 +1529,39 @@ class _MoneySummaryCard extends StatelessWidget {
       icon: Icons.account_balance_wallet_rounded,
       child: Column(
         children: [
-          _MoneyRow(
-            label: 'الميزانية',
-            value: _formatMoney(summary.totalBudgetForDisplay),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    _CompactMoneyRow(
+                      label: 'الميزانية',
+                      value: summary.totalBudgetForDisplay,
+                    ),
+                    const SizedBox(height: 10),
+                    _CompactMoneyRow(
+                      label: 'المصروف',
+                      value: summary.spentTotalForDisplay,
+                    ),
+                    const SizedBox(height: 10),
+                    _CompactMoneyRow(
+                      label: 'المتبقي',
+                      value: summary.remainingBudgetForDisplay,
+                      isHighlight: true,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              _AnimatedDonutChart(
+                budgetStr: summary.budgetTotal,
+                spentStr: summary.spentTotal,
+                remainingStr: summary.remainingBudget,
+              ),
+            ],
           ),
-          _MoneyRow(
-            label: 'المصروف',
-            value: _formatMoney(summary.spentTotalForDisplay),
-          ),
-          _MoneyRow(
-            label: 'المتبقي',
-            value: _formatMoney(summary.remainingBudgetForDisplay),
-          ),
-          _MoneyRow(
-            label: 'الديون',
-            value: _formatMoney(summary.debtTotalForDisplay),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -1473,18 +1589,69 @@ class _MoneySummaryCard extends StatelessWidget {
   }
 }
 
+class _CompactMoneyRow extends StatelessWidget {
+  const _CompactMoneyRow({
+    required this.label,
+    required this.value,
+    this.isHighlight = false,
+  });
+
+  final String label;
+  final String? value;
+  final bool isHighlight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: _AnimatedMoneyText(
+              value: value ?? '0',
+              style: TextStyle(
+                color: isHighlight ? const Color(0xFF00FF66) : Colors.white,
+                fontSize: isHighlight ? 16 : 14,
+                fontWeight: FontWeight.w900,
+                shadows: isHighlight
+                    ? [const Shadow(color: Color(0x6600FF66), blurRadius: 10)]
+                    : null,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _QuickOverviewGrid extends StatelessWidget {
   const _QuickOverviewGrid({
     required this.summary,
     required this.onOpenTasks,
     required this.onOpenGuests,
     required this.onOpenProviders,
+    required this.onOpenMoney,
   });
 
   final DashboardSummary summary;
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenGuests;
   final VoidCallback onOpenProviders;
+  final VoidCallback onOpenMoney;
 
   @override
   Widget build(BuildContext context) {
@@ -1519,6 +1686,15 @@ class _QuickOverviewGrid extends StatelessWidget {
         icon: Icons.request_quote_outlined,
         onTap: onOpenProviders,
       ),
+      _OverviewTile(
+        title: 'الديون والأقساط',
+        value: _formatMoney(summary.debtTotalForDisplay),
+        subtitle: summary.nextInstallmentDue != null
+            ? 'يوجد قسط قادم'
+            : 'لا توجد أقساط',
+        icon: Icons.account_balance_rounded,
+        onTap: onOpenMoney,
+      ),
       if (summary.acceptedProviders > 0)
         _OverviewTile(
           title: 'الموردون',
@@ -1529,18 +1705,42 @@ class _QuickOverviewGrid extends StatelessWidget {
         ),
     ];
 
-    return _DashboardSectionCard(
-      title: 'نظرة سريعة',
-      icon: Icons.dashboard_customize_rounded,
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.55,
-        children: tiles,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Icon(
+                Icons.dashboard_customize_rounded,
+                color: Colors.white.withValues(alpha: 0.6),
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'نظرة سريعة',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 106,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: tiles.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 10),
+            itemBuilder: (context, index) => tiles[index],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1611,21 +1811,18 @@ class _MiniDashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      constraints: const BoxConstraints(minHeight: 142),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: _RoyalColors.ink.withValues(alpha: 0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+    final content = ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 142),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0x99191919),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1665,7 +1862,7 @@ class _MiniDashboardCard extends StatelessWidget {
           child,
         ],
       ),
-    );
+    )));
     if (onTap == null) return content;
     return AarastPressable(
       onTap: onTap!,
@@ -1917,10 +2114,10 @@ class _MoneyRow extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            value,
+          _AnimatedMoneyText(
+            value: value,
             style: const TextStyle(
-              color: _RoyalColors.ink,
+              color: Colors.white,
               fontSize: 15,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
@@ -1951,62 +2148,69 @@ class _OverviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: _RoyalColors.ivory,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _RoyalColors.goldDeep.withValues(alpha: 0.12),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+      borderRadius: BorderRadius.circular(20),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            width: 145,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: _RoyalColors.goldDeep, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _RoyalColors.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0,
+                Row(
+                  children: [
+                    Icon(icon, color: _RoyalColors.goldDeep, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _RoyalColors.burgundy,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-              ),
-            ),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: _RoyalColors.muted,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -2020,6 +2224,7 @@ class _CompactLineItem extends StatelessWidget {
     required this.subtitle,
     required this.tone,
     required this.onTap,
+    // ignore: unused_element_parameter
     this.actionLabel,
   });
 
@@ -2737,34 +2942,39 @@ class _AnimatedDonutChart extends StatelessWidget {
       duration: const Duration(milliseconds: 1500),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
-        return CustomPaint(
-          size: const Size.square(90),
-          painter: _DonutChartPainter(
-            spentRatio: isTest ? ratio : value,
-            spentColor: _RoyalColors.burgundy,
-            backgroundColor: _RoyalColors.gold.withValues(alpha: 0.2),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${(ratio * 100).toInt()}%',
-                  style: const TextStyle(
-                    color: _RoyalColors.burgundy,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
+        return SizedBox(
+          width: 90,
+          height: 90,
+          child: CustomPaint(
+            size: const Size.square(90),
+            painter: _DonutChartPainter(
+              spentRatio: isTest ? ratio : value,
+              spentColor: const Color(0xFF00FF66), // Neon Green for hologram
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${(value * 100).toInt()}%',
+                    style: const TextStyle(
+                      color: Color(0xFF00FF66),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      shadows: [Shadow(color: Color(0x6600FF66), blurRadius: 10)],
+                    ),
                   ),
-                ),
-                const Text(
-                  'مُستهلك',
-                  style: TextStyle(
-                    color: _RoyalColors.muted,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                  const Text(
+                    'مُستهلك',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -2787,8 +2997,8 @@ class _DonutChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width / 2, size.height / 2) - 6;
-    const strokeWidth = 12.0;
+    final radius = math.min(size.width / 2, size.height / 2) - 3;
+    const strokeWidth = 6.0;
 
     final bgPaint = Paint()
       ..color = backgroundColor
@@ -2805,21 +3015,29 @@ class _DonutChartPainter extends CustomPainter {
     );
 
     if (spentRatio > 0) {
+      final sweepAngle = 2 * math.pi * spentRatio;
+      final startAngle = -math.pi / 2;
+
       final glowPaint = Paint()
-        ..color = spentColor.withValues(alpha: 0.3)
+        ..color = spentColor.withValues(alpha: 0.5)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 4
+        ..strokeWidth = strokeWidth + 6
         ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
       final spentPaint = Paint()
-        ..color = spentColor
+        ..shader = SweepGradient(
+          startAngle: 0.0,
+          endAngle: 2 * math.pi,
+          colors: [
+            spentColor.withValues(alpha: 0.2),
+            spentColor,
+          ],
+          transform: GradientRotation(startAngle),
+        ).createShader(Rect.fromCircle(center: center, radius: radius))
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;
-
-      final sweepAngle = 2 * math.pi * spentRatio;
-      final startAngle = -math.pi / 2;
 
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -2971,6 +3189,31 @@ class _SkeletonBox extends StatelessWidget {
           border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.1)),
         ),
       ),
+    );
+  }
+}
+
+class _AnimatedMoneyText extends StatelessWidget {
+  const _AnimatedMoneyText({required this.value, required this.style});
+  final String value;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final cleaned = value.replaceAll(',', '').replaceAll(' ر.ي', '').trim();
+    final amount = double.tryParse(cleaned) ?? 0.0;
+
+    if (amount.isNaN || amount.isInfinite || amount == 0.0) {
+      return Text(value, style: style);
+    }
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: amount),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeOutExpo,
+      builder: (context, val, _) {
+        return Text(_formatMoney(val.toStringAsFixed(0)), style: style);
+      },
     );
   }
 }

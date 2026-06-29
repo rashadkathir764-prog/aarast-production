@@ -152,8 +152,7 @@ void main() {
       );
 
       expect(find.text(summary.seed.title), findsOneWidget);
-      expect(find.text('جاهز نرتب عرسك؟'), findsOneWidget);
-      expect(find.text('خلّينا نجهز خطتك خطوة بخطوة.'), findsOneWidget);
+      expect(find.text('اعّرست'), findsOneWidget);
       expect(find.text('وضع تجربة التصميم'), findsNothing);
 
       final syncAction = find.byKey(const Key('royal-local-sync-action'));
@@ -315,6 +314,11 @@ void main() {
         ),
         GoRoute(
           path: '/wedding-plans/:id/guests',
+          builder: (context, state) =>
+              const Scaffold(body: Text('guests-opened')),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/guests/add',
           builder: (context, state) =>
               const Scaffold(body: Text('guests-opened')),
         ),

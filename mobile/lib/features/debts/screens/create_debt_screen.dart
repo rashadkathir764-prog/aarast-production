@@ -7,6 +7,7 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/quote_finance_context.dart';
 import '../../../shared/models/contact_phone_draft.dart';
@@ -437,9 +438,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
     if (debt != null && mounted) {
       final notice = provider.noticeMessage;
       if (notice != null) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(notice)));
+        AarastToast.showSuccess(context, notice);
       }
       _goBack();
     }

@@ -5,6 +5,8 @@ import '../data/sharing_api.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 
+enum SharingAuthGateKind { sessionExpired }
+
 class SharingProvider extends ChangeNotifier {
   SharingProvider(this._api);
 
@@ -15,6 +17,7 @@ class SharingProvider extends ChangeNotifier {
   bool _isLookingUp = false;
   String? _errorMessage;
   String? _lookupErrorMessage;
+  SharingAuthGateKind? _authGateKind;
   List<SharedMember> _members = const [];
   List<PlanInvite> _invites = const [];
   List<SharedWeddingPlan> _sharedPlans = const [];
@@ -27,6 +30,7 @@ class SharingProvider extends ChangeNotifier {
   bool get isLookingUp => _isLookingUp;
   String? get errorMessage => _errorMessage;
   String? get lookupErrorMessage => _lookupErrorMessage;
+  SharingAuthGateKind? get authGateKind => _authGateKind;
   List<SharedMember> get members => _members;
   List<PlanInvite> get invites => _invites;
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
@@ -37,6 +41,7 @@ class SharingProvider extends ChangeNotifier {
   Future<void> loadMembers(String weddingPlanId) async {
     _isLoading = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
 
     try {
@@ -50,7 +55,7 @@ class SharingProvider extends ChangeNotifier {
         _selectedMember = _findMember(_selectedMember!.id);
       }
     } on ApiException catch (error) {
-      _errorMessage = _sharingErrorMessage(error.message);
+      _handleApiError(error);
     } catch (_) {
       _errorMessage = 'تعذر تحميل أعضاء المشاركة.';
     } finally {
@@ -62,12 +67,13 @@ class SharingProvider extends ChangeNotifier {
   Future<void> loadSharedPlans() async {
     _isLoading = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
 
     try {
       _sharedPlans = await _api.getSharedWeddingPlans();
     } on ApiException catch (error) {
-      _errorMessage = _sharingErrorMessage(error.message);
+      _handleApiError(error);
     } catch (_) {
       _errorMessage = 'تعذر تحميل الخطط المشتركة معك.';
     } finally {
@@ -89,12 +95,17 @@ class SharingProvider extends ChangeNotifier {
     _isLookingUp = true;
     _lookupErrorMessage = null;
     _lookupUser = null;
+    _authGateKind = null;
     notifyListeners();
 
     try {
       _lookupUser = await _api.lookupUserByPhone(phone);
       return true;
     } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        _handleApiError(error);
+        return false;
+      }
       _lookupErrorMessage = _sharingErrorMessage(
         error.message,
         fallback: 'الرقم غير مسجل',
@@ -128,6 +139,7 @@ class SharingProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
 
     try {
@@ -148,6 +160,10 @@ class SharingProvider extends ChangeNotifier {
       _lookupErrorMessage = null;
       return true;
     } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        _handleApiError(error);
+        return false;
+      }
       _errorMessage = _sharingErrorMessage(
         error.message,
         fallback: 'تعذر إضافة عضو المشاركة. تحقق من رقم الهاتف والصلاحيات.',
@@ -180,6 +196,7 @@ class SharingProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
     try {
       final invite = await _api.createPlanInvite(
@@ -201,7 +218,7 @@ class SharingProvider extends ChangeNotifier {
       _invites = [invite, ..._invites.where((item) => item.id != invite.id)];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _sharingErrorMessage(error.message);
+      _handleApiError(error);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال دعوة المشاركة.';
@@ -215,6 +232,7 @@ class SharingProvider extends ChangeNotifier {
   Future<bool> cancelInvite(PlanInvite invite) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
     try {
       await _api.cancelPlanInvite(
@@ -223,6 +241,13 @@ class SharingProvider extends ChangeNotifier {
       );
       _invites = _invites.where((item) => item.id != invite.id).toList();
       return true;
+    } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        _handleApiError(error);
+      } else {
+        _errorMessage = 'تعذر إلغاء الدعوة.';
+      }
+      return false;
     } catch (_) {
       _errorMessage = 'تعذر إلغاء الدعوة.';
       return false;
@@ -275,6 +300,7 @@ class SharingProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
 
     try {
@@ -292,7 +318,7 @@ class SharingProvider extends ChangeNotifier {
       _selectedMember = member;
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _sharingErrorMessage(error.message);
+      _handleApiError(error);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث صلاحيات العضو.';
@@ -306,6 +332,7 @@ class SharingProvider extends ChangeNotifier {
   Future<bool> removeMember(String id) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _authGateKind = null;
     notifyListeners();
 
     try {
@@ -316,7 +343,7 @@ class SharingProvider extends ChangeNotifier {
       }
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _sharingErrorMessage(error.message);
+      _handleApiError(error);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إزالة عضو المشاركة.';
@@ -329,6 +356,8 @@ class SharingProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _lookupErrorMessage = null;
+    _authGateKind = null;
     notifyListeners();
   }
 
@@ -339,6 +368,17 @@ class SharingProvider extends ChangeNotifier {
       }
     }
     return null;
+  }
+
+  void _handleApiError(ApiException error) {
+    if (error.isUnauthorized) {
+      _authGateKind = SharingAuthGateKind.sessionExpired;
+      _errorMessage = null;
+      _lookupErrorMessage = null;
+      return;
+    }
+    _authGateKind = null;
+    _errorMessage = _sharingErrorMessage(error.message);
   }
 }
 

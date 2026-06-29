@@ -30,6 +30,7 @@ class _MainShellState extends State<MainShell> {
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   String? _activePlanId;
+  int _guestAddRequest = 0;
 
   @override
   void initState() {
@@ -64,6 +65,13 @@ class _MainShellState extends State<MainShell> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('اختر أو أنشئ خطة زفاف أولًا.')),
       );
+      return;
+    }
+    if (_index == 3) {
+      setState(() {
+        _visitedTabs.add(3);
+        _guestAddRequest += 1;
+      });
       return;
     }
     showRoyalHomeActionSheet(context, actions: _quickActions(_activePlanId!));
@@ -153,6 +161,8 @@ class _MainShellState extends State<MainShell> {
                     ? GuestListScreen(
                         key: ValueKey('guests-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
+                        showLocalFab: false,
+                        openAddRequest: _guestAddRequest,
                       )
                     : _buildNoPlanFallback('الضيوف'),
               ),
@@ -163,7 +173,10 @@ class _MainShellState extends State<MainShell> {
           ),
           floatingActionButton: _activePlanId == null
               ? null
-              : RoyalSmartFloatingActionButton(onPressed: _showQuickAdd),
+              : RoyalSmartFloatingActionButton(
+                  icon: _fabIconForIndex(_index),
+                  onPressed: _showQuickAdd,
+                ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           bottomNavigationBar: RoyalDashboardBottomNav(
             activeIndex: _index,
@@ -180,6 +193,16 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildLazyTab(int index, Widget child) {
     return _visitedTabs.contains(index) ? child : const SizedBox.shrink();
+  }
+
+  IconData _fabIconForIndex(int index) {
+    return switch (index) {
+      1 => Icons.account_balance_wallet_rounded,
+      2 => Icons.check_circle_outline_rounded,
+      3 => Icons.group_add_rounded,
+      4 => Icons.storefront_rounded,
+      _ => Icons.add_rounded,
+    };
   }
 
   Widget _buildNoPlanFallback(String title) {

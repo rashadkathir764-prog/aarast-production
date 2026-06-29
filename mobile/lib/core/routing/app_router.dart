@@ -39,9 +39,11 @@ import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
 import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
+
 import '../../features/wedding_plans/models/dashboard_summary.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
+import '../../features/shell/screens/wedding_plan_shell.dart';
 import '../../shared/models/quote_finance_context.dart';
 import '../config/app_feature_flags.dart';
 import 'app_route_guard_resolver.dart';
@@ -147,6 +149,14 @@ class AppRouter {
 
   static String guestList(String id) {
     return '/wedding-plans/$id/guests';
+  }
+
+  static String guestListAdd(String id) {
+    return '/wedding-plans/$id/guests/add';
+  }
+
+  static String planProviders(String id) {
+    return '/wedding-plans/$id/providers';
   }
 
   static String planNotifications(String id) {
@@ -338,18 +348,78 @@ class AppRouter {
           path: createWeddingPlan,
           builder: (context, state) => const CreateWeddingPlanScreen(),
         ),
-        GoRoute(
-          path: '/wedding-plans/:id/dashboard',
-          builder: (context, state) {
+        ShellRoute(
+          builder: (context, state, child) {
             final id = state.pathParameters['id'] ?? '';
-            final sharedMember = state.extra is SharedMember
-                ? state.extra! as SharedMember
-                : null;
-            return WeddingPlanDashboardScreen(
+            return WeddingPlanShell(
               weddingPlanId: id,
-              sharedMember: sharedMember,
+              child: child,
             );
           },
+          routes: [
+            GoRoute(
+              path: '/wedding-plans/:id/dashboard',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                final sharedMember = state.extra is SharedMember
+                    ? state.extra! as SharedMember
+                    : null;
+                return WeddingPlanDashboardScreen(
+                  weddingPlanId: id,
+                  sharedMember: sharedMember,
+                  embedded: true,
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/finance',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                final sharedMember = state.extra is SharedMember
+                    ? state.extra! as SharedMember
+                    : null;
+                return BudgetExpenseScreen(
+                  weddingPlanId: id,
+                  sharedMember: sharedMember,
+                  embedded: true,
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/tasks',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                return TaskTimelineScreen(weddingPlanId: id);
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/guests/add',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                return GuestListScreen(
+                  weddingPlanId: id,
+                  showLocalFab: false,
+                  openAddOnStart: true,
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/guests',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                return GuestListScreen(
+                  weddingPlanId: id,
+                  showLocalFab: false,
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/providers',
+              builder: (context, state) {
+                return const ProviderMarketplaceScreen(embedded: true);
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/wedding-plans/:id/plan-center',
@@ -370,19 +440,6 @@ class AppRouter {
               weddingPlanId: id,
               sharedMember: sharedMember,
               initialSummary: initialSummary,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/finance',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final sharedMember = state.extra is SharedMember
-                ? state.extra! as SharedMember
-                : null;
-            return BudgetExpenseScreen(
-              weddingPlanId: id,
-              sharedMember: sharedMember,
             );
           },
         ),
@@ -461,13 +518,7 @@ class AppRouter {
             return CreateInstallmentScreen(debtId: debtId);
           },
         ),
-        GoRoute(
-          path: '/wedding-plans/:id/tasks',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            return TaskTimelineScreen(weddingPlanId: id);
-          },
-        ),
+
         GoRoute(
           path: '/wedding-plans/:id/tasks/create',
           builder: (context, state) {
@@ -504,13 +555,7 @@ class AppRouter {
             return SharingScreen(weddingPlanId: id);
           },
         ),
-        GoRoute(
-          path: '/wedding-plans/:id/guests',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            return GuestListScreen(weddingPlanId: id);
-          },
-        ),
+
         GoRoute(
           path: '/wedding-plans/:id/notifications',
           builder: (context, state) {

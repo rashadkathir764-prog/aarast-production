@@ -8,6 +8,7 @@ import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../sharing/models/shared_member.dart';
@@ -65,12 +66,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
             child: Row(
               children: [
-                IconButton(
-                  onPressed: _goBack,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  tooltip: 'رجوع',
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,21 +91,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                IconButton(
-                  onPressed: provider.isSubmitting
-                      ? null
-                      : () => context.push(
-                          AppRouter.createTask(widget.weddingPlanId),
-                        ),
-                  icon: const Icon(Icons.add_rounded),
-                  tooltip: 'إضافة مهمة',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.dMaroon,
-                    foregroundColor: Colors.white,
-                    side: BorderSide.none,
-                  ),
-                ),
+
               ],
             ),
           ),
@@ -136,14 +117,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         ],
       ),
     );
-  }
-
-  void _goBack() {
-    if (context.canPop()) {
-      context.pop();
-      return;
-    }
-    context.go(AppRouter.home);
   }
 
   void _loadMembersIfAvailable() {
@@ -222,12 +195,10 @@ class _TaskTimelineContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _TasksHeader(
+        _TopTasksCommandCard(
           summary: summary,
           isLocalPlan: _isLocalGuestPlanId(weddingPlanId),
         ),
-        const SizedBox(height: 12),
-        _TaskStatusOverviewCard(summary: summary),
         const SizedBox(height: 12),
         _ImportantNowCard(
           tasks: importantTasks,
@@ -243,23 +214,24 @@ class _TaskTimelineContent extends StatelessWidget {
         AarastSectionHeader(
           title: _taskListTitle(filter),
           icon: Icons.checklist_rtl_rounded,
-          actionLabel: 'إضافة',
-          onAction: provider.isSubmitting
-              ? null
-              : () => context.push(AppRouter.createTask(weddingPlanId)),
         ),
         const SizedBox(height: 12),
         if (visibleTasks.isEmpty)
-          AarastEmptyState(
-            title: _emptyTaskTitle(filter),
-            message: _emptyTaskMessage(filter),
-            icon: Icons.task_alt_rounded,
-            action: ElevatedButton.icon(
-              onPressed: provider.isSubmitting
-                  ? null
-                  : () => context.push(AppRouter.createTask(weddingPlanId)),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('إضافة مهمة'),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppTheme.dCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.dLine),
+            ),
+            child: const Text(
+              'لا توجد مهام حالياً. استخدم الزر العائم الذهبي للإضافة.',
+              style: TextStyle(
+                color: AppTheme.dInkSoft,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           )
         else
@@ -290,7 +262,7 @@ class _TaskTimelineContent extends StatelessWidget {
     TaskTimelineProvider provider,
     WeddingTask task,
   ) {
-    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     final previousStatus = task.status;
 
     unawaited(
@@ -301,17 +273,17 @@ class _TaskTimelineContent extends StatelessWidget {
       }),
     );
 
-    messenger.showSnackBar(
-      SnackBar(
-        content: const Text('تم إنجاز المهمة'),
-        action: SnackBarAction(
-          label: 'تراجع',
-          onPressed: () {
-            unawaited(
-              provider.updateTaskStatus(weddingPlanId, task, previousStatus),
-            );
-          },
-        ),
+    AarastToast.showSuccess(
+      context,
+      'تم إنجاز المهمة',
+      action: SnackBarAction(
+        label: 'تراجع',
+        textColor: Colors.white,
+        onPressed: () {
+          unawaited(
+            provider.updateTaskStatus(weddingPlanId, task, previousStatus),
+          );
+        },
       ),
     );
   }
@@ -321,7 +293,7 @@ class _TaskTimelineContent extends StatelessWidget {
     TaskTimelineProvider provider,
     WeddingTask task,
   ) {
-    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     unawaited(
       provider.reopenTask(weddingPlanId, task).then((success) {
@@ -331,9 +303,7 @@ class _TaskTimelineContent extends StatelessWidget {
       }),
     );
 
-    messenger.showSnackBar(
-      const SnackBar(content: Text('تمت إعادة فتح المهمة')),
-    );
+    AarastToast.showSuccess(context, 'تمت إعادة فتح المهمة');
   }
 
   Future<void> _confirmDelete(
@@ -425,8 +395,8 @@ class _TaskTimelineContent extends StatelessWidget {
   }
 }
 
-class _TasksHeader extends StatelessWidget {
-  const _TasksHeader({required this.summary, required this.isLocalPlan});
+class _TopTasksCommandCard extends StatelessWidget {
+  const _TopTasksCommandCard({required this.summary, required this.isLocalPlan});
 
   final TaskSummary summary;
   final bool isLocalPlan;
@@ -434,139 +404,76 @@ class _TasksHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
+      decoration: BoxDecoration(
+        color: AppTheme.dCard,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.dLine),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          )
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(28),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: Colors.white.withAlpha(36)),
-                ),
-                child: const Icon(
-                  Icons.task_alt_rounded,
-                  color: AppTheme.dGold,
-                  size: 28,
-                ),
-              ),
+              _ProgressSeal(value: summary.completionRatio),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'المهام',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
+                      'إنجاز المهام',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.dInk,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'تابع تجهيزات زفافك خطوة بخطوة',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withAlpha(205),
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(height: 4),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: summary.completionRatio,
+                        minHeight: 6,
+                        backgroundColor: AppTheme.dLine,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dMaroon),
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Text(
+                          '${summary.completionPercent}%',
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            color: AppTheme.dMaroon,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (isLocalPlan)
+                          Flexible(
+                            child: AarastStatusPill(
+                              label: 'تخطيط محلي',
+                              color: AppTheme.dGold,
+                              backgroundColor: AppTheme.dGold.withValues(alpha: 0.1),
+                              icon: Icons.phone_iphone_rounded,
+                            ),
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              _ProgressSeal(value: summary.completionRatio),
             ],
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 245),
-                child: Text(
-                  summary.total == 0
-                      ? 'لم تضف أي مهمة بعد'
-                      : '${summary.completed} من ${summary.total} مهام مكتملة',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withAlpha(220),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              AarastStatusPill(
-                label: isLocalPlan ? 'تخطيط محلي' : 'حساب محفوظ',
-                color: AppTheme.dGold,
-                backgroundColor: Colors.white.withAlpha(24),
-                icon: isLocalPlan
-                    ? Icons.phone_iphone_rounded
-                    : Icons.verified_user_outlined,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TaskStatusOverviewCard extends StatelessWidget {
-  const _TaskStatusOverviewCard({required this.summary});
-
-  final TaskSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.insights_rounded,
-                color: AppTheme.dMaroon,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'إنجاز المهام',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                '${summary.completionPercent}%',
-                textDirection: TextDirection.ltr,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.dMaroon,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: summary.completionRatio,
-              minHeight: 8,
-              backgroundColor: AppTheme.dLine,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dMaroon),
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          Divider(height: 1, thickness: 1, color: AppTheme.dLine),
+          const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
               final itemWidth = constraints.maxWidth < 330
@@ -581,6 +488,7 @@ class _TaskStatusOverviewCard extends StatelessWidget {
                     label: 'الإجمالي',
                     value: summary.total.toString(),
                     icon: Icons.format_list_bulleted_rounded,
+                    color: AppTheme.dInkSoft,
                   ),
                   _StatusMetric(
                     width: itemWidth,
@@ -591,22 +499,6 @@ class _TaskStatusOverviewCard extends StatelessWidget {
                   ),
                   _StatusMetric(
                     width: itemWidth,
-                    label: 'قيد التنفيذ',
-                    value: summary.pendingInProgress.toString(),
-                    icon: Icons.pending_actions_rounded,
-                    color: AppTheme.dGoldDeep,
-                  ),
-                  _StatusMetric(
-                    width: itemWidth,
-                    label: 'متأخرة',
-                    value: summary.overdue.toString(),
-                    icon: Icons.warning_amber_rounded,
-                    color: summary.overdue > 0
-                        ? AppTheme.danger
-                        : AppTheme.dInkSoft,
-                  ),
-                  _StatusMetric(
-                    width: itemWidth,
                     label: 'اليوم',
                     value: summary.dueToday.toString(),
                     icon: Icons.today_rounded,
@@ -614,10 +506,10 @@ class _TaskStatusOverviewCard extends StatelessWidget {
                   ),
                   _StatusMetric(
                     width: itemWidth,
-                    label: 'عالية الأولوية',
-                    value: summary.highPriority.toString(),
-                    icon: Icons.flag_rounded,
-                    color: AppTheme.danger,
+                    label: 'متأخرة',
+                    value: summary.overdue.toString(),
+                    icon: Icons.warning_amber_rounded,
+                    color: summary.overdue > 0 ? AppTheme.danger : AppTheme.dInkSoft,
                   ),
                 ],
               );
@@ -858,15 +750,15 @@ class _ProgressSeal extends StatelessWidget {
       width: 58,
       height: 58,
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(24),
+        color: AppTheme.dMaroon.withValues(alpha: 0.1),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withAlpha(38)),
+        border: Border.all(color: AppTheme.dMaroon.withValues(alpha: 0.3)),
       ),
       child: Center(
         child: Text(
           '${(value * 100).round()}%',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.white,
+            color: AppTheme.dMaroon,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -1485,28 +1377,6 @@ bool _isSameDay(DateTime first, DateTime second) {
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
-String _emptyTaskTitle(_TaskFilter filter) {
-  return switch (filter) {
-    _TaskFilter.all => 'لم تضف أي مهمة بعد',
-    _TaskFilter.today => 'لا توجد مهام لليوم',
-    _TaskFilter.week => 'الأسبوع هادئ',
-    _TaskFilter.overdue => 'لا توجد مهام متأخرة',
-    _TaskFilter.completed => 'لم تكتمل أي مهمة بعد',
-    _TaskFilter.highPriority => 'لا توجد مهام عالية الأولوية',
-  };
-}
-
-String _emptyTaskMessage(_TaskFilter filter) {
-  return switch (filter) {
-    _TaskFilter.all => 'أضف أول مهمة لتتحول الخطة إلى خطوات واضحة.',
-    _TaskFilter.today =>
-      'كل شيء مرتب لليوم. يمكنك إضافة مهمة جديدة عند الحاجة.',
-    _TaskFilter.week => 'لا توجد مهام قريبة غير مكتملة خلال الأيام القادمة.',
-    _TaskFilter.overdue => 'رائع، لا توجد مهام تحتاج متابعة عاجلة الآن.',
-    _TaskFilter.completed => 'عند إنجاز مهمة ستظهر هنا بنمط هادئ.',
-    _TaskFilter.highPriority => 'المهام العادية تبقى في القائمة الرئيسية.',
-  };
-}
 
 String _taskListTitle(_TaskFilter filter) {
   return switch (filter) {

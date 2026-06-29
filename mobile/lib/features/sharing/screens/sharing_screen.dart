@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
 import '../widgets/shared_member_card.dart';
@@ -19,12 +20,15 @@ class SharingScreen extends StatefulWidget {
 }
 
 class _SharingScreenState extends State<SharingScreen> {
+  bool _isCheckingSharingAccess = true;
+  bool _showLoginGate = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<SharingProvider>().loadMembers(widget.weddingPlanId);
+      _refreshSharingAccessAndLoad();
     });
   }
 
@@ -34,8 +38,30 @@ class _SharingScreenState extends State<SharingScreen> {
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<SharingProvider>().loadMembers(widget.weddingPlanId);
+        _refreshSharingAccessAndLoad();
       });
+    }
+  }
+
+  Future<void> _refreshSharingAccessAndLoad() async {
+    setState(() {
+      _isCheckingSharingAccess = true;
+      _showLoginGate = false;
+    });
+
+    final shouldGate = await AuthActionGuard.shouldGateProtectedSharing(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingSharingAccess = false;
+      _showLoginGate = shouldGate;
+    });
+
+    if (!shouldGate) {
+      await context.read<SharingProvider>().loadMembers(widget.weddingPlanId);
     }
   }
 
@@ -49,10 +75,18 @@ class _SharingScreenState extends State<SharingScreen> {
       showBack: true,
       child: RefreshIndicator(
         color: AppTheme.dMaroon,
-        onRefresh: () => provider.loadMembers(widget.weddingPlanId),
+        onRefresh: () {
+          if (_showLoginGate ||
+              provider.authGateKind == SharingAuthGateKind.sessionExpired) {
+            return Future<void>.value();
+          }
+          return provider.loadMembers(widget.weddingPlanId);
+        },
         child: _SharingContent(
           provider: provider,
           weddingPlanId: widget.weddingPlanId,
+          isCheckingSharingAccess: _isCheckingSharingAccess,
+          showLoginGate: _showLoginGate,
         ),
       ),
     );
@@ -60,13 +94,40 @@ class _SharingScreenState extends State<SharingScreen> {
 }
 
 class _SharingContent extends StatelessWidget {
-  const _SharingContent({required this.provider, required this.weddingPlanId});
+  const _SharingContent({
+    required this.provider,
+    required this.weddingPlanId,
+    required this.isCheckingSharingAccess,
+    required this.showLoginGate,
+  });
 
   final SharingProvider provider;
   final String weddingPlanId;
+  final bool isCheckingSharingAccess;
+  final bool showLoginGate;
 
   @override
   Widget build(BuildContext context) {
+    if (isCheckingSharingAccess) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (showLoginGate) {
+      return const AuthGatePanel(
+        title: AuthActionGuard.sharingLoginGateTitle,
+        body: AuthActionGuard.sharingLoginGateBody,
+        icon: Icons.group_add_outlined,
+      );
+    }
+
+    if (provider.authGateKind == SharingAuthGateKind.sessionExpired) {
+      return const AuthGatePanel(
+        title: AuthActionGuard.sessionExpiredTitle,
+        body: AuthActionGuard.sharingSessionExpiredBody,
+        icon: Icons.lock_clock_outlined,
+      );
+    }
+
     if (provider.isLoading && provider.members.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -78,7 +139,7 @@ class _SharingContent extends StatelessWidget {
           Text(
             provider.errorMessage!,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: const TextStyle(color: AppTheme.danger),
           ),
           const SizedBox(height: 16),
           AarastButton(
@@ -101,12 +162,13 @@ class _SharingContent extends StatelessWidget {
               ? null
               : () => context.push(AppRouter.addSharedMember(weddingPlanId)),
         ),
+
         if (provider.errorMessage != null) ...[
           const SizedBox(height: 12),
           Text(
             provider.errorMessage!,
             textAlign: TextAlign.right,
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+            style: const TextStyle(color: AppTheme.danger),
           ),
         ],
         const SizedBox(height: 18),
@@ -141,10 +203,23 @@ class _SharingContent extends StatelessWidget {
         ),
         if (provider.members.isEmpty) ...[
           const SizedBox(height: 10),
-          const AarastEmptyState(
-            icon: Icons.group_add_outlined,
-            title: 'الخطة خاصة بك الآن',
-            message: 'أضف شخصًا موثوقًا وحدد صلاحياته بوضوح.',
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppTheme.dCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.dLine),
+            ),
+            child: const Text(
+              'الخطة خاصة بك الآن. استخدم زر إضافة عضو لإضافة شخص موثوق.',
+              style: TextStyle(
+                color: AppTheme.dInkSoft,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ],
         const SizedBox(height: 8),
@@ -174,7 +249,8 @@ class _PendingInviteCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: AarastCard(
-        color: AppTheme.dCreamBg,
+        color: AppTheme.dCard,
+        border: Border.all(color: AppTheme.dLine),
         child: Row(
           children: [
             const Icon(Icons.schedule_send_outlined, color: AppTheme.dGoldDeep),
@@ -219,7 +295,8 @@ class _PrivacyNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCreamBg,
+      color: AppTheme.dCard,
+      border: Border.all(color: AppTheme.dLine),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

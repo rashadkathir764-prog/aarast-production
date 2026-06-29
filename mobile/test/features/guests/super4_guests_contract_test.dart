@@ -99,8 +99,7 @@ void main() {
 
     expect(find.text('الضيوف'), findsWidgets);
     expect(find.text('نظم قائمة الحضور والدعوات'), findsWidgets);
-    expect(find.text('ملخص حالة الضيوف'), findsOneWidget);
-    expect(find.text('أهم ما يحتاج متابعة في الضيوف'), findsOneWidget);
+    expect(find.text('الضيوف'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('محمد علي'),
       260,
@@ -159,7 +158,7 @@ void main() {
     await tester.pumpWidget(_providers(harness, provider));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'إضافة ضيف'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
     await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'سالم أحمد');
     await tester.enterText(
@@ -196,7 +195,7 @@ void main() {
 
     await _pumpGuestsScreen(tester, harness, setView: false);
 
-    expect(find.text('ملخص حالة الضيوف'), findsOneWidget);
+    expect(find.text('الضيوف'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 }

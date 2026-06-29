@@ -66,7 +66,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
         onTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
-        onProviders: () => context.push(AppRouter.providerMarketplace),
+        onProviders: () => context.push(AppRouter.planProviders(planId)),
       ),
       child: RoyalHomeTodayCenter(
         summary: dashboardSummary,
@@ -88,7 +88,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         ),
         onOpenMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
         onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
-        onOpenProviders: () => context.push(AppRouter.providerMarketplace),
+        onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
         onOpenParticipants: () => _requireAccountForSync(context),
         onOpenNotifications: () => _openLocalNotifications(context, planId),
@@ -203,7 +203,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     DashboardImportantItem item,
   ) {
     if (item.type.contains('QUOTE') || item.type.contains('PROVIDER')) {
-      context.push(AppRouter.providerMarketplace);
+      context.push(AppRouter.planProviders(planId));
       return;
     }
     if (item.type.contains('TASK')) {

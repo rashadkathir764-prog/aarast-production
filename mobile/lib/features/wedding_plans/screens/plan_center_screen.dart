@@ -260,12 +260,12 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
             showTasks: showTaskSetup,
             showGuests: showGuestSetup,
             showProviders: showProviderSetup,
-            onTasks: () => context.push(AppRouter.tasks(plan.id)),
+            onTasks: () => _goToTasksTab(plan.id),
             onBudget: () => canOpenFinance
-                ? _openFinanceOverview(provider, plan.id)
+                ? _openFinanceOverview(plan.id)
                 : _showFinancialAccessDenied(),
-            onGuests: () => context.push(AppRouter.guestList(plan.id)),
-            onProviders: () => context.push(AppRouter.providerMarketplace),
+            onGuests: () => _goToGuestsTab(plan.id),
+            onProviders: () => _goToProvidersTab(plan.id),
             onEditPlan: () => _showEditPlanSheet(provider, plan),
           ),
         if (tasksAvailable && totalTasks > 0) ...[
@@ -278,9 +278,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           const SizedBox(height: 10),
         ],
         _PlanSectionsCard(
-          onTasks: () => context.push(AppRouter.tasks(plan.id)),
+          onTasks: () => _goToTasksTab(plan.id),
           onBudget: canOpenFinance
-              ? () => _openFinanceOverview(provider, plan.id)
+              ? () => _openFinanceOverview(plan.id)
               : _showFinancialAccessDenied,
           onDebts: canOpenDebts
               ? () => context.push(
@@ -288,8 +288,8 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                   extra: widget.sharedMember,
                 )
               : _showFinancialAccessDenied,
-          onGuests: () => context.push(AppRouter.guestList(plan.id)),
-          onProviders: () => context.push(AppRouter.providerMarketplace),
+          onGuests: () => _goToGuestsTab(plan.id),
+          onProviders: () => _goToProvidersTab(plan.id),
           onSharing: canOpenSharing
               ? () => context.push(AppRouter.sharing(plan.id))
               : () => _showUnavailable('إدارة المشاركة متاحة لصاحب الخطة فقط.'),
@@ -302,7 +302,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           quotes: planQuotes,
           canManage: canManagePlan,
           isSubmitting: marketplace?.isSubmitting ?? false,
-          onBrowseProviders: () => context.push(AppRouter.providerMarketplace),
+          onBrowseProviders: () => _goToProvidersTab(plan.id),
           onAccept: marketplace == null
               ? null
               : (quote) async {
@@ -410,18 +410,15 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         : widget.weddingPlanId;
     return RoyalDashboardBottomNav(
       activeIndex: 0,
-      onHome: () => context.go(AppRouter.home),
-      onMoney: () => context.push(AppRouter.finance(planId)),
-      onTasks: () => context.push(AppRouter.tasks(planId)),
-      onGuests: () => context.push(AppRouter.guestList(planId)),
-      onProviders: () => context.push(AppRouter.providerMarketplace),
+      onHome: () => _goToDashboardTab(planId),
+      onMoney: () => _goToMoneyTab(planId),
+      onTasks: () => _goToTasksTab(planId),
+      onGuests: () => _goToGuestsTab(planId),
+      onProviders: () => _goToProvidersTab(planId),
     );
   }
 
-  Future<void> _openFinanceOverview(
-    DashboardSummaryProvider provider,
-    String planId,
-  ) async {
+  void _openFinanceOverview(String planId) {
     final canOpenFinance =
         widget.sharedMember == null || widget.sharedMember!.hasFinancialAccess;
     if (!canOpenFinance) {
@@ -429,12 +426,34 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       return;
     }
 
-    final changed = await context.push<bool>(
-      AppRouter.finance(planId),
+    _goToMoneyTab(planId);
+  }
+
+  void _goToDashboardTab(String planId) {
+    if (_isLocalGuestPlan) {
+      context.go(AppRouter.home);
+      return;
+    }
+    context.go(
+      AppRouter.weddingPlanDashboard(planId),
       extra: widget.sharedMember,
     );
-    if (changed != true || !mounted) return;
-    await provider.loadDashboard(planId, sharedMember: widget.sharedMember);
+  }
+
+  void _goToMoneyTab(String planId) {
+    context.go(AppRouter.finance(planId), extra: widget.sharedMember);
+  }
+
+  void _goToTasksTab(String planId) {
+    context.go(AppRouter.tasks(planId));
+  }
+
+  void _goToGuestsTab(String planId) {
+    context.go(AppRouter.guestList(planId));
+  }
+
+  void _goToProvidersTab(String planId) {
+    context.go(AppRouter.planProviders(planId));
   }
 
   Widget _buildLocalPlanBody(double bottomPadding, DashboardSummary? summary) {
@@ -475,20 +494,20 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
           showProviders:
               (summary?.quoteRequestsCount ?? 0) == 0 &&
               (summary?.acceptedProviders ?? 0) == 0,
-          onTasks: () => context.push(AppRouter.tasks(planId)),
-          onBudget: () => context.push(AppRouter.finance(planId)),
-          onGuests: () => context.push(AppRouter.guestList(planId)),
-          onProviders: () => context.push(AppRouter.providerMarketplace),
+          onTasks: () => _goToTasksTab(planId),
+          onBudget: () => _goToMoneyTab(planId),
+          onGuests: () => _goToGuestsTab(planId),
+          onProviders: () => _goToProvidersTab(planId),
           onEditPlan: () =>
               _showUnavailable('تحتاج لتسجيل الدخول لحفظ بيانات الخطة.'),
         ),
         const SizedBox(height: 10),
         _PlanSectionsCard(
-          onTasks: () => context.push(AppRouter.tasks(planId)),
-          onBudget: () => context.push(AppRouter.finance(planId)),
+          onTasks: () => _goToTasksTab(planId),
+          onBudget: () => _goToMoneyTab(planId),
           onDebts: () => context.push(AppRouter.debts(planId)),
-          onGuests: () => context.push(AppRouter.guestList(planId)),
-          onProviders: () => context.push(AppRouter.providerMarketplace),
+          onGuests: () => _goToGuestsTab(planId),
+          onProviders: () => _goToProvidersTab(planId),
           onSharing: () => _showUnavailable(
             'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
           ),

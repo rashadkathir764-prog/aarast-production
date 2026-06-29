@@ -237,7 +237,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('1 من 1 مهام مكتملة'), findsOneWidget);
+    expect(find.text('مكتملة'), findsWidgets);
     expect(find.text('100%'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

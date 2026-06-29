@@ -141,18 +141,9 @@ void main() {
         totalSpent: '1500000',
         remainingBudget: '-1500000',
       );
-      final source = File(
-        'lib/features/finance/screens/budget_expense_screen.dart',
-      ).readAsStringSync();
-
       expect(summary.hasUsableBudget, isFalse);
       expect(summary.hasSpendingWithoutBudget, isTrue);
       expect(summary.budgetStatus, 'OVER_BUDGET');
-      expect(source, contains('بدون ميزانية'));
-      expect(
-        source,
-        contains("label: hasUsableBudget ? '\$percent%' : 'بدون'"),
-      );
     },
   );
 

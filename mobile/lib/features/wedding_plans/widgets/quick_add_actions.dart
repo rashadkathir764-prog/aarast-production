@@ -38,7 +38,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   final guest = RoyalHomeAction(
     icon: Icons.group_add_outlined,
     label: 'إضافة ضيف',
-    onTap: () => openRoute(AppRouter.guestList(planId)),
+    onTap: () => openRoute(AppRouter.guestListAdd(planId)),
   );
   final debt = RoyalHomeAction(
     icon: Icons.attach_money_rounded,
@@ -48,11 +48,16 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   final quote = RoyalHomeAction(
     icon: Icons.request_quote_outlined,
     label: 'طلب عرض سعر',
-    onTap: onRequestQuote ?? () => openRoute(AppRouter.providerMarketplace),
+    onTap: onRequestQuote ?? () => openRoute(AppRouter.planProviders(planId)),
+  );
+  final category = RoyalHomeAction(
+    icon: Icons.create_new_folder_outlined,
+    label: 'إضافة تصنيف',
+    onTap: () => openRoute(AppRouter.createBudgetCategory(planId)),
   );
 
   return switch (contextOrder) {
-    QuickAddContext.money => [expense, debt, task, guest, quote],
+    QuickAddContext.money => [expense, debt, category],
     QuickAddContext.tasks => [task, expense, guest, debt, quote],
     QuickAddContext.guests => [guest, task, expense, debt, quote],
     QuickAddContext.providers => [quote, expense, task, guest, debt],

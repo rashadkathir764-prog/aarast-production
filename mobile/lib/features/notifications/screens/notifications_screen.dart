@@ -171,6 +171,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!mounted || !marked) return;
     final target = notification.routeTarget?.trim();
     if (target == null || !_isSafeRouteTarget(target)) return;
+    if (_isPlanShellRouteTarget(target)) {
+      context.go(target);
+      return;
+    }
     await context.push(target);
   }
 }
@@ -345,6 +349,26 @@ bool _isSafeRouteTarget(String target) {
       target.startsWith('/invites/') ||
       target.startsWith('/wedding-plans/') ||
       target.startsWith('/debts/');
+}
+
+bool _isPlanShellRouteTarget(String target) {
+  final uri = Uri.tryParse(target);
+  final segments = uri?.pathSegments;
+  if (segments == null ||
+      segments.length < 3 ||
+      segments[0] != 'wedding-plans') {
+    return false;
+  }
+
+  final area = segments[2];
+  if (segments.length == 3) {
+    return area == 'dashboard' ||
+        area == 'finance' ||
+        area == 'tasks' ||
+        area == 'guests' ||
+        area == 'providers';
+  }
+  return area == 'guests' && segments.length == 4 && segments[3] == 'add';
 }
 
 String _dateLabel(DateTime date) {

@@ -120,10 +120,10 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: Colors.black.withValues(alpha: 0.4),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.6),
-                          width: 1.5,
+                          color: Colors.white.withValues(alpha: 0.08),
+                          width: 1,
                         ),
                       ),
                       child: Row(
@@ -188,10 +188,41 @@ class RoyalDashboardBottomNav extends StatelessWidget {
   }
 }
 
-class RoyalSmartFloatingActionButton extends StatelessWidget {
-  const RoyalSmartFloatingActionButton({required this.onPressed, super.key});
+class RoyalSmartFloatingActionButton extends StatefulWidget {
+  const RoyalSmartFloatingActionButton({
+    required this.onPressed,
+    this.icon,
+    super.key,
+  });
 
   final VoidCallback onPressed;
+  final IconData? icon;
+
+  @override
+  State<RoyalSmartFloatingActionButton> createState() => _RoyalSmartFloatingActionButtonState();
+}
+
+class _RoyalSmartFloatingActionButtonState extends State<RoyalSmartFloatingActionButton> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,40 +234,54 @@ class RoyalSmartFloatingActionButton extends StatelessWidget {
           button: true,
           label: 'إجراء جديد',
           child: _PressScale(
-            onTap: onPressed,
+            onTap: widget.onPressed,
             borderRadius: BorderRadius.circular(30),
-            child: Container(
-              key: const ValueKey('royal-smart-fab'),
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [_RoyalHomeColors.gold, _RoyalHomeColors.goldDeep],
-                ),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.72),
-                  width: 1.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _RoyalHomeColors.goldDeep.withValues(alpha: 0.30),
-                    blurRadius: 22,
-                    offset: const Offset(0, 10),
+            child: Transform.rotate(
+              angle: 3.14159 / 4,
+              child: AnimatedBuilder(
+                animation: _glowAnimation,
+                builder: (context, child) {
+                  return Container(
+                    key: const ValueKey('royal-smart-fab'),
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [_RoyalHomeColors.gold, _RoyalHomeColors.goldDeep],
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _RoyalHomeColors.goldDeep.withValues(alpha: _glowAnimation.value),
+                          blurRadius: 24,
+                          spreadRadius: _glowAnimation.value * 8,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: child,
+                  );
+                },
+                child: Transform.rotate(
+                  angle: -3.14159 / 4,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (child, animation) =>
+                        ScaleTransition(scale: animation, child: child),
+                    child: Icon(
+                      widget.icon ?? Icons.add_rounded,
+                      key: ValueKey(widget.icon),
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
-                  BoxShadow(
-                    color: _RoyalHomeColors.burgundy.withValues(alpha: 0.10),
-                    blurRadius: 30,
-                    offset: const Offset(0, 16),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: 32,
+                ),
               ),
             ),
           ),
@@ -448,12 +493,12 @@ class _RoyalActionTile extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 76),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _RoyalHomeColors.ivory,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.74)),
+          border: Border.all(color: _RoyalHomeColors.ink.withAlpha(15)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.025),
+              color: _RoyalHomeColors.ink.withAlpha(5),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),

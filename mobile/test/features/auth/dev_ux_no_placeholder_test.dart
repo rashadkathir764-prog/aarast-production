@@ -55,7 +55,7 @@ void main() {
     );
 
     expect(find.text('الضيوف'), findsWidgets);
-    expect(find.text('لم تضف أي ضيف بعد'), findsOneWidget);
+    expect(find.text('لا يوجد ضيوف حالياً. استخدم الزر العائم الذهبي للإضافة.'), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });

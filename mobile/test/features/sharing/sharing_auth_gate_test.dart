@@ -1,0 +1,267 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
+import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
+import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
+import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
+import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
+import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  const localPlanId = 'guest-plan-sharing';
+  const accountPlanId = 'plan-account-1';
+  const rawAuthError = 'بيانات الدخول غير صحيحة أو انتهت الجلسة.';
+
+  testWidgets(
+    'local/no-login opening sharing shows login gate without protected API retry',
+    (tester) async {
+      final fakeApi = _FakeSharingApi();
+      final provider = SharingProvider(fakeApi);
+
+      await _pumpSharingScreen(
+        tester,
+        provider: provider,
+        screen: const SharingScreen(weddingPlanId: localPlanId),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
+      expect(find.text(AuthActionGuard.sharingLoginGateTitle), findsOneWidget);
+      expect(find.text(AuthActionGuard.sharingLoginGateBody), findsOneWidget);
+      expect(find.text('تسجيل الدخول'), findsOneWidget);
+      expect(find.text('إعادة المحاولة'), findsNothing);
+      expect(find.text(rawAuthError), findsNothing);
+      expect(fakeApi.getSharedMembersCalls, 0);
+      expect(fakeApi.getPlanInvitesCalls, 0);
+      expect(provider.members, isEmpty);
+      expect(provider.invites, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('local/no-login add member shows login gate', (tester) async {
+    final fakeApi = _FakeSharingApi();
+    final provider = SharingProvider(fakeApi);
+
+    await _pumpSharingScreen(
+      tester,
+      provider: provider,
+      screen: const AddSharedMemberScreen(weddingPlanId: localPlanId),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
+    expect(find.text(AuthActionGuard.sharingLoginGateTitle), findsOneWidget);
+    expect(find.text(AuthActionGuard.sharingLoginGateBody), findsOneWidget);
+    expect(find.text('إرسال دعوة المشاركة'), findsNothing);
+    expect(find.text('إعادة المحاولة'), findsNothing);
+    expect(find.text(rawAuthError), findsNothing);
+    expect(fakeApi.lookupUserByPhoneCalls, 0);
+    expect(fakeApi.createPlanInviteCalls, 0);
+    expect(provider.members, isEmpty);
+    expect(provider.invites, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('expired token shows friendly session gate', (tester) async {
+    final fakeApi = _FakeSharingApi(throwUnauthorized: true);
+    final provider = SharingProvider(fakeApi);
+
+    await _pumpSharingScreen(
+      tester,
+      provider: provider,
+      screen: const SharingScreen(weddingPlanId: accountPlanId),
+      accessToken: 'expired-token',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
+    expect(find.text(AuthActionGuard.sessionExpiredTitle), findsOneWidget);
+    expect(
+      find.text(AuthActionGuard.sharingSessionExpiredBody),
+      findsOneWidget,
+    );
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.text('إعادة المحاولة'), findsNothing);
+    expect(find.text(rawAuthError), findsNothing);
+    expect(fakeApi.getSharedMembersCalls, 1);
+    expect(fakeApi.getPlanInvitesCalls, 1);
+    expect(provider.members, isEmpty);
+    expect(provider.invites, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('valid account flow loads sharing data normally', (tester) async {
+    final member = _member(
+      id: 'member-real-1',
+      weddingPlanId: accountPlanId,
+      userName: 'أمينة',
+    );
+    final fakeApi = _FakeSharingApi(members: [member]);
+    final provider = SharingProvider(fakeApi);
+
+    await _pumpSharingScreen(
+      tester,
+      provider: provider,
+      screen: const SharingScreen(weddingPlanId: accountPlanId),
+      accessToken: 'valid-token',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sharing-auth-gate')), findsNothing);
+    expect(find.text('أمينة'), findsOneWidget);
+    expect(find.text(AuthActionGuard.sharingLoginGateTitle), findsNothing);
+    expect(find.text(AuthActionGuard.sessionExpiredTitle), findsNothing);
+    expect(fakeApi.getSharedMembersCalls, 1);
+    expect(fakeApi.getPlanInvitesCalls, 1);
+    expect(provider.members, [member]);
+    expect(provider.invites, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+Future<void> _pumpSharingScreen(
+  WidgetTester tester, {
+  required SharingProvider provider,
+  required Widget screen,
+  String? accessToken,
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final authStorage = AuthStorage(preferences);
+  if (accessToken != null) {
+    await authStorage.saveSession(
+      accessToken: accessToken,
+      user: const SafeUser(
+        id: 'user-1',
+        name: 'رشاد',
+        role: 'USER',
+        status: 'ACTIVE',
+      ),
+    );
+  }
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<AuthStorage>.value(value: authStorage),
+        ChangeNotifierProvider<SharingProvider>.value(value: provider),
+      ],
+      child: MaterialApp(theme: AppTheme.light(), home: screen),
+    ),
+  );
+}
+
+SharedMember _member({
+  required String id,
+  required String weddingPlanId,
+  required String userName,
+}) {
+  return SharedMember(
+    id: id,
+    weddingPlanId: weddingPlanId,
+    userId: 'user-$id',
+    user: SharedMemberUser(
+      id: 'user-$id',
+      name: userName,
+      phone: '+967777123456',
+    ),
+    role: 'VIEWER',
+    canViewBudget: false,
+    canViewExpenses: false,
+    canViewDebts: false,
+    canManageTasks: false,
+    canManageFinancialRecords: false,
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
+}
+
+class _FakeSharingApi extends SharingApi {
+  _FakeSharingApi({this.throwUnauthorized = false, this.members = const []})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final bool throwUnauthorized;
+  final List<SharedMember> members;
+
+  int getSharedMembersCalls = 0;
+  int getPlanInvitesCalls = 0;
+  int lookupUserByPhoneCalls = 0;
+  int createPlanInviteCalls = 0;
+  int getSharedWeddingPlansCalls = 0;
+
+  @override
+  Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
+    getSharedMembersCalls += 1;
+    _throwIfUnauthorized();
+    return members;
+  }
+
+  @override
+  Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
+    getPlanInvitesCalls += 1;
+    _throwIfUnauthorized();
+    return const [];
+  }
+
+  @override
+  Future<SharedUserLookup> lookupUserByPhone(String phone) async {
+    lookupUserByPhoneCalls += 1;
+    _throwIfUnauthorized();
+    return const SharedUserLookup(id: 'lookup-user', name: 'عضو');
+  }
+
+  @override
+  Future<PlanInvite> createPlanInvite({
+    required String weddingPlanId,
+    required String phone,
+    String? name,
+    required String role,
+    required bool canViewBudget,
+    required bool canViewExpenses,
+    required bool canViewDebts,
+    required bool canEditPlan,
+    required bool canManageTasks,
+    required bool canManageGuests,
+    required bool canManageProviders,
+    required bool canInviteMembers,
+    required bool canManageFinancialRecords,
+    required bool receiveNotifications,
+  }) async {
+    createPlanInviteCalls += 1;
+    _throwIfUnauthorized();
+    return PlanInvite(
+      id: 'invite-1',
+      weddingPlanId: weddingPlanId,
+      token: 'invite-token',
+      role: role,
+      status: 'PENDING',
+      expiresAt: DateTime(2026, 7, 1),
+      phone: phone,
+      name: name,
+    );
+  }
+
+  @override
+  Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
+    getSharedWeddingPlansCalls += 1;
+    _throwIfUnauthorized();
+    return const [];
+  }
+
+  void _throwIfUnauthorized() {
+    if (throwUnauthorized) {
+      throw const ApiException(
+        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
+        statusCode: 401,
+      );
+    }
+  }
+}

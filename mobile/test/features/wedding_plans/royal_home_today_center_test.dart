@@ -49,10 +49,10 @@ void main() {
     // Use bounded pumps instead of pumpAndSettle because the dashboard uses
     // intentionally looping decorations (live countdown dot, breath CTA)
     // which would otherwise cause pumpAndSettle to hang.
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
-    expect(find.text('أهم ما يحتاج متابعة اليوم'), findsOneWidget);
+    expect(find.text('مهام النانو السريعة'), findsOneWidget);
     expect(find.text('ملخص المال'), findsOneWidget);
 
     await tester.dragUntilVisible(
@@ -101,7 +101,7 @@ void main() {
       ),
     );
 
-    for (var i = 0; i < 6; i++) {
+    for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
 

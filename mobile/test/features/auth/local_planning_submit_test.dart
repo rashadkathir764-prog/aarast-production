@@ -52,7 +52,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'إضافة ضيف'));
+    await tester.tap(find.byType(FloatingActionButton));
     await tester.pumpAndSettle();
     await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'محمد علي');
     await tester.enterText(
@@ -283,7 +283,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('protected share invite still requires login', (tester) async {
+  testWidgets('protected share invite shows login gate for local plan', (
+    tester,
+  ) async {
     _setTallView(tester);
     final harness = await _createHarness();
     final sharingProvider = SharingProvider(SharingApi(harness.apiClient));
@@ -301,14 +303,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(_textFieldWithLabel('رقم جوال العضو'), '777123456');
-    final submit = find.text('إرسال دعوة المشاركة');
-    await tester.ensureVisible(submit);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pump();
-
-    expect(find.text(cloudMessage), findsOneWidget);
+    expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
+    expect(find.text(AuthActionGuard.sharingLoginGateTitle), findsOneWidget);
+    expect(find.text(AuthActionGuard.sharingLoginGateBody), findsOneWidget);
+    expect(find.text(cloudMessage), findsNothing);
+    expect(find.text('إعادة المحاولة'), findsNothing);
     expect(sharingProvider.invites, isEmpty);
     expect(tester.takeException(), isNull);
   });

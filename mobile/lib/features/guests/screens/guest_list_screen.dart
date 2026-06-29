@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_duplicate_utils.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -12,9 +17,18 @@ import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 
 class GuestListScreen extends StatefulWidget {
-  const GuestListScreen({required this.weddingPlanId, super.key});
+  const GuestListScreen({
+    required this.weddingPlanId,
+    this.showLocalFab = true,
+    this.openAddOnStart = false,
+    this.openAddRequest = 0,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final bool showLocalFab;
+  final bool openAddOnStart;
+  final int openAddRequest;
 
   @override
   State<GuestListScreen> createState() => _GuestListScreenState();
@@ -32,6 +46,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _load();
+      unawaited(_openAddSheetIfRequested());
     });
   }
 
@@ -44,6 +59,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
         _load();
       });
     }
+    if ((!oldWidget.openAddOnStart && widget.openAddOnStart) ||
+        oldWidget.openAddRequest != widget.openAddRequest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(_openAddSheetIfRequested());
+      });
+    }
   }
 
   @override
@@ -53,24 +75,22 @@ class _GuestListScreenState extends State<GuestListScreen> {
 
     return AarastScreenFrame(
       maxWidth: 520,
-      floatingActionButton: FloatingActionButton(
-        onPressed: planIdReady && !provider.isSubmitting
-            ? () => _showGuestSheet(provider: provider)
-            : null,
-        child: const Icon(Icons.add_rounded),
-      ),
+      floatingActionButton: widget.showLocalFab
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.dGoldDeep,
+              foregroundColor: Colors.white,
+              onPressed: planIdReady && !provider.isSubmitting
+                  ? () => _showGuestSheet(provider: provider)
+                  : null,
+              child: const Icon(Icons.add_rounded),
+            )
+          : null,
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
             child: Row(
               children: [
-                IconButton(
-                  onPressed: _goBack,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  tooltip: 'رجوع',
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,19 +116,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                IconButton(
-                  onPressed: planIdReady && !provider.isSubmitting
-                      ? () => _showGuestSheet(provider: provider)
-                      : null,
-                  icon: const Icon(Icons.group_add_rounded),
-                  tooltip: 'إضافة ضيف',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.dMaroon,
-                    foregroundColor: Colors.white,
-                    side: BorderSide.none,
-                  ),
-                ),
+
               ],
             ),
           ),
@@ -140,13 +148,19 @@ class _GuestListScreenState extends State<GuestListScreen> {
     return context.read<GuestsProvider>().loadGuests(widget.weddingPlanId);
   }
 
-  void _goBack() {
-    if (context.canPop()) {
-      context.pop();
+  Future<void> _openAddSheetIfRequested() async {
+    if ((!widget.openAddOnStart && widget.openAddRequest <= 0) ||
+        widget.weddingPlanId.trim().isEmpty) {
       return;
     }
-    context.go('/');
+    await _showGuestSheet(provider: context.read<GuestsProvider>());
+    if (!mounted) return;
+    if (widget.openAddOnStart) {
+      context.go(AppRouter.guestList(widget.weddingPlanId));
+    }
   }
+
+
 
   Future<void> _showGuestSheet({
     required GuestsProvider provider,
@@ -200,15 +214,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
     if (!mounted) return;
     if (ok) {
       final message = provider.noticeMessage ?? 'تم حفظ الضيف.';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
+      AarastToast.showSuccess(context, message);
     } else {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(provider.errorMessage ?? 'تعذر حفظ الضيف.')),
-        );
+      AarastToast.showError(context, provider.errorMessage ?? 'تعذر حفظ الضيف.');
     }
   }
 
@@ -303,9 +311,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
     if (confirmed == true) {
       final ok = await provider.deleteGuest(guest);
       if (ok && mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(const SnackBar(content: Text('تم حذف الضيف.')));
+        AarastToast.showSuccess(context, 'تم حذف الضيف.');
       }
     }
   }
@@ -395,9 +401,10 @@ class _GuestsContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _GuestsHero(summary: summary, isLocalPlan: isLocalPlan),
-        const SizedBox(height: 12),
-        _GuestStatusSummaryCard(summary: summary),
+        _TopGuestsCommandCard(
+          summary: summary,
+          isLocalPlan: isLocalPlan,
+        ),
         const SizedBox(height: 12),
         _ImportantGuestsCard(
           issues: importantIssues,
@@ -409,22 +416,26 @@ class _GuestsContent extends StatelessWidget {
         AarastSectionHeader(
           title: _listTitle(filter),
           icon: Icons.groups_2_rounded,
-          actionLabel: 'إضافة',
-          onAction: provider.isSubmitting ? null : onAddGuest,
         ),
         const SizedBox(height: 12),
         if (visibleGuests.isEmpty)
-          AarastEmptyState(
-            title: _emptyTitle(filter),
-            message: _emptyMessage(filter),
-            icon: Icons.people_outline_rounded,
-            action: filter == _GuestFilter.all
-                ? FilledButton.icon(
-                    onPressed: onAddGuest,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('إضافة ضيف'),
-                  )
-                : null,
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppTheme.dCard,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.dLine),
+            ),
+            child: const Text(
+              'لا يوجد ضيوف حالياً. استخدم الزر العائم الذهبي للإضافة.',
+              style: TextStyle(
+                color: AppTheme.dInkSoft,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
           )
         else
           for (final guest in visibleGuests) ...[
@@ -444,349 +455,113 @@ class _GuestsContent extends StatelessWidget {
   }
 }
 
-class _GuestsHero extends StatelessWidget {
-  const _GuestsHero({required this.summary, required this.isLocalPlan});
+class _TopGuestsCommandCard extends StatelessWidget {
+  const _TopGuestsCommandCard({required this.summary, required this.isLocalPlan});
 
   final GuestSummary summary;
   final bool isLocalPlan;
 
   @override
   Widget build(BuildContext context) {
-    final completionLabel = summary.totalGuests == 0
-        ? 'لم تضف أي ضيف بعد'
-        : '${summary.completionPercent}% اكتمال بيانات الضيوف';
-
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: AppTheme.heroDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(28),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(color: Colors.white.withAlpha(36)),
-                ),
-                child: const Icon(
-                  Icons.groups_2_rounded,
-                  color: AppTheme.dGold,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'الضيوف',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'نظم قائمة الحضور والدعوات',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withAlpha(205),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _ProgressSeal(value: summary.completionRatio),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 7,
-              value: summary.completionRatio,
-              backgroundColor: Colors.white.withAlpha(35),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dGold),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 245),
-                child: Text(
-                  completionLabel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.white.withAlpha(220),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              AarastStatusPill(
-                label: isLocalPlan ? 'تخطيط محلي' : 'حساب محفوظ',
-                color: AppTheme.dGold,
-                backgroundColor: Colors.white.withAlpha(24),
-                icon: isLocalPlan
-                    ? Icons.phone_iphone_rounded
-                    : Icons.verified_user_outlined,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HeroMetric(label: 'الدعوات', value: '${summary.totalGuests}'),
-              _HeroMetric(
-                label: 'الحضور المتوقع',
-                value: '${summary.expectedSeatsCount}',
-              ),
-              _HeroMetric(label: 'مؤكد', value: '${summary.confirmed}'),
-              _HeroMetric(label: 'بانتظار الرد', value: '${summary.pending}'),
-              _HeroMetric(
-                label: 'ناقص بيانات',
-                value: '${summary.incompleteGuestsCount}',
-              ),
-              _HeroMetric(
-                label: 'طرف العريس/العروسة',
-                value:
-                    '${summary.bySideForSuper['groom'] ?? 0}/${summary.bySideForSuper['bride'] ?? 0}',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 132,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(22),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: Colors.white.withAlpha(32)),
+        color: AppTheme.dCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.dLine),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white.withAlpha(198),
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GuestStatusSummaryCard extends StatelessWidget {
-  const _GuestStatusSummaryCard({required this.summary});
-
-  final GuestSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final groupEntries = summary.byGroup.entries
-        .where((entry) => entry.value > 0)
-        .take(3)
-        .toList();
-
-    return AarastCard(
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.insights_rounded,
-                color: AppTheme.dMaroon,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  'ملخص حالة الضيوف',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Text(
-                '${summary.totalGuests} ضيف',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.dMaroon,
-                  fontWeight: FontWeight.w900,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'اكتمال البيانات (${summary.completionPercent}%)',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              color: AppTheme.dInk,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        if (isLocalPlan) ...[
+                          const SizedBox(width: 8),
+                          AarastStatusPill(
+                            label: 'تخطيط محلي',
+                            color: AppTheme.dGold,
+                            backgroundColor: AppTheme.dGold.withValues(alpha: 0.1),
+                            icon: Icons.phone_iphone_rounded,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: summary.completionRatio,
+                        minHeight: 4,
+                        backgroundColor: AppTheme.dLine,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dMaroon),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _SummaryTile(
-                label: 'مؤكد',
-                value: '${summary.confirmed}',
-                color: AppTheme.dGreen,
-                icon: Icons.check_circle_outline_rounded,
-              ),
-              _SummaryTile(
-                label: 'بانتظار الرد',
-                value: '${summary.pending}',
-                color: AppTheme.dGoldDeep,
-                icon: Icons.hourglass_bottom_rounded,
-              ),
-              _SummaryTile(
-                label: 'لن يحضر',
-                value: '${summary.declined}',
-                color: AppTheme.danger,
-                icon: Icons.cancel_outlined,
-              ),
-              _SummaryTile(
-                label: 'ناقص هاتف',
-                value: '${summary.missingPhoneCount}',
-                color: AppTheme.dOrange,
-                icon: Icons.phone_disabled_outlined,
-              ),
-              _SummaryTile(
-                label: 'طرف العريس',
-                value: '${summary.bySideForSuper['groom'] ?? 0}',
-                color: AppTheme.dMaroon,
-                icon: Icons.person_outline_rounded,
-              ),
-              _SummaryTile(
-                label: 'طرف العروسة',
-                value: '${summary.bySideForSuper['bride'] ?? 0}',
-                color: AppTheme.dBlue,
-                icon: Icons.person_2_outlined,
-              ),
-            ],
-          ),
-          if (summary.companionsExpectedCount > 0 || groupEntries.isNotEmpty)
-            const SizedBox(height: 12),
-          if (summary.companionsExpectedCount > 0)
-            Text(
-              'المرافقون المتوقعون: ${summary.companionsExpectedCount}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.dInkSoft,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          if (groupEntries.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                for (final entry in groupEntries)
-                  AarastStatusPill(
-                    label: '${_groupSummaryLabel(entry.key)}: ${entry.value}',
-                    color: AppTheme.dMaroon,
-                    backgroundColor: AppTheme.dPinkBg.withAlpha(130),
-                    icon: Icons.folder_open_rounded,
-                  ),
+                _MiniStat(label: 'الإجمالي', value: '${summary.totalGuests}', color: AppTheme.dInkSoft),
+                _MiniStat(label: 'مؤكد', value: '${summary.confirmed}', color: AppTheme.dGreen),
+                _MiniStat(label: 'بانتظار الرد', value: '${summary.pending}', color: AppTheme.dGoldDeep),
+                _MiniStat(label: 'ناقص بيانات', value: '${summary.incompleteGuestsCount}', color: summary.incompleteGuestsCount > 0 ? AppTheme.danger : AppTheme.dInkSoft),
+                if (summary.companionsExpectedCount > 0)
+                  _MiniStat(label: 'مرافقين', value: '${summary.companionsExpectedCount}', color: AppTheme.dInkSoft),
               ],
             ),
-          ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value, required this.color});
   final String label;
   final String value;
   final Color color;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 132,
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withAlpha(12),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: color.withAlpha(32)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.dInkSoft,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
+          Text(
+            value,
+            style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 13),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.dInkSoft, fontWeight: FontWeight.w700, fontSize: 11),
           ),
         ],
       ),
@@ -1520,35 +1295,6 @@ class _GuestSheetResult {
   final String? notes;
 }
 
-class _ProgressSeal extends StatelessWidget {
-  const _ProgressSeal({required this.value});
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    final percent = (value * 100).round();
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withAlpha(22),
-        border: Border.all(color: AppTheme.dGold.withAlpha(150), width: 1.4),
-      ),
-      child: Center(
-        child: Text(
-          '$percent%',
-          textDirection: TextDirection.ltr,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _GuestLoadingState extends StatelessWidget {
   const _GuestLoadingState();
@@ -1795,13 +1541,6 @@ String _groupLabel(Guest guest, List<GuestGroup> groups) {
   return 'ضمن مجموعة';
 }
 
-String _groupSummaryLabel(String key) {
-  return switch (key) {
-    'ungrouped' => 'بدون مجموعة',
-    'grouped' => 'ضمن مجموعة',
-    _ => key,
-  };
-}
 
 String _supportedSide(String? side) {
   return _sideValues.contains(side) ? side! : 'OTHER';
@@ -1868,29 +1607,6 @@ String _listTitle(_GuestFilter filter) {
   };
 }
 
-String _emptyTitle(_GuestFilter filter) {
-  return switch (filter) {
-    _GuestFilter.all => 'لم تضف أي ضيف بعد',
-    _GuestFilter.confirmed => 'لا يوجد ضيوف مؤكدون بعد',
-    _GuestFilter.pending => 'لا يوجد ضيوف بانتظار الرد',
-    _GuestFilter.declined => 'لا يوجد ضيوف اعتذروا',
-    _GuestFilter.incomplete => 'كل بيانات الضيوف مكتملة',
-    _GuestFilter.groom => 'لا يوجد ضيوف من طرف العريس',
-    _GuestFilter.bride => 'لا يوجد ضيوف من طرف العروسة',
-  };
-}
-
-String _emptyMessage(_GuestFilter filter) {
-  return switch (filter) {
-    _GuestFilter.all => 'ابدأ بإضافة أول ضيف لتظهر أعداد الحضور بصدق.',
-    _GuestFilter.confirmed => 'عند تأكيد ضيف سيظهر هنا.',
-    _GuestFilter.pending => 'لا توجد أسماء تحتاج انتظار رد حاليًا.',
-    _GuestFilter.declined => 'أي ضيف لن يحضر سيظهر في هذه القائمة.',
-    _GuestFilter.incomplete => 'لا توجد أرقام أو بيانات ناقصة حاليًا.',
-    _GuestFilter.groom => 'لا نعرض طرفًا غير موجود في البيانات.',
-    _GuestFilter.bride => 'لا نعرض طرفًا غير موجود في البيانات.',
-  };
-}
 
 class _GuestIssue {
   const _GuestIssue({

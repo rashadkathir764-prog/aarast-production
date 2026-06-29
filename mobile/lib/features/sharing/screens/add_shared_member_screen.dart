@@ -36,6 +36,28 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   bool _canManageFinancialRecords = false;
   bool _receiveNotifications = true;
   String? _localPhoneError;
+  bool _isCheckingSharingAccess = true;
+  bool _showLoginGate = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _refreshSharingAccess();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant AddSharedMemberScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _refreshSharingAccess();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -47,6 +69,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
     final foundUser = provider.lookupUser;
+    final gate = _authGateFor(provider);
 
     return AarastPageScaffold(
       title: 'إضافة عضو',
@@ -60,86 +83,93 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
           icon: const Icon(Icons.chevron_right_rounded),
         ),
       ],
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          children: [
-            const _PrivacyHint(),
-            const SizedBox(height: 14),
-            _PhoneLookupCard(
-              controller: _phoneController,
-              isLookingUp: provider.isLookingUp,
-              errorMessage: provider.lookupErrorMessage,
-              duplicateMessage:
-                  _localPhoneError ??
-                  _duplicateMemberMessage(provider.members, provider.invites),
-              foundUser: foundUser,
-              onChanged: (_) {
-                provider.clearLookup();
-                setState(() => _localPhoneError = null);
-              },
-              onLookup: _lookupUser,
+      child:
+          gate ??
+          Form(
+            key: _formKey,
+            child: ListView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                const _PrivacyHint(),
+                const SizedBox(height: 14),
+                _PhoneLookupCard(
+                  controller: _phoneController,
+                  isLookingUp: provider.isLookingUp,
+                  errorMessage: provider.lookupErrorMessage,
+                  duplicateMessage:
+                      _localPhoneError ??
+                      _duplicateMemberMessage(
+                        provider.members,
+                        provider.invites,
+                      ),
+                  foundUser: foundUser,
+                  onChanged: (_) {
+                    provider.clearLookup();
+                    setState(() => _localPhoneError = null);
+                  },
+                  onLookup: _lookupUser,
+                ),
+                const SizedBox(height: 14),
+                _RoleDropdown(value: _role, onChanged: _applyRole),
+                const SizedBox(height: 14),
+                _PermissionSwitches(
+                  canViewBudget: _canViewBudget,
+                  canViewExpenses: _canViewExpenses,
+                  canViewDebts: _canViewDebts,
+                  canEditPlan: _canEditPlan,
+                  canManageTasks: _canManageTasks,
+                  canManageGuests: _canManageGuests,
+                  canManageProviders: _canManageProviders,
+                  canInviteMembers: _canInviteMembers,
+                  canManageFinancialRecords: _canManageFinancialRecords,
+                  receiveNotifications: _receiveNotifications,
+                  onViewBudgetChanged: (value) =>
+                      setState(() => _canViewBudget = value),
+                  onViewExpensesChanged: (value) =>
+                      setState(() => _canViewExpenses = value),
+                  onViewDebtsChanged: (value) =>
+                      setState(() => _canViewDebts = value),
+                  onEditPlanChanged: (value) =>
+                      setState(() => _canEditPlan = value),
+                  onManageTasksChanged: (value) =>
+                      setState(() => _canManageTasks = value),
+                  onManageGuestsChanged: (value) =>
+                      setState(() => _canManageGuests = value),
+                  onManageProvidersChanged: (value) =>
+                      setState(() => _canManageProviders = value),
+                  onInviteMembersChanged: (value) =>
+                      setState(() => _canInviteMembers = value),
+                  onManageFinancialRecordsChanged: (value) =>
+                      setState(() => _canManageFinancialRecords = value),
+                  onReceiveNotificationsChanged: (value) =>
+                      setState(() => _receiveNotifications = value),
+                ),
+                if (provider.errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  _InlineError(message: provider.errorMessage!),
+                ],
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: provider.isSubmitting ? null : _submit,
+                  icon: provider.isSubmitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.person_add_alt_1_rounded),
+                  label: const Text('إرسال دعوة المشاركة'),
+                ),
+                const SizedBox(height: 20),
+              ],
             ),
-            const SizedBox(height: 14),
-            _RoleDropdown(value: _role, onChanged: _applyRole),
-            const SizedBox(height: 14),
-            _PermissionSwitches(
-              canViewBudget: _canViewBudget,
-              canViewExpenses: _canViewExpenses,
-              canViewDebts: _canViewDebts,
-              canEditPlan: _canEditPlan,
-              canManageTasks: _canManageTasks,
-              canManageGuests: _canManageGuests,
-              canManageProviders: _canManageProviders,
-              canInviteMembers: _canInviteMembers,
-              canManageFinancialRecords: _canManageFinancialRecords,
-              receiveNotifications: _receiveNotifications,
-              onViewBudgetChanged: (value) =>
-                  setState(() => _canViewBudget = value),
-              onViewExpensesChanged: (value) =>
-                  setState(() => _canViewExpenses = value),
-              onViewDebtsChanged: (value) =>
-                  setState(() => _canViewDebts = value),
-              onEditPlanChanged: (value) =>
-                  setState(() => _canEditPlan = value),
-              onManageTasksChanged: (value) =>
-                  setState(() => _canManageTasks = value),
-              onManageGuestsChanged: (value) =>
-                  setState(() => _canManageGuests = value),
-              onManageProvidersChanged: (value) =>
-                  setState(() => _canManageProviders = value),
-              onInviteMembersChanged: (value) =>
-                  setState(() => _canInviteMembers = value),
-              onManageFinancialRecordsChanged: (value) =>
-                  setState(() => _canManageFinancialRecords = value),
-              onReceiveNotificationsChanged: (value) =>
-                  setState(() => _receiveNotifications = value),
-            ),
-            if (provider.errorMessage != null) ...[
-              const SizedBox(height: 12),
-              _InlineError(message: provider.errorMessage!),
-            ],
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: provider.isSubmitting ? null : _submit,
-              icon: provider.isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('إرسال دعوة المشاركة'),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   Future<void> _lookupUser() async {
+    if (await _refreshSharingAccess()) return;
+    if (!mounted) return;
     if (!_formKey.currentState!.validate()) return;
     final provider = context.read<SharingProvider>();
     final duplicateMessage = _duplicateMemberMessage(
@@ -161,10 +191,8 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   }
 
   Future<void> _submit() async {
+    if (await _refreshSharingAccess()) return;
     if (!_formKey.currentState!.validate()) return;
-    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
-      return;
-    }
     if (!mounted) return;
 
     final provider = context.read<SharingProvider>();
@@ -219,6 +247,49 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       _canManageFinancialRecords = defaults.canManageFinancialRecords;
       _receiveNotifications = defaults.receiveNotifications;
     });
+  }
+
+  Future<bool> _refreshSharingAccess() async {
+    setState(() {
+      _isCheckingSharingAccess = true;
+      _showLoginGate = false;
+    });
+
+    final shouldGate = await AuthActionGuard.shouldGateProtectedSharing(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (!mounted) return true;
+
+    setState(() {
+      _isCheckingSharingAccess = false;
+      _showLoginGate = shouldGate;
+    });
+    return shouldGate;
+  }
+
+  Widget? _authGateFor(SharingProvider provider) {
+    if (_isCheckingSharingAccess) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_showLoginGate) {
+      return const AuthGatePanel(
+        title: AuthActionGuard.sharingLoginGateTitle,
+        body: AuthActionGuard.sharingLoginGateBody,
+        icon: Icons.group_add_outlined,
+      );
+    }
+
+    if (provider.authGateKind == SharingAuthGateKind.sessionExpired) {
+      return const AuthGatePanel(
+        title: AuthActionGuard.sessionExpiredTitle,
+        body: AuthActionGuard.sharingSessionExpiredBody,
+        icon: Icons.lock_clock_outlined,
+      );
+    }
+
+    return null;
   }
 
   String? _duplicateMemberMessage(

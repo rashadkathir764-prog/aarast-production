@@ -47,6 +47,16 @@ class AppTheme {
   static const dCreamBg = AarastDesignTokens.softSand;
   static const dTrack = Color(0xFFCDC6C4);
 
+  // Welcome Light Luxury specific colors
+  static const wWarmIvory = Color(0xFFFBF7F1);
+  static const wPearlWhite = Color(0xFFFFFFFF);
+  static const wRoyalBurgundy = Color(0xFF6D1024);
+  static const wDeepBurgundy = Color(0xFF4B0B19);
+  static const wChampagneGold = Color(0xFFD6B36A);
+  static const wSoftGold = Color(0xFFF1E1B8);
+  static const wPrimaryText = Color(0xFF2D1A1E);
+  static const wSecondaryText = Color(0xFF6C5A5D);
+
   // Semantic aliases for new UI work
   static const background = dBg;
   static const card = dCard;

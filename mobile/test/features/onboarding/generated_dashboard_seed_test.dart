@@ -57,6 +57,20 @@ void main() {
       expect(seed.nextBestAction, 'راجع تصنيفات البداية');
     });
 
+    test('uses plan name as dashboard title when provided', () {
+      final seed = GeneratedDashboardSeed.fromDraft(
+        const GuestOnboardingDraft.empty().copyWith(
+          planName: 'عرسنا',
+          selectedPath: GuestOnboardingPath.weddingUser,
+          persona: GuestPersona.groom,
+          weddingDateUnknown: true,
+        ),
+      );
+
+      expect(seed.title, 'عرسنا');
+      expect(seed.shortLocationLabel, 'لم يحدد الموقع');
+    });
+
     test('builds structured location labels from legacy guest fields', () {
       final seed = GeneratedDashboardSeed.fromDraft(
         const GuestOnboardingDraft.empty().copyWith(

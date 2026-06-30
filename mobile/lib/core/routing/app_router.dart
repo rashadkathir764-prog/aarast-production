@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/onboarding/screens/guest_onboarding_flow_screen.dart';
+import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
@@ -53,6 +54,7 @@ class AppRouter {
   const AppRouter._();
 
   static const splash = '/';
+  static const welcome = '/welcome';
   static const onboarding = '/onboarding';
   static const login = '/login';
   static const register = '/register';
@@ -195,14 +197,17 @@ class AppRouter {
           builder: (context, state) => const SplashScreen(),
         ),
         GoRoute(
+          path: welcome,
+          builder: (context, state) => const SmartWelcomeScreen(),
+        ),
+        GoRoute(
           path: onboarding,
+          redirect: (context, state) => welcome,
           builder: (context, state) => const GuestOnboardingFlowScreen(),
         ),
         GoRoute(
           path: guestOnboardingPreview,
-          redirect: (context, state) {
-            return guestOnboardingRedirect(flags);
-          },
+          redirect: (context, state) => welcome,
           builder: (context, state) => const GuestOnboardingFlowScreen(),
         ),
         GoRoute(

@@ -9,6 +9,7 @@ void main() {
       const draft = GuestOnboardingDraft.empty();
 
       expect(draft.guestPlanId, isNull);
+      expect(draft.planName, isNull);
       expect(draft.createdAt, isNull);
       expect(draft.isGuestPlan, isFalse);
       expect(draft.needsSync, isFalse);
@@ -30,6 +31,7 @@ void main() {
       expect(draft.isWeddingUser, isFalse);
       expect(draft.hasMinimumPlanSeed, isFalse);
       expect(draft.canGenerateLocalPreview, isFalse);
+      expect(draft.canOpenLocalDashboard, isFalse);
       expect(draft.isCompleteGuestPlan, isFalse);
     });
 
@@ -166,6 +168,15 @@ void main() {
       expect(draft.selectedCategoryKeys, ['hall', 'food', 'photo']);
     });
 
+    test('stores plan name', () {
+      final draft = const GuestOnboardingDraft.empty().copyWith(
+        planName: 'عرسنا',
+      );
+
+      expect(draft.planName, 'عرسنا');
+      expect(draft.copyWith(clearPlanName: true).planName, isNull);
+    });
+
     test('can generate local preview when minimum plan seed exists', () {
       final draft = const GuestOnboardingDraft.empty().copyWith(
         selectedPath: GuestOnboardingPath.weddingUser,
@@ -180,9 +191,38 @@ void main() {
       expect(draft.canGenerateLocalPreview, isTrue);
     });
 
+    test('can open local dashboard without fake location or categories', () {
+      final draft = GuestOnboardingDraft(
+        guestPlanId: 'local-guest-1',
+        createdAt: DateTime.utc(2026, 6, 30),
+        isGuestPlan: true,
+        needsSync: true,
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.bride,
+        governorate: null,
+        city: null,
+        district: null,
+        neighborhood: null,
+        street: null,
+        addressNote: null,
+        weddingDate: null,
+        weddingDateUnknown: true,
+        priorities: const [],
+        currency: null,
+        estimatedBudget: null,
+        selectedCategoryKeys: const [],
+      );
+
+      expect(draft.hasMinimumPlanSeed, isFalse);
+      expect(draft.canGenerateLocalPreview, isFalse);
+      expect(draft.canOpenLocalDashboard, isTrue);
+      expect(draft.isCompleteGuestPlan, isTrue);
+    });
+
     test('serializes to and from JSON without losing data', () {
       final draft = GuestOnboardingDraft(
         guestPlanId: 'guest-plan-1',
+        planName: 'خطة البيت',
         createdAt: DateTime.utc(2026, 6, 19),
         isGuestPlan: true,
         needsSync: true,

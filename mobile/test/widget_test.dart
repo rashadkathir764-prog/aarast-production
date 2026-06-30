@@ -7,6 +7,8 @@ import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/splash_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/onboarding/screens/guest_onboarding_flow_screen.dart';
+import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +29,7 @@ void main() {
       routes: [
         GoRoute(path: '/', builder: (context, state) => const SplashScreen()),
         GoRoute(
-          path: '/onboarding',
+          path: '/welcome',
           builder: (context, state) =>
               const Scaffold(body: Text('guest-onboarding-opened')),
         ),
@@ -45,7 +47,8 @@ void main() {
         MaterialApp.router(routerConfig: router),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
 
     expect(find.text('guest-onboarding-opened'), findsOneWidget);
     expect(find.text('dashboard-opened'), findsNothing);
@@ -69,6 +72,26 @@ void main() {
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsWidgets);
+  });
+
+  testWidgets('/onboarding redirects to smart welcome gateway', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final dependencies = await _authDependencies();
+    final router = AppRouter.create();
+
+    await tester.pumpWidget(
+      _withAuthDependencies(
+        dependencies,
+        MaterialApp.router(routerConfig: router),
+      ),
+    );
+    router.go(AppRouter.onboarding);
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, AppRouter.welcome);
+    expect(find.byType(SmartWelcomeScreen), findsOneWidget);
+    expect(find.byType(GuestOnboardingFlowScreen), findsNothing);
+    expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
   });
 
   testWidgets('returning guest with local plan opens dashboard', (
@@ -121,7 +144,8 @@ void main() {
         MaterialApp.router(routerConfig: router),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
 
     expect(find.text('dashboard-opened'), findsOneWidget);
     expect(find.text('guest-onboarding-opened'), findsNothing);

@@ -36,9 +36,12 @@ class GeneratedDashboardSeed {
     final hasBudget = _hasText(draft.estimatedBudget);
     final hasCategories = draft.selectedCategoryKeys.isNotEmpty;
     final copy = personaCopyForGuest(draft.persona);
+    final planName = draft.planName?.trim();
 
     return GeneratedDashboardSeed(
-      title: shortLocationLabel == 'لم يحدد الموقع'
+      title: planName != null && planName.isNotEmpty
+          ? planName
+          : shortLocationLabel == 'لم يحدد الموقع'
           ? 'خطة زفاف محلية'
           : 'خطة زفاف $shortLocationLabel',
       cityLabel: cityLabel,

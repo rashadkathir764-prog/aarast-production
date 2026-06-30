@@ -7,6 +7,7 @@ enum GuestPersona { groom, bride, helper }
 class GuestOnboardingDraft {
   const GuestOnboardingDraft({
     this.guestPlanId,
+    this.planName,
     this.createdAt,
     this.isGuestPlan = false,
     this.needsSync = false,
@@ -29,6 +30,7 @@ class GuestOnboardingDraft {
 
   const GuestOnboardingDraft.empty()
     : guestPlanId = null,
+      planName = null,
       createdAt = null,
       isGuestPlan = false,
       needsSync = false,
@@ -49,6 +51,7 @@ class GuestOnboardingDraft {
       selectedCategoryKeys = const [];
 
   final String? guestPlanId;
+  final String? planName;
   final DateTime? createdAt;
   final bool isGuestPlan;
   final bool needsSync;
@@ -101,18 +104,24 @@ class GuestOnboardingDraft {
     return hasMinimumPlanSeed && selectedCategoryKeys.isNotEmpty;
   }
 
+  bool get canOpenLocalDashboard {
+    return isWeddingUser && hasPersona && hasTimelineSeed;
+  }
+
   bool get isCompleteGuestPlan {
     return isGuestPlan &&
         needsSync &&
         (guestPlanId?.startsWith('guest-plan-') == true ||
             guestPlanId?.startsWith('local-guest-') == true) &&
         createdAt != null &&
-        canGenerateLocalPreview;
+        canOpenLocalDashboard;
   }
 
   GuestOnboardingDraft copyWith({
     String? guestPlanId,
     bool clearGuestPlanId = false,
+    String? planName,
+    bool clearPlanName = false,
     DateTime? createdAt,
     bool clearCreatedAt = false,
     bool? isGuestPlan,
@@ -151,6 +160,7 @@ class GuestOnboardingDraft {
 
     return GuestOnboardingDraft(
       guestPlanId: clearGuestPlanId ? null : guestPlanId ?? this.guestPlanId,
+      planName: clearPlanName ? null : planName ?? this.planName,
       createdAt: clearCreatedAt ? null : createdAt ?? this.createdAt,
       isGuestPlan: isGuestPlan ?? this.isGuestPlan,
       needsSync: needsSync ?? this.needsSync,
@@ -183,6 +193,7 @@ class GuestOnboardingDraft {
   Map<String, dynamic> toJson() {
     return {
       'guestPlanId': guestPlanId,
+      'planName': planName,
       'createdAt': createdAt?.toIso8601String(),
       'isGuestPlan': isGuestPlan,
       'needsSync': needsSync,
@@ -208,6 +219,7 @@ class GuestOnboardingDraft {
     final weddingDateUnknown = json['weddingDateUnknown'] == true;
     return GuestOnboardingDraft(
       guestPlanId: _stringOrNull(json['guestPlanId']),
+      planName: _stringOrNull(json['planName']),
       createdAt: _dateTimeOrNull(json['createdAt']),
       isGuestPlan: json['isGuestPlan'] == true,
       needsSync: json['needsSync'] == true,
@@ -264,6 +276,7 @@ class GuestOnboardingDraft {
   bool operator ==(Object other) {
     return other is GuestOnboardingDraft &&
         other.guestPlanId == guestPlanId &&
+        other.planName == planName &&
         other.createdAt == createdAt &&
         other.isGuestPlan == isGuestPlan &&
         other.needsSync == needsSync &&
@@ -288,6 +301,7 @@ class GuestOnboardingDraft {
   int get hashCode {
     return Object.hash(
       guestPlanId,
+      planName,
       createdAt,
       isGuestPlan,
       needsSync,

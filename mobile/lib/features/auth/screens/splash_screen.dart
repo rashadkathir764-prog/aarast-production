@@ -7,7 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../providers/auth_controller.dart';
-import '../widgets/auth_wedding_widgets.dart';
+import '../../../core/widgets/brand/aarast_premium_brand_mark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -27,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1450),
+      duration: const Duration(milliseconds: 1500),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.92, end: 1).animate(
@@ -57,7 +57,7 @@ class _SplashScreenState extends State<SplashScreen>
     context.go(
       auth.status == AuthStatus.authenticated || hasGuestPlan
           ? AppRouter.home
-          : AppRouter.onboarding,
+          : AppRouter.welcome,
     );
   }
 
@@ -71,37 +71,67 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return AarastScreenFrame(
       maxWidth: 560,
-      safeAreaBottom: false,
+      safeAreaBottom: true,
       child: Stack(
         children: [
-          const Positioned.fill(child: AuthWeddingBackground()),
-          Center(
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                color: Color(0xFF120306), // Royal Burgundy Night (extremely dark)
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.4),
+                  radius: 1.0,
+                  colors: [
+                    AppTheme.dMaroonDeep.withValues(alpha: 0.6), // Soft burgundy glow
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.bottomCenter,
+                  radius: 0.8,
+                  colors: [
+                    AppTheme.dGoldDeep.withValues(alpha: 0.12), // Light gold touch
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: const Alignment(0, -0.15),
             child: FadeTransition(
               opacity: _opacityAnimation,
               child: ScaleTransition(
                 scale: _scaleAnimation,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const WeddingRingsBadge(size: 112),
-                    const SizedBox(height: 28),
-                    const AuthBrandMark(),
-                    const SizedBox(height: 18),
-                    Text(
-                      'خططي لزفافك بكل أناقة ووضوح',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.dInkSoft,
-                        fontWeight: FontWeight.w700,
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const AarastPremiumBrandMark(),
+                      const SizedBox(height: 16), // Moved closer to the mark
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppTheme.dGold, // Premium gold loader
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 42),
-                    const SizedBox(
-                      width: 34,
-                      height: 34,
-                      child: CircularProgressIndicator(strokeWidth: 3),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

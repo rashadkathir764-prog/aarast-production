@@ -1,14 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import {
-  Briefcase,
-  CalendarCheck,
   Crown,
   Inbox,
   LayoutGrid,
   LogOut,
   MapPin,
-  Settings,
-  Star,
   Tag,
   UserCircle,
   Users,
@@ -19,12 +15,8 @@ const links = [
   { to: '/users', label: 'المستخدمون', icon: <UserCircle size={20} strokeWidth={1.5} /> },
   { to: '/providers', label: 'الموردون', icon: <Users size={20} strokeWidth={1.5} /> },
   { to: '/providers/applications', label: 'طلبات الموردين', icon: <Inbox size={20} strokeWidth={1.5} /> },
-  { to: '/services', label: 'الخدمات', icon: <Briefcase size={20} strokeWidth={1.5} /> },
   { to: '/categories', label: 'فئات الموردين', icon: <Tag size={20} strokeWidth={1.5} /> },
   { to: '/cities', label: 'المدن والمناطق', icon: <MapPin size={20} strokeWidth={1.5} /> },
-  { to: '/bookings', label: 'الحجوزات', icon: <CalendarCheck size={20} strokeWidth={1.5} /> },
-  { to: '/reviews', label: 'التقييمات', icon: <Star size={20} strokeWidth={1.5} /> },
-  { to: '/settings', label: 'الإعدادات', icon: <Settings size={20} strokeWidth={1.5} /> },
 ];
 
 type SidebarProps = {

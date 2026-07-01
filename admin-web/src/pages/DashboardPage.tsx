@@ -15,16 +15,11 @@ import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import {
-  BarChart2,
   Briefcase,
   CalendarCheck,
-  ChevronDown,
   Clock,
-  Gift,
   MapPin,
-  Megaphone,
   Tag,
-  UserPlus,
   Users,
 } from 'lucide-react';
 import { formatDate } from './providerHelpers';
@@ -41,12 +36,6 @@ const quickActionStyle: CSSProperties = {
   color: '#4A1525',
   textAlign: 'center',
   textDecoration: 'none',
-};
-
-const disabledQuickActionStyle: CSSProperties = {
-  ...quickActionStyle,
-  opacity: 0.55,
-  cursor: 'not-allowed',
 };
 
 export function DashboardPage() {
@@ -168,8 +157,7 @@ export function DashboardPage() {
           title="النشاط خلال آخر 30 يوما"
           actions={
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F5F4F0', padding: '4px 12px', borderRadius: '8px', fontSize: '12px', color: '#4A1525' }}>
-              <span>قيد التجهيز</span>
-              <ChevronDown size={14} />
+              <span>غير مفعّل</span>
             </div>
           }
         >
@@ -177,7 +165,6 @@ export function DashboardPage() {
             title="تقارير النشاط تحتاج API"
             message="لا يوجد endpoint إداري للتقارير الزمنية، لذلك لا يتم عرض مخطط أو أرقام محاكاة."
             tone="api"
-            action={<Link className="button button--ghost" to="/reports">تفاصيل حالة التقارير</Link>}
           />
         </SectionCard>
 
@@ -193,45 +180,34 @@ export function DashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-        <SectionCard title="إجراءات سريعة">
+        <SectionCard title="إجراءات متاحة">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <Link to="/cities" style={quickActionStyle}>
               <MapPin size={24} color="#C79B3F" strokeWidth={1.5} />
               <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة أو تعديل<br />مدينة</span>
             </Link>
-            <button type="button" disabled style={disabledQuickActionStyle} title="إنشاء مورد جديد يحتاج POST /admin/providers">
-              <UserPlus size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة مورد<br />غير مفعلة</span>
-            </button>
-            <Link to="/reports" style={quickActionStyle}>
-              <BarChart2 size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>حالة<br />التقارير</span>
+            <Link to="/categories" style={quickActionStyle}>
+              <Tag size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إدارة<br />الفئات</span>
             </Link>
-            <button type="button" disabled style={disabledQuickActionStyle} title="إنشاء خدمة جديدة يحتاج POST /admin/services">
-              <Gift size={24} color="#C79B3F" strokeWidth={1.5} />
-              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إضافة خدمة<br />غير مفعلة</span>
-            </button>
+            <Link to="/providers/applications" style={quickActionStyle}>
+              <Clock size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>مراجعة<br />طلبات الموردين</span>
+            </Link>
+            <Link to="/providers" style={quickActionStyle}>
+              <Briefcase size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إدارة<br />الموردين</span>
+            </Link>
           </div>
-          <button
-            type="button"
-            disabled
-            title="إرسال إشعار جماعي يحتاج Admin notification API"
-            style={{ width: '100%', marginTop: '16px', padding: '12px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: '#FFFDF9', border: '1px solid #EFECE6', borderRadius: '12px', color: '#4A1525', fontWeight: 700, fontSize: '13px', cursor: 'not-allowed', opacity: 0.55 }}
-          >
-            <Megaphone size={16} color="#4A1525" />
-            إرسال إشعار جماعي غير مفعل
-          </button>
         </SectionCard>
 
         <SectionCard
           title="الحجوزات والطلبات"
-          actions={<Link to="/bookings" style={{ fontSize: '13px', color: '#8A7A81', textDecoration: 'none' }}>تفاصيل الحالة</Link>}
         >
           <EmptyState
             title="لا يوجد Admin API للحجوزات"
             message="قائمة APIs المتاحة لا تتضمن endpoint لإدارة الحجوزات، لذلك تم حذف الجدول الوهمي والإبقاء على صفحة حالة آمنة."
             tone="api"
-            action={<Link className="button button--ghost" to="/bookings">فتح صفحة الحالة</Link>}
           />
         </SectionCard>
       </div>

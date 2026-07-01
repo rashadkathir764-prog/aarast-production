@@ -3,34 +3,41 @@ import 'package:flutter/material.dart';
 class AarastDesignTokens {
   const AarastDesignTokens._();
 
-  static const Color royalMaroon = Color(0xFF800020);
-  static const Color royalMaroonSoft = Color(0xFF8B183B);
-  static const Color royalMaroonDeep = Color(0xFF4E0B20);
-  static const Color royalMaroonMuted = Color(0xFF7B1232);
+  // Primary Colors
+  static const Color ivory = Color(0xFFFBF4EA); // Warm Ivory
+  static const Color pearl = Color(0xFFFFF9F2); // Soft white for cards
+  static const Color surface = Color(0xFFFFFDF8);
+  static const Color surfaceElevated = Color(0xFFFFFFFF);
 
-  static const Color champagneGold = Color(0xFFD4AF37);
-  static const Color champagneGoldSoft = Color(0xFFE1CA96);
-  static const Color champagneGoldDeep = Color(0xFFA98642);
+  static const Color burgundy = Color(0xFF8A0B2F);
+  static const Color burgundyDark = Color(0xFF4B0618);
+  static const Color burgundySoft = Color(0xFFF8E9EE);
 
-  static const Color pearl = Color(0xFFFDFBF9);
-  static const Color warmIvory = Color(0xFFFBF7F1);
-  static const Color softSand = Color(0xFFF4ECDD);
-  static const Color mutedRose = Color(0xFFF6E1E1);
+  static const Color gold = Color(0xFFD9B15F);
+  static const Color goldSoft = Color(0xFFFFF4DC);
 
-  static const Color ink = Color(0xFF2D1A1E);
-  static const Color inkSoft = Color(0xFF6C5A5D);
-  static const Color muted = Color(0xFFA89C9C);
-  static const Color hairline = Color(0xFFE9DED3);
+  static const Color ink = Color(0xFF2F2A27);
+  static const Color title = Color(0xFF3B1B22);
+  static const Color muted = Color(0xFF8B7C72);
+  static const Color border = Color(0xFFEADFD2);
 
-  static const Color success = Color(0xFF4F9A43);
-  static const Color successBg = Color(0xFFE9F1E4);
-  static const Color warning = Color(0xFFD6892C);
-  static const Color warningBg = Color(0xFFFFF2D8);
-  static const Color danger = Color(0xFFD32F2F);
-  static const Color dangerBg = Color(0xFFFCE8E8);
-  static const Color info = Color(0xFF3F6FB0);
-  static const Color infoBg = Color(0xFFE6EDF6);
+  // Semantic Status Colors
+  static const Color success = Color(0xFF4F9D72);
+  static const Color successSoft = Color(0xFFEAF7EF);
+  static const Color warning = Color(0xFFC98A2C);
+  static const Color warningSoft = Color(0xFFFFF3DF);
+  static const Color danger = Color(0xFFB23A48);
+  static const Color dangerSoft = Color(0xFFFBEAEC);
+  static const Color disabled = Color(0xFFD8CEC4);
+  static const Color empty = Color(0xFFF3E8DA);
 
+  // Backward compatibility for tests
+  static const Color royalMaroon = burgundy;
+  static const Color champagneGold = gold;
+  static const Color warmIvory = ivory;
+  static const Color hairline = border;
+
+  // Spacing values
   static const double space2 = 2;
   static const double space4 = 4;
   static const double space6 = 6;
@@ -45,6 +52,7 @@ class AarastDesignTokens {
   static const double space28 = 28;
   static const double space32 = 32;
 
+  // Border Radii
   static const double radiusSm = 12;
   static const double radiusMd = 16;
   static const double radiusLg = 20;
@@ -52,24 +60,27 @@ class AarastDesignTokens {
   static const double radius2xl = 32;
   static const double radiusPill = 999;
 
+  // Icon Sizes
   static const double iconSm = 16;
   static const double iconMd = 20;
   static const double iconLg = 24;
   static const double iconXl = 30;
 
+  // Metrics
   static const double minTapTarget = 48;
   static const double cardMinHeight = 72;
   static const double bottomNavHeight = 76;
   static const double screenMaxWidth = 560;
 
+  // Motion
   static const Duration motionQuick = Duration(milliseconds: 140);
   static const Duration motionFast = Duration(milliseconds: 190);
   static const Duration motionStandard = Duration(milliseconds: 300);
   static const Duration motionSlow = Duration(milliseconds: 460);
+  static const Curve motionCurve = Curves.easeOutCubic;
+  static const Curve motionExitCurve = Curves.easeInCubic;
 
-  static const Curve motionCurve = Cubic(0.22, 1, 0.36, 1);
-  static const Curve motionExitCurve = Cubic(0.4, 0, 1, 1);
-
+  // Padding
   static const EdgeInsets screenPadding = EdgeInsets.symmetric(horizontal: 16);
   static const EdgeInsets cardPadding = EdgeInsets.all(16);
   static const EdgeInsets listItemPadding = EdgeInsets.symmetric(
@@ -77,39 +88,39 @@ class AarastDesignTokens {
     vertical: 14,
   );
 
-  static const LinearGradient royalGradient = LinearGradient(
+  // Gradients
+  static const LinearGradient burgundyGradient = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [royalMaroonSoft, royalMaroon, royalMaroonDeep],
-  );
-
-  static const LinearGradient champagneGradient = LinearGradient(
-    begin: Alignment.topRight,
-    end: Alignment.bottomLeft,
-    colors: [champagneGoldSoft, champagneGold, champagneGoldDeep],
+    colors: [
+      Color(0xFF8A0B2F),
+      Color(0xFF6E0826),
+      Color(0xFF4B0618),
+    ],
   );
 
   static const LinearGradient pageGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [pearl, warmIvory, softSand],
-    stops: [0, 0.64, 1],
+    colors: [pearl, ivory],
+    stops: [0.0, 1.0],
   );
 
-  static List<BoxShadow> cardShadow({double opacity = 0.07}) {
+  // Shadows
+  static List<BoxShadow> cardShadow({double opacity = 0.05}) {
     return [
       BoxShadow(
-        color: royalMaroonDeep.withAlpha((opacity * 255).round()),
+        color: ink.withAlpha((opacity * 255).round()),
         blurRadius: 22,
         offset: const Offset(0, 10),
       ),
     ];
   }
 
-  static List<BoxShadow> liftedShadow({double opacity = 0.12}) {
+  static List<BoxShadow> liftedShadow({double opacity = 0.08}) {
     return [
       BoxShadow(
-        color: royalMaroonDeep.withAlpha((opacity * 255).round()),
+        color: ink.withAlpha((opacity * 255).round()),
         blurRadius: 34,
         offset: const Offset(0, 16),
       ),

@@ -1,4 +1,4 @@
-class ExpenseSummary {
+﻿class ExpenseSummary {
   const ExpenseSummary({
     required this.totalPaid,
     required this.totalPlanned,

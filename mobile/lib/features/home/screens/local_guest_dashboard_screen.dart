@@ -57,6 +57,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
+      extendBody: true,
       floatingActionButton: RoyalSmartFloatingActionButton(
         onPressed: () => _showQuickAdd(context, planId),
       ),
@@ -294,16 +295,16 @@ class _LocalSyncNotice extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.dMaroon.withValues(alpha: 0.04),
+            color: AppTheme.burgundy.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.dMaroon.withValues(alpha: 0.1)),
+            border: Border.all(color: AppTheme.burgundySoft),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
                 Icons.cloud_off_rounded,
-                color: AppTheme.dMaroon,
+                color: AppTheme.burgundy,
                 size: 16,
               ),
               const SizedBox(width: 8),
@@ -313,7 +314,7 @@ class _LocalSyncNotice extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0,
@@ -325,7 +326,7 @@ class _LocalSyncNotice extends StatelessWidget {
                 width: 4,
                 height: 4,
                 decoration: const BoxDecoration(
-                  color: AppTheme.dMaroon,
+                  color: AppTheme.burgundy,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -333,7 +334,7 @@ class _LocalSyncNotice extends StatelessWidget {
               const Text(
                 'زامن',
                 style: TextStyle(
-                  color: Color(0xFF800020),
+                  color: AppTheme.burgundy,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,

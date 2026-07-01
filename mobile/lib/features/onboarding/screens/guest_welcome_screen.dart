@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -16,8 +16,8 @@ class GuestWelcomeScreen extends StatelessWidget {
       safeAreaBottom: false,
       child: SizedBox.expand(
         child: DecoratedBox(
-          decoration: AppTheme.heroDecoration().copyWith(
-            borderRadius: BorderRadius.zero,
+          decoration: const BoxDecoration(
+            color: AppTheme.ivory,
           ),
           child: Stack(
             children: [
@@ -31,7 +31,7 @@ class GuestWelcomeScreen extends StatelessWidget {
                       child: Text(
                         'أعرست',
                         style: TextStyle(
-                          color: AppTheme.dGold2,
+                          color: AppTheme.burgundy,
                           fontFamily: AppTheme.displayFontFamily,
                           fontSize: 29,
                           fontWeight: FontWeight.w700,
@@ -43,13 +43,13 @@ class GuestWelcomeScreen extends StatelessWidget {
                       width: 88,
                       height: 88,
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(18),
+                        color: AppTheme.ink.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.dGold2, width: 1.2),
+                        border: Border.all(color: AppTheme.burgundy, width: 1.2),
                       ),
                       child: const Icon(
                         Icons.favorite_rounded,
-                        color: AppTheme.dGold2,
+                        color: AppTheme.burgundy,
                         size: 42,
                       ),
                     ),
@@ -58,7 +58,7 @@ class GuestWelcomeScreen extends StatelessWidget {
                       'ألف مبروك!',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.ink,
                         fontFamily: AppTheme.displayFontFamily,
                         fontSize: 42,
                         fontWeight: FontWeight.w700,
@@ -70,7 +70,7 @@ class GuestWelcomeScreen extends StatelessWidget {
                       'رحلتكم نحو يومٍ لا يُنسى تبدأ من هنا.\nنرتّب الخطة معكم خطوة بخطوة.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xFFF3E9DF),
+                        color: AppTheme.muted,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                         height: 1.7,
@@ -88,7 +88,7 @@ class GuestWelcomeScreen extends StatelessWidget {
                       'يمكنك البدء الآن وإكمال التسجيل لاحقًا',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Color(0xFFD9C8C0),
+                        color: AppTheme.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -117,7 +117,7 @@ class _WeddingPatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppTheme.dGold.withAlpha(17)
+      ..color = AppTheme.gold.withAlpha(17)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     const spacing = 58.0;

@@ -72,7 +72,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
       ],
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: _load,
         child: _body(provider, notifications: notifications),
       ),
@@ -194,11 +194,11 @@ class _NotificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _tone(notification.type);
     return AarastCard(
-      color: notification.isUnread ? tone.background : AppTheme.dCard,
+      color: notification.isUnread ? tone.background : AppTheme.ivory,
       border: Border.all(
         color: notification.isUnread
-            ? tone.color.withAlpha(80)
-            : AppTheme.dLine,
+            ? tone.color.withValues(alpha: 0.1)
+            : AppTheme.goldSoft.withAlpha(80),
       ),
       onTap: onTap,
       child: Row(
@@ -208,7 +208,7 @@ class _NotificationCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: AppTheme.dCard2,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(15),
             ),
             child: Icon(tone.icon, color: tone.color),
@@ -237,7 +237,7 @@ class _NotificationCard extends StatelessWidget {
                         width: 9,
                         height: 9,
                         decoration: const BoxDecoration(
-                          color: AppTheme.dMaroon,
+                          color: AppTheme.burgundy,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -248,7 +248,7 @@ class _NotificationCard extends StatelessWidget {
                   notification.body,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -259,7 +259,7 @@ class _NotificationCard extends StatelessWidget {
                     Text(
                       _dateLabel(notification.createdAt),
                       style: const TextStyle(
-                        color: AppTheme.dMuted,
+                        color: AppTheme.muted,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                       ),
@@ -270,7 +270,7 @@ class _NotificationCard extends StatelessWidget {
                       Text(
                         notification.priority == 'URGENT' ? 'عاجل' : 'مهم',
                         style: const TextStyle(
-                          color: AppTheme.dMaroon,
+                          color: AppTheme.burgundy,
                           fontSize: 11,
                           fontWeight: FontWeight.w900,
                         ),
@@ -286,7 +286,7 @@ class _NotificationCard extends StatelessWidget {
             onPressed: onArchive,
             icon: const Icon(Icons.archive_outlined),
             tooltip: 'أرشفة التنبيه',
-            color: AppTheme.dMuted,
+            color: AppTheme.muted,
           ),
         ],
       ),
@@ -310,35 +310,35 @@ _NotificationTone _tone(String type) {
   if (type.contains('QUOTE')) {
     return const _NotificationTone(
       icon: Icons.request_quote_outlined,
-      color: AppTheme.dMaroon,
-      background: AppTheme.dPinkBg,
+      color: AppTheme.burgundy,
+      background: AppTheme.burgundySoft,
     );
   }
   if (type.contains('INSTALLMENT')) {
     return const _NotificationTone(
       icon: Icons.credit_card_rounded,
-      color: AppTheme.dGoldDeep,
-      background: AppTheme.dCreamBg,
+      color: AppTheme.gold,
+      background: AppTheme.ivory,
     );
   }
   if (type.contains('SHARING')) {
     return const _NotificationTone(
       icon: Icons.group_add_outlined,
-      color: AppTheme.dGreen,
-      background: Color(0xFFEAF7EF),
+      color: AppTheme.success,
+      background: AppTheme.successSoft,
     );
   }
   if (type.contains('OVERDUE')) {
     return const _NotificationTone(
       icon: Icons.warning_amber_rounded,
       color: AppTheme.danger,
-      background: AppTheme.dPinkBg,
+      background: AppTheme.burgundySoft,
     );
   }
   return const _NotificationTone(
     icon: Icons.assignment_turned_in_outlined,
-    color: AppTheme.dMaroon,
-    background: AppTheme.dPinkBg,
+    color: AppTheme.burgundy,
+    background: AppTheme.burgundySoft,
   );
 }
 

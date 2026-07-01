@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -95,7 +95,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                     child: Text(
                       'دين جديد',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -206,7 +206,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             child: Text(
                               'حالة الدين',
                               style: TextStyle(
-                                color: AppTheme.dInk,
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -219,28 +219,28 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                               _StatusChoice(
                                 label: 'مفتوح',
                                 value: 'OPEN',
-                                color: AppTheme.dMaroon,
+                                color: AppTheme.burgundy,
                                 selected: _status == 'OPEN',
                                 onTap: _setStatus,
                               ),
                               _StatusChoice(
                                 label: 'جزئي',
                                 value: 'PARTIALLY_PAID',
-                                color: AppTheme.dGoldDeep,
+                                color: AppTheme.gold,
                                 selected: _status == 'PARTIALLY_PAID',
                                 onTap: _setStatus,
                               ),
                               _StatusChoice(
                                 label: 'مدفوع',
                                 value: 'PAID',
-                                color: AppTheme.dGreen,
+                                color: AppTheme.success,
                                 selected: _status == 'PAID',
                                 onTap: _setStatus,
                               ),
                               _StatusChoice(
                                 label: 'ملغي',
                                 value: 'CANCELLED',
-                                color: AppTheme.dMuted,
+                                color: AppTheme.muted,
                                 selected: _status == 'CANCELLED',
                                 onTap: _setStatus,
                               ),
@@ -360,10 +360,10 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.dMaroon,
+                        primary: AppTheme.burgundy,
                         onPrimary: Colors.white,
-                        surface: AppTheme.dCard2,
-                        onSurface: AppTheme.dInk,
+                        surface: AppTheme.surface,
+                        onSurface: AppTheme.ink,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -466,20 +466,20 @@ class _DebtHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg.withAlpha(120),
-      border: Border.all(color: AppTheme.dMaroon.withAlpha(35)),
+      color: AppTheme.burgundySoft.withAlpha(120),
+      border: Border.all(color: AppTheme.burgundy.withAlpha(35)),
       child: Row(
         children: [
           Container(
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.dCard2,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
               Icons.account_balance_wallet_outlined,
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               size: 30,
             ),
           ),
@@ -491,7 +491,7 @@ class _DebtHero extends StatelessWidget {
                 Text(
                   'تسجيل الالتزام كما هو',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -499,7 +499,7 @@ class _DebtHero extends StatelessWidget {
                 Text(
                   'الدين الواضح أسهل في السداد والمتابعة مع الأقساط.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -535,15 +535,15 @@ class _SelectorField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            color: selected ? AppTheme.burgundy : AppTheme.border,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -553,14 +553,14 @@ class _SelectorField extends StatelessWidget {
                     label,
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                   ),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -569,7 +569,7 @@ class _SelectorField extends StatelessWidget {
             ),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
             ),
           ],
         ),
@@ -603,9 +603,9 @@ class _StatusChoice extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(24) : AppTheme.dCard2,
+            color: selected ? color.withAlpha(24) : AppTheme.surface,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: selected ? color : AppTheme.dLine),
+            border: Border.all(color: selected ? color : AppTheme.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -620,7 +620,7 @@ class _StatusChoice extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? color : AppTheme.dInkSoft,
+                    color: selected ? color : AppTheme.muted,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -643,7 +643,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),

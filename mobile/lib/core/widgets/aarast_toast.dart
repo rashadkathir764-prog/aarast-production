@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 class AarastToast {
@@ -11,7 +11,7 @@ class AarastToast {
   }
 
   static void showInfo(BuildContext context, String message, {SnackBarAction? action}) {
-    _show(context, message, AppTheme.dGoldDeep, Icons.info_outline_rounded, action);
+    _show(context, message, AppTheme.gold, Icons.info_outline_rounded, action);
   }
 
   static void _show(BuildContext context, String message, Color color, IconData icon, SnackBarAction? action) {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
@@ -20,8 +20,8 @@ class AarastErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.danger.withAlpha(12),
-      border: Border.all(color: AppTheme.danger.withAlpha(50)),
+      color: AppTheme.dangerSoft,
+      border: Border.all(color: AppTheme.dangerSoft),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -33,7 +33,7 @@ class AarastErrorState extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: AppTheme.danger.withAlpha(22),
+                  color: AppTheme.dangerSoft,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
                 child: const Icon(
@@ -47,7 +47,7 @@ class AarastErrorState extends StatelessWidget {
                   title,
                   textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -59,7 +59,7 @@ class AarastErrorState extends StatelessWidget {
             message,
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
               height: 1.45,
             ),

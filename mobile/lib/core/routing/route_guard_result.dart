@@ -1,4 +1,4 @@
-enum RouteGuardOutcome { allow, redirect, blocked }
+﻿enum RouteGuardOutcome { allow, redirect, blocked }
 
 enum RouteGuardReason {
   allowed,

@@ -1,4 +1,4 @@
-enum SyncState {
+﻿enum SyncState {
   online,
   offline,
   syncing,

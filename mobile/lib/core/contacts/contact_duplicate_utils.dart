@@ -1,4 +1,4 @@
-import '../phone/phone_number_utils.dart';
+﻿import '../phone/phone_number_utils.dart';
 
 class ContactDuplicateUtils {
   const ContactDuplicateUtils._();

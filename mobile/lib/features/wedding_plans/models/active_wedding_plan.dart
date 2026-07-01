@@ -1,4 +1,4 @@
-import 'wedding_plan.dart';
+﻿import 'wedding_plan.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 
 class ActiveWeddingPlan {

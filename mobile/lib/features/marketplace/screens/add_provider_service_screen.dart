@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -94,7 +94,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                   const _ServiceIntro(),
                   const SizedBox(height: 16),
                   AarastCard(
-                    color: AppTheme.dCard,
+                    color: AppTheme.surface,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -254,17 +254,17 @@ class _ServiceIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.dCreamBg,
+      color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.auto_awesome_rounded, color: AppTheme.dGoldDeep),
+          Icon(Icons.auto_awesome_rounded, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(
               'اكتب خدمة حقيقية وواضحة. رفع الصور سيظهر لاحقًا عند ربط نظام الملفات.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
                 height: 1.5,
               ),
@@ -284,7 +284,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg,
+      color: AppTheme.burgundySoft,
       border: Border.all(color: AppTheme.danger.withAlpha(55)),
       child: Text(
         message,

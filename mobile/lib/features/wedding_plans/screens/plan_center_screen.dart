@@ -98,7 +98,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       safeAreaBottom: false,
       bottomNavigationBar: _buildBottomNav(provider),
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: _isLocalGuestPlan
             ? _loadLocalSummary
             : () async {
@@ -538,9 +538,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final result = await showModalBottomSheet<_PlanEditResult>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.ivory,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
       ),
       builder: (_) => _EditPlanSheet(plan: plan),
     );
@@ -576,9 +576,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final weddingPlansProvider = context.read<WeddingPlansProvider>();
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.ivory,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
       ),
       builder: (sheetContext) {
         return Directionality(
@@ -933,16 +933,7 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF6B001A),
-            _RoyalColors.burgundy,
-            _RoyalColors.burgundyDark,
-          ],
-          stops: [0.0, 0.4, 1.0],
-        ),
+        gradient: AppTheme.heroGradient,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: _RoyalColors.gold.withValues(alpha: 0.15),
@@ -2319,21 +2310,20 @@ class _SkeletonBox extends StatelessWidget {
   }
 }
 
-const _pcInk = AppTheme.dInk;
+const _pcInk = AppTheme.ink;
 const _pcText = AppTheme.charcoal;
-const _pcMuted = AppTheme.dMuted;
-const _pcLine = AppTheme.dLine;
-const _pcSoft = AppTheme.dCard;
+const _pcMuted = AppTheme.muted;
+const _pcLine = AppTheme.border;
+const _pcSoft = AppTheme.surface;
 const _pcRadius = 16.0;
 
 class _RoyalColors {
   const _RoyalColors._();
 
   static const burgundy = AppTheme.deepBurgundy;
-  static const burgundyDark = AppTheme.dMaroonDeep;
-  static const burgundyLight = AppTheme.dMaroonBright;
+  static const burgundyLight = AppTheme.burgundyBright;
   static const gold = AppTheme.warmGold;
-  static const goldDeep = AppTheme.dGoldDeep;
+  static const goldDeep = AppTheme.gold;
 }
 
 ButtonStyle _pcOutlinedButtonStyle() {

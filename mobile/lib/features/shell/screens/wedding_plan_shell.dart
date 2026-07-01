@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -101,6 +101,7 @@ class WeddingPlanShell extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      extendBody: true,
       floatingActionButton: RoyalSmartFloatingActionButton(
         icon: getFabIcon(),
         onPressed: () => _showQuickAdd(context, weddingPlanId, currentIndex),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -477,7 +477,7 @@ class _QuoteLocationContext extends StatelessWidget {
         border: Border.all(
           color: hasLocation
               ? AppTheme.success.withValues(alpha: 0.22)
-              : AppTheme.dLine,
+              : AppTheme.border,
         ),
       ),
       child: Row(
@@ -485,7 +485,7 @@ class _QuoteLocationContext extends StatelessWidget {
         children: [
           Icon(
             hasLocation ? Icons.location_on_outlined : Icons.add_location_alt,
-            color: hasLocation ? AppTheme.success : AppTheme.dMaroon,
+            color: hasLocation ? AppTheme.success : AppTheme.burgundy,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -495,7 +495,7 @@ class _QuoteLocationContext extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -506,7 +506,7 @@ class _QuoteLocationContext extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: AppTheme.dMaroon,
+                      color: AppTheme.burgundy,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -515,7 +515,7 @@ class _QuoteLocationContext extends StatelessWidget {
                 Text(
                   message,
                   style: const TextStyle(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w600,
                     height: 1.45,
                   ),
@@ -540,14 +540,14 @@ class _QuoteContactContext extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.phone_in_talk_outlined, color: AppTheme.dMaroon),
+          const Icon(Icons.phone_in_talk_outlined, color: AppTheme.burgundy),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -556,7 +556,7 @@ class _QuoteContactContext extends StatelessWidget {
                 const Text(
                   'رقم التواصل',
                   style: TextStyle(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -569,7 +569,7 @@ class _QuoteContactContext extends StatelessWidget {
                       : TextDirection.ltr,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                     height: 1.4,
                   ),
@@ -653,19 +653,19 @@ class _QuoteIntro extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: Row(
         children: [
           Container(
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.dPinkBg,
+              color: AppTheme.burgundySoft,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
               Icons.chat_bubble_outline_rounded,
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
             ),
           ),
           const SizedBox(width: 12),
@@ -676,7 +676,7 @@ class _QuoteIntro extends StatelessWidget {
                   : 'اكتب التفاصيل وسيتم إرسالها إلى ${provider!.businessName} ضمن طلبات عروض الأسعار.',
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),
@@ -711,7 +711,7 @@ class _DateField extends StatelessWidget {
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.right,
           style: TextStyle(
-            color: value == null ? AppTheme.dMuted : AppTheme.dInk,
+            color: value == null ? AppTheme.muted : AppTheme.ink,
             fontWeight: FontWeight.w700,
           ),
         ),

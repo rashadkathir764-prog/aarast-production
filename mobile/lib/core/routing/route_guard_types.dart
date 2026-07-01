@@ -1,4 +1,4 @@
-enum RouteGuardType {
+﻿enum RouteGuardType {
   guestAllowed,
   authRequired,
   currentPlanRequired,

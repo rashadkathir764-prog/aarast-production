@@ -56,7 +56,7 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
       return const QuoteStatusPresentation(
         label: 'جاهز للإرسال',
         icon: Icons.outbox_outlined,
-        color: AppTheme.dGoldDeep,
+        color: AppTheme.gold,
       );
     case 'PENDING_PROVIDER':
     case 'SENT':
@@ -64,14 +64,14 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
       return const QuoteStatusPresentation(
         label: 'بانتظار رد المورد',
         icon: Icons.hourglass_top_rounded,
-        color: AppTheme.dBlue,
+        color: AppTheme.ink,
       );
     case 'RECEIVED':
     case 'RESPONDED':
       return const QuoteStatusPresentation(
         label: 'وصل عرض سعر',
         icon: Icons.mark_email_unread_outlined,
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
       );
     case 'ACCEPTED':
       return const QuoteStatusPresentation(
@@ -83,25 +83,25 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
       return const QuoteStatusPresentation(
         label: 'مرفوض',
         icon: Icons.block_outlined,
-        color: Color(0xFFB42318),
+        color: AppTheme.danger,
       );
     case 'CANCELLED':
       return const QuoteStatusPresentation(
         label: 'ملغي',
         icon: Icons.cancel_outlined,
-        color: AppTheme.dMuted,
+        color: AppTheme.muted,
       );
     case 'EXPIRED':
       return const QuoteStatusPresentation(
         label: 'منتهي',
         icon: Icons.event_busy_outlined,
-        color: AppTheme.dMuted,
+        color: AppTheme.muted,
       );
     default:
       return const QuoteStatusPresentation(
         label: 'مسودة',
         icon: Icons.edit_note_outlined,
-        color: AppTheme.dGoldDeep,
+        color: AppTheme.gold,
       );
   }
 }

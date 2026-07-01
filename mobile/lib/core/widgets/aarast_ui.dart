@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/aarast_motion.dart';
@@ -46,7 +46,7 @@ class AarastPageScaffold extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.dBg,
+        backgroundColor: AppTheme.ivory,
         bottomNavigationBar: bottomNavigationBar,
         floatingActionButton: floatingActionButton,
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
@@ -128,7 +128,7 @@ class AarastScreenFrame extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.dBg,
+        backgroundColor: AppTheme.ivory,
         extendBody: extendBody,
         bottomNavigationBar: bottomNavigationBar,
         floatingActionButton: floatingActionButton,
@@ -190,7 +190,7 @@ class AarastPageHeader extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontFamily: AppTheme.displayFontFamily,
                     fontWeight: FontWeight.w700,
                   ),
@@ -203,7 +203,7 @@ class AarastPageHeader extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -225,7 +225,7 @@ class AarastCard extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.margin = EdgeInsets.zero,
-    this.color = AppTheme.dCard2,
+    this.color = AppTheme.surface,
     this.radius = AppTheme.radiusLg,
     this.border,
     this.onTap,
@@ -286,7 +286,7 @@ class AarastSectionHeader extends StatelessWidget {
     return Row(
       children: [
         if (icon != null) ...[
-          Icon(icon, color: AppTheme.dMaroon, size: 20),
+          Icon(icon, color: AppTheme.burgundy, size: 20),
           const SizedBox(width: 8),
         ],
         Expanded(
@@ -294,7 +294,7 @@ class AarastSectionHeader extends StatelessWidget {
             title,
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -309,7 +309,7 @@ class AarastSectionHeader extends StatelessWidget {
 class AarastStatusPill extends StatelessWidget {
   const AarastStatusPill({
     required this.label,
-    this.color = AppTheme.dMaroon,
+    this.color = AppTheme.burgundy,
     this.backgroundColor,
     this.icon,
     super.key,
@@ -381,10 +381,10 @@ class AarastEmptyState extends StatelessWidget {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.dPinkBg,
+              color: AppTheme.burgundySoft,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
-            child: Icon(icon, color: AppTheme.dMaroon, size: 28),
+            child: Icon(icon, color: AppTheme.burgundy, size: 28),
           ),
           const SizedBox(height: 14),
           Text(
@@ -400,7 +400,7 @@ class AarastEmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
             style: Theme.of(
               context,
-            ).textTheme.bodyMedium?.copyWith(color: AppTheme.dInkSoft),
+            ).textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
           ),
           if (action != null) ...[const SizedBox(height: 18), action!],
         ],

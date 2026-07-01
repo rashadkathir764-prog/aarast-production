@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -18,9 +18,9 @@ class PermissionChip extends StatelessWidget {
         color: enabled ? AppTheme.deepBurgundy : AppTheme.mediumGray,
       ),
       backgroundColor: enabled
-          ? AppTheme.warmGold.withAlpha(45)
-          : AppTheme.dLine.withAlpha(120),
-      side: BorderSide(color: enabled ? AppTheme.dGold2 : AppTheme.dLine),
+          ? AppTheme.warmGold.withValues(alpha: 0.1)
+          : AppTheme.border.withAlpha(120),
+      side: BorderSide(color: enabled ? AppTheme.gold2 : AppTheme.border),
       visualDensity: VisualDensity.compact,
     );
   }

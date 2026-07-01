@@ -1,4 +1,4 @@
-class SafeUser {
+﻿class SafeUser {
   const SafeUser({
     required this.id,
     required this.name,

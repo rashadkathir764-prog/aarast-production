@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -74,7 +74,7 @@ class _SharingScreenState extends State<SharingScreen> {
       subtitle: 'شارك الخطة وحدد ما يمكن لكل عضو رؤيته أو إدارته',
       showBack: true,
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: () {
           if (_showLoginGate ||
               provider.authGateKind == SharingAuthGateKind.sessionExpired) {
@@ -207,14 +207,14 @@ class _SharingContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.dCard,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.dLine),
+              border: Border.all(color: AppTheme.border),
             ),
             child: const Text(
               'الخطة خاصة بك الآن. استخدم زر إضافة عضو لإضافة شخص موثوق.',
               style: TextStyle(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -249,11 +249,11 @@ class _PendingInviteCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: AarastCard(
-        color: AppTheme.dCard,
-        border: Border.all(color: AppTheme.dLine),
+        color: AppTheme.surface,
+        border: Border.all(color: AppTheme.border),
         child: Row(
           children: [
-            const Icon(Icons.schedule_send_outlined, color: AppTheme.dGoldDeep),
+            const Icon(Icons.schedule_send_outlined, color: AppTheme.gold),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -262,14 +262,14 @@ class _PendingInviteCard extends StatelessWidget {
                   Text(
                     invite.displayName,
                     style: const TextStyle(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                   Text(
                     '${sharedMemberRoleLabel(invite.role)} • بانتظار القبول',
                     style: const TextStyle(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -295,8 +295,8 @@ class _PrivacyNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
-      border: Border.all(color: AppTheme.dLine),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

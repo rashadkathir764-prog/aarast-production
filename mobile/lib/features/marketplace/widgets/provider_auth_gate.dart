@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -39,7 +39,7 @@ class ProviderAuthGate extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.dBg,
+        backgroundColor: AppTheme.ivory,
         body: SafeArea(
           bottom: !embedded,
           child: Center(
@@ -60,12 +60,12 @@ class ProviderAuthGate extends StatelessWidget {
                           height: 64,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppTheme.dPinkBg,
+                            color: AppTheme.burgundySoft,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Icon(
                             Icons.lock_outline_rounded,
-                            color: AppTheme.dMaroon,
+                            color: AppTheme.burgundy,
                             size: 32,
                           ),
                         ),
@@ -75,7 +75,7 @@ class ProviderAuthGate extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge
                               ?.copyWith(
-                                color: AppTheme.dInk,
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                               ),
                         ),
@@ -85,7 +85,7 @@ class ProviderAuthGate extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
-                                color: AppTheme.dInkSoft,
+                                color: AppTheme.muted,
                                 fontWeight: FontWeight.w700,
                                 height: 1.5,
                               ),

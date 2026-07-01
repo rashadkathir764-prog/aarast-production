@@ -63,7 +63,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, provider, _) {
           return RefreshIndicator(
-            color: AppTheme.dMaroon,
+            color: AppTheme.burgundy,
             onRefresh: provider.loadMarketplace,
             child: ListView(
               padding: EdgeInsets.fromLTRB(
@@ -287,9 +287,9 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -315,7 +315,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -323,8 +323,8 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     AarastStatusPill(
                       label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
-                      color: AppTheme.dGold,
-                      backgroundColor: AppTheme.dGold.withValues(alpha: 0.1),
+                      color: AppTheme.gold,
+                      backgroundColor: AppTheme.goldSoft,
                       icon: provider.includesAccountData
                           ? Icons.verified_user_outlined
                           : Icons.visibility_outlined,
@@ -342,17 +342,17 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                 _MiniStat(
                   label: 'طلبات مرسلة',
                   value: provider.includesAccountData ? quotes.length.toString() : '0',
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                 ),
                 _MiniStat(
                   label: 'عروض وصلت',
                   value: provider.includesAccountData ? offersReceived.toString() : '0',
-                  color: AppTheme.dGoldDeep,
+                  color: AppTheme.gold,
                 ),
                 _MiniStat(
                   label: 'موردين معتمدين',
                   value: provider.includesAccountData ? acceptedProviders.toString() : '0',
-                  color: AppTheme.dGreen,
+                  color: AppTheme.success,
                 ),
               ],
             ),
@@ -388,7 +388,7 @@ class _MiniStat extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: AppTheme.dInkSoft, fontWeight: FontWeight.w700, fontSize: 11),
+            style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700, fontSize: 11),
           ),
         ],
       ),
@@ -421,8 +421,8 @@ class _ImportantNowCard extends StatelessWidget {
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.dCard,
-      border: Border.all(color: AppTheme.dLine),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -430,14 +430,14 @@ class _ImportantNowCard extends StatelessWidget {
             children: [
               const Icon(
                 Icons.priority_high_rounded,
-                color: AppTheme.dMaroon,
+                color: AppTheme.burgundy,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -448,7 +448,7 @@ class _ImportantNowCard extends StatelessWidget {
           Text(
             message,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
               height: 1.45,
             ),
@@ -460,7 +460,7 @@ class _ImportantNowCard extends StatelessWidget {
               onOpenPlanCenter: () => onOpenPlanCenter(quote),
             ),
             if (quote != important.last)
-              const Divider(height: 18, color: AppTheme.dLine),
+              const Divider(height: 18, color: AppTheme.border),
           ],
         ],
       ),
@@ -487,13 +487,13 @@ class _ImportantQuoteRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceElevated,
             borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            border: Border.all(color: AppTheme.dLine),
+            border: Border.all(color: AppTheme.border),
           ),
           child: const Icon(
             Icons.request_quote_outlined,
-            color: AppTheme.dMaroon,
+            color: AppTheme.burgundy,
             size: 20,
           ),
         ),
@@ -510,7 +510,7 @@ class _ImportantQuoteRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -522,7 +522,7 @@ class _ImportantQuoteRow extends StatelessWidget {
               Text(
                 action,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w800,
                   height: 1.35,
                 ),
@@ -655,13 +655,13 @@ class _LocationContextCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      color: AppTheme.dCard,
-      border: Border.all(color: AppTheme.dLine),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
       child: Row(
         children: [
           const Icon(
             Icons.add_location_alt_outlined,
-            color: AppTheme.dGold,
+            color: AppTheme.gold,
             size: 20,
           ),
           const SizedBox(width: 10),
@@ -669,7 +669,7 @@ class _LocationContextCard extends StatelessWidget {
             child: Text(
               'أضف موقع الزفاف لتحسين تصفية المدينة',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -677,7 +677,7 @@ class _LocationContextCard extends StatelessWidget {
           TextButton(
             onPressed: onCompleteLocation,
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.dGold,
+              foregroundColor: AppTheme.gold,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               minimumSize: const Size(0, 32),
             ),
@@ -717,20 +717,20 @@ class _QuoteRequestsOverview extends StatelessWidget {
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.dCard2,
-      border: Border.all(color: AppTheme.dLine),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.request_quote_outlined, color: AppTheme.dMaroon),
+              const Icon(Icons.request_quote_outlined, color: AppTheme.burgundy),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'طلبات العروض والردود',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -754,7 +754,7 @@ class _QuoteRequestsOverview extends StatelessWidget {
               onOpenPlanCenter: () => onOpenPlanCenter(quote),
             ),
             if (quote != visibleQuotes.last)
-              const Divider(height: 18, color: AppTheme.dLine),
+              const Divider(height: 18, color: AppTheme.border),
           ],
         ],
       ),
@@ -790,7 +790,7 @@ class _QuoteRequestTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -804,7 +804,7 @@ class _QuoteRequestTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.dInkSoft,
+            color: AppTheme.muted,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -812,7 +812,7 @@ class _QuoteRequestTile extends StatelessWidget {
         Text(
           nextAction,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.dInkSoft,
+            color: AppTheme.muted,
             fontWeight: FontWeight.w800,
             height: 1.4,
           ),
@@ -844,7 +844,7 @@ class _QuoteCount extends StatelessWidget {
     return Text(
       '$label: $value',
       style: const TextStyle(
-        color: AppTheme.dInkSoft,
+        color: AppTheme.muted,
         fontWeight: FontWeight.w800,
       ),
     );
@@ -881,10 +881,10 @@ class _MenuFilterChip extends StatelessWidget {
           PopupMenuItem<String?>(value: item.id, child: Text(item.label)),
       ],
       child: Chip(
-        avatar: Icon(icon, size: 18, color: AppTheme.dMaroon),
+        avatar: Icon(icon, size: 18, color: AppTheme.burgundy),
         label: Text(label),
-        backgroundColor: AppTheme.dCard2,
-        side: const BorderSide(color: AppTheme.dLine),
+        backgroundColor: AppTheme.surface,
+        side: const BorderSide(color: AppTheme.border),
       ),
     );
   }
@@ -907,12 +907,12 @@ class _ResultsHeader extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
         ),
-        AarastStatusPill(label: '$count مورد', color: AppTheme.dMaroon),
+        AarastStatusPill(label: '$count مورد', color: AppTheme.burgundy),
       ],
     );
   }
@@ -963,7 +963,7 @@ class _ProviderCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: AppTheme.dInk,
+                              color: AppTheme.ink,
                               fontWeight: FontWeight.w900,
                               height: 1.25,
                             ),
@@ -982,8 +982,8 @@ class _ProviderCard extends StatelessWidget {
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
                         color: isFavorite
-                            ? AppTheme.dMaroon
-                            : AppTheme.dInkSoft,
+                            ? AppTheme.burgundy
+                            : AppTheme.muted,
                       ),
                     ),
                   ],
@@ -995,7 +995,7 @@ class _ProviderCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dMaroon,
+                      color: AppTheme.burgundy,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1007,7 +1007,7 @@ class _ProviderCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1022,13 +1022,13 @@ class _ProviderCard extends StatelessWidget {
                         icon: Icons.star_rounded,
                         text:
                             '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
-                        color: AppTheme.dGoldDeep,
+                        color: AppTheme.gold,
                       ),
                     if (location != null)
                       _ProviderFactPill(
                         icon: Icons.place_outlined,
                         text: location,
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                       ),
                   ],
                 ),
@@ -1083,9 +1083,9 @@ class _ProviderFactPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1099,7 +1099,7 @@ class _ProviderFactPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -1123,11 +1123,11 @@ class _ProviderImage extends StatelessWidget {
       child: Container(
         width: 84,
         height: 84,
-        color: AppTheme.dCreamBg,
+        color: AppTheme.ivory,
         child: imageUrl == null || imageUrl.isEmpty
             ? const Icon(
                 Icons.storefront_rounded,
-                color: AppTheme.dGoldDeep,
+                color: AppTheme.gold,
                 size: 34,
               )
             : Image.network(
@@ -1135,7 +1135,7 @@ class _ProviderImage extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.storefront_rounded,
-                  color: AppTheme.dGoldDeep,
+                  color: AppTheme.gold,
                   size: 34,
                 ),
               ),
@@ -1232,12 +1232,12 @@ class _CircleButton extends StatelessWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.dLine),
+          border: Border.all(color: AppTheme.border),
           boxShadow: AppTheme.cardShadow(),
         ),
-        child: Icon(icon, color: AppTheme.dMaroon),
+        child: Icon(icon, color: AppTheme.burgundy),
       ),
     );
   }
@@ -1254,9 +1254,9 @@ class _MarketplaceSkeleton extends StatelessWidget {
           Container(
             height: 134,
             decoration: BoxDecoration(
-              color: AppTheme.dCard2.withAlpha(180),
+              color: AppTheme.surface.withAlpha(180),
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.dLine),
+              border: Border.all(color: AppTheme.border),
             ),
           ),
           const SizedBox(height: 12),
@@ -1275,7 +1275,7 @@ class _ErrorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg,
+      color: AppTheme.burgundySoft,
       border: Border.all(color: AppTheme.danger.withAlpha(60)),
       child: Column(
         children: [
@@ -1308,17 +1308,17 @@ class _LoginRequiredCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      color: AppTheme.dCard,
-      border: Border.all(color: AppTheme.dLine),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
       child: Row(
         children: [
-          const Icon(Icons.login_rounded, color: AppTheme.dGold, size: 20),
+          const Icon(Icons.login_rounded, color: AppTheme.gold, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'طلبات العروض ومتابعتها تحتاج تسجيل دخول',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
               ),
             ),

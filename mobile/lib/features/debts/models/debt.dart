@@ -1,4 +1,4 @@
-class Debt {
+﻿class Debt {
   const Debt({
     required this.id,
     required this.weddingPlanId,

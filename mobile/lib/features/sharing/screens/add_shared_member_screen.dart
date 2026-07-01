@@ -333,7 +333,7 @@ class _PhoneLookupCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -382,9 +382,9 @@ class _FoundUserCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dGreenBg,
+        color: AppTheme.successBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dGreen.withAlpha(50)),
+        border: Border.all(color: AppTheme.successSoft),
       ),
       child: Row(
         children: [
@@ -397,8 +397,8 @@ class _FoundUserCard extends StatelessWidget {
                 const AarastStatusPill(
                   label: 'مستخدم مسجل',
                   icon: Icons.verified_rounded,
-                  color: AppTheme.dGreen,
-                  backgroundColor: Colors.white,
+                  color: AppTheme.success,
+                  backgroundColor: AppTheme.ivory,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -406,7 +406,7 @@ class _FoundUserCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -417,7 +417,7 @@ class _FoundUserCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -444,13 +444,13 @@ class _LookupAvatar extends StatelessWidget {
       child: Container(
         width: 54,
         height: 54,
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         child: imageUrl == null || imageUrl.isEmpty
             ? Center(
                 child: Text(
                   initial,
                   style: const TextStyle(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                   ),
@@ -463,7 +463,7 @@ class _LookupAvatar extends StatelessWidget {
                   child: Text(
                     initial,
                     style: const TextStyle(
-                      color: AppTheme.dMaroon,
+                      color: AppTheme.burgundy,
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                     ),
@@ -485,19 +485,19 @@ class _LookupEmpty extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCreamBg,
+        color: AppTheme.ivory,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dGold.withAlpha(60)),
+        border: Border.all(color: AppTheme.gold.withAlpha(60)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppTheme.dGoldDeep),
+          const Icon(Icons.info_outline_rounded, color: AppTheme.gold),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -517,7 +517,7 @@ class _RoleDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: DropdownButtonFormField<String>(
         initialValue: value,
         decoration: const InputDecoration(
@@ -587,7 +587,7 @@ class _PermissionSwitches extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -697,12 +697,12 @@ class _PermissionTile extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: value ? AppTheme.dPinkBg : AppTheme.dCard2,
+          color: value ? AppTheme.burgundySoft : AppTheme.surface,
           borderRadius: BorderRadius.circular(13),
         ),
         child: Icon(
           icon,
-          color: value ? AppTheme.dMaroon : AppTheme.dInkSoft,
+          color: value ? AppTheme.burgundy : AppTheme.muted,
           size: 21,
         ),
       ),
@@ -710,7 +710,7 @@ class _PermissionTile extends StatelessWidget {
         title,
         textAlign: TextAlign.right,
         style: const TextStyle(
-          color: AppTheme.dInk,
+          color: AppTheme.ink,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -718,7 +718,7 @@ class _PermissionTile extends StatelessWidget {
         subtitle,
         textAlign: TextAlign.right,
         style: const TextStyle(
-          color: AppTheme.dInkSoft,
+          color: AppTheme.muted,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -732,17 +732,17 @@ class _PrivacyHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.dCreamBg,
+      color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.lock_outline_rounded, color: AppTheme.dGoldDeep),
+          Icon(Icons.lock_outline_rounded, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(
               'الخصوصية المالية مغلقة افتراضياً. فعلي صلاحيات الميزانية والمصاريف والديون فقط للعضو المناسب.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
                 height: 1.45,
               ),
@@ -762,8 +762,8 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg,
-      border: Border.all(color: AppTheme.danger.withAlpha(50)),
+      color: AppTheme.burgundySoft,
+      border: Border.all(color: AppTheme.dangerSoft),
       child: Text(
         message,
         textAlign: TextAlign.center,

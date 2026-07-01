@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -68,7 +68,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
+                          color: AppTheme.burgundyDeep,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -77,7 +77,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -91,7 +91,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
                   icon: const Icon(Icons.add_rounded),
                   tooltip: 'إضافة قسط',
                   style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.dMaroon,
+                    backgroundColor: AppTheme.burgundy,
                     foregroundColor: Colors.white,
                     side: BorderSide.none,
                   ),
@@ -101,7 +101,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               onRefresh: () => provider.loadDebtDetails(widget.debtId),
               child: _DebtDetailsContent(
                 provider: provider,
@@ -204,13 +204,13 @@ class _DebtOverviewCard extends StatelessWidget {
                 width: 54,
                 height: 54,
                 decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(28),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                   border: Border.all(color: Colors.white.withAlpha(36)),
                 ),
                 child: const Icon(
                   Icons.receipt_long_outlined,
-                  color: AppTheme.dGold,
+                  color: AppTheme.gold,
                   size: 28,
                 ),
               ),
@@ -266,8 +266,8 @@ class _DebtOverviewCard extends StatelessWidget {
             child: LinearProgressIndicator(
               value: progress.clamp(0.0, 1.0),
               minHeight: 8,
-              backgroundColor: AppTheme.dLine,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dGold),
+              backgroundColor: AppTheme.border,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.gold),
             ),
           ),
           const SizedBox(height: 18),
@@ -300,7 +300,7 @@ class _DebtOverviewCard extends StatelessWidget {
             Text(
               debt.note!,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.white.withAlpha(220),
+                color: Colors.white.withValues(alpha: 0.6),
                 fontWeight: FontWeight.w700,
                 height: 1.35,
               ),
@@ -354,13 +354,13 @@ class _HeroLabel extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(
-          color: Colors.white.withAlpha(22),
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(color: Colors.white.withAlpha(30)),
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppTheme.dGold, size: 18),
+            Icon(icon, color: AppTheme.gold, size: 18),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -404,14 +404,14 @@ class _InstallmentDetailCard extends StatelessWidget {
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      border: Border.all(color: color.withAlpha(38)),
+      border: Border.all(color: color.withValues(alpha: 0.1)),
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withAlpha(20),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
             child: Icon(Icons.payments_outlined, color: color),
@@ -425,7 +425,7 @@ class _InstallmentDetailCard extends StatelessWidget {
                   '${_formatMoney(_moneyValue(installment.amount))} ر.ي',
                   textDirection: TextDirection.ltr,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -441,13 +441,13 @@ class _InstallmentDetailCard extends StatelessWidget {
                     if (installment.dueDate != null)
                       AarastStatusPill(
                         label: 'استحقاق ${_shortDate(installment.dueDate!)}',
-                        color: AppTheme.dGoldDeep,
+                        color: AppTheme.gold,
                         icon: Icons.event_available_rounded,
                       ),
                     if (installment.paidAt != null)
                       AarastStatusPill(
                         label: 'دفع ${_shortDate(installment.paidAt!)}',
-                        color: AppTheme.dGreen,
+                        color: AppTheme.success,
                         icon: Icons.check_circle_outline_rounded,
                       ),
                   ],
@@ -459,7 +459,7 @@ class _InstallmentDetailCard extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -516,9 +516,9 @@ class _SkeletonBox extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
     );
   }
@@ -534,9 +534,9 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.danger.withAlpha(18),
+        color: AppTheme.dangerSoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.danger.withAlpha(45)),
+        border: Border.all(color: AppTheme.dangerSoft),
       ),
       child: Row(
         children: [
@@ -574,10 +574,10 @@ String _formatMoney(num value) {
 
 Color _debtStatusColor(String status) {
   return switch (status) {
-    'PAID' => AppTheme.dGreen,
-    'CANCELLED' => AppTheme.dMuted,
-    'PARTIALLY_PAID' => AppTheme.dGoldDeep,
-    _ => AppTheme.dMaroon,
+    'PAID' => AppTheme.success,
+    'CANCELLED' => AppTheme.muted,
+    'PARTIALLY_PAID' => AppTheme.gold,
+    _ => AppTheme.burgundy,
   };
 }
 
@@ -592,10 +592,10 @@ String _debtStatusLabel(String status) {
 
 Color _installmentStatusColor(String status) {
   return switch (status) {
-    'PAID' => AppTheme.dGreen,
+    'PAID' => AppTheme.success,
     'OVERDUE' => AppTheme.danger,
-    'CANCELLED' => AppTheme.dMuted,
-    _ => AppTheme.dGoldDeep,
+    'CANCELLED' => AppTheme.muted,
+    _ => AppTheme.gold,
   };
 }
 

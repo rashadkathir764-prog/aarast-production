@@ -1,4 +1,4 @@
-class QuoteFinanceContext {
+﻿class QuoteFinanceContext {
   const QuoteFinanceContext({
     required this.quoteRequestId,
     required this.providerId,

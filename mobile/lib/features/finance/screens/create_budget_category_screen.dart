@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -54,7 +54,7 @@ class _CreateBudgetCategoryScreenState
                     child: Text(
                       'تصنيف ميزانية',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -171,20 +171,20 @@ class _CategoryHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg.withAlpha(120),
-      border: Border.all(color: AppTheme.dMaroon.withAlpha(35)),
+      color: AppTheme.burgundySoft.withAlpha(120),
+      border: Border.all(color: AppTheme.burgundy.withAlpha(35)),
       child: Row(
         children: [
           Container(
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.dCard2,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
               Icons.create_new_folder_outlined,
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               size: 30,
             ),
           ),
@@ -196,7 +196,7 @@ class _CategoryHero extends StatelessWidget {
                 Text(
                   'قسمي الميزانية إلى بنود واضحة',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -204,7 +204,7 @@ class _CategoryHero extends StatelessWidget {
                 Text(
                   'كل تصنيف يجعل المصاريف أسهل في القراءة والمراجعة.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

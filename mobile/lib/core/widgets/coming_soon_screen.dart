@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_theme.dart';
@@ -42,17 +42,17 @@ class AarastComingSoonScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppTheme.gapXl),
           const AarastCard(
-            color: AppTheme.dCard,
+            color: AppTheme.surface,
             child: Row(
               children: [
-                Icon(Icons.lock_outline_rounded, color: AppTheme.dGoldDeep),
+                Icon(Icons.lock_outline_rounded, color: AppTheme.gold),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'لن نعرض أزرارًا غير مرتبطة ببيانات فعلية. عند جاهزية الخدمة ستظهر هنا بوضوح.',
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                       height: 1.5,
                     ),

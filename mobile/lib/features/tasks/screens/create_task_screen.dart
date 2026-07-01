@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -131,10 +131,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.dMaroon,
+                        primary: AppTheme.burgundy,
                         onPrimary: Colors.white,
-                        surface: AppTheme.dCard2,
-                        onSurface: AppTheme.dInk,
+                        surface: AppTheme.surface,
+                        onSurface: AppTheme.ink,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -254,7 +254,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     child: Text(
                       _isEditMode ? 'تعديل المهمة' : 'إضافة مهمة',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDark,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -338,7 +338,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             child: Text(
                               'أولوية المهمة',
                               style: TextStyle(
-                                color: AppTheme.dInk,
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -349,7 +349,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               _PriorityChip(
                                 label: 'منخفضة',
                                 icon: Icons.eco_outlined,
-                                color: AppTheme.dGreen,
+                                color: AppTheme.success,
                                 selected: _priority == 'LOW',
                                 onTap: () {
                                   setState(() => _priority = 'LOW');
@@ -359,7 +359,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               _PriorityChip(
                                 label: 'متوسطة',
                                 icon: Icons.drag_handle_rounded,
-                                color: AppTheme.dGoldDeep,
+                                color: AppTheme.gold,
                                 selected: _priority == 'MEDIUM',
                                 onTap: () {
                                   setState(() => _priority = 'MEDIUM');
@@ -659,20 +659,20 @@ class _TaskHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg.withAlpha(120),
-      border: Border.all(color: AppTheme.dMaroon.withAlpha(35)),
+      color: AppTheme.burgundySoft.withAlpha(120),
+      border: Border.all(color: AppTheme.burgundy.withAlpha(35)),
       child: Row(
         children: [
           Container(
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: AppTheme.dCard2,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
               Icons.assignment_turned_in_outlined,
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               size: 30,
             ),
           ),
@@ -684,7 +684,7 @@ class _TaskHero extends StatelessWidget {
                 Text(
                   'نظمي كل تفصيل بخطوة مدروسة',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDark,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -692,7 +692,7 @@ class _TaskHero extends StatelessWidget {
                 Text(
                   'المهام الواضحة تجعل يومك أسهل وأهدأ.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -740,9 +740,9 @@ class _ResponsibleSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.dCreamBg,
+        color: AppTheme.ivory,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+        border: Border.all(color: AppTheme.goldSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -751,7 +751,7 @@ class _ResponsibleSection extends StatelessWidget {
             children: [
               const Icon(
                 Icons.person_pin_circle_outlined,
-                color: AppTheme.dMaroon,
+                color: AppTheme.burgundy,
                 size: 21,
               ),
               const SizedBox(width: 8),
@@ -759,7 +759,7 @@ class _ResponsibleSection extends StatelessWidget {
                 child: Text(
                   'المسؤول عن المهمة',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -807,7 +807,7 @@ class _ResponsibleSection extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
                 style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.dMaroon,
+                  foregroundColor: AppTheme.burgundy,
                   visualDensity: VisualDensity.compact,
                 ),
                 onPressed: onInvite,
@@ -843,10 +843,10 @@ class _ParticipantRow extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+            color: selected ? AppTheme.burgundySoft : AppTheme.surface,
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             border: Border.all(
-              color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+              color: selected ? AppTheme.burgundy : AppTheme.border,
             ),
           ),
           child: Row(
@@ -855,7 +855,7 @@ class _ParticipantRow extends StatelessWidget {
                 selected
                     ? Icons.check_circle_rounded
                     : Icons.person_outline_rounded,
-                color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep,
+                color: selected ? AppTheme.burgundy : AppTheme.gold,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -867,7 +867,7 @@ class _ParticipantRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -876,7 +876,7 @@ class _ParticipantRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -904,16 +904,16 @@ class _ParticipantBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.dGold.withAlpha(20),
+        color: AppTheme.goldSoft,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.dGold.withAlpha(70)),
+        border: Border.all(color: AppTheme.goldSoft),
       ),
       child: Text(
         roleLabel == null ? 'مشارك في الخطة' : 'مشارك في الخطة',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: AppTheme.dMaroon,
+          color: AppTheme.burgundy,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -944,15 +944,15 @@ class _SelectorField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            color: selected ? AppTheme.burgundy : AppTheme.border,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -962,14 +962,14 @@ class _SelectorField extends StatelessWidget {
                     label,
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                   ),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -978,7 +978,7 @@ class _SelectorField extends StatelessWidget {
             ),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
             ),
           ],
         ),
@@ -1011,14 +1011,14 @@ class _PriorityChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(25) : AppTheme.dCard2,
+            color: selected ? color.withAlpha(25) : AppTheme.surface,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(color: selected ? color : AppTheme.dLine),
+            border: Border.all(color: selected ? color : AppTheme.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: selected ? color : AppTheme.dMuted, size: 16),
+              Icon(icon, color: selected ? color : AppTheme.muted, size: 16),
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
@@ -1026,7 +1026,7 @@ class _PriorityChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? color : AppTheme.dMuted,
+                    color: selected ? color : AppTheme.muted,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1056,24 +1056,24 @@ class _CategoryRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: AarastCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
-        border: Border.all(color: selected ? AppTheme.dMaroon : AppTheme.dLine),
+        color: selected ? AppTheme.burgundySoft : AppTheme.surface,
+        border: Border.all(color: selected ? AppTheme.burgundy : AppTheme.border),
         onTap: onTap,
         child: Row(
           children: [
-            Icon(category.icon, color: AppTheme.dMaroon),
+            Icon(category.icon, color: AppTheme.burgundy),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 category.label,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: selected ? AppTheme.dMaroon : AppTheme.dInk,
+                  color: selected ? AppTheme.burgundy : AppTheme.ink,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
+              const Icon(Icons.check_circle_rounded, color: AppTheme.burgundy),
           ],
         ),
       ),
@@ -1091,7 +1091,7 @@ class _SheetHandle extends StatelessWidget {
         width: 46,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(99),
         ),
       ),

@@ -1,4 +1,4 @@
-import 'sync_queue.dart';
+﻿import 'sync_queue.dart';
 
 abstract class LocalDatabase {
   Future<void> initialize();

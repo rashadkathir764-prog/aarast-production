@@ -75,7 +75,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
+                          color: AppTheme.burgundyDark,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -84,7 +84,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -97,7 +97,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               onRefresh: () => provider.load(widget.weddingPlanId),
               child: _TaskTimelineContent(
                 provider: provider,
@@ -221,14 +221,14 @@ class _TaskTimelineContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.dCard,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.dLine),
+              border: Border.all(color: AppTheme.border),
             ),
             child: const Text(
               'لا توجد مهام حالياً. استخدم الزر العائم الذهبي للإضافة.',
               style: TextStyle(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -328,7 +328,7 @@ class _TaskTimelineContent extends StatelessWidget {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: AppTheme.danger.withAlpha(22),
+                      color: AppTheme.dangerSoft,
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
@@ -342,7 +342,7 @@ class _TaskTimelineContent extends StatelessWidget {
                     'حذف المهمة؟',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -354,7 +354,7 @@ class _TaskTimelineContent extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                   ),
@@ -405,16 +405,10 @@ class _TopTasksCommandCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.dLine),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          )
-        ],
+        color: AppTheme.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: AppTheme.softShadow(),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -430,7 +424,7 @@ class _TopTasksCommandCard extends StatelessWidget {
                     Text(
                       'إنجاز المهام',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -440,8 +434,8 @@ class _TopTasksCommandCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: summary.completionRatio,
                         minHeight: 6,
-                        backgroundColor: AppTheme.dLine,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dMaroon),
+                        backgroundColor: AppTheme.border,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.burgundy),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -450,7 +444,7 @@ class _TopTasksCommandCard extends StatelessWidget {
                         Text(
                           '${summary.completionPercent}%',
                           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: AppTheme.dMaroon,
+                            color: AppTheme.burgundy,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -459,8 +453,8 @@ class _TopTasksCommandCard extends StatelessWidget {
                           Flexible(
                             child: AarastStatusPill(
                               label: 'تخطيط محلي',
-                              color: AppTheme.dGold,
-                              backgroundColor: AppTheme.dGold.withValues(alpha: 0.1),
+                              color: AppTheme.gold,
+                              backgroundColor: AppTheme.goldSoft,
                               icon: Icons.phone_iphone_rounded,
                             ),
                           ),
@@ -472,7 +466,7 @@ class _TopTasksCommandCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Divider(height: 1, thickness: 1, color: AppTheme.dLine),
+          Divider(height: 1, thickness: 1, color: AppTheme.border),
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -488,28 +482,28 @@ class _TopTasksCommandCard extends StatelessWidget {
                     label: 'الإجمالي',
                     value: summary.total.toString(),
                     icon: Icons.format_list_bulleted_rounded,
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                   ),
                   _StatusMetric(
                     width: itemWidth,
                     label: 'مكتملة',
                     value: summary.completed.toString(),
                     icon: Icons.check_circle_outline_rounded,
-                    color: AppTheme.dGreen,
+                    color: AppTheme.success,
                   ),
                   _StatusMetric(
                     width: itemWidth,
                     label: 'اليوم',
                     value: summary.dueToday.toString(),
                     icon: Icons.today_rounded,
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                   ),
                   _StatusMetric(
                     width: itemWidth,
                     label: 'متأخرة',
                     value: summary.overdue.toString(),
                     icon: Icons.warning_amber_rounded,
-                    color: summary.overdue > 0 ? AppTheme.danger : AppTheme.dInkSoft,
+                    color: summary.overdue > 0 ? AppTheme.danger : AppTheme.muted,
                   ),
                 ],
               );
@@ -527,7 +521,7 @@ class _StatusMetric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.icon,
-    this.color = AppTheme.dMaroon,
+    this.color = AppTheme.burgundy,
   });
 
   final double width;
@@ -543,9 +537,9 @@ class _StatusMetric extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: color.withAlpha(16),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: color.withAlpha(38)),
+          border: Border.all(color: color.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
@@ -557,7 +551,7 @@ class _StatusMetric extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -600,12 +594,12 @@ class _ImportantNowCard extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: AppTheme.dGreen.withAlpha(18),
+                color: AppTheme.successSoft,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: const Icon(
                 Icons.check_circle_outline_rounded,
-                color: AppTheme.dGreen,
+                color: AppTheme.success,
               ),
             ),
             const SizedBox(width: 12),
@@ -616,7 +610,7 @@ class _ImportantNowCard extends StatelessWidget {
                   Text(
                     'مهام تحتاج انتباهك الآن',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -624,7 +618,7 @@ class _ImportantNowCard extends StatelessWidget {
                   Text(
                     'لا توجد مهام عاجلة الآن',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -638,7 +632,7 @@ class _ImportantNowCard extends StatelessWidget {
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+      border: Border.all(color: AppTheme.goldSoft),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -647,7 +641,7 @@ class _ImportantNowCard extends StatelessWidget {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(Icons.priority_high_rounded, color: AppTheme.dMaroon),
+              const Icon(Icons.priority_high_rounded, color: AppTheme.burgundy),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 210),
                 child: Text(
@@ -655,7 +649,7 @@ class _ImportantNowCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -692,13 +686,13 @@ class _ImportantTaskRow extends StatelessWidget {
     final color = _isLateTask(task)
         ? AppTheme.danger
         : task.priority == 'HIGH' || task.priority == 'URGENT'
-        ? AppTheme.dGoldDeep
-        : AppTheme.dMaroon;
+        ? AppTheme.gold
+        : AppTheme.burgundy;
 
     return AarastCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: AppTheme.dCreamBg,
-      border: Border.all(color: color.withAlpha(38)),
+      color: AppTheme.ivory,
+      border: Border.all(color: color.withValues(alpha: 0.1)),
       radius: AppTheme.radiusMd,
       onTap: onTap,
       child: Row(
@@ -714,7 +708,7 @@ class _ImportantTaskRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -724,7 +718,7 @@ class _ImportantTaskRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -732,7 +726,7 @@ class _ImportantTaskRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(Icons.chevron_left_rounded, color: AppTheme.dMuted),
+          const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
         ],
       ),
     );
@@ -750,15 +744,15 @@ class _ProgressSeal extends StatelessWidget {
       width: 58,
       height: 58,
       decoration: BoxDecoration(
-        color: AppTheme.dMaroon.withValues(alpha: 0.1),
+        color: AppTheme.burgundySoft,
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.dMaroon.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.burgundy.withValues(alpha: 0.3)),
       ),
       child: Center(
         child: Text(
           '${(value * 100).round()}%',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.dMaroon,
+            color: AppTheme.burgundy,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -811,7 +805,7 @@ class _FilterButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppTheme.dMaroon : AppTheme.dInkSoft;
+    final color = selected ? AppTheme.burgundy : AppTheme.muted;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -821,10 +815,10 @@ class _FilterButton extends StatelessWidget {
           duration: AppTheme.motionFast,
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+            color: selected ? AppTheme.burgundySoft : AppTheme.surface,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppTheme.dMaroon.withAlpha(90) : AppTheme.dLine,
+              color: selected ? AppTheme.burgundy.withAlpha(90) : AppTheme.border,
             ),
           ),
           child: Row(
@@ -870,21 +864,21 @@ class _PremiumTaskCard extends StatelessWidget {
     final priorityColor = _priorityColor(task.priority);
     final isLate = _isLateTask(task);
     final statusColor = isDone
-        ? AppTheme.dGreen
+        ? AppTheme.success
         : isLate
         ? AppTheme.danger
-        : AppTheme.dMaroon;
+        : AppTheme.burgundy;
 
     return AarastCard(
       padding: EdgeInsets.zero,
-      color: isDone ? AppTheme.dCard : AppTheme.dCard2,
+      color: isDone ? AppTheme.surface : AppTheme.surface,
       onTap: onEdit,
       border: Border.all(
         color: isLate
-            ? AppTheme.danger.withAlpha(70)
+            ? AppTheme.dangerSoft
             : isDone
-            ? AppTheme.dLine
-            : AppTheme.dMaroon.withAlpha(30),
+            ? AppTheme.border
+            : AppTheme.burgundy.withAlpha(30),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
@@ -897,7 +891,7 @@ class _PremiumTaskCard extends StatelessWidget {
               child: Container(
                 width: 4,
                 color: isDone
-                    ? AppTheme.dGreen
+                    ? AppTheme.success
                     : isLate
                     ? AppTheme.danger
                     : priorityColor,
@@ -925,8 +919,8 @@ class _PremiumTaskCard extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
                                 color: isDone
-                                    ? AppTheme.dInkSoft
-                                    : AppTheme.dInk,
+                                    ? AppTheme.muted
+                                    : AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                                 decoration: isDone
                                     ? TextDecoration.lineThrough
@@ -942,8 +936,8 @@ class _PremiumTaskCard extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: isDone
-                                      ? AppTheme.dInkSoft
-                                      : AppTheme.dInkSoft,
+                                      ? AppTheme.muted
+                                      : AppTheme.muted,
                                   fontWeight: FontWeight.w600,
                                   height: 1.35,
                                 ),
@@ -958,7 +952,7 @@ class _PremiumTaskCard extends StatelessWidget {
                           children: [
                             _TaskMetaPill(
                               label: _categoryLabel(task.taskCategory),
-                              color: AppTheme.dMaroon,
+                              color: AppTheme.burgundy,
                               icon: Icons.sell_outlined,
                             ),
                             _TaskMetaPill(
@@ -982,10 +976,10 @@ class _PremiumTaskCard extends StatelessWidget {
                                   ? 'بدون موعد'
                                   : _relativeDueLabel(task.dueDate!),
                               color: task.dueDate == null
-                                  ? AppTheme.dInkSoft
+                                  ? AppTheme.muted
                                   : isLate
                                   ? AppTheme.danger
-                                  : AppTheme.dGoldDeep,
+                                  : AppTheme.gold,
                               icon: Icons.calendar_month_rounded,
                             ),
                             OfflinePendingBadge(
@@ -1001,7 +995,7 @@ class _PremiumTaskCard extends StatelessWidget {
                     tooltip: 'إجراءات المهمة',
                     icon: const Icon(
                       Icons.more_vert_rounded,
-                      color: AppTheme.dMuted,
+                      color: AppTheme.muted,
                     ),
                     onSelected: (value) {
                       if (value == 'done') onMarkDone?.call();
@@ -1020,8 +1014,8 @@ class _PremiumTaskCard extends StatelessWidget {
                                   ? Icons.restart_alt_rounded
                                   : Icons.check_circle_outline_rounded,
                               color: isDone
-                                  ? AppTheme.dMaroon
-                                  : AppTheme.dGreen,
+                                  ? AppTheme.burgundy
+                                  : AppTheme.success,
                             ),
                             const SizedBox(width: 10),
                             Text(isDone ? 'إعادة فتح المهمة' : 'إنجاز المهمة'),
@@ -1034,7 +1028,7 @@ class _PremiumTaskCard extends StatelessWidget {
                           children: [
                             Icon(
                               Icons.edit_note_rounded,
-                              color: AppTheme.dMaroon,
+                              color: AppTheme.burgundy,
                             ),
                             SizedBox(width: 10),
                             Text('تعديل المهمة'),
@@ -1088,16 +1082,16 @@ class _TaskCheckButton extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: isDone ? AppTheme.dGreen : AppTheme.dCard2,
+          color: isDone ? AppTheme.success : AppTheme.surface,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isDone ? AppTheme.dGreen : AppTheme.dLine,
+            color: isDone ? AppTheme.success : AppTheme.border,
             width: 1.4,
           ),
         ),
         child: isDone
             ? const Icon(Icons.check_rounded, color: Colors.white, size: 19)
-            : const Icon(Icons.done_rounded, color: AppTheme.dMuted, size: 18),
+            : const Icon(Icons.done_rounded, color: AppTheme.muted, size: 18),
       ),
     );
   }
@@ -1112,15 +1106,15 @@ class _TaskResponsibleLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = task.responsiblePhoneDisplay;
-    final textColor = isDone ? AppTheme.dInkSoft : AppTheme.dInk;
+    final textColor = isDone ? AppTheme.muted : AppTheme.ink;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.dCreamBg.withAlpha(isDone ? 90 : 180),
+        color: AppTheme.ivory.withAlpha(isDone ? 90 : 180),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dGold.withAlpha(34)),
+        border: Border.all(color: AppTheme.gold.withAlpha(34)),
       ),
       child: Wrap(
         spacing: 8,
@@ -1130,7 +1124,7 @@ class _TaskResponsibleLine extends StatelessWidget {
           Icon(
             Icons.person_outline_rounded,
             size: 17,
-            color: isDone ? AppTheme.dMuted : AppTheme.dMaroon,
+            color: isDone ? AppTheme.muted : AppTheme.burgundy,
           ),
           Text(
             'المسؤول: ${task.responsibleLabel}',
@@ -1150,7 +1144,7 @@ class _TaskResponsibleLine extends StatelessWidget {
                   const Icon(
                     Icons.phone_iphone_rounded,
                     size: 15,
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                   ),
                   const SizedBox(width: 4),
                   Flexible(
@@ -1160,7 +1154,7 @@ class _TaskResponsibleLine extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       textDirection: TextDirection.ltr,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1172,14 +1166,14 @@ class _TaskResponsibleLine extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppTheme.dGold.withAlpha(22),
+                color: AppTheme.goldSoft,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppTheme.dGold.withAlpha(65)),
+                border: Border.all(color: AppTheme.gold.withAlpha(65)),
               ),
               child: Text(
                 'مشارك في الخطة',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.dMaroon,
+                  color: AppTheme.burgundy,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1261,9 +1255,9 @@ class _SkeletonBox extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
     );
   }
@@ -1279,9 +1273,9 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.danger.withAlpha(18),
+        color: AppTheme.dangerSoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.danger.withAlpha(45)),
+        border: Border.all(color: AppTheme.dangerSoft),
       ),
       child: Row(
         children: [
@@ -1312,7 +1306,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -1494,11 +1488,11 @@ String _priorityLabel(String priority) {
 
 Color _priorityColor(String priority) {
   return switch (priority) {
-    'LOW' => AppTheme.dGreen,
-    'MEDIUM' => AppTheme.dGoldDeep,
+    'LOW' => AppTheme.success,
+    'MEDIUM' => AppTheme.gold,
     'HIGH' => AppTheme.danger,
     'URGENT' => AppTheme.danger,
-    _ => AppTheme.dMuted,
+    _ => AppTheme.muted,
   };
 }
 

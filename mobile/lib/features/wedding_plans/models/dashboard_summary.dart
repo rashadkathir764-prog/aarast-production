@@ -1,4 +1,4 @@
-import 'wedding_plan.dart';
+﻿import 'wedding_plan.dart';
 
 class DashboardPermissionSummary {
   const DashboardPermissionSummary({

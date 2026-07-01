@@ -103,7 +103,7 @@ class _WeddingPlanDashboardScreenState
       maxWidth: 520,
       safeAreaBottom: false,
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: _load,
         child: _buildBody(provider, auth),
       ),
@@ -324,14 +324,14 @@ class _DashboardStateList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const burgundy = AppTheme.dMaroon;
-    const gold = AppTheme.dGold;
-    const ink = AppTheme.dInk;
-    const muted = AppTheme.dInkSoft;
+    const burgundy = AppTheme.burgundy;
+    const gold = AppTheme.gold;
+    const ink = AppTheme.ink;
+    const muted = AppTheme.muted;
     final accent = tone == _StateTone.warning ? burgundy : gold;
     final iconBg = Color.alphaBlend(
       accent.withValues(alpha: 0.10),
-      Colors.white,
+      AppTheme.ivory,
     );
 
     return ListView(
@@ -340,7 +340,7 @@ class _DashboardStateList extends StatelessWidget {
       children: [
         AarastCard(
           padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           child: Column(
             children: [
               Container(

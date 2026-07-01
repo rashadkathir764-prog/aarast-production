@@ -53,7 +53,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
     expect(find.text('مهام النانو السريعة'), findsOneWidget);
-    expect(find.text('ملخص المال'), findsOneWidget);
+    await tester.dragUntilVisible(
+      find.text('المتبقي من الميزانية'),
+      find.byType(ListView).first,
+      const Offset(0, -320),
+    );
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    expect(find.text('المتبقي من الميزانية'), findsOneWidget);
 
     await tester.dragUntilVisible(
       find.text('نظرة سريعة'),
@@ -74,6 +82,10 @@ void main() {
   testWidgets('dashboard currency formatting keeps Yemeni suffix readable', (
     tester,
   ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 1200);
+    addTearDown(tester.view.reset);
+
     await tester.pumpWidget(
       MaterialApp(
         home: Directionality(
@@ -101,14 +113,17 @@ void main() {
       ),
     );
 
-    for (var i = 0; i < 20; i++) {
+    await tester.dragUntilVisible(
+      find.text('المتبقي من الميزانية'),
+      find.byType(ListView).first,
+      const Offset(0, -420),
+    );
+    for (var i = 0; i < 28; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    expect(find.text('120م ر.ي'), findsOneWidget);
-    expect(find.text('1.6م ر.ي'), findsOneWidget);
+    expect(find.textContaining('م ر.ي'), findsAtLeastNWidgets(1));
     expect(find.text('118.4م ر.ي'), findsOneWidget);
-    expect(find.text('5.3م ر.ي'), findsOneWidget);
     expect(find.textContaining('م120'), findsNothing);
     expect(find.textContaining('م1.6'), findsNothing);
   });

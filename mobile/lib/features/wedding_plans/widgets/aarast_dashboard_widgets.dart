@@ -55,17 +55,17 @@ class _Num extends StatelessWidget {
   }
 }
 
-const _uxBurgundy = Color(0xFF8A0032);
-const _uxBurgundyDark = Color(0xFF4A001B);
-const _uxInk = Color(0xFF162235);
-const _uxGold = Color(0xFFC9A24D);
-const _uxSoftGold = Color(0xFFE8D29A);
-const _uxMuted = Color(0xFF6F7A89);
-const _uxLine = Color(0xFFEFE4DA);
-const _uxSoft = Color(0xFFFAF6EF);
-const _uxSoft2 = Color(0xFFF6EEE4);
-const _uxCard = Colors.white;
-const _uxRadius = 16.0;
+const _uxBurgundy = AppTheme.burgundy;
+const _uxBurgundyDark = AppTheme.burgundyDark;
+const _uxInk = AppTheme.ink;
+const _uxGold = AppTheme.gold;
+const _uxSoftGold = AppTheme.goldSoft;
+const _uxMuted = AppTheme.muted;
+const _uxLine = AppTheme.border;
+const _uxSoft = AppTheme.ivory;
+const _uxSoft2 = AppTheme.pearl;
+const _uxCard = AppTheme.surface;
+const _uxRadius = 24.0;
 
 // ============================================================================
 // NEUTRAL UX DASHBOARD SKELETON
@@ -1117,7 +1117,7 @@ class DashboardTopBar extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: AppTheme.dMaroon,
+                        color: AppTheme.burgundy,
                         fontFamily: AppTheme.displayFontFamily,
                         fontWeight: FontWeight.w800,
                         height: 1,
@@ -1129,7 +1129,7 @@ class DashboardTopBar extends StatelessWidget {
                       child: Icon(
                         Icons.favorite_rounded,
                         size: 13,
-                        color: AppTheme.dMaroon,
+                        color: AppTheme.burgundy,
                       ),
                     ),
                   ],
@@ -1144,7 +1144,7 @@ class DashboardTopBar extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1152,7 +1152,7 @@ class DashboardTopBar extends StatelessWidget {
                     const SizedBox(width: 6),
                     const Icon(
                       Icons.favorite_rounded,
-                      color: AppTheme.dGoldDeep,
+                      color: AppTheme.gold,
                       size: 15,
                     ),
                   ],
@@ -1190,11 +1190,11 @@ class _IconButton extends StatelessWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: AppTheme.dCard,
+          color: AppTheme.surface,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: AppTheme.dMaroonDeep.withValues(alpha: 0.10),
+              color: AppTheme.burgundyDeep.withValues(alpha: 0.10),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1203,7 +1203,7 @@ class _IconButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, size: 22, color: AppTheme.dInkSoft),
+            Icon(icon, size: 22, color: AppTheme.muted),
             if (badgeLabel != null)
               Positioned(
                 top: 2,
@@ -1214,9 +1214,9 @@ class _IconButton extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.dCard, width: 2),
+                    border: Border.all(color: AppTheme.surface, width: 2),
                   ),
                   child: Text(
                     badgeLabel!,
@@ -1308,14 +1308,14 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
-          colors: [AppTheme.dMaroonBright, AppTheme.dMaroon, AppTheme.dMaroon2],
+          colors: [AppTheme.burgundyBright, AppTheme.burgundy, AppTheme.burgundy2],
           stops: [0, 0.45, 1],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.25),
+            color: AppTheme.burgundyDeep.withValues(alpha: 0.25),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -1408,7 +1408,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.dGold2,
+                      color: AppTheme.gold2,
                     ),
                   ),
                   SizedBox(
@@ -1443,7 +1443,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 16, color: AppTheme.dGold2),
+          Icon(icon, size: 16, color: AppTheme.gold2),
           const SizedBox(width: 8),
           if (label != null) ...[
             Text(
@@ -1486,9 +1486,9 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
           decoration: BoxDecoration(
-            color: AppTheme.dGold.withValues(alpha: 0.22),
+            color: AppTheme.gold.withValues(alpha: 0.22),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: AppTheme.dGold.withValues(alpha: 0.5)),
+            border: Border.all(color: AppTheme.gold.withValues(alpha: 0.5)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1496,7 +1496,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
               const Icon(
                 Icons.schedule_rounded,
                 size: 14,
-                color: AppTheme.dGold2,
+                color: AppTheme.gold2,
               ),
               const SizedBox(width: 6),
               Text(
@@ -1504,7 +1504,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.dGold2,
+                  color: AppTheme.gold2,
                 ),
               ),
             ],
@@ -1527,7 +1527,7 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.dGold, AppTheme.dGold2],
+                  colors: [AppTheme.gold, AppTheme.gold2],
                 ),
               ),
             ),
@@ -1594,7 +1594,7 @@ class _ProgressDonutPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
-      ..color = AppTheme.dGold;
+      ..color = AppTheme.gold;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       -math.pi / 2,
@@ -1706,7 +1706,7 @@ class _BudgetSnapshotCard extends StatelessWidget {
             'إجمالي الميزانية',
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1714,7 +1714,7 @@ class _BudgetSnapshotCard extends StatelessWidget {
           _Num(
             '${dashFormatMoney(totalBudget)} $currency',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1735,13 +1735,13 @@ class _BudgetSnapshotCard extends StatelessWidget {
                     _SnapshotLegendLine(
                       label: 'المصروف',
                       value: '${dashFormatMoney(spent)} $currency',
-                      color: AppTheme.dMaroon,
+                      color: AppTheme.burgundy,
                     ),
                     const SizedBox(height: 10),
                     _SnapshotLegendLine(
                       label: 'المتبقي',
                       value: '${dashFormatMoney(remaining)} $currency',
-                      color: AppTheme.dGoldDeep,
+                      color: AppTheme.gold,
                     ),
                   ],
                 ),
@@ -1789,8 +1789,8 @@ class _QuickGlanceSnapshotCard extends StatelessWidget {
                   label: 'الموردين',
                   value: '$vendorCount',
                   icon: Icons.groups_rounded,
-                  color: AppTheme.dGreen,
-                  bg: AppTheme.dGreenBg,
+                  color: AppTheme.success,
+                  bg: AppTheme.successBg,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1799,8 +1799,8 @@ class _QuickGlanceSnapshotCard extends StatelessWidget {
                   label: 'المهام',
                   value: tasksValue,
                   icon: Icons.assignment_turned_in_rounded,
-                  color: AppTheme.dMaroon,
-                  bg: AppTheme.dPinkBg,
+                  color: AppTheme.burgundy,
+                  bg: AppTheme.burgundySoft,
                 ),
               ),
             ],
@@ -1813,8 +1813,8 @@ class _QuickGlanceSnapshotCard extends StatelessWidget {
                   label: 'الضيوف',
                   value: '$guestCount',
                   icon: Icons.people_alt_rounded,
-                  color: AppTheme.dGoldDeep,
-                  bg: AppTheme.dCreamBg,
+                  color: AppTheme.gold,
+                  bg: AppTheme.ivory,
                 ),
               ),
               const SizedBox(width: 8),
@@ -1823,8 +1823,8 @@ class _QuickGlanceSnapshotCard extends StatelessWidget {
                   label: 'المدفوعات',
                   value: '$paymentCount',
                   icon: Icons.credit_card_rounded,
-                  color: AppTheme.dBlue,
-                  bg: AppTheme.dBlueBg,
+                  color: AppTheme.ink,
+                  bg: AppTheme.ivory,
                 ),
               ),
             ],
@@ -1845,7 +1845,7 @@ class _SnapshotTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.dMaroon, size: 20),
+        Icon(icon, color: AppTheme.burgundy, size: 20),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -1854,7 +1854,7 @@ class _SnapshotTitle extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -1894,7 +1894,7 @@ class _SnapshotLegendLine extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1902,7 +1902,7 @@ class _SnapshotLegendLine extends StatelessWidget {
               _Num(
                 value,
                 style: const TextStyle(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1936,9 +1936,9 @@ class _SnapshotMiniBox extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 76),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.dLine.withAlpha(180)),
+        border: Border.all(color: AppTheme.border.withAlpha(180)),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1957,7 +1957,7 @@ class _SnapshotMiniBox extends StatelessWidget {
             value,
             align: TextAlign.center,
             style: const TextStyle(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontSize: 14,
               fontWeight: FontWeight.w900,
               height: 1,
@@ -1969,7 +1969,7 @@ class _SnapshotMiniBox extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
             ),
@@ -1993,12 +1993,12 @@ class _SnapshotDonutPainter extends CustomPainter {
     final track = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
-      ..color = AppTheme.dCreamBg;
+      ..color = AppTheme.ivory;
     final spentPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.butt
-      ..color = AppTheme.dMaroon;
+      ..color = AppTheme.burgundy;
 
     canvas.drawCircle(center, radius, track);
     canvas.drawArc(
@@ -2050,8 +2050,8 @@ class BudgetSummaryCard extends StatelessWidget {
             children: [
               const _SectionIcon(
                 icon: Icons.savings_outlined,
-                color: AppTheme.dGoldDeep,
-                bg: AppTheme.dCreamBg,
+                color: AppTheme.gold,
+                bg: AppTheme.ivory,
               ),
               const SizedBox(width: 10),
               const Text(
@@ -2059,7 +2059,7 @@ class BudgetSummaryCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                 ),
               ),
               const Spacer(),
@@ -2073,7 +2073,7 @@ class BudgetSummaryCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                     ),
                   ),
                 ),
@@ -2108,9 +2108,9 @@ class BudgetSummaryCard extends StatelessWidget {
                 child: CustomPaint(
                   painter: _SegmentDonutPainter(
                     segments: [
-                      _Segment(frac(spent), AppTheme.dMaroon),
-                      _Segment(frac(remaining), AppTheme.dTrack),
-                      _Segment(frac(obligations), AppTheme.dGold),
+                      _Segment(frac(spent), AppTheme.burgundy),
+                      _Segment(frac(remaining), AppTheme.border),
+                      _Segment(frac(obligations), AppTheme.gold),
                     ],
                   ),
                 ),
@@ -2122,19 +2122,19 @@ class BudgetSummaryCard extends StatelessWidget {
                   children: [
                     _budgetLine(
                       'المصروف',
-                      AppTheme.dMaroon,
+                      AppTheme.burgundy,
                       '${dashFormatMoney(spent)} $currency',
                       frac(spent),
                     ),
                     _budgetLine(
                       'المتبقي',
-                      AppTheme.dTrack,
+                      AppTheme.border,
                       '${dashFormatMoney(remaining)} $currency',
                       frac(remaining),
                     ),
                     _budgetLine(
                       'الالتزامات القادمة',
-                      AppTheme.dGold,
+                      AppTheme.gold,
                       '${dashFormatMoney(obligations)} $currency',
                       frac(obligations),
                     ),
@@ -2161,7 +2161,7 @@ class BudgetSummaryCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
             ),
           ),
           const SizedBox(height: 2),
@@ -2173,7 +2173,7 @@ class BudgetSummaryCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w800,
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
               ),
             ),
           ),
@@ -2199,7 +2199,7 @@ class BudgetSummaryCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                   ),
                 ),
               ),
@@ -2214,7 +2214,7 @@ class BudgetSummaryCard extends StatelessWidget {
           const SizedBox(height: 2),
           _Num(
             '$value  (${(frac * 100).round()}%)',
-            style: const TextStyle(fontSize: 12, color: AppTheme.dInkSoft),
+            style: const TextStyle(fontSize: 12, color: AppTheme.muted),
           ),
         ],
       ),
@@ -2245,7 +2245,7 @@ class _SegmentDonutPainter extends CustomPainter {
       final empty = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = stroke
-        ..color = AppTheme.dTrack.withValues(alpha: 0.5);
+        ..color = AppTheme.border.withValues(alpha: 0.5);
       canvas.drawCircle(center, radius, empty);
       return;
     }
@@ -2322,7 +2322,7 @@ class MiniStatCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 12.5,
               fontWeight: FontWeight.w600,
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
             ),
           ),
           const SizedBox(height: 2),
@@ -2334,24 +2334,24 @@ class MiniStatCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 27,
                 fontWeight: FontWeight.w800,
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 height: 1.1,
               ),
             ),
           ),
           Text(
             unit,
-            style: const TextStyle(fontSize: 12, color: AppTheme.dMuted),
+            style: const TextStyle(fontSize: 12, color: AppTheme.muted),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Container(height: 1, color: AppTheme.dLine),
+            child: Container(height: 1, color: AppTheme.border),
           ),
           if (locked)
             const Icon(
               Icons.lock_outline_rounded,
               size: 18,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
             )
           else ...[
             if (subLabel != null)
@@ -2360,7 +2360,7 @@ class MiniStatCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: AppTheme.dMuted),
+                style: const TextStyle(fontSize: 11, color: AppTheme.muted),
               ),
             if (subValue != null)
               FittedBox(
@@ -2371,7 +2371,7 @@ class MiniStatCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: subValueColor ?? AppTheme.dInk,
+                    color: subValueColor ?? AppTheme.ink,
                   ),
                 ),
               ),
@@ -2379,7 +2379,7 @@ class MiniStatCard extends StatelessWidget {
               _Num(
                 subSecondary!,
                 align: TextAlign.center,
-                style: const TextStyle(fontSize: 11, color: AppTheme.dMuted),
+                style: const TextStyle(fontSize: 11, color: AppTheme.muted),
               ),
           ],
         ],
@@ -2424,7 +2424,7 @@ class QuickActionsCard extends StatelessWidget {
             title: 'إجراءات سريعة',
             icon: Icons.bolt_rounded,
             iconColor: Colors.white,
-            iconBg: AppTheme.dMaroon,
+            iconBg: AppTheme.burgundy,
           ),
           const SizedBox(height: 14),
           Row(
@@ -2453,7 +2453,7 @@ class _QuickActionItem extends StatelessWidget {
     return Opacity(
       opacity: enabled ? 1 : 0.45,
       child: Material(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           onTap: action.onTap,
@@ -2461,7 +2461,7 @@ class _QuickActionItem extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.dLine),
+              border: Border.all(color: AppTheme.border),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
             child: Column(
@@ -2488,7 +2488,7 @@ class _QuickActionItem extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         height: 1.15,
                       ),
                     ),
@@ -2539,14 +2539,14 @@ class AlertsCard extends StatelessWidget {
           _SectionHeader(
             title: 'تنبيهات مهمة',
             icon: Icons.notifications_none_rounded,
-            iconColor: AppTheme.dMaroon,
-            iconBg: AppTheme.dPinkBg,
+            iconColor: AppTheme.burgundy,
+            iconBg: AppTheme.burgundySoft,
             trailing: Container(
               width: 30,
               height: 30,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppTheme.dPinkBg,
+                color: AppTheme.burgundySoft,
                 borderRadius: BorderRadius.circular(9),
               ),
               child: const Text(
@@ -2554,7 +2554,7 @@ class AlertsCard extends StatelessWidget {
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
-                  color: AppTheme.dMaroon,
+                  color: AppTheme.burgundy,
                 ),
               ),
             ),
@@ -2566,7 +2566,7 @@ class AlertsCard extends StatelessWidget {
               child: Text(
                 'لا توجد تنبيهات حالياً',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.dMuted, fontSize: 13),
+                style: TextStyle(color: AppTheme.muted, fontSize: 13),
               ),
             )
           else
@@ -2590,9 +2590,9 @@ class _AlertTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, accent) = switch (alert.tone) {
-      AlertTone.pink => (AppTheme.dPinkBg, AppTheme.dMaroon),
-      AlertTone.cream => (AppTheme.dCreamBg, AppTheme.dGoldDeep),
-      AlertTone.green => (AppTheme.dGreenBg, AppTheme.dGreen),
+      AlertTone.pink => (AppTheme.burgundySoft, AppTheme.burgundy),
+      AlertTone.cream => (AppTheme.ivory, AppTheme.gold),
+      AlertTone.green => (AppTheme.successBg, AppTheme.success),
     };
     return Container(
       padding: const EdgeInsets.all(14),
@@ -2612,7 +2612,7 @@ class _AlertTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.dMaroonDeep.withValues(alpha: 0.12),
+                  color: AppTheme.burgundyDeep.withValues(alpha: 0.12),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -2641,7 +2641,7 @@ class _AlertTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12.5,
                     height: 1.5,
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                   ),
                 ),
               ],
@@ -2694,11 +2694,11 @@ class ParticipantsCard extends StatelessWidget {
             title: 'المشاركون في الخطة',
             icon: Icons.groups_rounded,
             iconColor: Colors.white,
-            iconBg: AppTheme.dMaroon,
+            iconBg: AppTheme.burgundy,
             trailing: Container(
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 5),
               decoration: BoxDecoration(
-                color: AppTheme.dMaroon,
+                color: AppTheme.burgundy,
                 borderRadius: BorderRadius.circular(30),
               ),
               child: Text(
@@ -2718,7 +2718,7 @@ class ParticipantsCard extends StatelessWidget {
               child: Text(
                 'لا يوجد مشاركون بعد',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.dMuted, fontSize: 13),
+                style: TextStyle(color: AppTheme.muted, fontSize: 13),
               ),
             )
           else
@@ -2747,7 +2747,7 @@ class _ParticipantTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
       decoration: BoxDecoration(
         border: showDivider
-            ? const Border(bottom: BorderSide(color: AppTheme.dLine))
+            ? const Border(bottom: BorderSide(color: AppTheme.border))
             : null,
       ),
       child: Row(
@@ -2766,7 +2766,7 @@ class _ParticipantTile extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                   ),
                 ),
                 if (info.phone != null)
@@ -2774,7 +2774,7 @@ class _ParticipantTile extends StatelessWidget {
                     info.phone!,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: AppTheme.dMuted,
+                      color: AppTheme.muted,
                     ),
                   ),
               ],
@@ -2784,7 +2784,7 @@ class _ParticipantTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 3),
             decoration: BoxDecoration(
-              color: info.isManager ? AppTheme.dCreamBg : AppTheme.dGreenBg,
+              color: info.isManager ? AppTheme.ivory : AppTheme.successBg,
               borderRadius: BorderRadius.circular(7),
             ),
             child: Text(
@@ -2792,7 +2792,7 @@ class _ParticipantTile extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
-                color: info.isManager ? AppTheme.dGoldDeep : AppTheme.dGreen,
+                color: info.isManager ? AppTheme.gold : AppTheme.success,
               ),
             ),
           ),
@@ -2829,7 +2829,7 @@ class _Avatar extends StatelessWidget {
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.18),
+            color: AppTheme.burgundyDeep.withValues(alpha: 0.18),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -2868,14 +2868,14 @@ class SharedPlansCard extends StatelessWidget {
             title: 'الخطط المشتركة معي',
             icon: Icons.groups_rounded,
             iconColor: Colors.white,
-            iconBg: AppTheme.dMaroon,
+            iconBg: AppTheme.burgundy,
             trailing: subtitle == null
                 ? null
                 : Text(
                     subtitle!,
                     style: const TextStyle(
                       fontSize: 13,
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2895,13 +2895,13 @@ class SharedPlansCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   gradient: const LinearGradient(
-                    colors: [AppTheme.dMaroonBright, AppTheme.dMaroon],
+                    colors: [AppTheme.burgundyBright, AppTheme.burgundy],
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.dMaroon.withValues(alpha: 0.45),
+                      color: AppTheme.burgundy.withValues(alpha: 0.45),
                       blurRadius: 22,
                       offset: const Offset(0, 10),
                     ),
@@ -2919,7 +2919,7 @@ class SharedPlansCard extends StatelessWidget {
                       child: const Icon(
                         Icons.folder_shared_rounded,
                         size: 22,
-                        color: AppTheme.dGold2,
+                        color: AppTheme.gold2,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -2976,8 +2976,8 @@ class DashboardBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: const Border(top: BorderSide(color: Color(0xFFD8D8D8))),
+        color: AppTheme.surfaceElevated,
+        border: const Border(top: BorderSide(color: AppTheme.border)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(10),
@@ -3043,12 +3043,12 @@ class DashboardBottomNav extends StatelessWidget {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: AppTheme.dMaroon,
+                      color: AppTheme.burgundy,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppTheme.dGold2, width: 3),
+                      border: Border.all(color: AppTheme.gold2, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(18),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -3085,7 +3085,7 @@ class _WireNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppTheme.dMaroon : AppTheme.dMuted;
+    final color = active ? AppTheme.burgundy : AppTheme.muted;
     return InkResponse(
       onTap: onTap,
       radius: 36,
@@ -3094,9 +3094,9 @@ class _WireNavItem extends StatelessWidget {
         width: 54,
         height: 52,
         decoration: BoxDecoration(
-          color: active ? AppTheme.dPinkBg.withAlpha(90) : Colors.transparent,
+          color: active ? AppTheme.burgundySoft.withAlpha(90) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: active ? Border.all(color: AppTheme.dLine, width: 0.8) : null,
+          border: active ? Border.all(color: AppTheme.border, width: 0.8) : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -3141,7 +3141,7 @@ class _UnusedDashboardBottomNav extends StatelessWidget {
         border: const Border(top: BorderSide(color: _uxLine)),
         boxShadow: [
           BoxShadow(
-            color: _uxBurgundyDark.withAlpha(20),
+            color: _uxBurgundyDark.withValues(alpha: 0.1),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -3204,7 +3204,7 @@ class _UnusedDashboardBottomNav extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: _uxBurgundy.withAlpha(70),
+                          color: _uxBurgundy.withValues(alpha: 0.1),
                           blurRadius: 16,
                           offset: const Offset(0, 6),
                         ),
@@ -3278,7 +3278,7 @@ Future<void> showAccountSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    backgroundColor: AppTheme.dCard,
+    backgroundColor: AppTheme.surface,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -3297,7 +3297,7 @@ Future<void> showAccountSheet(
                     width: 44,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppTheme.dLine,
+                      color: AppTheme.border,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -3309,12 +3309,12 @@ Future<void> showAccountSheet(
                       width: 52,
                       height: 52,
                       decoration: const BoxDecoration(
-                        color: AppTheme.dPinkBg,
+                        color: AppTheme.burgundySoft,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.person_outline_rounded,
-                        color: AppTheme.dMaroon,
+                        color: AppTheme.burgundy,
                         size: 26,
                       ),
                     ),
@@ -3328,7 +3328,7 @@ Future<void> showAccountSheet(
                             style: const TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
-                              color: AppTheme.dInk,
+                              color: AppTheme.ink,
                             ),
                           ),
                           if (phone != null)
@@ -3336,7 +3336,7 @@ Future<void> showAccountSheet(
                               phone,
                               style: const TextStyle(
                                 fontSize: 14,
-                                color: AppTheme.dMuted,
+                                color: AppTheme.muted,
                               ),
                             ),
                         ],
@@ -3347,7 +3347,7 @@ Future<void> showAccountSheet(
                 const SizedBox(height: 22),
                 FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.dMaroon,
+                    backgroundColor: AppTheme.burgundy,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(50),
                     shape: RoundedRectangleBorder(
@@ -3386,7 +3386,7 @@ class LockedSectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       child: Row(
         children: [
-          const Icon(Icons.lock_outline_rounded, color: AppTheme.dMuted),
+          const Icon(Icons.lock_outline_rounded, color: AppTheme.muted),
           const Spacer(),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -3396,18 +3396,18 @@ class LockedSectionCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: AppTheme.dMuted,
+                  color: AppTheme.muted,
                 ),
               ),
               const SizedBox(height: 4),
               const Text(
                 'غير متاح حسب صلاحياتك',
-                style: TextStyle(fontSize: 12, color: AppTheme.dMuted),
+                style: TextStyle(fontSize: 12, color: AppTheme.muted),
               ),
             ],
           ),
           const SizedBox(width: 10),
-          _SectionIcon(icon: icon, color: AppTheme.dMuted, bg: AppTheme.dLine),
+          _SectionIcon(icon: icon, color: AppTheme.muted, bg: AppTheme.border),
         ],
       ),
     );
@@ -3461,7 +3461,7 @@ class _DashboardSkeletonState extends State<DashboardSkeleton>
   Widget _box(double height) => Container(
     height: height,
     decoration: BoxDecoration(
-      color: AppTheme.dTrack.withValues(alpha: 0.5),
+      color: AppTheme.border.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(22),
     ),
   );
@@ -3487,12 +3487,12 @@ class _DashCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.dMaroonDeep.withValues(alpha: 0.08),
+            color: AppTheme.burgundyDeep.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -3532,7 +3532,7 @@ class _SectionHeader extends StatelessWidget {
             style: const TextStyle(
               fontSize: 19,
               fontWeight: FontWeight.w800,
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
             ),
           ),
         ),
@@ -3589,14 +3589,14 @@ class _FootLink extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.dMaroon,
+                color: AppTheme.burgundy,
               ),
             ),
             const SizedBox(width: 6),
             const Icon(
               Icons.chevron_left_rounded,
               size: 18,
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
             ),
           ],
         ),

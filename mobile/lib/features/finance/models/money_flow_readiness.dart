@@ -1,4 +1,4 @@
-import '../../wedding_plans/models/plan_summary_readiness.dart';
+﻿import '../../wedding_plans/models/plan_summary_readiness.dart';
 
 enum MoneyFlowReadinessState {
   missingCurrentPlan,

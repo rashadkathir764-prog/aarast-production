@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -98,7 +98,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
             const _ApplyIntroCard(),
             const SizedBox(height: 16),
             AarastCard(
-              color: AppTheme.dCard,
+              color: AppTheme.surface,
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -291,17 +291,17 @@ class _ApplyIntroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.dCreamBg,
+      color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.verified_user_outlined, color: AppTheme.dGoldDeep),
+          Icon(Icons.verified_user_outlined, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(
               'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود ويمكنك إدارة الخدمات والباقات وطلبات عروض الأسعار.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
                 height: 1.5,
               ),
@@ -378,7 +378,7 @@ class _ReferenceDataWarning extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.dPinkBg,
+      color: AppTheme.burgundySoft,
       child: Text(
         'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
         textAlign: TextAlign.center,
@@ -394,17 +394,17 @@ class _ProviderReviewNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, color: AppTheme.dMaroon),
+          Icon(Icons.info_outline_rounded, color: AppTheme.burgundy),
           SizedBox(width: 10),
           Expanded(
             child: Text(
               'لن يتم اعتماد المزود تلقائيًا. الظهور في نتائج البحث يعتمد على حالة الموافقة من النظام.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),
@@ -424,7 +424,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg,
+      color: AppTheme.burgundySoft,
       border: Border.all(color: AppTheme.danger.withAlpha(55)),
       child: Text(
         message,

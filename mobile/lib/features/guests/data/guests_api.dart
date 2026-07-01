@@ -1,4 +1,4 @@
-import '../../../core/network/api_client.dart';
+﻿import '../../../core/network/api_client.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/phone_number_utils.dart';

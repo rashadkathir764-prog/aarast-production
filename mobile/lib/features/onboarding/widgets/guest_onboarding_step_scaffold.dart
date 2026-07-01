@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
@@ -31,7 +31,7 @@ class GuestOnboardingStepScaffold extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.dBg,
+        backgroundColor: AppTheme.ivory,
         body: DecoratedBox(
           decoration: AppTheme.screenDecoration(),
           child: SafeArea(
@@ -58,7 +58,7 @@ class GuestOnboardingStepScaffold extends StatelessWidget {
                                 textAlign: TextAlign.right,
                                 style: Theme.of(context).textTheme.headlineSmall
                                     ?.copyWith(
-                                      color: AppTheme.dInk,
+                                      color: AppTheme.ink,
                                       fontFamily: AppTheme.displayFontFamily,
                                       fontSize: 28,
                                       fontWeight: FontWeight.w900,
@@ -70,7 +70,7 @@ class GuestOnboardingStepScaffold extends StatelessWidget {
                                 textAlign: TextAlign.right,
                                 style: Theme.of(context).textTheme.bodyLarge
                                     ?.copyWith(
-                                      color: AppTheme.dInkSoft,
+                                      color: AppTheme.muted,
                                       fontWeight: FontWeight.w700,
                                       height: 1.45,
                                     ),
@@ -133,7 +133,7 @@ class _OnboardingHeader extends StatelessWidget {
               Text(
                 'أعرست',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.dMaroon,
+                  color: AppTheme.burgundy,
                   fontFamily: AppTheme.displayFontFamily,
                   fontWeight: FontWeight.w700,
                 ),
@@ -150,7 +150,7 @@ class _OnboardingHeader extends StatelessWidget {
                       height: 5,
                       margin: const EdgeInsets.symmetric(horizontal: 2),
                       decoration: BoxDecoration(
-                        color: active ? AppTheme.dMaroon : AppTheme.dLine,
+                        color: active ? AppTheme.burgundy : AppTheme.border,
                         borderRadius: BorderRadius.circular(20),
                       ),
                     );
@@ -174,7 +174,7 @@ class GuestOnboardingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(color: color ?? AppTheme.dCard2, child: child);
+    return AarastCard(color: color ?? AppTheme.surface, child: child);
   }
 }
 
@@ -199,7 +199,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tile = GuestOnboardingCard(
-      color: selected ? AppTheme.dPinkBg.withAlpha(120) : null,
+      color: selected ? AppTheme.burgundySoft.withAlpha(120) : null,
       child: compact
           ? Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -211,13 +211,13 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
+                        color: selected ? AppTheme.burgundy : AppTheme.ivory,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         icon,
                         size: 21,
-                        color: selected ? Colors.white : AppTheme.dMaroon,
+                        color: selected ? Colors.white : AppTheme.burgundy,
                       ),
                     ),
                     Icon(
@@ -225,7 +225,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                           ? Icons.check_circle_rounded
                           : Icons.circle_outlined,
                       size: 20,
-                      color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+                      color: selected ? AppTheme.burgundy : AppTheme.border,
                     ),
                   ],
                 ),
@@ -237,7 +237,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -251,7 +251,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                   ),
                 ),
               ],
@@ -262,12 +262,12 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
+                    color: selected ? AppTheme.burgundy : AppTheme.ivory,
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: Icon(
                     icon,
-                    color: selected ? Colors.white : AppTheme.dMaroon,
+                    color: selected ? Colors.white : AppTheme.burgundy,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -280,7 +280,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                         textAlign: TextAlign.right,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: AppTheme.dInk,
+                              color: AppTheme.ink,
                               fontWeight: FontWeight.w900,
                             ),
                       ),
@@ -289,7 +289,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                         subtitle,
                         textAlign: TextAlign.right,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           height: 1.35,
                         ),
                       ),
@@ -298,7 +298,7 @@ class GuestOnboardingOptionTile extends StatelessWidget {
                 ),
                 Icon(
                   selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+                  color: selected ? AppTheme.burgundy : AppTheme.border,
                 ),
               ],
             ),
@@ -350,8 +350,8 @@ class GuestOnboardingChipList extends StatelessWidget {
               }
               onChanged?.call(List.unmodifiable(next));
             },
-            selectedColor: AppTheme.dPinkBg,
-            checkmarkColor: AppTheme.dMaroon,
+            selectedColor: AppTheme.burgundySoft,
+            checkmarkColor: AppTheme.burgundy,
           ),
       ],
     );

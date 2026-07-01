@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -90,7 +90,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
+                          color: AppTheme.burgundyDeep,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -100,7 +100,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -117,7 +117,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                     icon: const Icon(Icons.add_rounded),
                     tooltip: 'إضافة دين',
                     style: IconButton.styleFrom(
-                      backgroundColor: AppTheme.dMaroon,
+                      backgroundColor: AppTheme.burgundy,
                       foregroundColor: Colors.white,
                       side: BorderSide.none,
                     ),
@@ -127,7 +127,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               onRefresh: _loadDebts,
               child: _canReadDebts
                   ? _DebtInstallmentContent(
@@ -373,14 +373,14 @@ class _DebtSummaryGrid extends StatelessWidget {
               width: itemWidth,
               label: 'إجمالي الديون',
               moneyValue: _moneyValue(summary.totalDebt),
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               icon: Icons.account_balance_wallet_outlined,
             ),
             _SummaryTile(
               width: itemWidth,
               label: 'المدفوع',
               moneyValue: _moneyValue(summary.totalPaid),
-              color: AppTheme.dGreen,
+              color: AppTheme.success,
               icon: Icons.check_circle_outline_rounded,
             ),
             _SummaryTile(
@@ -396,7 +396,7 @@ class _DebtSummaryGrid extends StatelessWidget {
               value: nextInstallment?.dueDate == null
                   ? '-'
                   : _shortDate(nextInstallment!.dueDate!),
-              color: AppTheme.dBlue,
+              color: AppTheme.ink,
               icon: Icons.calendar_month_rounded,
               ltrValue: true,
             ),
@@ -433,14 +433,14 @@ class _SummaryTile extends StatelessWidget {
       child: AarastCard(
         padding: const EdgeInsets.all(12),
         radius: AppTheme.radiusMd,
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
         child: Row(
           children: [
             Container(
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: color.withAlpha(18),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
               child: Icon(icon, color: color, size: 19),
@@ -455,7 +455,7 @@ class _SummaryTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -516,12 +516,12 @@ class _DebtFilterChips extends StatelessWidget {
               labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: selectedFilter == filter
                     ? Colors.white
-                    : AppTheme.dInkSoft,
+                    : AppTheme.muted,
                 fontWeight: FontWeight.w900,
               ),
-              selectedColor: AppTheme.dMaroon,
-              backgroundColor: AppTheme.dCard2,
-              side: const BorderSide(color: AppTheme.dLine),
+              selectedColor: AppTheme.burgundy,
+              backgroundColor: AppTheme.surface,
+              side: const BorderSide(color: AppTheme.border),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
               ),
@@ -556,7 +556,7 @@ class _DebtCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       radius: AppTheme.radiusLg,
       onTap: onTap,
-      border: Border.all(color: AppTheme.dLine),
+      border: Border.all(color: AppTheme.border),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -573,7 +573,7 @@ class _DebtCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -583,7 +583,7 @@ class _DebtCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -595,7 +595,7 @@ class _DebtCard extends StatelessWidget {
               const SizedBox(width: 6),
               const Icon(
                 Icons.chevron_left_rounded,
-                color: AppTheme.dMuted,
+                color: AppTheme.muted,
                 size: 22,
               ),
             ],
@@ -614,25 +614,25 @@ class _DebtCard extends StatelessWidget {
                     width: itemWidth,
                     label: 'إجمالي الدين',
                     moneyValue: _moneyValue(debt.totalAmount),
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                   ),
                   _DebtMiniMetric(
                     width: itemWidth,
                     label: 'المدفوع',
                     moneyValue: _moneyValue(debt.paidAmount),
-                    color: AppTheme.dGreen,
+                    color: AppTheme.success,
                   ),
                   _DebtMiniMetric(
                     width: itemWidth,
                     label: 'المتبقي',
                     moneyValue: remaining,
-                    color: remaining <= 0 ? AppTheme.dGreen : AppTheme.danger,
+                    color: remaining <= 0 ? AppTheme.success : AppTheme.danger,
                   ),
                   _DebtMiniMetric(
                     width: itemWidth,
                     label: 'أقرب قسط',
                     value: nextDate == null ? '-' : _shortDate(nextDate),
-                    color: AppTheme.dGoldDeep,
+                    color: AppTheme.gold,
                     ltrValue: nextDate != null,
                   ),
                 ],
@@ -646,7 +646,7 @@ class _DebtCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -672,9 +672,9 @@ class _DebtAvatar extends StatelessWidget {
       height: 46,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color.withAlpha(20),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: color.withAlpha(45)),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
       ),
       child: Text(
         initial,
@@ -712,9 +712,9 @@ class _DebtMiniMetric extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: AppTheme.dBg,
+          color: AppTheme.ivory,
           borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-          border: Border.all(color: AppTheme.dLine),
+          border: Border.all(color: AppTheme.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,7 +724,7 @@ class _DebtMiniMetric extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -807,9 +807,9 @@ class _SkeletonBox extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
     );
   }
@@ -825,9 +825,9 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.danger.withAlpha(18),
+        color: AppTheme.dangerSoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.danger.withAlpha(45)),
+        border: Border.all(color: AppTheme.dangerSoft),
       ),
       child: Row(
         children: [
@@ -951,9 +951,9 @@ String _debtUiStatusLabel(_DebtUiStatus status) {
 
 Color _debtUiStatusColor(_DebtUiStatus status) {
   return switch (status) {
-    _DebtUiStatus.active => AppTheme.dMaroon,
+    _DebtUiStatus.active => AppTheme.burgundy,
     _DebtUiStatus.overdue => AppTheme.danger,
-    _DebtUiStatus.completed => AppTheme.dGreen,
+    _DebtUiStatus.completed => AppTheme.success,
   };
 }
 

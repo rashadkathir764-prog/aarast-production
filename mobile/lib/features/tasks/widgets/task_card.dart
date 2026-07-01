@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -35,7 +35,7 @@ class TaskCard extends StatelessWidget {
                 child: Text(
                   task.title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.deepBurgundy,
+                    color: AppTheme.burgundy,
                     fontWeight: FontWeight.w800,
                   ),
                   textAlign: TextAlign.right,
@@ -86,8 +86,8 @@ class _Badge extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastStatusBadge(
       label: label,
-      color: AppTheme.deepBurgundy,
-      backgroundColor: AppTheme.warmGold.withAlpha(45),
+      color: AppTheme.burgundy,
+      backgroundColor: AppTheme.warmGold.withValues(alpha: 0.1),
     );
   }
 }

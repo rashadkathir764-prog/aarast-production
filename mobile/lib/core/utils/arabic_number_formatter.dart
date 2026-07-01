@@ -1,4 +1,4 @@
-class ArabicNumberFormatter {
+﻿class ArabicNumberFormatter {
   static const List<String> _ones = [
     '',
     'واحد',

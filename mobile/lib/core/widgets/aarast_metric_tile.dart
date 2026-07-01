@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
@@ -8,7 +8,7 @@ class AarastMetricTile extends StatelessWidget {
     required this.label,
     required this.value,
     this.icon,
-    this.tone = AppTheme.dMaroon,
+    this.tone = AppTheme.burgundy,
     this.subtitle,
     super.key,
   });
@@ -23,7 +23,7 @@ class AarastMetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.dCard2,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -48,7 +48,7 @@ class AarastMetricTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -62,7 +62,7 @@ class AarastMetricTile extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -74,7 +74,7 @@ class AarastMetricTile extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.dMuted,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
               ),
             ),

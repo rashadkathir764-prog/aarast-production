@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -120,9 +120,9 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.4),
+                        color: AppTheme.surfaceElevated.withValues(alpha: 0.85),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: AppTheme.border,
                           width: 1,
                         ),
                       ),
@@ -647,10 +647,10 @@ class _PressScaleState extends State<_PressScale> {
 class _RoyalHomeColors {
   const _RoyalHomeColors._();
 
-  static const ivory = AppTheme.dCard;
-  static const burgundy = AppTheme.deepBurgundy;
-  static const gold = AppTheme.warmGold;
-  static const goldDeep = AppTheme.dGoldDeep;
-  static const ink = AppTheme.dInk;
-  static const muted = AppTheme.dMuted;
+  static const ivory = AppTheme.ivory;
+  static const burgundy = AppTheme.burgundy;
+  static const gold = AppTheme.gold;
+  static const goldDeep = AppTheme.gold;
+  static const ink = AppTheme.ink;
+  static const muted = AppTheme.muted;
 }

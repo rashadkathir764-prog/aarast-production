@@ -1,4 +1,4 @@
-class AppFeatureFlags {
+﻿class AppFeatureFlags {
   // Explicit local development escape hatch. Normal builds keep account and
   // provider gates real unless this dart-define is intentionally enabled.
   static const bool devBypassLoginGatesForUxExploration = bool.fromEnvironment(

@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -68,7 +68,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
         ? AppTheme.danger
         : status == 'WARNING'
             ? _RoyalColors.goldDeep
-            : AppTheme.dGreen;
+            : AppTheme.success;
 
     return AarastScreenFrame(
       maxWidth: 520,
@@ -336,9 +336,9 @@ class _FinanceContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _RoyalColors.ink.withValues(alpha: 0.03),
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _RoyalColors.ink.withValues(alpha: 0.05)),
+              border: Border.all(color: AppTheme.border),
             ),
             child: Text(
               'لا توجد تصنيفات. استخدم الزر العائم الذهبي للإضافة.',
@@ -371,9 +371,9 @@ class _FinanceContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: _RoyalColors.ink.withValues(alpha: 0.03),
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _RoyalColors.ink.withValues(alpha: 0.05)),
+              border: Border.all(color: AppTheme.border),
             ),
             child: Text(
               'لا توجد مصاريف. استخدم الزر العائم الذهبي للإضافة.',
@@ -387,14 +387,14 @@ class _FinanceContent extends StatelessWidget {
         else
           Container(
             decoration: BoxDecoration(
-              color: _RoyalColors.ivory,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: _RoyalColors.ink.withValues(alpha: 0.05)),
+              border: Border.all(color: AppTheme.border),
               boxShadow: [
                 BoxShadow(
-                  color: _RoyalColors.ink.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: AppTheme.muted.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
                 )
               ],
             ),
@@ -481,7 +481,7 @@ class _FinanceContent extends StatelessWidget {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: AppTheme.danger.withAlpha(22),
+                      color: AppTheme.dangerSoft,
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
@@ -495,7 +495,7 @@ class _FinanceContent extends StatelessWidget {
                     'حذف المصروف؟',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -507,7 +507,7 @@ class _FinanceContent extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                   ),
@@ -584,9 +584,16 @@ class _FinanceDonutHero extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8, bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: _RoyalColors.ink.withValues(alpha: 0.03),
+        gradient: AppTheme.heroGradient,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _RoyalColors.ink.withValues(alpha: 0.05)),
+        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.burgundyDark.withValues(alpha: 0.1),
+            blurRadius: 26,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -600,8 +607,8 @@ class _FinanceDonutHero extends StatelessWidget {
                   size: const Size(100, 100),
                   painter: _FinanceDonutPainter(
                     spentRatio: spentRatio,
-                    budgetColor: _RoyalColors.gold,
-                    spentColor: _RoyalColors.burgundy,
+                    budgetColor: AppTheme.pearl,
+                    spentColor: AppTheme.gold,
                   ),
                 ),
                 Column(
@@ -610,7 +617,7 @@ class _FinanceDonutHero extends StatelessWidget {
                     Text(
                       'المتبقي',
                       style: TextStyle(
-                        color: _RoyalColors.ink.withValues(alpha: 0.5),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -618,7 +625,7 @@ class _FinanceDonutHero extends StatelessWidget {
                     _AnimatedMoneyText(
                       value: summary.remainingBudget ?? '0',
                       style: const TextStyle(
-                        color: _RoyalColors.ink,
+                        color: Colors.white,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
@@ -637,13 +644,13 @@ class _FinanceDonutHero extends StatelessWidget {
                 _DonutStatHorizontal(
                   label: 'الميزانية',
                   value: summary.totalBudget,
-                  color: _RoyalColors.gold,
+                  color: AppTheme.pearl,
                 ),
-                Divider(height: 24, thickness: 1, color: _RoyalColors.ink.withValues(alpha: 0.05)),
+                Divider(height: 24, thickness: 1, color: Colors.white.withValues(alpha: 0.15)),
                 _DonutStatHorizontal(
                   label: 'المصروف',
                   value: summary.totalSpent,
-                  color: _RoyalColors.burgundy,
+                  color: AppTheme.gold,
                 ),
               ],
             ),
@@ -681,7 +688,7 @@ class _DonutStatHorizontal extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: _RoyalColors.ink.withValues(alpha: 0.6),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -691,7 +698,7 @@ class _DonutStatHorizontal extends StatelessWidget {
         _AnimatedMoneyText(
           value: value ?? '0',
           style: const TextStyle(
-            color: _RoyalColors.ink,
+            color: Colors.white,
             fontSize: 15,
             fontWeight: FontWeight.w900,
           ),
@@ -774,7 +781,7 @@ class _FinancialWarningsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.danger.withAlpha(12),
+      color: AppTheme.dangerSoft,
       border: Border.all(color: AppTheme.danger.withAlpha(32)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,7 +798,7 @@ class _FinancialWarningsCard extends StatelessWidget {
                   Icons.error_outline_rounded,
                   color: warning.severity == 'DANGER'
                       ? AppTheme.danger
-                      : AppTheme.dGoldDeep,
+                      : AppTheme.gold,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -799,7 +806,7 @@ class _FinancialWarningsCard extends StatelessWidget {
                   child: Text(
                     _warningCopy(warning),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -822,24 +829,24 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = row.percentUsed;
-    final color = progress >= 1
+    final progressColor = progress >= 1
         ? AppTheme.danger
         : progress >= .75
-        ? AppTheme.dGoldDeep
-        : AppTheme.dMaroon;
+        ? AppTheme.warning
+        : AppTheme.gold;
 
     return Container(
       width: 140,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: _RoyalColors.ivory,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _RoyalColors.ink.withValues(alpha: 0.05)),
+        border: Border.all(color: AppTheme.border),
         boxShadow: [
           BoxShadow(
-            color: _RoyalColors.ink.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: AppTheme.muted.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           )
         ],
       ),
@@ -850,10 +857,10 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
+              color: AppTheme.goldSoft,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(_categoryIcon(row.name), color: color, size: 20),
+            child: Icon(_categoryIcon(row.name), color: AppTheme.gold, size: 20),
           ),
           const SizedBox(height: 12),
           Text(
@@ -861,7 +868,7 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: _RoyalColors.ink,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
               fontSize: 13,
             ),
@@ -869,8 +876,8 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
           const SizedBox(height: 4),
           _AnimatedMoneyText(
             value: row.remaining.toString(),
-            style: TextStyle(
-              color: color,
+            style: const TextStyle(
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
               fontSize: 14,
             ),
@@ -891,11 +898,11 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
                 child: Container(
                   height: 4,
                   decoration: BoxDecoration(
-                    color: color,
+                    color: progressColor,
                     borderRadius: BorderRadius.circular(2),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withValues(alpha: 0.6),
+                        color: progressColor.withValues(alpha: 0.6),
                         blurRadius: 4,
                       ),
                     ],
@@ -948,7 +955,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.danger.withValues(alpha: 0.1),
+                      color: AppTheme.dangerSoft,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.danger, size: 24),
@@ -1009,7 +1016,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.event_note_outlined, color: AppTheme.dMaroon, size: 20),
+                const Icon(Icons.event_note_outlined, color: AppTheme.burgundy, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1039,7 +1046,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                             Text(
                               installment.debtTitle ?? 'قسط مرتبط بدين',
                               style: const TextStyle(
-                                color: AppTheme.dInk,
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 14,
                               ),
@@ -1052,7 +1059,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                                 _installmentStateLabel(installment),
                               ].join(' · '),
                               style: const TextStyle(
-                                color: AppTheme.dInkSoft,
+                                color: AppTheme.muted,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
                               ),
@@ -1066,7 +1073,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                   YemeniMoneyText(
                     _moneyValue(installment.amount),
                     style: const TextStyle(
-                      color: AppTheme.dMaroonDeep,
+                      color: AppTheme.burgundyDeep,
                       fontWeight: FontWeight.w900,
                       fontSize: 14,
                     ),
@@ -1079,7 +1086,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.history_rounded, color: AppTheme.dGoldDeep, size: 20),
+                const Icon(Icons.history_rounded, color: AppTheme.gold, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1141,7 +1148,7 @@ class _FinanceShortcutCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: AppTheme.dMaroon, size: 24),
+              Icon(icon, color: AppTheme.burgundy, size: 24),
               const SizedBox(height: 7),
               Text(
                 label,
@@ -1149,7 +1156,7 @@ class _FinanceShortcutCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1308,7 +1315,7 @@ class _ExpenseMenuItem extends StatelessWidget {
   const _ExpenseMenuItem({
     required this.icon,
     required this.label,
-    this.color = AppTheme.dInk,
+    this.color = AppTheme.ink,
   });
 
   final IconData icon;
@@ -1341,7 +1348,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -1401,9 +1408,9 @@ class _SkeletonBox extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
     );
   }
@@ -1419,9 +1426,9 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.danger.withAlpha(18),
+        color: AppTheme.dangerSoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.danger.withAlpha(45)),
+        border: Border.all(color: AppTheme.dangerSoft),
       ),
       child: Row(
         children: [
@@ -1512,9 +1519,9 @@ IconData _categoryIcon(String name) {
 
 Color _expenseStatusColor(String status) {
   return switch (status) {
-    'PAID' => AppTheme.dGreen,
-    'CANCELLED' => AppTheme.dMuted,
-    _ => AppTheme.dGoldDeep,
+    'PAID' => AppTheme.success,
+    'CANCELLED' => AppTheme.muted,
+    _ => AppTheme.gold,
   };
 }
 
@@ -1574,12 +1581,11 @@ String _shortDate(DateTime date) {
 class _RoyalColors {
   const _RoyalColors._();
 
-  static const ivory = AppTheme.dCard;
-  static const burgundy = AppTheme.deepBurgundy;
-  static const gold = AppTheme.warmGold;
-  static const goldDeep = AppTheme.dGoldDeep;
-  static const ink = AppTheme.dInk;
-  static const muted = AppTheme.dMuted;
+  static const ivory = AppTheme.ivory;
+  static const burgundy = AppTheme.burgundy;
+  static const goldDeep = AppTheme.gold;
+  static const ink = AppTheme.ink;
+  static const muted = AppTheme.muted;
 }
 
 class _AnimatedMoneyText extends StatelessWidget {

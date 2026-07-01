@@ -8,72 +8,79 @@ class AppTheme {
   static const textFontFamily = 'Tajawal';
   static const displayFontFamily = 'Amiri';
 
-  // Core brand colors
-  static const deepBurgundy = AarastDesignTokens.royalMaroon;
-  static const warmGold = AarastDesignTokens.champagneGold;
-  static const ivory = AarastDesignTokens.warmIvory;
-  static const charcoal = Color(0xFF333333);
-  static const mediumGray = Color(0xFF757575);
+  // Expose colors directly for easy access
+  static const ivory = AarastDesignTokens.ivory;
+  static const pearl = AarastDesignTokens.pearl;
+  static const surface = AarastDesignTokens.surface;
+  static const surfaceElevated = AarastDesignTokens.surfaceElevated;
+
+  static const burgundy = AarastDesignTokens.burgundy;
+  static const burgundyDark = AarastDesignTokens.burgundyDark;
+  static const burgundySoft = AarastDesignTokens.burgundySoft;
+
+  static const gold = AarastDesignTokens.gold;
+  static const goldSoft = AarastDesignTokens.goldSoft;
+
+  static const ink = AarastDesignTokens.ink;
+  static const title = AarastDesignTokens.title;
+  static const muted = AarastDesignTokens.muted;
+  static const border = AarastDesignTokens.border;
+
+  static const success = AarastDesignTokens.success;
+  static const successSoft = AarastDesignTokens.successSoft;
+  static const warning = AarastDesignTokens.warning;
+  static const warningSoft = AarastDesignTokens.warningSoft;
   static const danger = AarastDesignTokens.danger;
+  static const dangerSoft = AarastDesignTokens.dangerSoft;
+  static const disabled = AarastDesignTokens.disabled;
+  static const empty = AarastDesignTokens.empty;
 
-  // Premium Aarast palette
-  static const dMaroon = AarastDesignTokens.royalMaroonMuted;
+  // Semantic Aliases
+  static const background = ivory;
+  static const cardWhite = surface;
+  static const textPrimary = ink;
+  static const textSecondary = muted;
+
+  // Backward Compatibility Aliases for other screens
+  static const deepBurgundy = burgundy;
+  static const warmGold = gold;
+  static const charcoal = ink;
+  static const mediumGray = muted;
+  static const burgundyDeep = burgundyDark;
+  static const burgundyBright = burgundy;
+  static const burgundy2 = burgundyDark;
+  static const gold2 = goldSoft;
+  static const successBg = successSoft;
+
+  static const dMaroon = burgundy;
+  static const dMaroonDeep = burgundyDark;
+  static const dMaroonBright = burgundy;
+  static const dGold = gold;
+  static const dGold2 = gold;
+  static const dGoldDeep = gold;
+  static const dBg = ivory;
+  static const dCard = pearl;
+  static const dCard2 = surface;
+  static const dInk = ink;
+  static const dInkSoft = muted;
+  static const dMuted = muted;
+  static const dLine = border;
+  static const dGreen = success;
+  static const dGreenBg = successSoft;
+  static const dOrange = warning;
+  static const dBlue = Color(0xFF3F6FB0);
+  static const dBlueBg = Color(0xFFE6EDF6);
+  static const dPinkBg = dangerSoft;
+  static const dCreamBg = pearl;
   static const dMaroon2 = Color(0xFF671028);
-  static const dMaroonDeep = AarastDesignTokens.royalMaroonDeep;
-  static const dMaroonBright = AarastDesignTokens.royalMaroonSoft;
-
-  static const dGold = Color(0xFFC7A35D);
-  static const dGold2 = AarastDesignTokens.champagneGoldSoft;
-  static const dGoldDeep = AarastDesignTokens.champagneGoldDeep;
-
-  static const dBg = AarastDesignTokens.warmIvory;
-  static const dCard = AarastDesignTokens.pearl;
-  static const dCard2 = Color(0xFFFFFFFF);
-
-  static const dInk = AarastDesignTokens.ink;
-  static const dInkSoft = AarastDesignTokens.inkSoft;
-  static const dMuted = AarastDesignTokens.muted;
-  static const dLine = AarastDesignTokens.hairline;
-
-  static const dGreen = AarastDesignTokens.success;
-  static const dGreenBg = AarastDesignTokens.successBg;
-
-  static const dOrange = AarastDesignTokens.warning;
-
-  static const dBlue = AarastDesignTokens.info;
-  static const dBlueBg = AarastDesignTokens.infoBg;
-
-  static const dPinkBg = AarastDesignTokens.mutedRose;
-  static const dCreamBg = AarastDesignTokens.softSand;
   static const dTrack = Color(0xFFCDC6C4);
-
-  // Welcome Light Luxury specific colors
-  static const wWarmIvory = Color(0xFFFBF7F1);
-  static const wPearlWhite = Color(0xFFFFFFFF);
-  static const wRoyalBurgundy = Color(0xFF6D1024);
-  static const wDeepBurgundy = Color(0xFF4B0B19);
-  static const wChampagneGold = Color(0xFFD6B36A);
-  static const wSoftGold = Color(0xFFF1E1B8);
-  static const wPrimaryText = Color(0xFF2D1A1E);
-  static const wSecondaryText = Color(0xFF6C5A5D);
-
-  // Semantic aliases for new UI work
-  static const background = dBg;
-  static const card = dCard;
-  static const cardWhite = dCard2;
-  static const textPrimary = dInk;
-  static const textSecondary = dInkSoft;
-  static const textMuted = dMuted;
-  static const border = dLine;
-  static const success = dGreen;
-  static const warning = dOrange;
-  static const info = dBlue;
 
   // Common sizing
   static const double radiusSm = AarastDesignTokens.radiusSm;
   static const double radiusMd = AarastDesignTokens.radiusMd;
   static const double radiusLg = AarastDesignTokens.radiusLg;
   static const double radiusXl = AarastDesignTokens.radiusXl;
+  static const double radiusCard = 24;
 
   static const double gapXs = 6;
   static const double gapSm = 10;
@@ -82,17 +89,21 @@ class AppTheme {
   static const double gapXl = 24;
 
   static const EdgeInsets screenPadding = AarastDesignTokens.screenPadding;
-  static const EdgeInsets compactScreenPadding =
-      AarastDesignTokens.screenPadding;
 
   static const Duration motionFast = AarastDesignTokens.motionFast;
   static const Duration motionMedium = AarastDesignTokens.motionStandard;
 
-  static const LinearGradient heroGradient = AarastDesignTokens.royalGradient;
-
-  static const LinearGradient goldGradient =
-      AarastDesignTokens.champagneGradient;
   static const LinearGradient pageGradient = AarastDesignTokens.pageGradient;
+  static const LinearGradient heroGradient = AarastDesignTokens.burgundyGradient;
+  static const LinearGradient goldGradient = LinearGradient(
+    begin: Alignment.topRight,
+    end: Alignment.bottomLeft,
+    colors: [Color(0xFFE1CA96), gold, Color(0xFFA98642)],
+  );
+
+  static List<BoxShadow> cardShadow() {
+    return AarastDesignTokens.cardShadow();
+  }
 
   static List<BoxShadow> softShadow({double opacity = 0.08}) {
     return [
@@ -104,31 +115,21 @@ class AppTheme {
     ];
   }
 
-  static List<BoxShadow> cardShadow() {
-    return [
-      BoxShadow(
-        color: dMaroonDeep.withAlpha(12),
-        blurRadius: 14,
-        offset: const Offset(0, 5),
-      ),
-    ];
-  }
-
   static BoxDecoration premiumCardDecoration({
-    Color color = dCard2,
-    double radius = radiusLg,
+    Color color = surface,
+    double radius = radiusCard,
     Border? border,
   }) {
     return BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(radius),
-      border: border ?? Border.all(color: dLine),
+      border: border ?? Border.all(color: AppTheme.border.withAlpha(128)),
       boxShadow: cardShadow(),
     );
   }
 
   static BoxDecoration screenDecoration() {
-    return const BoxDecoration(gradient: pageGradient);
+    return const BoxDecoration(color: ivory);
   }
 
   static BoxDecoration heroDecoration() {
@@ -137,7 +138,7 @@ class AppTheme {
       borderRadius: BorderRadius.circular(radiusXl),
       boxShadow: [
         BoxShadow(
-          color: dMaroonDeep.withAlpha(50),
+          color: burgundyDark.withValues(alpha: 0.1),
           blurRadius: 28,
           offset: const Offset(0, 14),
         ),
@@ -150,94 +151,111 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: textFontFamily,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: dMaroon,
-        primary: dMaroon,
+        seedColor: burgundy,
+        primary: burgundy,
         onPrimary: Colors.white,
-        secondary: dGold,
-        onSecondary: dInk,
-        tertiary: dGoldDeep,
-        surface: dCard2,
-        onSurface: dInk,
-        surfaceContainerHighest: dCard,
-        outline: dLine,
+        secondary: gold,
+        onSecondary: ink,
+        surface: surface,
+        onSurface: ink,
+        outline: border,
         error: danger,
         onError: Colors.white,
       ),
-      scaffoldBackgroundColor: dBg,
-      canvasColor: dBg,
+      scaffoldBackgroundColor: ivory,
+      canvasColor: ivory,
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
     );
 
     final textTheme = _buildTextTheme(
       baseTheme.textTheme,
-    ).apply(bodyColor: dInk, displayColor: dInk);
+    ).apply(bodyColor: ink, displayColor: ink);
 
     return baseTheme.copyWith(
       textTheme: textTheme,
-      primaryColor: dMaroon,
-      scaffoldBackgroundColor: dBg,
-      canvasColor: dBg,
+      primaryColor: burgundy,
+      scaffoldBackgroundColor: ivory,
+      canvasColor: ivory,
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
-        foregroundColor: dInk,
+        foregroundColor: ink,
         centerTitle: false,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: textTheme.titleLarge?.copyWith(
           fontWeight: FontWeight.w800,
-          color: dInk,
+          color: ink,
         ),
-        iconTheme: const IconThemeData(color: dInk),
+        iconTheme: const IconThemeData(color: ink),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          foregroundColor: dMaroon,
-          backgroundColor: dCard2,
+          foregroundColor: burgundy,
+          backgroundColor: surface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
-            side: const BorderSide(color: dLine),
+            side: const BorderSide(color: border),
           ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: dMaroon,
+          backgroundColor: burgundy,
           foregroundColor: Colors.white,
           elevation: 0,
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(54),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
+            borderRadius: BorderRadius.circular(radiusLg),
           ),
           textStyle: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith(
+            (states) {
+               if (states.contains(WidgetState.pressed)) {
+                 return burgundyDark;
+               }
+               return null;
+            }
+          ),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: dMaroon,
+          backgroundColor: burgundy,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(52),
+          minimumSize: const Size.fromHeight(54),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
+            borderRadius: BorderRadius.circular(radiusLg),
           ),
           textStyle: textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith(
+            (states) {
+               if (states.contains(WidgetState.pressed)) {
+                 return burgundyDark;
+               }
+               return null;
+            }
+          ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: dMaroon,
-          minimumSize: const Size.fromHeight(52),
-          side: const BorderSide(color: dMaroon, width: 1.2),
+          foregroundColor: burgundy,
+          backgroundColor: surface,
+          minimumSize: const Size.fromHeight(54),
+          side: const BorderSide(color: border, width: 1.2),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusMd),
+            borderRadius: BorderRadius.circular(radiusLg),
           ),
           textStyle: textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
@@ -247,7 +265,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: dMaroon,
+          foregroundColor: burgundy,
           textStyle: textTheme.labelLarge?.copyWith(
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
@@ -256,92 +274,91 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: dCard2,
+        fillColor: surfaceElevated,
         alignLabelWithHint: true,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 13,
         ),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: dInkSoft),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: dMuted),
-        prefixIconColor: dGoldDeep,
-        suffixIconColor: dInkSoft,
+        labelStyle: textTheme.bodyMedium?.copyWith(color: ink),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: muted),
+        helperStyle: textTheme.bodySmall?.copyWith(color: muted),
+        prefixIconColor: gold,
+        suffixIconColor: muted,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dLine),
+          borderRadius: BorderRadius.circular(radiusLg),
+          borderSide: const BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dLine),
+          borderRadius: BorderRadius.circular(radiusLg),
+          borderSide: const BorderSide(color: border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: dMaroon, width: 1.4),
+          borderRadius: BorderRadius.circular(radiusLg),
+          borderSide: const BorderSide(color: burgundy, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusLg),
           borderSide: const BorderSide(color: danger),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radiusMd),
+          borderRadius: BorderRadius.circular(radiusLg),
           borderSide: const BorderSide(color: danger, width: 1.4),
         ),
       ),
       cardTheme: CardThemeData(
-        color: dCard2,
+        color: surface,
         elevation: 0,
-        shadowColor: Colors.black.withAlpha(15),
+        shadowColor: ink.withValues(alpha: 0.1),
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
-          side: const BorderSide(color: dLine),
+          borderRadius: BorderRadius.circular(radiusCard),
+          side: BorderSide(color: border.withAlpha(128)),
         ),
         margin: EdgeInsets.zero,
       ),
       chipTheme: baseTheme.chipTheme.copyWith(
-        backgroundColor: dCreamBg,
-        selectedColor: dPinkBg,
-        disabledColor: dLine.withAlpha(120),
-        side: const BorderSide(color: dLine),
+        backgroundColor: surface,
+        selectedColor: burgundy,
+        disabledColor: surface,
+        side: const BorderSide(color: border),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
         ),
         labelStyle: textTheme.labelMedium?.copyWith(
-          color: dInk,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0,
+          color: muted,
+          fontWeight: FontWeight.w600,
         ),
         secondaryLabelStyle: textTheme.labelMedium?.copyWith(
-          color: dMaroon,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0,
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
-        backgroundColor: dCard,
+        backgroundColor: ivory,
         surfaceTintColor: Colors.transparent,
-        modalBackgroundColor: dCard,
+        modalBackgroundColor: ivory,
         modalBarrierColor: Color(0x66000000),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(radiusXl)),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: dCard2,
+        backgroundColor: ivory,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusLg),
+          borderRadius: BorderRadius.circular(radiusCard),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: dMaroon,
+        backgroundColor: burgundy,
         foregroundColor: Colors.white,
         shape: CircleBorder(),
         elevation: 8,
       ),
       listTileTheme: ListTileThemeData(
-        iconColor: dMaroon,
-        textColor: dInk,
+        iconColor: burgundy,
+        textColor: ink,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMd),
@@ -349,31 +366,32 @@ class AppTheme {
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return dMaroon;
-          return dCard2;
+          if (states.contains(WidgetState.selected)) return burgundy;
+          return surface;
         }),
         checkColor: WidgetStateProperty.all(Colors.white),
-        side: const BorderSide(color: dLine, width: 1.2),
+        side: const BorderSide(color: border, width: 1.2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return dCard2;
-          return dMuted;
+          if (states.contains(WidgetState.selected)) return surface;
+          return surface;
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return dMaroon;
-          return dLine;
+          if (states.contains(WidgetState.selected)) return burgundy;
+          return disabled;
         }),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
       ),
       progressIndicatorTheme: const ProgressIndicatorThemeData(
-        color: dMaroon,
-        circularTrackColor: dLine,
-        linearTrackColor: dLine,
+        color: burgundy,
+        circularTrackColor: border,
+        linearTrackColor: border,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: dInk,
+        backgroundColor: ink,
         contentTextStyle: textTheme.bodyMedium?.copyWith(
           color: Colors.white,
           fontWeight: FontWeight.w700,
@@ -383,14 +401,14 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: dLine,
+        color: border,
         thickness: 1,
         space: 1,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: dCard2,
-        selectedItemColor: dMaroon,
-        unselectedItemColor: dMuted,
+        backgroundColor: surfaceElevated.withAlpha(240),
+        selectedItemColor: burgundy,
+        unselectedItemColor: disabled,
         selectedLabelStyle: textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w800,
         ),
@@ -401,15 +419,21 @@ class AppTheme {
         elevation: 0,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: dCard2,
+        backgroundColor: surfaceElevated.withAlpha(240),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: dPinkBg,
+        indicatorColor: empty,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
           return textTheme.labelSmall?.copyWith(
-            color: isSelected ? dMaroon : dMuted,
+            color: isSelected ? burgundy : muted,
             fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
             letterSpacing: 0,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final isSelected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: isSelected ? burgundy : disabled,
           );
         }),
       ),

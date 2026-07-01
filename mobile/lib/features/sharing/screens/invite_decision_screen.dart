@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -60,14 +60,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     return ListView(
       children: [
         AarastCard(
-          color: AppTheme.dCreamBg,
+          color: AppTheme.ivory,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 invite.weddingPlanTitle ?? 'خطة زفاف مشتركة',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -75,7 +75,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
               Text(
                 'الدور: ${sharedMemberRoleLabel(invite.role)}',
                 style: const TextStyle(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -83,7 +83,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
               const Text(
                 'البيانات المالية لا تظهر إلا إذا كانت صلاحيات الدعوة تسمح بذلك.',
                 style: TextStyle(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w700,
                   height: 1.4,
                 ),

@@ -1,4 +1,4 @@
-const _arabicMonths = <String>[
+﻿const _arabicMonths = <String>[
   'يناير',
   'فبراير',
   'مارس',

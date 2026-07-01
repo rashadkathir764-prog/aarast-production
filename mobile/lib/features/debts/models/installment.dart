@@ -1,4 +1,4 @@
-class Installment {
+﻿class Installment {
   const Installment({
     required this.id,
     required this.debtId,

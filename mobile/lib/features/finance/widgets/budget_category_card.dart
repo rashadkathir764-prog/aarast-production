@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -16,7 +16,7 @@ class BudgetCategoryCard extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: AppTheme.warmGold.withAlpha(45),
+            backgroundColor: AppTheme.warmGold.withValues(alpha: 0.1),
             child: const Icon(
               Icons.account_balance_wallet,
               color: AppTheme.deepBurgundy,

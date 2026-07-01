@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -22,7 +22,7 @@ class TimelineSummaryCard extends StatelessWidget {
             Text(
               'ملخص الجدول الزمني',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.deepBurgundy,
+                color: AppTheme.burgundy,
                 fontWeight: FontWeight.w800,
               ),
               textAlign: TextAlign.right,

@@ -137,7 +137,7 @@ class _OtpScreenState extends State<OtpScreen> {
             'تأكيد رقم الهاتف',
             textAlign: TextAlign.center,
             style: textTheme.headlineSmall?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
               height: 1.18,
             ),
@@ -147,7 +147,7 @@ class _OtpScreenState extends State<OtpScreen> {
             'أدخلي رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.',
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
               height: 1.45,
             ),
@@ -178,7 +178,7 @@ class _OtpScreenState extends State<OtpScreen> {
                               keyboardType: TextInputType.number,
                               textAlign: TextAlign.center,
                               style: textTheme.titleLarge?.copyWith(
-                                color: AppTheme.dMaroonDeep,
+                                color: AppTheme.burgundyDeep,
                                 fontWeight: FontWeight.w900,
                               ),
                               maxLength: 1,
@@ -188,22 +188,22 @@ class _OtpScreenState extends State<OtpScreen> {
                               decoration: InputDecoration(
                                 counterText: '',
                                 filled: true,
-                                fillColor: AppTheme.dCard2,
+                                fillColor: AppTheme.surfaceElevated,
                                 contentPadding: EdgeInsets.zero,
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusMd,
+                                    AppTheme.radiusLg,
                                   ),
                                   borderSide: const BorderSide(
-                                    color: AppTheme.dLine,
+                                    color: AppTheme.border,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusMd,
+                                    AppTheme.radiusLg,
                                   ),
                                   borderSide: const BorderSide(
-                                    color: AppTheme.dMaroon,
+                                    color: AppTheme.burgundy,
                                     width: 1.5,
                                   ),
                                 ),
@@ -271,15 +271,15 @@ class _DevOtpNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCreamBg,
+        color: AppTheme.ivory,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Text(
         message,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppTheme.dInk,
+          color: AppTheme.ink,
           fontWeight: FontWeight.w900,
           height: 1.4,
         ),

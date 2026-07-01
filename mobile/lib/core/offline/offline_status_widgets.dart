@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../theme/app_theme.dart';
@@ -24,8 +24,8 @@ class OfflineStatusBanner extends StatelessWidget {
     final color = switch (state) {
       SyncState.offline => AppTheme.danger,
       SyncState.syncError => AppTheme.danger,
-      SyncState.syncing => AppTheme.dBlue,
-      _ => AppTheme.dGoldDeep,
+      SyncState.syncing => AppTheme.ink,
+      _ => AppTheme.gold,
     };
     final label = switch (state) {
       SyncState.offline => 'بدون اتصال',
@@ -48,9 +48,9 @@ class OfflineStatusBanner extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
             decoration: BoxDecoration(
-              color: AppTheme.dCard2.withAlpha(245),
+              color: AppTheme.surface.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: color.withAlpha(80)),
+              border: Border.all(color: color.withValues(alpha: 0.1)),
             ),
             child: Row(
               children: [
@@ -68,7 +68,7 @@ class OfflineStatusBanner extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -105,23 +105,23 @@ class OfflinePendingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AppTheme.dGoldDeep.withAlpha(20),
+        color: AppTheme.goldSoft,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.dGoldDeep.withAlpha(70)),
+        border: Border.all(color: AppTheme.goldSoft),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(
             Icons.sync_problem_rounded,
-            color: AppTheme.dGoldDeep,
+            color: AppTheme.gold,
             size: 14,
           ),
           const SizedBox(width: 4),
           Text(
             'بانتظار المزامنة',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.dGoldDeep,
+              color: AppTheme.gold,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -145,18 +145,18 @@ class OfflineSyncNowTile extends StatelessWidget {
         width: 50,
         height: 50,
         decoration: BoxDecoration(
-          color: AppTheme.dBlueBg,
+          color: AppTheme.ivory,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Icon(
           service.isSyncing ? Icons.sync_rounded : Icons.cloud_sync_outlined,
-          color: AppTheme.dBlue,
+          color: AppTheme.ink,
         ),
       ),
       title: Text(
         'مزامنة الآن',
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: AppTheme.dInk,
+          color: AppTheme.ink,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -165,11 +165,11 @@ class OfflineSyncNowTile extends StatelessWidget {
             ? 'بانتظار المزامنة: ${service.pendingCount}'
             : 'تمت المزامنة بنجاح',
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppTheme.dInkSoft,
+          color: AppTheme.muted,
           fontWeight: FontWeight.w700,
         ),
       ),
-      trailing: const Icon(Icons.chevron_left_rounded, color: AppTheme.dMuted),
+      trailing: const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
     );
   }
 }
@@ -185,7 +185,7 @@ class _CountPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withAlpha(22),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

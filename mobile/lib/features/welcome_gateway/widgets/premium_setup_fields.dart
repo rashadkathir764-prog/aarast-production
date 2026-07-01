@@ -32,18 +32,18 @@ class PremiumTextField extends StatelessWidget {
       style: const TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: Colors.white,
+        color: AppTheme.ink,
       ),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.4),
+        hintStyle: const TextStyle(
+          color: AppTheme.muted,
           fontWeight: FontWeight.normal,
         ),
         filled: true,
-        fillColor: Colors.black.withValues(alpha: 0.4),
+        fillColor: AppTheme.surfaceElevated,
         prefixIcon: icon != null
-            ? Icon(icon, color: AppTheme.dGoldDeep, size: 22)
+            ? Icon(icon, color: AppTheme.gold, size: 22)
             : null,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 20,
@@ -51,18 +51,15 @@ class PremiumTextField extends StatelessWidget {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppTheme.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1.0,
-          ),
+          borderSide: const BorderSide(color: AppTheme.border, width: 1.0),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide: const BorderSide(color: AppTheme.dGoldDeep, width: 2.0),
+          borderSide: const BorderSide(color: AppTheme.burgundy, width: 1.6),
         ),
       ),
     );
@@ -87,12 +84,9 @@ class PremiumDateField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
+          color: AppTheme.surfaceElevated,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-            width: 1.0,
-          ),
+          border: Border.all(color: AppTheme.border, width: 1.0),
         ),
         child: Directionality(
           textDirection: TextDirection.rtl,
@@ -104,7 +98,7 @@ class PremiumDateField extends StatelessWidget {
                   children: [
                     const Icon(
                       Icons.calendar_today_rounded,
-                      color: AppTheme.dGoldDeep,
+                      color: AppTheme.gold,
                       size: 22,
                     ),
                     const SizedBox(width: 12),
@@ -115,8 +109,8 @@ class PremiumDateField extends StatelessWidget {
                             : '${selectedDate!.year}/${selectedDate!.month.toString().padLeft(2, '0')}/${selectedDate!.day.toString().padLeft(2, '0')}',
                         style: TextStyle(
                           color: selectedDate == null
-                              ? Colors.white.withValues(alpha: 0.4)
-                              : Colors.white,
+                              ? AppTheme.muted
+                              : AppTheme.ink,
                           fontSize: 16,
                           fontWeight: selectedDate == null
                               ? FontWeight.normal
@@ -129,7 +123,7 @@ class PremiumDateField extends StatelessWidget {
               ),
               Icon(
                 Icons.edit_calendar_rounded,
-                color: Colors.white.withValues(alpha: 0.3),
+                color: AppTheme.muted,
                 size: 20,
               ),
             ],
@@ -146,11 +140,13 @@ class PremiumBudgetField extends StatefulWidget {
     required this.controller,
     required this.initialCurrency,
     required this.onCurrencyChanged,
+    this.onChanged,
   });
 
   final TextEditingController controller;
   final String initialCurrency;
   final Function(String) onCurrencyChanged;
+  final ValueChanged<String>? onChanged;
 
   @override
   State<PremiumBudgetField> createState() => _PremiumBudgetFieldState();
@@ -234,12 +230,9 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
             child: Container(
               height: 62,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: AppTheme.surfaceElevated,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  width: 1.0,
-                ),
+                border: Border.all(color: AppTheme.border, width: 1.0),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: DropdownButtonHideUnderline(
@@ -249,16 +242,16 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                     padding: const EdgeInsetsDirectional.only(start: 6.0),
                     child: Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppTheme.muted,
                     ),
                   ),
                   style: const TextStyle(
-                    color: AppTheme.dGoldDeep,
+                    color: AppTheme.burgundy,
                     fontWeight: FontWeight.bold,
                     fontFamily: AppTheme.textFontFamily,
                     fontSize: 16,
                   ),
-                  dropdownColor: AppTheme.dInk,
+                  dropdownColor: AppTheme.surface,
                   borderRadius: BorderRadius.circular(20),
                   onChanged: (value) {
                     if (value != null) {
@@ -283,9 +276,10 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
               children: [
                 PremiumTextField(
                   controller: widget.controller,
-                  hintText: 'أحددها لاحقًا',
+                  hintText: 'مثال: 3000000',
                   isNumber: true,
                   icon: Icons.account_balance_wallet_rounded,
+                  onChanged: widget.onChanged,
                 ),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
@@ -302,7 +296,7 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                           _budgetWords.isEmpty
                               ? Icons.info_outline_rounded
                               : Icons.check_circle_rounded,
-                          color: AppTheme.dGoldDeep,
+                          color: AppTheme.gold,
                           size: 14,
                         ),
                         const SizedBox(width: 6),
@@ -314,7 +308,7 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                             textAlign: TextAlign.start,
                             softWrap: true,
                             style: const TextStyle(
-                              color: AppTheme.dGoldDeep,
+                              color: AppTheme.muted,
                               fontWeight: FontWeight.w800,
                               fontSize: 13,
                               height: 1.25,
@@ -335,9 +329,14 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
 }
 
 class PremiumLocationCard extends StatelessWidget {
-  const PremiumLocationCard({super.key, required this.controller});
+  const PremiumLocationCard({
+    super.key,
+    required this.controller,
+    this.onChanged,
+  });
 
   final TextEditingController controller;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -345,12 +344,9 @@ class PremiumLocationCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
+        color: AppTheme.surfaceElevated,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1.0,
-        ),
+        border: Border.all(color: AppTheme.border, width: 1.0),
       ),
       child: Directionality(
         textDirection: TextDirection.rtl,
@@ -361,7 +357,7 @@ class PremiumLocationCard extends StatelessWidget {
               padding: EdgeInsets.only(top: 12),
               child: Icon(
                 Icons.location_on_rounded,
-                color: AppTheme.dGoldDeep,
+                color: AppTheme.gold,
                 size: 24,
               ),
             ),
@@ -372,18 +368,19 @@ class PremiumLocationCard extends StatelessWidget {
                 children: [
                   TextFormField(
                     controller: controller,
+                    onChanged: onChanged,
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.start,
                     textInputAction: TextInputAction.done,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: AppTheme.ink,
                     ),
                     decoration: InputDecoration(
                       hintText: 'المحافظة / المدينة',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.45),
+                      hintStyle: const TextStyle(
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.normal,
                       ),
                       isDense: true,
@@ -397,7 +394,7 @@ class PremiumLocationCard extends StatelessWidget {
                   Text(
                     'تحديد الموقع على الخريطة قريبًا',
                     style: TextStyle(
-                      color: AppTheme.dGoldDeep.withValues(alpha: 0.85),
+                      color: AppTheme.gold.withValues(alpha: 0.85),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                       height: 1.3,
@@ -407,11 +404,7 @@ class PremiumLocationCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Icon(
-              Icons.map_rounded,
-              color: Colors.white.withValues(alpha: 0.22),
-              size: 28,
-            ),
+            Icon(Icons.map_rounded, color: AppTheme.disabled, size: 28),
           ],
         ),
       ),

@@ -37,7 +37,7 @@ void main() {
     expect(summary.seed.selectedCategories, ['hall', 'photo']);
 
     final royalSummary = summary.toDashboardSummary();
-    expect(royalSummary.title, 'خطة زفاف صنعاء - السبعين');
+    expect(royalSummary.title, 'خطة زفاف صنعاء');
     expect(royalSummary.city, 'صنعاء - السبعين');
     expect(royalSummary.location?['fullLabel'], 'صنعاء - السبعين - حدة');
     expect(royalSummary.budgetTotal, '1000000');
@@ -278,16 +278,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    // Tasks are in _OperationalCards below the carousel
-    await tester.dragUntilVisible(
-      find.text('المهام'),
-      find.byKey(const Key('royal-home-guest-plan-test')),
-      const Offset(0, -500),
-    );
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 80));
-    }
-
     expect(find.text('المهام'), findsWidgets);
     await tester.tap(find.text('المهام').first, warnIfMissed: false);
 
@@ -377,6 +367,7 @@ void main() {
 GuestOnboardingDraft _guestPlan() {
   return GuestOnboardingDraft(
     guestPlanId: 'guest-plan-test',
+    planName: 'خطة زفاف صنعاء',
     createdAt: DateTime.utc(2026, 6, 19),
     isGuestPlan: true,
     needsSync: true,

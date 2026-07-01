@@ -64,23 +64,21 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
             duration: const Duration(milliseconds: 250),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             decoration: BoxDecoration(
-              color: widget.isSelected
-                  ? Colors.black.withValues(alpha: 0.4)
-                  : Colors.white.withValues(alpha: 0.05),
+              color: widget.isSelected ? AppTheme.goldSoft : AppTheme.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: widget.isSelected
-                    ? AppTheme.dGoldDeep
+                    ? AppTheme.gold
                     : (_isHovered
-                          ? AppTheme.dGoldDeep.withValues(alpha: 0.5)
-                          : Colors.white.withValues(alpha: 0.1)),
+                          ? AppTheme.gold.withValues(alpha: 0.5)
+                          : AppTheme.border),
                 width: widget.isSelected ? 2.0 : 1.5,
               ),
               boxShadow: [
                 BoxShadow(
                   color: widget.isSelected || _isHovered
-                      ? AppTheme.dGoldDeep.withValues(alpha: 0.15)
-                      : Colors.black.withValues(alpha: 0.2),
+                      ? AppTheme.gold.withValues(alpha: 0.15)
+                      : AppTheme.ink.withValues(alpha: 0.05),
                   blurRadius: widget.isSelected || _isHovered ? 20 : 10,
                   offset: const Offset(0, 5),
                 ),
@@ -92,20 +90,20 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: widget.isSelected
-                        ? AppTheme.dGoldDeep.withValues(alpha: 0.15)
-                        : Colors.white.withValues(alpha: 0.05),
+                        ? AppTheme.surface
+                        : AppTheme.empty,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: widget.isSelected
-                          ? AppTheme.dGoldDeep.withValues(alpha: 0.3)
-                          : Colors.white.withValues(alpha: 0.1),
+                          ? AppTheme.gold.withValues(alpha: 0.3)
+                          : AppTheme.border,
                     ),
                   ),
                   child: Icon(
                     widget.icon,
                     color: widget.isSelected
-                        ? AppTheme.dGoldDeep
-                        : Colors.white.withValues(alpha: 0.8),
+                        ? AppTheme.burgundy
+                        : AppTheme.muted,
                     size: 24,
                   ),
                 ),
@@ -118,7 +116,7 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                         widget.title,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: Colors.white,
+                              color: AppTheme.title,
                               fontWeight: widget.isSelected
                                   ? FontWeight.w900
                                   : FontWeight.w700,
@@ -129,7 +127,7 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                       Text(
                         widget.subtitle,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: AppTheme.muted,
                           fontSize: 13,
                           height: 1.4,
                         ),
@@ -140,13 +138,13 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                 if (widget.isSelected)
                   const Icon(
                     Icons.check_circle_rounded,
-                    color: AppTheme.dGoldDeep,
+                    color: AppTheme.burgundy,
                     size: 24,
                   )
                 else
                   Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: AppTheme.disabled,
                     size: 16,
                   ),
               ],

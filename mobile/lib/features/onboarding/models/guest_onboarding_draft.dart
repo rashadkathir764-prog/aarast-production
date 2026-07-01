@@ -75,6 +75,8 @@ class GuestOnboardingDraft {
 
   bool get hasPersona => persona != null;
 
+  bool get hasPlanName => planName?.trim().isNotEmpty == true;
+
   WeddingLocationDraft get weddingLocation {
     return WeddingLocationDraft.fromLegacyFields(
       governorate: governorate,
@@ -94,6 +96,13 @@ class GuestOnboardingDraft {
 
   bool get hasTimelineSeed => weddingDate != null || weddingDateUnknown;
 
+  bool get hasRequiredWeddingDate => weddingDate != null;
+
+  bool get hasRequiredBudget {
+    return currency?.trim().isNotEmpty == true &&
+        estimatedBudget?.replaceAll(',', '').trim().isNotEmpty == true;
+  }
+
   bool get isWeddingUser => selectedPath == GuestOnboardingPath.weddingUser;
 
   bool get hasMinimumPlanSeed {
@@ -104,8 +113,17 @@ class GuestOnboardingDraft {
     return hasMinimumPlanSeed && selectedCategoryKeys.isNotEmpty;
   }
 
+  bool get hasRequiredLocalPlanData {
+    return isWeddingUser &&
+        hasPersona &&
+        hasPlanName &&
+        hasLocationSeed &&
+        hasRequiredWeddingDate &&
+        hasRequiredBudget;
+  }
+
   bool get canOpenLocalDashboard {
-    return isWeddingUser && hasPersona && hasTimelineSeed;
+    return hasRequiredLocalPlanData;
   }
 
   bool get isCompleteGuestPlan {

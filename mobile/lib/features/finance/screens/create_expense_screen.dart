@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -105,7 +105,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                     child: Text(
                       _isEditMode ? 'تعديل مصروف' : 'إضافة مصروف',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -200,7 +200,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                             child: Text(
                               'حالة المصروف',
                               style: TextStyle(
-                                color: AppTheme.dInk,
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -211,7 +211,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               _StatusChip(
                                 label: 'مخطط',
                                 icon: Icons.schedule_rounded,
-                                color: AppTheme.dGoldDeep,
+                                color: AppTheme.gold,
                                 selected: _status == 'PLANNED',
                                 onTap: () {
                                   setState(() => _status = 'PLANNED');
@@ -221,7 +221,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               _StatusChip(
                                 label: 'مدفوع',
                                 icon: Icons.check_circle_rounded,
-                                color: AppTheme.dGreen,
+                                color: AppTheme.success,
                                 selected: _status == 'PAID',
                                 onTap: () {
                                   setState(() => _status = 'PAID');
@@ -231,7 +231,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               _StatusChip(
                                 label: 'ملغي',
                                 icon: Icons.block_rounded,
-                                color: AppTheme.dMuted,
+                                color: AppTheme.muted,
                                 selected: _status == 'CANCELLED',
                                 onTap: () {
                                   setState(() => _status = 'CANCELLED');
@@ -358,10 +358,10 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.dMaroon,
+                        primary: AppTheme.burgundy,
                         onPrimary: Colors.white,
-                        surface: AppTheme.dCard2,
-                        onSurface: AppTheme.dInk,
+                        surface: AppTheme.surface,
+                        onSurface: AppTheme.ink,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -511,8 +511,8 @@ class _ExpenseHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCreamBg,
-      border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft),
       child: Row(
         children: [
           Container(
@@ -536,7 +536,7 @@ class _ExpenseHero extends StatelessWidget {
                 Text(
                   isEditMode ? 'راجع تفاصيل المصروف' : 'سجّل كل دفعة بوضوح',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -546,7 +546,7 @@ class _ExpenseHero extends StatelessWidget {
                       ? 'أي تعديل هنا سينعكس على ملخص الميزانية والمصاريف.'
                       : 'التفاصيل الصغيرة تمنع مفاجآت الميزانية لاحقاً.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -582,15 +582,15 @@ class _SelectorField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            color: selected ? AppTheme.burgundy : AppTheme.border,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -600,14 +600,14 @@ class _SelectorField extends StatelessWidget {
                     label,
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                   ),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -616,7 +616,7 @@ class _SelectorField extends StatelessWidget {
             ),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
             ),
           ],
         ),
@@ -649,14 +649,14 @@ class _StatusChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 11),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(24) : AppTheme.dCard2,
+            color: selected ? color.withAlpha(24) : AppTheme.surface,
             borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(color: selected ? color : AppTheme.dLine),
+            border: Border.all(color: selected ? color : AppTheme.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: selected ? color : AppTheme.dMuted, size: 16),
+              Icon(icon, color: selected ? color : AppTheme.muted, size: 16),
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
@@ -664,7 +664,7 @@ class _StatusChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? color : AppTheme.dMuted,
+                    color: selected ? color : AppTheme.muted,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -696,24 +696,24 @@ class _CategoryRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: AarastCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
-        border: Border.all(color: selected ? AppTheme.dMaroon : AppTheme.dLine),
+        color: selected ? AppTheme.burgundySoft : AppTheme.surface,
+        border: Border.all(color: selected ? AppTheme.burgundy : AppTheme.border),
         onTap: onTap,
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: selected ? AppTheme.dMaroon : AppTheme.dInk,
+                  color: selected ? AppTheme.burgundy : AppTheme.ink,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle_rounded, color: AppTheme.dMaroon),
+              const Icon(Icons.check_circle_rounded, color: AppTheme.burgundy),
           ],
         ),
       ),
@@ -731,7 +731,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),

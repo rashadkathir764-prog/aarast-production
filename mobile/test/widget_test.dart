@@ -102,6 +102,7 @@ void main() {
     await dependencies.guestStorage.saveDraft(
       GuestOnboardingDraft(
         guestPlanId: 'guest-plan-startup',
+        planName: 'خطة زفاف صنعاء',
         createdAt: DateTime.utc(2026, 6, 19),
         isGuestPlan: true,
         needsSync: true,

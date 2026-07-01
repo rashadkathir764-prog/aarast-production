@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
               'تسجيل الدخول',
               textAlign: TextAlign.center,
               style: textTheme.headlineSmall?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w900,
                 height: 1.18,
               ),
@@ -59,7 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
               'ادخلي بحسابك لمتابعة تنظيم زفافك بسهولة.',
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
                 height: 1.45,
               ),
@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       'نسيت كلمة المرور؟',
                       style: textTheme.labelMedium?.copyWith(
-                        color: AppTheme.dGoldDeep,
+                        color: AppTheme.gold,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
               'أعرسِت يساعدك ترتبين الميزانية، المهام، الديون، والمشاركات من مكان واحد.',
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
-                color: AppTheme.dMuted,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),

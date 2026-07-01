@@ -1,4 +1,4 @@
-class WeddingLocationDraft {
+﻿class WeddingLocationDraft {
   const WeddingLocationDraft({
     this.governorate,
     this.cityOrDistrict,

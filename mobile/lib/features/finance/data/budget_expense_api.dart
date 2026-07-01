@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';

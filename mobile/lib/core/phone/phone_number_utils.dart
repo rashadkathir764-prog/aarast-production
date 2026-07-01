@@ -1,4 +1,4 @@
-enum PhoneValidationState { empty, valid, warning, invalid }
+﻿enum PhoneValidationState { empty, valid, warning, invalid }
 
 class PhoneNumberAnalysis {
   const PhoneNumberAnalysis({

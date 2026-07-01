@@ -92,24 +92,24 @@ class _MoreScreenState extends State<MoreScreen> {
                 title: 'الخطط المشتركة معي',
                 subtitle: 'الخطط التي تمت مشاركتها معك للوصول إليها',
                 icon: Icons.groups_2_outlined,
-                iconColor: AppTheme.dMaroon,
-                iconBackground: AppTheme.dPinkBg,
+                iconColor: AppTheme.burgundy,
+                iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.sharedWeddingPlans),
               ),
               _MoreActionTile(
                 title: 'خططي',
                 subtitle: 'إدارة كل خطط الزفاف الخاصة بك',
                 icon: Icons.event_note_outlined,
-                iconColor: AppTheme.dMaroon,
-                iconBackground: AppTheme.dPinkBg,
+                iconColor: AppTheme.burgundy,
+                iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.weddingPlans),
               ),
               _MoreActionTile(
                 title: 'إنشاء خطة زفاف',
                 subtitle: 'ابدأ خطة جديدة لتنظيم يومك المميز',
                 icon: Icons.add_circle_outline_rounded,
-                iconColor: AppTheme.dMaroon,
-                iconBackground: AppTheme.dPinkBg,
+                iconColor: AppTheme.burgundy,
+                iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.createWeddingPlan),
               ),
             ],
@@ -121,16 +121,16 @@ class _MoreScreenState extends State<MoreScreen> {
                 title: 'الإعدادات',
                 subtitle: 'تخصيص التطبيق والتفضيلات',
                 icon: Icons.settings_outlined,
-                iconColor: AppTheme.dMaroon,
-                iconBackground: AppTheme.dPinkBg,
+                iconColor: AppTheme.burgundy,
+                iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.settings),
               ),
               _MoreActionTile(
                 title: 'الدعم والمساعدة',
                 subtitle: 'تواصل معنا أو استعرض الأسئلة الشائعة',
                 icon: Icons.support_agent_outlined,
-                iconColor: AppTheme.dMaroon,
-                iconBackground: AppTheme.dPinkBg,
+                iconColor: AppTheme.burgundy,
+                iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.support),
               ),
             ],
@@ -167,7 +167,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: AppTheme.danger.withAlpha(22),
+                      color: AppTheme.dangerSoft,
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
@@ -181,7 +181,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     'تسجيل الخروج',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -191,7 +191,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                   ),
@@ -324,7 +324,7 @@ class _MoreHeader extends StatelessWidget {
               Text(
                 'المزيد',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: AppTheme.dMaroonDeep,
+                  color: AppTheme.burgundyDeep,
                   fontWeight: FontWeight.w900,
                   fontFamily: AppTheme.displayFontFamily,
                   height: 1,
@@ -334,7 +334,7 @@ class _MoreHeader extends StatelessWidget {
               Text(
                 'كل أدواتك في مكان واحد',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -379,15 +379,15 @@ class _RoundIconButton extends StatelessWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: AppTheme.dCard,
+          color: AppTheme.surface,
           shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.dLine),
+          border: Border.all(color: AppTheme.border),
           boxShadow: AppTheme.cardShadow(),
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: AppTheme.dMaroon),
+            Icon(icon, color: AppTheme.burgundy),
             if (badge != null)
               PositionedDirectional(
                 top: 1,
@@ -398,9 +398,9 @@ class _RoundIconButton extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 5),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppTheme.dCard, width: 2),
+                    border: Border.all(color: AppTheme.surface, width: 2),
                   ),
                   child: Text(
                     badge!,
@@ -438,7 +438,7 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.all(20),
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: Column(
         children: [
           Row(
@@ -447,13 +447,13 @@ class _ProfileCard extends StatelessWidget {
                 width: 76,
                 height: 76,
                 decoration: BoxDecoration(
-                  color: AppTheme.dCreamBg,
+                  color: AppTheme.ivory,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.dGold.withAlpha(90)),
+                  border: Border.all(color: AppTheme.gold.withAlpha(90)),
                 ),
                 child: const Icon(
                   Icons.person_outline_rounded,
-                  color: AppTheme.dGoldDeep,
+                  color: AppTheme.gold,
                   size: 38,
                 ),
               ),
@@ -467,7 +467,7 @@ class _ProfileCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -482,7 +482,7 @@ class _ProfileCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -493,13 +493,13 @@ class _ProfileCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppTheme.dGoldDeep,
+                  color: AppTheme.gold,
                   shape: BoxShape.circle,
                   boxShadow: AppTheme.softShadow(opacity: .08),
                 ),
                 child: const Icon(
                   Icons.edit_outlined,
-                  color: Colors.white,
+                  color: AppTheme.ivory,
                   size: 19,
                 ),
               ),
@@ -536,14 +536,14 @@ class _IdentityChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.dPinkBg.withAlpha(110),
+        color: AppTheme.burgundySoft.withAlpha(110),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Text(
         label,
         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: AppTheme.dMaroon,
+          color: AppTheme.burgundy,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -560,13 +560,17 @@ class _MenuGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: EdgeInsets.zero,
-      color: AppTheme.dCard2,
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
       child: Column(
         children: [
           for (var i = 0; i < children.length; i++) ...[
             children[i],
             if (i != children.length - 1)
-              const Divider(height: 1, color: AppTheme.dLine),
+              Divider(
+                height: 1,
+                color: AppTheme.burgundySoft.withAlpha(150),
+              ),
           ],
         ],
       ),
@@ -618,7 +622,7 @@ class _MoreActionTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -628,7 +632,7 @@ class _MoreActionTile extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                       height: 1.35,
                     ),
@@ -639,7 +643,7 @@ class _MoreActionTile extends StatelessWidget {
             const SizedBox(width: 8),
             const Icon(
               Icons.chevron_left_rounded,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
               size: 24,
             ),
           ],
@@ -658,8 +662,8 @@ class _LogoutTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: EdgeInsets.zero,
-      color: AppTheme.dCard2,
-      border: Border.all(color: AppTheme.danger.withAlpha(45)),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.dangerSoft),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -669,7 +673,7 @@ class _LogoutTile extends StatelessWidget {
               width: 50,
               height: 50,
               decoration: BoxDecoration(
-                color: AppTheme.danger.withAlpha(18),
+                color: AppTheme.dangerSoft,
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: const Icon(
@@ -709,24 +713,24 @@ class _OptionalLoginTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: EdgeInsets.zero,
-      color: AppTheme.dCreamBg,
+      color: AppTheme.ivory,
       onTap: onTap,
       child: const Padding(
         padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         child: Row(
           children: [
-            Icon(Icons.login_rounded, color: AppTheme.dGoldDeep),
+            Icon(Icons.login_rounded, color: AppTheme.gold),
             SizedBox(width: 12),
             Expanded(
               child: Text(
                 'تسجيل الدخول لاحقًا',
                 style: TextStyle(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
-            Icon(Icons.chevron_left_rounded, color: AppTheme.dGoldDeep),
+            Icon(Icons.chevron_left_rounded, color: AppTheme.gold),
           ],
         ),
       ),
@@ -745,7 +749,7 @@ class _VersionFooter extends StatelessWidget {
           Text(
             'Aarast V2.0',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -753,7 +757,7 @@ class _VersionFooter extends StatelessWidget {
           Text(
             'صُنع بحب في اليمن',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -773,7 +777,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),

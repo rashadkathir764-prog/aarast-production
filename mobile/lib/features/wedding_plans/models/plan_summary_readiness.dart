@@ -1,4 +1,4 @@
-import '../../../core/offline/sync_status.dart';
+﻿import '../../../core/offline/sync_status.dart';
 import '../../debts/models/debt_summary.dart';
 import '../../debts/models/installment.dart';
 import '../../finance/models/expense_summary.dart';

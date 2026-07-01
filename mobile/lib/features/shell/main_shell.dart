@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -115,7 +115,8 @@ class _MainShellState extends State<MainShell> {
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: AppTheme.dBg,
+          backgroundColor: AppTheme.ivory,
+          extendBody: true,
           body: IndexedStack(
             index: _index,
             children: [

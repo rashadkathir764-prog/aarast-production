@@ -1,4 +1,4 @@
-import 'shared_member.dart';
+﻿import 'shared_member.dart';
 
 class SharedWeddingPlan {
   const SharedWeddingPlan({

@@ -18,7 +18,7 @@ Future<T?> showAarastBottomSheet<T>({
         child: Container(
           margin: const EdgeInsets.only(top: 16),
           decoration: const BoxDecoration(
-            color: AppTheme.dCard,
+            color: AppTheme.ivory,
             borderRadius: BorderRadius.vertical(
               top: Radius.circular(AppTheme.radiusXl),
             ),
@@ -41,7 +41,7 @@ class AarastBottomSheetHandle extends StatelessWidget {
         height: 4,
         margin: const EdgeInsets.only(top: 10, bottom: 14),
         decoration: BoxDecoration(
-          color: AppTheme.dMaroon.withAlpha(28),
+          color: AppTheme.burgundySoft,
           borderRadius: BorderRadius.circular(99),
         ),
       ),

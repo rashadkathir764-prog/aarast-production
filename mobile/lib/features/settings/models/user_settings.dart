@@ -1,4 +1,4 @@
-class UserSettings {
+﻿class UserSettings {
   const UserSettings({
     required this.id,
     required this.userId,

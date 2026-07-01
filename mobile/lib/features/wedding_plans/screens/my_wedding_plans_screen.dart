@@ -67,7 +67,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
       maxWidth: 560,
       safeAreaBottom: false,
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: provider.loadMyWeddingPlans,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -86,7 +86,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                             Text(
                               'أعرسِت',
                               style: textTheme.headlineSmall?.copyWith(
-                                color: AppTheme.dMaroonDeep,
+                                color: AppTheme.burgundyDeep,
                                 fontWeight: FontWeight.w900,
                                 fontFamily: 'Amiri', // Classic touch
                               ),
@@ -94,7 +94,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                             const SizedBox(width: 4),
                             const Icon(
                               Icons.favorite,
-                              color: AppTheme.dPinkBg,
+                              color: AppTheme.burgundySoft,
                               size: 14,
                             ),
                           ],
@@ -102,7 +102,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         Text(
                           'مساء الخير، ${auth.user?.name.split(' ').first ?? 'ضيف'}',
                           style: textTheme.bodySmall?.copyWith(
-                            color: AppTheme.dInkSoft,
+                            color: AppTheme.muted,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -115,12 +115,12 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.dGold, width: 1.5),
-                          color: AppTheme.dCard,
+                          border: Border.all(color: AppTheme.gold, width: 1.5),
+                          color: AppTheme.surface,
                         ),
                         child: const Icon(
                           LucideIcons.user,
-                          color: AppTheme.dMaroon,
+                          color: AppTheme.burgundy,
                           size: 20,
                         ),
                       ),
@@ -138,7 +138,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                     Text(
                       'خططي',
                       style: textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -146,14 +146,14 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                       children: [
                         const Icon(
                           LucideIcons.sparkles,
-                          color: AppTheme.dGold,
+                          color: AppTheme.gold,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           'خطط زفافك وشاركها مع من تحب',
                           style: textTheme.bodySmall?.copyWith(
-                            color: AppTheme.dInkSoft,
+                            color: AppTheme.muted,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -169,7 +169,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
             if (provider.isLoading && provider.plans.isEmpty)
               const SliverFillRemaining(
                 child: Center(
-                  child: CircularProgressIndicator(color: AppTheme.dMaroon),
+                  child: CircularProgressIndicator(color: AppTheme.burgundy),
                 ),
               )
             else if (provider.errorMessage != null && provider.plans.isEmpty)
@@ -187,7 +187,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                   child: Text(
                     'لا توجد خطط زفاف بعد',
                     style: textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.dMuted,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -258,9 +258,9 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
         boxShadow: AppTheme.softShadow(opacity: 0.03),
       ),
       child: Row(
@@ -272,7 +272,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                 duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
                   color: _selectedTab == 0
-                      ? AppTheme.dMaroon
+                      ? AppTheme.burgundy
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                 ),
@@ -284,7 +284,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         LucideIcons.user,
                         color: _selectedTab == 0
                             ? Colors.white
-                            : AppTheme.dMuted,
+                            : AppTheme.muted,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
@@ -293,7 +293,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         style: textTheme.labelLarge?.copyWith(
                           color: _selectedTab == 0
                               ? Colors.white
-                              : AppTheme.dMuted,
+                              : AppTheme.muted,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -310,7 +310,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                 duration: const Duration(milliseconds: 250),
                 decoration: BoxDecoration(
                   color: _selectedTab == 1
-                      ? AppTheme.dMaroon
+                      ? AppTheme.burgundy
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(AppTheme.radiusXl),
                 ),
@@ -322,7 +322,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         LucideIcons.users,
                         color: _selectedTab == 1
                             ? Colors.white
-                            : AppTheme.dMuted,
+                            : AppTheme.muted,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
@@ -331,7 +331,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         style: textTheme.labelLarge?.copyWith(
                           color: _selectedTab == 1
                               ? Colors.white
-                              : AppTheme.dMuted,
+                              : AppTheme.muted,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -350,8 +350,8 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
     return AarastCard(
       onTap: () => context.push(AppRouter.createWeddingPlan),
       padding: const EdgeInsets.all(20),
-      color: AppTheme.dPinkBg.withAlpha(150),
-      border: Border.all(color: AppTheme.dMaroon.withAlpha(30)),
+      color: AppTheme.burgundySoft.withAlpha(150),
+      border: Border.all(color: AppTheme.burgundy.withAlpha(30)),
       child: Row(
         children: [
           Expanded(
@@ -362,14 +362,14 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                   'إنشاء خطة جديدة',
                   style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDeep,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'ابدأ خطة زفاف جديدة وشاركها مع من تحب',
                   style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -379,20 +379,14 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
           Container(
             width: 54,
             height: 54,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceElevated,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
+              boxShadow: AppTheme.softShadow(),
             ),
             child: const Icon(
               LucideIcons.plus,
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               size: 28,
             ),
           ),
@@ -417,13 +411,13 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    final bgColor = isFeatured ? AppTheme.dMaroon : AppTheme.dCard;
-    final titleColor = isFeatured ? Colors.white : AppTheme.dMaroonDeep;
-    final subtitleColor = isFeatured ? Colors.white70 : AppTheme.dInkSoft;
-    final iconColor = isFeatured ? AppTheme.dGold2 : AppTheme.dGold;
-    final progressBgColor = isFeatured ? AppTheme.dMaroonDeep : AppTheme.dBg;
-    final progressFillColor = isFeatured ? AppTheme.dGold : AppTheme.dMaroon;
-    final dividerColor = isFeatured ? Colors.white12 : AppTheme.dLine;
+    final bgColor = isFeatured ? AppTheme.burgundy : AppTheme.surface;
+    final titleColor = isFeatured ? Colors.white : AppTheme.burgundyDeep;
+    final subtitleColor = isFeatured ? Colors.white70 : AppTheme.muted;
+    final iconColor = isFeatured ? AppTheme.gold2 : AppTheme.gold;
+    final progressBgColor = isFeatured ? AppTheme.burgundyDeep : AppTheme.ivory;
+    final progressFillColor = isFeatured ? AppTheme.gold : AppTheme.burgundy;
+    final dividerColor = isFeatured ? Colors.white12 : AppTheme.border;
     final daysLeft = plan.daysRemaining;
     final totalPlanningDays = plan.weddingDate
         ?.difference(plan.createdAt)
@@ -441,7 +435,7 @@ class _PlanCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       color: bgColor,
       radius: AppTheme.radiusXl,
-      border: isFeatured ? null : Border.all(color: AppTheme.dLine),
+      border: isFeatured ? null : Border.all(color: AppTheme.border),
       child: Container(
         decoration: BoxDecoration(
           gradient: isFeatured ? AppTheme.heroGradient : null,
@@ -463,7 +457,7 @@ class _PlanCard extends StatelessWidget {
                           width: 140,
                           height: 140,
                           decoration: BoxDecoration(
-                            color: AppTheme.dPinkBg.withAlpha(20),
+                            color: AppTheme.burgundySoft.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -482,12 +476,12 @@ class _PlanCard extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.dPinkBg.withAlpha(100),
+                                    color: AppTheme.burgundySoft.withAlpha(100),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
                                     LucideIcons.heart,
-                                    color: AppTheme.dMaroon,
+                                    color: AppTheme.burgundy,
                                     size: 20,
                                   ),
                                 ),
@@ -535,7 +529,7 @@ class _PlanCard extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: isFeatured
                                       ? Colors.white24
-                                      : AppTheme.dBg,
+                                      : AppTheme.ivory,
                                   borderRadius: BorderRadius.circular(
                                     AppTheme.radiusSm,
                                   ),
@@ -548,7 +542,7 @@ class _PlanCard extends StatelessWidget {
                                       style: textTheme.labelSmall?.copyWith(
                                         color: isFeatured
                                             ? Colors.white
-                                            : AppTheme.dInk,
+                                            : AppTheme.ink,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),

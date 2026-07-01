@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -213,8 +213,12 @@ class _ActivePlanOnboardingScreenState
 
     if (accessToken == null || accessToken.trim().isEmpty) {
       final now = DateTime.now();
+      final planTitle = locationDraft.shortLabel == null
+          ? 'خطة زفافي'
+          : 'خطة زفاف ${locationDraft.shortLabel}';
       final guestPlan = GuestOnboardingDraft(
         guestPlanId: 'guest-plan-${now.microsecondsSinceEpoch}',
+        planName: planTitle,
         createdAt: now,
         isGuestPlan: true,
         needsSync: true,
@@ -294,7 +298,7 @@ class _Header extends StatelessWidget {
               const Text(
                 'أعرست',
                 style: TextStyle(
-                  color: AppTheme.dMaroonDeep,
+                  color: AppTheme.burgundyDeep,
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   height: 1,
@@ -305,8 +309,8 @@ class _Header extends StatelessWidget {
                 minHeight: 7,
                 value: (step + 1) / 4,
                 borderRadius: BorderRadius.circular(20),
-                backgroundColor: AppTheme.dLine,
-                valueColor: const AlwaysStoppedAnimation(AppTheme.dMaroon),
+                backgroundColor: AppTheme.border,
+                valueColor: const AlwaysStoppedAnimation(AppTheme.burgundy),
               ),
             ],
           ),
@@ -335,7 +339,7 @@ class _WelcomeStep extends StatelessWidget {
               children: [
                 Icon(
                   Icons.favorite_border_rounded,
-                  color: AppTheme.dGold2,
+                  color: AppTheme.gold2,
                   size: 48,
                 ),
                 SizedBox(height: 18),
@@ -690,7 +694,7 @@ class _StepCard extends StatelessWidget {
               title!,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
               ),
@@ -701,7 +705,7 @@ class _StepCard extends StatelessWidget {
                 subtitle!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w700,
                   height: 1.45,
                 ),
@@ -740,10 +744,10 @@ class _ChoiceCard extends StatelessWidget {
         duration: AppTheme.motionFast,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.dPinkBg : AppTheme.dCard2,
+          color: selected ? AppTheme.burgundySoft : AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            color: selected ? AppTheme.burgundy : AppTheme.border,
             width: selected ? 1.4 : 1,
           ),
         ),
@@ -753,12 +757,12 @@ class _ChoiceCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: selected ? AppTheme.dMaroon : AppTheme.dCreamBg,
+                color: selected ? AppTheme.burgundy : AppTheme.ivory,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: selected ? Colors.white : AppTheme.dGoldDeep,
+                color: selected ? Colors.white : AppTheme.gold,
               ),
             ),
             const SizedBox(width: 12),
@@ -769,7 +773,7 @@ class _ChoiceCard extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                       fontSize: 16,
                     ),
@@ -778,7 +782,7 @@ class _ChoiceCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                       height: 1.35,
                     ),
@@ -790,7 +794,7 @@ class _ChoiceCard extends StatelessWidget {
               selected
                   ? Icons.check_circle_rounded
                   : Icons.chevron_left_rounded,
-              color: selected ? AppTheme.dMaroon : AppTheme.dMuted,
+              color: selected ? AppTheme.burgundy : AppTheme.muted,
             ),
           ],
         ),
@@ -868,7 +872,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: const TextStyle(
-        color: AppTheme.dMaroonDeep,
+        color: AppTheme.burgundyDeep,
         fontSize: 16,
         fontWeight: FontWeight.w900,
       ),
@@ -960,15 +964,15 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dPinkBg,
+        color: AppTheme.burgundySoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dMaroon.withValues(alpha: 0.25)),
+        border: Border.all(color: AppTheme.burgundy.withValues(alpha: 0.25)),
       ),
       child: Text(
         message,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          color: AppTheme.dMaroonDeep,
+          color: AppTheme.burgundyDeep,
           fontWeight: FontWeight.w800,
         ),
       ),

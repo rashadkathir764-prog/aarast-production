@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -58,7 +58,7 @@ class _SharedWeddingPlansScreenState extends State<SharedWeddingPlansScreen> {
       subtitle: 'الخطط التي منحك أصحابها صلاحية الوصول إليها',
       showBack: true,
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: () {
           if (_showLoginGate ||
               provider.authGateKind == SharingAuthGateKind.sessionExpired) {

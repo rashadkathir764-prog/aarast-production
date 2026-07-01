@@ -1,4 +1,4 @@
-import 'safe_user.dart';
+﻿import 'safe_user.dart';
 
 class OtpRequestResult {
   const OtpRequestResult({

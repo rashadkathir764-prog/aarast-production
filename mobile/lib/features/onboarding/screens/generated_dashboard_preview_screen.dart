@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../models/generated_dashboard_seed.dart';
@@ -81,7 +81,7 @@ class _PreviewRow extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -91,7 +91,7 @@ class _PreviewRow extends StatelessWidget {
               value,
               textAlign: TextAlign.left,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w700,
               ),
             ),

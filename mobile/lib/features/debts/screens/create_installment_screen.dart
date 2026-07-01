@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -58,7 +58,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                     child: Text(
                       'قسط جديد',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -145,7 +145,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                             child: Text(
                               'حالة القسط',
                               style: TextStyle(
-                                color: AppTheme.dInk,
+                                color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
@@ -158,14 +158,14 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                               _StatusChoice(
                                 label: 'منتظر',
                                 value: 'PENDING',
-                                color: AppTheme.dGoldDeep,
+                                color: AppTheme.gold,
                                 selected: _status == 'PENDING',
                                 onTap: _setStatus,
                               ),
                               _StatusChoice(
                                 label: 'مدفوع',
                                 value: 'PAID',
-                                color: AppTheme.dGreen,
+                                color: AppTheme.success,
                                 selected: _status == 'PAID',
                                 onTap: _setStatus,
                               ),
@@ -179,7 +179,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                               _StatusChoice(
                                 label: 'ملغي',
                                 value: 'CANCELLED',
-                                color: AppTheme.dMuted,
+                                color: AppTheme.muted,
                                 selected: _status == 'CANCELLED',
                                 onTap: _setStatus,
                               ),
@@ -260,10 +260,10 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.dMaroon,
+                        primary: AppTheme.burgundy,
                         onPrimary: Colors.white,
-                        surface: AppTheme.dCard2,
-                        onSurface: AppTheme.dInk,
+                        surface: AppTheme.surface,
+                        onSurface: AppTheme.ink,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -335,8 +335,8 @@ class _InstallmentHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCreamBg,
-      border: Border.all(color: AppTheme.dGold.withAlpha(45)),
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft),
       child: Row(
         children: [
           Container(
@@ -360,7 +360,7 @@ class _InstallmentHero extends StatelessWidget {
                 Text(
                   'قسطي الالتزام إلى خطوات',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -368,7 +368,7 @@ class _InstallmentHero extends StatelessWidget {
                 Text(
                   'كل قسط بتاريخ واضح يعني متابعة أسهل وهدوء أكثر.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -404,15 +404,15 @@ class _SelectorField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            color: selected ? AppTheme.burgundy : AppTheme.border,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -422,14 +422,14 @@ class _SelectorField extends StatelessWidget {
                     label,
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                   ),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -438,7 +438,7 @@ class _SelectorField extends StatelessWidget {
             ),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
             ),
           ],
         ),
@@ -472,9 +472,9 @@ class _StatusChoice extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? color.withAlpha(24) : AppTheme.dCard2,
+            color: selected ? color.withAlpha(24) : AppTheme.surface,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: selected ? color : AppTheme.dLine),
+            border: Border.all(color: selected ? color : AppTheme.border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -489,7 +489,7 @@ class _StatusChoice extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? color : AppTheme.dInkSoft,
+                    color: selected ? color : AppTheme.muted,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -512,7 +512,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),

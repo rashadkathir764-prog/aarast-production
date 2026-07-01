@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -55,8 +55,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
           decoration: const BoxDecoration(
-            color: AppTheme.dCard2,
-            border: Border(top: BorderSide(color: AppTheme.dLine)),
+            color: AppTheme.surface,
+            border: Border(top: BorderSide(color: AppTheme.border)),
           ),
           child: Consumer<ProviderMarketplaceProvider>(
             builder: (context, marketplace, _) {
@@ -73,7 +73,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                           child: Text(
                             'آخر طلب لهذا المورد',
                             style: TextStyle(
-                              color: AppTheme.dInkSoft,
+                              color: AppTheme.muted,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -262,7 +262,7 @@ class _ProviderHero extends StatelessWidget {
                     provider.businessName,
                     textAlign: TextAlign.right,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -276,22 +276,22 @@ class _ProviderHero extends StatelessWidget {
                           label:
                               '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
                           icon: Icons.star_rounded,
-                          color: AppTheme.dGoldDeep,
-                          backgroundColor: AppTheme.dCreamBg,
+                          color: AppTheme.gold,
+                          backgroundColor: AppTheme.ivory,
                         ),
                       if (provider.city?.nameAr != null)
                         AarastStatusPill(
                           label: provider.city!.nameAr,
                           icon: Icons.place_outlined,
-                          color: AppTheme.dMaroon,
-                          backgroundColor: AppTheme.dPinkBg,
+                          color: AppTheme.burgundy,
+                          backgroundColor: AppTheme.burgundySoft,
                         ),
                       if (provider.isFeatured)
                         const AarastStatusPill(
                           label: 'مميز',
                           icon: Icons.verified_rounded,
-                          color: AppTheme.dGreen,
-                          backgroundColor: AppTheme.dGreenBg,
+                          color: AppTheme.success,
+                          backgroundColor: AppTheme.successSoft,
                         ),
                     ],
                   ),
@@ -317,7 +317,7 @@ class _HeroImage extends StatelessWidget {
       height: 210,
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.dCreamBg, AppTheme.dPinkBg],
+          colors: [AppTheme.ivory, AppTheme.burgundySoft],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -326,7 +326,7 @@ class _HeroImage extends StatelessWidget {
           ? const Center(
               child: Icon(
                 Icons.storefront_rounded,
-                color: AppTheme.dGoldDeep,
+                color: AppTheme.gold,
                 size: 64,
               ),
             )
@@ -336,7 +336,7 @@ class _HeroImage extends StatelessWidget {
               errorBuilder: (context, error, stackTrace) => const Center(
                 child: Icon(
                   Icons.storefront_rounded,
-                  color: AppTheme.dGoldDeep,
+                  color: AppTheme.gold,
                   size: 64,
                 ),
               ),
@@ -367,7 +367,7 @@ class _AboutCard extends StatelessWidget {
                 : 'لا توجد نبذة مفصلة بعد، لكن يمكنك طلب عرض سعر لمعرفة التفاصيل المناسبة لخطتك.',
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
               height: 1.6,
             ),
@@ -383,15 +383,15 @@ class _AboutCard extends StatelessWidget {
                       PhoneNumberUtils.display(provider.phone) ??
                       provider.phone!.trim(),
                   icon: Icons.phone_outlined,
-                  color: AppTheme.dBlue,
-                  backgroundColor: AppTheme.dBlueBg,
+                  color: AppTheme.ink,
+                  backgroundColor: AppTheme.ivory,
                 ),
               if (provider.address?.trim().isNotEmpty == true)
                 AarastStatusPill(
                   label: provider.address!.trim(),
                   icon: Icons.location_city_outlined,
-                  color: AppTheme.dGoldDeep,
-                  backgroundColor: AppTheme.dCreamBg,
+                  color: AppTheme.gold,
+                  backgroundColor: AppTheme.ivory,
                 ),
             ],
           ),
@@ -446,9 +446,9 @@ class _ServiceTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         children: [
@@ -456,12 +456,12 @@ class _ServiceTile extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppTheme.dCreamBg,
+              color: AppTheme.ivory,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.auto_awesome_rounded,
-              color: AppTheme.dGoldDeep,
+              color: AppTheme.gold,
             ),
           ),
           const SizedBox(width: 12),
@@ -474,7 +474,7 @@ class _ServiceTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -484,7 +484,7 @@ class _ServiceTile extends StatelessWidget {
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -524,7 +524,7 @@ class _PackagesSection extends StatelessWidget {
             const Text(
               'لا توجد باقات منشورة حاليًا.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.dMuted),
+              style: TextStyle(color: AppTheme.muted),
             )
           else
             for (final item in packages) ...[
@@ -547,13 +547,13 @@ class _PackageTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         children: [
-          const Icon(Icons.card_giftcard_rounded, color: AppTheme.dMaroon),
+          const Icon(Icons.card_giftcard_rounded, color: AppTheme.burgundy),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -562,7 +562,7 @@ class _PackageTile extends StatelessWidget {
                 Text(
                   item.title,
                   style: const TextStyle(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -571,7 +571,7 @@ class _PackageTile extends StatelessWidget {
                     item.description!.trim(),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppTheme.dInkSoft),
+                    style: const TextStyle(color: AppTheme.muted),
                   ),
               ],
             ),
@@ -580,7 +580,7 @@ class _PackageTile extends StatelessWidget {
             _priceText(item.price, item.currency),
             textDirection: TextDirection.ltr,
             style: const TextStyle(
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -610,7 +610,7 @@ class _ReviewsSection extends StatelessWidget {
             const Text(
               'لا توجد تقييمات بعد.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.dMuted),
+              style: TextStyle(color: AppTheme.muted),
             )
           else
             for (final review in reviews.take(4)) ...[
@@ -633,9 +633,9 @@ class _ReviewTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -644,7 +644,7 @@ class _ReviewTile extends StatelessWidget {
             children: [
               const Icon(
                 Icons.star_rounded,
-                color: AppTheme.dGoldDeep,
+                color: AppTheme.gold,
                 size: 18,
               ),
               const SizedBox(width: 4),
@@ -659,7 +659,7 @@ class _ReviewTile extends StatelessWidget {
                   review.userName ?? 'مستخدم اعّرست',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppTheme.dInkSoft),
+                  style: const TextStyle(color: AppTheme.muted),
                 ),
               ),
             ],
@@ -669,7 +669,7 @@ class _ReviewTile extends StatelessWidget {
             Text(
               review.comment!.trim(),
               textAlign: TextAlign.right,
-              style: const TextStyle(color: AppTheme.dInkSoft, height: 1.5),
+              style: const TextStyle(color: AppTheme.muted, height: 1.5),
             ),
           ],
         ],
@@ -693,12 +693,12 @@ class _RoundButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.dLine),
+          border: Border.all(color: AppTheme.border),
           boxShadow: AppTheme.cardShadow(),
         ),
-        child: Icon(icon, color: AppTheme.dMaroon),
+        child: Icon(icon, color: AppTheme.burgundy),
       ),
     );
   }

@@ -86,9 +86,7 @@ void main() {
     );
   });
 
-  testWidgets('Organizer path allows quick plan setup and skip budget', (
-    tester,
-  ) async {
+  testWidgets('Organizer path saves complete local plan setup', (tester) async {
     final preferences = await SharedPreferences.getInstance();
     final guestStorage = GuestOnboardingStorage(preferences);
 
@@ -137,20 +135,27 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify quick setup
-    expect(find.text('خلّينا نجهز أساس خطتك'), findsOneWidget);
+    expect(find.text('أكمل بيانات خطتك'), findsOneWidget);
     expect(find.text('الميزانية والعملة'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).first, 'My Wedding');
     await tester.pumpAndSettle();
 
     // Verify location
-    expect(find.text('الموقع'), findsOneWidget);
+    expect(find.text('المدينة / الموقع'), findsOneWidget);
     expect(find.text('تحديد الموقع على الخريطة قريبًا'), findsOneWidget);
     final locationField = find.descendant(
       of: find.byType(PremiumLocationCard),
       matching: find.byType(TextFormField),
     );
     await tester.enterText(locationField, 'صنعاء');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(PremiumDateField));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('15').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
     // Verify budget formatting
@@ -174,7 +179,7 @@ void main() {
     expect(find.text('ثلاثة ملايين ريال سعودي'), findsOneWidget);
 
     // Tap Start Planning
-    final startButton = find.text('ابدأ التخطيط');
+    final startButton = find.text('حفظ ومتابعة');
     await tester.ensureVisible(startButton);
     await tester.pumpAndSettle();
     await tester.tap(startButton);
@@ -190,69 +195,67 @@ void main() {
     expect(draft?.planName, 'My Wedding');
     expect(draft?.governorate, 'صنعاء');
     expect(draft?.city, 'صنعاء');
-    expect(draft?.weddingDate, isNull);
-    expect(draft?.weddingDateUnknown, isTrue);
+    expect(draft?.weddingDate, isNotNull);
+    expect(draft?.weddingDateUnknown, isFalse);
     expect(draft?.estimatedBudget, '3000000');
     expect(draft?.currency, 'SAR');
   });
 
-  testWidgets('Quick setup can save null budget and date', (tester) async {
-    final preferences = await SharedPreferences.getInstance();
-    final guestStorage = GuestOnboardingStorage(preferences);
+  testWidgets(
+    'Quick setup blocks dashboard until required plan data is complete',
+    (tester) async {
+      final preferences = await SharedPreferences.getInstance();
+      final guestStorage = GuestOnboardingStorage(preferences);
 
-    final router = GoRouter(
-      initialLocation: '/welcome',
-      routes: [
-        GoRoute(
-          path: '/welcome',
-          builder: (context, state) => const SmartWelcomeScreen(),
-        ),
-        GoRoute(
-          path: '/home',
-          builder: (context, state) =>
-              const Scaffold(body: Text('dashboard-opened')),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>.value(value: guestStorage),
+      final router = GoRouter(
+        initialLocation: '/welcome',
+        routes: [
+          GoRoute(
+            path: '/welcome',
+            builder: (context, state) => const SmartWelcomeScreen(),
+          ),
+          GoRoute(
+            path: '/home',
+            builder: (context, state) =>
+                const Scaffold(body: Text('dashboard-opened')),
+          ),
         ],
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('أريد تنظيم زفافي'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('العروسة'));
-    await tester.pumpAndSettle();
-    final continueButton = find.text('متابعة');
-    await tester.ensureVisible(continueButton);
-    await tester.tap(continueButton);
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
+            Provider<GuestOnboardingStorage>.value(value: guestStorage),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
 
-    expect(find.text('يمكن ترك الميزانية فارغة الآن'), findsOneWidget);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('أريد تنظيم زفافي'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('العروسة'));
+      await tester.pumpAndSettle();
+      final continueButton = find.text('متابعة');
+      await tester.ensureVisible(continueButton);
+      await tester.tap(continueButton);
+      await tester.pumpAndSettle();
 
-    final startButton = find.text('ابدأ التخطيط');
-    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(startButton);
-    await tester.tap(startButton);
-    await tester.pumpAndSettle();
+      expect(find.text('أكمل بيانات خطتك'), findsOneWidget);
 
-    expect(find.text('dashboard-opened'), findsOneWidget);
-    final draft = await guestStorage.loadGuestPlan();
-    expect(draft, isNotNull);
-    expect(draft?.estimatedBudget, isNull);
-    expect(draft?.currency, isNull);
-    expect(draft?.weddingDate, isNull);
-    expect(draft?.weddingDateUnknown, isTrue);
-    expect(draft?.selectedCategoryKeys, isEmpty);
-  });
+      final startButton = find.text('حفظ ومتابعة');
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(startButton);
+      await tester.tap(startButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('dashboard-opened'), findsNothing);
+      expect(await guestStorage.loadGuestPlan(), isNull);
+      expect(find.textContaining('أكمل اسم الخطة'), findsOneWidget);
+    },
+  );
 
   testWidgets('Quick setup fields stay overflow-free at 320px RTL width', (
     tester,

@@ -1,4 +1,4 @@
-class Timeline {
+﻿class Timeline {
   const Timeline({
     required this.upcomingTasks,
     required this.dueDebts,

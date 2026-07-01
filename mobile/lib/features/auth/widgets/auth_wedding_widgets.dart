@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
@@ -26,7 +26,7 @@ class AuthWeddingScaffold extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: AppTheme.dBg,
+        backgroundColor: AppTheme.ivory,
         body: Stack(
           children: [
             const Positioned.fill(child: AuthWeddingBackground()),
@@ -61,7 +61,7 @@ class AuthWeddingBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppTheme.dBg,
+      color: AppTheme.ivory,
       child: CustomPaint(painter: _AuthWeddingBackgroundPainter()),
     );
   }
@@ -89,7 +89,7 @@ class AuthBrandMark extends StatelessWidget {
               style:
                   (compact ? textTheme.headlineMedium : textTheme.displaySmall)
                       ?.copyWith(
-                        color: AppTheme.dMaroon,
+                        color: AppTheme.burgundy,
                         fontFamily: AppTheme.displayFontFamily,
                         fontWeight: FontWeight.w700,
                         height: 1,
@@ -101,7 +101,7 @@ class AuthBrandMark extends StatelessWidget {
               right: compact ? -8 : -12,
               child: Icon(
                 Icons.favorite_rounded,
-                color: AppTheme.dGoldDeep,
+                color: AppTheme.gold,
                 size: compact ? 12 : 16,
               ),
             ),
@@ -125,9 +125,9 @@ class WeddingRingsBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.dGold2.withAlpha(150)),
+        border: Border.all(color: AppTheme.gold2.withAlpha(150)),
         boxShadow: AppTheme.softShadow(opacity: 0.08),
       ),
       child: CustomPaint(painter: _RingsPainter()),
@@ -147,9 +147,9 @@ class AuthPanel extends StatelessWidget {
       width: double.infinity,
       padding: padding ?? const EdgeInsets.all(20),
       decoration: AppTheme.premiumCardDecoration(
-        color: AppTheme.dCard2.withAlpha(244),
+        color: AppTheme.surface.withAlpha(244),
         radius: AppTheme.radiusXl,
-        border: Border.all(color: AppTheme.dLine.withAlpha(220)),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.6)),
       ),
       child: child,
     );
@@ -215,9 +215,9 @@ class AuthInlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.dPinkBg,
+        color: AppTheme.burgundySoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.danger.withAlpha(70)),
+        border: Border.all(color: AppTheme.dangerSoft),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,10 +284,10 @@ class AuthFeatureTile extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppTheme.dPinkBg.withAlpha(130),
+              color: AppTheme.burgundySoft.withAlpha(130),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: AppTheme.dMaroon, size: 28),
+            child: Icon(icon, color: AppTheme.burgundy, size: 28),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -298,7 +298,7 @@ class AuthFeatureTile extends StatelessWidget {
                   title,
                   textAlign: TextAlign.right,
                   style: textTheme.titleMedium?.copyWith(
-                    color: AppTheme.dMaroonDeep,
+                    color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -307,7 +307,7 @@ class AuthFeatureTile extends StatelessWidget {
                   subtitle,
                   textAlign: TextAlign.right,
                   style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w600,
                     height: 1.45,
                   ),
@@ -354,16 +354,16 @@ class _HeartRule extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 38, height: 1, color: AppTheme.dGold2),
+        Container(width: 38, height: 1, color: AppTheme.gold2),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Icon(
             Icons.favorite_rounded,
-            color: AppTheme.dGoldDeep,
+            color: AppTheme.gold,
             size: 12,
           ),
         ),
-        Container(width: 38, height: 1, color: AppTheme.dGold2),
+        Container(width: 38, height: 1, color: AppTheme.gold2),
       ],
     );
   }
@@ -373,15 +373,15 @@ class _AuthWeddingBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final archPaint = Paint()
-      ..color = AppTheme.dGold2.withAlpha(48)
+      ..color = AppTheme.gold2.withAlpha(48)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1;
     final stemPaint = Paint()
-      ..color = AppTheme.dGoldDeep.withAlpha(48)
+      ..color = AppTheme.gold.withAlpha(48)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1;
     final petalPaint = Paint()
-      ..color = AppTheme.dMaroon.withAlpha(18)
+      ..color = AppTheme.burgundySoft
       ..style = PaintingStyle.fill;
 
     final arch = Path()
@@ -457,17 +457,17 @@ class _RingsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppTheme.dMaroon
+      ..color = AppTheme.burgundy
       ..style = PaintingStyle.stroke
       ..strokeWidth = size.width * 0.045
       ..strokeCap = StrokeCap.round;
     final goldPaint = Paint()
-      ..color = AppTheme.dGoldDeep
+      ..color = AppTheme.gold
       ..style = PaintingStyle.stroke
       ..strokeWidth = size.width * 0.035
       ..strokeCap = StrokeCap.round;
     final heartPaint = Paint()
-      ..color = AppTheme.dMaroon
+      ..color = AppTheme.burgundy
       ..style = PaintingStyle.fill;
 
     final center = Offset(size.width / 2, size.height / 2 + size.height * 0.06);

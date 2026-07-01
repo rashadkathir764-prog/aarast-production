@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
@@ -17,7 +17,7 @@ class AuthFormShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.dBg,
+      backgroundColor: AppTheme.ivory,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -26,7 +26,7 @@ class AuthFormShell extends StatelessWidget {
               constraints: const BoxConstraints(maxWidth: 480),
               child: Container(
                 decoration: AppTheme.premiumCardDecoration(
-                  color: AppTheme.dCard2.withAlpha(242),
+                  color: AppTheme.surface.withValues(alpha: 0.6),
                   radius: AppTheme.radiusXl,
                 ),
                 child: Padding(
@@ -38,7 +38,7 @@ class AuthFormShell extends StatelessWidget {
                         'أعرسِت',
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              color: AppTheme.dMaroon,
+                              color: AppTheme.burgundy,
                               fontFamily: AppTheme.displayFontFamily,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 0,
@@ -49,7 +49,7 @@ class AuthFormShell extends StatelessWidget {
                       Text(
                         title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w800,
                         ),
                         textAlign: TextAlign.right,

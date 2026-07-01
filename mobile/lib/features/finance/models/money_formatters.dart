@@ -1,4 +1,4 @@
-class CompactYemeniMoneyParts {
+﻿class CompactYemeniMoneyParts {
   const CompactYemeniMoneyParts({
     required this.number,
     required this.currency,

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -77,7 +77,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
       maxWidth: 520,
       floatingActionButton: widget.showLocalFab
           ? FloatingActionButton(
-              backgroundColor: AppTheme.dGoldDeep,
+              backgroundColor: AppTheme.gold,
               foregroundColor: Colors.white,
               onPressed: planIdReady && !provider.isSubmitting
                   ? () => _showGuestSheet(provider: provider)
@@ -100,7 +100,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.dMaroonDeep,
+                          color: AppTheme.burgundyDark,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -109,7 +109,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -122,7 +122,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AppTheme.dMaroon,
+              color: AppTheme.burgundy,
               onRefresh: _isLocalExploration ? () async {} : _load,
               child: _GuestsContent(
                 provider: provider,
@@ -247,7 +247,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: AppTheme.danger.withAlpha(22),
+                      color: AppTheme.dangerSoft,
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
@@ -261,7 +261,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                     'حذف الضيف؟',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -273,7 +273,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                   ),
@@ -423,14 +423,14 @@ class _GuestsContent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppTheme.dCard,
+              color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.dLine),
+              border: Border.all(color: AppTheme.border),
             ),
             child: const Text(
               'لا يوجد ضيوف حالياً. استخدم الزر العائم الذهبي للإضافة.',
               style: TextStyle(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -465,9 +465,9 @@ class _TopGuestsCommandCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.dCard,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -485,7 +485,7 @@ class _TopGuestsCommandCard extends StatelessWidget {
                           child: Text(
                             'اكتمال البيانات (${summary.completionPercent}%)',
                             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: AppTheme.dInk,
+                              color: AppTheme.ink,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -494,8 +494,8 @@ class _TopGuestsCommandCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           AarastStatusPill(
                             label: 'تخطيط محلي',
-                            color: AppTheme.dGold,
-                            backgroundColor: AppTheme.dGold.withValues(alpha: 0.1),
+                            color: AppTheme.gold,
+                            backgroundColor: AppTheme.goldSoft,
                             icon: Icons.phone_iphone_rounded,
                           ),
                         ],
@@ -507,8 +507,8 @@ class _TopGuestsCommandCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: summary.completionRatio,
                         minHeight: 4,
-                        backgroundColor: AppTheme.dLine,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.dMaroon),
+                        backgroundColor: AppTheme.border,
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.burgundy),
                       ),
                     ),
                   ],
@@ -521,12 +521,12 @@ class _TopGuestsCommandCard extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _MiniStat(label: 'الإجمالي', value: '${summary.totalGuests}', color: AppTheme.dInkSoft),
-                _MiniStat(label: 'مؤكد', value: '${summary.confirmed}', color: AppTheme.dGreen),
-                _MiniStat(label: 'بانتظار الرد', value: '${summary.pending}', color: AppTheme.dGoldDeep),
-                _MiniStat(label: 'ناقص بيانات', value: '${summary.incompleteGuestsCount}', color: summary.incompleteGuestsCount > 0 ? AppTheme.danger : AppTheme.dInkSoft),
+                _MiniStat(label: 'الإجمالي', value: '${summary.totalGuests}', color: AppTheme.muted),
+                _MiniStat(label: 'مؤكد', value: '${summary.confirmed}', color: AppTheme.success),
+                _MiniStat(label: 'بانتظار الرد', value: '${summary.pending}', color: AppTheme.gold),
+                _MiniStat(label: 'ناقص بيانات', value: '${summary.incompleteGuestsCount}', color: summary.incompleteGuestsCount > 0 ? AppTheme.danger : AppTheme.muted),
                 if (summary.companionsExpectedCount > 0)
-                  _MiniStat(label: 'مرافقين', value: '${summary.companionsExpectedCount}', color: AppTheme.dInkSoft),
+                  _MiniStat(label: 'مرافقين', value: '${summary.companionsExpectedCount}', color: AppTheme.muted),
               ],
             ),
           ),
@@ -561,7 +561,7 @@ class _MiniStat extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: AppTheme.dInkSoft, fontWeight: FontWeight.w700, fontSize: 11),
+            style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700, fontSize: 11),
           ),
         ],
       ),
@@ -582,7 +582,7 @@ class _ImportantGuestsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: issues.isEmpty ? AppTheme.dCard2 : AppTheme.dCard,
+      color: issues.isEmpty ? AppTheme.surface : AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -592,7 +592,7 @@ class _ImportantGuestsCard extends StatelessWidget {
                 issues.isEmpty
                     ? Icons.verified_outlined
                     : Icons.priority_high_rounded,
-                color: issues.isEmpty ? AppTheme.dGreen : AppTheme.dMaroon,
+                color: issues.isEmpty ? AppTheme.success : AppTheme.burgundy,
                 size: 20,
               ),
               const SizedBox(width: 8),
@@ -600,7 +600,7 @@ class _ImportantGuestsCard extends StatelessWidget {
                 child: Text(
                   'أهم ما يحتاج متابعة في الضيوف',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -612,7 +612,7 @@ class _ImportantGuestsCard extends StatelessWidget {
             Text(
               'كل بيانات الضيوف مكتملة',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w800,
               ),
             )
@@ -656,7 +656,7 @@ class _IssueRow extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -701,10 +701,10 @@ class _GuestFilterBar extends StatelessWidget {
               duration: AppTheme.motionFast,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.dMaroon : AppTheme.dCard2,
+                color: isSelected ? AppTheme.burgundy : AppTheme.surface,
                 borderRadius: BorderRadius.circular(999),
                 border: Border.all(
-                  color: isSelected ? AppTheme.dMaroon : AppTheme.dLine,
+                  color: isSelected ? AppTheme.burgundy : AppTheme.border,
                 ),
                 boxShadow: isSelected ? AppTheme.cardShadow() : null,
               ),
@@ -714,13 +714,13 @@ class _GuestFilterBar extends StatelessWidget {
                   Icon(
                     item.icon,
                     size: 16,
-                    color: isSelected ? Colors.white : AppTheme.dMaroon,
+                    color: isSelected ? Colors.white : AppTheme.burgundy,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     item.label,
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: isSelected ? Colors.white : AppTheme.dInk,
+                      color: isSelected ? Colors.white : AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -762,7 +762,7 @@ class _PremiumGuestCard extends StatelessWidget {
     return AarastCard(
       padding: const EdgeInsets.all(14),
       border: Border.all(
-        color: missing ? AppTheme.dOrange.withAlpha(80) : AppTheme.dLine,
+        color: missing ? AppTheme.warningSoft : AppTheme.border,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -774,7 +774,7 @@ class _PremiumGuestCard extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: color.withAlpha(20),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                   border: Border.all(color: color.withAlpha(42)),
                 ),
@@ -790,7 +790,7 @@ class _PremiumGuestCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -852,20 +852,20 @@ class _PremiumGuestCard extends StatelessWidget {
               AarastStatusPill(
                 label: _statusLabel(guest.status),
                 color: color,
-                backgroundColor: color.withAlpha(20),
+                backgroundColor: color.withValues(alpha: 0.1),
                 icon: _statusIcon(guest.status, guest.attendanceStatus),
               ),
               if (phone != null && phone.isNotEmpty)
                 AarastStatusPill(
                   label: phone,
-                  color: AppTheme.dInkSoft,
-                  backgroundColor: AppTheme.dCreamBg.withAlpha(160),
+                  color: AppTheme.muted,
+                  backgroundColor: AppTheme.ivory.withValues(alpha: 0.6),
                   icon: Icons.phone_iphone_rounded,
                 ),
               if (missing)
                 const AarastStatusPill(
                   label: 'ناقص بيانات',
-                  color: AppTheme.dOrange,
+                  color: AppTheme.warning,
                   icon: Icons.info_outline_rounded,
                 ),
               if (isDuplicate)
@@ -883,7 +883,7 @@ class _PremiumGuestCard extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -905,7 +905,7 @@ class _MiniMeta extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 15, color: AppTheme.dInkSoft),
+        Icon(icon, size: 15, color: AppTheme.muted),
         const SizedBox(width: 4),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 140),
@@ -914,7 +914,7 @@ class _MiniMeta extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1093,7 +1093,7 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
                   const Text(
                     'يوجد ضيف بنفس الاسم دون رقم. يمكنك المتابعة إذا كان شخصًا آخر.',
                     style: TextStyle(
-                      color: AppTheme.dGoldDeep,
+                      color: AppTheme.gold,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1244,9 +1244,9 @@ class _StepperRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
       child: Row(
         children: [
@@ -1254,7 +1254,7 @@ class _StepperRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -1327,9 +1327,9 @@ class _SkeletonBox extends StatelessWidget {
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppTheme.dCard2,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        border: Border.all(color: AppTheme.dLine),
+        border: Border.all(color: AppTheme.border),
       ),
     );
   }
@@ -1345,9 +1345,9 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.danger.withAlpha(18),
+        color: AppTheme.dangerSoft,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.danger.withAlpha(45)),
+        border: Border.all(color: AppTheme.dangerSoft),
       ),
       child: Row(
         children: [
@@ -1378,7 +1378,7 @@ class _SheetHandle extends StatelessWidget {
         width: 42,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(999),
         ),
       ),
@@ -1453,7 +1453,7 @@ List<_GuestIssue> _importantIssues(
         count: summary.incompleteGuestsCount,
         filter: _GuestFilter.incomplete,
         icon: Icons.info_outline_rounded,
-        color: AppTheme.dOrange,
+        color: AppTheme.warning,
       ),
     );
   }
@@ -1464,7 +1464,7 @@ List<_GuestIssue> _importantIssues(
         count: summary.missingPhoneCount,
         filter: _GuestFilter.incomplete,
         icon: Icons.phone_disabled_outlined,
-        color: AppTheme.dGoldDeep,
+        color: AppTheme.gold,
       ),
     );
   }
@@ -1486,7 +1486,7 @@ List<_GuestIssue> _importantIssues(
         count: summary.pending,
         filter: _GuestFilter.pending,
         icon: Icons.hourglass_bottom_rounded,
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
       ),
     );
   }
@@ -1497,7 +1497,7 @@ List<_GuestIssue> _importantIssues(
         count: 0,
         filter: _GuestFilter.groom,
         icon: Icons.person_outline_rounded,
-        color: AppTheme.dBlue,
+        color: AppTheme.ink,
       ),
     );
   }
@@ -1508,7 +1508,7 @@ List<_GuestIssue> _importantIssues(
         count: 0,
         filter: _GuestFilter.bride,
         icon: Icons.person_2_outlined,
-        color: AppTheme.dBlue,
+        color: AppTheme.ink,
       ),
     );
   }
@@ -1575,13 +1575,13 @@ String _attendanceFromStatus(String status) {
 
 Color _statusColor(String status, String attendanceStatus) {
   if (attendanceStatus == 'CONFIRMED' || status == 'CONFIRMED') {
-    return AppTheme.dGreen;
+    return AppTheme.success;
   }
   if (attendanceStatus == 'DECLINED' || status == 'DECLINED') {
     return AppTheme.danger;
   }
-  if (status == 'PENDING') return AppTheme.dGoldDeep;
-  return AppTheme.dMaroon;
+  if (status == 'PENDING') return AppTheme.gold;
+  return AppTheme.burgundy;
 }
 
 IconData _statusIcon(String status, String attendanceStatus) {

@@ -2,7 +2,7 @@
 
 import 'dart:io' show Platform;
 import 'dart:math' as math;
-import 'dart:ui';
+// import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -90,9 +90,12 @@ class RoyalHomeTodayCenter extends StatelessWidget {
           const SizedBox(height: 16),
           _PremiumEntry(
             index: notice != null ? 3 : 2,
-            child: _ImportantNowCard(
+            child: _QuickOverviewGrid(
               summary: summary,
-              onOpenImportantItem: onOpenImportantItem,
+              onOpenTasks: onOpenTasks,
+              onOpenGuests: onOpenGuests,
+              onOpenProviders: onOpenProviders,
+              onOpenMoney: onOpenMoney,
             ),
           ),
           const SizedBox(height: 14),
@@ -104,18 +107,15 @@ class RoyalHomeTodayCenter extends StatelessWidget {
               onAddExpense: onAddExpense,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _PremiumEntry(
             index: notice != null ? 5 : 4,
-            child: _QuickOverviewGrid(
+            child: _ImportantNowCard(
               summary: summary,
-              onOpenTasks: onOpenTasks,
-              onOpenGuests: onOpenGuests,
-              onOpenProviders: onOpenProviders,
-              onOpenMoney: onOpenMoney,
+              onOpenImportantItem: onOpenImportantItem,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _PremiumEntry(
             index: notice != null ? 6 : 5,
             child: _SharingUpdatesRow(
@@ -237,124 +237,137 @@ class _CompactPlanHeroCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: SizedBox(
+
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.4),
+              gradient: AppTheme.heroGradient,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppTheme.gold.withValues(alpha: 0.15),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+                  color: AppTheme.burgundyDark.withValues(alpha: 0.1),
+                  blurRadius: 26,
+                  offset: const Offset(0, 12),
                 ),
               ],
             ),
-            child: Row(
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -40,
+                  top: -40,
+                  child: Icon(
+                    Icons.local_florist_rounded,
+                    size: 160,
+                    color: AppTheme.burgundyDark.withValues(alpha: 0.1),
+                  ),
+                ),
+                Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_hasText(personaHeadline)) ...[
+                        if (_hasText(personaHeadline)) ...[
+                          Text(
+                            personaHeadline!.trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withAlpha(200),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                        ],
                         Text(
-                          personaHeadline!.trim(),
-                          maxLines: 1,
+                          summary.title,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                      ],
-                      Text(
-                        summary.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: _RoyalColors.gold,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          height: 1.2,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_month_rounded, color: Colors.white.withValues(alpha: 0.5), size: 14),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              summary.weddingDate == null
-                                  ? 'التاريخ غير محدد'
-                                  : _formatDate(summary.weddingDate!),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on_rounded, color: Colors.white.withValues(alpha: 0.5), size: 14),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              locationText,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (days != null) ...[
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            Icon(Icons.hourglass_bottom_rounded, color: const Color(0xFF00FF66).withValues(alpha: 0.7), size: 14),
+                            Icon(Icons.calendar_month_rounded, color: AppTheme.goldSoft.withAlpha(200), size: 14),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                'متبقي $days يوم و $hours ساعة',
+                                summary.weddingDate == null
+                                    ? 'التاريخ غير محدد'
+                                    : _formatDate(summary.weddingDate!),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xFF00FF66),
+                                style: TextStyle(
+                                  color: Colors.white.withAlpha(200),
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.location_on_rounded, color: AppTheme.goldSoft.withAlpha(200), size: 14),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                locationText,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withAlpha(200),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (days != null) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.hourglass_bottom_rounded, color: AppTheme.goldSoft, size: 14),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'متبقي $days يوم و $hours ساعة',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppTheme.goldSoft,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                _CircularProgressWidget(percent: summary.progressPercentage),
-              ],
-            ),
+                  const SizedBox(width: 12),
+                  _CircularProgressWidget(percent: summary.progressPercentage),
+                ],
+              ),
+            ],
+          ),
           ),
         ),
       ),
@@ -374,7 +387,7 @@ class _HeroMetaLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: Colors.white70, size: 14),
+        Icon(icon, color: _RoyalColors.muted, size: 14),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -382,7 +395,7 @@ class _HeroMetaLine extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
+              color: _RoyalColors.muted,
               fontSize: 13,
               fontWeight: FontWeight.w700,
               letterSpacing: 0,
@@ -407,9 +420,9 @@ class _HeroCta extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+          border: Border.all(color: AppTheme.border),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -417,14 +430,14 @@ class _HeroCta extends StatelessWidget {
             Text(
               'متابعة الخطة',
               style: TextStyle(
-                color: Colors.white,
+                color: _RoyalColors.ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,
               ),
             ),
             SizedBox(width: 5),
-            Icon(Icons.arrow_back_rounded, color: Colors.white, size: 16),
+            Icon(Icons.arrow_back_rounded, color: _RoyalColors.ink, size: 16),
           ],
         ),
       ),
@@ -488,16 +501,7 @@ class _PremiumHeroCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF6B001A),
-              _RoyalColors.burgundy,
-              _RoyalColors.burgundyDark,
-            ],
-            stops: [0.0, 0.4, 1.0],
-          ),
+          gradient: AppTheme.heroGradient,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: _RoyalColors.gold.withValues(alpha: 0.15),
@@ -663,10 +667,10 @@ class _PremiumHeroCard extends StatelessWidget {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.12),
+                                color: AppTheme.border,
                                 borderRadius: BorderRadius.circular(999),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.16),
+                                  color: AppTheme.border,
                                 ),
                               ),
                               child: Text(
@@ -806,7 +810,7 @@ class _CircularProgressWidget extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF00FF66).withValues(alpha: 0.3),
+                color: AppTheme.goldSoft.withValues(alpha: 0.3),
                 blurRadius: 12,
               )
             ],
@@ -824,7 +828,7 @@ class _CircularProgressWidget extends StatelessWidget {
                 value: value,
                 strokeWidth: 6,
                 backgroundColor: Colors.white.withValues(alpha: 0.1),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF00FF66)),
+                valueColor: const AlwaysStoppedAnimation(AppTheme.goldSoft),
                 strokeCap: StrokeCap.round,
               ),
             );
@@ -967,14 +971,14 @@ class _BasePanoramicCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: SizedBox(
+
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: color ?? const Color(0x99191919),
+              color: color ?? _RoyalColors.ivory,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              border: Border.all(color: AppTheme.border),
             ),
             child: child,
           ),
@@ -1255,7 +1259,7 @@ class _PanoramicPriorityCard extends StatelessWidget {
       onTap: () => onTapItem(topItem),
       color: isUrgent
           ? _RoyalColors.burgundy.withValues(alpha: 0.04)
-          : Colors.white,
+          : _RoyalColors.ink,
       child: Row(
         children: [
           Expanded(
@@ -1344,14 +1348,14 @@ class _DashboardSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = ClipRRect(
       borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+      child: SizedBox(
+
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: const Color(0x99191919),
+            color: _RoyalColors.ivory,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            border: Border.all(color: AppTheme.border),
           ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1425,7 +1429,7 @@ class _ImportantNowCard extends StatelessWidget {
           child: Text(
             'مهام النانو السريعة',
             style: TextStyle(
-              color: Colors.white,
+              color: _RoyalColors.ink,
               fontSize: 15,
               fontWeight: FontWeight.w800,
             ),
@@ -1449,16 +1453,16 @@ class _ImportantNowCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: SizedBox(
+
                       child: Container(
                         width: 100,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isUrgent ? const Color(0x33FF2A55) : const Color(0x3300FF66),
+                          color: isUrgent ? AppTheme.dangerSoft : AppTheme.successSoft,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isUrgent ? const Color(0x66FF2A55) : const Color(0x6600FF66),
+                            color: isUrgent ? AppTheme.danger.withAlpha(100) : AppTheme.success.withAlpha(100),
                             width: 1,
                           ),
                         ),
@@ -1467,7 +1471,7 @@ class _ImportantNowCard extends StatelessWidget {
                           children: [
                             Icon(
                               _iconForImportantItem(item),
-                              color: isUrgent ? const Color(0xFFFF2A55) : const Color(0xFF00FF66),
+                              color: isUrgent ? AppTheme.danger : AppTheme.success,
                               size: 20,
                             ),
                             const SizedBox(height: 6),
@@ -1477,7 +1481,7 @@ class _ImportantNowCard extends StatelessWidget {
                               textAlign: TextAlign.center,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: _RoyalColors.ink,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
@@ -1521,119 +1525,82 @@ class _MoneySummaryCard extends StatelessWidget {
       );
     }
 
-    return _DashboardSectionCard(
-      title: 'ملخص المال',
-      subtitle: summary.nextInstallmentDue == null
-          ? null
-          : 'القسط القادم: ${_formatMoney(summary.nextInstallmentDue!.amount)}',
-      icon: Icons.account_balance_wallet_rounded,
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    _CompactMoneyRow(
-                      label: 'الميزانية',
-                      value: summary.totalBudgetForDisplay,
-                    ),
-                    const SizedBox(height: 10),
-                    _CompactMoneyRow(
-                      label: 'المصروف',
-                      value: summary.spentTotalForDisplay,
-                    ),
-                    const SizedBox(height: 10),
-                    _CompactMoneyRow(
-                      label: 'المتبقي',
-                      value: summary.remainingBudgetForDisplay,
-                      isHighlight: true,
-                    ),
-                  ],
-                ),
+    return AarastPressable(
+      onTap: onOpenMoney,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceElevated,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.gold.withValues(alpha: 0.2)),
+          boxShadow: AppTheme.softShadow(opacity: 0.05),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.gold.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 16),
-              _AnimatedDonutChart(
-                budgetStr: summary.budgetTotal,
-                spentStr: summary.spentTotal,
-                remainingStr: summary.remainingBudget,
+              child: const Icon(
+                Icons.account_balance_wallet_rounded,
+                color: _RoyalColors.goldDeep,
+                size: 24,
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _SmallCommandButton(
-                  label: 'عرض التفاصيل',
-                  icon: Icons.arrow_back_rounded,
-                  onTap: onOpenMoney,
-                ),
-              ),
-              if (onAddExpense != null) ...[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _SmallCommandButton(
-                    label: 'إضافة مصروف',
-                    icon: Icons.add_rounded,
-                    onTap: onAddExpense!,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'المتبقي من الميزانية',
+                    style: TextStyle(
+                      color: AppTheme.muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CompactMoneyRow extends StatelessWidget {
-  const _CompactMoneyRow({
-    required this.label,
-    required this.value,
-    this.isHighlight = false,
-  });
-
-  final String label;
-  final String? value;
-  final bool isHighlight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Flexible(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: _AnimatedMoneyText(
-              value: value ?? '0',
-              style: TextStyle(
-                color: isHighlight ? const Color(0xFF00FF66) : Colors.white,
-                fontSize: isHighlight ? 16 : 14,
-                fontWeight: FontWeight.w900,
-                shadows: isHighlight
-                    ? [const Shadow(color: Color(0x6600FF66), blurRadius: 10)]
-                    : null,
+                  _AnimatedMoneyText(
+                    value: summary.remainingBudgetForDisplay ?? '0',
+                    style: const TextStyle(
+                      color: AppTheme.burgundy,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'الميزانية: ${summary.totalBudgetForDisplay ?? '0'}  •  المصروف: ${summary.spentTotalForDisplay ?? '0'}',
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-          ),
+            if (onAddExpense != null) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(
+                  Icons.add_circle_rounded,
+                  color: AppTheme.gold,
+                  size: 36,
+                ),
+                onPressed: onAddExpense,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -1714,14 +1681,14 @@ class _QuickOverviewGrid extends StatelessWidget {
             children: [
               Icon(
                 Icons.dashboard_customize_rounded,
-                color: Colors.white.withValues(alpha: 0.6),
+                color: _RoyalColors.ink.withValues(alpha: 0.6),
                 size: 18,
               ),
               const SizedBox(width: 8),
               const Text(
                 'نظرة سريعة',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _RoyalColors.ink,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
@@ -1813,15 +1780,15 @@ class _MiniDashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = ClipRRect(
       borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+      child: SizedBox(
+
         child: Container(
           constraints: const BoxConstraints(minHeight: 142),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0x99191919),
+            color: _RoyalColors.ivory,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            border: Border.all(color: AppTheme.border),
           ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2117,7 +2084,7 @@ class _MoneyRow extends StatelessWidget {
           _AnimatedMoneyText(
             value: value,
             style: const TextStyle(
-              color: Colors.white,
+              color: _RoyalColors.ink,
               fontSize: 15,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
@@ -2151,16 +2118,16 @@ class _OverviewTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: SizedBox(
+
           child: Container(
             width: 145,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: AppTheme.border,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppTheme.border,
               ),
             ),
             child: Column(
@@ -2177,7 +2144,7 @@ class _OverviewTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: _RoyalColors.muted,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2191,7 +2158,7 @@ class _OverviewTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: _RoyalColors.ink,
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     height: 1.1,
@@ -2203,7 +2170,7 @@ class _OverviewTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: _RoyalColors.ink.withValues(alpha: 0.4),
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -2359,7 +2326,7 @@ class _SmallCommandButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 17),
+            Icon(icon, color: _RoyalColors.ink, size: 17),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -2367,7 +2334,7 @@ class _SmallCommandButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: _RoyalColors.ink,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
@@ -2434,12 +2401,12 @@ class _CircleIconButton extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _RoyalColors.ivory,
           shape: BoxShape.circle,
-          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.15)),
+          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: _RoyalColors.ink.withValues(alpha: 0.03),
+              color: _RoyalColors.gold.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -2448,7 +2415,7 @@ class _CircleIconButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: _RoyalColors.ink, size: 24),
+            Icon(icon, color: _RoyalColors.gold, size: 24),
             if (badgeCount > 0)
               Positioned(
                 top: 7,
@@ -2462,13 +2429,13 @@ class _CircleIconButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: _RoyalColors.burgundy,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: _RoyalColors.ink, width: 2),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     badgeCount > 99 ? '99+' : '$badgeCount',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: _RoyalColors.ink,
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0,
@@ -2534,14 +2501,13 @@ class _LiveDotState extends State<_LiveDot>
 class _RoyalColors {
   const _RoyalColors._();
 
-  static const ivory = AppTheme.dCard;
-  static const burgundy = AppTheme.deepBurgundy;
-  static const burgundyDark = AppTheme.dMaroonDeep;
-  static const burgundyLight = AppTheme.dMaroonBright;
-  static const gold = AppTheme.warmGold;
-  static const goldDeep = AppTheme.dGoldDeep;
-  static const ink = AppTheme.dInk;
-  static const muted = AppTheme.dMuted;
+  static const ivory = AppTheme.ivory;
+  static const burgundy = AppTheme.burgundy;
+  static const burgundyLight = AppTheme.burgundySoft;
+  static const gold = AppTheme.gold;
+  static const goldDeep = AppTheme.gold;
+  static const ink = AppTheme.ink;
+  static const muted = AppTheme.muted;
 }
 
 String _greetingFor(String name) {
@@ -2827,7 +2793,7 @@ class _OperationalCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 10),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: _RoyalColors.ink,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
           boxShadow: [
@@ -2949,8 +2915,8 @@ class _AnimatedDonutChart extends StatelessWidget {
             size: const Size.square(90),
             painter: _DonutChartPainter(
               spentRatio: isTest ? ratio : value,
-              spentColor: const Color(0xFF00FF66), // Neon Green for hologram
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
+              spentColor: AppTheme.success, // Neon Green for hologram
+              backgroundColor: AppTheme.border,
             ),
             child: Center(
               child: Column(
@@ -2958,11 +2924,11 @@ class _AnimatedDonutChart extends StatelessWidget {
                 children: [
                   Text(
                     '${(value * 100).toInt()}%',
-                    style: const TextStyle(
-                      color: Color(0xFF00FF66),
+                    style: TextStyle(
+                      color: AppTheme.success,
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      shadows: [Shadow(color: Color(0x6600FF66), blurRadius: 10)],
+                      shadows: [Shadow(color: AppTheme.success.withAlpha(100), blurRadius: 10)],
                     ),
                   ),
                   const Text(
@@ -3184,7 +3150,7 @@ class _SkeletonBox extends StatelessWidget {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.74),
+          color: _RoyalColors.muted,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.1)),
         ),

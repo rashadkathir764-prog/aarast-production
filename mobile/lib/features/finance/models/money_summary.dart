@@ -1,4 +1,4 @@
-class MoneySummary {
+﻿class MoneySummary {
   const MoneySummary({
     required this.weddingPlanId,
     this.currency = 'YER',

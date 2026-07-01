@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -68,7 +68,7 @@ class _StatusChip extends StatelessWidget {
     return AarastStatusBadge(
       label: _labelForStatus(status),
       color: _statusColor(status),
-      backgroundColor: _statusColor(status).withAlpha(28),
+      backgroundColor: _statusColor(status).withValues(alpha: 0.1),
     );
   }
 }
@@ -76,10 +76,10 @@ class _StatusChip extends StatelessWidget {
 Color _statusColor(String status) {
   return switch (status) {
     'DONE' || 'PAID' => AppTheme.success,
-    'CANCELLED' => AppTheme.dInkSoft,
-    'PARTIALLY_PAID' || 'IN_PROGRESS' => AppTheme.dGoldDeep,
+    'CANCELLED' => AppTheme.muted,
+    'PARTIALLY_PAID' || 'IN_PROGRESS' => AppTheme.gold,
     'OVERDUE' => AppTheme.danger,
-    _ => AppTheme.dMaroon,
+    _ => AppTheme.burgundy,
   };
 }
 

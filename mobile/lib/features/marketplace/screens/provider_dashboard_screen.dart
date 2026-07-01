@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -59,7 +59,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         ),
       ],
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: dashboard.loadDashboard,
         child: ListView(
           children: [
@@ -161,7 +161,7 @@ class _ProviderProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -187,7 +187,7 @@ class _ProviderProfileCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDark,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -200,7 +200,7 @@ class _ProviderProfileCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -215,7 +215,7 @@ class _ProviderProfileCard extends StatelessWidget {
               profile.description!.trim(),
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),
@@ -232,22 +232,22 @@ class _ProviderProfileCard extends StatelessWidget {
                       PhoneNumberUtils.display(profile.phone) ??
                       profile.phone!.trim(),
                   icon: Icons.phone_outlined,
-                  color: AppTheme.dBlue,
-                  backgroundColor: AppTheme.dBlueBg,
+                  color: AppTheme.ink,
+                  backgroundColor: AppTheme.ivory,
                 ),
               if (profile.primaryCategory?.nameAr.trim().isNotEmpty == true)
                 AarastStatusPill(
                   label: profile.primaryCategory!.nameAr.trim(),
                   icon: Icons.category_outlined,
-                  color: AppTheme.dMaroon,
-                  backgroundColor: AppTheme.dPinkBg,
+                  color: AppTheme.burgundy,
+                  backgroundColor: AppTheme.burgundySoft,
                 ),
               AarastStatusPill(
                 label:
                     '${profile.ratingAverage.toStringAsFixed(1)} (${profile.ratingCount})',
                 icon: Icons.star_rounded,
-                color: AppTheme.dGoldDeep,
-                backgroundColor: AppTheme.dCreamBg,
+                color: AppTheme.gold,
+                backgroundColor: AppTheme.ivory,
               ),
             ],
           ),
@@ -283,17 +283,17 @@ class _ProviderStatusNotice extends StatelessWidget {
     final status = profile.status;
     if (_canManageProviderListing(status)) {
       return const AarastCard(
-        color: AppTheme.dGreenBg,
+        color: AppTheme.successSoft,
         child: Row(
           children: [
-            Icon(Icons.verified_outlined, color: AppTheme.dGreen),
+            Icon(Icons.verified_outlined, color: AppTheme.success),
             SizedBox(width: 12),
             Expanded(
               child: Text(
                 'حساب المزود نشط. خدماتك وباقاتك المؤهلة تظهر في سوق الموردين للعملاء.',
                 textAlign: TextAlign.right,
                 style: TextStyle(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontWeight: FontWeight.w800,
                   height: 1.5,
                 ),
@@ -307,8 +307,8 @@ class _ProviderStatusNotice extends StatelessWidget {
     final note = profile.reviewNote?.trim();
     return AarastCard(
       color: status == 'SUSPENDED' || status == 'REJECTED'
-          ? AppTheme.dPinkBg
-          : AppTheme.dCreamBg,
+          ? AppTheme.burgundySoft
+          : AppTheme.ivory,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -327,7 +327,7 @@ class _ProviderStatusNotice extends StatelessWidget {
                   _providerStatusTitle(status),
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -336,7 +336,7 @@ class _ProviderStatusNotice extends StatelessWidget {
                   _providerStatusMessage(status),
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                     height: 1.45,
                   ),
@@ -347,7 +347,7 @@ class _ProviderStatusNotice extends StatelessWidget {
                     note,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w800,
                       height: 1.45,
                     ),
@@ -382,29 +382,29 @@ class _ProviderStats extends StatelessWidget {
           icon: Icons.design_services_outlined,
           label: 'الخدمات',
           value: '${summary.activeServicesCount}/${summary.servicesCount}',
-          color: AppTheme.dMaroon,
-          bg: AppTheme.dPinkBg,
+          color: AppTheme.burgundy,
+          bg: AppTheme.burgundySoft,
         ),
         _StatBox(
           icon: Icons.inventory_2_outlined,
           label: 'الباقات',
           value: '$packageCount',
-          color: AppTheme.dGoldDeep,
-          bg: AppTheme.dCreamBg,
+          color: AppTheme.gold,
+          bg: AppTheme.ivory,
         ),
         _StatBox(
           icon: Icons.chat_bubble_outline_rounded,
           label: 'طلبات العروض',
           value: '${summary.quoteRequestsCount}',
-          color: AppTheme.dBlue,
-          bg: AppTheme.dBlueBg,
+          color: AppTheme.ink,
+          bg: AppTheme.ivory,
         ),
         _StatBox(
           icon: Icons.person_search_outlined,
           label: 'العملاء المحتملين',
           value: '${summary.newQuoteRequestsCount}',
-          color: AppTheme.dGreen,
-          bg: AppTheme.dGreenBg,
+          color: AppTheme.success,
+          bg: AppTheme.successSoft,
         ),
       ],
     );
@@ -419,12 +419,12 @@ class _ProviderGuideCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCreamBg,
+      color: AppTheme.ivory,
       child: Row(
         children: [
           const Icon(
             Icons.lightbulb_outline_rounded,
-            color: AppTheme.dGoldDeep,
+            color: AppTheme.gold,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -434,7 +434,7 @@ class _ProviderGuideCard extends StatelessWidget {
                   : 'يمكنك متابعة حالة الطلب من هنا. لن يظهر ملفك في سوق الموردين حتى يتم اعتماده من الإدارة.',
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
                 height: 1.5,
               ),
@@ -597,20 +597,20 @@ class _LockedListingNotice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.dCreamBg,
+        color: AppTheme.ivory,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dGold2.withAlpha(120)),
+        border: Border.all(color: AppTheme.goldSoft.withAlpha(120)),
       ),
       child: const Row(
         children: [
-          Icon(Icons.lock_clock_outlined, color: AppTheme.dGoldDeep, size: 20),
+          Icon(Icons.lock_clock_outlined, color: AppTheme.gold, size: 20),
           SizedBox(width: 8),
           Expanded(
             child: Text(
               'الإدارة تراجع الطلب أولاً. إدارة الخدمات والباقات ستفتح بعد الاعتماد.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
                 height: 1.35,
               ),
@@ -641,7 +641,7 @@ class _StatBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastCard(
       padding: const EdgeInsets.all(14),
-      color: AppTheme.dCard2,
+      color: AppTheme.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -661,7 +661,7 @@ class _StatBox extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.dInk,
+              color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -670,7 +670,7 @@ class _StatBox extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -694,8 +694,8 @@ class _ServiceCard extends StatelessWidget {
         children: [
           _TileIcon(
             icon: Icons.auto_awesome_rounded,
-            color: AppTheme.dGoldDeep,
-            background: AppTheme.dCreamBg,
+            color: AppTheme.gold,
+            background: AppTheme.ivory,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -710,7 +710,7 @@ class _ServiceCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -718,11 +718,11 @@ class _ServiceCard extends StatelessWidget {
                     AarastStatusPill(
                       label: service.isActive ? 'نشطة' : 'متوقفة',
                       color: service.isActive
-                          ? AppTheme.dGreen
-                          : AppTheme.dMuted,
+                          ? AppTheme.success
+                          : AppTheme.muted,
                       backgroundColor: service.isActive
-                          ? AppTheme.dGreenBg
-                          : AppTheme.dCard2,
+                          ? AppTheme.successSoft
+                          : AppTheme.surface,
                     ),
                   ],
                 ),
@@ -732,7 +732,7 @@ class _ServiceCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -742,7 +742,7 @@ class _ServiceCard extends StatelessWidget {
                   textDirection: TextDirection.ltr,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -779,8 +779,8 @@ class _PackageCard extends StatelessWidget {
             children: [
               _TileIcon(
                 icon: Icons.card_giftcard_rounded,
-                color: AppTheme.dMaroon,
-                background: AppTheme.dPinkBg,
+                color: AppTheme.burgundy,
+                background: AppTheme.burgundySoft,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -792,7 +792,7 @@ class _PackageCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppTheme.dInk,
+                        color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -802,7 +802,7 @@ class _PackageCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: AppTheme.dInkSoft,
+                          color: AppTheme.muted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -813,7 +813,7 @@ class _PackageCard extends StatelessWidget {
                 _priceText(item.price, item.currency),
                 textDirection: TextDirection.ltr,
                 style: const TextStyle(
-                  color: AppTheme.dMaroon,
+                  color: AppTheme.burgundy,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -825,7 +825,7 @@ class _PackageCard extends StatelessWidget {
               item.description!.trim(),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppTheme.dInkSoft, height: 1.45),
+              style: const TextStyle(color: AppTheme.muted, height: 1.45),
             ),
           ],
           if (items != null && items.isNotEmpty) ...[
@@ -836,7 +836,7 @@ class _PackageCard extends StatelessWidget {
                   const Icon(
                     Icons.check_circle_outline_rounded,
                     size: 16,
-                    color: AppTheme.dGreen,
+                    color: AppTheme.success,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -845,7 +845,7 @@ class _PackageCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -896,7 +896,7 @@ class _QuoteTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -908,7 +908,7 @@ class _QuoteTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -930,7 +930,7 @@ class _QuoteTile extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.dCard,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -949,7 +949,7 @@ class _QuoteTile extends StatelessWidget {
                       width: 42,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppTheme.dLine,
+                        color: AppTheme.border,
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -959,7 +959,7 @@ class _QuoteTile extends StatelessWidget {
                     quote.service?.title ?? 'تفاصيل طلب عرض السعر',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
-                          color: AppTheme.dInk,
+                          color: AppTheme.ink,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -991,7 +991,7 @@ class _QuoteTile extends StatelessWidget {
                       quote.message!.trim(),
                       textAlign: TextAlign.right,
                       style: const TextStyle(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                         height: 1.5,
                       ),
@@ -1163,7 +1163,7 @@ class _SheetLine extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: AppTheme.dMuted,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1173,7 +1173,7 @@ class _SheetLine extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: const TextStyle(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1221,11 +1221,11 @@ class _Logo extends StatelessWidget {
       child: Container(
         width: 78,
         height: 78,
-        color: AppTheme.dCreamBg,
+        color: AppTheme.ivory,
         child: imageUrl == null || imageUrl.isEmpty
             ? const Icon(
                 Icons.storefront_rounded,
-                color: AppTheme.dGoldDeep,
+                color: AppTheme.gold,
                 size: 36,
               )
             : Image.network(
@@ -1233,7 +1233,7 @@ class _Logo extends StatelessWidget {
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const Icon(
                   Icons.storefront_rounded,
-                  color: AppTheme.dGoldDeep,
+                  color: AppTheme.gold,
                   size: 36,
                 ),
               ),
@@ -1253,9 +1253,9 @@ class _DashboardSkeleton extends StatelessWidget {
           Container(
             height: i == 0 ? 130 : 94,
             decoration: BoxDecoration(
-              color: AppTheme.dCard2.withAlpha(180),
+              color: AppTheme.surface.withAlpha(180),
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: Border.all(color: AppTheme.dLine),
+              border: Border.all(color: AppTheme.border),
             ),
           ),
           const SizedBox(height: 12),
@@ -1273,7 +1273,7 @@ class _InlineError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg,
+      color: AppTheme.burgundySoft,
       border: Border.all(color: AppTheme.danger.withAlpha(55)),
       child: Text(
         message,
@@ -1289,9 +1289,9 @@ class _InlineError extends StatelessWidget {
 
 BoxDecoration _tileDecoration() {
   return BoxDecoration(
-    color: AppTheme.dCard,
+    color: AppTheme.surface,
     borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-    border: Border.all(color: AppTheme.dLine),
+    border: Border.all(color: AppTheme.border),
   );
 }
 
@@ -1308,11 +1308,11 @@ String _providerStatusLabel(String status) {
 
 Color _providerStatusColor(String status) {
   return switch (status) {
-    'ACTIVE' || 'APPROVED' => AppTheme.dGreen,
-    'NEEDS_CHANGES' => AppTheme.dOrange,
+    'ACTIVE' || 'APPROVED' => AppTheme.success,
+    'NEEDS_CHANGES' => AppTheme.warning,
     'REJECTED' => AppTheme.danger,
-    'SUSPENDED' => AppTheme.dOrange,
-    _ => AppTheme.dGoldDeep,
+    'SUSPENDED' => AppTheme.warning,
+    _ => AppTheme.gold,
   };
 }
 
@@ -1355,12 +1355,12 @@ String _quoteStatusLabel(String status) {
 
 Color _quoteStatusColor(String status) {
   return switch (status) {
-    'VIEWED' => AppTheme.dBlue,
-    'RESPONDED' => AppTheme.dGoldDeep,
-    'ACCEPTED' => AppTheme.dGreen,
+    'VIEWED' => AppTheme.ink,
+    'RESPONDED' => AppTheme.gold,
+    'ACCEPTED' => AppTheme.success,
     'REJECTED' => AppTheme.danger,
-    'CANCELLED' => AppTheme.dMuted,
-    _ => AppTheme.dMaroon,
+    'CANCELLED' => AppTheme.muted,
+    _ => AppTheme.burgundy,
   };
 }
 

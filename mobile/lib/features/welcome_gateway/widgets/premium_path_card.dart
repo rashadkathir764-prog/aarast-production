@@ -21,7 +21,8 @@ class PremiumPathCard extends StatefulWidget {
   State<PremiumPathCard> createState() => _PremiumPathCardState();
 }
 
-class _PremiumPathCardState extends State<PremiumPathCard> with SingleTickerProviderStateMixin {
+class _PremiumPathCardState extends State<PremiumPathCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isHovered = false;
@@ -29,10 +30,14 @@ class _PremiumPathCardState extends State<PremiumPathCard> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
     );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.98,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -43,23 +48,18 @@ class _PremiumPathCardState extends State<PremiumPathCard> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    // Dark Premium Theme
-    final bgColor = widget.isPrimary 
-        ? Colors.black.withValues(alpha: 0.3) 
-        : Colors.white.withValues(alpha: 0.03);
-        
-    final borderColor = widget.isPrimary 
-        ? AppTheme.dGoldDeep.withValues(alpha: 0.5) 
-        : Colors.white.withValues(alpha: 0.1);
-        
-    final titleColor = Colors.white;
-    final subtitleColor = Colors.white.withValues(alpha: 0.7);
-    
-    final iconBgColor = widget.isPrimary 
-        ? AppTheme.dGoldDeep.withValues(alpha: 0.15) 
-        : Colors.white.withValues(alpha: 0.05);
-        
-    final iconColor = widget.isPrimary ? AppTheme.dGoldDeep : Colors.white;
+    final bgColor = widget.isPrimary ? AppTheme.surface : AppTheme.pearl;
+
+    final borderColor = widget.isPrimary
+        ? AppTheme.gold.withValues(alpha: 0.7)
+        : AppTheme.border;
+
+    const titleColor = AppTheme.title;
+    const subtitleColor = AppTheme.muted;
+
+    final iconBgColor = widget.isPrimary ? AppTheme.goldSoft : AppTheme.empty;
+
+    final iconColor = widget.isPrimary ? AppTheme.burgundy : AppTheme.muted;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -80,14 +80,14 @@ class _PremiumPathCardState extends State<PremiumPathCard> with SingleTickerProv
               color: bgColor,
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: _isHovered ? AppTheme.dGoldDeep : borderColor,
+                color: _isHovered ? AppTheme.gold : borderColor,
                 width: _isHovered ? 2.0 : 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.isPrimary || _isHovered 
-                      ? AppTheme.dGoldDeep.withValues(alpha: 0.15) 
-                      : Colors.black.withValues(alpha: 0.2),
+                  color: widget.isPrimary || _isHovered
+                      ? AppTheme.gold.withValues(alpha: 0.16)
+                      : AppTheme.ink.withValues(alpha: 0.05),
                   blurRadius: _isHovered ? 30 : 20,
                   offset: Offset(0, _isHovered ? 15 : 10),
                 ),
@@ -101,9 +101,7 @@ class _PremiumPathCardState extends State<PremiumPathCard> with SingleTickerProv
                   decoration: BoxDecoration(
                     color: iconBgColor,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: iconColor.withValues(alpha: 0.2),
-                    ),
+                    border: Border.all(color: iconColor.withValues(alpha: 0.2)),
                   ),
                   child: Icon(widget.icon, color: iconColor, size: 30),
                 ),
@@ -136,15 +134,17 @@ class _PremiumPathCardState extends State<PremiumPathCard> with SingleTickerProv
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: widget.isPrimary 
-                        ? AppTheme.dGoldDeep.withValues(alpha: 0.2)
-                        : Colors.white.withValues(alpha: 0.1),
+                    color: widget.isPrimary
+                        ? AppTheme.goldSoft
+                        : AppTheme.surface,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.arrow_forward_ios_rounded, 
-                    size: 16, 
-                    color: widget.isPrimary ? AppTheme.dGoldDeep : Colors.white,
+                    Icons.arrow_forward_ios_rounded,
+                    size: 16,
+                    color: widget.isPrimary
+                        ? AppTheme.burgundy
+                        : AppTheme.muted,
                   ),
                 ),
               ],

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
@@ -25,9 +25,9 @@ class PrimaryActionButton extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final effectiveForeground = foregroundColor ?? Colors.white;
     final buttonStyle = ElevatedButton.styleFrom(
-      backgroundColor: backgroundColor ?? AppTheme.dMaroon,
+      backgroundColor: backgroundColor ?? AppTheme.burgundy,
       foregroundColor: effectiveForeground,
-      disabledBackgroundColor: AppTheme.dMuted.withAlpha(70),
+      disabledBackgroundColor: AppTheme.muted.withValues(alpha: 0.1),
       disabledForegroundColor: colors.onSurface.withAlpha(120),
       minimumSize: const Size.fromHeight(54),
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
 class AarastPremiumBrandMark extends StatelessWidget {
@@ -22,12 +22,12 @@ class AarastPremiumBrandMark extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.dGoldDeep.withValues(alpha: 0.15),
+                      color: AppTheme.gold.withValues(alpha: 0.15),
                       blurRadius: 40,
                       spreadRadius: 8,
                     ),
                     BoxShadow(
-                      color: AppTheme.dMaroonDeep.withValues(alpha: 0.3),
+                      color: AppTheme.burgundyDeep.withValues(alpha: 0.3),
                       blurRadius: 30,
                     ),
                   ],
@@ -40,19 +40,19 @@ class AarastPremiumBrandMark extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [AppTheme.dGoldDeep, AppTheme.dGold],
+                    colors: [AppTheme.gold, AppTheme.gold],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.dGold.withValues(alpha: 0.4),
+                      color: AppTheme.gold.withValues(alpha: 0.4),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFF1A050A), size: 16), // Dark burgundy icon
+                child: const Icon(Icons.auto_awesome_rounded, color: AppTheme.ivory, size: 16), // Dark burgundy icon
               ),
             ],
           ),
@@ -60,19 +60,19 @@ class AarastPremiumBrandMark extends StatelessWidget {
           Text(
             'أعرست',
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              color: Colors.white,
+              color: AppTheme.burgundy,
               fontSize: 42,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
               height: 1.0,
               shadows: [
                 Shadow(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: AppTheme.burgundyDark.withValues(alpha: 0.1),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
                 Shadow(
-                  color: AppTheme.dGold.withValues(alpha: 0.3),
+                  color: AppTheme.gold.withValues(alpha: 0.3),
                   blurRadius: 20,
                 ),
               ],
@@ -82,7 +82,7 @@ class AarastPremiumBrandMark extends StatelessWidget {
           Text(
             'كل ما يخص الزفاف في مكان واحد',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppTheme.dGoldDeep.withValues(alpha: 0.9),
+              color: AppTheme.gold,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
             ),

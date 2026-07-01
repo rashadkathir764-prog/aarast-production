@@ -1,4 +1,4 @@
-class BudgetCategory {
+﻿class BudgetCategory {
   const BudgetCategory({
     required this.id,
     required this.weddingPlanId,

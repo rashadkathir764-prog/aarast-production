@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -77,38 +77,11 @@ class _SplashScreenState extends State<SplashScreen>
           Positioned.fill(
             child: DecoratedBox(
               decoration: const BoxDecoration(
-                color: Color(0xFF120306), // Royal Burgundy Night (extremely dark)
+                color: AppTheme.ivory, // Ivory
               ),
             ),
           ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: const Alignment(0, -0.4),
-                  radius: 1.0,
-                  colors: [
-                    AppTheme.dMaroonDeep.withValues(alpha: 0.6), // Soft burgundy glow
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.bottomCenter,
-                  radius: 0.8,
-                  colors: [
-                    AppTheme.dGoldDeep.withValues(alpha: 0.12), // Light gold touch
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
+
           Align(
             alignment: const Alignment(0, -0.15),
             child: FadeTransition(
@@ -127,7 +100,7 @@ class _SplashScreenState extends State<SplashScreen>
                         height: 48,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppTheme.dGold, // Premium gold loader
+                          color: AppTheme.gold, // Premium gold loader
                         ),
                       ),
                     ],

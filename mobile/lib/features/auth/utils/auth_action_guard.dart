@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -59,7 +59,7 @@ class AuthActionGuard {
 
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppTheme.dCard,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -76,14 +76,14 @@ class AuthActionGuard {
                   const Icon(
                     Icons.cloud_sync_rounded,
                     size: 42,
-                    color: AppTheme.dMaroon,
+                    color: AppTheme.burgundy,
                   ),
                   const SizedBox(height: 14),
                   const Text(
                     'هذه الخطوة تحتاج حساباً',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: AppTheme.dInk,
+                      color: AppTheme.ink,
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
@@ -93,7 +93,7 @@ class AuthActionGuard {
                     reason,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: AppTheme.dInkSoft,
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                       height: 1.45,
                     ),
@@ -173,20 +173,20 @@ class AuthGatePanel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: AppTheme.dCard,
+            color: AppTheme.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppTheme.dLine),
+            border: Border.all(color: AppTheme.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(icon, size: 44, color: AppTheme.dMaroon),
+              Icon(icon, size: 44, color: AppTheme.burgundy),
               const SizedBox(height: 14),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppTheme.dInk,
+                  color: AppTheme.ink,
                   fontSize: 20,
                   fontWeight: FontWeight.w900,
                 ),
@@ -196,7 +196,7 @@ class AuthGatePanel extends StatelessWidget {
                 body,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppTheme.dInkSoft,
+                  color: AppTheme.muted,
                   fontWeight: FontWeight.w700,
                   height: 1.45,
                 ),

@@ -1,4 +1,4 @@
-class Guest {
+﻿class Guest {
   const Guest({
     required this.id,
     required this.weddingPlanId,

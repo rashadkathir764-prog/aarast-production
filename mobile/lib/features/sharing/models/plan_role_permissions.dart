@@ -1,4 +1,4 @@
-class PlanRolePermissions {
+﻿class PlanRolePermissions {
   const PlanRolePermissions({
     required this.canViewBudget,
     required this.canViewExpenses,

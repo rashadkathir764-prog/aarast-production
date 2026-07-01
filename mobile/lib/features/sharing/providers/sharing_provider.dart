@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/sharing_api.dart';

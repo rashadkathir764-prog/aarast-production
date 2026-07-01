@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: 'الإعدادات',
       subtitle: 'تفضيلات الحساب والتنبيهات',
       child: RefreshIndicator(
-        color: AppTheme.dMaroon,
+        color: AppTheme.burgundy,
         onRefresh: provider.loadSettings,
         child: ListView(
           children: [
@@ -78,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (provider.successMessage != null) ...[
                 _MessageCard(
                   message: provider.successMessage!,
-                  color: AppTheme.dGreen,
+                  color: AppTheme.success,
                 ),
                 const SizedBox(height: 12),
               ],
@@ -114,19 +114,20 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
       child: Row(
         children: [
           Container(
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: AppTheme.dCreamBg,
+              color: AppTheme.ivory,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
               Icons.person_outline_rounded,
-              color: AppTheme.dGoldDeep,
+              color: AppTheme.gold,
             ),
           ),
           const SizedBox(width: 14),
@@ -139,7 +140,7 @@ class _AccountCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.dInk,
+                    color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -156,7 +157,7 @@ class _AccountCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTheme.dInkSoft,
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -181,7 +182,8 @@ class _NotificationSettingsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard,
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
       padding: EdgeInsets.zero,
       child: Column(
         children: [
@@ -253,7 +255,8 @@ class _StaticPreferencesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dCard2,
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -265,13 +268,13 @@ class _StaticPreferencesCard extends StatelessWidget {
           const SizedBox(height: 10),
           const Text(
             'اللغة الحالية: العربية',
-            style: TextStyle(color: AppTheme.dInk, fontWeight: FontWeight.w800),
+            style: TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
             'آخر حفظ: ${updatedAt.day}/${updatedAt.month}/${updatedAt.year}',
             style: const TextStyle(
-              color: AppTheme.dInkSoft,
+              color: AppTheme.muted,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -302,23 +305,23 @@ class _SwitchRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: isLast
             ? null
-            : const Border(bottom: BorderSide(color: AppTheme.dLine)),
+            : Border(bottom: BorderSide(color: AppTheme.burgundySoft.withAlpha(150))),
       ),
       child: SwitchListTile(
         value: value,
         onChanged: onChanged,
-        activeThumbColor: AppTheme.dMaroon,
+        activeThumbColor: AppTheme.burgundy,
         title: Text(
           title,
           style: const TextStyle(
-            color: AppTheme.dInk,
+            color: AppTheme.ink,
             fontWeight: FontWeight.w900,
           ),
         ),
         subtitle: Text(
           subtitle,
           style: const TextStyle(
-            color: AppTheme.dInkSoft,
+            color: AppTheme.muted,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -346,13 +349,13 @@ class _SettingsHeader extends StatelessWidget {
           : const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Row(
         children: [
-          Icon(icon, color: AppTheme.dMaroon),
+          Icon(icon, color: AppTheme.burgundy),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
               style: const TextStyle(
-                color: AppTheme.dMaroonDeep,
+                color: AppTheme.burgundyDeep,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -372,8 +375,8 @@ class _MessageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: color.withAlpha(18),
-      border: Border.all(color: color.withAlpha(70)),
+      color: color.withValues(alpha: 0.1),
+      border: Border.all(color: color.withValues(alpha: 0.1)),
       child: Text(
         message,
         textAlign: TextAlign.center,

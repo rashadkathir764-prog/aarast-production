@@ -1,4 +1,4 @@
-import 'route_guard_result.dart';
+﻿import 'route_guard_result.dart';
 import 'route_guard_types.dart';
 
 class RouteGuardPolicy {

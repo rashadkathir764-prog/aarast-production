@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -72,10 +72,10 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
                       colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.dMaroon,
+                        primary: AppTheme.burgundy,
                         onPrimary: Colors.white,
-                        surface: AppTheme.dCard2,
-                        onSurface: AppTheme.dInk,
+                        surface: AppTheme.surface,
+                        onSurface: AppTheme.ink,
                       ),
                     ),
                     child: CalendarDatePicker(
@@ -129,7 +129,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                     child: Text(
                       'إنشاء خطة زفاف',
                       style: textTheme.titleLarge?.copyWith(
-                        color: AppTheme.dMaroonDeep,
+                        color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -256,7 +256,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                       'يمكنك تعديل الخطة في أي وقت.',
                       textAlign: TextAlign.center,
                       style: textTheme.bodySmall?.copyWith(
-                        color: AppTheme.dInkSoft,
+                        color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -341,9 +341,9 @@ class _CreatePlanHero extends StatelessWidget {
             width: 76,
             height: 76,
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(245),
+              color: Colors.white.withValues(alpha: 0.6),
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.dGold2.withAlpha(180)),
+              border: Border.all(color: AppTheme.gold2.withAlpha(180)),
             ),
             child: CustomPaint(painter: _RingsPainter()),
           ),
@@ -361,7 +361,7 @@ class _CreatePlanHero extends StatelessWidget {
             'دعينا نجهز تفاصيل زفافك خطوة بخطوة بكل سهولة.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withAlpha(220),
+              color: Colors.white.withValues(alpha: 0.6),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -385,14 +385,14 @@ class _PlanPreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
-      color: AppTheme.dPinkBg.withAlpha(115),
-      border: Border.all(color: AppTheme.dMaroon.withAlpha(34)),
+      color: AppTheme.burgundySoft.withAlpha(115),
+      border: Border.all(color: AppTheme.burgundy.withAlpha(34)),
       child: Column(
         children: [
           Text(
             'ملخص خطتك',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.dMaroonDeep,
+              color: AppTheme.burgundyDeep,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -443,7 +443,7 @@ class _PreviewMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: AppTheme.dMaroon, size: 22),
+        Icon(icon, color: AppTheme.burgundy, size: 22),
         const SizedBox(height: 8),
         Text(
           value,
@@ -451,7 +451,7 @@ class _PreviewMetric extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.dInk,
+            color: AppTheme.ink,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -461,7 +461,7 @@ class _PreviewMetric extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppTheme.dInkSoft,
+            color: AppTheme.muted,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -493,16 +493,16 @@ class _SelectorField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: AppTheme.dCard2,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
           border: Border.all(
-            color: selected ? AppTheme.dMaroon : AppTheme.dLine,
+            color: selected ? AppTheme.burgundy : AppTheme.border,
             width: selected ? 1.3 : 1,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: selected ? AppTheme.dMaroon : AppTheme.dGoldDeep),
+            Icon(icon, color: selected ? AppTheme.burgundy : AppTheme.gold),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -512,14 +512,14 @@ class _SelectorField extends StatelessWidget {
                     label,
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: AppTheme.dInkSoft),
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                   ),
                   Text(
                     value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: selected ? AppTheme.dInk : AppTheme.dMuted,
+                      color: selected ? AppTheme.ink : AppTheme.muted,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -528,7 +528,7 @@ class _SelectorField extends StatelessWidget {
             ),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.dMuted,
+              color: AppTheme.muted,
             ),
           ],
         ),
@@ -547,7 +547,7 @@ class _SheetHandle extends StatelessWidget {
         width: 46,
         height: 5,
         decoration: BoxDecoration(
-          color: AppTheme.dLine,
+          color: AppTheme.border,
           borderRadius: BorderRadius.circular(99),
         ),
       ),
@@ -562,7 +562,7 @@ class _RingsPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = size.width * 0.055
       ..strokeCap = StrokeCap.round;
-    stroke.color = AppTheme.dMaroon;
+    stroke.color = AppTheme.burgundy;
     canvas.drawCircle(
       Offset(size.width * 0.42, size.height * 0.56),
       size.width * 0.16,
@@ -574,7 +574,7 @@ class _RingsPainter extends CustomPainter {
       stroke,
     );
 
-    final heart = Paint()..color = AppTheme.dMaroon;
+    final heart = Paint()..color = AppTheme.burgundy;
     final path = Path()
       ..moveTo(size.width * 0.5, size.height * 0.31)
       ..cubicTo(

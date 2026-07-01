@@ -60,9 +60,14 @@ void main() {
       await storage.saveDraft(
         draft.copyWith(
           guestPlanId: 'guest-plan-1',
+          planName: 'My Wedding',
           createdAt: DateTime.utc(2026, 6, 19),
           isGuestPlan: true,
           needsSync: true,
+          weddingDate: DateTime(2026, 12, 1),
+          weddingDateUnknown: false,
+          currency: 'YER',
+          estimatedBudget: '2500000',
         ),
       );
       expect(await storage.hasGuestPlan(), isTrue);

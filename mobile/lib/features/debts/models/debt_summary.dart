@@ -1,4 +1,4 @@
-class DebtSummary {
+﻿class DebtSummary {
   const DebtSummary({
     required this.totalDebt,
     required this.totalPaid,

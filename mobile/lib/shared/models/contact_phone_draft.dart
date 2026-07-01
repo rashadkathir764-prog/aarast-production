@@ -1,4 +1,4 @@
-import '../../core/phone/phone_number_utils.dart';
+﻿import '../../core/phone/phone_number_utils.dart';
 
 enum ContactPhoneSource { manual, deviceContact, planContact }
 

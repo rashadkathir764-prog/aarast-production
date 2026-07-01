@@ -1,4 +1,4 @@
-class OfflineTables {
+﻿class OfflineTables {
   const OfflineTables._();
 
   static const localMeta = 'local_meta';

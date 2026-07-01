@@ -191,30 +191,35 @@ void main() {
       expect(draft.canGenerateLocalPreview, isTrue);
     });
 
-    test('can open local dashboard without fake location or categories', () {
+    test('requires complete local plan data before opening dashboard', () {
       final draft = GuestOnboardingDraft(
         guestPlanId: 'local-guest-1',
+        planName: 'My Wedding',
         createdAt: DateTime.utc(2026, 6, 30),
         isGuestPlan: true,
         needsSync: true,
         selectedPath: GuestOnboardingPath.weddingUser,
         persona: GuestPersona.bride,
-        governorate: null,
-        city: null,
+        governorate: 'Sanaa',
+        city: 'Sanaa',
         district: null,
         neighborhood: null,
         street: null,
         addressNote: null,
-        weddingDate: null,
-        weddingDateUnknown: true,
+        weddingDate: DateTime(2026, 12, 1),
+        weddingDateUnknown: false,
         priorities: const [],
-        currency: null,
-        estimatedBudget: null,
+        currency: 'YER',
+        estimatedBudget: '2500000',
         selectedCategoryKeys: const [],
       );
 
-      expect(draft.hasMinimumPlanSeed, isFalse);
+      expect(draft.hasMinimumPlanSeed, isTrue);
       expect(draft.canGenerateLocalPreview, isFalse);
+      expect(
+        draft.copyWith(clearPlanName: true).canOpenLocalDashboard,
+        isFalse,
+      );
       expect(draft.canOpenLocalDashboard, isTrue);
       expect(draft.isCompleteGuestPlan, isTrue);
     });

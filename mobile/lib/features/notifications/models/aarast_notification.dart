@@ -1,4 +1,4 @@
-class AarastNotification {
+﻿class AarastNotification {
   const AarastNotification({
     required this.id,
     required this.userId,

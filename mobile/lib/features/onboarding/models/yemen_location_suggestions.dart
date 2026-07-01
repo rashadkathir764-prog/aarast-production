@@ -1,4 +1,4 @@
-class YemenLocationSuggestion {
+﻿class YemenLocationSuggestion {
   const YemenLocationSuggestion({
     required this.governorate,
     required this.cityOrDistricts,

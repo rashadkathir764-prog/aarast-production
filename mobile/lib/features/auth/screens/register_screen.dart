@@ -83,7 +83,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               providerMode ? 'طلب الانضمام كمزود' : 'إنشاء حساب',
               textAlign: TextAlign.center,
               style: textTheme.headlineSmall?.copyWith(
-                color: AppTheme.dInk,
+                color: AppTheme.ink,
                 fontWeight: FontWeight.w900,
                 height: 1.18,
               ),
@@ -95,7 +95,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   : 'ابدأ رحلتك بخطة زفاف واضحة ومرتبة.',
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
-                color: AppTheme.dInkSoft,
+                color: AppTheme.muted,
                 fontWeight: FontWeight.w700,
                 height: 1.45,
               ),
@@ -380,7 +380,7 @@ class _AccountTypeSegmentedControl extends StatelessWidget {
           'نوع الحساب',
           textAlign: TextAlign.right,
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.dInk,
+            color: AppTheme.ink,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -388,9 +388,9 @@ class _AccountTypeSegmentedControl extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
-            color: AppTheme.dCard2,
+            color: AppTheme.surfaceElevated,
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            border: Border.all(color: AppTheme.dLine),
+            border: Border.all(color: AppTheme.border),
           ),
           child: Row(
             children: [
@@ -441,7 +441,7 @@ class _SegmentOption extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.dMaroon : Colors.transparent,
+          color: selected ? AppTheme.burgundy : Colors.transparent,
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Row(
@@ -450,13 +450,13 @@ class _SegmentOption extends StatelessWidget {
             Icon(
               icon,
               size: 18,
-              color: selected ? Colors.white : AppTheme.dInkSoft,
+              color: selected ? Colors.white : AppTheme.muted,
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : AppTheme.dInkSoft,
+                color: selected ? Colors.white : AppTheme.muted,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -474,12 +474,12 @@ class _ProviderModeNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return const AarastCard(
       padding: EdgeInsets.all(14),
-      color: AppTheme.dCreamBg,
+      color: AppTheme.ivory,
       child: Text(
         'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود.',
         textAlign: TextAlign.right,
         style: TextStyle(
-          color: AppTheme.dInk,
+          color: AppTheme.ink,
           fontWeight: FontWeight.w800,
           height: 1.45,
         ),

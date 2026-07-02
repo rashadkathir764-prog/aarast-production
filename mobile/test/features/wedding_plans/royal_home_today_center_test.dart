@@ -55,14 +55,14 @@ void main() {
     expect(find.text('الأهم الآن'), findsOneWidget);
     expect(find.text('أقرب شيء يحتاج انتباهك في الخطة'), findsOneWidget);
     await tester.dragUntilVisible(
-      find.text('المتبقي من الميزانية'),
+      find.text('الميزانية'),
       find.byType(ListView).first,
       const Offset(0, -320),
     );
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
-    expect(find.text('المتبقي من الميزانية'), findsOneWidget);
+    expect(find.text('الميزانية'), findsOneWidget);
 
     await tester.dragUntilVisible(
       find.text('نظرة سريعة'),
@@ -115,7 +115,7 @@ void main() {
     );
 
     await tester.dragUntilVisible(
-      find.text('المتبقي من الميزانية'),
+      find.text('الميزانية'),
       find.byType(ListView).first,
       const Offset(0, -420),
     );

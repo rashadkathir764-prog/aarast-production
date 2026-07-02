@@ -11,8 +11,12 @@ import '../../features/debts/screens/create_installment_screen.dart';
 import '../../features/debts/screens/debt_details_screen.dart';
 import '../../features/debts/screens/debt_installment_screen.dart';
 import '../../features/finance/screens/budget_expense_screen.dart';
+import '../../features/finance/screens/budget_category_details_screen.dart';
+import '../../features/finance/screens/budget_setup_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
+import '../../features/finance/screens/expenses_screen.dart';
+import '../../features/finance/models/expense_form_intent.dart';
 import '../../features/finance/models/expense.dart';
 import '../../features/guests/screens/guest_list_screen.dart';
 import '../../features/marketplace/screens/add_provider_package_screen.dart';
@@ -22,6 +26,7 @@ import '../../features/marketplace/screens/provider_dashboard_screen.dart';
 import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
 import '../../features/marketplace/screens/quote_request_screen.dart';
+import '../../features/marketplace/models/provider_budget_match_intent.dart';
 import '../../features/marketplace/widgets/provider_auth_gate.dart';
 import '../../features/more/screens/more_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
@@ -104,8 +109,20 @@ class AppRouter {
     return '/wedding-plans/$id/budget-categories/create';
   }
 
+  static String budgetSetup(String id) {
+    return '/wedding-plans/$id/budget/setup';
+  }
+
+  static String budgetCategoryDetails(String weddingPlanId, String categoryId) {
+    return '/wedding-plans/$weddingPlanId/budget-categories/$categoryId';
+  }
+
   static String createExpense(String id) {
     return '/wedding-plans/$id/expenses/create';
+  }
+
+  static String expenses(String id) {
+    return '/wedding-plans/$id/expenses';
   }
 
   static String editExpense(String weddingPlanId, String expenseId) {
@@ -258,14 +275,18 @@ class AppRouter {
           path: '/providers/:id/quote',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            final initialServiceId = state.extra is String
-                ? state.extra! as String
+            final quoteContext = state.extra is ProviderQuoteInitialContext
+                ? state.extra! as ProviderQuoteInitialContext
                 : null;
+            final initialServiceId =
+                quoteContext?.serviceId ??
+                (state.extra is String ? state.extra! as String : null);
             return ProviderAuthGate(
               resumeLocation: state.uri.toString(),
               child: QuoteRequestScreen(
                 providerId: id,
                 initialServiceId: initialServiceId,
+                initialBudgetIntent: quoteContext?.budgetIntent,
               ),
             );
           },
@@ -409,7 +430,13 @@ class AppRouter {
             GoRoute(
               path: '/wedding-plans/:id/providers',
               builder: (context, state) {
-                return const ProviderMarketplaceScreen(embedded: true);
+                final budgetIntent = state.extra is ProviderBudgetMatchIntent
+                    ? state.extra! as ProviderBudgetMatchIntent
+                    : null;
+                return ProviderMarketplaceScreen(
+                  embedded: true,
+                  initialBudgetIntent: budgetIntent,
+                );
               },
             ),
           ],
@@ -437,10 +464,47 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/wedding-plans/:id/budget/setup',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return BudgetSetupScreen(weddingPlanId: id);
+          },
+        ),
+        GoRoute(
           path: '/wedding-plans/:id/budget-categories/create',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            return CreateBudgetCategoryScreen(weddingPlanId: id);
+            final initialName = state.extra is String
+                ? state.extra! as String
+                : null;
+            return CreateBudgetCategoryScreen(
+              weddingPlanId: id,
+              initialName: initialName,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/budget-categories/:categoryId',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final categoryId = state.pathParameters['categoryId'] ?? '';
+            return BudgetCategoryDetailsScreen(
+              weddingPlanId: id,
+              budgetCategoryId: categoryId,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/expenses',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final initialBudgetCategoryId = state.extra is String
+                ? state.extra! as String
+                : null;
+            return ExpensesScreen(
+              weddingPlanId: id,
+              initialBudgetCategoryId: initialBudgetCategoryId,
+            );
           },
         ),
         GoRoute(
@@ -450,9 +514,13 @@ class AppRouter {
             final quoteContext = state.extra is QuoteFinanceContext
                 ? state.extra! as QuoteFinanceContext
                 : null;
+            final formIntent = state.extra is ExpenseFormIntent
+                ? state.extra! as ExpenseFormIntent
+                : null;
             return CreateExpenseScreen(
               weddingPlanId: id,
               quoteContext: quoteContext,
+              initialBudgetCategoryId: formIntent?.budgetCategoryId,
             );
           },
         ),

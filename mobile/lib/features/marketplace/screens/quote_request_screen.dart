@@ -14,17 +14,20 @@ import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/models/wedding_plan.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
+import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
 
 class QuoteRequestScreen extends StatefulWidget {
   const QuoteRequestScreen({
     required this.providerId,
     this.initialServiceId,
+    this.initialBudgetIntent,
     super.key,
   });
 
   final String providerId;
   final String? initialServiceId;
+  final ProviderBudgetMatchIntent? initialBudgetIntent;
 
   @override
   State<QuoteRequestScreen> createState() => _QuoteRequestScreenState();
@@ -49,6 +52,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   void initState() {
     super.initState();
     _serviceId = widget.initialServiceId;
+    _prefillBudgetIntent(widget.initialBudgetIntent);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final marketplace = context.read<ProviderMarketplaceProvider>();
@@ -77,6 +81,16 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         await _loadGuestLocationContext(guestStorage);
       }
     });
+  }
+
+  void _prefillBudgetIntent(ProviderBudgetMatchIntent? intent) {
+    if (intent == null || !intent.hasBudget) return;
+    _budgetMinController.text = intent.requestMin!.round().toString();
+    _budgetMaxController.text = intent.requestMax!.round().toString();
+    if (_messageController.text.trim().isEmpty) {
+      _messageController.text =
+          'ميزانية بند ${intent.budgetCategoryName}: ${intent.allocatedValue.round()} ر.ي. أريد عرضاً مناسباً لهذا النطاق.';
+    }
   }
 
   @override

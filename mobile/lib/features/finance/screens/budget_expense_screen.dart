@@ -11,6 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../marketplace/models/provider_budget_match_intent.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../models/budget_category.dart';
@@ -283,6 +284,7 @@ class _FinanceContent extends StatelessWidget {
                   allocated: row.target.toString(),
                   spent: row.spent.toString(),
                   remaining: (row.target - row.spent).toString(),
+                  expensesCount: row.expensesCount,
                   overBudget: row.target > 0 && row.spent > row.target,
                 ),
               )
@@ -298,6 +300,21 @@ class _FinanceContent extends StatelessWidget {
         ],
         _FinanceDonutHero(summary: moneySummary),
         const SizedBox(height: 16),
+        _FinanceActionStrip(
+          canManageFinancialRecords: canManageFinancialRecords,
+          onAddExpense: canManageFinancialRecords
+              ? () => context.push(AppRouter.createExpense(weddingPlanId))
+              : null,
+          onAddCategory: canManageFinancialRecords
+              ? () => context.push(
+                  AppRouter.createBudgetCategory(weddingPlanId),
+                  extra: sharedMember,
+                )
+              : null,
+          onViewDebts: () =>
+              context.push(AppRouter.debts(weddingPlanId), extra: sharedMember),
+        ),
+        const SizedBox(height: 16),
         _TopFinancialObligationsCard(
           summary: moneySummary,
           onViewDebts: () => _openDebts(context),
@@ -307,76 +324,49 @@ class _FinanceContent extends StatelessWidget {
           _FinancialWarningsCard(warnings: moneySummary.financialWarnings),
           const SizedBox(height: 18),
         ],
-        if (moneySummary.categoriesCount == -1) ...[
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _FinanceShortcutCard(
-                  icon: Icons.category_outlined,
-                  label: 'التصنيفات',
-                  onTap: canManageFinancialRecords
-                      ? () => context.push(
-                          AppRouter.createBudgetCategory(weddingPlanId),
-                          extra: sharedMember,
-                        )
-                      : null,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _FinanceShortcutCard(
-                  icon: Icons.credit_card_outlined,
-                  label: 'الديون والأقساط',
-                  onTap: () => context.push(
-                    AppRouter.debts(weddingPlanId),
-                    extra: sharedMember,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-        ],
         AarastSectionHeader(
-          title: 'تفاصيل المصروفات حسب الفئة',
+          title: 'بنود الزفاف والميزانية',
           icon: Icons.pie_chart_outline_rounded,
         ),
         const SizedBox(height: 12),
         if (categoryRows.isEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Text(
-              'لا توجد تصنيفات بعد. أضف تصنيف ميزانية عندما تكون جاهزًا.',
-              style: TextStyle(
-                color: AppTheme.ink.withValues(alpha: 0.4),
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
+          _BudgetStarterCard(
+            canManageFinancialRecords: canManageFinancialRecords,
+            onSetupBudget: () =>
+                context.push(AppRouter.budgetSetup(weddingPlanId)),
+            onCreateCategory: (name) => context.push(
+              AppRouter.createBudgetCategory(weddingPlanId),
+              extra: name,
             ),
           )
         else
-          SizedBox(
-            height: 140,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: categoryRows.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 12),
-              itemBuilder: (context, index) =>
-                  _MoneyCategoryProgressRow(row: categoryRows[index]),
-            ),
+          Column(
+            children: [
+              for (var index = 0; index < categoryRows.length; index++) ...[
+                _MoneyCategoryProgressRow(
+                  row: categoryRows[index],
+                  onOpenDetails: () => context.push(
+                    AppRouter.budgetCategoryDetails(
+                      weddingPlanId,
+                      categoryRows[index].categoryId,
+                    ),
+                  ),
+                  onViewProviders: () =>
+                      _openProvidersForCategory(context, categoryRows[index]),
+                ),
+                if (index != categoryRows.length - 1)
+                  const SizedBox(height: 10),
+              ],
+            ],
           ),
         const SizedBox(height: 18),
         AarastSectionHeader(
           title: 'المدفوعات والمصاريف الأخيرة',
           icon: Icons.schedule_rounded,
+          actionLabel: expenses.isNotEmpty ? 'عرض الكل' : null,
+          onAction: expenses.isNotEmpty
+              ? () => context.push(AppRouter.expenses(weddingPlanId))
+              : null,
         ),
         const SizedBox(height: 12),
         if (expenses.isEmpty)
@@ -447,6 +437,19 @@ class _FinanceContent extends StatelessWidget {
     if (!context.mounted) return;
     onChanged();
     await provider.loadFinance(weddingPlanId);
+  }
+
+  void _openProvidersForCategory(
+    BuildContext context,
+    MoneyCategorySummary row,
+  ) {
+    context.go(
+      AppRouter.planProviders(weddingPlanId),
+      extra: ProviderBudgetMatchIntent(
+        budgetCategoryName: row.name,
+        allocatedAmount: row.allocated,
+      ),
+    );
   }
 
   Future<void> _openEditExpense(BuildContext context, Expense expense) async {
@@ -590,6 +593,9 @@ class _FinanceDonutHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalBudget = _parseValue(summary.totalBudget);
     final totalSpent = _parseValue(summary.totalSpent);
+    final spentPercent = totalBudget > 0
+        ? ((totalSpent / totalBudget) * 100).round()
+        : 0;
 
     double spentRatio = totalBudget > 0 ? (totalSpent / totalBudget) : 0;
     if (spentRatio > 1) spentRatio = 1;
@@ -629,20 +635,21 @@ class _FinanceDonutHero extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'المتبقي',
+                      '$spentPercent%',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
                       ),
                     ),
-                    _AnimatedMoneyText(
-                      value: summary.remainingBudget ?? '0',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
+                    const SizedBox(height: 4),
+                    Text(
+                      'تم صرفه',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -669,6 +676,16 @@ class _FinanceDonutHero extends StatelessWidget {
                   label: 'المصروف',
                   value: summary.totalSpent,
                   color: AppTheme.gold,
+                ),
+                Divider(
+                  height: 24,
+                  thickness: 1,
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
+                _DonutStatHorizontal(
+                  label: 'المتبقي',
+                  value: summary.remainingBudget,
+                  color: AppTheme.warning,
                 ),
               ],
             ),
@@ -839,10 +856,101 @@ class _FinancialWarningsCard extends StatelessWidget {
   }
 }
 
+class _BudgetStarterCard extends StatelessWidget {
+  const _BudgetStarterCard({
+    required this.canManageFinancialRecords,
+    required this.onSetupBudget,
+    required this.onCreateCategory,
+  });
+
+  final bool canManageFinancialRecords;
+  final VoidCallback onSetupBudget;
+  final ValueChanged<String> onCreateCategory;
+
+  static const _suggestions = [
+    'الصالة',
+    'الغداء',
+    'العشاء',
+    'التصوير',
+    'الكوشة',
+    'الأزياء',
+    'الفنان',
+    'الماء والضيافة',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(16),
+      border: Border.all(color: AppTheme.border),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.playlist_add_check_rounded,
+                color: AppTheme.burgundy,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'ابدأ ببنود الزفاف الأساسية',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            canManageFinancialRecords
+                ? 'اختر بنداً، ثم حدد المبلغ المخصص له أو اتركه فارغاً.'
+                : 'لا توجد بنود ميزانية بعد.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          if (canManageFinancialRecords) ...[
+            const SizedBox(height: 14),
+            AarastButton(
+              label: 'إعداد الميزانية',
+              icon: Icons.tune_rounded,
+              onPressed: onSetupBudget,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final suggestion in _suggestions)
+                  ActionChip(
+                    avatar: Icon(_categoryIcon(suggestion), size: 17),
+                    label: Text(suggestion),
+                    onPressed: () => onCreateCategory(suggestion),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _MoneyCategoryProgressRow extends StatelessWidget {
-  const _MoneyCategoryProgressRow({required this.row});
+  const _MoneyCategoryProgressRow({
+    required this.row,
+    required this.onOpenDetails,
+    required this.onViewProviders,
+  });
 
   final MoneyCategorySummary row;
+  final VoidCallback onOpenDetails;
+  final VoidCallback onViewProviders;
 
   @override
   Widget build(BuildContext context) {
@@ -852,76 +960,127 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
         : progress >= .75
         ? AppTheme.warning
         : AppTheme.gold;
+    final spent = _moneyValueOrZero(row.spent);
+    final allocated = _moneyValueOrZero(row.allocated);
+    final remaining = _moneyValueOrZero(row.remaining);
+    final percent = allocated > 0 ? (spent / allocated * 100).round() : 0;
+    final hasBudget = allocated > 0;
+    final hasSpent = spent > 0;
+    final stateLabel = row.overBudget == true
+        ? 'تجاوز الميزانية'
+        : !hasBudget
+        ? 'حدد الميزانية'
+        : !hasSpent
+        ? 'لم يسجل مصروف'
+        : remaining <= 0
+        ? 'لا يوجد متبقي'
+        : 'متبقي ${_formatMoney(remaining)} ر.ي';
+    final stateColor = row.overBudget == true
+        ? AppTheme.danger
+        : !hasBudget
+        ? AppTheme.muted
+        : remaining <= 0
+        ? AppTheme.success
+        : AppTheme.burgundy;
 
-    return Container(
-      width: 140,
+    return AarastCard(
+      onTap: onOpenDetails,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.muted.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppTheme.goldSoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              _categoryIcon(row.name),
-              color: AppTheme.gold,
-              size: 20,
-            ),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppTheme.goldSoft,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  _categoryIcon(row.name),
+                  color: AppTheme.gold,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      row.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasBudget
+                          ? '${_formatMoney(spent)} ر.ي من ${_formatMoney(allocated)} ر.ي'
+                          : hasSpent
+                          ? '${_formatMoney(spent)} ر.ي مصروف بدون ميزانية محددة'
+                          : 'لم تحدد ميزانية أو مصروفاً بعد',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    hasBudget ? '$percent%' : '--',
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                      color: progressColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasBudget ? 'تم صرفه' : 'غير محدد',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          Text(
-            row.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-              fontSize: 13,
-            ),
-          ),
-          const SizedBox(height: 4),
-          _AnimatedMoneyText(
-            value: row.remaining.toString(),
-            style: const TextStyle(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-              fontSize: 14,
-            ),
-          ),
-          const Spacer(),
           Stack(
             children: [
               Container(
-                height: 4,
+                height: 7,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: AppTheme.ink.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
               FractionallySizedBox(
                 widthFactor: progress.clamp(0.0, 1.0),
                 child: Container(
-                  height: 4,
+                  height: 7,
                   decoration: BoxDecoration(
                     color: progressColor,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(999),
                     boxShadow: [
                       BoxShadow(
                         color: progressColor.withValues(alpha: 0.6),
@@ -932,6 +1091,37 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: AarastStatusPill(
+                  label: stateLabel,
+                  color: stateColor,
+                  icon: row.overBudget == true
+                      ? Icons.warning_amber_rounded
+                      : Icons.account_balance_wallet_outlined,
+                ),
+              ),
+              if (row.expensesCount != null) ...[
+                const SizedBox(width: 8),
+                AarastStatusPill(
+                  label: '${row.expensesCount} سجل',
+                  color: AppTheme.muted,
+                  icon: Icons.receipt_long_outlined,
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton.icon(
+              onPressed: onViewProviders,
+              icon: const Icon(Icons.storefront_outlined, size: 18),
+              label: Text(hasBudget ? 'موردين حسب الميزانية' : 'عرض موردين'),
+            ),
           ),
         ],
       ),
@@ -1163,6 +1353,75 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FinanceActionStrip extends StatelessWidget {
+  const _FinanceActionStrip({
+    required this.canManageFinancialRecords,
+    required this.onAddExpense,
+    required this.onAddCategory,
+    required this.onViewDebts,
+  });
+
+  final bool canManageFinancialRecords;
+  final VoidCallback? onAddExpense;
+  final VoidCallback? onAddCategory;
+  final VoidCallback onViewDebts;
+
+  @override
+  Widget build(BuildContext context) {
+    final helper = canManageFinancialRecords
+        ? 'سجّل المصروفات والبنود والالتزامات من مكان واحد.'
+        : 'يمكنك مراجعة الالتزامات المتاحة حسب صلاحياتك.';
+
+    return AarastCard(
+      padding: const EdgeInsets.all(12),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            helper,
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _FinanceShortcutCard(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'مصروف',
+                  onTap: onAddExpense,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FinanceShortcutCard(
+                  icon: Icons.category_outlined,
+                  label: 'بند',
+                  onTap: onAddCategory,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FinanceShortcutCard(
+                  icon: Icons.credit_card_outlined,
+                  label: 'ديون',
+                  onTap: onViewDebts,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1503,6 +1762,7 @@ class _CategorySpendRow {
     required this.spent,
     required this.target,
     required this.progress,
+    required this.expensesCount,
   });
 
   final String id;
@@ -1510,15 +1770,14 @@ class _CategorySpendRow {
   final num spent;
   final num target;
   final double progress;
+  final int expensesCount;
 }
 
 List<_CategorySpendRow> _buildCategoryRows(
   List<BudgetCategory> categories,
   List<Expense> expenses,
 ) {
-  final activeExpenses = expenses.where(
-    (expense) => expense.status != 'CANCELLED',
-  );
+  final activeExpenses = expenses.where((expense) => expense.status == 'PAID');
   final totalSpent = activeExpenses.fold<num>(
     0,
     (sum, expense) => sum + _moneyValue(expense.amount),
@@ -1531,12 +1790,16 @@ List<_CategorySpendRow> _buildCategoryRows(
     final target = _moneyValue(category.targetAmount ?? '0');
     final denominator = target > 0 ? target : totalSpent;
     final progress = denominator <= 0 ? 0.0 : spent / denominator;
+    final categoryExpenses = expenses.where(
+      (expense) => expense.budgetCategoryId == category.id,
+    );
     return _CategorySpendRow(
       id: category.id,
       name: category.name,
       spent: spent,
       target: target,
       progress: progress.toDouble(),
+      expensesCount: categoryExpenses.length,
     );
   }).toList();
 }
@@ -1581,6 +1844,8 @@ String _expenseStatusLabel(String status) {
 
 num _moneyValue(String value) =>
     num.tryParse(value.replaceAll(',', '').trim()) ?? 0;
+
+num _moneyValueOrZero(String? value) => value == null ? 0 : _moneyValue(value);
 
 String _formatMoney(num value) {
   final rounded = value.round();

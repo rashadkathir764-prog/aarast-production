@@ -101,7 +101,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
           const SizedBox(height: 14),
           _PremiumEntry(
             index: notice != null ? 4 : 3,
-            child: _MoneySummaryCard(
+            child: _HomeFinanceSummaryCard(
               summary: summary,
               onOpenMoney: onOpenMoney,
               onAddExpense: onAddExpense,
@@ -1543,10 +1543,398 @@ class _ImportantNowCard extends StatelessWidget {
   }
 }
 
+class _HomeFinanceSummaryCard extends StatelessWidget {
+  const _HomeFinanceSummaryCard({
+    required this.summary,
+    required this.onOpenMoney,
+    this.onAddExpense,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenMoney;
+  final VoidCallback? onAddExpense;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!summary.canViewMoney) {
+      return _DashboardSectionCard(
+        title: 'المال',
+        icon: Icons.lock_outline_rounded,
+        onTap: onOpenMoney,
+        child: const _EmptySectionText(
+          text: 'البيانات المالية خاصة ولا تظهر لهذا الدور.',
+        ),
+      );
+    }
+
+    final total = _homeMoneyNumber(summary.totalBudgetForDisplay);
+    final spent = _homeMoneyNumber(summary.spentTotalForDisplay);
+    final remainingSource =
+        summary.remainingBudgetForDisplay ?? (total - spent).toString();
+    final remaining = _homeMoneyNumber(remainingSource);
+    final progress = total > 0 ? (spent / total).clamp(0.0, 1.0) : 0.0;
+    final percent = (progress * 100).round().clamp(0, 100);
+    final hasBudget = total > 0;
+    final alerts = _homeFinanceAlerts(
+      summary: summary,
+      total: total,
+      spent: spent,
+      remaining: remaining,
+      progress: progress,
+    );
+
+    return AarastPressable(
+      onTap: onOpenMoney,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceElevated,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.gold.withValues(alpha: 0.2)),
+          boxShadow: AppTheme.softShadow(opacity: 0.05),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(11),
+                  decoration: BoxDecoration(
+                    color: AppTheme.gold.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.account_balance_wallet_rounded,
+                    color: AppTheme.gold,
+                    size: 23,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'الميزانية',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppTheme.ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        hasBudget
+                            ? 'متابعة المصروفات حسب البنود'
+                            : 'حدد ميزانية البنود حتى نقترح الموردين بدقة',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTheme.muted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onAddExpense != null) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'إضافة مصروف',
+                    icon: const Icon(
+                      Icons.add_circle_rounded,
+                      color: AppTheme.gold,
+                      size: 34,
+                    ),
+                    onPressed: onAddExpense,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 42,
+                    ),
+                  ),
+                ] else
+                  const Icon(
+                    Icons.chevron_left_rounded,
+                    color: AppTheme.gold,
+                    size: 24,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _HomeMoneyMetric(
+                    label: 'المخصص',
+                    value: total,
+                    color: AppTheme.ink,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _HomeMoneyMetric(
+                    label: 'المصروف',
+                    value: spent,
+                    color: AppTheme.burgundy,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _HomeMoneyMetric(
+                    label: 'المتبقي',
+                    value: remaining,
+                    color: remaining < 0 ? AppTheme.danger : AppTheme.success,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                minHeight: 7,
+                value: progress,
+                backgroundColor: AppTheme.border.withValues(alpha: 0.6),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  remaining < 0 ? AppTheme.danger : AppTheme.burgundy,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    hasBudget
+                        ? 'مستخدم $percent% من الميزانية'
+                        : 'لم تحدد ميزانية بعد',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'عرض التفاصيل',
+                  style: TextStyle(
+                    color: AppTheme.burgundy,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            if (alerts.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              for (final alert in alerts.take(2)) ...[
+                _HomeFinanceAlert(alert),
+                if (alert != alerts.take(2).last) const SizedBox(height: 6),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeMoneyMetric extends StatelessWidget {
+  const _HomeMoneyMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final num value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.ivory.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.65)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppTheme.muted,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                _formatHomeMoney(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  height: 1.15,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+num _homeMoneyNumber(String? raw) {
+  if (raw == null) return 0;
+  final cleaned = raw
+      .replaceAll(',', '')
+      .replaceAll('ر.ي', '')
+      .replaceAll('ريال', '')
+      .replaceAll('YER', '')
+      .trim();
+  return num.tryParse(cleaned) ?? 0;
+}
+
+String _formatHomeMoney(num value) {
+  final negative = value < 0;
+  final absValue = value.abs();
+  final number = absValue >= 1000000
+      ? '${_trimDecimal(absValue / 1000000)}م'
+      : _formatWholeNumber(absValue);
+  return '${negative ? '-' : ''}$number ر.ي';
+}
+
+List<_HomeFinanceAlertData> _homeFinanceAlerts({
+  required DashboardSummary summary,
+  required num total,
+  required num spent,
+  required num remaining,
+  required double progress,
+}) {
+  final alerts = <_HomeFinanceAlertData>[];
+  if (total <= 0 && spent > 0) {
+    alerts.add(
+      const _HomeFinanceAlertData(
+        icon: Icons.priority_high_rounded,
+        message: 'لديك مصروفات بدون ميزانية محددة.',
+        color: AppTheme.warning,
+      ),
+    );
+  } else if (total <= 0) {
+    alerts.add(
+      const _HomeFinanceAlertData(
+        icon: Icons.flag_outlined,
+        message: 'حدد الميزانية حتى يظهر المتبقي بدقة.',
+        color: AppTheme.gold,
+      ),
+    );
+  } else if (remaining < 0 || summary.moneySummary.overBudget == true) {
+    alerts.add(
+      const _HomeFinanceAlertData(
+        icon: Icons.warning_amber_rounded,
+        message: 'المصروفات أعلى من الميزانية الحالية.',
+        color: AppTheme.danger,
+      ),
+    );
+  } else if (progress >= 0.80) {
+    alerts.add(
+      const _HomeFinanceAlertData(
+        icon: Icons.trending_up_rounded,
+        message: 'اقتربت من حد الميزانية، راجع البنود قبل الالتزام.',
+        color: AppTheme.warning,
+      ),
+    );
+  }
+
+  if ((summary.dueInstallmentsCount ?? 0) > 0) {
+    alerts.add(
+      _HomeFinanceAlertData(
+        icon: Icons.event_available_outlined,
+        message: 'عندك ${summary.dueInstallmentsCount} قسط يحتاج متابعة.',
+        color: AppTheme.burgundy,
+      ),
+    );
+  }
+  return alerts;
+}
+
+class _HomeFinanceAlert extends StatelessWidget {
+  const _HomeFinanceAlert(this.alert);
+
+  final _HomeFinanceAlertData alert;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: alert.color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: alert.color.withValues(alpha: 0.14)),
+      ),
+      child: Row(
+        children: [
+          Icon(alert.icon, color: alert.color, size: 17),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(
+              alert.message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppTheme.ink,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeFinanceAlertData {
+  const _HomeFinanceAlertData({
+    required this.icon,
+    required this.message,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String message;
+  final Color color;
+}
+
 class _MoneySummaryCard extends StatelessWidget {
   const _MoneySummaryCard({
     required this.summary,
     required this.onOpenMoney,
+    // ignore: unused_element_parameter
     this.onAddExpense,
   });
 

@@ -10,13 +10,19 @@ import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/marketplace_models.dart';
+import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/quote_status_chip.dart';
 
 class ProviderMarketplaceScreen extends StatefulWidget {
-  const ProviderMarketplaceScreen({this.embedded = false, super.key});
+  const ProviderMarketplaceScreen({
+    this.embedded = false,
+    this.initialBudgetIntent,
+    super.key,
+  });
 
   final bool embedded;
+  final ProviderBudgetMatchIntent? initialBudgetIntent;
 
   @override
   State<ProviderMarketplaceScreen> createState() =>
@@ -44,7 +50,25 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         hasAccount: includeAccountData,
         marketplace: provider,
       );
+      final budgetIntent = widget.initialBudgetIntent;
+      if (budgetIntent != null && mounted) {
+        await provider.applyBudgetMatchIntent(budgetIntent);
+      }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant ProviderMarketplaceScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialBudgetIntent != widget.initialBudgetIntent) {
+      final budgetIntent = widget.initialBudgetIntent;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || budgetIntent == null) return;
+        context.read<ProviderMarketplaceProvider>().applyBudgetMatchIntent(
+          budgetIntent,
+        );
+      });
+    }
   }
 
   @override
@@ -95,6 +119,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     onCompleteLocation: _openLocationCompletion,
                   ),
                 ],
+                if (provider.budgetMatchIntent != null) ...[
+                  const SizedBox(height: 12),
+                  _BudgetMatchContextCard(
+                    intent: provider.budgetMatchIntent!,
+                    categoryName: _activeCategoryName(provider),
+                    onClear: provider.clearBudgetMatch,
+                  ),
+                ],
                 if (provider.quoteRequests.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _ImportantNowCard(
@@ -127,6 +159,23 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     ),
                   )
                 else ...[
+                  if (provider.budgetMatchIntent != null &&
+                      provider.budgetMatchedServices.isNotEmpty) ...[
+                    _BudgetMatchedServicesSection(
+                      intent: provider.budgetMatchIntent!,
+                      services: provider.budgetMatchedServices,
+                      onOpenProvider: (providerId) =>
+                          context.push(AppRouter.providerDetails(providerId)),
+                      onRequestQuote: (service) => context.push(
+                        AppRouter.providerQuote(service.providerId),
+                        extra: ProviderQuoteInitialContext(
+                          serviceId: service.id,
+                          budgetIntent: provider.budgetMatchIntent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                  ],
                   _ResultsHeader(
                     count: provider.providers.length,
                     location: _weddingLocation,
@@ -699,6 +748,278 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
+class _BudgetMatchContextCard extends StatelessWidget {
+  const _BudgetMatchContextCard({
+    required this.intent,
+    required this.categoryName,
+    required this.onClear,
+  });
+
+  final ProviderBudgetMatchIntent intent;
+  final String? categoryName;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final budgetLabel = intent.hasBudget
+        ? '${_formatMoney(intent.allocatedValue)} ر.ي'
+        : 'بدون مبلغ محدد';
+    final rangeLabel = intent.hasBudget
+        ? '${_formatMoney(intent.minPrice!)} - ${_formatMoney(intent.maxPrice!)} ر.ي'
+        : 'حسب فئة البند فقط';
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppTheme.goldSoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet_outlined,
+              color: AppTheme.gold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'حسب ميزانية بند ${intent.budgetCategoryName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.burgundyDeep,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  categoryName == null
+                      ? '$budgetLabel · $rangeLabel'
+                      : '$categoryName · $budgetLabel · $rangeLabel',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'إزالة فلتر الميزانية',
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BudgetMatchedServicesSection extends StatelessWidget {
+  const _BudgetMatchedServicesSection({
+    required this.intent,
+    required this.services,
+    required this.onOpenProvider,
+    required this.onRequestQuote,
+  });
+
+  final ProviderBudgetMatchIntent intent;
+  final List<MarketplaceService> services;
+  final ValueChanged<String> onOpenProvider;
+  final ValueChanged<MarketplaceService> onRequestQuote;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AarastSectionHeader(
+          title: 'خدمات مناسبة لهذا البند',
+          icon: Icons.storefront_outlined,
+        ),
+        const SizedBox(height: 10),
+        for (final service in services.take(5)) ...[
+          _BudgetMatchedServiceCard(
+            intent: intent,
+            service: service,
+            onOpenProvider: () => onOpenProvider(service.providerId),
+            onRequestQuote: () => onRequestQuote(service),
+          ),
+          const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _BudgetMatchedServiceCard extends StatelessWidget {
+  const _BudgetMatchedServiceCard({
+    required this.intent,
+    required this.service,
+    required this.onOpenProvider,
+    required this.onRequestQuote,
+  });
+
+  final ProviderBudgetMatchIntent intent;
+  final MarketplaceService service;
+  final VoidCallback onOpenProvider;
+  final VoidCallback onRequestQuote;
+
+  @override
+  Widget build(BuildContext context) {
+    final price = _moneyValueOrNull(service.basePrice);
+    final status = _serviceBudgetStatus(intent, price);
+    final color = _serviceBudgetStatusColor(status);
+    final providerName = service.provider?.businessName ?? 'مورد';
+    final categoryName = service.category?.nameAr;
+    final matchReason = _serviceBudgetReason(intent, service, price, status);
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      border: Border.all(color: color.withValues(alpha: 0.20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                ),
+                child: Icon(Icons.design_services_outlined, color: color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      service.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      providerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              AarastStatusPill(
+                label: _serviceBudgetStatusLabel(status),
+                color: color,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _ProviderFactPill(
+                icon: Icons.payments_outlined,
+                text: price == null
+                    ? 'السعر غير محدد'
+                    : '${_formatMoney(price)} ${service.currency ?? 'ر.ي'}',
+                color: color,
+              ),
+              if (categoryName != null && categoryName.trim().isNotEmpty)
+                _ProviderFactPill(
+                  icon: Icons.category_outlined,
+                  text: categoryName,
+                  color: AppTheme.burgundy,
+                ),
+              if (service.city != null)
+                _ProviderFactPill(
+                  icon: Icons.place_outlined,
+                  text: service.city!.nameAr,
+                  color: AppTheme.muted,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: color.withValues(alpha: 0.16)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: color,
+                  size: 17,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    matchReason,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onOpenProvider,
+                  icon: const Icon(Icons.info_outline_rounded, size: 18),
+                  label: const Text('التفاصيل'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onRequestQuote,
+                  icon: const Icon(Icons.request_quote_outlined, size: 18),
+                  label: const Text('طلب عرض'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LocationContextCard extends StatelessWidget {
   const _LocationContextCard({
     required this.location,
@@ -1224,6 +1545,110 @@ List<QuoteRequest> _importantQuotes(List<QuoteRequest> quotes) {
       )
       .take(2)
       .toList();
+}
+
+String? _activeCategoryName(ProviderMarketplaceProvider provider) {
+  final id = provider.categoryId;
+  if (id == null) return null;
+  for (final category in provider.categories) {
+    if (category.id == id) return category.nameAr;
+  }
+  return null;
+}
+
+_ServiceBudgetStatus _serviceBudgetStatus(
+  ProviderBudgetMatchIntent intent,
+  double? price,
+) {
+  if (price == null) return _ServiceBudgetStatus.unknown;
+  if (!intent.hasBudget) return _ServiceBudgetStatus.categoryOnly;
+  if (price >= intent.minPrice! && price <= intent.maxPrice!) {
+    return _ServiceBudgetStatus.inRange;
+  }
+  if (price <= intent.allocatedValue) return _ServiceBudgetStatus.underBudget;
+  return _ServiceBudgetStatus.nearby;
+}
+
+String _serviceBudgetStatusLabel(_ServiceBudgetStatus status) {
+  return switch (status) {
+    _ServiceBudgetStatus.inRange => 'ضمن النطاق',
+    _ServiceBudgetStatus.underBudget => 'أقل من ميزانيتك',
+    _ServiceBudgetStatus.nearby => 'أقرب المتاح',
+    _ServiceBudgetStatus.categoryOnly => 'نفس الفئة',
+    _ServiceBudgetStatus.unknown => 'السعر غير محدد',
+  };
+}
+
+Color _serviceBudgetStatusColor(_ServiceBudgetStatus status) {
+  return switch (status) {
+    _ServiceBudgetStatus.inRange => AppTheme.success,
+    _ServiceBudgetStatus.underBudget => AppTheme.burgundy,
+    _ServiceBudgetStatus.nearby => AppTheme.gold,
+    _ServiceBudgetStatus.categoryOnly => AppTheme.burgundy,
+    _ServiceBudgetStatus.unknown => AppTheme.muted,
+  };
+}
+
+String _serviceBudgetReason(
+  ProviderBudgetMatchIntent intent,
+  MarketplaceService service,
+  double? price,
+  _ServiceBudgetStatus status,
+) {
+  final pieces = <String>[];
+  if (intent.hasBudget && price != null) {
+    final difference = price - intent.allocatedValue;
+    final absDifference = difference.abs();
+    final amount = _formatMoney(absDifference);
+    switch (status) {
+      case _ServiceBudgetStatus.inRange:
+        pieces.add('السعر قريب من المبلغ الذي خصصته لهذا البند.');
+      case _ServiceBudgetStatus.underBudget:
+        pieces.add('أقل من ميزانيتك بحوالي $amount ر.ي.');
+      case _ServiceBudgetStatus.nearby:
+        pieces.add('أعلى من ميزانيتك بحوالي $amount ر.ي، لكنه من أقرب المتاح.');
+      case _ServiceBudgetStatus.categoryOnly:
+      case _ServiceBudgetStatus.unknown:
+        pieces.add('نفس نوع البند، لكن السعر يحتاج تأكيد من المورد.');
+    }
+  } else if (intent.hasBudget) {
+    pieces.add('نفس نوع البند، لكن السعر غير منشور ويحتاج طلب عرض.');
+  } else {
+    pieces.add('مطابق لفئة البند، وأضف مبلغاً لتحسين الترتيب.');
+  }
+
+  final city = service.city?.nameAr.trim();
+  if (city != null && city.isNotEmpty) {
+    pieces.add('متاح في $city.');
+  }
+
+  return pieces.join(' ');
+}
+
+double? _moneyValueOrNull(String? value) {
+  final raw = value?.replaceAll(',', '').trim();
+  if (raw == null || raw.isEmpty) return null;
+  return double.tryParse(raw);
+}
+
+String _formatMoney(num value) {
+  final rounded = value.round();
+  final negative = rounded < 0;
+  final digits = rounded.abs().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return '${negative ? '-' : ''}$buffer';
+}
+
+enum _ServiceBudgetStatus {
+  inRange,
+  underBudget,
+  nearby,
+  categoryOnly,
+  unknown,
 }
 
 String _quoteProviderLabel(QuoteRequest quote) {

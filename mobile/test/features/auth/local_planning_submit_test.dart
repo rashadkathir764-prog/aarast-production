@@ -235,6 +235,79 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('hall expense saves paid amount and creates remaining reminder', (
+    tester,
+  ) async {
+    _setTallView(tester);
+    final harness = await _createHarness();
+    final financeProvider = FinanceProvider(
+      BudgetExpenseApi(harness.apiClient, offline: harness.offline),
+    );
+    final debtProvider = DebtInstallmentProvider(
+      DebtInstallmentApi(harness.apiClient, offline: harness.offline),
+    );
+    await financeProvider.createBudgetCategory(
+      weddingPlanId: localPlanId,
+      name: 'الصالة',
+      targetAmount: '800000',
+    );
+    final hallCategory = financeProvider.budgetCategories.single;
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: harness.authStorage),
+          ChangeNotifierProvider<FinanceProvider>.value(value: financeProvider),
+          ChangeNotifierProvider<DebtInstallmentProvider>.value(
+            value: debtProvider,
+          ),
+        ],
+        child: MaterialApp.router(
+          routerConfig: _router(
+            start: CreateExpenseScreen(
+              weddingPlanId: localPlanId,
+              initialBudgetCategoryId: hallCategory.id,
+            ),
+            targetPath: '/wedding-plans/:id/finance',
+            targetText: 'finance-target',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('اسم الصالة'), findsOneWidget);
+    expect(find.text('مبلغ هذه الدفعة'), findsOneWidget);
+    expect(find.text('ذكرني بدفع الباقي'), findsOneWidget);
+
+    await tester.enterText(
+      _textFormFieldWithLabel('اسم الصالة'),
+      'قاعة الملكة',
+    );
+    await tester.enterText(
+      _textFormFieldWithLabel('مبلغ هذه الدفعة'),
+      '200000',
+    );
+    final submit = find.text('حفظ المصروف');
+    await tester.ensureVisible(submit);
+    await tester.pumpAndSettle();
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(financeProvider.expenses, hasLength(1));
+    expect(financeProvider.expenses.single.title, 'دفعة صالة الأفراح');
+    expect(financeProvider.expenses.single.amount, '200000');
+    expect(financeProvider.expenses.single.note, contains('قاعة الملكة'));
+    expect(debtProvider.debts, hasLength(1));
+    expect(debtProvider.debts.single.title, 'باقي قاعة الملكة');
+    expect(debtProvider.debts.single.totalAmount, '600000');
+    expect(debtProvider.installments, hasLength(1));
+    expect(debtProvider.installments.single.amount, '600000');
+    expect(find.text(cloudMessage), findsNothing);
+    expect(find.text('finance-target'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('guest/local can add debt without login when local mode exists', (
     tester,
   ) async {

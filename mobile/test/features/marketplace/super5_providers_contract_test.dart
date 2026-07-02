@@ -7,6 +7,7 @@ import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_budget_match_intent.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_auth_gate.dart';
@@ -80,6 +81,39 @@ void main() {
     expect(find.textContaining('أفضل'), findsNothing);
     expect(find.textContaining('قريب'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('budget matched services explain why they are suggested', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      providers: [
+        _provider(
+          id: 'provider-1',
+          businessName: 'قاعة السلام',
+          services: const [],
+        ),
+      ],
+      categories: const [ProviderCategory(id: 'cat-venue', nameAr: 'القاعات')],
+      budgetMatchIntent: const ProviderBudgetMatchIntent(
+        budgetCategoryName: 'الصالة',
+        allocatedAmount: '300000',
+      ),
+      budgetMatchedServices: [
+        _service(
+          title: 'قاعة مناسبة للميزانية',
+          basePrice: '295000',
+          city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
+        ),
+      ],
+    );
+
+    await _pumpMarketplace(tester, state);
+
+    expect(find.text('خدمات مناسبة لهذا البند'), findsOneWidget);
+    expect(find.text('قاعة مناسبة للميزانية'), findsOneWidget);
+    expect(find.textContaining('السعر قريب من المبلغ'), findsOneWidget);
+    expect(find.textContaining('متاح في صنعاء'), findsOneWidget);
   });
 
   testWidgets('request quote action opens the auth gate without a token', (
@@ -277,7 +311,11 @@ MarketplaceProvider _provider({
   );
 }
 
-MarketplaceService _service({required String title}) {
+MarketplaceService _service({
+  required String title,
+  String? basePrice,
+  MarketplaceCity? city,
+}) {
   return MarketplaceService(
     id: 'service-$title',
     providerId: 'provider-1',
@@ -285,6 +323,8 @@ MarketplaceService _service({required String title}) {
     isFeatured: false,
     isActive: true,
     category: const ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+    basePrice: basePrice,
+    city: city,
   );
 }
 
@@ -293,14 +333,20 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     List<MarketplaceProvider> providers = const [],
     List<ProviderCategory> categories = const [],
     List<QuoteRequest> quoteRequests = const [],
+    ProviderBudgetMatchIntent? budgetMatchIntent,
+    List<MarketplaceService> budgetMatchedServices = const [],
   }) : providersData = providers,
        categoriesData = categories,
        quoteRequestsData = quoteRequests,
+       budgetMatchIntentData = budgetMatchIntent,
+       budgetMatchedServicesData = budgetMatchedServices,
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<MarketplaceProvider> providersData;
   final List<ProviderCategory> categoriesData;
   final List<QuoteRequest> quoteRequestsData;
+  ProviderBudgetMatchIntent? budgetMatchIntentData;
+  List<MarketplaceService> budgetMatchedServicesData;
 
   bool _includeAccountData = true;
   bool? lastIncludeAccountData;
@@ -337,6 +383,13 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   List<QuoteRequest> get quoteRequests => quoteRequestsData;
 
   @override
+  ProviderBudgetMatchIntent? get budgetMatchIntent => budgetMatchIntentData;
+
+  @override
+  List<MarketplaceService> get budgetMatchedServices =>
+      budgetMatchedServicesData;
+
+  @override
   bool get includesAccountData => _includeAccountData;
 
   @override
@@ -359,6 +412,19 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   Future<void> clearFilters() async {}
+
+  @override
+  Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {
+    budgetMatchIntentData = intent;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> clearBudgetMatch() async {
+    budgetMatchIntentData = null;
+    budgetMatchedServicesData = const [];
+    notifyListeners();
+  }
 
   @override
   Future<void> toggleFavorite(String providerId) async {}

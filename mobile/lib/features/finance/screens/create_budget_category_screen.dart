@@ -9,9 +9,14 @@ import '../../auth/utils/auth_action_guard.dart';
 import '../providers/finance_provider.dart';
 
 class CreateBudgetCategoryScreen extends StatefulWidget {
-  const CreateBudgetCategoryScreen({required this.weddingPlanId, super.key});
+  const CreateBudgetCategoryScreen({
+    required this.weddingPlanId,
+    this.initialName,
+    super.key,
+  });
 
   final String weddingPlanId;
+  final String? initialName;
 
   @override
   State<CreateBudgetCategoryScreen> createState() =>
@@ -23,6 +28,15 @@ class _CreateBudgetCategoryScreenState
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _targetAmountController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final initialName = widget.initialName?.trim();
+    if (initialName != null && initialName.isNotEmpty) {
+      _nameController.text = initialName;
+    }
+  }
 
   @override
   void dispose() {
@@ -140,7 +154,10 @@ class _CreateBudgetCategoryScreenState
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(context)) {
+    if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+    )) {
       return;
     }
     if (!mounted) return;

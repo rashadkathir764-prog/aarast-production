@@ -63,6 +63,13 @@ void main() {
       ]);
     });
 
+    test('keeps budget setup as a first-time money route', () {
+      expect(
+        AppRouter.budgetSetup('plan-7'),
+        '/wedding-plans/plan-7/budget/setup',
+      );
+    });
+
     test('forwards refreshDashboardOnExpense to expense open only', () {
       final calls = <String>[];
       Future<void> open(String route, {bool refreshDashboard = false}) async {

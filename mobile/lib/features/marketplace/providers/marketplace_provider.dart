@@ -1,8 +1,9 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
+import '../models/provider_budget_match_intent.dart';
 
 class ProviderMarketplaceProvider extends ChangeNotifier {
   ProviderMarketplaceProvider(this._api);
@@ -20,6 +21,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   List<MarketplaceCity> _cities = const [];
   List<ProviderCategory> _categories = const [];
   List<MarketplaceProvider> _providers = const [];
+  List<MarketplaceService> _budgetMatchedServices = const [];
+  ProviderBudgetMatchIntent? _budgetMatchIntent;
   final Map<String, MarketplaceProvider> _details = {};
   final Map<String, List<MarketplaceService>> _services = {};
   final Map<String, List<ProviderPackage>> _packages = {};
@@ -37,6 +40,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   List<MarketplaceCity> get cities => _cities;
   List<ProviderCategory> get categories => _categories;
   List<MarketplaceProvider> get providers => _providers;
+  List<MarketplaceService> get budgetMatchedServices => _budgetMatchedServices;
+  ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
   bool get includesAccountData => _includeAccountData;
@@ -83,6 +88,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       final favorites = results[3] as List<FavoriteProvider>;
       _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
       _quoteRequests = results[4] as List<QuoteRequest>;
+      if (_budgetMatchIntent != null) {
+        _budgetMatchedServices = await _safeBudgetMatchedServices();
+      }
     } on ApiException catch (error) {
       _errorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
@@ -115,6 +123,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   }
 
   Future<void> setCategory(String? id) async {
+    _budgetMatchIntent = null;
+    _budgetMatchedServices = const [];
     _categoryId = id;
     await loadMarketplace();
   }
@@ -123,6 +133,27 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
     _search = '';
     _cityId = null;
     _categoryId = null;
+    _budgetMatchIntent = null;
+    _budgetMatchedServices = const [];
+    await loadMarketplace();
+  }
+
+  Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {
+    _budgetMatchIntent = intent;
+    _budgetMatchedServices = const [];
+    if (_categories.isEmpty) {
+      await loadReferenceData();
+    }
+    final categoryId = intent.matchingCategoryId(_categories);
+    if (categoryId != null) {
+      _categoryId = categoryId;
+    }
+    await loadMarketplace();
+  }
+
+  Future<void> clearBudgetMatch() async {
+    _budgetMatchIntent = null;
+    _budgetMatchedServices = const [];
     await loadMarketplace();
   }
 
@@ -322,6 +353,39 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   ) async {
     try {
       return await _api.getProviderServices(providerId);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<List<MarketplaceService>> _safeBudgetMatchedServices() async {
+    final intent = _budgetMatchIntent;
+    if (intent == null) return const [];
+
+    final minPrice = intent.minPrice;
+    final maxPrice = intent.maxPrice;
+    final categoryId = _categoryId;
+
+    try {
+      final exact = await _api.getPublicServices(
+        cityId: _cityId,
+        categoryId: categoryId,
+        search: categoryId == null ? intent.budgetCategoryName : null,
+        minPrice: minPrice?.round().toString(),
+        maxPrice: maxPrice?.round().toString(),
+      );
+      if (exact.isNotEmpty || !intent.hasBudget) {
+        return _sortServicesByBudget(exact, intent);
+      }
+
+      final fallback = await _api.getPublicServices(
+        cityId: _cityId,
+        categoryId: categoryId,
+        search: categoryId == null ? intent.budgetCategoryName : null,
+      );
+      final sorted = _sortServicesByBudget(fallback, intent);
+      final reasonable = _reasonableBudgetServices(sorted, intent);
+      return (reasonable.isEmpty ? sorted : reasonable).take(6).toList();
     } catch (_) {
       return const [];
     }
@@ -618,4 +682,47 @@ bool _isMissingProviderProfile(String message) {
   return normalized.contains('provider profile') ||
       normalized.contains('provider not found') ||
       normalized.contains('profile not found');
+}
+
+List<MarketplaceService> _sortServicesByBudget(
+  List<MarketplaceService> services,
+  ProviderBudgetMatchIntent intent,
+) {
+  final target = intent.allocatedValue;
+  final sorted = [...services];
+  sorted.sort((a, b) {
+    final aPrice = _servicePrice(a);
+    final bPrice = _servicePrice(b);
+    if (target <= 0) {
+      if (aPrice == null && bPrice == null) return 0;
+      if (aPrice == null) return 1;
+      if (bPrice == null) return -1;
+      return aPrice.compareTo(bPrice);
+    }
+    if (aPrice == null && bPrice == null) return 0;
+    if (aPrice == null) return 1;
+    if (bPrice == null) return -1;
+    return (aPrice - target).abs().compareTo((bPrice - target).abs());
+  });
+  return sorted;
+}
+
+List<MarketplaceService> _reasonableBudgetServices(
+  List<MarketplaceService> services,
+  ProviderBudgetMatchIntent intent,
+) {
+  if (!intent.hasBudget) return services;
+  final floor = intent.allocatedValue * 0.50;
+  final ceiling = intent.allocatedValue * 1.50;
+  return services.where((service) {
+    final price = _servicePrice(service);
+    if (price == null) return false;
+    return price >= floor && price <= ceiling;
+  }).toList();
+}
+
+double? _servicePrice(MarketplaceService service) {
+  final price = service.basePrice?.replaceAll(',', '').trim();
+  if (price == null || price.isEmpty) return null;
+  return double.tryParse(price);
 }

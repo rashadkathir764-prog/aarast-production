@@ -107,11 +107,25 @@ class BudgetExpenseApi {
     }
   }
 
-  Future<BudgetCategory> updateBudgetCategory(
-    String id,
-    Map<String, dynamic> data,
-  ) async {
-    final json = await _apiClient.patchJson('/budget-categories/$id', data);
+  Future<BudgetCategory> updateBudgetCategory({
+    required BudgetCategory category,
+    required String name,
+    String? targetAmount,
+  }) async {
+    final data = {
+      'name': name.trim(),
+      'targetAmount': targetAmount != null && targetAmount.trim().isNotEmpty
+          ? targetAmount.trim()
+          : null,
+    };
+    if (category.id.startsWith('local-budget-category-') ||
+        _isLocalGuestPlanId(category.weddingPlanId)) {
+      return _updateLocalBudgetCategory(category: category, payload: data);
+    }
+    final json = await _apiClient.patchJson(
+      '/budget-categories/${category.id}',
+      data,
+    );
     return BudgetCategory.fromJson(json);
   }
 
@@ -644,6 +658,32 @@ class BudgetExpenseApi {
       'weddingPlanId': weddingPlanId,
       ...payload,
       'createdAt': now.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedBudgetCategories,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return BudgetCategory.fromJson(localJson);
+  }
+
+  Future<BudgetCategory> _updateLocalBudgetCategory({
+    required BudgetCategory category,
+    required Map<String, dynamic> payload,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedBudgetCategories,
+      id: category.id,
+    );
+    final now = DateTime.now();
+    final localJson = {
+      ...?cached,
+      ...payload,
+      'id': category.id,
+      'weddingPlanId': cached?['weddingPlanId'] ?? category.weddingPlanId,
+      'createdAt': cached?['createdAt'] ?? category.createdAt.toIso8601String(),
       'updatedAt': now.toIso8601String(),
     };
     await _offline?.database.saveCachedItem(

@@ -103,6 +103,77 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createBudgetCategoryBatch({
+    required String weddingPlanId,
+    required List<({String name, String? targetAmount})> categories,
+  }) async {
+    final cleanCategories = categories
+        .map(
+          (category) => (
+            name: category.name.trim(),
+            targetAmount: category.targetAmount?.trim(),
+          ),
+        )
+        .where((category) => category.name.isNotEmpty)
+        .toList();
+    if (cleanCategories.isEmpty) {
+      _errorMessage = 'اختر بنداً واحداً على الأقل لإعداد الميزانية.';
+      notifyListeners();
+      return false;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final existingNames = _budgetCategories
+          .map((category) => category.name.trim())
+          .where((name) => name.isNotEmpty)
+          .toSet();
+      final created = <BudgetCategory>[];
+
+      for (final category in cleanCategories) {
+        if (existingNames.contains(category.name)) continue;
+        final createdCategory = await _api.createBudgetCategory(
+          weddingPlanId: weddingPlanId,
+          name: category.name,
+          targetAmount: category.targetAmount?.isEmpty == true
+              ? null
+              : category.targetAmount,
+        );
+        existingNames.add(createdCategory.name.trim());
+        created.add(createdCategory);
+      }
+
+      if (created.isEmpty) {
+        _errorMessage = 'كل البنود المختارة موجودة مسبقاً.';
+        return false;
+      }
+
+      _budgetCategories = [...created, ..._budgetCategories];
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (created.any((category) => category.id.startsWith('local-'))) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      } else {
+        _noticeMessage = 'تم إعداد ${created.length} بند في الميزانية.';
+      }
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر إعداد بنود الميزانية.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> createExpense({
     required String weddingPlanId,
     required String title,
@@ -141,6 +212,90 @@ class FinanceProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إنشاء المصروف.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateBudgetCategory({
+    required String weddingPlanId,
+    required BudgetCategory category,
+    required String name,
+    String? targetAmount,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final updated = await _api.updateBudgetCategory(
+        category: category,
+        name: name,
+        targetAmount: targetAmount,
+      );
+      _budgetCategories = [
+        for (final item in _budgetCategories)
+          item.id == updated.id ? updated : item,
+      ];
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (updated.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث بند الميزانية.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteBudgetCategory({
+    required String weddingPlanId,
+    required BudgetCategory category,
+  }) async {
+    if (category.id.startsWith('local-')) {
+      _errorMessage =
+          'لا يمكن حذف بند قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+      notifyListeners();
+      return false;
+    }
+
+    final hasExpenses = _expenses.any(
+      (expense) => expense.budgetCategoryId == category.id,
+    );
+    if (hasExpenses) {
+      _errorMessage = 'لا يمكن حذف بند مرتبط بمصاريف. انقل المصاريف أولاً.';
+      notifyListeners();
+      return false;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.deleteBudgetCategory(category.id);
+      _budgetCategories = _budgetCategories
+          .where((item) => item.id != category.id)
+          .toList();
+      _moneySummary = await _api.getMoneySummary(weddingPlanId);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حذف بند الميزانية.';
       return false;
     } finally {
       _isSubmitting = false;

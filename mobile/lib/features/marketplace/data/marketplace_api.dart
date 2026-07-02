@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -142,6 +142,33 @@ class MarketplaceApi {
       }
       rethrow;
     }
+  }
+
+  Future<List<MarketplaceService>> getPublicServices({
+    String? search,
+    String? cityId,
+    String? categoryId,
+    String? minPrice,
+    String? maxPrice,
+    int page = 1,
+    int limit = 12,
+  }) async {
+    final json = await _apiClient.getJson(
+      _path('/services', {
+        'page': '$page',
+        'limit': '$limit',
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+        if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId,
+        if (categoryId != null && categoryId.trim().isNotEmpty)
+          'categoryId': categoryId,
+        if (minPrice != null && minPrice.trim().isNotEmpty)
+          'minPrice': minPrice.trim(),
+        if (maxPrice != null && maxPrice.trim().isNotEmpty)
+          'maxPrice': maxPrice.trim(),
+      }),
+    );
+
+    return _itemsFromPagedJson(json).map(MarketplaceService.fromJson).toList();
   }
 
   Future<List<ProviderPackage>> getProviderPackages(String providerId) async {

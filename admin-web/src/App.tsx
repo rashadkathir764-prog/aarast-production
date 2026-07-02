@@ -10,18 +10,11 @@ import { ProviderDetailsPage } from './pages/ProviderDetailsPage';
 import { CategoriesPage } from './pages/CategoriesPage';
 import { CitiesPage } from './pages/CitiesPage';
 import { UsersPage } from './pages/UsersPage';
-import { BookingsPage } from './pages/BookingsPage';
+import { UserDetailsPage } from './pages/UserDetailsPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { ReviewsPage } from './pages/ReviewsPage';
-import { SettingsPage } from './pages/SettingsPage';
-import { AuditLogPage } from './pages/AuditLogPage';
-import {
-  NotificationsPage,
-  PaymentsPage,
-  ProviderCreateUnavailablePage,
-  ReportsPage,
-  ServiceCreateUnavailablePage,
-} from './pages/AdminUnavailablePages';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -46,21 +39,18 @@ export default function App() {
           element={<ProviderApplicationDetailsPage />}
         />
         <Route path="providers" element={<ProvidersPage />} />
-        <Route path="providers/new" element={<ProviderCreateUnavailablePage />} />
+        <Route path="providers/new" element={<Navigate to="/providers/applications" replace />} />
         <Route path="providers/:id" element={<ProviderDetailsPage />} />
         <Route path="cities" element={<CitiesPage />} />
         <Route path="cities/new" element={<Navigate to="/cities" replace />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="users" element={<UsersPage />} />
-        <Route path="bookings" element={<BookingsPage />} />
+        <Route path="users/:id" element={<UserDetailsPage />} />
         <Route path="services" element={<ServicesPage />} />
-        <Route path="services/new" element={<ServiceCreateUnavailablePage />} />
+        <Route path="services/new" element={<Navigate to="/services" replace />} />
         <Route path="reviews" element={<ReviewsPage />} />
-        <Route path="payments" element={<PaymentsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reports" element={<ReportsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="audit-log" element={<AuditLogPage />} />
       </Route>
       <Route path="/admin" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFoundPage />} />

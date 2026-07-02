@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getUsers } from '../api/admin';
 import { AdminUser } from '../api/auth';
 import { DataTable } from '../components/DataTable';
@@ -110,7 +111,9 @@ export function UsersPage() {
               {items.map((user) => (
                 <tr key={user.id}>
                   <td>
-                    <strong>{user.name}</strong>
+                    <Link className="table-strong-link" to={`/users/${user.id}`}>
+                      {user.name}
+                    </Link>
                     <span className="table-subtle">معرف آمن للعرض الإداري</span>
                   </td>
                   <td dir="ltr">{user.phone ?? 'غير محدد'}</td>
@@ -133,7 +136,9 @@ export function UsersPage() {
                   </td>
                   <td className="nowrap">{formatDate(user.createdAt)}</td>
                   <td className="actions-cell">
-                    <span className="readonly-pill">عرض آمن فقط</span>
+                    <Link className="readonly-pill" to={`/users/${user.id}`}>
+                      عرض التفاصيل
+                    </Link>
                   </td>
                 </tr>
               ))}

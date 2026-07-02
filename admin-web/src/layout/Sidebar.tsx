@@ -1,10 +1,14 @@
 import { NavLink } from 'react-router-dom';
 import {
   Crown,
+  BarChart3,
   Inbox,
   LayoutGrid,
   LogOut,
   MapPin,
+  MessageSquareText,
+  PackageSearch,
+  Star,
   Tag,
   UserCircle,
   Users,
@@ -15,6 +19,10 @@ const links = [
   { to: '/users', label: 'المستخدمون', icon: <UserCircle size={20} strokeWidth={1.5} /> },
   { to: '/providers', label: 'الموردون', icon: <Users size={20} strokeWidth={1.5} /> },
   { to: '/providers/applications', label: 'طلبات الموردين', icon: <Inbox size={20} strokeWidth={1.5} /> },
+  { to: '/services', label: 'الخدمات', icon: <PackageSearch size={20} strokeWidth={1.5} /> },
+  { to: '/reviews', label: 'التقييمات', icon: <Star size={20} strokeWidth={1.5} /> },
+  { to: '/notifications', label: 'الإشعارات', icon: <MessageSquareText size={20} strokeWidth={1.5} /> },
+  { to: '/reports', label: 'التقارير', icon: <BarChart3 size={20} strokeWidth={1.5} /> },
   { to: '/categories', label: 'فئات الموردين', icon: <Tag size={20} strokeWidth={1.5} /> },
   { to: '/cities', label: 'المدن والمناطق', icon: <MapPin size={20} strokeWidth={1.5} /> },
 ];

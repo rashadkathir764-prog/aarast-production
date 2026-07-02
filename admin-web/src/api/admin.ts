@@ -34,14 +34,87 @@ export type ProviderCategory = {
 
 export type ProviderService = {
   id: string;
+  providerId?: string;
+  provider?: {
+    id: string;
+    businessName: string;
+    phone: string;
+    whatsapp: string | null;
+    logoUrl: string | null;
+    status: string;
+    ratingAverage: string;
+    ratingCount: number;
+    city?: City | null;
+    primaryCategory?: ProviderCategory | null;
+  };
+  categoryId?: string;
   title: string;
   description: string | null;
   basePrice: string | null;
   priceUnit: string | null;
   currency: string;
+  cityId?: string | null;
   isActive: boolean;
+  isFeatured?: boolean;
   category?: ProviderCategory;
   city?: City | null;
+  images?: Array<{
+    id: string;
+    serviceId: string;
+    imageUrl: string;
+    altText: string | null;
+    sortOrder: number;
+    createdAt: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type ProviderReference = {
+  id: string;
+  businessName: string;
+  phone: string;
+  whatsapp: string | null;
+  logoUrl: string | null;
+  status: string;
+  ratingAverage: string;
+  ratingCount: number;
+  city?: City | null;
+  primaryCategory?: ProviderCategory | null;
+};
+
+export type ProviderReview = {
+  id: string;
+  userId: string;
+  user: {
+    id: string;
+    name: string;
+    phone: string | null;
+  };
+  providerId: string;
+  rating: number;
+  comment: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminNotification = {
+  id: string;
+  userId: string;
+  weddingPlanId: string | null;
+  type: string;
+  priority: string;
+  title: string;
+  body: string;
+  entityType: string | null;
+  entityId: string | null;
+  routeTarget: string | null;
+  data: unknown;
+  readAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type ProviderPackage = {
@@ -110,6 +183,8 @@ export type QueryParams = {
   search?: string;
   page?: number;
   limit?: number;
+  type?: string;
+  unreadOnly?: boolean;
 };
 
 export type CatalogPayload = {
@@ -146,6 +221,28 @@ export function getProviders(params: QueryParams = {}) {
 
 export function getProvider(id: string) {
   return apiRequest<ProviderApplication>(`/admin/providers/${id}`);
+}
+
+export function getServiceReferences(params: QueryParams = {}) {
+  return apiRequest<Paginated<ProviderService>>(`/services${toQuery(params)}`);
+}
+
+export function getProviderReferences(params: QueryParams = {}) {
+  return apiRequest<Paginated<ProviderReference>>(`/providers${toQuery(params)}`);
+}
+
+export function getProviderReviewReferences(providerId: string) {
+  return apiRequest<ProviderReview[]>(
+    `/providers/${encodeURIComponent(providerId)}/reviews`,
+  );
+}
+
+export function getCurrentAdminNotifications(params: QueryParams = {}) {
+  return apiRequest<AdminNotification[]>(`/notifications${toQuery(params)}`);
+}
+
+export function getCurrentAdminUnreadNotificationCount() {
+  return apiRequest<{ count: number }>('/notifications/unread-count');
 }
 
 export function approveProvider(id: string) {
@@ -237,6 +334,12 @@ export function deleteCity(id: string) {
 export function getUsers(params: QueryParams = {}) {
   return apiRequest<Paginated<AdminUser & { provider?: ProviderApplication }>>(
     `/admin/users${toQuery(params)}`,
+  );
+}
+
+export function getUser(id: string) {
+  return apiRequest<AdminUser & { provider?: ProviderApplication | null }>(
+    `/admin/users/${id}`,
   );
 }
 

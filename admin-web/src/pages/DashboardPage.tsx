@@ -15,10 +15,14 @@ import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import {
+  BarChart3,
+  Bell,
   Briefcase,
   CalendarCheck,
   Clock,
   MapPin,
+  PackageSearch,
+  Star,
   Tag,
   Users,
 } from 'lucide-react';
@@ -98,7 +102,7 @@ export function DashboardPage() {
           مرحبا {user?.name ?? 'مدير النظام'}
         </h1>
         <p style={{ margin: '4px 0 0', color: '#8A7A81', fontSize: '14px' }}>
-          هذه الأرقام من APIs الإدارة المتاحة حاليا، وما لا يملك API يظهر كحالة قيد التجهيز.
+          كل الأرقام والروابط الظاهرة هنا مربوطة بمصادر API متاحة في لوحة الإدارة.
         </p>
       </div>
 
@@ -154,18 +158,17 @@ export function DashboardPage() {
         </SectionCard>
 
         <SectionCard
-          title="النشاط خلال آخر 30 يوما"
+          title="تقرير الحالة الإداري"
           actions={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#F5F4F0', padding: '4px 12px', borderRadius: '8px', fontSize: '12px', color: '#4A1525' }}>
-              <span>غير مفعّل</span>
-            </div>
+            <Link to="/reports" style={{ fontSize: '13px', color: '#8A7A81', textDecoration: 'none' }}>فتح التقرير</Link>
           }
         >
-          <EmptyState
-            title="تقارير النشاط تحتاج API"
-            message="لا يوجد endpoint إداري للتقارير الزمنية، لذلك لا يتم عرض مخطط أو أرقام محاكاة."
-            tone="api"
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', minHeight: '240px', alignContent: 'center' }}>
+            <StatCard title="خطط الزواج" value={stats.totalWeddingPlans} tone="gold" />
+            <StatCard title="طلبات العروض" value={stats.totalQuoteRequests} tone="success" />
+            <StatCard title="موردون نشطون" value={stats.approvedProviders} tone="info" />
+            <StatCard title="يحتاجون مراجعة" value={stats.pendingProviders + stats.needsChangesProviders} tone="warning" />
+          </div>
         </SectionCard>
 
         <SectionCard title="توزيع الموردين حسب الحالة">
@@ -201,14 +204,25 @@ export function DashboardPage() {
           </div>
         </SectionCard>
 
-        <SectionCard
-          title="الحجوزات والطلبات"
-        >
-          <EmptyState
-            title="لا يوجد Admin API للحجوزات"
-            message="قائمة APIs المتاحة لا تتضمن endpoint لإدارة الحجوزات، لذلك تم حذف الجدول الوهمي والإبقاء على صفحة حالة آمنة."
-            tone="api"
-          />
+        <SectionCard title="وحدات قراءة شغالة">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
+            <Link to="/services" style={quickActionStyle}>
+              <PackageSearch size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>عرض<br />الخدمات</span>
+            </Link>
+            <Link to="/reviews" style={quickActionStyle}>
+              <Star size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>مراقبة<br />التقييمات</span>
+            </Link>
+            <Link to="/notifications" style={quickActionStyle}>
+              <Bell size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>إشعارات<br />الحساب</span>
+            </Link>
+            <Link to="/reports" style={quickActionStyle}>
+              <BarChart3 size={24} color="#C79B3F" strokeWidth={1.5} />
+              <span style={{ fontSize: '12px', fontWeight: 600, lineHeight: 1.3 }}>تقرير<br />الحالة</span>
+            </Link>
+          </div>
         </SectionCard>
       </div>
     </section>

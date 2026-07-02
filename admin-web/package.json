@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "smoke:admin-runtime": "node scripts/admin-runtime-smoke.mjs",
     "smoke:routes": "npm run build && node scripts/route-smoke.mjs",
+    "smoke:honesty": "node scripts/source-honesty-smoke.mjs",
     "typecheck": "tsc -b"
   },
   "dependencies": {

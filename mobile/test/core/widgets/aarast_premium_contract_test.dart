@@ -55,6 +55,37 @@ void main() {
       },
     );
 
+    test('keeps production colors routed through Soft Royal tokens', () {
+      final roots = [
+        Directory('lib/features'),
+        Directory('lib/shared'),
+        Directory('lib/core/widgets'),
+      ];
+      final rawHex = RegExp(r'Color\(0x');
+      final rawSemanticColor = RegExp(
+        r'Colors\.(red|green|blue|orange|purple|pink|brown|grey|gray|black)',
+      );
+      final localColorClass = RegExp(r'class\s+\w*Colors\b|_\w+Colors\b');
+      final offenders = <String>[];
+
+      for (final root in roots.where((directory) => directory.existsSync())) {
+        for (final entity in root.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final lines = entity.readAsLinesSync();
+          for (var index = 0; index < lines.length; index += 1) {
+            final line = lines[index];
+            if (rawHex.hasMatch(line) ||
+                rawSemanticColor.hasMatch(line) ||
+                localColorClass.hasMatch(line)) {
+              offenders.add('${entity.path}:${index + 1}: ${line.trim()}');
+            }
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
     test('routes every production screen through Premium 2027 wrappers', () {
       const screenFiles = [
         'lib/core/widgets/coming_soon_screen.dart',
@@ -180,33 +211,42 @@ void main() {
       for (final doc in docs) {
         final text = doc.readAsStringSync();
         expect(text, contains('Premium 2027'), reason: doc.path);
-        expect(text, contains('MOBILE_SOFT_ROYAL_UI_PLAN.md'), reason: doc.path);
+        expect(
+          text,
+          contains('MOBILE_SOFT_ROYAL_UI_PLAN.md'),
+          reason: doc.path,
+        );
         expect(text, contains('Soft Royal Wedding'), reason: doc.path);
       }
     });
 
-    test('keeps a Phase A audit matrix for the highest-risk mobile screens', () {
-      final text = File('../MOBILE_SCREEN_AUDIT_MATRIX.md').readAsStringSync();
+    test(
+      'keeps a Phase A audit matrix for the highest-risk mobile screens',
+      () {
+        final text = File(
+          '../MOBILE_SCREEN_AUDIT_MATRIX.md',
+        ).readAsStringSync();
 
-      for (final expected in [
-        'wedding_plan_dashboard_screen.dart',
-        'aarast_dashboard_widgets.dart',
-        'guest_welcome_screen.dart',
-        'generated_dashboard_preview_screen.dart',
-        'main_shell.dart',
-        'wedding_plan_shell.dart',
-        'more_screen.dart',
-        'budget_expense_screen.dart',
-        'task_timeline_screen.dart',
-        'guest_list_screen.dart',
-        'provider_marketplace_screen.dart',
-        'plan_center_screen.dart',
-      ]) {
-        expect(text, contains(expected), reason: expected);
-      }
+        for (final expected in [
+          'wedding_plan_dashboard_screen.dart',
+          'aarast_dashboard_widgets.dart',
+          'guest_welcome_screen.dart',
+          'generated_dashboard_preview_screen.dart',
+          'main_shell.dart',
+          'wedding_plan_shell.dart',
+          'more_screen.dart',
+          'budget_expense_screen.dart',
+          'task_timeline_screen.dart',
+          'guest_list_screen.dart',
+          'provider_marketplace_screen.dart',
+          'plan_center_screen.dart',
+        ]) {
+          expect(text, contains(expected), reason: expected);
+        }
 
-      expect(text, contains('Phase A baseline'));
-      expect(text, contains('No UI changes made by this audit'));
-    });
+        expect(text, contains('Phase A baseline'));
+        expect(text, contains('No UI changes made by this audit'));
+      },
+    );
   });
 }

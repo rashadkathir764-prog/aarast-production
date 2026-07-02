@@ -89,8 +89,8 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        _RoyalHomeColors.ivory,
-                        _RoyalHomeColors.ivory.withValues(alpha: 0),
+                        AppTheme.ivory,
+                        AppTheme.ivory.withValues(alpha: 0),
                       ],
                     ),
                   ),
@@ -107,7 +107,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                   borderRadius: BorderRadius.circular(38),
                   boxShadow: [
                     BoxShadow(
-                      color: _RoyalHomeColors.ink.withValues(alpha: 0.06),
+                      color: AppTheme.ink.withValues(alpha: 0.06),
                       blurRadius: 30,
                       offset: const Offset(0, 10),
                     ),
@@ -251,10 +251,7 @@ class _RoyalSmartFloatingActionButtonState
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          _RoyalHomeColors.gold,
-                          _RoyalHomeColors.goldDeep,
-                        ],
+                        colors: [AppTheme.gold, AppTheme.warning],
                       ),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.4),
@@ -262,7 +259,7 @@ class _RoyalSmartFloatingActionButtonState
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: _RoyalHomeColors.goldDeep.withValues(
+                          color: AppTheme.warning.withValues(
                             alpha: _glowAnimation.value,
                           ),
                           blurRadius: 24,
@@ -310,7 +307,7 @@ class RoyalHomeActionSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _RoyalHomeColors.ivory,
+      color: AppTheme.ivory,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
       child: SafeArea(
         top: false,
@@ -370,9 +367,7 @@ class _RoyalActionDialog extends StatelessWidget {
             onTap: onClose,
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 7, sigmaY: 7),
-              child: Container(
-                color: _RoyalHomeColors.ink.withValues(alpha: 0.50),
-              ),
+              child: Container(color: AppTheme.ink.withValues(alpha: 0.50)),
             ),
           ),
         ),
@@ -415,7 +410,7 @@ class _RoyalSheetHeader extends StatelessWidget {
               width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: _RoyalHomeColors.burgundy.withValues(alpha: 0.12),
+                color: AppTheme.burgundy.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
@@ -425,7 +420,7 @@ class _RoyalSheetHeader extends StatelessWidget {
             child: Text(
               'إجراء جديد',
               style: TextStyle(
-                color: _RoyalHomeColors.ink,
+                color: AppTheme.ink,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0,
@@ -442,12 +437,12 @@ class _RoyalSheetHeader extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: _RoyalHomeColors.burgundy.withValues(alpha: 0.06),
+                  color: AppTheme.burgundy.withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.close_rounded,
-                  color: _RoyalHomeColors.burgundy,
+                  color: AppTheme.burgundy,
                   size: 22,
                 ),
               ),
@@ -499,12 +494,12 @@ class _RoyalActionTile extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 76),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: _RoyalHomeColors.ivory,
+          color: AppTheme.ivory,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _RoyalHomeColors.ink.withAlpha(15)),
+          border: Border.all(color: AppTheme.ink.withAlpha(15)),
           boxShadow: [
             BoxShadow(
-              color: _RoyalHomeColors.ink.withAlpha(5),
+              color: AppTheme.ink.withAlpha(5),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -516,10 +511,10 @@ class _RoyalActionTile extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _RoyalHomeColors.gold.withValues(alpha: 0.11),
+                color: AppTheme.gold.withValues(alpha: 0.11),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(action.icon, color: _RoyalHomeColors.gold, size: 25),
+              child: Icon(action.icon, color: AppTheme.gold, size: 25),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -528,7 +523,7 @@ class _RoyalActionTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _RoyalHomeColors.burgundy,
+                  color: AppTheme.burgundy,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0,
@@ -559,8 +554,8 @@ class _RoyalNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = _RoyalHomeColors.burgundy;
-    final inactiveColor = _RoyalHomeColors.muted;
+    final activeColor = AppTheme.burgundy;
+    final inactiveColor = AppTheme.muted;
 
     return _PressScale(
       onTap: onTap,
@@ -648,15 +643,4 @@ class _PressScaleState extends State<_PressScale> {
       ),
     );
   }
-}
-
-class _RoyalHomeColors {
-  const _RoyalHomeColors._();
-
-  static const ivory = AppTheme.ivory;
-  static const burgundy = AppTheme.burgundy;
-  static const gold = AppTheme.gold;
-  static const goldDeep = AppTheme.warning;
-  static const ink = AppTheme.ink;
-  static const muted = AppTheme.muted;
 }

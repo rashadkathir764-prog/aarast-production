@@ -2,6 +2,7 @@
 
 import '../../core/contacts/contact_picker_service.dart';
 import '../../core/phone/phone_number_utils.dart';
+import '../../core/theme/app_theme.dart';
 import '../models/contact_phone_draft.dart';
 
 class ContactPhoneField extends StatefulWidget {
@@ -54,11 +55,11 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
     final statusColor = widget.duplicateMessage != null
         ? widget.duplicateIsBlocking
               ? Theme.of(context).colorScheme.error
-              : Colors.orange.shade800
+              : AppTheme.warning
         : analysis.isWarning
-        ? Colors.orange.shade800
+        ? AppTheme.warning
         : analysis.isValid
-        ? Colors.green.shade700
+        ? AppTheme.success
         : Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Column(

@@ -46,17 +46,17 @@ The work is not quick decoration. The work is product stabilization.
 
 | Role | Token direction | Rule |
 | --- | --- | --- |
-| App background | Warm ivory `#FBF4EA` / pearl cream `#FFF8EF` | The default mobile surface should stay soft, warm, and calm. |
-| Primary action | Royal burgundy `#7A1F2B` | Use for the single most important action. |
-| Deep identity | Deep burgundy `#4A0F18` | Use for hero depth, strong titles, and high-contrast surfaces. |
-| Premium accent | Champagne gold `#D8B26E` | Use sparingly for emphasis, borders, icons, and priority moments. |
+| App background | Warm bridal ivory `#FDFBF9` / pearl cream `#FFFAF5` | The default mobile surface should stay soft, warm, and calm. |
+| Primary action | Royal rose burgundy `#800020` | Use for the single most important action. |
+| Deep identity | Deep burgundy `#5A0015` | Use for hero depth, strong titles, and high-contrast surfaces. |
+| Premium accent | Champagne gold `#D4AF37` | Use sparingly for emphasis, borders, icons, and priority moments. |
 | Card surface | Warm white `#FFFFFF` | Use shared cards, not local card systems. |
-| Primary text | Deep ink `#23181A` | Keep Arabic copy readable and calm. |
-| Secondary text | Muted cocoa `#75666A` | Use for helper copy and metadata. |
-| Borders | Soft border `#EADBC9` | Keep separators warm and subtle. |
-| Success | Safe green `#2E7D5B` | Success only, never decoration. |
-| Danger | Danger red `#B94A48` | Destructive, overdue, or error only. |
-| Warning | Warning gold `#C9963E` | Caution, near-risk, or priority only. |
+| Primary text | Deep ink `#2D1A1E` | Keep Arabic copy readable and calm. |
+| Secondary text | Muted cocoa `#8A7B7E` | Use for helper copy and metadata. |
+| Borders | Soft border `#F2E7DC` | Keep separators warm and subtle. |
+| Success | Safe green `#3D8252` | Success only, never decoration. |
+| Danger | Danger red `#BA2D3F` | Destructive, overdue, or error only. |
+| Warning | Warning gold `#D98A2C` | Caution, near-risk, or priority only. |
 
 ### Implementation Rules
 

@@ -4,34 +4,34 @@ class AarastDesignTokens {
   const AarastDesignTokens._();
 
   // Primary Colors
-  static const Color ivory = Color(0xFFFBF4EA); // Warm Ivory
-  static const Color pearl = Color(0xFFFFF8EF); // Pearl Cream
+  static const Color ivory = Color(0xFFFDFBF9); // Warm Bridal Ivory
+  static const Color pearl = Color(0xFFFFFAF5); // Pearl Cream
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceElevated = Color(0xFFFFFFFF);
+  static const Color surfaceElevated = Color(0xFFFFFDFC);
 
-  static const Color burgundy = Color(0xFF7A1F2B); // Royal Burgundy
-  static const Color burgundyDark = Color(0xFF4A0F18); // Deep Burgundy
-  static const Color burgundySoft = Color(0xFFF7E8EA);
+  static const Color burgundy = Color(0xFF800020); // Royal Rose Burgundy
+  static const Color burgundyDark = Color(0xFF5A0015); // Deep Burgundy
+  static const Color burgundySoft = Color(0xFFF8E8EC);
 
-  static const Color gold = Color(0xFFD8B26E); // Champagne Gold
-  static const Color goldSoft = Color(0xFFFFF3D8);
+  static const Color gold = Color(0xFFD4AF37); // Royal Champagne Gold
+  static const Color goldSoft = Color(0xFFFFF3CF);
 
-  static const Color ink = Color(0xFF23181A);
+  static const Color ink = Color(0xFF2D1A1E);
   static const Color title = burgundyDark;
-  static const Color muted = Color(0xFF75666A);
-  static const Color border = Color(0xFFEADBC9);
+  static const Color muted = Color(0xFF8A7B7E);
+  static const Color border = Color(0xFFF2E7DC);
 
   // Semantic Status Colors
-  static const Color success = Color(0xFF2E7D5B);
+  static const Color success = Color(0xFF3D8252);
   static const Color successSoft = Color(0xFFE8F4EE);
-  static const Color warning = Color(0xFFC9963E);
-  static const Color warningSoft = Color(0xFFFFF3D8);
-  static const Color danger = Color(0xFFB94A48);
-  static const Color dangerSoft = Color(0xFFFCECEC);
+  static const Color warning = Color(0xFFD98A2C);
+  static const Color warningSoft = Color(0xFFFFF3CF);
+  static const Color danger = Color(0xFFBA2D3F);
+  static const Color dangerSoft = Color(0xFFFBECEF);
   static const Color info = Color(0xFF4F6D7A);
   static const Color infoSoft = Color(0xFFEAF1F4);
-  static const Color disabled = Color(0xFFB9AEAA);
-  static const Color empty = Color(0xFFF3E8DA);
+  static const Color disabled = Color(0xFFC7BABD);
+  static const Color empty = Color(0xFFFFF8EF);
 
   // Backward compatibility for tests
   static const Color royalMaroon = burgundy;
@@ -100,7 +100,7 @@ class AarastDesignTokens {
   static const LinearGradient burgundyGradient = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [burgundy, Color(0xFF651826), burgundyDark],
+    colors: [burgundy, Color(0xFF74182B), burgundyDark],
   );
 
   static const LinearGradient pageGradient = LinearGradient(

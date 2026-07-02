@@ -68,7 +68,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     return AarastScreenFrame(
       maxWidth: 520,
       child: DecoratedBox(
-        decoration: const BoxDecoration(color: _RoyalColors.ivory),
+        decoration: const BoxDecoration(color: AppTheme.ivory),
         child: Stack(
           children: [
             Column(
@@ -82,7 +82,7 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                 ),
                 Expanded(
                   child: RefreshIndicator(
-                    color: _RoyalColors.burgundy,
+                    color: AppTheme.burgundy,
                     onRefresh: _loadFinance,
                     child: _hasAnyFinanceAccess
                         ? _FinanceContent(
@@ -355,7 +355,7 @@ class _FinanceContent extends StatelessWidget {
             child: Text(
               'لا توجد تصنيفات بعد. أضف تصنيف ميزانية عندما تكون جاهزًا.',
               style: TextStyle(
-                color: _RoyalColors.ink.withValues(alpha: 0.4),
+                color: AppTheme.ink.withValues(alpha: 0.4),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -391,7 +391,7 @@ class _FinanceContent extends StatelessWidget {
             child: Text(
               'لا توجد مصاريف بعد. أضف مصروفًا عند وجود تكلفة فعلية.',
               style: TextStyle(
-                color: _RoyalColors.ink.withValues(alpha: 0.4),
+                color: AppTheme.ink.withValues(alpha: 0.4),
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -418,7 +418,7 @@ class _FinanceContent extends StatelessWidget {
               separatorBuilder: (context, index) => Divider(
                 height: 1,
                 thickness: 1,
-                color: _RoyalColors.ink.withValues(alpha: 0.05),
+                color: AppTheme.ink.withValues(alpha: 0.05),
                 indent: 16,
                 endIndent: 16,
               ),
@@ -911,7 +911,7 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
                 height: 4,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: _RoyalColors.ink.withValues(alpha: 0.05),
+                  color: AppTheme.ink.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -954,12 +954,12 @@ class _TopFinancialObligationsCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: _RoyalColors.ivory,
+        color: AppTheme.ivory,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _RoyalColors.ink.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.ink.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: _RoyalColors.ink.withValues(alpha: 0.04),
+            color: AppTheme.ink.withValues(alpha: 0.04),
             blurRadius: 15,
             offset: const Offset(0, 6),
           ),
@@ -997,7 +997,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                         Text(
                           'الديون والالتزامات',
                           style: TextStyle(
-                            color: _RoyalColors.ink.withValues(alpha: 0.9),
+                            color: AppTheme.ink.withValues(alpha: 0.9),
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                           ),
@@ -1006,7 +1006,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                         Text(
                           '${summary.debtsCount ?? 0} ديون مسجلة',
                           style: TextStyle(
-                            color: _RoyalColors.ink.withValues(alpha: 0.5),
+                            color: AppTheme.ink.withValues(alpha: 0.5),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1020,7 +1020,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       Text(
                         'المتبقي',
                         style: TextStyle(
-                          color: _RoyalColors.ink.withValues(alpha: 0.5),
+                          color: AppTheme.ink.withValues(alpha: 0.5),
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1042,7 +1042,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
           Divider(
             height: 1,
             thickness: 1,
-            color: _RoyalColors.ink.withValues(alpha: 0.05),
+            color: AppTheme.ink.withValues(alpha: 0.05),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1062,7 +1062,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       Text(
                         'القسط القادم',
                         style: TextStyle(
-                          color: _RoyalColors.ink.withValues(alpha: 0.7),
+                          color: AppTheme.ink.withValues(alpha: 0.7),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1072,7 +1072,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                         Text(
                           'لا توجد أقساط قادمة حالياً.',
                           style: TextStyle(
-                            color: _RoyalColors.ink.withValues(alpha: 0.4),
+                            color: AppTheme.ink.withValues(alpha: 0.4),
                             fontSize: 12,
                           ),
                         )
@@ -1123,7 +1123,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
           Divider(
             height: 1,
             thickness: 1,
-            color: _RoyalColors.ink.withValues(alpha: 0.05),
+            color: AppTheme.ink.withValues(alpha: 0.05),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1142,7 +1142,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       Text(
                         'آخر الأقساط المسجلة',
                         style: TextStyle(
-                          color: _RoyalColors.ink.withValues(alpha: 0.7),
+                          color: AppTheme.ink.withValues(alpha: 0.7),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1153,7 +1153,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                             ? 'لا توجد أقساط مدفوعة مسجلة بعد.'
                             : 'الأقساط المدفوعة المسجلة: ${summary.paidInstallmentsCount}',
                         style: TextStyle(
-                          color: _RoyalColors.ink.withValues(alpha: 0.5),
+                          color: AppTheme.ink.withValues(alpha: 0.5),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1264,7 +1264,7 @@ class _ExpenseRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _RoyalColors.ink,
+                    color: AppTheme.ink,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1280,13 +1280,13 @@ class _ExpenseRow extends StatelessWidget {
                     ),
                     AarastStatusPill(
                       label: categoryName,
-                      color: _RoyalColors.goldDeep,
+                      color: AppTheme.gold,
                       icon: Icons.folder_outlined,
                     ),
                     if (expense.expenseDate != null)
                       AarastStatusPill(
                         label: _shortDate(expense.expenseDate!),
-                        color: _RoyalColors.muted,
+                        color: AppTheme.muted,
                         icon: Icons.calendar_month_rounded,
                       ),
                     OfflinePendingBadge(
@@ -1302,7 +1302,7 @@ class _ExpenseRow extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: _RoyalColors.ink.withValues(alpha: 0.6),
+                      color: AppTheme.ink.withValues(alpha: 0.6),
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1315,7 +1315,7 @@ class _ExpenseRow extends StatelessWidget {
           _AnimatedMoneyText(
             value: expense.amount,
             style: const TextStyle(
-              color: _RoyalColors.burgundy,
+              color: AppTheme.burgundy,
               fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
@@ -1324,10 +1324,7 @@ class _ExpenseRow extends StatelessWidget {
           PopupMenuButton<_ExpenseAction>(
             enabled: !isBusy,
             tooltip: 'خيارات المصروف',
-            icon: const Icon(
-              Icons.more_vert_rounded,
-              color: _RoyalColors.muted,
-            ),
+            icon: const Icon(Icons.more_vert_rounded, color: AppTheme.muted),
             onSelected: (action) {
               if (action == _ExpenseAction.edit) {
                 onEdit();
@@ -1625,16 +1622,6 @@ String _installmentStateLabel(MoneyNextInstallment installment) {
 
 String _shortDate(DateTime date) {
   return formatArabicCompactDate(date);
-}
-
-class _RoyalColors {
-  const _RoyalColors._();
-
-  static const ivory = AppTheme.ivory;
-  static const burgundy = AppTheme.burgundy;
-  static const goldDeep = AppTheme.gold;
-  static const ink = AppTheme.ink;
-  static const muted = AppTheme.muted;
 }
 
 class _AnimatedMoneyText extends StatelessWidget {

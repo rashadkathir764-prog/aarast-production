@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
 
 import 'core/routing/app_router.dart';
@@ -25,6 +26,9 @@ class AarastApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'اعّرست',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('ar'),
+      supportedLocales: const [Locale('ar')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: AppTheme.light(),
       routerConfig: router,
       builder: (context, child) {

@@ -46,21 +46,21 @@ Existing `AppTheme` names remain supported as compatibility aliases so productio
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `royalMaroon` | `#7A1F2B` | Primary brand actions, active navigation, important icons |
-| `royalMaroonSoft` | `#F7E8EA` | Soft royal backgrounds and quiet elevated accents |
-| `royalMaroonDeep` | `#4A0F18` | Deep contrast, shadows, premium hero surfaces |
-| `champagneGold` | `#D8B26E` | Secondary accent, progress, premium emphasis |
-| `champagneGoldDeep` | `#C9963E` | Readable gold text on light surfaces and warning states |
-| `pearl` | `#FFF8EF` | Primary pearl surface |
-| `warmIvory` | `#FBF4EA` | App background |
-| `softSand` | `#F3E8DA` | Page gradient tail and quiet panels |
-| `mutedRose` | `#FCECEC` | Soft danger treatment |
-| `ink` | `#23181A` | Primary text |
-| `inkSoft` | `#75666A` | Secondary text |
-| `hairline` | `#EADBC9` | Borders and separators |
-| `success` | `#2E7D5B` | Paid, done, success states |
-| `warning` | `#C9963E` | Pending or caution states |
-| `danger` | `#B94A48` | Delete, overdue, destructive states |
+| `royalMaroon` | `#800020` | Primary brand actions, active navigation, important icons |
+| `royalMaroonSoft` | `#F8E8EC` | Soft royal backgrounds and quiet elevated accents |
+| `royalMaroonDeep` | `#5A0015` | Deep contrast, shadows, premium hero surfaces |
+| `champagneGold` | `#D4AF37` | Secondary accent, progress, premium emphasis |
+| `champagneGoldDeep` | `#D98A2C` | Readable gold text on light surfaces and warning states |
+| `pearl` | `#FFFAF5` | Primary pearl surface |
+| `warmIvory` | `#FDFBF9` | App background |
+| `softSand` | `#FFF8EF` | Page gradient tail and quiet panels |
+| `mutedRose` | `#FBECEF` | Soft danger treatment |
+| `ink` | `#2D1A1E` | Primary text |
+| `inkSoft` | `#8A7B7E` | Secondary text |
+| `hairline` | `#F2E7DC` | Borders and separators |
+| `success` | `#3D8252` | Paid, done, success states |
+| `warning` | `#D98A2C` | Pending or caution states |
+| `danger` | `#BA2D3F` | Delete, overdue, destructive states |
 | `info` | `#4F6D7A` | Neutral informational states |
 
 White text is reserved for dark maroon hero/overlay surfaces and high-contrast icon buttons. Status colors must come from semantic tokens instead of raw `Colors.green`, `Colors.red`, or ad hoc Material colors.

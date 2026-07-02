@@ -1308,7 +1308,11 @@ class _DashboardHeroCardState extends State<DashboardHeroCard> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(26),
         gradient: const LinearGradient(
-          colors: [AppTheme.burgundyBright, AppTheme.burgundy, AppTheme.burgundy2],
+          colors: [
+            AppTheme.burgundyBright,
+            AppTheme.burgundy,
+            AppTheme.burgundy2,
+          ],
           stops: [0, 0.45, 1],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
@@ -2772,10 +2776,7 @@ class _ParticipantTile extends StatelessWidget {
                 if (info.phone != null)
                   _Num(
                     info.phone!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.muted,
-                    ),
+                    style: const TextStyle(fontSize: 13, color: AppTheme.muted),
                   ),
               ],
             ),
@@ -2808,11 +2809,11 @@ class _Avatar extends StatelessWidget {
   final String name;
 
   static const _palette = [
-    Color(0xFFB6432F),
-    Color(0xFF3A3A3A),
-    Color(0xFF4F6D7A),
-    Color(0xFF8A5A44),
-    Color(0xFF5B6E4F),
+    AppTheme.burgundy,
+    AppTheme.ink,
+    AppTheme.info,
+    AppTheme.warning,
+    AppTheme.success,
   ];
 
   @override
@@ -2980,7 +2981,7 @@ class DashboardBottomNav extends StatelessWidget {
         border: const Border(top: BorderSide(color: AppTheme.border)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(10),
+            color: AppTheme.ink.withAlpha(10),
             blurRadius: 12,
             offset: const Offset(0, -3),
           ),
@@ -3048,7 +3049,7 @@ class DashboardBottomNav extends StatelessWidget {
                       border: Border.all(color: AppTheme.gold2, width: 3),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
+                          color: AppTheme.ink.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -3094,9 +3095,13 @@ class _WireNavItem extends StatelessWidget {
         width: 54,
         height: 52,
         decoration: BoxDecoration(
-          color: active ? AppTheme.burgundySoft.withAlpha(90) : Colors.transparent,
+          color: active
+              ? AppTheme.burgundySoft.withAlpha(90)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
-          border: active ? Border.all(color: AppTheme.border, width: 0.8) : null,
+          border: active
+              ? Border.all(color: AppTheme.border, width: 0.8)
+              : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

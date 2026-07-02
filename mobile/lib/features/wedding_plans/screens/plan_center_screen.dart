@@ -811,7 +811,7 @@ class _EditPlanSheetState extends State<_EditPlanSheet> {
                     _errorMessage!,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: Colors.red,
+                      color: AppTheme.danger,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -943,12 +943,12 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
         gradient: AppTheme.heroGradient,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: _RoyalColors.gold.withValues(alpha: 0.15),
+          color: AppTheme.warmGold.withValues(alpha: 0.15),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: _RoyalColors.burgundy.withValues(alpha: 0.35),
+            color: AppTheme.deepBurgundy.withValues(alpha: 0.35),
             blurRadius: 36,
             offset: const Offset(0, 16),
           ),
@@ -968,7 +968,7 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _RoyalColors.gold.withValues(alpha: 0.12),
+                      AppTheme.warmGold.withValues(alpha: 0.12),
                       Colors.transparent,
                     ],
                   ),
@@ -985,7 +985,7 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _RoyalColors.burgundyLight.withValues(alpha: 0.15),
+                      AppTheme.burgundyBright.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                   ),
@@ -1009,7 +1009,7 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: _RoyalColors.gold,
+                                color: AppTheme.warmGold,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
                                 height: 1.15,
@@ -1044,7 +1044,7 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
                                 backgroundColor: Colors.white.withValues(
                                   alpha: 0.1,
                                 ),
-                                color: _RoyalColors.gold,
+                                color: AppTheme.warmGold,
                               ),
                               Text(
                                 '$progressPercent%',
@@ -1123,7 +1123,7 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.timer_outlined, color: _RoyalColors.gold, size: 18),
+          const Icon(Icons.timer_outlined, color: AppTheme.warmGold, size: 18),
           const SizedBox(width: 8),
           Text(
             _daysRemainingLabel(plan.daysRemaining),
@@ -1272,12 +1272,12 @@ class _SetupChecklistCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _RoyalColors.burgundyLight.withValues(alpha: 0.1),
+                  color: AppTheme.burgundyBright.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.rocket_launch_rounded,
-                  color: _RoyalColors.burgundyLight,
+                  color: AppTheme.burgundyBright,
                   size: 20,
                 ),
               ),
@@ -1366,7 +1366,7 @@ class _ChecklistItem extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: _RoyalColors.goldDeep, size: 22),
+            Icon(icon, color: AppTheme.gold, size: 22),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1544,7 +1544,7 @@ class _PlanLocationCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: hasLocation
-                  ? _RoyalColors.gold.withValues(alpha: 0.08)
+                  ? AppTheme.warmGold.withValues(alpha: 0.08)
                   : _pcMuted.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(_pcRadius),
               border: Border.all(color: _pcLine, width: 0.9),
@@ -1556,7 +1556,7 @@ class _PlanLocationCard extends StatelessWidget {
                   hasLocation
                       ? Icons.location_on_rounded
                       : Icons.add_location_alt_outlined,
-                  color: hasLocation ? _RoyalColors.goldDeep : _pcMuted,
+                  color: hasLocation ? AppTheme.gold : _pcMuted,
                   size: 22,
                 ),
                 const SizedBox(width: 10),
@@ -2323,15 +2323,6 @@ const _pcMuted = AppTheme.muted;
 const _pcLine = AppTheme.border;
 const _pcSoft = AppTheme.surface;
 const _pcRadius = 16.0;
-
-class _RoyalColors {
-  const _RoyalColors._();
-
-  static const burgundy = AppTheme.deepBurgundy;
-  static const burgundyLight = AppTheme.burgundyBright;
-  static const gold = AppTheme.warmGold;
-  static const goldDeep = AppTheme.gold;
-}
 
 ButtonStyle _pcOutlinedButtonStyle() {
   return OutlinedButton.styleFrom(

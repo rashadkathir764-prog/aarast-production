@@ -6,19 +6,19 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Aarast Premium 2027 design tokens', () {
     test('define the approved Soft Royal Wedding palette', () {
-      expect(AarastDesignTokens.ivory, const Color(0xFFFBF4EA));
-      expect(AarastDesignTokens.pearl, const Color(0xFFFFF8EF));
+      expect(AarastDesignTokens.ivory, const Color(0xFFFDFBF9));
+      expect(AarastDesignTokens.pearl, const Color(0xFFFFFAF5));
       expect(AarastDesignTokens.surface, Colors.white);
-      expect(AarastDesignTokens.surfaceElevated, Colors.white);
-      expect(AarastDesignTokens.burgundy, const Color(0xFF7A1F2B));
-      expect(AarastDesignTokens.burgundyDark, const Color(0xFF4A0F18));
-      expect(AarastDesignTokens.gold, const Color(0xFFD8B26E));
-      expect(AarastDesignTokens.ink, const Color(0xFF23181A));
-      expect(AarastDesignTokens.muted, const Color(0xFF75666A));
-      expect(AarastDesignTokens.border, const Color(0xFFEADBC9));
-      expect(AarastDesignTokens.success, const Color(0xFF2E7D5B));
-      expect(AarastDesignTokens.warning, const Color(0xFFC9963E));
-      expect(AarastDesignTokens.danger, const Color(0xFFB94A48));
+      expect(AarastDesignTokens.surfaceElevated, const Color(0xFFFFFDFC));
+      expect(AarastDesignTokens.burgundy, const Color(0xFF800020));
+      expect(AarastDesignTokens.burgundyDark, const Color(0xFF5A0015));
+      expect(AarastDesignTokens.gold, const Color(0xFFD4AF37));
+      expect(AarastDesignTokens.ink, const Color(0xFF2D1A1E));
+      expect(AarastDesignTokens.muted, const Color(0xFF8A7B7E));
+      expect(AarastDesignTokens.border, const Color(0xFFF2E7DC));
+      expect(AarastDesignTokens.success, const Color(0xFF3D8252));
+      expect(AarastDesignTokens.warning, const Color(0xFFD98A2C));
+      expect(AarastDesignTokens.danger, const Color(0xFFBA2D3F));
     });
 
     test('back the legacy AppTheme aliases used by production screens', () {

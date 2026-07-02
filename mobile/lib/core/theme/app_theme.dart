@@ -32,6 +32,8 @@ class AppTheme {
   static const warningSoft = AarastDesignTokens.warningSoft;
   static const danger = AarastDesignTokens.danger;
   static const dangerSoft = AarastDesignTokens.dangerSoft;
+  static const info = AarastDesignTokens.info;
+  static const infoSoft = AarastDesignTokens.infoSoft;
   static const disabled = AarastDesignTokens.disabled;
   static const empty = AarastDesignTokens.empty;
 
@@ -99,7 +101,7 @@ class AppTheme {
   static const LinearGradient goldGradient = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0xFFE8D2A4), gold, warning],
+    colors: [goldSoft, gold, warning],
   );
 
   static List<BoxShadow> cardShadow() {

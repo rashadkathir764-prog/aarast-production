@@ -11,7 +11,7 @@ Future<T?> showAarastBottomSheet<T>({
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withAlpha(105),
+    barrierColor: AppTheme.ink.withAlpha(105),
     builder: (context) {
       return Directionality(
         textDirection: TextDirection.rtl,

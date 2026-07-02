@@ -58,7 +58,7 @@ class RoyalHomeTodayCenter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: _RoyalColors.ivory),
+      decoration: const BoxDecoration(color: AppTheme.ivory),
       child: ListView(
         key: ValueKey('royal-home-${summary.planId}'),
         padding: EdgeInsets.fromLTRB(18, 18, 18, bottomPadding),
@@ -159,7 +159,7 @@ class _PremiumHeader extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _RoyalColors.muted,
+                  color: AppTheme.muted,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0,
@@ -171,7 +171,7 @@ class _PremiumHeader extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: _RoyalColors.gold,
+                  color: AppTheme.gold,
                   fontSize: 26,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
@@ -398,7 +398,7 @@ class _HeroMetaLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: _RoyalColors.muted, size: 14),
+        Icon(icon, color: AppTheme.muted, size: 14),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -406,7 +406,7 @@ class _HeroMetaLine extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: _RoyalColors.muted,
+              color: AppTheme.muted,
               fontSize: 13,
               fontWeight: FontWeight.w700,
               letterSpacing: 0,
@@ -441,14 +441,14 @@ class _HeroCta extends StatelessWidget {
             Text(
               'متابعة الخطة',
               style: TextStyle(
-                color: _RoyalColors.ink,
+                color: AppTheme.ink,
                 fontSize: 13,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,
               ),
             ),
             SizedBox(width: 5),
-            Icon(Icons.arrow_back_rounded, color: _RoyalColors.ink, size: 16),
+            Icon(Icons.arrow_back_rounded, color: AppTheme.ink, size: 16),
           ],
         ),
       ),
@@ -466,16 +466,16 @@ class _StatePill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _RoyalColors.gold.withValues(alpha: 0.10),
+        color: AppTheme.gold.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.15)),
+        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.15)),
       ),
       child: Text(
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
-          color: _RoyalColors.gold,
+          color: AppTheme.gold,
           fontSize: 11,
           fontWeight: FontWeight.w900,
           letterSpacing: 0,
@@ -513,12 +513,12 @@ class _PremiumHeroCard extends StatelessWidget {
           gradient: AppTheme.heroGradient,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _RoyalColors.gold.withValues(alpha: 0.15),
+            color: AppTheme.gold.withValues(alpha: 0.15),
             width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: _RoyalColors.burgundy.withValues(alpha: 0.35),
+              color: AppTheme.burgundy.withValues(alpha: 0.35),
               blurRadius: 36,
               offset: const Offset(0, 16),
             ),
@@ -536,7 +536,7 @@ class _PremiumHeroCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _RoyalColors.gold.withValues(alpha: 0.12),
+                      AppTheme.gold.withValues(alpha: 0.12),
                       Colors.transparent,
                     ],
                   ),
@@ -553,7 +553,7 @@ class _PremiumHeroCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
                     colors: [
-                      _RoyalColors.burgundyLight.withValues(alpha: 0.15),
+                      AppTheme.burgundySoft.withValues(alpha: 0.15),
                       Colors.transparent,
                     ],
                   ),
@@ -591,7 +591,7 @@ class _PremiumHeroCard extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: _RoyalColors.gold,
+                              color: AppTheme.gold,
                               fontSize: 24,
                               fontWeight: FontWeight.w900,
                               height: 1.15,
@@ -756,21 +756,21 @@ class _CountdownPill extends StatelessWidget {
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
-        color: _RoyalColors.gold.withValues(alpha: 0.15),
+        color: AppTheme.gold.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isLive) ...[
-            _LiveDot(color: _RoyalColors.gold),
+            _LiveDot(color: AppTheme.gold),
             const SizedBox(width: 8),
           ] else ...[
             const Icon(
               Icons.hourglass_bottom_rounded,
               size: 15,
-              color: _RoyalColors.gold,
+              color: AppTheme.gold,
             ),
             const SizedBox(width: 6),
           ],
@@ -778,7 +778,7 @@ class _CountdownPill extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: _RoyalColors.gold,
+                color: AppTheme.gold,
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
                 height: 1,
@@ -982,7 +982,7 @@ class _BasePanoramicCard extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: color ?? _RoyalColors.ivory,
+              color: color ?? AppTheme.ivory,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(color: AppTheme.border),
             ),
@@ -1007,7 +1007,7 @@ class _PanoramicFinanceCard extends StatelessWidget {
         child: const Center(
           child: Text(
             'لا توجد صلاحية لعرض المال',
-            style: TextStyle(color: _RoyalColors.muted),
+            style: TextStyle(color: AppTheme.muted),
           ),
         ),
       );
@@ -1026,7 +1026,7 @@ class _PanoramicFinanceCard extends StatelessWidget {
                   children: [
                     Icon(
                       Icons.account_balance_wallet_rounded,
-                      color: _RoyalColors.goldDeep,
+                      color: AppTheme.gold,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -1034,7 +1034,7 @@ class _PanoramicFinanceCard extends StatelessWidget {
                       child: Text(
                         'المالية',
                         style: TextStyle(
-                          color: _RoyalColors.ink,
+                          color: AppTheme.ink,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1047,7 +1047,7 @@ class _PanoramicFinanceCard extends StatelessWidget {
                 const Text(
                   'المتبقي لك',
                   style: TextStyle(
-                    color: _RoyalColors.muted,
+                    color: AppTheme.muted,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1056,7 +1056,7 @@ class _PanoramicFinanceCard extends StatelessWidget {
                 _AnimatedMoneyText(
                   value: summary.remainingBudget ?? '0',
                   style: const TextStyle(
-                    color: _RoyalColors.burgundy,
+                    color: AppTheme.burgundy,
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
                     height: 1.1,
@@ -1109,7 +1109,7 @@ class _PanoramicProviderCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.storefront_rounded,
-                    color: _RoyalColors.goldDeep,
+                    color: AppTheme.gold,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -1117,7 +1117,7 @@ class _PanoramicProviderCard extends StatelessWidget {
                     child: Text(
                       'الموردين',
                       style: TextStyle(
-                        color: _RoyalColors.ink,
+                        color: AppTheme.ink,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1130,7 +1130,7 @@ class _PanoramicProviderCard extends StatelessWidget {
               Text(
                 actionLabel,
                 style: TextStyle(
-                  color: _RoyalColors.muted,
+                  color: AppTheme.muted,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1139,7 +1139,7 @@ class _PanoramicProviderCard extends StatelessWidget {
               Text(
                 actionValue,
                 style: const TextStyle(
-                  color: _RoyalColors.ink,
+                  color: AppTheme.ink,
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   height: 1.1,
@@ -1151,16 +1151,14 @@ class _PanoramicProviderCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: _RoyalColors.burgundy.withValues(alpha: 0.08),
+            color: AppTheme.burgundy.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _RoyalColors.burgundy.withValues(alpha: 0.2),
-            ),
+            border: Border.all(color: AppTheme.burgundy.withValues(alpha: 0.2)),
           ),
           child: const Text(
             'استعراض',
             style: TextStyle(
-              color: _RoyalColors.burgundy,
+              color: AppTheme.burgundy,
               fontSize: 13,
               fontWeight: FontWeight.w800,
             ),
@@ -1180,7 +1178,7 @@ class _PanoramicProviderCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.storefront_rounded,
-                    color: _RoyalColors.goldDeep,
+                    color: AppTheme.gold,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -1188,7 +1186,7 @@ class _PanoramicProviderCard extends StatelessWidget {
                     child: Text(
                       'الموردين',
                       style: TextStyle(
-                        color: _RoyalColors.ink,
+                        color: AppTheme.ink,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1201,7 +1199,7 @@ class _PanoramicProviderCard extends StatelessWidget {
               const Text(
                 'موردون مرتبطون بالخطة',
                 style: TextStyle(
-                  color: _RoyalColors.muted,
+                  color: AppTheme.muted,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1210,7 +1208,7 @@ class _PanoramicProviderCard extends StatelessWidget {
               Text(
                 '$acceptedCount مورد مقبول',
                 style: const TextStyle(
-                  color: _RoyalColors.ink,
+                  color: AppTheme.ink,
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   height: 1.1,
@@ -1222,16 +1220,14 @@ class _PanoramicProviderCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: _RoyalColors.ivory,
+            color: AppTheme.ivory,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _RoyalColors.muted.withValues(alpha: 0.1),
-            ),
+            border: Border.all(color: AppTheme.muted.withValues(alpha: 0.1)),
           ),
           child: const Text(
             'تصفح',
             style: TextStyle(
-              color: _RoyalColors.muted,
+              color: AppTheme.muted,
               fontSize: 13,
               fontWeight: FontWeight.w800,
             ),
@@ -1264,8 +1260,8 @@ class _PanoramicPriorityCard extends StatelessWidget {
     return _BasePanoramicCard(
       onTap: () => onTapItem(topItem),
       color: isUrgent
-          ? _RoyalColors.burgundy.withValues(alpha: 0.04)
-          : _RoyalColors.ink,
+          ? AppTheme.burgundy.withValues(alpha: 0.04)
+          : AppTheme.ink,
       child: Row(
         children: [
           Expanded(
@@ -1279,9 +1275,7 @@ class _PanoramicPriorityCard extends StatelessWidget {
                       isUrgent
                           ? Icons.priority_high_rounded
                           : Icons.flash_on_rounded,
-                      color: isUrgent
-                          ? _RoyalColors.burgundy
-                          : _RoyalColors.goldDeep,
+                      color: isUrgent ? AppTheme.burgundy : AppTheme.gold,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -1290,9 +1284,7 @@ class _PanoramicPriorityCard extends StatelessWidget {
                         isUrgent ? 'تنبيه هام' : 'الأهم اليوم',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isUrgent
-                              ? _RoyalColors.burgundy
-                              : _RoyalColors.ink,
+                          color: isUrgent ? AppTheme.burgundy : AppTheme.ink,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1304,7 +1296,7 @@ class _PanoramicPriorityCard extends StatelessWidget {
                 const Text(
                   'إجراء مطلوب',
                   style: TextStyle(
-                    color: _RoyalColors.muted,
+                    color: AppTheme.muted,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1315,7 +1307,7 @@ class _PanoramicPriorityCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _RoyalColors.ink,
+                    color: AppTheme.ink,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                     height: 1.3,
@@ -1326,7 +1318,7 @@ class _PanoramicPriorityCard extends StatelessWidget {
           ),
           const Icon(
             Icons.chevron_left_rounded,
-            color: _RoyalColors.muted,
+            color: AppTheme.muted,
             size: 32,
           ),
         ],
@@ -1358,7 +1350,7 @@ class _DashboardSectionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: _RoyalColors.ivory,
+            color: AppTheme.ivory,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: AppTheme.border),
           ),
@@ -1368,7 +1360,7 @@ class _DashboardSectionCard extends StatelessWidget {
               Row(
                 children: [
                   if (icon != null) ...[
-                    Icon(icon, color: _RoyalColors.goldDeep, size: 20),
+                    Icon(icon, color: AppTheme.gold, size: 20),
                     const SizedBox(width: 8),
                   ],
                   Expanded(
@@ -1377,7 +1369,7 @@ class _DashboardSectionCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: _RoyalColors.ink,
+                        color: AppTheme.ink,
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0,
@@ -1391,7 +1383,7 @@ class _DashboardSectionCard extends StatelessWidget {
                 Text(
                   subtitle!.trim(),
                   style: const TextStyle(
-                    color: _RoyalColors.muted,
+                    color: AppTheme.muted,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     height: 1.35,
@@ -1531,7 +1523,7 @@ class _ImportantNowCard extends StatelessWidget {
                               textAlign: TextAlign.center,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: _RoyalColors.ink,
+                                color: AppTheme.ink,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 height: 1.2,
@@ -1596,7 +1588,7 @@ class _MoneySummaryCard extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.account_balance_wallet_rounded,
-                color: _RoyalColors.goldDeep,
+                color: AppTheme.gold,
                 size: 24,
               ),
             ),
@@ -1731,14 +1723,14 @@ class _QuickOverviewGrid extends StatelessWidget {
             children: [
               Icon(
                 Icons.dashboard_customize_rounded,
-                color: _RoyalColors.ink.withValues(alpha: 0.6),
+                color: AppTheme.ink.withValues(alpha: 0.6),
                 size: 18,
               ),
               const SizedBox(width: 8),
               const Text(
                 'نظرة سريعة',
                 style: TextStyle(
-                  color: _RoyalColors.ink,
+                  color: AppTheme.ink,
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
                 ),
@@ -1835,7 +1827,7 @@ class _MiniDashboardCard extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 142),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: _RoyalColors.ivory,
+            color: AppTheme.ivory,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppTheme.border),
           ),
@@ -1844,7 +1836,7 @@ class _MiniDashboardCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: _RoyalColors.goldDeep, size: 18),
+                  Icon(icon, color: AppTheme.gold, size: 18),
                   const SizedBox(width: 7),
                   Expanded(
                     child: Text(
@@ -1852,7 +1844,7 @@ class _MiniDashboardCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: _RoyalColors.ink,
+                        color: AppTheme.ink,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0,
@@ -1867,7 +1859,7 @@ class _MiniDashboardCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _RoyalColors.muted,
+                  color: AppTheme.muted,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   height: 1.35,
@@ -1902,7 +1894,7 @@ class _MiniCardText extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: const TextStyle(
-        color: _RoyalColors.burgundy,
+        color: AppTheme.burgundy,
         fontSize: 13,
         fontWeight: FontWeight.w900,
         letterSpacing: 0,
@@ -1948,7 +1940,7 @@ class _LatestUpdatesMiniList extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: _RoyalColors.ink,
+                        color: AppTheme.ink,
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0,
@@ -2051,7 +2043,7 @@ class _SyncStatusCard extends StatelessWidget {
             ? 'الخطة محفوظة محلياً على هذا الجهاز. سجل الدخول للمزامنة والمشاركة.'
             : 'الخطة مرتبطة بالحساب وتعرض آخر ملخص متاح من الخادم.',
         style: const TextStyle(
-          color: _RoyalColors.muted,
+          color: AppTheme.muted,
           fontSize: 13,
           fontWeight: FontWeight.w700,
           height: 1.45,
@@ -2125,7 +2117,7 @@ class _MoneyRow extends StatelessWidget {
             child: Text(
               label,
               style: const TextStyle(
-                color: _RoyalColors.muted,
+                color: AppTheme.muted,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0,
@@ -2135,7 +2127,7 @@ class _MoneyRow extends StatelessWidget {
           _AnimatedMoneyText(
             value: value,
             style: const TextStyle(
-              color: _RoyalColors.ink,
+              color: AppTheme.ink,
               fontSize: 15,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
@@ -2184,7 +2176,7 @@ class _OverviewTile extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(icon, color: _RoyalColors.goldDeep, size: 16),
+                    Icon(icon, color: AppTheme.gold, size: 16),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -2192,7 +2184,7 @@ class _OverviewTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: _RoyalColors.muted,
+                          color: AppTheme.muted,
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -2206,7 +2198,7 @@ class _OverviewTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _RoyalColors.ink,
+                    color: AppTheme.ink,
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                     height: 1.1,
@@ -2218,7 +2210,7 @@ class _OverviewTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _RoyalColors.ink.withValues(alpha: 0.4),
+                    color: AppTheme.ink.withValues(alpha: 0.4),
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -2279,7 +2271,7 @@ class _CompactLineItem extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.fade,
                     style: const TextStyle(
-                      color: _RoyalColors.ink,
+                      color: AppTheme.ink,
                       fontSize: 14,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0,
@@ -2291,7 +2283,7 @@ class _CompactLineItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: _RoyalColors.muted,
+                      color: AppTheme.muted,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 0,
@@ -2320,7 +2312,7 @@ class _CompactLineItem extends StatelessWidget {
                 ),
               )
             else
-              const Icon(Icons.chevron_left_rounded, color: _RoyalColors.muted),
+              const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
           ],
         ),
       ),
@@ -2338,7 +2330,7 @@ class _EmptySectionText extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: _RoyalColors.muted,
+        color: AppTheme.muted,
         fontSize: 13,
         fontWeight: FontWeight.w700,
         height: 1.45,
@@ -2368,13 +2360,13 @@ class _SmallCommandButton extends StatelessWidget {
         height: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: _RoyalColors.burgundy,
+          color: AppTheme.burgundy,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: _RoyalColors.ink, size: 17),
+            Icon(icon, color: AppTheme.ink, size: 17),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -2382,7 +2374,7 @@ class _SmallCommandButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: _RoyalColors.ink,
+                  color: AppTheme.ink,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
@@ -2404,7 +2396,7 @@ class _WarningPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? _RoyalColors.burgundy : _RoyalColors.goldDeep;
+    final color = danger ? AppTheme.burgundy : AppTheme.gold;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(top: 6),
@@ -2449,12 +2441,12 @@ class _CircleIconButton extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color: _RoyalColors.ivory,
+          color: AppTheme.ivory,
           shape: BoxShape.circle,
-          border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.5)),
+          border: Border.all(color: AppTheme.gold.withValues(alpha: 0.5)),
           boxShadow: [
             BoxShadow(
-              color: _RoyalColors.gold.withValues(alpha: 0.1),
+              color: AppTheme.gold.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -2463,7 +2455,7 @@ class _CircleIconButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: _RoyalColors.gold, size: 24),
+            Icon(icon, color: AppTheme.gold, size: 24),
             if (badgeCount > 0)
               Positioned(
                 top: 7,
@@ -2475,15 +2467,15 @@ class _CircleIconButton extends StatelessWidget {
                   ),
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(
-                    color: _RoyalColors.burgundy,
+                    color: AppTheme.burgundy,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: _RoyalColors.ink, width: 2),
+                    border: Border.all(color: AppTheme.ink, width: 2),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     badgeCount > 99 ? '99+' : '$badgeCount',
                     style: const TextStyle(
-                      color: _RoyalColors.ink,
+                      color: AppTheme.ink,
                       fontSize: 9,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0,
@@ -2544,18 +2536,6 @@ class _LiveDotState extends State<_LiveDot>
       ),
     );
   }
-}
-
-class _RoyalColors {
-  const _RoyalColors._();
-
-  static const ivory = AppTheme.ivory;
-  static const burgundy = AppTheme.burgundy;
-  static const burgundyLight = AppTheme.burgundySoft;
-  static const gold = AppTheme.gold;
-  static const goldDeep = AppTheme.gold;
-  static const ink = AppTheme.ink;
-  static const muted = AppTheme.muted;
 }
 
 String _greetingFor(String name) {
@@ -2656,10 +2636,10 @@ IconData _iconForImportantItem(DashboardImportantItem item) {
 
 Color _toneColor(String tone) {
   return switch (tone) {
-    'danger' => _RoyalColors.burgundy,
-    'warning' => _RoyalColors.goldDeep,
-    'success' => const Color(0xFF2E7D57),
-    _ => _RoyalColors.goldDeep,
+    'danger' => AppTheme.burgundy,
+    'warning' => AppTheme.gold,
+    'success' => AppTheme.success,
+    _ => AppTheme.gold,
   };
 }
 
@@ -2841,12 +2821,12 @@ class _OperationalCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 10),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: _RoyalColors.ink,
+          color: AppTheme.ink,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.muted.withValues(alpha: 0.08)),
           boxShadow: [
             BoxShadow(
-              color: _RoyalColors.ink.withValues(alpha: 0.03),
+              color: AppTheme.ink.withValues(alpha: 0.03),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -2858,13 +2838,13 @@ class _OperationalCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _RoyalColors.ivory,
+                color: AppTheme.ivory,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _RoyalColors.goldDeep.withValues(alpha: 0.15),
+                  color: AppTheme.gold.withValues(alpha: 0.15),
                 ),
               ),
-              child: Icon(icon, color: _RoyalColors.goldDeep, size: 22),
+              child: Icon(icon, color: AppTheme.gold, size: 22),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -2874,7 +2854,7 @@ class _OperationalCard extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      color: _RoyalColors.ink,
+                      color: AppTheme.ink,
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
                     ),
@@ -2883,7 +2863,7 @@ class _OperationalCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: _RoyalColors.muted,
+                      color: AppTheme.muted,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2893,7 +2873,7 @@ class _OperationalCard extends StatelessWidget {
             ),
             const Icon(
               Icons.chevron_left_rounded,
-              color: _RoyalColors.muted,
+              color: AppTheme.muted,
               size: 20,
             ),
           ],
@@ -3200,9 +3180,9 @@ class _SkeletonBox extends StatelessWidget {
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: _RoyalColors.muted,
+          color: AppTheme.muted,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _RoyalColors.muted.withValues(alpha: 0.1)),
+          border: Border.all(color: AppTheme.muted.withValues(alpha: 0.1)),
         ),
       ),
     );

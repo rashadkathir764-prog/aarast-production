@@ -98,7 +98,12 @@ void main() {
     await _pumpGuestsScreen(tester, harness);
 
     expect(find.text('الضيوف'), findsWidgets);
-    expect(find.text('نظم قائمة الحضور والدعوات'), findsWidgets);
+    expect(
+      find.text(
+        'نظّم الحضور والردود من بيانات حقيقية، بدون افتراض إرسال دعوات أو مشاركة لم تتم بعد.',
+      ),
+      findsWidgets,
+    );
     expect(find.text('الضيوف'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('محمد علي'),

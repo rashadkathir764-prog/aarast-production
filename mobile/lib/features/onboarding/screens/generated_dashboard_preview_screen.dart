@@ -31,6 +31,8 @@ class GeneratedDashboardPreviewScreen extends StatelessWidget {
       onBack: onBack,
       child: Column(
         children: [
+          const _LocalDraftNotice(),
+          const SizedBox(height: 12),
           GuestOnboardingOptionTile(
             title: seed.title,
             subtitle: seed.cityLabel,
@@ -89,11 +91,69 @@ class _PreviewRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              textAlign: TextAlign.left,
+              textAlign: TextAlign.right,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.ink,
                 fontWeight: FontWeight.w700,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LocalDraftNotice extends StatelessWidget {
+  const _LocalDraftNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return GuestOnboardingCard(
+      color: AppTheme.goldSoft,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              border: Border.all(color: AppTheme.gold.withValues(alpha: 0.35)),
+            ),
+            child: const Icon(
+              Icons.devices_rounded,
+              color: AppTheme.burgundy,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'مسودة محلية',
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.title,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ستفتح الخطة على هذا الجهاز. المزامنة والمشاركة تحتاج تسجيل دخول لاحقًا.',
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    height: 1.45,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

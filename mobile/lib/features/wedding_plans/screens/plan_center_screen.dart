@@ -540,7 +540,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       isScrollControlled: true,
       backgroundColor: AppTheme.ivory,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusXl),
+        ),
       ),
       builder: (_) => _EditPlanSheet(plan: plan),
     );
@@ -578,7 +580,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       context: context,
       backgroundColor: AppTheme.ivory,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppTheme.radiusXl)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.radiusXl),
+        ),
       ),
       builder: (sheetContext) {
         return Directionality(
@@ -850,9 +854,11 @@ class _PlanCenterHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 78),
+    return AarastCard(
+      padding: const EdgeInsets.fromLTRB(10, 12, 14, 12),
+      color: AppTheme.surface,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           IconButton(
             onPressed: () {
@@ -865,47 +871,48 @@ class _PlanCenterHeader extends StatelessWidget {
             icon: const Icon(Icons.arrow_forward_rounded),
             tooltip: 'رجوع',
           ),
+          const SizedBox(width: 4),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'مركز الخطة',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _pcInk,
-                        fontSize: 23,
-                        fontWeight: FontWeight.w900,
-                        height: 1.1,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'مركز الخطة',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                    SizedBox(width: 8),
-                    Icon(
-                      Icons.calendar_month_outlined,
-                      color: _pcInk,
-                      size: 23,
+                    const SizedBox(width: 10),
+                    const AarastStatusPill(
+                      label: 'تنظيم الخطة',
+                      color: AppTheme.burgundy,
+                      backgroundColor: AppTheme.burgundySoft,
+                      icon: Icons.event_note_outlined,
                     ),
                   ],
                 ),
-                const SizedBox(height: 5),
-                const Text(
-                  'تفاصيل الخطة الحالية',
-                  maxLines: 1,
+                const SizedBox(height: 8),
+                Text(
+                  'راجع بيانات الخطة والمسارات المرتبطة بها بدون أرقام أو حالات غير مؤكدة.',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: _pcMuted,
-                    fontSize: 13,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
                     fontWeight: FontWeight.w700,
+                    height: 1.35,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 48),
         ],
       ),
     );
@@ -1163,18 +1170,18 @@ class _ProgressSummaryCard extends StatelessWidget {
                 icon: Icons.donut_large_rounded,
                 label: 'نسبة الإنجاز',
                 value: progressPercent == null
-                    ? 'غير متاح'
+                    ? 'لا توجد بيانات'
                     : '$progressPercent%',
               ),
               _MetricTile(
                 icon: Icons.check_circle_outline_rounded,
                 label: 'المكتملة',
-                value: completedTasks?.toString() ?? 'غير متاح',
+                value: completedTasks?.toString() ?? 'لا توجد بيانات',
               ),
               _MetricTile(
                 icon: Icons.description_outlined,
                 label: 'المتبقية',
-                value: remainingTasks?.toString() ?? 'غير متاح',
+                value: remainingTasks?.toString() ?? 'لا توجد بيانات',
               ),
               _MetricTile(
                 icon: Icons.event_available_outlined,
@@ -1879,7 +1886,7 @@ class _ParticipantsCard extends StatelessWidget {
               _MetricTile(
                 icon: Icons.groups_outlined,
                 label: 'المشاركون',
-                value: participantsCount?.toString() ?? 'غير متاح',
+                value: participantsCount?.toString() ?? 'لم تتم المزامنة',
               ),
               _MetricTile(
                 icon: Icons.verified_user_outlined,
@@ -2377,13 +2384,13 @@ String _lastUpdateLabel(DateTime date) {
 
 String _roleLabel(bool isOwner, SharedMember? member) {
   if (isOwner) return 'صاحب';
-  if (member == null) return 'غير متاح';
+  if (member == null) return 'لم تتم المزامنة';
   return 'مشارك: ${sharedMemberRoleLabel(member.role)}';
 }
 
 String _permissionsLabel(bool isOwner, SharedMember? member) {
   if (isOwner) return 'كاملة';
-  if (member == null) return 'غير متاح';
+  if (member == null) return 'لم تتم المزامنة';
   if (member.permissionLabels.isEmpty) return 'مهام فقط';
   return member.permissionLabels.take(2).join('، ');
 }

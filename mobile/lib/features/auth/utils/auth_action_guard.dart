@@ -102,7 +102,7 @@ class AuthActionGuard {
                   FilledButton.icon(
                     onPressed: () {
                       Navigator.of(sheetContext).pop();
-                      context.go(AppRouter.login);
+                      context.go(_withResume(AppRouter.login, context));
                     },
                     icon: const Icon(Icons.login_rounded),
                     label: const Text('تسجيل الدخول'),
@@ -111,7 +111,7 @@ class AuthActionGuard {
                   OutlinedButton.icon(
                     onPressed: () {
                       Navigator.of(sheetContext).pop();
-                      context.go(AppRouter.register);
+                      context.go(_withResume(AppRouter.register, context));
                     },
                     icon: const Icon(Icons.person_add_alt_1_rounded),
                     label: const Text('إنشاء حساب'),
@@ -146,6 +146,30 @@ class AuthActionGuard {
   }) {
     if (isLocalGuestPlanId(weddingPlanId)) return Future<bool>.value(false);
     return blockProtectedSubmitWithoutAccount(context);
+  }
+
+  static String _withResume(String location, BuildContext context) {
+    final resumeLocation = _currentLocation(context);
+    if (resumeLocation == null) return location;
+    final uri = Uri.parse(location);
+    return uri
+        .replace(
+          queryParameters: {...uri.queryParameters, 'resume': resumeLocation},
+        )
+        .toString();
+  }
+
+  static String? _currentLocation(BuildContext context) {
+    try {
+      final location = GoRouterState.of(context).uri.toString();
+      if (location.trim().isEmpty) return null;
+      if (!location.startsWith('/') || location.startsWith('//')) return null;
+      if (location.startsWith(AppRouter.login)) return null;
+      if (location.startsWith(AppRouter.register)) return null;
+      return location;
+    } catch (_) {
+      return null;
+    }
   }
 }
 
@@ -204,7 +228,9 @@ class AuthGatePanel extends StatelessWidget {
               const SizedBox(height: 18),
               FilledButton.icon(
                 key: const Key('sharing-auth-gate-login'),
-                onPressed: () => context.go(AppRouter.login),
+                onPressed: () => context.go(
+                  AuthActionGuard._withResume(AppRouter.login, context),
+                ),
                 icon: const Icon(Icons.login_rounded),
                 label: const Text('تسجيل الدخول'),
               ),

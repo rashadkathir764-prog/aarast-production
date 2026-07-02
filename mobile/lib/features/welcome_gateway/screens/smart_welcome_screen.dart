@@ -157,37 +157,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 32, bottom: 16),
-                    child: _currentStep == _WelcomeStep.pathSelection
-                        ? Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 28),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'أهلاً بك في أعرست',
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .headlineMedium
-                                      ?.copyWith(
-                                        color: AppTheme.title,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'ابدأ بخطة زفاف هادئة تحفظ تفاصيلك محليًا بدون تسجيل دخول.',
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: AppTheme.muted,
-                                        height: 1.55,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+                    child: _WelcomeHero(step: _currentStep),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -241,12 +212,13 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         children: [
           Text(
             'كيف تحب تبدأ؟',
+            textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: AppTheme.ink,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 56),
+          const SizedBox(height: 18),
           PremiumPathCard(
             title: 'أريد تنظيم زفافي',
             subtitle: 'ابدأ خطة ذكية للمهام والميزانية والضيوف والموردين',
@@ -278,7 +250,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             alignment: Alignment.centerRight,
             child: _buildBackButton(() => _goTo(_WelcomeStep.pathSelection)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           Text(
             'من أنت؟',
             textAlign: TextAlign.center,
@@ -287,7 +259,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           PremiumRoleCard(
             title: 'العريس',
             subtitle: 'أتابع الخطة والميزانية',
@@ -297,7 +269,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               setState(() => _selectedPersona = GuestPersona.groom);
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           PremiumRoleCard(
             title: 'العروسة',
             subtitle: 'أرتب التفاصيل والاختيارات',
@@ -307,7 +279,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               setState(() => _selectedPersona = GuestPersona.bride);
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           PremiumRoleCard(
             title: 'مساهم / مشارك في الخطة',
             subtitle: 'أساعد في التنظيم والمتابعة',
@@ -317,27 +289,13 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               setState(() => _selectedPersona = GuestPersona.helper);
             },
           ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 56,
-            child: FilledButton(
-              onPressed: _selectedPersona == null
-                  ? null
-                  : () => _goTo(_WelcomeStep.quickSetup),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppTheme.burgundy,
-                disabledBackgroundColor: AppTheme.disabled,
-                foregroundColor: Colors.white,
-                disabledForegroundColor: AppTheme.muted,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              child: const Text(
-                'متابعة',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
-              ),
-            ),
+          const SizedBox(height: 14),
+          AarastButton(
+            label: 'متابعة',
+            icon: Icons.arrow_back_rounded,
+            onPressed: _selectedPersona == null
+                ? null
+                : () => _goTo(_WelcomeStep.quickSetup),
           ),
         ],
       ),
@@ -356,7 +314,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             alignment: Alignment.centerRight,
             child: _buildBackButton(() => _goTo(_WelcomeStep.roleSelection)),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           Text(
             'أكمل بيانات خطتك',
             textAlign: TextAlign.center,
@@ -369,12 +327,14 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           Text(
             'هذه البيانات مطلوبة قبل فتح Dashboard حتى تبدأ الخطة بوضوح.',
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppTheme.muted,
-              height: 1.55,
+              height: 1.35,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
               color: AppTheme.surface,
@@ -388,7 +348,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                 ),
               ],
             ),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -399,14 +359,14 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                   icon: Icons.edit_rounded,
                   onChanged: (_) => setState(() => _setupError = null),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 _buildFieldLabel('المدينة / الموقع'),
                 PremiumLocationCard(
                   controller: _locationController,
                   onChanged: (_) => setState(() => _setupError = null),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 _buildFieldLabel('تاريخ الزفاف'),
                 PremiumDateField(
@@ -437,7 +397,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                     }
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 _buildFieldLabel('الميزانية والعملة'),
                 PremiumBudgetField(
@@ -453,48 +413,15 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                   const SizedBox(height: 16),
                   _SetupErrorBanner(message: _setupError!),
                 ],
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
 
-                SizedBox(
-                  height: 60,
-                  child: FilledButton(
-                    onPressed: _isLoading || _selectedPersona == null
-                        ? null
-                        : _startPlanning,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.burgundy,
-                      foregroundColor: Colors.white,
-                      elevation: 8,
-                      shadowColor: AppTheme.burgundy.withValues(alpha: 0.4),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              color: AppTheme.ink,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Text(
-                                'حفظ ومتابعة',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Icon(Icons.arrow_forward_rounded, size: 20),
-                            ],
-                          ),
-                  ),
+                AarastButton(
+                  label: 'حفظ ومتابعة',
+                  icon: Icons.arrow_back_rounded,
+                  isLoading: _isLoading,
+                  onPressed: _isLoading || _selectedPersona == null
+                      ? null
+                      : _startPlanning,
                 ),
               ],
             ),
@@ -529,9 +456,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppTheme.border,
+          color: AppTheme.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppTheme.border, width: 1.0),
           boxShadow: [
@@ -564,24 +491,14 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             child: _buildBackButton(() => _goTo(_WelcomeStep.pathSelection)),
           ),
           const SizedBox(height: 48),
-          Container(
+          AarastCard(
             padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(color: AppTheme.border, width: 1.0),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.ink.withValues(alpha: 0.05),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.storefront_rounded,
-              size: 72,
-              color: AppTheme.gold,
+            child: const Center(
+              child: Icon(
+                Icons.storefront_rounded,
+                size: 72,
+                color: AppTheme.gold,
+              ),
             ),
           ),
           const SizedBox(height: 40),
@@ -604,47 +521,147 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             ),
           ),
           const SizedBox(height: 64),
-          SizedBox(
-            height: 56,
-            child: OutlinedButton(
-              onPressed: () => _goTo(_WelcomeStep.pathSelection),
-              style: OutlinedButton.styleFrom(
-                backgroundColor: AppTheme.surface,
-                foregroundColor: AppTheme.burgundy,
-                side: const BorderSide(color: AppTheme.border, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text(
-                'العودة',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
+          AarastButton(
+            label: 'العودة',
+            variant: AarastButtonVariant.secondary,
+            onPressed: () => _goTo(_WelcomeStep.pathSelection),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 56,
-            child: TextButton(
-              onPressed: () =>
-                  context.push(AppRouter.login, extra: {'type': 'provider'}),
-              style: TextButton.styleFrom(
-                foregroundColor: AppTheme.burgundy,
-                backgroundColor: AppTheme.goldSoft,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+          AarastButton(
+            label: 'تسجيل الدخول',
+            variant: AarastButtonVariant.ghost,
+            onPressed: () =>
+                context.push(AppRouter.login, extra: {'type': 'provider'}),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeHero extends StatelessWidget {
+  const _WelcomeHero({required this.step});
+
+  final _WelcomeStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = _WelcomeHeroContent.forStep(step);
+
+    return AarastCard(
+      padding: const EdgeInsets.all(16),
+      color: AppTheme.pearl,
+      border: Border.all(color: AppTheme.gold.withValues(alpha: 0.28)),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppTheme.goldSoft,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                  border: Border.all(
+                    color: AppTheme.gold.withValues(alpha: 0.32),
+                  ),
+                ),
+                child: Icon(content.icon, color: AppTheme.burgundy, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      content.eyebrow,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: AppTheme.burgundy,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      content.title,
+                      textAlign: TextAlign.right,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: AppTheme.title,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: AppTheme.displayFontFamily,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: const Text(
-                'تسجيل الدخول',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            content.message,
+            textAlign: TextAlign.right,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.muted,
+              height: 1.55,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _WelcomeHeroContent {
+  const _WelcomeHeroContent({
+    required this.eyebrow,
+    required this.title,
+    required this.message,
+    required this.icon,
+  });
+
+  factory _WelcomeHeroContent.forStep(_WelcomeStep step) {
+    return switch (step) {
+      _WelcomeStep.pathSelection => const _WelcomeHeroContent(
+        eyebrow: 'بداية هادئة',
+        title: 'أهلاً بك في أعرست',
+        message:
+            'ابدأ بخطة زفاف واضحة تحفظ تفاصيلك محليًا، وافتح المزامنة والمشاركة عندما تحتاج حسابًا.',
+        icon: Icons.favorite_rounded,
+      ),
+      _WelcomeStep.roleSelection => const _WelcomeHeroContent(
+        eyebrow: 'تخصيص التجربة',
+        title: 'اختر دورك في الخطة',
+        message:
+            'سنرتب الكلمات والأولويات حول دورك، بدون افتراضات أو أرقام غير مؤكدة.',
+        icon: Icons.person_search_rounded,
+      ),
+      _WelcomeStep.quickSetup => const _WelcomeHeroContent(
+        eyebrow: 'بيانات أساسية',
+        title: 'افتح لوحة واضحة',
+        message:
+            'هذه البيانات مطلوبة قبل فتح لوحة التحكم حتى لا تبدأ الخطة ناقصة أو مربكة.',
+        icon: Icons.edit_calendar_rounded,
+      ),
+      _WelcomeStep.providerComingSoon => const _WelcomeHeroContent(
+        eyebrow: 'مزودو الخدمة',
+        title: 'حسابات المزودين قريبًا',
+        message:
+            'هذا المسار لم يفتح كمنتج كامل بعد. يمكنك الرجوع لتنظيم زفافك أو تسجيل الدخول عند توفر حساب مزود.',
+        icon: Icons.storefront_rounded,
+      ),
+    };
+  }
+
+  final String eyebrow;
+  final String title;
+  final String message;
+  final IconData icon;
 }
 
 class _SetupErrorBanner extends StatelessWidget {

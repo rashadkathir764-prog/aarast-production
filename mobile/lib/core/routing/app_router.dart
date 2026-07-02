@@ -1,4 +1,3 @@
-﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/onboarding/screens/guest_onboarding_flow_screen.dart';
@@ -35,6 +34,7 @@ import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
 import '../../features/sharing/screens/sharing_screen.dart';
 import '../../features/sharing/models/shared_member.dart';
+import '../../features/support/screens/support_screen.dart';
 import '../../features/tasks/models/wedding_task.dart';
 import '../../features/tasks/screens/create_task_screen.dart';
 import '../../features/tasks/screens/task_timeline_screen.dart';
@@ -48,7 +48,6 @@ import '../../features/shell/screens/wedding_plan_shell.dart';
 import '../../shared/models/quote_finance_context.dart';
 import '../config/app_feature_flags.dart';
 import 'app_route_guard_resolver.dart';
-import '../widgets/coming_soon_screen.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -338,12 +337,7 @@ class AppRouter {
         ),
         GoRoute(
           path: support,
-          builder: (context, state) => const AarastComingSoonScreen(
-            title: 'الدعم والمساعدة',
-            message:
-                'قناة الدعم ستظهر هنا بعد اعتماد تجربة التواصل والأسئلة الشائعة.',
-            icon: Icons.support_agent_outlined,
-          ),
+          builder: (context, state) => const SupportScreen(),
         ),
         GoRoute(
           path: weddingPlans,
@@ -356,10 +350,7 @@ class AppRouter {
         ShellRoute(
           builder: (context, state, child) {
             final id = state.pathParameters['id'] ?? '';
-            return WeddingPlanShell(
-              weddingPlanId: id,
-              child: child,
-            );
+            return WeddingPlanShell(weddingPlanId: id, child: child);
           },
           routes: [
             GoRoute(
@@ -412,10 +403,7 @@ class AppRouter {
               path: '/wedding-plans/:id/guests',
               builder: (context, state) {
                 final id = state.pathParameters['id'] ?? '';
-                return GuestListScreen(
-                  weddingPlanId: id,
-                  showLocalFab: false,
-                );
+                return GuestListScreen(weddingPlanId: id, showLocalFab: false);
               },
             ),
             GoRoute(

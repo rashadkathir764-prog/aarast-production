@@ -74,6 +74,8 @@ void main() {
       await _advanceToPreview(tester);
 
       expect(find.byType(GeneratedDashboardPreviewScreen), findsOneWidget);
+      expect(find.text('مسودة محلية'), findsOneWidget);
+      expect(find.textContaining('المزامنة والمشاركة'), findsOneWidget);
     });
 
     testWidgets('onboarding can create a local guest plan without login', (

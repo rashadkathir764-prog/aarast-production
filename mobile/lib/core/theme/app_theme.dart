@@ -68,12 +68,12 @@ class AppTheme {
   static const dGreen = success;
   static const dGreenBg = successSoft;
   static const dOrange = warning;
-  static const dBlue = Color(0xFF3F6FB0);
-  static const dBlueBg = Color(0xFFE6EDF6);
+  static const dBlue = AarastDesignTokens.info;
+  static const dBlueBg = AarastDesignTokens.infoSoft;
   static const dPinkBg = dangerSoft;
   static const dCreamBg = pearl;
-  static const dMaroon2 = Color(0xFF671028);
-  static const dTrack = Color(0xFFCDC6C4);
+  static const dMaroon2 = burgundyDark;
+  static const dTrack = disabled;
 
   // Common sizing
   static const double radiusSm = AarastDesignTokens.radiusSm;
@@ -94,11 +94,12 @@ class AppTheme {
   static const Duration motionMedium = AarastDesignTokens.motionStandard;
 
   static const LinearGradient pageGradient = AarastDesignTokens.pageGradient;
-  static const LinearGradient heroGradient = AarastDesignTokens.burgundyGradient;
+  static const LinearGradient heroGradient =
+      AarastDesignTokens.burgundyGradient;
   static const LinearGradient goldGradient = LinearGradient(
     begin: Alignment.topRight,
     end: Alignment.bottomLeft,
-    colors: [Color(0xFFE1CA96), gold, Color(0xFFA98642)],
+    colors: [Color(0xFFE8D2A4), gold, warning],
   );
 
   static List<BoxShadow> cardShadow() {
@@ -108,7 +109,7 @@ class AppTheme {
   static List<BoxShadow> softShadow({double opacity = 0.08}) {
     return [
       BoxShadow(
-        color: Colors.black.withAlpha((opacity * 255).round()),
+        color: ink.withAlpha((opacity * 255).round()),
         blurRadius: 22,
         offset: const Offset(0, 10),
       ),
@@ -200,53 +201,51 @@ class AppTheme {
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: burgundy,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          minimumSize: const Size.fromHeight(54),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusLg),
-          ),
-          textStyle: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ).copyWith(
-          overlayColor: WidgetStateProperty.resolveWith(
-            (states) {
-               if (states.contains(WidgetState.pressed)) {
-                 return burgundyDark;
-               }
-               return null;
-            }
-          ),
-        ),
+        style:
+            ElevatedButton.styleFrom(
+              backgroundColor: burgundy,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              minimumSize: const Size.fromHeight(54),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radiusLg),
+              ),
+              textStyle: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ).copyWith(
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return burgundyDark;
+                }
+                return null;
+              }),
+            ),
       ),
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: burgundy,
-          foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(54),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(radiusLg),
-          ),
-          textStyle: textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ).copyWith(
-          overlayColor: WidgetStateProperty.resolveWith(
-            (states) {
-               if (states.contains(WidgetState.pressed)) {
-                 return burgundyDark;
-               }
-               return null;
-            }
-          ),
-        ),
+        style:
+            FilledButton.styleFrom(
+              backgroundColor: burgundy,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(54),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(radiusLg),
+              ),
+              textStyle: textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0,
+              ),
+            ).copyWith(
+              overlayColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.pressed)) {
+                  return burgundyDark;
+                }
+                return null;
+              }),
+            ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
@@ -432,9 +431,7 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final isSelected = states.contains(WidgetState.selected);
-          return IconThemeData(
-            color: isSelected ? burgundy : disabled,
-          );
+          return IconThemeData(color: isSelected ? burgundy : disabled);
         }),
       ),
     );

@@ -62,7 +62,7 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
           scale: _scaleAnimation,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 250),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: widget.isSelected ? AppTheme.goldSoft : AppTheme.surface,
               borderRadius: BorderRadius.circular(20),
@@ -87,12 +87,12 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: widget.isSelected
                         ? AppTheme.surface
                         : AppTheme.empty,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(13),
                     border: Border.all(
                       color: widget.isSelected
                           ? AppTheme.gold.withValues(alpha: 0.3)
@@ -107,13 +107,15 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                     size: 24,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
                               color: AppTheme.title,
@@ -126,6 +128,8 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                       const SizedBox(height: 6),
                       Text(
                         widget.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.muted,
                           fontSize: 13,

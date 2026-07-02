@@ -20,6 +20,8 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  bool _isCheckingAccount = true;
+  bool _showLoginGate = false;
   bool _suppressAccountData = false;
 
   bool get _isLocalPlanNotifications =>
@@ -85,6 +87,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }) {
     final suppressData = _isLocalPlanNotifications || _suppressAccountData;
 
+    if (!_isLocalPlanNotifications && _isCheckingAccount) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_isLocalPlanNotifications && _showLoginGate) {
+      return const AuthGatePanel(
+        title: 'سجّل الدخول لعرض التنبيهات',
+        body:
+            'التنبيهات مرتبطة بحسابك وخططك المحفوظة، لذلك نعرضها بعد تسجيل الدخول.',
+        icon: Icons.notifications_none_rounded,
+      );
+    }
+
     if (!suppressData && provider.isLoading && notifications.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -139,7 +154,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _load() {
     if (_isLocalPlanNotifications) {
       if (mounted && !_suppressAccountData) {
-        setState(() => _suppressAccountData = true);
+        setState(() {
+          _isCheckingAccount = false;
+          _showLoginGate = false;
+          _suppressAccountData = true;
+        });
       }
       return Future<void>.value();
     }
@@ -147,6 +166,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _loadAccountNotifications() async {
+    setState(() {
+      _isCheckingAccount = true;
+      _showLoginGate = false;
+    });
+
+    final shouldGate = await AuthActionGuard.shouldGateAccountOnly(context);
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingAccount = false;
+      _showLoginGate = shouldGate;
+    });
+
+    if (shouldGate) return;
+
     if (AppFeatureFlags.devBypassLoginGatesForUxExploration &&
         !await AuthActionGuard.hasAccount(context)) {
       if (mounted && !_suppressAccountData) {

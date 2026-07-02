@@ -64,36 +64,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'المهام',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.burgundyDark,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'تابع تجهيزات زفافك خطوة بخطوة',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              ],
-            ),
+            child: const _TasksHeader(),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -128,6 +99,57 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     if (sharingProvider == null) return;
     _didRequestMembers = true;
     sharingProvider.loadMembers(widget.weddingPlanId);
+  }
+}
+
+class _TasksHeader extends StatelessWidget {
+  const _TasksHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      color: AppTheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'المهام',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.burgundyDark,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const AarastStatusPill(
+                label: 'قائمة العمل',
+                color: AppTheme.burgundy,
+                backgroundColor: AppTheme.burgundySoft,
+                icon: Icons.checklist_rtl_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'تابع تجهيزات زفافك خطوة بخطوة، وركّز على المهام المؤكدة فقط بدون اقتراحات وهمية.',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -225,12 +247,14 @@ class _TaskTimelineContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.border),
             ),
-            child: const Text(
-              'لا توجد مهام حالياً. استخدم الزر العائم الذهبي للإضافة.',
-              style: TextStyle(
+            child: Text(
+              _emptyTasksMessage(filter),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 color: AppTheme.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
+                height: 1.35,
               ),
             ),
           )
@@ -396,7 +420,10 @@ class _TaskTimelineContent extends StatelessWidget {
 }
 
 class _TopTasksCommandCard extends StatelessWidget {
-  const _TopTasksCommandCard({required this.summary, required this.isLocalPlan});
+  const _TopTasksCommandCard({
+    required this.summary,
+    required this.isLocalPlan,
+  });
 
   final TaskSummary summary;
   final bool isLocalPlan;
@@ -435,7 +462,9 @@ class _TopTasksCommandCard extends StatelessWidget {
                         value: summary.completionRatio,
                         minHeight: 6,
                         backgroundColor: AppTheme.border,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.burgundy),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppTheme.burgundy,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -443,10 +472,11 @@ class _TopTasksCommandCard extends StatelessWidget {
                       children: [
                         Text(
                           '${summary.completionPercent}%',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: AppTheme.burgundy,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                color: AppTheme.burgundy,
+                                fontWeight: FontWeight.w900,
+                              ),
                         ),
                         const Spacer(),
                         if (isLocalPlan)
@@ -503,7 +533,9 @@ class _TopTasksCommandCard extends StatelessWidget {
                     label: 'متأخرة',
                     value: summary.overdue.toString(),
                     icon: Icons.warning_amber_rounded,
-                    color: summary.overdue > 0 ? AppTheme.danger : AppTheme.muted,
+                    color: summary.overdue > 0
+                        ? AppTheme.danger
+                        : AppTheme.muted,
                   ),
                 ],
               );
@@ -818,7 +850,9 @@ class _FilterButton extends StatelessWidget {
             color: selected ? AppTheme.burgundySoft : AppTheme.surface,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? AppTheme.burgundy.withAlpha(90) : AppTheme.border,
+              color: selected
+                  ? AppTheme.burgundy.withAlpha(90)
+                  : AppTheme.border,
             ),
           ),
           child: Row(
@@ -918,9 +952,7 @@ class _PremiumTaskCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
-                                color: isDone
-                                    ? AppTheme.muted
-                                    : AppTheme.ink,
+                                color: isDone ? AppTheme.muted : AppTheme.ink,
                                 fontWeight: FontWeight.w900,
                                 decoration: isDone
                                     ? TextDecoration.lineThrough
@@ -1371,7 +1403,6 @@ bool _isSameDay(DateTime first, DateTime second) {
 
 DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
 
-
 String _taskListTitle(_TaskFilter filter) {
   return switch (filter) {
     _TaskFilter.all => 'قائمة المهام',
@@ -1380,6 +1411,18 @@ String _taskListTitle(_TaskFilter filter) {
     _TaskFilter.overdue => 'المهام المتأخرة',
     _TaskFilter.completed => 'المهام المكتملة',
     _TaskFilter.highPriority => 'مهام عالية الأولوية',
+  };
+}
+
+String _emptyTasksMessage(_TaskFilter filter) {
+  return switch (filter) {
+    _TaskFilter.all =>
+      'لا توجد مهام بعد. أضف مهمة عندما يكون لديك إجراء واضح في الخطة.',
+    _TaskFilter.today => 'لا توجد مهام مستحقة اليوم.',
+    _TaskFilter.week => 'لا توجد مهام لهذا الأسبوع.',
+    _TaskFilter.overdue => 'لا توجد مهام متأخرة الآن.',
+    _TaskFilter.completed => 'لا توجد مهام مكتملة بعد.',
+    _TaskFilter.highPriority => 'لا توجد مهام عالية الأولوية الآن.',
   };
 }
 

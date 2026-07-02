@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
+import '../../auth/utils/auth_action_guard.dart';
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
 
@@ -15,13 +16,35 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isCheckingAccount = true;
+  bool _showLoginGate = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<SettingsProvider>().loadSettings();
+      _refreshAccountAndLoad();
     });
+  }
+
+  Future<void> _refreshAccountAndLoad() async {
+    setState(() {
+      _isCheckingAccount = true;
+      _showLoginGate = false;
+    });
+
+    final shouldGate = await AuthActionGuard.shouldGateAccountOnly(context);
+    if (!mounted) return;
+
+    setState(() {
+      _isCheckingAccount = false;
+      _showLoginGate = shouldGate;
+    });
+
+    if (!shouldGate) {
+      await context.read<SettingsProvider>().loadSettings();
+    }
   }
 
   @override
@@ -35,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       subtitle: 'تفضيلات الحساب والتنبيهات',
       child: RefreshIndicator(
         color: AppTheme.burgundy,
-        onRefresh: provider.loadSettings,
+        onRefresh: _refreshAccountAndLoad,
         child: ListView(
           children: [
             _AccountCard(
@@ -44,7 +67,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               email: auth.user?.email,
             ),
             const SizedBox(height: 14),
-            if (provider.isLoading && draft == null)
+            if (_isCheckingAccount)
+              const Padding(
+                padding: EdgeInsets.only(top: 80),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_showLoginGate)
+              const SizedBox(
+                height: 420,
+                child: AuthGatePanel(
+                  title: 'سجّل الدخول لإدارة الإعدادات',
+                  body:
+                      'الإعدادات مرتبطة بحسابك حتى نحفظ تفضيلات التنبيهات والمزامنة بأمان.',
+                  icon: Icons.settings_outlined,
+                ),
+              )
+            else if (provider.isLoading && draft == null)
               const Padding(
                 padding: EdgeInsets.only(top: 80),
                 child: Center(child: CircularProgressIndicator()),
@@ -305,7 +343,9 @@ class _SwitchRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: isLast
             ? null
-            : Border(bottom: BorderSide(color: AppTheme.burgundySoft.withAlpha(150))),
+            : Border(
+                bottom: BorderSide(color: AppTheme.burgundySoft.withAlpha(150)),
+              ),
       ),
       child: SwitchListTile(
         value: value,

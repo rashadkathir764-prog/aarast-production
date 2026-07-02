@@ -86,6 +86,11 @@ class _MoreScreenState extends State<MoreScreen> {
             },
           ),
           const SizedBox(height: 20),
+          const _MenuSectionTitle(
+            title: 'خطط الزفاف',
+            subtitle: 'إدارة خططك أو فتح ما تمت مشاركته معك',
+          ),
+          const SizedBox(height: 8),
           _MenuGroup(
             children: [
               _MoreActionTile(
@@ -115,6 +120,11 @@ class _MoreScreenState extends State<MoreScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          const _MenuSectionTitle(
+            title: 'الحساب والمساعدة',
+            subtitle: 'إعدادات هادئة، دعم، وتنبيهات عند الحاجة',
+          ),
+          const SizedBox(height: 8),
           _MenuGroup(
             children: [
               _MoreActionTile(
@@ -136,6 +146,11 @@ class _MoreScreenState extends State<MoreScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          const _MenuSectionTitle(
+            title: 'المزامنة',
+            subtitle: 'حالة البيانات المحلية والحسابية',
+          ),
+          const SizedBox(height: 8),
           const _MenuGroup(children: [OfflineSyncNowTile()]),
           const SizedBox(height: 16),
           if (isGuestExploration)
@@ -299,6 +314,61 @@ class _IdentitySummary {
 
   final String? roleLabel;
   final String? personaLabel;
+}
+
+class _MenuSectionTitle extends StatelessWidget {
+  const _MenuSectionTitle({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8,
+            height: 34,
+            decoration: BoxDecoration(
+              color: AppTheme.gold,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.title,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MoreHeader extends StatelessWidget {
@@ -567,10 +637,7 @@ class _MenuGroup extends StatelessWidget {
           for (var i = 0; i < children.length; i++) ...[
             children[i],
             if (i != children.length - 1)
-              Divider(
-                height: 1,
-                color: AppTheme.burgundySoft.withAlpha(150),
-              ),
+              Divider(height: 1, color: AppTheme.burgundySoft.withAlpha(150)),
           ],
         ],
       ),

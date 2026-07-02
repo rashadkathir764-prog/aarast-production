@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
@@ -11,6 +12,7 @@ import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +47,58 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('sharing login gate preserves the protected route as resume', (
+    tester,
+  ) async {
+    final fakeApi = _FakeSharingApi();
+    final provider = SharingProvider(fakeApi);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final sharingLocation = AppRouter.sharing(localPlanId);
+    final router = GoRouter(
+      initialLocation: sharingLocation,
+      routes: [
+        GoRoute(
+          path: AppRouter.login,
+          builder: (context, state) => Scaffold(
+            body: Text('resume:${state.uri.queryParameters['resume'] ?? ''}'),
+          ),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/sharing',
+          builder: (context, state) =>
+              SharingScreen(weddingPlanId: state.pathParameters['id']!),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: authStorage),
+          ChangeNotifierProvider<SharingProvider>.value(value: provider),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('sharing-auth-gate-login')));
+    await tester.pumpAndSettle();
+
+    expect(router.state.uri.path, AppRouter.login);
+    expect(router.state.uri.queryParameters['resume'], sharingLocation);
+    expect(find.text('resume:$sharingLocation'), findsOneWidget);
+    expect(fakeApi.getSharedMembersCalls, 0);
+    expect(fakeApi.getPlanInvitesCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('local/no-login add member shows login gate', (tester) async {
     final fakeApi = _FakeSharingApi();

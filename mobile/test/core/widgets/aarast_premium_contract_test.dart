@@ -5,7 +5,7 @@ import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Aarast Premium 2027 production contract', () {
+  group('Aarast mobile visual production contract', () {
     test('keeps the official design system files in place', () {
       const requiredFiles = [
         'lib/core/theme/aarast_design_tokens.dart',
@@ -155,7 +155,23 @@ void main() {
       );
     });
 
-    test('documents Premium 2027 as the only final visual source of truth', () {
+    test('documents Soft Royal Wedding as the final mobile identity', () {
+      final identityPlan = File('../MOBILE_SOFT_ROYAL_UI_PLAN.md');
+      final auditMatrix = File('../MOBILE_SCREEN_AUDIT_MATRIX.md');
+
+      expect(identityPlan.existsSync(), isTrue);
+      expect(auditMatrix.existsSync(), isTrue);
+
+      final identityText = identityPlan.readAsStringSync();
+      expect(identityText, contains('Soft Royal Wedding'));
+      expect(identityText, contains('Flutter mobile only'));
+      expect(identityText, contains('Premium 2027'));
+      expect(identityText, contains('implementation layers only'));
+      expect(identityText, contains('No backend changes'));
+      expect(identityText, contains('No API changes'));
+      expect(identityText, contains('No database changes'));
+      expect(identityText, contains('No web/admin-web changes'));
+
       final docs = [
         File('../docs/mobile-ux/AARAST_PREMIUM_2027_DESIGN_SYSTEM.md'),
         File('../docs/mobile-ux/AARAST_PREMIUM_2027_SCREEN_CONTRACTS.md'),
@@ -163,14 +179,34 @@ void main() {
 
       for (final doc in docs) {
         final text = doc.readAsStringSync();
-        expect(
-          text.contains('not final UI references') ||
-              text.contains('not visual references'),
-          isTrue,
-          reason: doc.path,
-        );
         expect(text, contains('Premium 2027'), reason: doc.path);
+        expect(text, contains('MOBILE_SOFT_ROYAL_UI_PLAN.md'), reason: doc.path);
+        expect(text, contains('Soft Royal Wedding'), reason: doc.path);
       }
+    });
+
+    test('keeps a Phase A audit matrix for the highest-risk mobile screens', () {
+      final text = File('../MOBILE_SCREEN_AUDIT_MATRIX.md').readAsStringSync();
+
+      for (final expected in [
+        'wedding_plan_dashboard_screen.dart',
+        'aarast_dashboard_widgets.dart',
+        'guest_welcome_screen.dart',
+        'generated_dashboard_preview_screen.dart',
+        'main_shell.dart',
+        'wedding_plan_shell.dart',
+        'more_screen.dart',
+        'budget_expense_screen.dart',
+        'task_timeline_screen.dart',
+        'guest_list_screen.dart',
+        'provider_marketplace_screen.dart',
+        'plan_center_screen.dart',
+      ]) {
+        expect(text, contains(expected), reason: expected);
+      }
+
+      expect(text, contains('Phase A baseline'));
+      expect(text, contains('No UI changes made by this audit'));
     });
   });
 }

@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -36,8 +36,6 @@ class BudgetExpenseScreen extends StatefulWidget {
 }
 
 class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
-
-
   @override
   void initState() {
     super.initState();
@@ -64,11 +62,8 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
     final canManageFinancialRecords = _canManageFinancialRecords;
 
     final status = provider.moneySummary.budgetStatus;
-    final statusColor = (status == 'OVER_BUDGET' || status == 'DANGER')
-        ? AppTheme.danger
-        : status == 'WARNING'
-            ? _RoyalColors.goldDeep
-            : AppTheme.success;
+    final statusColor = _financeStatusColor(status);
+    final statusLabel = _financeStatusLabel(status);
 
     return AarastScreenFrame(
       maxWidth: 520,
@@ -80,60 +75,9 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 12),
-                  child: Row(
-                    children: [
-
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: const Text(
-                                    'الميزانية والمصاريف',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: _RoyalColors.goldDeep,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: statusColor,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: statusColor.withValues(alpha: 0.5),
-                                        blurRadius: 6,
-                                      )
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'إدارة ميزانيتك ومتابعة المدفوعات',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: _RoyalColors.ink.withValues(alpha: 0.7),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                    ],
+                  child: _FinanceHeader(
+                    statusColor: statusColor,
+                    statusLabel: statusLabel,
                   ),
                 ),
                 Expanded(
@@ -144,7 +88,8 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
                         ? _FinanceContent(
                             provider: provider,
                             weddingPlanId: widget.weddingPlanId,
-                            canManageFinancialRecords: canManageFinancialRecords,
+                            canManageFinancialRecords:
+                                canManageFinancialRecords,
                             sharedMember: widget.sharedMember,
                             onChanged: _markExpenseChanged,
                             suppressErrors: false,
@@ -161,8 +106,6 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
       ),
     );
   }
-
-
 
   void _markExpenseChanged() {
     unawaited(_refreshDashboardSummary());
@@ -200,6 +143,75 @@ class _BudgetExpenseScreenState extends State<BudgetExpenseScreen> {
       widget.weddingPlanId,
       canReadBudget: _canReadBudget,
       canReadExpenses: _canReadExpenses,
+    );
+  }
+
+  Color _financeStatusColor(String status) {
+    if (status == 'OVER_BUDGET' || status == 'DANGER') {
+      return AppTheme.danger;
+    }
+    if (status == 'WARNING') return AppTheme.warning;
+    return AppTheme.success;
+  }
+
+  String _financeStatusLabel(String status) {
+    if (status == 'OVER_BUDGET' || status == 'DANGER') {
+      return 'تجاوز الميزانية';
+    }
+    if (status == 'WARNING') return 'قريب من الحد';
+    return 'ضمن الميزانية';
+  }
+}
+
+class _FinanceHeader extends StatelessWidget {
+  const _FinanceHeader({required this.statusColor, required this.statusLabel});
+
+  final Color statusColor;
+  final String statusLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      color: AppTheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'الميزانية والمصاريف',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.gold,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              AarastStatusPill(
+                label: statusLabel,
+                color: statusColor,
+                icon: Icons.verified_outlined,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'خصوصية المال محفوظة حسب صلاحيات الخطة. راقب الميزانية والمصاريف بدون أرقام وهمية.',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -341,7 +353,7 @@ class _FinanceContent extends StatelessWidget {
               border: Border.all(color: AppTheme.border),
             ),
             child: Text(
-              'لا توجد تصنيفات. استخدم الزر العائم الذهبي للإضافة.',
+              'لا توجد تصنيفات بعد. أضف تصنيف ميزانية عندما تكون جاهزًا.',
               style: TextStyle(
                 color: _RoyalColors.ink.withValues(alpha: 0.4),
                 fontSize: 12,
@@ -357,7 +369,8 @@ class _FinanceContent extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               itemCount: categoryRows.length,
               separatorBuilder: (context, index) => const SizedBox(width: 12),
-              itemBuilder: (context, index) => _MoneyCategoryProgressRow(row: categoryRows[index]),
+              itemBuilder: (context, index) =>
+                  _MoneyCategoryProgressRow(row: categoryRows[index]),
             ),
           ),
         const SizedBox(height: 18),
@@ -376,7 +389,7 @@ class _FinanceContent extends StatelessWidget {
               border: Border.all(color: AppTheme.border),
             ),
             child: Text(
-              'لا توجد مصاريف. استخدم الزر العائم الذهبي للإضافة.',
+              'لا توجد مصاريف بعد. أضف مصروفًا عند وجود تكلفة فعلية.',
               style: TextStyle(
                 color: _RoyalColors.ink.withValues(alpha: 0.4),
                 fontSize: 12,
@@ -395,7 +408,7 @@ class _FinanceContent extends StatelessWidget {
                   color: AppTheme.muted.withValues(alpha: 0.04),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
-                )
+                ),
               ],
             ),
             child: ListView.separated(
@@ -419,7 +432,8 @@ class _FinanceContent extends StatelessWidget {
                   ),
                   isBusy: provider.isSubmitting,
                   onEdit: () => _openEditExpense(context, expense),
-                  onDelete: () => _confirmDeleteExpense(context, provider, expense),
+                  onDelete: () =>
+                      _confirmDeleteExpense(context, provider, expense),
                 );
               },
             ),
@@ -646,7 +660,11 @@ class _FinanceDonutHero extends StatelessWidget {
                   value: summary.totalBudget,
                   color: AppTheme.pearl,
                 ),
-                Divider(height: 24, thickness: 1, color: Colors.white.withValues(alpha: 0.15)),
+                Divider(
+                  height: 24,
+                  thickness: 1,
+                  color: Colors.white.withValues(alpha: 0.15),
+                ),
                 _DonutStatHorizontal(
                   label: 'المصروف',
                   value: summary.totalSpent,
@@ -847,7 +865,7 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
             color: AppTheme.muted.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 8),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -860,7 +878,11 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
               color: AppTheme.goldSoft,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(_categoryIcon(row.name), color: AppTheme.gold, size: 20),
+            child: Icon(
+              _categoryIcon(row.name),
+              color: AppTheme.gold,
+              size: 20,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -940,14 +962,17 @@ class _TopFinancialObligationsCard extends StatelessWidget {
             color: _RoyalColors.ink.withValues(alpha: 0.04),
             blurRadius: 15,
             offset: const Offset(0, 6),
-          )
+          ),
         ],
       ),
       child: Column(
         children: [
           InkWell(
             onTap: onViewDebts,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24), bottom: Radius.circular(8)),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(24),
+              bottom: Radius.circular(8),
+            ),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -958,7 +983,11 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       color: AppTheme.dangerSoft,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.danger, size: 24),
+                    child: const Icon(
+                      Icons.account_balance_wallet_rounded,
+                      color: AppTheme.danger,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -1010,13 +1039,21 @@ class _TopFinancialObligationsCard extends StatelessWidget {
               ),
             ),
           ),
-          Divider(height: 1, thickness: 1, color: _RoyalColors.ink.withValues(alpha: 0.05)),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: _RoyalColors.ink.withValues(alpha: 0.05),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.event_note_outlined, color: AppTheme.burgundy, size: 20),
+                const Icon(
+                  Icons.event_note_outlined,
+                  color: AppTheme.burgundy,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1054,8 +1091,10 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               [
-                                if (installment.creditorName != null) installment.creditorName!,
-                                if (installment.dueAt != null) _shortDate(installment.dueAt!),
+                                if (installment.creditorName != null)
+                                  installment.creditorName!,
+                                if (installment.dueAt != null)
+                                  _shortDate(installment.dueAt!),
                                 _installmentStateLabel(installment),
                               ].join(' · '),
                               style: const TextStyle(
@@ -1081,12 +1120,20 @@ class _TopFinancialObligationsCard extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, thickness: 1, color: _RoyalColors.ink.withValues(alpha: 0.05)),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: _RoyalColors.ink.withValues(alpha: 0.05),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.history_rounded, color: AppTheme.gold, size: 20),
+                const Icon(
+                  Icons.history_rounded,
+                  color: AppTheme.gold,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -1277,7 +1324,10 @@ class _ExpenseRow extends StatelessWidget {
           PopupMenuButton<_ExpenseAction>(
             enabled: !isBusy,
             tooltip: 'خيارات المصروف',
-            icon: const Icon(Icons.more_vert_rounded, color: _RoyalColors.muted),
+            icon: const Icon(
+              Icons.more_vert_rounded,
+              color: _RoyalColors.muted,
+            ),
             onSelected: (action) {
               if (action == _ExpenseAction.edit) {
                 onEdit();
@@ -1449,7 +1499,6 @@ class _InlineError extends StatelessWidget {
   }
 }
 
-
 class _CategorySpendRow {
   const _CategorySpendRow({
     required this.id,
@@ -1589,10 +1638,7 @@ class _RoyalColors {
 }
 
 class _AnimatedMoneyText extends StatelessWidget {
-  const _AnimatedMoneyText({
-    required this.value,
-    this.style,
-  });
+  const _AnimatedMoneyText({required this.value, this.style});
 
   final String value;
   final TextStyle? style;

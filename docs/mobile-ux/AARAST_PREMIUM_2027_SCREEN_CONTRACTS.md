@@ -2,7 +2,11 @@
 
 Date: 2026-06-26
 Scope: Flutter mobile production surfaces.
-Status: Active visual contracts for the Premium 2027 pass.
+Status: Implementation-layer screen contracts for the Premium 2027 pass.
+
+> Current identity note (2026-07-02): Premium 2027 is now a technical
+> implementation layer. The final mobile product identity is
+> `../../MOBILE_SOFT_ROYAL_UI_PLAN.md` (`Soft Royal Wedding`).
 
 ## Global Contract
 
@@ -87,4 +91,5 @@ Each production screen must show a visible Premium surface change in its own ren
 
 Earlier mobile UX documents, screenshots, prototype images, rebuild screens, and legacy widgets are not visual references for the final UI. For current implementation, this document and `AARAST_PREMIUM_2027_DESIGN_SYSTEM.md` are the active Premium 2027 visual contracts.
 
-Older files may still be read to understand product logic, API truth, routing, permissions, privacy, and phase boundaries. They must not be reused, restored, copied, or matched visually in the final Premium 2027 UI.
+The final UI identity is now governed by `../../MOBILE_SOFT_ROYAL_UI_PLAN.md`.
+Older files may still be read to understand product logic, API truth, routing, permissions, privacy, and phase boundaries. They must not be reused, restored, copied, or matched visually outside the final Soft Royal Wedding identity.

@@ -2,13 +2,19 @@
 
 Date: 2026-06-26
 Scope: Flutter mobile production UI only.
-Status: Active visual layer for the current production mobile screens on `phase/mobile-home-dashboard-ux-v2`.
+Status: Implementation-layer reference for the current production mobile screens.
+
+> Current identity note (2026-07-02): Premium 2027 is no longer the independent
+> final visual source of truth. The final mobile product identity is
+> `../../MOBILE_SOFT_ROYAL_UI_PLAN.md` (`Soft Royal Wedding`). This document
+> remains valid as a technical implementation layer for tokens and shared
+> components.
 
 ## Purpose
 
-Aarast Premium 2027 is the shared visual system for the mobile app. It is a new UI source of truth across home, money, debts, tasks, providers, sharing, settings, notifications, onboarding, and supporting forms.
+Aarast Premium 2027 is the shared implementation system for the mobile app. It supports the final Soft Royal Wedding identity across home, money, debts, tasks, providers, sharing, settings, notifications, onboarding, and supporting forms.
 
-Old designs, Markdown decisions, screenshots, prototypes, rebuild screens, and legacy widgets are not final UI references. They may be inspected only to understand product logic, routes, data responsibilities, permissions, and forbidden behaviors. They must not be reused, restored, copied, or visually matched as the final Premium 2027 interface.
+Old designs, Markdown decisions, screenshots, prototypes, rebuild screens, and legacy widgets are not final UI references. They may be inspected only to understand product logic, routes, data responsibilities, permissions, and forbidden behaviors. They must not be reused, restored, copied, or visually matched as the final Soft Royal Wedding interface.
 
 This system does not add new product capabilities. It does not imply confirmed bookings, deposits, payment processing, financing, loans, provider acceptance, or any financial transaction beyond the already approved budget, expense, debt, and installment records.
 
@@ -40,22 +46,22 @@ Existing `AppTheme` names remain supported as compatibility aliases so productio
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `royalMaroon` | `#800020` | Primary brand actions, active navigation, important icons |
-| `royalMaroonSoft` | `#8B183B` | Royal gradients and elevated accents |
-| `royalMaroonDeep` | `#4E0B20` | Deep contrast, shadows, premium hero surfaces |
-| `champagneGold` | `#D4AF37` | Secondary accent, progress, premium emphasis |
-| `champagneGoldDeep` | `#A98642` | Readable gold text on light surfaces |
-| `pearl` | `#FDFBF9` | Primary card surface |
-| `warmIvory` | `#FBF7F1` | App background |
-| `softSand` | `#F4ECDD` | Page gradient tail and quiet panels |
-| `mutedRose` | `#F6E1E1` | Soft warning/empty treatment |
-| `ink` | `#2D1A1E` | Primary text |
-| `inkSoft` | `#6C5A5D` | Secondary text |
-| `hairline` | `#E9DED3` | Borders and separators |
-| `success` | `#4F9A43` | Paid, done, success states |
-| `warning` | `#D6892C` | Pending or caution states |
-| `danger` | `#D32F2F` | Delete, overdue, destructive states |
-| `info` | `#3F6FB0` | Neutral informational states |
+| `royalMaroon` | `#7A1F2B` | Primary brand actions, active navigation, important icons |
+| `royalMaroonSoft` | `#F7E8EA` | Soft royal backgrounds and quiet elevated accents |
+| `royalMaroonDeep` | `#4A0F18` | Deep contrast, shadows, premium hero surfaces |
+| `champagneGold` | `#D8B26E` | Secondary accent, progress, premium emphasis |
+| `champagneGoldDeep` | `#C9963E` | Readable gold text on light surfaces and warning states |
+| `pearl` | `#FFF8EF` | Primary pearl surface |
+| `warmIvory` | `#FBF4EA` | App background |
+| `softSand` | `#F3E8DA` | Page gradient tail and quiet panels |
+| `mutedRose` | `#FCECEC` | Soft danger treatment |
+| `ink` | `#23181A` | Primary text |
+| `inkSoft` | `#75666A` | Secondary text |
+| `hairline` | `#EADBC9` | Borders and separators |
+| `success` | `#2E7D5B` | Paid, done, success states |
+| `warning` | `#C9963E` | Pending or caution states |
+| `danger` | `#B94A48` | Delete, overdue, destructive states |
+| `info` | `#4F6D7A` | Neutral informational states |
 
 White text is reserved for dark maroon hero/overlay surfaces and high-contrast icon buttons. Status colors must come from semantic tokens instead of raw `Colors.green`, `Colors.red`, or ad hoc Material colors.
 

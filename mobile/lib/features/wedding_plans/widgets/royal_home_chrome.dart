@@ -1,4 +1,4 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -121,10 +121,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: AppTheme.surfaceElevated.withValues(alpha: 0.85),
-                        border: Border.all(
-                          color: AppTheme.border,
-                          width: 1,
-                        ),
+                        border: Border.all(color: AppTheme.border, width: 1),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -199,10 +196,13 @@ class RoyalSmartFloatingActionButton extends StatefulWidget {
   final IconData? icon;
 
   @override
-  State<RoyalSmartFloatingActionButton> createState() => _RoyalSmartFloatingActionButtonState();
+  State<RoyalSmartFloatingActionButton> createState() =>
+      _RoyalSmartFloatingActionButtonState();
 }
 
-class _RoyalSmartFloatingActionButtonState extends State<RoyalSmartFloatingActionButton> with SingleTickerProviderStateMixin {
+class _RoyalSmartFloatingActionButtonState
+    extends State<RoyalSmartFloatingActionButton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _glowAnimation;
 
@@ -213,9 +213,10 @@ class _RoyalSmartFloatingActionButtonState extends State<RoyalSmartFloatingActio
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _glowAnimation = Tween<double>(
+      begin: 0.3,
+      end: 0.7,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -250,7 +251,10 @@ class _RoyalSmartFloatingActionButtonState extends State<RoyalSmartFloatingActio
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [_RoyalHomeColors.gold, _RoyalHomeColors.goldDeep],
+                        colors: [
+                          _RoyalHomeColors.gold,
+                          _RoyalHomeColors.goldDeep,
+                        ],
                       ),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.4),
@@ -258,7 +262,9 @@ class _RoyalSmartFloatingActionButtonState extends State<RoyalSmartFloatingActio
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: _RoyalHomeColors.goldDeep.withValues(alpha: _glowAnimation.value),
+                          color: _RoyalHomeColors.goldDeep.withValues(
+                            alpha: _glowAnimation.value,
+                          ),
                           blurRadius: 24,
                           spreadRadius: _glowAnimation.value * 8,
                           offset: const Offset(0, 10),
@@ -650,7 +656,7 @@ class _RoyalHomeColors {
   static const ivory = AppTheme.ivory;
   static const burgundy = AppTheme.burgundy;
   static const gold = AppTheme.gold;
-  static const goldDeep = AppTheme.gold;
+  static const goldDeep = AppTheme.warning;
   static const ink = AppTheme.ink;
   static const muted = AppTheme.muted;
 }

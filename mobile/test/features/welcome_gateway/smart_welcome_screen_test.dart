@@ -303,4 +303,36 @@ void main() {
     expect(find.byType(PremiumLocationCard), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('Path and role selection stay overflow-free at 320px RTL width', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 760);
+    addTearDown(tester.view.reset);
+
+    final preferences = await SharedPreferences.getInstance();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
+          Provider<GuestOnboardingStorage>(
+            create: (_) => GuestOnboardingStorage(preferences),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: SmartWelcomeScreen())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('أريد تنظيم زفافي'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('من أنت؟'), findsOneWidget);
+    expect(find.text('متابعة'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

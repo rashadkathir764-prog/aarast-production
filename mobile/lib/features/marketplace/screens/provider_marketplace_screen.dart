@@ -29,7 +29,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
 
-
   @override
   void initState() {
     super.initState();
@@ -88,7 +87,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   provider: provider,
                 ),
 
-                if (_weddingLocation != null && !_weddingLocation!.hasRequiredLocation) ...[
+                if (_weddingLocation != null &&
+                    !_weddingLocation!.hasRequiredLocation) ...[
                   const SizedBox(height: 12),
                   _LocationContextCard(
                     location: _weddingLocation,
@@ -197,7 +197,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         location = guestLocation;
         planId = guestPlan?.guestPlanId;
       }
-
     }
 
     if (location?.hasAnyLocation != true && hasAccount) {
@@ -274,7 +273,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 }
 
 class _TopMarketplaceCommandCard extends StatelessWidget {
-  const _TopMarketplaceCommandCard({required this.embedded, required this.provider});
+  const _TopMarketplaceCommandCard({
+    required this.embedded,
+    required this.provider,
+  });
 
   final bool embedded;
   final ProviderMarketplaceProvider provider;
@@ -314,15 +316,18 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                         'الموردون والعروض',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppTheme.ink,
-                          fontWeight: FontWeight.w900,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: AppTheme.ink,
+                              fontWeight: FontWeight.w900,
+                            ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     AarastStatusPill(
-                      label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
+                      label: provider.includesAccountData
+                          ? 'حساب محفوظ'
+                          : 'تصفح عام',
                       color: AppTheme.gold,
                       backgroundColor: AppTheme.goldSoft,
                       icon: provider.includesAccountData
@@ -334,27 +339,72 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Text(
+            'تصفّح المزودين واطلب عرض سعر عند الحاجة. لا يوجد حجز أو دفع داخل هذه الشاشة.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
           const SizedBox(height: 14),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _MiniStat(
-                  label: 'طلبات مرسلة',
-                  value: provider.includesAccountData ? quotes.length.toString() : '0',
-                  color: AppTheme.muted,
-                ),
-                _MiniStat(
-                  label: 'عروض وصلت',
-                  value: provider.includesAccountData ? offersReceived.toString() : '0',
-                  color: AppTheme.gold,
-                ),
-                _MiniStat(
-                  label: 'موردين معتمدين',
-                  value: provider.includesAccountData ? acceptedProviders.toString() : '0',
-                  color: AppTheme.success,
-                ),
-              ],
+          if (provider.includesAccountData)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _MiniStat(
+                    label: 'طلبات مرسلة',
+                    value: quotes.length.toString(),
+                    color: AppTheme.muted,
+                  ),
+                  _MiniStat(
+                    label: 'عروض وصلت',
+                    value: offersReceived.toString(),
+                    color: AppTheme.gold,
+                  ),
+                  _MiniStat(
+                    label: 'عروض مقبولة',
+                    value: acceptedProviders.toString(),
+                    color: AppTheme.success,
+                  ),
+                ],
+              ),
+            )
+          else
+            const _PublicBrowseNote(),
+        ],
+      ),
+    );
+  }
+}
+
+class _PublicBrowseNote extends StatelessWidget {
+  const _PublicBrowseNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.ivory.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.visibility_outlined, color: AppTheme.gold, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'التصفح مفتوح للجميع. إرسال طلب عرض ومتابعة الردود يحتاج حسابًا محفوظًا.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
             ),
           ),
         ],
@@ -364,7 +414,11 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
 }
 
 class _MiniStat extends StatelessWidget {
-  const _MiniStat({required this.label, required this.value, required this.color});
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
@@ -383,20 +437,26 @@ class _MiniStat extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 13),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700, fontSize: 11),
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
           ),
         ],
       ),
     );
   }
 }
-
-
 
 class _ImportantNowCard extends StatelessWidget {
   const _ImportantNowCard({
@@ -428,10 +488,7 @@ class _ImportantNowCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.priority_high_rounded,
-                color: AppTheme.burgundy,
-              ),
+              const Icon(Icons.priority_high_rounded, color: AppTheme.burgundy),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -724,7 +781,10 @@ class _QuoteRequestsOverview extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.request_quote_outlined, color: AppTheme.burgundy),
+              const Icon(
+                Icons.request_quote_outlined,
+                color: AppTheme.burgundy,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -761,7 +821,6 @@ class _QuoteRequestsOverview extends StatelessWidget {
     );
   }
 }
-
 
 class _QuoteRequestTile extends StatelessWidget {
   const _QuoteRequestTile({
@@ -981,9 +1040,7 @@ class _ProviderCard extends StatelessWidget {
                         isFavorite
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
-                        color: isFavorite
-                            ? AppTheme.burgundy
-                            : AppTheme.muted,
+                        color: isFavorite ? AppTheme.burgundy : AppTheme.muted,
                       ),
                     ),
                   ],
@@ -1143,7 +1200,6 @@ class _ProviderImage extends StatelessWidget {
     );
   }
 }
-
 
 int _offersReceivedCount(List<QuoteRequest> quotes) {
   return quotes.where((quote) {

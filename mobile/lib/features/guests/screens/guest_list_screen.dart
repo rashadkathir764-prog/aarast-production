@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -89,36 +89,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'الضيوف',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.burgundyDark,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        'نظم قائمة الحضور والدعوات',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.muted,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              ],
-            ),
+            child: const _GuestsHeader(),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -159,8 +130,6 @@ class _GuestListScreenState extends State<GuestListScreen> {
       context.go(AppRouter.guestList(widget.weddingPlanId));
     }
   }
-
-
 
   Future<void> _showGuestSheet({
     required GuestsProvider provider,
@@ -216,7 +185,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
       final message = provider.noticeMessage ?? 'تم حفظ الضيف.';
       AarastToast.showSuccess(context, message);
     } else {
-      AarastToast.showError(context, provider.errorMessage ?? 'تعذر حفظ الضيف.');
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'تعذر حفظ الضيف.',
+      );
     }
   }
 
@@ -317,6 +289,57 @@ class _GuestListScreenState extends State<GuestListScreen> {
   }
 }
 
+class _GuestsHeader extends StatelessWidget {
+  const _GuestsHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      color: AppTheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'الضيوف',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.burgundyDark,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const AarastStatusPill(
+                label: 'قائمة الحضور',
+                color: AppTheme.burgundy,
+                backgroundColor: AppTheme.burgundySoft,
+                icon: Icons.groups_2_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'نظّم الحضور والردود من بيانات حقيقية، بدون افتراض إرسال دعوات أو مشاركة لم تتم بعد.',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _GuestsContent extends StatelessWidget {
   const _GuestsContent({
     required this.provider,
@@ -401,10 +424,7 @@ class _GuestsContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _TopGuestsCommandCard(
-          summary: summary,
-          isLocalPlan: isLocalPlan,
-        ),
+        _TopGuestsCommandCard(summary: summary, isLocalPlan: isLocalPlan),
         const SizedBox(height: 12),
         _ImportantGuestsCard(
           issues: importantIssues,
@@ -427,12 +447,13 @@ class _GuestsContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.border),
             ),
-            child: const Text(
-              'لا يوجد ضيوف حالياً. استخدم الزر العائم الذهبي للإضافة.',
-              style: TextStyle(
+            child: Text(
+              _emptyGuestsMessage(filter),
+              style: const TextStyle(
                 color: AppTheme.muted,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
+                height: 1.35,
               ),
               textAlign: TextAlign.center,
             ),
@@ -456,7 +477,10 @@ class _GuestsContent extends StatelessWidget {
 }
 
 class _TopGuestsCommandCard extends StatelessWidget {
-  const _TopGuestsCommandCard({required this.summary, required this.isLocalPlan});
+  const _TopGuestsCommandCard({
+    required this.summary,
+    required this.isLocalPlan,
+  });
 
   final GuestSummary summary;
   final bool isLocalPlan;
@@ -484,10 +508,11 @@ class _TopGuestsCommandCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'اكتمال البيانات (${summary.completionPercent}%)',
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: AppTheme.ink,
-                              fontWeight: FontWeight.w900,
-                            ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: AppTheme.ink,
+                                  fontWeight: FontWeight.w900,
+                                ),
                           ),
                         ),
                         if (isLocalPlan) ...[
@@ -508,7 +533,9 @@ class _TopGuestsCommandCard extends StatelessWidget {
                         value: summary.completionRatio,
                         minHeight: 4,
                         backgroundColor: AppTheme.border,
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.burgundy),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppTheme.burgundy,
+                        ),
                       ),
                     ),
                   ],
@@ -521,12 +548,34 @@ class _TopGuestsCommandCard extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _MiniStat(label: 'الإجمالي', value: '${summary.totalGuests}', color: AppTheme.muted),
-                _MiniStat(label: 'مؤكد', value: '${summary.confirmed}', color: AppTheme.success),
-                _MiniStat(label: 'بانتظار الرد', value: '${summary.pending}', color: AppTheme.gold),
-                _MiniStat(label: 'ناقص بيانات', value: '${summary.incompleteGuestsCount}', color: summary.incompleteGuestsCount > 0 ? AppTheme.danger : AppTheme.muted),
+                _MiniStat(
+                  label: 'الإجمالي',
+                  value: '${summary.totalGuests}',
+                  color: AppTheme.muted,
+                ),
+                _MiniStat(
+                  label: 'مؤكد',
+                  value: '${summary.confirmed}',
+                  color: AppTheme.success,
+                ),
+                _MiniStat(
+                  label: 'بانتظار الرد',
+                  value: '${summary.pending}',
+                  color: AppTheme.gold,
+                ),
+                _MiniStat(
+                  label: 'ناقص بيانات',
+                  value: '${summary.incompleteGuestsCount}',
+                  color: summary.incompleteGuestsCount > 0
+                      ? AppTheme.danger
+                      : AppTheme.muted,
+                ),
                 if (summary.companionsExpectedCount > 0)
-                  _MiniStat(label: 'مرافقين', value: '${summary.companionsExpectedCount}', color: AppTheme.muted),
+                  _MiniStat(
+                    label: 'مرافقين',
+                    value: '${summary.companionsExpectedCount}',
+                    color: AppTheme.muted,
+                  ),
               ],
             ),
           ),
@@ -537,7 +586,11 @@ class _TopGuestsCommandCard extends StatelessWidget {
 }
 
 class _MiniStat extends StatelessWidget {
-  const _MiniStat({required this.label, required this.value, required this.color});
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
@@ -556,12 +609,20 @@ class _MiniStat extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 13),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 13,
+            ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: AppTheme.muted, fontWeight: FontWeight.w700, fontSize: 11),
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
           ),
         ],
       ),
@@ -1295,7 +1356,6 @@ class _GuestSheetResult {
   final String? notes;
 }
 
-
 class _GuestLoadingState extends StatelessWidget {
   const _GuestLoadingState();
 
@@ -1541,7 +1601,6 @@ String _groupLabel(Guest guest, List<GuestGroup> groups) {
   return 'ضمن مجموعة';
 }
 
-
 String _supportedSide(String? side) {
   return _sideValues.contains(side) ? side! : 'OTHER';
 }
@@ -1607,6 +1666,18 @@ String _listTitle(_GuestFilter filter) {
   };
 }
 
+String _emptyGuestsMessage(_GuestFilter filter) {
+  return switch (filter) {
+    _GuestFilter.all =>
+      'لا يوجد ضيوف بعد. أضف ضيفًا عندما تكون لديك بيانات حضور فعلية.',
+    _GuestFilter.confirmed => 'لا يوجد ضيوف مؤكدون بعد.',
+    _GuestFilter.pending => 'لا يوجد ضيوف بانتظار الرد الآن.',
+    _GuestFilter.declined => 'لا يوجد ضيوف اعتذروا عن الحضور.',
+    _GuestFilter.incomplete => 'لا يوجد ضيوف ناقصو البيانات الآن.',
+    _GuestFilter.groom => 'لا يوجد ضيوف من طرف العريس بعد.',
+    _GuestFilter.bride => 'لا يوجد ضيوف من طرف العروسة بعد.',
+  };
+}
 
 class _GuestIssue {
   const _GuestIssue({

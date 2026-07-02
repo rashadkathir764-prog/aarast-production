@@ -238,7 +238,6 @@ class _CompactPlanHeroCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: SizedBox(
-
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
@@ -268,114 +267,126 @@ class _CompactPlanHeroCard extends StatelessWidget {
                   ),
                 ),
                 Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                        if (_hasText(personaHeadline)) ...[
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_hasText(personaHeadline)) ...[
+                            Text(
+                              personaHeadline!.trim(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withAlpha(200),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                          ],
                           Text(
-                            personaHeadline!.trim(),
-                            maxLines: 1,
+                            summary.title,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white.withAlpha(200),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              height: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 6),
-                        ],
-                        Text(
-                          summary.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_month_rounded, color: AppTheme.goldSoft.withAlpha(200), size: 14),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                summary.weddingDate == null
-                                    ? 'التاريخ غير محدد'
-                                    : _formatDate(summary.weddingDate!),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withAlpha(200),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on_rounded, color: AppTheme.goldSoft.withAlpha(200), size: 14),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                locationText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withAlpha(200),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (days != null) ...[
                           const SizedBox(height: 10),
                           Row(
                             children: [
-                              const Icon(Icons.hourglass_bottom_rounded, color: AppTheme.goldSoft, size: 14),
+                              Icon(
+                                Icons.calendar_month_rounded,
+                                color: AppTheme.goldSoft.withAlpha(200),
+                                size: 14,
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  'متبقي $days يوم و $hours ساعة',
+                                  summary.weddingDate == null
+                                      ? 'التاريخ غير محدد'
+                                      : _formatDate(summary.weddingDate!),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AppTheme.goldSoft,
+                                  style: TextStyle(
+                                    color: Colors.white.withAlpha(200),
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_rounded,
+                                color: AppTheme.goldSoft.withAlpha(200),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  locationText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withAlpha(200),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (days != null) ...[
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.hourglass_bottom_rounded,
+                                  color: AppTheme.goldSoft,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'متبقي $days يوم و $hours ساعة',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppTheme.goldSoft,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  _CircularProgressWidget(percent: summary.progressPercentage),
-                ],
-              ),
-            ],
-          ),
+                    const SizedBox(width: 12),
+                    _CircularProgressWidget(
+                      percent: summary.progressPercentage,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-
-
 
 class _HeroMetaLine extends StatelessWidget {
   const _HeroMetaLine({required this.icon, required this.label});
@@ -457,9 +468,7 @@ class _StatePill extends StatelessWidget {
       decoration: BoxDecoration(
         color: _RoyalColors.gold.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: _RoyalColors.gold.withValues(alpha: 0.15),
-        ),
+        border: Border.all(color: _RoyalColors.gold.withValues(alpha: 0.15)),
       ),
       child: Text(
         label,
@@ -669,9 +678,7 @@ class _PremiumHeroCard extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: AppTheme.border,
                                 borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: AppTheme.border,
-                                ),
+                                border: Border.all(color: AppTheme.border),
                               ),
                               child: Text(
                                 summary.dataStateLabel,
@@ -812,7 +819,7 @@ class _CircularProgressWidget extends StatelessWidget {
               BoxShadow(
                 color: AppTheme.goldSoft.withValues(alpha: 0.3),
                 blurRadius: 12,
-              )
+              ),
             ],
           ),
         ),
@@ -972,7 +979,6 @@ class _BasePanoramicCard extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: SizedBox(
-
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -1349,7 +1355,6 @@ class _DashboardSectionCard extends StatelessWidget {
     final content = ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: SizedBox(
-
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -1357,48 +1362,50 @@ class _DashboardSectionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: AppTheme.border),
           ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (icon != null) ...[
-                Icon(icon, color: _RoyalColors.goldDeep, size: 20),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              Row(
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, color: _RoyalColors.goldDeep, size: 20),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _RoyalColors.ink,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_hasText(subtitle)) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!.trim(),
                   style: const TextStyle(
-                    color: _RoyalColors.ink,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    color: _RoyalColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
                     letterSpacing: 0,
                   ),
                 ),
-              ),
+              ],
+              const SizedBox(height: 14),
+              child,
             ],
           ),
-          if (_hasText(subtitle)) ...[
-            const SizedBox(height: 4),
-            Text(
-              subtitle!.trim(),
-              style: const TextStyle(
-                color: _RoyalColors.muted,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-                letterSpacing: 0,
-              ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          child,
-        ],
+        ),
       ),
-    )));
+    );
 
     if (onTap == null) return content;
     return AarastPressable(
@@ -1424,19 +1431,57 @@ class _ImportantNowCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Text(
-            'مهام النانو السريعة',
-            style: TextStyle(
-              color: _RoyalColors.ink,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppTheme.goldSoft,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  border: Border.all(
+                    color: AppTheme.gold.withValues(alpha: 0.28),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome_rounded,
+                  color: AppTheme.burgundy,
+                  size: 17,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'الأهم الآن',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.title,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    Text(
+                      'أقرب شيء يحتاج انتباهك في الخطة',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         if (items.isEmpty)
-          const _EmptySectionText(text: 'كل شيء هادئ الآن.')
+          const _EmptySectionText(text: 'لا يوجد إجراء عاجل الآن.')
         else
           SizedBox(
             height: 90,
@@ -1454,15 +1499,18 @@ class _ImportantNowCard extends StatelessWidget {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: SizedBox(
-
                       child: Container(
                         width: 100,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isUrgent ? AppTheme.dangerSoft : AppTheme.successSoft,
+                          color: isUrgent
+                              ? AppTheme.dangerSoft
+                              : AppTheme.successSoft,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: isUrgent ? AppTheme.danger.withAlpha(100) : AppTheme.success.withAlpha(100),
+                            color: isUrgent
+                                ? AppTheme.danger.withAlpha(100)
+                                : AppTheme.success.withAlpha(100),
                             width: 1,
                           ),
                         ),
@@ -1471,7 +1519,9 @@ class _ImportantNowCard extends StatelessWidget {
                           children: [
                             Icon(
                               _iconForImportantItem(item),
-                              color: isUrgent ? AppTheme.danger : AppTheme.success,
+                              color: isUrgent
+                                  ? AppTheme.danger
+                                  : AppTheme.success,
                               size: 20,
                             ),
                             const SizedBox(height: 6),
@@ -1781,7 +1831,6 @@ class _MiniDashboardCard extends StatelessWidget {
     final content = ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-
         child: Container(
           constraints: const BoxConstraints(minHeight: 142),
           padding: const EdgeInsets.all(14),
@@ -1790,46 +1839,48 @@ class _MiniDashboardCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: AppTheme.border),
           ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: _RoyalColors.goldDeep, size: 18),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _RoyalColors.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
+              Row(
+                children: [
+                  Icon(icon, color: _RoyalColors.goldDeep, size: 18),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _RoyalColors.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                      ),
+                    ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _RoyalColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  height: 1.35,
+                  letterSpacing: 0,
                 ),
               ),
+              const SizedBox(height: 10),
+              child,
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: _RoyalColors.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-              letterSpacing: 0,
-            ),
-          ),
-          const SizedBox(height: 10),
-          child,
-        ],
+        ),
       ),
-    )));
+    );
     if (onTap == null) return content;
     return AarastPressable(
       onTap: onTap!,
@@ -2119,16 +2170,13 @@ class _OverviewTile extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
         child: SizedBox(
-
           child: Container(
             width: 145,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppTheme.border,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.border,
-              ),
+              border: Border.all(color: AppTheme.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2928,7 +2976,12 @@ class _AnimatedDonutChart extends StatelessWidget {
                       color: AppTheme.success,
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      shadows: [Shadow(color: AppTheme.success.withAlpha(100), blurRadius: 10)],
+                      shadows: [
+                        Shadow(
+                          color: AppTheme.success.withAlpha(100),
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
                   ),
                   const Text(
@@ -2995,10 +3048,7 @@ class _DonutChartPainter extends CustomPainter {
         ..shader = SweepGradient(
           startAngle: 0.0,
           endAngle: 2 * math.pi,
-          colors: [
-            spentColor.withValues(alpha: 0.2),
-            spentColor,
-          ],
+          colors: [spentColor.withValues(alpha: 0.2), spentColor],
           transform: GradientRotation(startAngle),
         ).createShader(Rect.fromCircle(center: center, radius: radius))
         ..style = PaintingStyle.stroke

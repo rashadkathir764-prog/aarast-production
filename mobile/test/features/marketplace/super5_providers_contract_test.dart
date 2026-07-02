@@ -37,6 +37,15 @@ void main() {
 
       expect(state.lastIncludeAccountData, isFalse);
       expect(find.text('الموردون والعروض'), findsOneWidget);
+      expect(
+        find.text(
+          'التصفح مفتوح للجميع. إرسال طلب عرض ومتابعة الردود يحتاج حسابًا محفوظًا.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('طلبات مرسلة'), findsNothing);
+      expect(find.text('عروض وصلت'), findsNothing);
+      expect(find.text('عروض مقبولة'), findsNothing);
       await tester.scrollUntilVisible(
         find.text('قاعة السلام'),
         320,

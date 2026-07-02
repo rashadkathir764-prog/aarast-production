@@ -132,7 +132,12 @@ void main() {
     await _pumpTasksScreen(tester, harness);
 
     expect(find.text('المهام'), findsWidgets);
-    expect(find.text('تابع تجهيزات زفافك خطوة بخطوة'), findsWidgets);
+    expect(
+      find.text(
+        'تابع تجهيزات زفافك خطوة بخطوة، وركّز على المهام المؤكدة فقط بدون اقتراحات وهمية.',
+      ),
+      findsWidgets,
+    );
     expect(find.text('تأكيد القاعة'), findsWidgets);
     expect(find.text('إنجاز المهام'), findsOneWidget);
     expect(find.text('حساب محفوظ'), findsNothing);

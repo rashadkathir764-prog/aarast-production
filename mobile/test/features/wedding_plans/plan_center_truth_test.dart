@@ -16,11 +16,28 @@ void main() {
       expect(source, contains('_positiveMoney(plan.estimatedBudget)'));
     });
 
-    test('missing optional address is not displayed as saved optional data', () {
-      expect(source, isNot(contains("'أضف موقع الزفاف'")));
-      expect(source, isNot(contains("_locationValue(location.governorate, 'اختياري')")));
-      expect(source, isNot(contains("_locationValue(location.cityOrDistrict, 'اختياري')")));
-      expect(source, contains("_locationValue(location.areaOrNeighborhood, 'لم يضف بعد')"));
+    test(
+      'missing optional address is not displayed as saved optional data',
+      () {
+        expect(source, isNot(contains("'أضف موقع الزفاف'")));
+        expect(
+          source,
+          isNot(contains("_locationValue(location.governorate, 'اختياري')")),
+        );
+        expect(
+          source,
+          isNot(contains("_locationValue(location.cityOrDistrict, 'اختياري')")),
+        );
+        expect(
+          source,
+          contains("_locationValue(location.areaOrNeighborhood, 'لم يضف بعد')"),
+        );
+      },
+    );
+    test('generic unavailable copy is not used as metric data', () {
+      expect(source, isNot(contains("?? 'غير متاح'")));
+      expect(source, contains("?? 'لا توجد بيانات'"));
+      expect(source, contains("?? 'لم تتم المزامنة'"));
     });
   });
 }

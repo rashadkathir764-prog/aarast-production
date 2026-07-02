@@ -39,10 +39,23 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
+    expect(find.text('خطط الزفاف'), findsOneWidget);
+    expect(find.text('الحساب والمساعدة'), findsOneWidget);
     expect(find.text('خططي'), findsOneWidget);
     expect(find.text('الخطط المشتركة معي'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('الإعدادات'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('الإعدادات'), findsOneWidget);
     expect(find.text('الدعم والمساعدة'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('المزامنة'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('المزامنة'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('تسجيل الخروج'),
       320,

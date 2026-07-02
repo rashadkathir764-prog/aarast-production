@@ -52,7 +52,8 @@ void main() {
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
-    expect(find.text('مهام النانو السريعة'), findsOneWidget);
+    expect(find.text('الأهم الآن'), findsOneWidget);
+    expect(find.text('أقرب شيء يحتاج انتباهك في الخطة'), findsOneWidget);
     await tester.dragUntilVisible(
       find.text('المتبقي من الميزانية'),
       find.byType(ListView).first,

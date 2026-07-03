@@ -20,7 +20,7 @@ Production deployment uses:
 | Service | Public URL | Host -> Container |
 |---------|------------|------------------|
 | Backend API | `https://aarast-api.shadowgardn.com` | `8093 -> 3000` |
-| Admin dashboard | `https://aarast.shadowgardn.com` | `8095 -> 80` |
+| Admin dashboard | `https://aarast-admin.shadowgardn.com` | `8094 -> 80` |
 
 ## Local Development Ports
 

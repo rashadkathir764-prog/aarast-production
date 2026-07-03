@@ -7,7 +7,7 @@ Current committed Dokploy Compose services:
 | Service | Compose service | Host -> Container | Current/expected domain |
 | --- | --- | --- | --- |
 | API | `backend` | `8093 -> 3000` | `https://aarast-api.shadowgardn.com` |
-| Admin Web | `admin-web` | `8095 -> 80` | currently `https://aarast.shadowgardn.com` |
+| Admin Web | `admin-web` | `8094 -> 80` | `https://aarast-admin.shadowgardn.com` |
 | Flutter Web/Mobile Web | not present in Compose | not configured | target `https://aarast.shadowgardn.com` after the domain split is implemented |
 
 Target routing under review:
@@ -16,13 +16,13 @@ Target routing under review:
 - Admin: `https://aarast-admin.shadowgardn.com` on host port `8094`.
 - Flutter Web/Mobile Web: `https://aarast.shadowgardn.com` on host port `8095`.
 
-The current Compose file does not yet define the target admin service on `8094` or a separate Flutter web service on `8095`. Do not claim that target split is deployed until Compose/Dokploy/NPM are updated and verified.
+The current Compose file defines the admin service on `8094`. A separate Flutter web service on `8095` is still not configured. Do not claim the full target split is deployed until Dokploy/NPM are updated and verified.
 
 Historical live HTTP check on 2026-06-14:
 
 - `https://aarast-api.shadowgardn.com/health`: HTTP 200.
 - `https://aarast.shadowgardn.com/`: HTTP 200.
-- `https://aarast-admin.shadowgardn.com/`: HTTP 502 Bad Gateway.
+- `https://aarast-admin.shadowgardn.com/`: previously returned HTTP 502 before the admin service was moved to the target host port.
 
 502 note: Nginx Proxy Manager can resolve the domain while the upstream Dokploy service/port is unreachable or mapped to the wrong host port. Check the Dokploy service health, host port, NPM forward host/port, and container logs before changing app code.
 
@@ -56,22 +56,16 @@ Dokploy is used for the approved VPS deployment path. The production Compose app
 Current production routing:
 
 - Backend API domain: `https://aarast-api.shadowgardn.com`
-- Admin dashboard domain: `https://aarast.shadowgardn.com`
+- Admin dashboard domain: `https://aarast-admin.shadowgardn.com`
 - Backend host port: `8093`, mapped to container port `3000`
-- Admin dashboard host port: `8095`, mapped to container port `80`
+- Admin dashboard host port: `8094`, mapped to container port `80`
 
 Required production values:
 
 ```env
 PORT=3000
-CORS_ORIGINS=https://aarast.shadowgardn.com
-VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
-```
-
-When `aarast-admin.shadowgardn.com` becomes the admin dashboard origin, update `CORS_ORIGINS` to include both deployed web origins:
-
-```env
 CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
+VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
 ```
 
 ## Environment Staging

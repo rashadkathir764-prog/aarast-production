@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -86,7 +86,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'الديون والأقساط',
+                        'الباقي والدفعات',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -96,7 +96,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'تابع ديون خطتك وأقساطها المستحقة',
+                        'اعرف كم باقي عليك ومتى تدفعه',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -115,7 +115,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                       extra: widget.sharedMember,
                     ),
                     icon: const Icon(Icons.add_rounded),
-                    tooltip: 'إضافة دين',
+                    tooltip: 'إضافة مبلغ باقي',
                     style: IconButton.styleFrom(
                       backgroundColor: AppTheme.burgundy,
                       foregroundColor: Colors.white,
@@ -258,8 +258,8 @@ class _DebtInstallmentContent extends StatelessWidget {
         const SizedBox(height: 12),
         if (debts.isEmpty)
           AarastEmptyState(
-            title: 'لا توجد ديون بعد',
-            message: 'أضف أول دين لتتبع الأقساط',
+            title: 'لا يوجد مبلغ باقي بعد',
+            message: 'أضف مبلغاً لم يكتمل دفعه حتى يظهر موعده ومتبقيه هنا',
             icon: Icons.receipt_long_outlined,
             action: canManageFinancialRecords
                 ? ElevatedButton.icon(
@@ -268,7 +268,7 @@ class _DebtInstallmentContent extends StatelessWidget {
                       extra: sharedMember,
                     ),
                     icon: const Icon(Icons.add_rounded),
-                    label: const Text('إضافة دين جديد'),
+                    label: const Text('إضافة مبلغ باقي'),
                   )
                 : null,
           )
@@ -300,7 +300,7 @@ class _DebtInstallmentContent extends StatelessWidget {
                 extra: sharedMember,
               ),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('إضافة دين جديد'),
+              label: const Text('إضافة مبلغ باقي'),
             ),
           ),
         ],
@@ -324,7 +324,7 @@ class _DebtSearchRow extends StatelessWidget {
             textAlign: TextAlign.right,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'ابحث عن شخص أو دين...',
+              hintText: 'ابحث عن شخص أو مبلغ باقي...',
               prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: controller.text.isEmpty
                   ? null
@@ -371,7 +371,7 @@ class _DebtSummaryGrid extends StatelessWidget {
           children: [
             _SummaryTile(
               width: itemWidth,
-              label: 'إجمالي الديون',
+              label: 'إجمالي المبالغ',
               moneyValue: _moneyValue(summary.totalDebt),
               color: AppTheme.burgundy,
               icon: Icons.account_balance_wallet_outlined,
@@ -392,7 +392,7 @@ class _DebtSummaryGrid extends StatelessWidget {
             ),
             _SummaryTile(
               width: itemWidth,
-              label: 'أقرب قسط',
+              label: 'أقرب دفعة',
               value: nextInstallment?.dueDate == null
                   ? '-'
                   : _shortDate(nextInstallment!.dueDate!),
@@ -514,9 +514,7 @@ class _DebtFilterChips extends StatelessWidget {
                   ? const Icon(Icons.check_rounded, size: 16)
                   : null,
               labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: selectedFilter == filter
-                    ? Colors.white
-                    : AppTheme.muted,
+                color: selectedFilter == filter ? Colors.white : AppTheme.muted,
                 fontWeight: FontWeight.w900,
               ),
               selectedColor: AppTheme.burgundy,
@@ -612,7 +610,7 @@ class _DebtCard extends StatelessWidget {
                 children: [
                   _DebtMiniMetric(
                     width: itemWidth,
-                    label: 'إجمالي الدين',
+                    label: 'إجمالي المبلغ',
                     moneyValue: _moneyValue(debt.totalAmount),
                     color: AppTheme.ink,
                   ),
@@ -630,7 +628,7 @@ class _DebtCard extends StatelessWidget {
                   ),
                   _DebtMiniMetric(
                     width: itemWidth,
-                    label: 'أقرب قسط',
+                    label: 'أقرب دفعة',
                     value: nextDate == null ? '-' : _shortDate(nextDate),
                     color: AppTheme.gold,
                     ltrValue: nextDate != null,
@@ -788,7 +786,7 @@ class _DebtAccessDeniedState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
       children: const [
         AarastEmptyState(
-          title: 'الديون والأقساط خاصة',
+          title: 'الباقي والدفعات خاصة',
           message: 'ليست لديك صلاحية عرض التفاصيل المالية.',
           icon: Icons.lock_outline_rounded,
         ),
@@ -935,17 +933,17 @@ Installment? _nearestInstallment(List<Installment> installments) {
 String _filterLabel(_DebtListFilter filter) {
   return switch (filter) {
     _DebtListFilter.all => 'الكل',
-    _DebtListFilter.active => 'نشط',
+    _DebtListFilter.active => 'باقي',
     _DebtListFilter.overdue => 'متأخر',
-    _DebtListFilter.completed => 'مكتمل',
+    _DebtListFilter.completed => 'مسدد',
   };
 }
 
 String _debtUiStatusLabel(_DebtUiStatus status) {
   return switch (status) {
-    _DebtUiStatus.active => 'نشط',
+    _DebtUiStatus.active => 'باقي',
     _DebtUiStatus.overdue => 'متأخر',
-    _DebtUiStatus.completed => 'مكتمل',
+    _DebtUiStatus.completed => 'مسدد',
   };
 }
 

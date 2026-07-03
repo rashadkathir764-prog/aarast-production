@@ -335,13 +335,16 @@ void main() {
       ),
     );
 
-    await tester.enterText(_textFormFieldWithLabel('اسم الدائن'), 'القاعة');
     await tester.enterText(
-      _textFormFieldWithLabel('عنوان الدين'),
+      _textFormFieldWithLabel('لمن باقي المبلغ؟'),
+      'القاعة',
+    );
+    await tester.enterText(
+      _textFormFieldWithLabel('عنوان المبلغ'),
       'باقي القاعة',
     );
-    await tester.enterText(_textFormFieldWithLabel('إجمالي الدين'), '2000000');
-    final submit = find.text('حفظ الدين');
+    await tester.enterText(_textFormFieldWithLabel('إجمالي المبلغ'), '2000000');
+    final submit = find.text('حفظ المبلغ');
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
     await tester.tap(submit);

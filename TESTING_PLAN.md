@@ -82,6 +82,8 @@ The backend currently has these focused smoke scripts:
 - `npm run smoke:provider-dashboard` for provider application, provider-owned profile/service/image/package management, quote request reads/status updates, and review reads.
 - `npm run smoke:backend-completion` for the end-to-end backend completion journey.
 
+The admin web runtime smoke command is `npm run smoke:admin-runtime` from `admin-web/`. It verifies the protected admin surface for stats, users, catalog references, providers, services, reviews, notifications, and operational reports against a running backend.
+
 Marketplace and provider-dashboard smokes may use `SMOKE_DATABASE_URL` to create local ACTIVE fixtures. They must not require external SMS, WhatsApp, payment, deposit, or financing providers.
 
 ## Priority Order

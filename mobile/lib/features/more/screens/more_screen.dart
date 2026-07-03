@@ -121,6 +121,32 @@ class _MoreScreenState extends State<MoreScreen> {
           ),
           const SizedBox(height: 16),
           const _MenuSectionTitle(
+            title: 'الموردون',
+            subtitle: 'الموردون المحفوظون وطلبات المقارنة',
+          ),
+          const SizedBox(height: 8),
+          _MenuGroup(
+            children: [
+              _MoreActionTile(
+                title: 'الموردون المحفوظون',
+                subtitle: 'افتح الصالات والمصورين والخدمات التي حفظتها',
+                icon: Icons.favorite_border_rounded,
+                iconColor: AppTheme.burgundy,
+                iconBackground: AppTheme.burgundySoft,
+                onTap: () => context.push(AppRouter.favoriteProviders),
+              ),
+              _MoreActionTile(
+                title: 'تصفح الموردين',
+                subtitle: 'ابحث عن موردين واطلب عروض أسعار بدون حجز أو دفع',
+                icon: Icons.storefront_outlined,
+                iconColor: AppTheme.gold,
+                iconBackground: AppTheme.goldSoft,
+                onTap: () => context.push(AppRouter.providerMarketplace),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const _MenuSectionTitle(
             title: 'الحساب والمساعدة',
             subtitle: 'إعدادات هادئة، دعم، وتنبيهات عند الحاجة',
           ),

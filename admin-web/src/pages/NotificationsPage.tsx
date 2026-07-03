@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   AdminNotification,
-  getCurrentAdminNotifications,
-  getCurrentAdminUnreadNotificationCount,
+  archiveAdminNotification,
+  deleteAdminNotification,
+  getAdminNotifications,
+  getAdminUnreadNotificationCount,
+  markAdminNotificationRead,
 } from '../api/admin';
+import { ActionButton } from '../components/ActionButton';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -21,11 +25,11 @@ const notificationTypeOptions = [
   { value: 'QUOTE_REQUEST_SUBMITTED', label: 'طلبات عروض' },
   { value: 'TASK_DUE_SOON', label: 'مهام قريبة' },
   { value: 'TASK_OVERDUE', label: 'مهام متأخرة' },
-  { value: 'INSTALLMENT_DUE_SOON', label: 'أقساط قريبة' },
-  { value: 'INSTALLMENT_OVERDUE', label: 'أقساط متأخرة' },
-  { value: 'DEBT_DUE_SOON', label: 'ديون قريبة' },
+  { value: 'INSTALLMENT_DUE_SOON', label: 'دفعات قريبة' },
+  { value: 'INSTALLMENT_OVERDUE', label: 'دفعات متأخرة' },
+  { value: 'DEBT_DUE_SOON', label: 'مبالغ باقية' },
   { value: 'SHARING_INVITATION', label: 'دعوات مشاركة' },
-  { value: 'QUOTE_OFFER_RECEIVED', label: 'عروض مزودين' },
+  { value: 'QUOTE_OFFER_RECEIVED', label: 'عروض موردين' },
   { value: 'PLAN_UPDATED', label: 'تحديث خطة' },
   { value: 'SYNC_REQUIRED', label: 'مزامنة مطلوبة' },
   { value: 'GENERAL', label: 'عام' },
@@ -35,6 +39,7 @@ export function NotificationsPage() {
   const [items, setItems] = useState<AdminNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [type, setType] = useState('');
+  const [priority, setPriority] = useState('');
   const [readFilter, setReadFilter] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -46,15 +51,13 @@ export function NotificationsPage() {
     try {
       const unreadOnly = readFilter === 'unread' ? true : undefined;
       const [notifications, unread] = await Promise.all([
-        getCurrentAdminNotifications({ type, unreadOnly }),
-        getCurrentAdminUnreadNotificationCount(),
+        getAdminNotifications({ type, priority, unreadOnly, search, limit: 100 }),
+        getAdminUnreadNotificationCount(),
       ]);
-      setItems(notifications);
+      setItems(notifications.items);
       setUnreadCount(unread.count);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'تعذر تحميل إشعارات الحساب.',
-      );
+      setError(err instanceof Error ? err.message : 'تعذر تحميل سجل الإشعارات.');
     } finally {
       setIsLoading(false);
     }
@@ -62,58 +65,48 @@ export function NotificationsPage() {
 
   useEffect(() => {
     load();
-  }, [type, readFilter]);
+  }, [type, priority, readFilter]);
 
-  if (isLoading) return <LoadingState title="جاري تحميل إشعارات الحساب" />;
+  async function markRead(notification: AdminNotification) {
+    await markAdminNotificationRead(notification.id);
+    await load();
+  }
+
+  async function archive(notification: AdminNotification) {
+    await archiveAdminNotification(notification.id);
+    await load();
+  }
+
+  async function remove(notification: AdminNotification) {
+    await deleteAdminNotification(notification.id);
+    await load();
+  }
+
+  if (isLoading) return <LoadingState title="جاري تحميل سجل الإشعارات" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const filteredItems = items.filter((notification) => {
-    if (!search.trim()) return true;
-    const query = search.trim().toLowerCase();
-    return [
-      notification.title,
-      notification.body,
-      notification.type,
-      notification.priority,
-      notification.entityType ?? '',
-      notification.routeTarget ?? '',
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(query);
-  });
-
-  const highPriorityCount = filteredItems.filter((notification) =>
+  const unreadVisibleCount = items.filter((notification) => !notification.readAt).length;
+  const highPriorityCount = items.filter((notification) =>
     ['HIGH', 'URGENT'].includes(notification.priority),
   ).length;
-  const unreadVisibleCount = filteredItems.filter(
-    (notification) => !notification.readAt,
-  ).length;
-  const linkedCount = filteredItems.filter(
-    (notification) => notification.routeTarget || notification.entityId,
-  ).length;
+  const archivedCount = items.filter((notification) => notification.archivedAt).length;
 
   return (
     <section className="page-stack">
       <PageHeader
         eyebrow="الإشعارات"
         icon="!"
-        title="إشعارات حساب الإدارة"
-        description="عرض حقيقي لإشعارات حساب الأدمن الحالي من endpoint الإشعارات الموجود."
-        meta={
-          <>
-            <span>{filteredItems.length} إشعار ظاهر</span>
-            <StatusBadge status="OPEN" />
-          </>
-        }
+        title="سجل إشعارات النظام"
+        description="عرض إداري حقيقي من /admin/notifications لكل المستخدمين مع القراءة والأرشفة والحذف الإداري."
+        meta={<span>{items.length} إشعار معروض</span>}
       />
 
       <div className="stats-grid">
-        <StatCard title="الإشعارات" value={filteredItems.length} tone="gold" />
+        <StatCard title="المعروضة" value={items.length} tone="gold" />
         <StatCard title="غير مقروءة" value={unreadVisibleCount} tone="info" />
         <StatCard title="إجمالي غير مقروء" value={unreadCount} tone="warning" />
         <StatCard title="أولوية عالية" value={highPriorityCount} tone="danger" />
-        <StatCard title="مرتبطة بسجل" value={linkedCount} tone="success" />
+        <StatCard title="مؤرشفة" value={archivedCount} tone="success" />
       </div>
 
       <SectionCard className="filters-card">
@@ -122,13 +115,20 @@ export function NotificationsPage() {
             value={search}
             onChange={setSearch}
             onSubmit={load}
-            placeholder="بحث بعنوان الإشعار أو نصه"
+            placeholder="بحث بعنوان الإشعار أو المستخدم"
           />
+          <FilterSelect label="النوع" value={type} onChange={setType} options={notificationTypeOptions} />
           <FilterSelect
-            label="النوع"
-            value={type}
-            onChange={setType}
-            options={notificationTypeOptions}
+            label="الأولوية"
+            value={priority}
+            onChange={setPriority}
+            options={[
+              { value: '', label: 'كل الأولويات' },
+              { value: 'LOW', label: 'منخفضة' },
+              { value: 'NORMAL', label: 'عادية' },
+              { value: 'HIGH', label: 'عالية' },
+              { value: 'URGENT', label: 'عاجلة' },
+            ]}
           />
           <FilterSelect
             label="القراءة"
@@ -142,33 +142,25 @@ export function NotificationsPage() {
         </TableToolbar>
       </SectionCard>
 
-      <SectionCard
-        title="قائمة الإشعارات"
-        subtitle="المصدر يعرض إشعارات المستخدم الحالي فقط، ولا يعرض إشعارات كل المستخدمين أو سجل إرسال عام."
-      >
-        {filteredItems.length === 0 ? (
-          <EmptyState
-            title="لا توجد إشعارات مطابقة"
-            message="لم يرجع endpoint إشعارات للحساب الحالي ضمن الفلاتر المحددة. الصفحة لا تعرض بيانات بديلة."
-            tone="api"
-          />
+      <SectionCard title="قائمة الإشعارات" subtitle="المصدر إداري عام، وليس إشعارات الحساب الحالي فقط.">
+        {items.length === 0 ? (
+          <EmptyState title="لا توجد إشعارات مطابقة" message="غير الفلاتر أو ابحث بكلمة أخرى." tone="api" />
         ) : (
           <DataTable
-            columns={[
-              'الإشعار',
-              'النوع',
-              'الأولوية',
-              'حالة القراءة',
-              'الارتباط',
-              'التاريخ',
-            ]}
-            minWidth={1080}
+            columns={['الإشعار', 'المستخدم', 'النوع', 'الأولوية', 'القراءة', 'الارتباط', 'التاريخ', 'إجراءات']}
+            minWidth={1180}
           >
-            {filteredItems.map((notification) => (
+            {items.map((notification) => (
               <tr key={notification.id}>
                 <td>
                   <strong>{notification.title}</strong>
                   <span className="table-subtle">{notification.body}</span>
+                </td>
+                <td>
+                  <strong>{notification.user?.name ?? notification.userId}</strong>
+                  <span className="table-subtle" dir="ltr">
+                    {notification.user?.phone ?? ''}
+                  </span>
                 </td>
                 <td>{typeLabel(notification.type)}</td>
                 <td>
@@ -184,6 +176,21 @@ export function NotificationsPage() {
                   </span>
                 </td>
                 <td>{formatDate(notification.createdAt)}</td>
+                <td className="actions-cell">
+                  {!notification.readAt ? (
+                    <ActionButton tone="ghost" size="small" onClick={() => markRead(notification)}>
+                      قراءة
+                    </ActionButton>
+                  ) : null}
+                  {!notification.archivedAt ? (
+                    <ActionButton tone="ghost" size="small" onClick={() => archive(notification)}>
+                      أرشفة
+                    </ActionButton>
+                  ) : null}
+                  <ActionButton tone="danger" size="small" onClick={() => remove(notification)}>
+                    حذف
+                  </ActionButton>
+                </td>
               </tr>
             ))}
           </DataTable>

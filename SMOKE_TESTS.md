@@ -39,7 +39,14 @@ Smoke tests should verify:
 
 - Attachments
 - Push/device-token notification infrastructure if approved later.
-- Admin API smoke coverage for dashboard stats, provider review transitions, catalog CRUD, and user list/detail.
+
+## Current Admin Smoke Coverage
+
+From `admin-web/`:
+
+- `npm run smoke:admin-runtime`
+
+This runtime smoke checks admin authentication, dashboard stats, users, cities, provider categories, provider applications, providers, services, reviews, notifications, and operational reports. It must not validate payment processing, deposits, loans, credit, financing, or confirmed booking behavior.
 
 ## MVP Smoke-Test Boundaries
 

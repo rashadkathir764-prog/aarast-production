@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -156,11 +156,7 @@ class _ActivePlanOnboardingScreenState
 
   void _next() {
     if (_path == 'PROVIDER' && _step == 1) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('مسار مزود الخدمة غير مفعّل في هذه المرحلة.'),
-        ),
-      );
+      context.go(AppRouter.providerApply);
       return;
     }
     setState(() => _step = (_step + 1).clamp(0, 3));
@@ -415,7 +411,7 @@ class _PathAndRoleStep extends StatelessWidget {
           const SizedBox(height: 10),
           _ChoiceCard(
             title: 'أنا مزود خدمة',
-            subtitle: 'مسار المزود سيبقى غير مفعّل في هذه المرحلة',
+            subtitle: 'قدّم طلب الانضمام وأدر خدماتك بعد المراجعة',
             icon: Icons.storefront_rounded,
             selected: selectedPath == 'PROVIDER',
             onTap: () => onPathChanged('PROVIDER'),
@@ -760,10 +756,7 @@ class _ChoiceCard extends StatelessWidget {
                 color: selected ? AppTheme.burgundy : AppTheme.ivory,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                color: selected ? Colors.white : AppTheme.gold,
-              ),
+              child: Icon(icon, color: selected ? Colors.white : AppTheme.gold),
             ),
             const SizedBox(width: 12),
             Expanded(

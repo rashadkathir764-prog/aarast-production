@@ -93,17 +93,22 @@ async function run() {
   check('admin stats returns totals', res.status === 200 && Number.isFinite(res.body?.totalUsers), String(res.status));
   check('admin stats does not expose passwordHash', !hasPasswordHash(res.body));
 
-  res = await request('/notifications');
-  check('current admin notifications returns array', res.status === 200 && Array.isArray(res.body), String(res.status));
-  check('current admin notifications does not expose passwordHash', !hasPasswordHash(res.body));
+  res = await request('/admin/notifications?limit=5');
+  check('admin notifications returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
+  check('admin notifications does not expose passwordHash', !hasPasswordHash(res.body));
 
-  res = await request('/notifications/unread-count');
+  res = await request('/admin/notifications/unread-count');
   check(
-    'current admin unread notifications count returns number',
+    'admin unread notifications count returns number',
     res.status === 200 && Number.isFinite(res.body?.count),
     String(res.status),
   );
-  check('current admin unread notifications count does not expose passwordHash', !hasPasswordHash(res.body));
+  check('admin unread notifications count does not expose passwordHash', !hasPasswordHash(res.body));
+
+  res = await request('/admin/reports/overview');
+  check('admin reports overview returns operational report', res.status === 200 && res.body?.source === 'admin_operational_database', String(res.status));
+  check('admin reports overview excludes payment/deposit data', res.body?.paymentOrDepositDataIncluded === false);
+  check('admin reports overview does not expose passwordHash', !hasPasswordHash(res.body));
 
   res = await request('/admin/users?limit=5');
   check('admin users list returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
@@ -138,22 +143,13 @@ async function run() {
   check('admin providers list returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
   check('admin providers list does not expose passwordHash', !hasPasswordHash(res.body));
 
-  res = await request('/services?limit=5');
-  check('service references list returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
-  check('service references list does not expose passwordHash', !hasPasswordHash(res.body));
+  res = await request('/admin/services?limit=5');
+  check('admin services list returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
+  check('admin services list does not expose passwordHash', !hasPasswordHash(res.body));
 
-  res = await request('/providers?limit=5');
-  check('public provider references list returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
-  check('public provider references list does not expose passwordHash', !hasPasswordHash(res.body));
-  const firstPublicProviderId = res.body?.items?.[0]?.id;
-
-  if (firstPublicProviderId) {
-    res = await request(`/providers/${encodeURIComponent(firstPublicProviderId)}/reviews`);
-    check('public provider reviews returns array', res.status === 200 && Array.isArray(res.body), String(res.status));
-    check('public provider reviews does not expose passwordHash', !hasPasswordHash(res.body));
-  } else {
-    check('public provider reviews skipped because active providers list is empty', true);
-  }
+  res = await request('/admin/reviews?limit=5');
+  check('admin reviews list returns paginated items', res.status === 200 && Array.isArray(res.body?.items), String(res.status));
+  check('admin reviews list does not expose passwordHash', !hasPasswordHash(res.body));
 
   const failed = checks.filter((item) => !item.passed);
   console.log(`\nOverall Result: ${failed.length ? 'FAIL' : 'PASS'}`);

@@ -398,7 +398,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          if (provider.includesAccountData)
+          if (provider.includesAccountData) ...[
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -418,10 +418,24 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                     value: acceptedProviders.toString(),
                     color: AppTheme.success,
                   ),
+                  _MiniStat(
+                    label: 'محفوظة',
+                    value: provider.favoriteProviderIds.length.toString(),
+                    color: AppTheme.burgundy,
+                  ),
                 ],
               ),
-            )
-          else
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OutlinedButton.icon(
+                onPressed: () => context.push(AppRouter.favoriteProviders),
+                icon: const Icon(Icons.favorite_border_rounded, size: 18),
+                label: const Text('فتح المحفوظات'),
+              ),
+            ),
+          ] else
             const _PublicBrowseNote(),
         ],
       ),

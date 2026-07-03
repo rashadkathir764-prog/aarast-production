@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -219,19 +219,6 @@ class _DetailsTopBar extends StatelessWidget {
               ? Icons.favorite_rounded
               : Icons.favorite_border_rounded,
           onTap: onFavorite,
-        ),
-        const SizedBox(width: 8),
-        _RoundButton(
-          icon: Icons.ios_share_rounded,
-          onTap: () {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                const SnackBar(
-                  content: Text('مشاركة المورد ستتوفر بعد ربط روابط المشاركة.'),
-                ),
-              );
-          },
         ),
       ],
     );
@@ -459,10 +446,7 @@ class _ServiceTile extends StatelessWidget {
               color: AppTheme.ivory,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              color: AppTheme.gold,
-            ),
+            child: const Icon(Icons.auto_awesome_rounded, color: AppTheme.gold),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -642,11 +626,7 @@ class _ReviewTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.star_rounded,
-                color: AppTheme.gold,
-                size: 18,
-              ),
+              const Icon(Icons.star_rounded, color: AppTheme.gold, size: 18),
               const SizedBox(width: 4),
               Text(
                 '${review.rating}/5',

@@ -92,6 +92,7 @@ export type ProviderReview = {
     phone: string | null;
   };
   providerId: string;
+  provider?: ProviderReference;
   rating: number;
   comment: string | null;
   status: string;
@@ -102,7 +103,9 @@ export type ProviderReview = {
 export type AdminNotification = {
   id: string;
   userId: string;
+  user?: AdminUser;
   weddingPlanId: string | null;
+  weddingPlan?: { id: string; title: string; city: string | null } | null;
   type: string;
   priority: string;
   title: string;
@@ -176,15 +179,87 @@ export type AdminStats = {
   totalProviderCategories: number;
 };
 
+export type AdminReport = {
+  generatedAt: string;
+  range: { from: string | null; to: string | null };
+  users: {
+    total: number;
+    active: number;
+    disabled: number;
+    admins: number;
+    providers: number;
+    regularUsers: number;
+  };
+  providers: {
+    total: number;
+    pending: number;
+    active: number;
+    needsChanges: number;
+    suspended: number;
+    rejected: number;
+    featured: number;
+  };
+  services: {
+    total: number;
+    active: number;
+    disabled: number;
+    featured: number;
+  };
+  reviews: {
+    total: number;
+    published: number;
+    hidden: number;
+    pending: number;
+    averageRating: string;
+  };
+  quotes: {
+    total: number;
+    byStatus: Array<{ status: string; count: number }>;
+  };
+  notifications: {
+    total: number;
+    unread: number;
+    archived: number;
+    high: number;
+    urgent: number;
+  };
+  catalog: {
+    cities: number;
+    categories: number;
+  };
+  weddingPlans: {
+    total: number;
+  };
+  source: string;
+  paymentOrDepositDataIncluded: boolean;
+};
+
 export type QueryParams = {
   status?: string;
+  providerId?: string;
   cityId?: string;
   categoryId?: string;
   search?: string;
   page?: number;
   limit?: number;
   type?: string;
+  priority?: string;
   unreadOnly?: boolean;
+  from?: string;
+  to?: string;
+};
+
+export type ServicePayload = {
+  providerId?: string;
+  categoryId?: string;
+  title?: string;
+  description?: string | null;
+  basePrice?: string | null;
+  priceUnit?: string | null;
+  currency?: string;
+  cityId?: string | null;
+  isActive?: boolean;
+  isFeatured?: boolean;
 };
 
 export type CatalogPayload = {
@@ -199,6 +274,10 @@ export type CatalogPayload = {
 
 export function getStats() {
   return apiRequest<AdminStats>('/admin/dashboard/stats');
+}
+
+export function getReportOverview(params: QueryParams = {}) {
+  return apiRequest<AdminReport>(`/admin/reports/overview${toQuery(params)}`);
 }
 
 export function getProviderApplications(params: QueryParams = {}) {
@@ -223,26 +302,82 @@ export function getProvider(id: string) {
   return apiRequest<ProviderApplication>(`/admin/providers/${id}`);
 }
 
-export function getServiceReferences(params: QueryParams = {}) {
-  return apiRequest<Paginated<ProviderService>>(`/services${toQuery(params)}`);
-}
-
-export function getProviderReferences(params: QueryParams = {}) {
-  return apiRequest<Paginated<ProviderReference>>(`/providers${toQuery(params)}`);
-}
-
-export function getProviderReviewReferences(providerId: string) {
-  return apiRequest<ProviderReview[]>(
-    `/providers/${encodeURIComponent(providerId)}/reviews`,
+export function getServices(params: QueryParams = {}) {
+  return apiRequest<Paginated<ProviderService>>(
+    `/admin/services${toQuery(params)}`,
   );
 }
 
-export function getCurrentAdminNotifications(params: QueryParams = {}) {
-  return apiRequest<AdminNotification[]>(`/notifications${toQuery(params)}`);
+export function createService(payload: ServicePayload) {
+  return apiRequest<ProviderService>('/admin/services', {
+    method: 'POST',
+    body: payload,
+  });
 }
 
-export function getCurrentAdminUnreadNotificationCount() {
-  return apiRequest<{ count: number }>('/notifications/unread-count');
+export function updateService(id: string, payload: ServicePayload) {
+  return apiRequest<ProviderService>(`/admin/services/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  });
+}
+
+export function deleteService(id: string) {
+  return apiRequest<ProviderService & { deleted?: boolean }>(
+    `/admin/services/${id}`,
+    { method: 'DELETE' },
+  );
+}
+
+export function getReviews(params: QueryParams = {}) {
+  return apiRequest<Paginated<ProviderReview>>(
+    `/admin/reviews${toQuery(params)}`,
+  );
+}
+
+export function updateReviewStatus(id: string, status: string) {
+  return apiRequest<ProviderReview>(`/admin/reviews/${id}/status`, {
+    method: 'PATCH',
+    body: { status },
+  });
+}
+
+export function hideReview(id: string) {
+  return apiRequest<ProviderReview & { deleted?: boolean }>(
+    `/admin/reviews/${id}`,
+    { method: 'DELETE' },
+  );
+}
+
+export function getAdminNotifications(params: QueryParams = {}) {
+  return apiRequest<Paginated<AdminNotification>>(
+    `/admin/notifications${toQuery(params)}`,
+  );
+}
+
+export function getAdminUnreadNotificationCount() {
+  return apiRequest<{ count: number }>('/admin/notifications/unread-count');
+}
+
+export function markAdminNotificationRead(id: string) {
+  return apiRequest<AdminNotification>(`/admin/notifications/${id}/read`, {
+    method: 'PATCH',
+    body: {},
+  });
+}
+
+export function archiveAdminNotification(id: string) {
+  return apiRequest<AdminNotification>(`/admin/notifications/${id}/archive`, {
+    method: 'PATCH',
+    body: {},
+  });
+}
+
+export function deleteAdminNotification(id: string) {
+  return apiRequest<{ id: string; deleted: true }>(
+    `/admin/notifications/${id}`,
+    { method: 'DELETE' },
+  );
 }
 
 export function approveProvider(id: string) {
@@ -340,6 +475,20 @@ export function getUsers(params: QueryParams = {}) {
 export function getUser(id: string) {
   return apiRequest<AdminUser & { provider?: ProviderApplication | null }>(
     `/admin/users/${id}`,
+  );
+}
+
+export function activateUser(id: string) {
+  return apiRequest<AdminUser & { provider?: ProviderApplication | null }>(
+    `/admin/users/${id}/activate`,
+    { method: 'PATCH', body: {} },
+  );
+}
+
+export function disableUser(id: string) {
+  return apiRequest<AdminUser & { provider?: ProviderApplication | null }>(
+    `/admin/users/${id}/disable`,
+    { method: 'PATCH', body: {} },
   );
 }
 

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  getProviderReferences,
-  getProviderReviewReferences,
-  ProviderReference,
+  getProviders,
+  getReviews,
+  hideReview,
+  ProviderApplication,
   ProviderReview,
+  updateReviewStatus,
 } from '../api/admin';
+import { ActionButton } from '../components/ActionButton';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -18,16 +21,18 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge, statusLabel } from '../components/StatusBadge';
 import { TableToolbar } from '../components/TableToolbar';
 
-type ReviewRow = ProviderReview & {
-  provider: ProviderReference;
-};
-
-const REVIEW_PROVIDER_SCAN_LIMIT = 30;
+const statuses = [
+  { value: '', label: 'كل الحالات' },
+  { value: 'PUBLISHED', label: 'منشورة' },
+  { value: 'PENDING', label: 'قيد المراجعة' },
+  { value: 'HIDDEN', label: 'مخفية' },
+];
 
 export function ReviewsPage() {
-  const [providers, setProviders] = useState<ProviderReference[]>([]);
-  const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [providers, setProviders] = useState<ProviderApplication[]>([]);
+  const [reviews, setReviews] = useState<ProviderReview[]>([]);
   const [providerId, setProviderId] = useState('');
+  const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,29 +41,14 @@ export function ReviewsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const providerPage = await getProviderReferences({
-        limit: REVIEW_PROVIDER_SCAN_LIMIT,
-      });
-      const activeProviders = providerPage.items;
-      const providersToRead = providerId
-        ? activeProviders.filter((provider) => provider.id === providerId)
-        : activeProviders;
-
-      const reviewGroups = await Promise.all(
-        providersToRead.map(async (provider) => {
-          const providerReviews = await getProviderReviewReferences(provider.id);
-          return providerReviews.map((review) => ({ ...review, provider }));
-        }),
-      );
-
-      setProviders(activeProviders);
-      setReviews(reviewGroups.flat());
+      const [reviewPage, providerPage] = await Promise.all([
+        getReviews({ search, providerId, status, limit: 100 }),
+        getProviders({ limit: 100 }),
+      ]);
+      setReviews(reviewPage.items);
+      setProviders(providerPage.items);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'تعذر تحميل التقييمات المنشورة.',
-      );
+      setError(err instanceof Error ? err.message : 'تعذر تحميل التقييمات.');
     } finally {
       setIsLoading(false);
     }
@@ -66,63 +56,45 @@ export function ReviewsPage() {
 
   useEffect(() => {
     load();
-  }, [providerId]);
+  }, [providerId, status]);
 
-  if (isLoading) return <LoadingState title="جاري تحميل التقييمات المنشورة" />;
+  async function setReviewStatus(review: ProviderReview, nextStatus: string) {
+    await updateReviewStatus(review.id, nextStatus);
+    await load();
+  }
+
+  async function hide(review: ProviderReview) {
+    await hideReview(review.id);
+    await load();
+  }
+
+  if (isLoading) return <LoadingState title="جاري تحميل التقييمات" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
-  const filteredReviews = reviews.filter((review) => {
-    if (!search.trim()) return true;
-    const query = search.trim().toLowerCase();
-    return [
-      review.user.name,
-      review.user.phone ?? '',
-      review.provider.businessName,
-      review.comment ?? '',
-      statusLabel(review.status),
-    ]
-      .join(' ')
-      .toLowerCase()
-      .includes(query);
-  });
-
-  const ratedReviews = filteredReviews.filter((review) =>
-    Number.isFinite(review.rating),
-  );
+  const publishedCount = reviews.filter((review) => review.status === 'PUBLISHED').length;
+  const hiddenCount = reviews.filter((review) => review.status === 'HIDDEN').length;
+  const pendingCount = reviews.filter((review) => review.status === 'PENDING').length;
   const averageRating =
-    ratedReviews.length === 0
+    reviews.length === 0
       ? '0.0'
-      : (
-          ratedReviews.reduce((total, review) => total + review.rating, 0) /
-          ratedReviews.length
-        ).toFixed(1);
-  const commentedCount = filteredReviews.filter((review) =>
-    review.comment?.trim(),
-  ).length;
-  const reviewedProvidersCount = new Set(
-    filteredReviews.map((review) => review.providerId),
-  ).size;
+      : (reviews.reduce((total, review) => total + review.rating, 0) / reviews.length).toFixed(1);
 
   return (
     <section className="page-stack">
       <PageHeader
-        eyebrow="الرقابة"
+        eyebrow="إدارة التقييمات"
         icon="☆"
-        title="التقييمات المنشورة"
-        description="عرض مرجعي للتقييمات المنشورة على صفحات الموردين النشطين من مصدر API فعلي."
-        meta={
-          <>
-            <span>{filteredReviews.length} تقييم منشور</span>
-            <StatusBadge status="OPEN" />
-          </>
-        }
+        title="رقابة تقييمات الموردين"
+        description="إدارة حقيقية من /admin/reviews: عرض كل الحالات، نشر، إخفاء، وإعادة احتساب تقييم المورد."
+        meta={<span>{reviews.length} تقييم معروض</span>}
       />
 
       <div className="stats-grid">
-        <StatCard title="التقييمات" value={filteredReviews.length} tone="gold" />
-        <StatCard title="الموردون" value={reviewedProvidersCount} tone="info" />
-        <StatCard title="متوسط النجوم" value={averageRating} tone="success" />
-        <StatCard title="بتعليق" value={commentedCount} tone="warning" />
+        <StatCard title="التقييمات" value={reviews.length} tone="gold" />
+        <StatCard title="منشورة" value={publishedCount} tone="success" />
+        <StatCard title="قيد المراجعة" value={pendingCount} tone="warning" />
+        <StatCard title="مخفية" value={hiddenCount} tone="danger" />
+        <StatCard title="متوسط النجوم" value={averageRating} tone="info" />
       </div>
 
       <SectionCard className="filters-card">
@@ -133,12 +105,13 @@ export function ReviewsPage() {
             onSubmit={load}
             placeholder="بحث بالعميل أو المورد أو التعليق"
           />
+          <FilterSelect label="الحالة" value={status} onChange={setStatus} options={statuses} />
           <FilterSelect
             label="المورد"
             value={providerId}
             onChange={setProviderId}
             options={[
-              { value: '', label: 'كل الموردين النشطين' },
+              { value: '', label: 'كل الموردين' },
               ...providers.map((provider) => ({
                 value: provider.id,
                 label: provider.businessName,
@@ -148,29 +121,15 @@ export function ReviewsPage() {
         </TableToolbar>
       </SectionCard>
 
-      <SectionCard
-        title="قائمة التقييمات"
-        subtitle="البيانات من endpoint عام يعرض التقييمات المنشورة فقط للموردين النشطين؛ التقييمات المعلقة أو المخفية لا تظهر هنا."
-      >
-        {filteredReviews.length === 0 ? (
-          <EmptyState
-            title="لا توجد تقييمات منشورة مطابقة"
-            message="غياب النتائج يعني أن المصدر الحالي لم يرجع تقييمات منشورة ضمن الموردين النشطين المقروءين، وليس أن اللوحة أنشأت بيانات بديلة."
-            tone="api"
-          />
+      <SectionCard title="قائمة التقييمات" subtitle="لا يوجد مسح محدود لأول 30 مورد؛ المصدر إداري مباشر.">
+        {reviews.length === 0 ? (
+          <EmptyState title="لا توجد تقييمات مطابقة" message="غير الفلاتر أو ابحث بكلمة أخرى." tone="api" />
         ) : (
           <DataTable
-            columns={[
-              'العميل',
-              'المورد',
-              'النجوم',
-              'التعليق',
-              'الحالة',
-              'تاريخ النشر',
-            ]}
-            minWidth={980}
+            columns={['العميل', 'المورد', 'النجوم', 'التعليق', 'الحالة', 'التاريخ', 'إجراءات']}
+            minWidth={1100}
           >
-            {filteredReviews.map((review) => (
+            {reviews.map((review) => (
               <tr key={review.id}>
                 <td>
                   <strong>{review.user.name}</strong>
@@ -179,28 +138,46 @@ export function ReviewsPage() {
                   </span>
                 </td>
                 <td>
-                  <Link
-                    className="table-strong-link"
-                    to={`/providers/${review.provider.id}`}
-                  >
-                    {review.provider.businessName}
-                  </Link>
-                  <span className="table-subtle">
-                    {review.provider.city?.nameAr ?? 'مدينة غير محددة'}
-                  </span>
+                  {review.provider ? (
+                    <Link className="table-strong-link" to={`/providers/${review.provider.id}`}>
+                      {review.provider.businessName}
+                    </Link>
+                  ) : (
+                    review.providerId
+                  )}
+                  <span className="table-subtle">{review.provider?.city?.nameAr ?? ''}</span>
                 </td>
                 <td>{formatStars(review.rating)}</td>
-                <td>
-                  {review.comment?.trim() ? (
-                    review.comment
-                  ) : (
-                    <span className="table-subtle">بدون تعليق نصي</span>
-                  )}
-                </td>
+                <td>{review.comment?.trim() || <span className="table-subtle">بدون تعليق</span>}</td>
                 <td>
                   <StatusBadge status={review.status} />
                 </td>
                 <td>{formatDate(review.createdAt)}</td>
+                <td className="actions-cell">
+                  {review.status !== 'PUBLISHED' ? (
+                    <ActionButton
+                      tone="ghost"
+                      size="small"
+                      onClick={() => setReviewStatus(review, 'PUBLISHED')}
+                    >
+                      نشر
+                    </ActionButton>
+                  ) : null}
+                  {review.status !== 'PENDING' ? (
+                    <ActionButton
+                      tone="ghost"
+                      size="small"
+                      onClick={() => setReviewStatus(review, 'PENDING')}
+                    >
+                      مراجعة
+                    </ActionButton>
+                  ) : null}
+                  {review.status !== 'HIDDEN' ? (
+                    <ActionButton tone="danger" size="small" onClick={() => hide(review)}>
+                      إخفاء
+                    </ActionButton>
+                  ) : null}
+                </td>
               </tr>
             ))}
           </DataTable>

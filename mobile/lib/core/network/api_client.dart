@@ -181,9 +181,7 @@ class ApiException implements Exception {
   final int? statusCode;
 
   bool get isUnauthorized {
-    return statusCode == 401 ||
-        message.contains('بيانات الدخول') ||
-        message.contains('Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¯Ø®ÙˆÙ„');
+    return statusCode == 401 || message.contains('بيانات الدخول');
   }
 
   @override

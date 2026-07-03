@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -77,7 +77,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 onApply: () => context.go(AppRouter.providerApply),
               )
             else ...[
-              _ProviderProfileCard(profile: profile!),
+              _ProviderProfileCard(
+                profile: profile!,
+                onEdit: () => context.push(AppRouter.providerProfileEdit),
+              ),
               const SizedBox(height: 16),
               _ProviderStatusNotice(profile: profile),
               const SizedBox(height: 16),
@@ -154,9 +157,10 @@ class _NoProviderProfileCard extends StatelessWidget {
 }
 
 class _ProviderProfileCard extends StatelessWidget {
-  const _ProviderProfileCard({required this.profile});
+  const _ProviderProfileCard({required this.profile, required this.onEdit});
 
   final ProviderDashboardProfile profile;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -253,17 +257,7 @@ class _ProviderProfileCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context)
-                ..hideCurrentSnackBar()
-                ..showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'تعديل ملف المزود سيظهر قريبًا بواجهة كاملة.',
-                    ),
-                  ),
-                );
-            },
+            onPressed: onEdit,
             icon: const Icon(Icons.edit_outlined),
             label: const Text('تعديل الملف'),
           ),
@@ -422,10 +416,7 @@ class _ProviderGuideCard extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          const Icon(
-            Icons.lightbulb_outline_rounded,
-            color: AppTheme.gold,
-          ),
+          const Icon(Icons.lightbulb_outline_rounded, color: AppTheme.gold),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -1332,9 +1323,9 @@ String _providerStatusTitle(String status) {
 String _providerStatusMessage(String status) {
   return switch (status) {
     'NEEDS_CHANGES' =>
-      'راجع ملاحظة الإدارة ثم حدّث بيانات الطلب عند توفر شاشة تعديل الملف.',
+      'راجع ملاحظة الإدارة ثم حدّث بيانات ملف المزود من زر تعديل الملف.',
     'REJECTED' =>
-      'لن يظهر ملف المزود في السوق. يمكنك متابعة الملاحظة أو إعادة التقديم لاحقاً عند دعم التعديل.',
+      'لن يظهر ملف المزود في السوق. يمكنك تعديل البيانات والتواصل مع الإدارة لمعرفة الخطوة التالية.',
     'SUSPENDED' =>
       'تم إيقاف الظهور العام مؤقتاً. تواصل مع الإدارة لمعرفة الخطوة التالية.',
     _ =>

@@ -1,6 +1,6 @@
 # Aarast Mobile
 
-Flutter mobile foundation for Aarast / Ø§Ø¹Ù‘Ø±Ø³Øª.
+Flutter mobile foundation for Aarast / اعّرست.
 
 ## What Is Implemented
 

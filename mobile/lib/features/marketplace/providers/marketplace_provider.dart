@@ -28,6 +28,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   final Map<String, List<ProviderPackage>> _packages = {};
   final Map<String, List<ProviderReview>> _reviews = {};
   Set<String> _favoriteProviderIds = {};
+  List<FavoriteProvider> _favoriteProviders = const [];
   List<QuoteRequest> _quoteRequests = const [];
 
   bool get isLoading => _isLoading;
@@ -43,6 +44,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   List<MarketplaceService> get budgetMatchedServices => _budgetMatchedServices;
   ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
+  List<FavoriteProvider> get favoriteProviders => _favoriteProviders;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
   bool get includesAccountData => _includeAccountData;
 
@@ -86,6 +88,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       _categories = results[1] as List<ProviderCategory>;
       _providers = results[2] as List<MarketplaceProvider>;
       final favorites = results[3] as List<FavoriteProvider>;
+      _favoriteProviders = favorites;
       _favoriteProviderIds = favorites.map((item) => item.providerId).toSet();
       _quoteRequests = results[4] as List<QuoteRequest>;
       if (_budgetMatchIntent != null) {
@@ -193,9 +196,25 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       if (wasFavorite) {
         await _api.unfavoriteProvider(providerId);
         _favoriteProviderIds = {..._favoriteProviderIds}..remove(providerId);
+        _favoriteProviders = _favoriteProviders
+            .where((item) => item.providerId != providerId)
+            .toList(growable: false);
       } else {
         await _api.favoriteProvider(providerId);
         _favoriteProviderIds = {..._favoriteProviderIds, providerId};
+        final provider = _providerFromCurrentState(providerId);
+        if (provider != null) {
+          _favoriteProviders = [
+            FavoriteProvider(
+              id: providerId,
+              providerId: providerId,
+              provider: provider,
+            ),
+            ..._favoriteProviders.where(
+              (item) => item.providerId != providerId,
+            ),
+          ];
+        }
       }
     } on ApiException catch (error) {
       _errorMessage = marketplaceErrorMessage(error.message);
@@ -263,6 +282,26 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       return await _api.getFavoriteProviders();
     } catch (_) {
       return const [];
+    }
+  }
+
+  Future<void> loadFavoriteProviders() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _favoriteProviders = await _api.getFavoriteProviders();
+      _favoriteProviderIds = _favoriteProviders
+          .map((item) => item.providerId)
+          .toSet();
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+    } catch (_) {
+      _errorMessage = aarastBackendConnectionErrorMessage;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
@@ -412,6 +451,13 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
     _noticeMessage = null;
     notifyListeners();
   }
+
+  MarketplaceProvider? _providerFromCurrentState(String providerId) {
+    for (final provider in _providers) {
+      if (provider.id == providerId) return provider;
+    }
+    return _details[providerId];
+  }
 }
 
 class ProviderDashboardProvider extends ChangeNotifier {
@@ -506,6 +552,37 @@ class ProviderDashboardProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إرسال طلب الانضمام كمورد.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateProfile({
+    required String businessName,
+    required String phone,
+    required String cityId,
+    String? description,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _profile = await _api.updateProfile(
+        businessName: businessName,
+        phone: phone,
+        cityId: cityId,
+        description: description,
+      );
+      _hasProviderProfile = true;
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حفظ بيانات المزود الآن.';
       return false;
     } finally {
       _isSubmitting = false;

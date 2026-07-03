@@ -392,9 +392,9 @@ class PremiumLocationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'تحديد الموقع على الخريطة قريبًا',
-                    style: TextStyle(
-                      color: AppTheme.gold.withValues(alpha: 0.85),
+                    'اكتب المدينة أو المنطقة الآن، ويمكن تعديلها لاحقًا من الخطة.',
+                    style: const TextStyle(
+                      color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                       height: 1.3,
@@ -404,7 +404,11 @@ class PremiumLocationCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Icon(Icons.map_rounded, color: AppTheme.disabled, size: 28),
+            const Icon(
+              Icons.edit_location_alt_outlined,
+              color: AppTheme.gold,
+              size: 28,
+            ),
           ],
         ),
       ),

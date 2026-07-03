@@ -1185,7 +1185,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'الديون والالتزامات',
+                          'الباقي والدفعات القادمة',
                           style: TextStyle(
                             color: AppTheme.ink.withValues(alpha: 0.9),
                             fontSize: 16,
@@ -1194,7 +1194,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${summary.debtsCount ?? 0} ديون مسجلة',
+                          '${summary.debtsCount ?? 0} مبالغ باقية مسجلة',
                           style: TextStyle(
                             color: AppTheme.ink.withValues(alpha: 0.5),
                             fontSize: 13,
@@ -1260,7 +1260,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       if (installment == null)
                         Text(
-                          'لا توجد أقساط قادمة حالياً.',
+                          'لا توجد دفعات قادمة حالياً.',
                           style: TextStyle(
                             color: AppTheme.ink.withValues(alpha: 0.4),
                             fontSize: 12,
@@ -1330,7 +1330,7 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'آخر الأقساط المسجلة',
+                        'آخر الدفعات المسجلة',
                         style: TextStyle(
                           color: AppTheme.ink.withValues(alpha: 0.7),
                           fontSize: 12,
@@ -1340,8 +1340,8 @@ class _TopFinancialObligationsCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         (summary.paidInstallmentsCount ?? 0) == 0
-                            ? 'لا توجد أقساط مدفوعة مسجلة بعد.'
-                            : 'الأقساط المدفوعة المسجلة: ${summary.paidInstallmentsCount}',
+                            ? 'لا توجد دفعات مسددة مسجلة بعد.'
+                            : 'الدفعات المسددة المسجلة: ${summary.paidInstallmentsCount}',
                         style: TextStyle(
                           color: AppTheme.ink.withValues(alpha: 0.5),
                           fontSize: 12,
@@ -1376,8 +1376,8 @@ class _FinanceActionStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final helper = canManageFinancialRecords
-        ? 'سجّل المصروفات والبنود والالتزامات من مكان واحد.'
-        : 'يمكنك مراجعة الالتزامات المتاحة حسب صلاحياتك.';
+        ? 'ابدأ من هنا: حدد بنداً، سجل مصروفاً، أو تابع المبلغ الباقي عليك.'
+        : 'يمكنك مراجعة البنود والمبالغ المتاحة حسب صلاحياتك.';
 
     return AarastCard(
       padding: const EdgeInsets.all(12),
@@ -1401,7 +1401,7 @@ class _FinanceActionStrip extends StatelessWidget {
               Expanded(
                 child: _FinanceShortcutCard(
                   icon: Icons.receipt_long_outlined,
-                  label: 'مصروف',
+                  label: 'مصروف الآن',
                   onTap: onAddExpense,
                 ),
               ),
@@ -1409,7 +1409,7 @@ class _FinanceActionStrip extends StatelessWidget {
               Expanded(
                 child: _FinanceShortcutCard(
                   icon: Icons.category_outlined,
-                  label: 'بند',
+                  label: 'بند ميزانية',
                   onTap: onAddCategory,
                 ),
               ),
@@ -1417,7 +1417,7 @@ class _FinanceActionStrip extends StatelessWidget {
               Expanded(
                 child: _FinanceShortcutCard(
                   icon: Icons.credit_card_outlined,
-                  label: 'ديون',
+                  label: 'باقي عليك',
                   onTap: onViewDebts,
                 ),
               ),
@@ -1863,8 +1863,8 @@ String _warningCopy(MoneyFinancialWarning warning) {
   return switch (warning.type) {
     'BUDGET_EXCEEDED' => 'ميزانيتك تجاوزت الحد',
     'CATEGORY_EXCEEDED' => 'تصنيف في الميزانية تجاوز المخصص',
-    'INSTALLMENT_OVERDUE' => 'قسط متأخر يحتاج متابعة',
-    'INSTALLMENT_DUE_SOON' => 'قسط قريب يحتاج متابعة',
+    'INSTALLMENT_OVERDUE' => 'دفعة متأخرة تحتاج متابعة',
+    'INSTALLMENT_DUE_SOON' => 'دفعة قادمة تحتاج متابعة',
     'EXPENSE_WITHOUT_CATEGORY' => 'مصروف بدون تصنيف يحتاج ترتيب',
     _ =>
       warning.message.trim().isEmpty

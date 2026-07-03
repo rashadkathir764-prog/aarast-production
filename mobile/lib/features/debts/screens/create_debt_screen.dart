@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -93,7 +93,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'دين جديد',
+                      'مبلغ باقي جديد',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
@@ -123,17 +123,17 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             textAlign: TextAlign.right,
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
-                              labelText: 'اسم الدائن',
+                              labelText: 'لمن باقي المبلغ؟',
                               hintText: 'مثال: قاعة الفرح',
                               prefixIcon: Icon(Icons.person_outline),
                             ),
-                            validator: _required('اسم الدائن مطلوب'),
+                            validator: _required('اسم الجهة أو الشخص مطلوب'),
                           ),
                           const SizedBox(height: 14),
                           ContactPhoneField(
                             nameController: _creditorNameController,
                             phoneController: _creditorPhoneController,
-                            label: 'رقم جوال الدائن (اختياري)',
+                            label: 'رقم الجوال (اختياري)',
                             duplicateMessage: _sameCreditorWarning(
                               provider.debts,
                             ),
@@ -150,11 +150,11 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             textAlign: TextAlign.right,
                             textInputAction: TextInputAction.next,
                             decoration: const InputDecoration(
-                              labelText: 'عنوان الدين',
-                              hintText: 'مثال: دفعة قاعة مؤجلة',
+                              labelText: 'عنوان المبلغ',
+                              hintText: 'مثال: باقي الصالة',
                               prefixIcon: Icon(Icons.receipt_long_outlined),
                             ),
-                            validator: _required('عنوان الدين مطلوب'),
+                            validator: _required('عنوان المبلغ مطلوب'),
                           ),
                           const SizedBox(height: 14),
                           TextFormField(
@@ -164,14 +164,14 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                               decimal: true,
                             ),
                             decoration: const InputDecoration(
-                              labelText: 'إجمالي الدين',
+                              labelText: 'إجمالي المبلغ',
                               suffixText: 'YER',
                               prefixIcon: Icon(
                                 Icons.account_balance_wallet_outlined,
                               ),
                             ),
                             validator: _nonNegativeRequired(
-                              'إجمالي الدين مطلوب',
+                              'إجمالي المبلغ مطلوب',
                             ),
                           ),
                           const SizedBox(height: 14),
@@ -192,7 +192,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                           ),
                           const SizedBox(height: 14),
                           _SelectorField(
-                            label: 'تاريخ الاستحقاق',
+                            label: 'موعد دفع الباقي',
                             value: _dueDate == null
                                 ? 'لم يحدد بعد'
                                 : _formatDate(_dueDate!),
@@ -204,7 +204,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                           const Align(
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
-                              'حالة الدين',
+                              'حالة المبلغ',
                               style: TextStyle(
                                 color: AppTheme.ink,
                                 fontWeight: FontWeight.w900,
@@ -217,21 +217,21 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             runSpacing: 8,
                             children: [
                               _StatusChoice(
-                                label: 'مفتوح',
+                                label: 'باقي',
                                 value: 'OPEN',
                                 color: AppTheme.burgundy,
                                 selected: _status == 'OPEN',
                                 onTap: _setStatus,
                               ),
                               _StatusChoice(
-                                label: 'جزئي',
+                                label: 'دفع جزئي',
                                 value: 'PARTIALLY_PAID',
                                 color: AppTheme.gold,
                                 selected: _status == 'PARTIALLY_PAID',
                                 onTap: _setStatus,
                               ),
                               _StatusChoice(
-                                label: 'مدفوع',
+                                label: 'مسدد',
                                 value: 'PAID',
                                 color: AppTheme.success,
                                 selected: _status == 'PAID',
@@ -254,7 +254,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             maxLines: 4,
                             decoration: const InputDecoration(
                               labelText: 'ملاحظة اختيارية',
-                              hintText: 'أضف تفاصيل الاتفاق أو موعد السداد...',
+                              hintText: 'مثال: يسدد قبل المناسبة بأسبوع...',
                               alignLabelWithHint: true,
                             ),
                           ),
@@ -273,7 +273,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                     ),
                     const SizedBox(height: 18),
                     AarastButton(
-                      label: 'حفظ الدين',
+                      label: 'حفظ المبلغ',
                       icon: Icons.check_rounded,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
@@ -310,7 +310,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
         !ContactDuplicateUtils.sameName(duplicate.creditorName, name)) {
       return null;
     }
-    return 'هذا الدائن موجود في دين آخر. يمكنك المتابعة لالتزام مختلف.';
+    return 'هذا الشخص أو المورد لديه مبلغ مسجل سابقاً. يمكنك المتابعة إذا كان مبلغاً مختلفاً.';
   }
 
   List<ContactPhoneDraft> _creditorPlanContacts(List<Debt> debts) {
@@ -325,7 +325,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
           name: debt.creditorName,
           rawPhone: phone,
           source: ContactPhoneSource.planContact,
-          relation: 'دائن',
+          relation: 'مبلغ باقي',
         ),
       );
     }
@@ -408,7 +408,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
     if (_isExactDebtDuplicate(provider.debts, normalizedPhone)) {
       setState(() {
         _localErrorMessage =
-            'يوجد دين مطابق لنفس الدائن والرقم والعنوان والمبلغ.';
+            'يوجد مبلغ مطابق لنفس الشخص أو المورد والرقم والعنوان والقيمة.';
       });
       return;
     }
@@ -489,7 +489,7 @@ class _DebtHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'تسجيل الالتزام كما هو',
+                  'سجل الباقي بوضوح',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
@@ -497,7 +497,7 @@ class _DebtHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'الدين الواضح أسهل في السداد والمتابعة مع الأقساط.',
+                  'اكتب كم بقي، كم دفعت، ومتى موعد الدفعة القادمة.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.muted,
                     fontWeight: FontWeight.w700,

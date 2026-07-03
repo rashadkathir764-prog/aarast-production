@@ -170,7 +170,7 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
 - `acceptedProvidersCount`: stable alias for accepted/active `PlanProviderLink` count.
 - `financialWarnings`: simple computable warnings such as budget exceeded or installment due soon.
 
-- `importantItems`: actionable task/installment/provider cards for "Ø§Ù„Ø£Ù‡Ù… Ø§Ù„ÙŠÙˆÙ…".
+- `importantItems`: actionable task/installment/provider cards for "الأهم اليوم".
 - `planProviders`: providers actually linked to the current WeddingPlan.
 - `importantNotifications`: latest user-owned notifications for this WeddingPlan.
 - `generatedAt`: server timestamp used by the mobile sync/status copy.
@@ -200,8 +200,8 @@ Notification response:
   "userId": "user_id",
   "weddingPlanId": "plan_id",
   "type": "TASK_DUE_SOON",
-  "title": "Ù…Ù‡Ù…Ø© Ù‚Ø±ÙŠØ¨Ø©",
-  "body": "Confirm hall - ØªØ³ØªØ­Ù‚ Ù‚Ø±ÙŠØ¨Ø§Ù‹ (20/12/2026).",
+  "title": "مهمة قريبة",
+  "body": "Confirm hall - تستحق قريباً (20/12/2026).",
   "data": {
     "taskId": "task_id",
     "weddingPlanId": "plan_id"
@@ -601,6 +601,7 @@ Known follow-up from the 2026-06-20 audit: quote request/offer permissions shoul
 Admin routes are JWT-protected and require admin authorization:
 
 - `GET /admin/dashboard/stats`
+- `GET /admin/reports/overview`
 - `GET /admin/providers/applications`
 - `GET /admin/providers/applications/:id`
 - `PATCH /admin/providers/:id/approve`
@@ -610,6 +611,18 @@ Admin routes are JWT-protected and require admin authorization:
 - `PATCH /admin/providers/:id/activate`
 - `GET /admin/providers`
 - `GET /admin/providers/:id`
+- `GET /admin/services`
+- `POST /admin/services`
+- `PATCH /admin/services/:id`
+- `DELETE /admin/services/:id`
+- `GET /admin/reviews`
+- `PATCH /admin/reviews/:id/status`
+- `DELETE /admin/reviews/:id`
+- `GET /admin/notifications`
+- `GET /admin/notifications/unread-count`
+- `PATCH /admin/notifications/:id/read`
+- `PATCH /admin/notifications/:id/archive`
+- `DELETE /admin/notifications/:id`
 - `GET /admin/provider-categories`
 - `POST /admin/provider-categories`
 - `PATCH /admin/provider-categories/:id`
@@ -619,9 +632,19 @@ Admin routes are JWT-protected and require admin authorization:
 - `PATCH /admin/cities/:id`
 - `DELETE /admin/cities/:id`
 - `GET /admin/users`
+- `PATCH /admin/users/:id/activate`
+- `PATCH /admin/users/:id/disable`
 - `GET /admin/users/:id`
 
-Known follow-up from the 2026-06-20 audit: admin route smoke coverage is still needed.
+Admin services are real `ProviderService` management operations. Deleting a service safely deactivates it (`isActive=false`) instead of hard-deleting data.
+
+Admin reviews are real `ProviderReview` moderation operations. Publishing or hiding a review recalculates the provider public rating from published reviews only.
+
+Admin notifications expose an operational view of persisted notifications across users. User-owned notification routes remain separate under `/notifications` and `/api/v1/notifications`.
+
+`GET /admin/reports/overview` is an operational database report for users, providers, services, reviews, quote requests, notifications, catalog counts, and wedding-plan counts. It does not add payment processing, deposits, confirmed booking payments, loans, credit, financing, AI, or chat behavior.
+
+Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mjs` for dashboard stats, users, catalog references, providers, services, reviews, notifications, and operational reports.
 
 ## Error Behavior
 

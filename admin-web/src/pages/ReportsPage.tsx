@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AdminStats, getStats } from '../api/admin';
+import { AdminReport, getReportOverview } from '../api/admin';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -10,7 +10,7 @@ import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 
 export function ReportsPage() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [report, setReport] = useState<AdminReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -18,11 +18,9 @@ export function ReportsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      setStats(await getStats());
+      setReport(await getReportOverview());
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'تعذر تحميل تقرير الحالة.',
-      );
+      setError(err instanceof Error ? err.message : 'تعذر تحميل تقرير الإدارة.');
     } finally {
       setIsLoading(false);
     }
@@ -32,82 +30,40 @@ export function ReportsPage() {
     load();
   }, []);
 
-  if (isLoading) return <LoadingState title="جاري تحميل تقرير الحالة" />;
+  if (isLoading) return <LoadingState title="جاري تحميل تقرير الإدارة" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!stats) {
+  if (!report) {
     return (
       <EmptyState
-        title="لا توجد إحصاءات"
-        message="لم يرجع endpoint الإحصاءات بيانات قابلة للعرض."
+        title="لا توجد بيانات تقرير"
+        message="لم يرجع endpoint التقارير بيانات قابلة للعرض."
         tone="api"
       />
     );
   }
 
-  const totalProviderReviews =
-    stats.pendingProviders +
-    stats.approvedProviders +
-    stats.rejectedProviders +
-    stats.needsChangesProviders +
-    stats.suspendedProviders;
-  const activeProviderShare = percent(
-    stats.approvedProviders,
-    totalProviderReviews,
-  );
-  const pendingProviderShare = percent(
-    stats.pendingProviders + stats.needsChangesProviders,
-    totalProviderReviews,
-  );
+  const providerReviewTotal =
+    report.providers.pending +
+    report.providers.active +
+    report.providers.needsChanges +
+    report.providers.suspended +
+    report.providers.rejected;
 
-  const reportRows = [
-    {
-      section: 'الحسابات',
-      metric: 'إجمالي المستخدمين',
-      value: stats.totalUsers,
-      note: 'عدد آمن من Admin stats بدون بيانات شخصية تفصيلية.',
-    },
-    {
-      section: 'الموردون',
-      metric: 'إجمالي الموردين',
-      value: stats.totalProviders,
-      note: 'يشمل كل حالات الموردين في مصدر الإدارة.',
-    },
-    {
-      section: 'الموردون',
-      metric: 'موردون نشطون',
-      value: stats.approvedProviders,
-      note: `${activeProviderShare} من حالات مراجعة الموردين المحسوبة.`,
-    },
-    {
-      section: 'الموردون',
-      metric: 'طلبات تحتاج مراجعة',
-      value: stats.pendingProviders + stats.needsChangesProviders,
-      note: `${pendingProviderShare} بين قيد المراجعة ويحتاج تعديل.`,
-    },
-    {
-      section: 'التخطيط',
-      metric: 'خطط الزواج',
-      value: stats.totalWeddingPlans,
-      note: 'عداد عام فقط، لا يعرض تفاصيل مالية أو خصوصية خطط.',
-    },
-    {
-      section: 'التخطيط',
-      metric: 'طلبات العروض',
-      value: stats.totalQuoteRequests,
-      note: 'طلبات غير ملزمة ولا تعني حجزا مؤكدا أو دفعا.',
-    },
-    {
-      section: 'الكتالوج',
-      metric: 'المدن',
-      value: stats.totalCities,
-      note: 'مرجع إدارة المدن اليمنية.',
-    },
-    {
-      section: 'الكتالوج',
-      metric: 'الفئات',
-      value: stats.totalProviderCategories,
-      note: 'مرجع فئات الموردين والخدمات.',
-    },
+  const rows = [
+    ['المستخدمون', 'إجمالي المستخدمين', report.users.total, 'كل الحسابات المسجلة.'],
+    ['المستخدمون', 'حسابات نشطة', report.users.active, 'قابلة للاستخدام.'],
+    ['المستخدمون', 'حسابات معطلة', report.users.disabled, 'أوقفها الأدمن.'],
+    ['الموردون', 'إجمالي الموردين', report.providers.total, 'كل ملفات الموردين.'],
+    ['الموردون', 'موردون نشطون', report.providers.active, percent(report.providers.active, providerReviewTotal)],
+    ['الخدمات', 'إجمالي الخدمات', report.services.total, 'من جدول ProviderService.'],
+    ['الخدمات', 'خدمات نشطة', report.services.active, 'ظاهرة إذا كان المورد مؤهلا.'],
+    ['التقييمات', 'إجمالي التقييمات', report.reviews.total, `متوسط ${report.reviews.averageRating}`],
+    ['التقييمات', 'منشورة', report.reviews.published, 'تدخل في تقييم المورد.'],
+    ['التقييمات', 'مخفية', report.reviews.hidden, 'لا تدخل في التقييم العام.'],
+    ['الإشعارات', 'إجمالي الإشعارات', report.notifications.total, 'سجل إشعارات النظام.'],
+    ['الإشعارات', 'غير مقروءة', report.notifications.unread, 'غير مؤرشفة وغير مقروءة.'],
+    ['التخطيط', 'خطط الزواج', report.weddingPlans.total, 'لا يعرض تفاصيل مالية خاصة.'],
+    ['طلبات العروض', 'إجمالي الطلبات', report.quotes.total, 'طلبات غير ملزمة ولا تعني دفع أو حجز مؤكد.'],
   ];
 
   return (
@@ -115,89 +71,53 @@ export function ReportsPage() {
       <PageHeader
         eyebrow="التقارير"
         icon="%"
-        title="تقرير حالة إداري محدود"
-        description="لقطة قراءة من إحصاءات الإدارة المتاحة حاليا من مصدر API فعلي."
+        title="تقرير تشغيلي حقيقي"
+        description="لقطة تشغيلية من /admin/reports/overview تشمل المستخدمين والموردين والخدمات والتقييمات والإشعارات بدون دفع أو عربون."
         meta={
           <>
-            <span>مصدر واحد: Admin stats</span>
-            <StatusBadge status="OPEN" />
+            <span>آخر توليد: {formatDate(report.generatedAt)}</span>
+            <StatusBadge status={report.source === 'admin_operational_database' ? 'OPEN' : 'PENDING'} />
           </>
         }
       />
 
       <div className="stats-grid">
-        <StatCard title="المستخدمون" value={stats.totalUsers} tone="gold" />
-        <StatCard title="الموردون" value={stats.totalProviders} tone="info" />
-        <StatCard
-          title="طلبات مراجعة"
-          value={stats.pendingProviders + stats.needsChangesProviders}
-          tone="warning"
-        />
-        <StatCard
-          title="طلبات العروض"
-          value={stats.totalQuoteRequests}
-          tone="success"
-        />
-        <StatCard
-          title="خطط الزواج"
-          value={stats.totalWeddingPlans}
-          tone="gold"
-        />
+        <StatCard title="المستخدمون" value={report.users.total} tone="gold" />
+        <StatCard title="الموردون" value={report.providers.total} tone="info" />
+        <StatCard title="الخدمات" value={report.services.total} tone="success" />
+        <StatCard title="التقييمات" value={report.reviews.total} tone="warning" />
+        <StatCard title="الإشعارات" value={report.notifications.total} tone="danger" />
       </div>
 
       <SectionCard
-        title="مؤشرات المصدر الحالي"
-        subtitle="هذه أرقام إجمالية مباشرة من /admin/dashboard/stats وليست تقريرا زمنيا."
+        title="مؤشرات التشغيل"
+        subtitle="الأرقام من قاعدة البيانات مباشرة، ولا تشمل دفع أو تأكيد حجز."
       >
-        <DataTable
-          columns={['القسم', 'المؤشر', 'القيمة', 'ملاحظة المصدر']}
-          minWidth={960}
-        >
-          {reportRows.map((row) => (
-            <tr key={`${row.section}-${row.metric}`}>
-              <td>{row.section}</td>
+        <DataTable columns={['القسم', 'المؤشر', 'القيمة', 'ملاحظة']} minWidth={960}>
+          {rows.map(([section, metric, value, note]) => (
+            <tr key={`${section}-${metric}`}>
+              <td>{section}</td>
               <td>
-                <strong>{row.metric}</strong>
+                <strong>{metric}</strong>
               </td>
-              <td>{row.value}</td>
+              <td>{value}</td>
               <td>
-                <span className="table-subtle">{row.note}</span>
+                <span className="table-subtle">{note}</span>
               </td>
             </tr>
           ))}
         </DataTable>
       </SectionCard>
 
-      <SectionCard
-        title="توزيع مراجعة الموردين"
-        subtitle="التوزيع من عدادات حالة الموردين الموجودة في الإحصاءات الإدارية."
-      >
+      <SectionCard title="حالات طلبات العروض" subtitle="Planning leads فقط، ليست حجوزات مدفوعة.">
         <DataTable columns={['الحالة', 'العدد', 'النسبة']} minWidth={720} dense>
-          <tr>
-            <td>نشط</td>
-            <td>{stats.approvedProviders}</td>
-            <td>{percent(stats.approvedProviders, totalProviderReviews)}</td>
-          </tr>
-          <tr>
-            <td>قيد المراجعة</td>
-            <td>{stats.pendingProviders}</td>
-            <td>{percent(stats.pendingProviders, totalProviderReviews)}</td>
-          </tr>
-          <tr>
-            <td>يحتاج تعديل</td>
-            <td>{stats.needsChangesProviders}</td>
-            <td>{percent(stats.needsChangesProviders, totalProviderReviews)}</td>
-          </tr>
-          <tr>
-            <td>مرفوض</td>
-            <td>{stats.rejectedProviders}</td>
-            <td>{percent(stats.rejectedProviders, totalProviderReviews)}</td>
-          </tr>
-          <tr>
-            <td>موقوف</td>
-            <td>{stats.suspendedProviders}</td>
-            <td>{percent(stats.suspendedProviders, totalProviderReviews)}</td>
-          </tr>
+          {report.quotes.byStatus.map((item) => (
+            <tr key={item.status}>
+              <td>{item.status}</td>
+              <td>{item.count}</td>
+              <td>{percent(item.count, report.quotes.total)}</td>
+            </tr>
+          ))}
         </DataTable>
       </SectionCard>
     </section>
@@ -207,4 +127,11 @@ export function ReportsPage() {
 function percent(value: number, total: number) {
   if (!total) return '0%';
   return `${Math.round((value / total) * 100)}%`;
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('ar-YE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
 }

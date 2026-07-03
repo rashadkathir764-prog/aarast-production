@@ -60,8 +60,23 @@ void main() {
     expect(find.text('خلّينا نجهز أساس خطتك'), findsNothing);
   });
 
-  testWidgets('Provider path shows coming soon', (tester) async {
+  testWidgets('Provider path opens provider apply route', (tester) async {
     final preferences = await SharedPreferences.getInstance();
+    final router = GoRouter(
+      initialLocation: '/welcome',
+      routes: [
+        GoRoute(
+          path: '/welcome',
+          builder: (context, state) => const SmartWelcomeScreen(),
+        ),
+        GoRoute(
+          path: '/provider/apply',
+          builder: (context, state) =>
+              const Scaffold(body: Text('provider-apply-opened')),
+        ),
+      ],
+    );
+
     await tester.pumpWidget(
       MultiProvider(
         providers: [
@@ -70,20 +85,14 @@ void main() {
             create: (_) => GuestOnboardingStorage(preferences),
           ),
         ],
-        child: const MaterialApp(home: Scaffold(body: SmartWelcomeScreen())),
+        child: MaterialApp.router(routerConfig: router),
       ),
     );
 
     await tester.tap(find.text('أنا مزود خدمة'));
     await tester.pumpAndSettle();
 
-    expect(find.text('مسار مزودي الخدمة'), findsOneWidget);
-    expect(
-      find.text(
-        'قريبًا ستتمكن من عرض خدماتك واستقبال طلبات العملاء من داخل أعرست.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('provider-apply-opened'), findsOneWidget);
   });
 
   testWidgets('Organizer path saves complete local plan setup', (tester) async {
@@ -143,7 +152,10 @@ void main() {
 
     // Verify location
     expect(find.text('المدينة / الموقع'), findsOneWidget);
-    expect(find.text('تحديد الموقع على الخريطة قريبًا'), findsOneWidget);
+    expect(
+      find.text('اكتب المدينة أو المنطقة الآن، ويمكن تعديلها لاحقًا من الخطة.'),
+      findsOneWidget,
+    );
     final locationField = find.descendant(
       of: find.byType(PremiumLocationCard),
       matching: find.byType(TextFormField),
@@ -151,7 +163,10 @@ void main() {
     await tester.enterText(locationField, 'صنعاء');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(PremiumDateField));
+    final dateField = find.byType(PremiumDateField);
+    await tester.ensureVisible(dateField);
+    await tester.pumpAndSettle();
+    await tester.tap(dateField);
     await tester.pumpAndSettle();
     await tester.tap(find.text('15').last);
     await tester.pumpAndSettle();

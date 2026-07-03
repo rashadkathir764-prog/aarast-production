@@ -1,6 +1,6 @@
-# Aarast / Ø§Ø¹Ù‘Ø±Ø³Øª
+# Aarast / اعّرست
 
-Aarast / Ø§Ø¹Ù‘Ø±Ø³Øª is a Yemen-focused mobile app for people planning marriage and managing the full wedding process. The product starts as a Wedding Financial OS for budgets, expenses, debts, installments, tasks, timelines, and shared family planning. Early vendor/provider features are planning references and quote/lead flows only, not a full marketplace, paid booking, confirmed reservation, or deposit flow. A broader marketplace, AI planning, and FinTech partnerships can be added later after the planning foundation is stable.
+Aarast / اعّرست is a Yemen-focused mobile app for people planning marriage and managing the full wedding process. The product starts as a Wedding Financial OS for budgets, expenses, debts, installments, tasks, timelines, and shared family planning. Early vendor/provider features are planning references and quote/lead flows only, not a full marketplace, paid booking, confirmed reservation, or deposit flow. A broader marketplace, AI planning, and FinTech partnerships can be added later after the planning foundation is stable.
 
 ## Stack Overview
 

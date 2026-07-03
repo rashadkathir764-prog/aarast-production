@@ -1,4 +1,4 @@
-﻿import '../../onboarding/models/wedding_location_draft.dart';
+import '../../onboarding/models/wedding_location_draft.dart';
 
 class MarketplaceCity {
   const MarketplaceCity({
@@ -292,22 +292,23 @@ class FavoriteProvider {
   const FavoriteProvider({
     required this.id,
     required this.providerId,
-    required this.provider,
+    this.provider,
   });
 
   factory FavoriteProvider.fromJson(Map<String, dynamic> json) {
+    final provider = json['provider'];
     return FavoriteProvider(
       id: json['id'].toString(),
       providerId: json['providerId'].toString(),
-      provider: MarketplaceProvider.fromJson(
-        Map<String, dynamic>.from(json['provider'] as Map),
-      ),
+      provider: provider is Map
+          ? MarketplaceProvider.fromJson(Map<String, dynamic>.from(provider))
+          : null,
     );
   }
 
   final String id;
   final String providerId;
-  final MarketplaceProvider provider;
+  final MarketplaceProvider? provider;
 }
 
 class QuoteRequest {
@@ -357,9 +358,7 @@ class QuoteRequest {
       service: _mapOrNull(json['service'], MarketplaceService.fromJson),
       eventDate: _dateOrNull(json['eventDate']),
       location: location is Map
-          ? WeddingLocationDraft.fromJson(
-              Map<String, dynamic>.from(location),
-            )
+          ? WeddingLocationDraft.fromJson(Map<String, dynamic>.from(location))
           : null,
       cityId: json['cityId']?.toString(),
       guestCount: _intOrNull(json['guestCount']),

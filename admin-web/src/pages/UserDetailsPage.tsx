@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getUser, ProviderApplication } from '../api/admin';
+import { activateUser, disableUser, getUser, ProviderApplication } from '../api/admin';
 import { AdminUser } from '../api/auth';
-import { ActionLink } from '../components/ActionButton';
+import { ActionButton, ActionLink } from '../components/ActionButton';
 import { DetailField } from '../components/DetailField';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -40,6 +40,16 @@ export function UserDetailsPage() {
     load();
   }, [id]);
 
+  async function toggleUserStatus() {
+    if (!user) return;
+    if (user.status === 'ACTIVE') {
+      await disableUser(user.id);
+    } else {
+      await activateUser(user.id);
+    }
+    await load();
+  }
+
   if (isLoading) return <LoadingState title="جاري تحميل تفاصيل المستخدم" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!user) {
@@ -59,9 +69,17 @@ export function UserDetailsPage() {
         title={user.name}
         description="عرض آمن لبيانات الحساب المتاحة من Admin API فقط، بدون كلمات مرور أو رموز جلسات أو OTP."
         actions={
-          <ActionLink tone="ghost" to="/users">
-            العودة للمستخدمين
-          </ActionLink>
+          <>
+            <ActionButton
+              tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
+              onClick={toggleUserStatus}
+            >
+              {user.status === 'ACTIVE' ? 'تعطيل الحساب' : 'تفعيل الحساب'}
+            </ActionButton>
+            <ActionLink tone="ghost" to="/users">
+              العودة للمستخدمين
+            </ActionLink>
+          </>
         }
         meta={
           <>

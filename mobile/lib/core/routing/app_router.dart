@@ -21,6 +21,8 @@ import '../../features/finance/models/expense.dart';
 import '../../features/guests/screens/guest_list_screen.dart';
 import '../../features/marketplace/screens/add_provider_package_screen.dart';
 import '../../features/marketplace/screens/add_provider_service_screen.dart';
+import '../../features/marketplace/screens/edit_provider_profile_screen.dart';
+import '../../features/marketplace/screens/favorite_providers_screen.dart';
 import '../../features/marketplace/screens/provider_apply_screen.dart';
 import '../../features/marketplace/screens/provider_dashboard_screen.dart';
 import '../../features/marketplace/screens/provider_details_screen.dart';
@@ -67,9 +69,11 @@ class AppRouter {
   static const weddingPlans = '/wedding-plans';
   static const createWeddingPlan = '/wedding-plans/create';
   static const providerMarketplace = '/providers';
+  static const favoriteProviders = '/providers/favorites';
   static const providerApply = '/provider/apply';
   static const providerApplyStatus = '/provider/apply/status';
   static const providerDashboard = '/provider/dashboard';
+  static const providerProfileEdit = '/provider/profile/edit';
   static const legacyProviderDashboard = '/provider-dashboard';
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
@@ -265,6 +269,10 @@ class AppRouter {
           builder: (context, state) => const ProviderMarketplaceScreen(),
         ),
         GoRoute(
+          path: favoriteProviders,
+          builder: (context, state) => const FavoriteProvidersScreen(),
+        ),
+        GoRoute(
           path: '/providers/:id',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
@@ -320,6 +328,14 @@ class AppRouter {
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
             child: const ProviderDashboardScreen(),
+          ),
+        ),
+        GoRoute(
+          path: providerProfileEdit,
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            registerAsProvider: true,
+            child: const EditProviderProfileScreen(),
           ),
         ),
         GoRoute(

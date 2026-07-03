@@ -544,6 +544,22 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  Future<ProviderDashboardProfile> updateProfile({
+    required String businessName,
+    required String phone,
+    required String cityId,
+    String? description,
+  }) async {
+    final normalizedPhone = _normalizePhone(phone);
+    final json = await _apiClient.patchJson('/provider/me/profile', {
+      'businessName': businessName.trim(),
+      'phone': normalizedPhone,
+      'cityId': cityId.trim(),
+      'description': description?.trim(),
+    });
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
   Future<MarketplaceService> createService({
     required String title,
     required String categoryId,

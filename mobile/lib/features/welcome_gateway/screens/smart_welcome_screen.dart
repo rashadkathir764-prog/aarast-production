@@ -12,12 +12,7 @@ import '../widgets/premium_path_card.dart';
 import '../widgets/premium_role_card.dart';
 import '../widgets/premium_setup_fields.dart';
 
-enum _WelcomeStep {
-  pathSelection,
-  roleSelection,
-  quickSetup,
-  providerComingSoon,
-}
+enum _WelcomeStep { pathSelection, roleSelection, quickSetup }
 
 class SmartWelcomeScreen extends StatefulWidget {
   const SmartWelcomeScreen({super.key});
@@ -127,7 +122,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _selectedDate = draft.weddingDate;
       _currency = draft.currency ?? 'YER';
       if (draft.selectedPath == GuestOnboardingPath.provider) {
-        _currentStep = _WelcomeStep.providerComingSoon;
+        context.go(AppRouter.providerApply);
+        return;
       } else if (draft.hasPersona) {
         _currentStep = _WelcomeStep.quickSetup;
       } else if (draft.isWeddingUser) {
@@ -198,8 +194,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         return _buildRoleSelection(context);
       case _WelcomeStep.quickSetup:
         return _buildQuickSetup(context);
-      case _WelcomeStep.providerComingSoon:
-        return _buildProviderComingSoon(context);
     }
   }
 
@@ -231,7 +225,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             title: 'أنا مزود خدمة',
             subtitle: 'اعرض خدماتك واستقبل طلبات العملاء',
             icon: Icons.storefront_rounded,
-            onTap: () => _goTo(_WelcomeStep.providerComingSoon),
+            onTap: () => context.go(AppRouter.providerApply),
           ),
         ],
       ),
@@ -477,66 +471,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       ),
     );
   }
-
-  Widget _buildProviderComingSoon(BuildContext context) {
-    return Padding(
-      key: const ValueKey('providerComingSoon'),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildBackButton(() => _goTo(_WelcomeStep.pathSelection)),
-          ),
-          const SizedBox(height: 48),
-          AarastCard(
-            padding: const EdgeInsets.all(32),
-            child: const Center(
-              child: Icon(
-                Icons.storefront_rounded,
-                size: 72,
-                color: AppTheme.gold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 40),
-          Text(
-            'مسار مزودي الخدمة',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'قريبًا ستتمكن من عرض خدماتك واستقبال طلبات العملاء من داخل أعرست.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.muted,
-              height: 1.8,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(height: 64),
-          AarastButton(
-            label: 'العودة',
-            variant: AarastButtonVariant.secondary,
-            onPressed: () => _goTo(_WelcomeStep.pathSelection),
-          ),
-          const SizedBox(height: 16),
-          AarastButton(
-            label: 'تسجيل الدخول',
-            variant: AarastButtonVariant.ghost,
-            onPressed: () =>
-                context.push(AppRouter.login, extra: {'type': 'provider'}),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _WelcomeHero extends StatelessWidget {
@@ -647,13 +581,6 @@ class _WelcomeHeroContent {
         message:
             'هذه البيانات مطلوبة قبل فتح لوحة التحكم حتى لا تبدأ الخطة ناقصة أو مربكة.',
         icon: Icons.edit_calendar_rounded,
-      ),
-      _WelcomeStep.providerComingSoon => const _WelcomeHeroContent(
-        eyebrow: 'مزودو الخدمة',
-        title: 'حسابات المزودين قريبًا',
-        message:
-            'هذا المسار لم يفتح كمنتج كامل بعد. يمكنك الرجوع لتنظيم زفافك أو تسجيل الدخول عند توفر حساب مزود.',
-        icon: Icons.storefront_rounded,
       ),
     };
   }

@@ -1,7 +1,7 @@
 # Backend + API Full Audit Report
 
 Date: 2026-06-20
-Project: Aarast / Ø£Ø¹Ø±Ø³Øª
+Project: Aarast / اعّرست
 Scope: Backend + API contract audit only. No production code, mobile code, admin-web code, migrations, Docker files, deployment files, commits, pushes, resets, or checkouts were changed.
 
 Documentation follow-up: `API_CONTRACT.md` was refreshed on 2026-06-21 to include the current provider-reference, quote-lead, onboarding, dashboard, money, task, guest, sharing, notification, and admin route surface. Keep this audit's security/runtime findings, but do not use its older API-contract-staleness note as current after that refresh.

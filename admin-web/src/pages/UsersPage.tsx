@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getUsers } from '../api/admin';
+import { activateUser, disableUser, getUsers } from '../api/admin';
 import { AdminUser } from '../api/auth';
+import { ActionButton } from '../components/ActionButton';
 import { DataTable } from '../components/DataTable';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -44,6 +45,15 @@ export function UsersPage() {
   useEffect(() => {
     load();
   }, []);
+
+  async function toggleUser(user: UserRow) {
+    if (user.status === 'ACTIVE') {
+      await disableUser(user.id);
+    } else {
+      await activateUser(user.id);
+    }
+    await load();
+  }
 
   if (isLoading) return <LoadingState title="جاري تحميل المستخدمين" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -139,6 +149,13 @@ export function UsersPage() {
                     <Link className="readonly-pill" to={`/users/${user.id}`}>
                       عرض التفاصيل
                     </Link>
+                    <ActionButton
+                      tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
+                      size="small"
+                      onClick={() => toggleUser(user)}
+                    >
+                      {user.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'}
+                    </ActionButton>
                   </td>
                 </tr>
               ))}

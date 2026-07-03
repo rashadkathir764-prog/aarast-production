@@ -142,6 +142,20 @@ class JsonLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> replaceCachedItemId({
+    required String table,
+    required String localId,
+    required Map<String, dynamic> remoteJson,
+  }) async {
+    final rows = _readList(_tableKey(table))
+      ..removeWhere((row) => row['id'] == localId);
+    final row = buildCacheRow(table: table, json: remoteJson);
+    rows.removeWhere((existing) => existing['id'] == row.columns['id']);
+    rows.add(row.columns);
+    await _writeList(_tableKey(table), rows);
+  }
+
+  @override
   Future<SyncQueueItem> enqueueSync({
     required String entityType,
     required String operation,

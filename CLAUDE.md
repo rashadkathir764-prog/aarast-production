@@ -16,13 +16,14 @@
 > - CLAUDE.md stays compact: links + rules + architecture. No long backlogs.
 
 **Slug:** `aarast`
-**Stack:** Flutter (mobile) · NestJS (backend) · PostgreSQL · Docker (local) · Dokploy (VPS, later)
+**Stack:** Flutter (mobile) · React/Vite (admin web) · NestJS (backend) · PostgreSQL · SQLite mobile cache · Docker (local) · Dokploy (VPS)
 
 ## Architecture
 
 ```
-mobile/   → Flutter app (Dart) — Arabic-first, RTL
-backend/  → NestJS API (TypeScript) — port 3000
+mobile/   → Flutter app (Dart) — Arabic-first, RTL, SQLite offline cache
+admin-web/ → React/Vite admin dashboard
+backend/  → NestJS API (TypeScript) — port 3000 via manual scripts, 3115 via Docker host mapping
           → PostgreSQL — port 5433 (Docker: aarast-db)
 scripts/dev/ → PowerShell quick-start scripts
 ```
@@ -31,9 +32,10 @@ scripts/dev/ → PowerShell quick-start scripts
 
 | Service     | Port | Notes                            |
 |-------------|------|----------------------------------|
-| Backend API | 3000 | `http://127.0.0.1:3000`         |
-| Flutter Web | dyn  | Chrome assigns dynamically       |
-| PostgreSQL  | 5433 | Docker container `aarast-db`     |
+| Backend API | 3000 | Manual QA scripts |
+| Backend API | 3115 | Docker Compose host port |
+| Flutter Web | dyn  | Chrome assigns dynamically |
+| PostgreSQL  | 5433 | Docker container `aarast-db` |
 
 ## Quick Start
 
@@ -53,11 +55,11 @@ scripts/dev/ → PowerShell quick-start scripts
 
 ## Current Phase
 
-Aarast Dashboard (Claude Design handoff) implemented in Flutter and wired as the home screen (`/home` renders the user's primary plan dashboard). Backend MVP core API done and documented in `API_CONTRACT.md`. Next: visual QA and stakeholder review.
+Full project audit and documentation refresh completed on 2026-06-14. Backend MVP/provider/admin APIs are implemented, Flutter includes core planning plus provider marketplace screens and SQLite offline cache/sync queue, and admin-web includes provider approval/catalog/user flows. Deployment is partial: current API/admin-domain checks pass for `aarast-api.shadowgardn.com` and `aarast.shadowgardn.com`, while target `aarast-admin.shadowgardn.com` returns 502 until Dokploy/NPM/ports are aligned.
 
 ## Key Docs
 
-`CURRENT_STATUS.md` · `CHANGELOG.md` · `API_CONTRACT.md` · `DECISIONS.md` · `PHASES.md` · `MVP_SCOPE.md`
+`PROJECT_STATUS.md` · `CURRENT_STATUS.md` · `CHANGELOG.md` · `API_CONTRACT.md` · `DECISIONS.md` · `PHASES.md` · `MVP_SCOPE.md` · `DEPLOYMENT_TROUBLESHOOTING.md`
 
 ## mx* Integration
 

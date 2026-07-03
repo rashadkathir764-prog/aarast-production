@@ -2,6 +2,17 @@
 
 These rules apply to AI agents and automation working on Aarast / اعّرست.
 
+## Current Agent Checklist - 2026-06-14
+
+- Inspect before editing: read the approved docs and confirm the actual code/config state.
+- Do not commit, push, branch, checkout, reset, or create worktrees unless the user explicitly requests Git work.
+- Keep edits tightly scoped and report every changed file.
+- Run the checks required for the touched area and report PASS/FAIL exactly.
+- Never expose secrets from `.env`, Dokploy, Meta/WhatsApp, SMTP, JWT, database, or admin credentials.
+- Keep Arabic/RTL product language intact where it already exists.
+- Do not overwrite the Flutter offline SQLite layer, provider marketplace/reference flows, provider dashboard, or admin approval flow blindly.
+- For deployment docs, distinguish current Compose routing from the target split between API, admin web, and Flutter web/mobile.
+
 ## Phase Discipline
 
 - Do not jump phases.

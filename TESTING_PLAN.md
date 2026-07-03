@@ -1,10 +1,42 @@
 # Testing Plan
 
+## Current Required Checks - 2026-06-14
+
+Run these before claiming a docs/audit or implementation slice is verified:
+
+```powershell
+cd D:\projects\aarast\backend
+npm run check
+npm run build
+
+cd D:\projects\aarast\mobile
+flutter pub get
+flutter analyze
+flutter test
+flutter build web --debug
+
+cd D:\projects\aarast\admin-web
+npm run build
+
+cd D:\projects\aarast
+git diff --check
+```
+
+For backend runtime smoke coverage, start the API first, then run:
+
+```powershell
+cd D:\projects\aarast\backend
+$env:SMOKE_BASE_URL="http://127.0.0.1:3115"
+npm run smoke:all
+```
+
+Offline sync testing must cover cached reads, queued writes, retry behavior, pending badges, manual sync from More, and first-login-online requirements.
+
 ## Testing Strategy
 
 Aarast should use layered testing, starting with smoke tests for critical API units before expanding into broader feature work. The goal is to catch broken foundations early and keep every phase verifiable.
 
-This documentation phase defines the testing strategy only. It does not create test code.
+This document started as a documentation-phase testing strategy. The repository now includes backend smoke scripts, Flutter tests, and admin build checks; new test code should still be added only in an approved implementation task.
 
 ## Smoke Tests
 
@@ -16,7 +48,7 @@ The backend regression command is `npm run smoke:all` from `backend/`. It runs t
 
 Current caution: the 2026-06-20 backend/API audit found a Docker runtime/source mismatch in `smoke:dashboard-summary`. Rebuild/restart the local runtime and rerun smoke before claiming current runtime readiness.
 
-No smoke-test code is created during the Docs Foundation phase.
+Smoke-test code now exists under `backend/scripts/smoke/`. Do not add or change smoke-test code during a docs-only task.
 
 ## Unit Tests
 

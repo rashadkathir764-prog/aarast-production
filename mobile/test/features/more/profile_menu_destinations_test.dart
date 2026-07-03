@@ -40,9 +40,14 @@ void main() {
     }
 
     expect(find.text('خطط الزفاف'), findsOneWidget);
-    expect(find.text('الحساب والمساعدة'), findsOneWidget);
     expect(find.text('خططي'), findsOneWidget);
     expect(find.text('الخطط المشتركة معي'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('الحساب والمساعدة'),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('الحساب والمساعدة'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('الإعدادات'),
       220,

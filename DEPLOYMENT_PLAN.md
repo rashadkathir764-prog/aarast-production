@@ -1,5 +1,33 @@
 # Deployment Plan
 
+## Historical Audit Snapshot - 2026-06-14
+
+Current committed Dokploy Compose services:
+
+| Service | Compose service | Host -> Container | Current/expected domain |
+| --- | --- | --- | --- |
+| API | `backend` | `8093 -> 3000` | `https://aarast-api.shadowgardn.com` |
+| Admin Web | `admin-web` | `8095 -> 80` | currently `https://aarast.shadowgardn.com` |
+| Flutter Web/Mobile Web | not present in Compose | not configured | target `https://aarast.shadowgardn.com` after the domain split is implemented |
+
+Target routing under review:
+
+- API: `https://aarast-api.shadowgardn.com` on host port `8093`.
+- Admin: `https://aarast-admin.shadowgardn.com` on host port `8094`.
+- Flutter Web/Mobile Web: `https://aarast.shadowgardn.com` on host port `8095`.
+
+The current Compose file does not yet define the target admin service on `8094` or a separate Flutter web service on `8095`. Do not claim that target split is deployed until Compose/Dokploy/NPM are updated and verified.
+
+Historical live HTTP check on 2026-06-14:
+
+- `https://aarast-api.shadowgardn.com/health`: HTTP 200.
+- `https://aarast.shadowgardn.com/`: HTTP 200.
+- `https://aarast-admin.shadowgardn.com/`: HTTP 502 Bad Gateway.
+
+502 note: Nginx Proxy Manager can resolve the domain while the upstream Dokploy service/port is unreachable or mapped to the wrong host port. Check the Dokploy service health, host port, NPM forward host/port, and container logs before changing app code.
+
+CORS note: when the target split is implemented, `CORS_ORIGINS` should include every approved web/admin origin that calls the API, for example `https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com`.
+
 This document started as planning-only. Local Docker runtime files now exist for the approved backend and PostgreSQL development setup. Dokploy production Compose files now exist under `deploy/dokploy/` for the approved VPS deployment path.
 
 ## Prerequisites
@@ -38,6 +66,12 @@ Required production values:
 PORT=3000
 CORS_ORIGINS=https://aarast.shadowgardn.com
 VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
+```
+
+When `aarast-admin.shadowgardn.com` becomes the admin dashboard origin, update `CORS_ORIGINS` to include both deployed web origins:
+
+```env
+CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
 ```
 
 ## Environment Staging

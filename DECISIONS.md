@@ -1,5 +1,14 @@
 # Decisions
 
+## Current Decisions Addendum - 2026-06-14
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Treat Flutter SQLite as a mobile cache/sync layer only. | Accepted | PostgreSQL remains the backend source of truth; SQLite supports offline UX and selected queued writes without storing credentials or replacing server data. |
+| Keep provider marketplace work as planning/reference and quote-lead flows. | Accepted | Provider listings, favorites, reviews, quote requests, provider dashboard, and admin approval exist, but paid booking, deposits, payment status, and financing remain excluded. |
+| Split production domains only after Compose/Dokploy/NPM are aligned. | Accepted | Current Compose has backend on `8093` and admin-web on `8095`; the target `aarast-admin.shadowgardn.com` on `8094` plus `aarast.shadowgardn.com` Flutter web on `8095` is not fully configured yet. |
+| Meta WhatsApp OTP remains pending. | Accepted | Backend OTP is provider-agnostic/local; production WhatsApp delivery requires official provider setup, business verification, secure secrets, and explicit approval. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

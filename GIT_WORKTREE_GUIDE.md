@@ -1,5 +1,15 @@
 # Git Worktree Guide
 
+## Current Git Baseline - 2026-06-14 Audit
+
+- Repository root confirmed: `D:\projects\aarast`.
+- Branch observed during audit: `main`.
+- Pasted task context mentioned `phase/frontend-rebuild-v1`, but the current checked-out branch was not changed because Git state changes were not requested.
+- Latest phase branch observed in Git history: `origin/phase/frontend-rebuild-v1`.
+- Clean status is expected before docs-only or phase work; use `git status --short` and `git status -sb` before editing.
+
+Do not create branches, worktrees, commits, pushes, resets, or checkouts unless the current task explicitly requests Git work and the repository root has been confirmed.
+
 ## Purpose
 
 Git worktrees let Aarast development happen in isolated folders while sharing the same repository history. This keeps each phase or feature separated from unrelated work and helps keep the main branch stable.

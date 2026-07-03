@@ -174,10 +174,12 @@ void main() {
 
       await _tapNavIcon(tester, Icons.credit_card_outlined);
       expect(router.state.uri.path, AppRouter.finance('plan-7'));
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, Icons.checklist_rtl_outlined);
       expect(router.state.uri.path, AppRouter.tasks('plan-7'));
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, Icons.grid_view_outlined);
@@ -187,10 +189,12 @@ void main() {
 
       await _tapNavIcon(tester, Icons.storefront_outlined);
       expect(router.state.uri.path, AppRouter.planProviders('plan-7'));
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, Icons.home_outlined);
       expect(router.state.uri.path, AppRouter.weddingPlanDashboard('plan-7'));
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

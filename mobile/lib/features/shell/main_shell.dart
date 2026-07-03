@@ -172,7 +172,7 @@ class _MainShellState extends State<MainShell> {
               _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
             ],
           ),
-          floatingActionButton: _activePlanId == null
+          floatingActionButton: _activePlanId == null || !_showsQuickFab(_index)
               ? null
               : RoyalSmartFloatingActionButton(
                   icon: _fabIconForIndex(_index),
@@ -194,6 +194,10 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildLazyTab(int index, Widget child) {
     return _visitedTabs.contains(index) ? child : const SizedBox.shrink();
+  }
+
+  bool _showsQuickFab(int index) {
+    return index != 1 && index != 4;
   }
 
   IconData _fabIconForIndex(int index) {

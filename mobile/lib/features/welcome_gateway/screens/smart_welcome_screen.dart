@@ -63,11 +63,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         planName.isEmpty ||
         locationText.isEmpty ||
         _selectedDate == null ||
-        budgetText.isEmpty ||
         _currency.trim().isEmpty) {
       setState(() {
         _setupError =
-            'أكمل اسم الخطة، المدينة، تاريخ الزفاف، الميزانية، والعملة قبل فتح لوحة التحكم.';
+            'أكمل اسم الخطة، المدينة، وتاريخ الزفاف قبل فتح لوحة التحكم. يمكنك تحديد الميزانية لاحقاً.';
       });
       return;
     }
@@ -91,7 +90,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       weddingDateUnknown: false,
       priorities: const [],
       currency: _currency,
-      estimatedBudget: budgetText,
+      estimatedBudget: budgetText.isEmpty ? null : budgetText,
       selectedCategoryKeys: const [],
     );
 

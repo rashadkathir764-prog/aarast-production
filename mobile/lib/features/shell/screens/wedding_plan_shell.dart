@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -88,24 +88,34 @@ class WeddingPlanShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _calculateSelectedIndex(context);
-    
+
     IconData getFabIcon() {
       switch (currentIndex) {
-        case 1: return Icons.account_balance_wallet_rounded;
-        case 2: return Icons.check_circle_outline_rounded;
-        case 3: return Icons.group_add_rounded;
-        case 4: return Icons.storefront_rounded;
-        default: return Icons.add_rounded;
+        case 1:
+          return Icons.account_balance_wallet_rounded;
+        case 2:
+          return Icons.check_circle_outline_rounded;
+        case 3:
+          return Icons.group_add_rounded;
+        case 4:
+          return Icons.storefront_rounded;
+        default:
+          return Icons.add_rounded;
       }
     }
+
+    final showQuickFab = currentIndex != 1 && currentIndex != 4;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBody: true,
-      floatingActionButton: RoyalSmartFloatingActionButton(
-        icon: getFabIcon(),
-        onPressed: () => _showQuickAdd(context, weddingPlanId, currentIndex),
-      ),
+      floatingActionButton: showQuickFab
+          ? RoyalSmartFloatingActionButton(
+              icon: getFabIcon(),
+              onPressed: () =>
+                  _showQuickAdd(context, weddingPlanId, currentIndex),
+            )
+          : null,
       bottomNavigationBar: RoyalDashboardBottomNav(
         activeIndex: currentIndex,
         onHome: () => _onNavigate(context, 0),

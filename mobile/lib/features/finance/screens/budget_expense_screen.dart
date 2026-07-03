@@ -16,6 +16,7 @@ import '../../sharing/models/shared_member.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
+import '../models/expense_form_intent.dart';
 import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/yemeni_money_text.dart';
@@ -345,6 +346,14 @@ class _FinanceContent extends StatelessWidget {
               for (var index = 0; index < categoryRows.length; index++) ...[
                 _MoneyCategoryProgressRow(
                   row: categoryRows[index],
+                  onAddExpense: canManageFinancialRecords
+                      ? () => context.push(
+                          AppRouter.createExpense(weddingPlanId),
+                          extra: ExpenseFormIntent(
+                            budgetCategoryId: categoryRows[index].categoryId,
+                          ),
+                        )
+                      : null,
                   onOpenDetails: () => context.push(
                     AppRouter.budgetCategoryDetails(
                       weddingPlanId,
@@ -596,6 +605,13 @@ class _FinanceDonutHero extends StatelessWidget {
     final spentPercent = totalBudget > 0
         ? ((totalSpent / totalBudget) * 100).round()
         : 0;
+    final remaining = _parseValue(summary.remainingBudget);
+    final decision = _moneyDecision(
+      summary,
+      totalBudget,
+      totalSpent,
+      remaining,
+    );
 
     double spentRatio = totalBudget > 0 ? (totalSpent / totalBudget) : 0;
     if (spentRatio > 1) spentRatio = 1;
@@ -615,77 +631,110 @@ class _FinanceDonutHero extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            width: 100,
-            height: 100,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CustomPaint(
-                  size: const Size(100, 100),
-                  painter: _FinanceDonutPainter(
-                    spentRatio: spentRatio,
-                    budgetColor: AppTheme.pearl,
-                    spentColor: AppTheme.gold,
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
+          Row(
+            children: [
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    Text(
-                      '$spentPercent%',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
+                    CustomPaint(
+                      size: const Size(100, 100),
+                      painter: _FinanceDonutPainter(
+                        spentRatio: spentRatio,
+                        budgetColor: AppTheme.pearl,
+                        spentColor: AppTheme.gold,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'تم صرفه',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$spentPercent%',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'تم صرفه',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _DonutStatHorizontal(
+                      label: 'الميزانية',
+                      value: summary.totalBudget,
+                      color: AppTheme.pearl,
+                    ),
+                    Divider(
+                      height: 24,
+                      thickness: 1,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                    _DonutStatHorizontal(
+                      label: 'المصروف',
+                      value: summary.totalSpent,
+                      color: AppTheme.gold,
+                    ),
+                    Divider(
+                      height: 24,
+                      thickness: 1,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                    _DonutStatHorizontal(
+                      label: 'المتبقي',
+                      value: summary.remainingBudget,
+                      color: AppTheme.warning,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+            ),
+            child: Row(
               children: [
-                _DonutStatHorizontal(
-                  label: 'الميزانية',
-                  value: summary.totalBudget,
-                  color: AppTheme.pearl,
-                ),
-                Divider(
-                  height: 24,
-                  thickness: 1,
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
-                _DonutStatHorizontal(
-                  label: 'المصروف',
-                  value: summary.totalSpent,
-                  color: AppTheme.gold,
-                ),
-                Divider(
-                  height: 24,
-                  thickness: 1,
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
-                _DonutStatHorizontal(
-                  label: 'المتبقي',
-                  value: summary.remainingBudget,
-                  color: AppTheme.warning,
+                Icon(decision.icon, color: decision.color, size: 19),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    decision.message,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      fontSize: 12,
+                      height: 1.35,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -694,6 +743,61 @@ class _FinanceDonutHero extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MoneyDecision {
+  const _MoneyDecision({
+    required this.message,
+    required this.icon,
+    required this.color,
+  });
+
+  final String message;
+  final IconData icon;
+  final Color color;
+}
+
+_MoneyDecision _moneyDecision(
+  MoneySummary summary,
+  double totalBudget,
+  double totalSpent,
+  double remaining,
+) {
+  if (totalBudget <= 0 && totalSpent <= 0) {
+    return const _MoneyDecision(
+      message: 'ابدأ بتحديد ميزانية عامة أو بند واحد مثل القاعة.',
+      icon: Icons.flag_outlined,
+      color: AppTheme.gold,
+    );
+  }
+  if (totalBudget <= 0 && totalSpent > 0) {
+    return const _MoneyDecision(
+      message: 'سجلت مصاريف بدون ميزانية. حدد الميزانية حتى يظهر المتبقي بدقة.',
+      icon: Icons.warning_amber_rounded,
+      color: AppTheme.warning,
+    );
+  }
+  if (remaining < 0 || summary.budgetStatus == 'OVER_BUDGET') {
+    return const _MoneyDecision(
+      message: 'تجاوزت الميزانية. راجع البنود الأعلى صرفاً قبل أي دفعة جديدة.',
+      icon: Icons.priority_high_rounded,
+      color: AppTheme.dangerSoft,
+    );
+  }
+  if ((summary.dueInstallmentsCount ?? 0) > 0) {
+    return _MoneyDecision(
+      message:
+          'لديك ${summary.dueInstallmentsCount} دفعة قريبة. راجع الباقي عليك.',
+      icon: Icons.event_available_outlined,
+      color: AppTheme.warningSoft,
+    );
+  }
+  return _MoneyDecision(
+    message:
+        'متبقي ${_formatMoney(remaining)} ر.ي. تابع البنود قبل إضافة دفعة جديدة.',
+    icon: Icons.check_circle_outline_rounded,
+    color: AppTheme.successSoft,
+  );
 }
 
 class _DonutStatHorizontal extends StatelessWidget {
@@ -944,11 +1048,13 @@ class _BudgetStarterCard extends StatelessWidget {
 class _MoneyCategoryProgressRow extends StatelessWidget {
   const _MoneyCategoryProgressRow({
     required this.row,
+    required this.onAddExpense,
     required this.onOpenDetails,
     required this.onViewProviders,
   });
 
   final MoneyCategorySummary row;
+  final VoidCallback? onAddExpense;
   final VoidCallback onOpenDetails;
   final VoidCallback onViewProviders;
 
@@ -966,10 +1072,16 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
     final percent = allocated > 0 ? (spent / allocated * 100).round() : 0;
     final hasBudget = allocated > 0;
     final hasSpent = spent > 0;
+    final remainingLabel = hasBudget
+        ? '${_formatMoney(remaining)} ر.ي'
+        : 'بعد التحديد';
+    final allocatedLabel = hasBudget
+        ? '${_formatMoney(allocated)} ر.ي'
+        : 'حددها';
     final stateLabel = row.overBudget == true
         ? 'تجاوز الميزانية'
         : !hasBudget
-        ? 'حدد الميزانية'
+        ? 'لم تحدد ميزانية بعد'
         : !hasSpent
         ? 'لم يسجل مصروف'
         : remaining <= 0
@@ -1043,7 +1155,7 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    hasBudget ? '$percent%' : '--',
+                    hasBudget ? '$percent%' : '0%',
                     textDirection: TextDirection.ltr,
                     style: TextStyle(
                       color: progressColor,
@@ -1053,13 +1165,45 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    hasBudget ? 'تم صرفه' : 'غير محدد',
+                    hasBudget ? 'تم صرفه' : 'حدد الميزانية',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _CategoryMoneyMetric(
+                  label: 'المخصص',
+                  value: allocatedLabel,
+                  color: AppTheme.info,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CategoryMoneyMetric(
+                  label: 'دفعت',
+                  value: '${_formatMoney(spent)} ر.ي',
+                  color: AppTheme.burgundy,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CategoryMoneyMetric(
+                  label: 'باقي',
+                  value: remainingLabel,
+                  color: row.overBudget == true
+                      ? AppTheme.danger
+                      : hasBudget
+                      ? AppTheme.success
+                      : AppTheme.muted,
+                ),
               ),
             ],
           ),
@@ -1115,12 +1259,79 @@ class _MoneyCategoryProgressRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Align(
+          Row(
+            children: [
+              if (onAddExpense != null) ...[
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onAddExpense,
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('إضافة دفعة'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onViewProviders,
+                  icon: const Icon(Icons.storefront_outlined, size: 18),
+                  label: Text(hasBudget ? 'موردين مناسبين' : 'عرض موردين'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CategoryMoneyMetric extends StatelessWidget {
+  const _CategoryMoneyMetric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
             alignment: AlignmentDirectional.centerStart,
-            child: OutlinedButton.icon(
-              onPressed: onViewProviders,
-              icon: const Icon(Icons.storefront_outlined, size: 18),
-              label: Text(hasBudget ? 'موردين حسب الميزانية' : 'عرض موردين'),
+            child: Text(
+              value,
+              maxLines: 1,
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],

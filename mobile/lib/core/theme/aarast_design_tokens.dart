@@ -4,10 +4,10 @@ class AarastDesignTokens {
   const AarastDesignTokens._();
 
   // Primary Colors
-  static const Color ivory = Color(0xFFFDFBF9); // Warm Bridal Ivory
-  static const Color pearl = Color(0xFFFFFAF5); // Pearl Cream
+  static const Color ivory = Color(0xFFFCF8F5); // Soft Bridal Ivory
+  static const Color pearl = Color(0xFFFFF8F3); // Warm Pearl Cream
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceElevated = Color(0xFFFFFDFC);
+  static const Color surfaceElevated = Color(0xFFFFFDFB);
 
   static const Color burgundy = Color(0xFF800020); // Royal Rose Burgundy
   static const Color burgundyDark = Color(0xFF5A0015); // Deep Burgundy
@@ -19,7 +19,7 @@ class AarastDesignTokens {
   static const Color ink = Color(0xFF2D1A1E);
   static const Color title = burgundyDark;
   static const Color muted = Color(0xFF8A7B7E);
-  static const Color border = Color(0xFFF2E7DC);
+  static const Color border = Color(0xFFEADDE2);
 
   // Semantic Status Colors
   static const Color success = Color(0xFF3D8252);

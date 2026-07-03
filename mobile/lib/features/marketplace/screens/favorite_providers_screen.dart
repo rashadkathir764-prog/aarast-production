@@ -110,6 +110,8 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
               )
             else ...[
               _FavoriteSummary(count: favorites.length),
+              const SizedBox(height: 10),
+              const _FavoriteCompareNote(),
               const SizedBox(height: 12),
               for (final provider in favorites) ...[
                 _FavoriteProviderCard(
@@ -137,6 +139,35 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _FavoriteCompareNote extends StatelessWidget {
+  const _FavoriteCompareNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.border),
+      child: Row(
+        children: [
+          const Icon(Icons.compare_arrows_rounded, color: AppTheme.gold),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'استخدم المفضلة للمقارنة السريعة، ثم اطلب عرضاً من المورد المناسب. لا يتم إنشاء حجز أو مصروف تلقائياً.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -200,6 +231,9 @@ class _FavoriteProviderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final city = provider.city?.nameAr.trim();
     final description = provider.description?.trim();
+    final service = provider.services.isEmpty ? null : provider.services.first;
+    final serviceTitle = service?.title.trim();
+    final category = service?.category?.nameAr.trim();
 
     return AarastCard(
       color: AppTheme.surface,
@@ -246,6 +280,31 @@ class _FavoriteProviderCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (category != null && category.isNotEmpty)
+                          _FavoriteFactPill(
+                            icon: Icons.category_outlined,
+                            text: category,
+                            color: AppTheme.burgundy,
+                          ),
+                        if (serviceTitle != null && serviceTitle.isNotEmpty)
+                          _FavoriteFactPill(
+                            icon: Icons.design_services_outlined,
+                            text: serviceTitle,
+                            color: AppTheme.muted,
+                          ),
+                        if (service != null)
+                          _FavoriteFactPill(
+                            icon: Icons.payments_outlined,
+                            text: _favoriteServicePriceLabel(service),
+                            color: AppTheme.gold,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -276,6 +335,51 @@ class _FavoriteProviderCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FavoriteFactPill extends StatelessWidget {
+  const _FavoriteFactPill({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppTheme.ivory,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 15),
+          const SizedBox(width: 4),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 150),
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppTheme.muted,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -331,4 +435,19 @@ class _ProviderLogo extends StatelessWidget {
             ),
     );
   }
+}
+
+String _favoriteServicePriceLabel(MarketplaceService service) {
+  final raw = service.basePrice?.replaceAll(',', '').trim();
+  final price = raw == null || raw.isEmpty ? null : double.tryParse(raw);
+  if (price == null) return 'السعر غير محدد';
+  final rounded = price.round();
+  final digits = rounded.abs().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  final currency = service.currency?.trim();
+  return '${rounded < 0 ? '-' : ''}$buffer ${currency == null || currency.isEmpty ? 'ر.ي' : currency}';
 }

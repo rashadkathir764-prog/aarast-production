@@ -26,7 +26,7 @@ void main() {
           _provider(
             id: 'provider-1',
             businessName: 'قاعة السلام',
-            services: [_service(title: 'تنسيق قاعة')],
+            services: [_service(title: 'تنسيق قاعة', basePrice: '250000')],
           ),
         ],
         categories: const [
@@ -53,6 +53,7 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('قاعة السلام'), findsOneWidget);
+      expect(find.text('250,000 ر.ي'), findsOneWidget);
       expect(find.text('0.0 (0)'), findsNothing);
       expect(find.textContaining('قريب منك'), findsNothing);
       expect(find.textContaining('الأفضل'), findsNothing);
@@ -114,6 +115,37 @@ void main() {
     expect(find.text('قاعة مناسبة للميزانية'), findsOneWidget);
     expect(find.textContaining('السعر قريب من المبلغ'), findsOneWidget);
     expect(find.textContaining('متاح في صنعاء'), findsOneWidget);
+  });
+
+  testWidgets('budget fallback explains missing exact prices honestly', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      providers: [
+        _provider(
+          id: 'provider-1',
+          businessName: 'قاعة السلام',
+          services: [_service(title: 'قاعة كبيرة', basePrice: '450000')],
+        ),
+      ],
+      categories: const [ProviderCategory(id: 'cat-venue', nameAr: 'القاعات')],
+      budgetMatchIntent: const ProviderBudgetMatchIntent(
+        budgetCategoryName: 'الصالة',
+        allocatedAmount: '300000',
+      ),
+    );
+
+    await _pumpMarketplace(tester, state);
+
+    expect(find.text('لا توجد أسعار مطابقة تماماً'), findsOneWidget);
+    expect(find.textContaining('طلب العرض سيحمل ميزانيتك'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('450,000 ر.ي'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('أقرب المتاح'), findsOneWidget);
+    expect(find.text('450,000 ر.ي'), findsOneWidget);
   });
 
   testWidgets('request quote action opens the auth gate without a token', (

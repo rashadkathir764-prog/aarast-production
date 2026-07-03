@@ -126,7 +126,7 @@ class AppTheme {
     return BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(radius),
-      border: border ?? Border.all(color: AppTheme.border.withAlpha(128)),
+      border: border ?? Border.all(color: AppTheme.border.withAlpha(210)),
       boxShadow: cardShadow(),
     );
   }
@@ -314,7 +314,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusCard),
-          side: BorderSide(color: border.withAlpha(128)),
+          side: BorderSide(color: border.withAlpha(210)),
         ),
         margin: EdgeInsets.zero,
       ),

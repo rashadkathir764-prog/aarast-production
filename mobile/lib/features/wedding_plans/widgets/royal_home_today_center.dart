@@ -4,12 +4,22 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 // import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_pressable.dart';
 import '../models/dashboard_summary.dart';
+
+bool _isFlutterTestEnvironment() {
+  if (kIsWeb) return false;
+  try {
+    return Platform.environment.containsKey('FLUTTER_TEST');
+  } on UnsupportedError {
+    return false;
+  }
+}
 
 class RoyalHomeTodayCenter extends StatelessWidget {
   const RoyalHomeTodayCenter({
@@ -922,7 +932,7 @@ class _PanoramicCardsCarouselState extends State<_PanoramicCardsCarousel> {
 
     if (cards.isEmpty) return const SizedBox.shrink();
 
-    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+    if (_isFlutterTestEnvironment()) {
       return Column(
         children: cards.map((c) => SizedBox(height: 160, child: c)).toList(),
       );
@@ -3279,7 +3289,7 @@ class _PremiumEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    final isTest = _isFlutterTestEnvironment();
     if (isTest) return child;
 
     return TweenAnimationBuilder<double>(
@@ -3313,7 +3323,7 @@ class _AnimatedDonutChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    final isTest = _isFlutterTestEnvironment();
 
     final b = int.tryParse(budgetStr ?? '0') ?? 0;
     final s = int.tryParse(spentStr ?? '0') ?? 0;
@@ -3466,7 +3476,7 @@ class _AutoFlipCardState extends State<_AutoFlipCard>
   @override
   void initState() {
     super.initState();
-    _isTest = Platform.environment.containsKey('FLUTTER_TEST');
+    _isTest = _isFlutterTestEnvironment();
 
     _controller = AnimationController(
       vsync: this,

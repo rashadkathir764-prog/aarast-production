@@ -149,9 +149,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   AarastEmptyState(
                     icon: Icons.storefront_outlined,
                     title: 'لا يوجد موردون متاحون حاليًا',
-                    message: _weddingLocation?.hasRequiredLocation == true
-                        ? 'غيّر المدينة أو الفئة، أو امسح الفلاتر لاستعراض الموردين المتاحين.'
-                        : 'أضف موقع الزفاف لتحسين تصفية المدينة، أو امسح الفلاتر لاستعراض الموردين المتاحين.',
+                    message: _emptyProvidersMessage(
+                      budgetIntent: provider.budgetMatchIntent,
+                      location: _weddingLocation,
+                    ),
                     action: OutlinedButton.icon(
                       onPressed: provider.clearFilters,
                       icon: const Icon(Icons.tune_rounded),
@@ -175,6 +176,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                  ] else if (provider.budgetMatchIntent != null) ...[
+                    _NoBudgetMatchesCard(
+                      intent: provider.budgetMatchIntent!,
+                      onClear: provider.clearBudgetMatch,
+                    ),
+                    const SizedBox(height: 18),
                   ],
                   _ResultsHeader(
                     count: provider.providers.length,
@@ -184,6 +191,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   for (final item in provider.providers) ...[
                     _ProviderCard(
                       provider: item,
+                      budgetIntent: provider.budgetMatchIntent,
                       isFavorite: provider.favoriteProviderIds.contains(
                         item.id,
                       ),
@@ -197,8 +205,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                       },
                       onTap: () =>
                           context.push(AppRouter.providerDetails(item.id)),
-                      onRequestQuote: () =>
-                          context.push(AppRouter.providerQuote(item.id)),
+                      onRequestQuote: () => context.push(
+                        AppRouter.providerQuote(item.id),
+                        extra: ProviderQuoteInitialContext(
+                          budgetIntent: provider.budgetMatchIntent,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -762,6 +774,79 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
+class _NoBudgetMatchesCard extends StatelessWidget {
+  const _NoBudgetMatchesCard({required this.intent, required this.onClear});
+
+  final ProviderBudgetMatchIntent intent;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = intent.hasBudget
+        ? '${_formatMoney(intent.allocatedValue)} ر.ي'
+        : 'بدون مبلغ محدد';
+    final message = intent.hasBudget
+        ? 'لم نجد خدمة بسعر منشور قريب من $amount. سنعرض لك موردين من نفس البند، وطلب العرض سيحمل ميزانيتك تلقائيًا حتى يرد المورد بسعر واضح.'
+        : 'لم نجد خدمة بسعر منشور لهذا البند. اختر مورداً مناسباً واطلب عرضاً لتأكيد السعر.';
+
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppTheme.goldSoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: const Icon(
+              Icons.manage_search_rounded,
+              color: AppTheme.gold,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'لا توجد أسعار مطابقة تماماً',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: onClear,
+                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    label: const Text('عرض كل الموردين'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BudgetMatchContextCard extends StatelessWidget {
   const _BudgetMatchContextCard({
     required this.intent,
@@ -1315,6 +1400,7 @@ class _ResultsHeader extends StatelessWidget {
 class _ProviderCard extends StatelessWidget {
   const _ProviderCard({
     required this.provider,
+    required this.budgetIntent,
     required this.isFavorite,
     required this.onFavorite,
     required this.onTap,
@@ -1322,6 +1408,7 @@ class _ProviderCard extends StatelessWidget {
   });
 
   final MarketplaceProvider provider;
+  final ProviderBudgetMatchIntent? budgetIntent;
   final bool isFavorite;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
@@ -1334,6 +1421,13 @@ class _ProviderCard extends StatelessWidget {
     final serviceTitle = service?.title.trim();
     final location = _providerLocationLabel(provider);
     final hasRating = provider.ratingCount > 0;
+    final price = _moneyValueOrNull(service?.basePrice);
+    final budgetStatus = budgetIntent == null
+        ? null
+        : _serviceBudgetStatus(budgetIntent!, price);
+    final budgetColor = budgetStatus == null
+        ? AppTheme.gold
+        : _serviceBudgetStatusColor(budgetStatus);
 
     return AarastCard(
       padding: const EdgeInsets.all(12),
@@ -1422,6 +1516,18 @@ class _ProviderCard extends StatelessWidget {
                         text: location,
                         color: AppTheme.muted,
                       ),
+                    if (service != null)
+                      _ProviderFactPill(
+                        icon: Icons.payments_outlined,
+                        text: _servicePriceLabel(service),
+                        color: budgetColor,
+                      ),
+                    if (budgetStatus != null)
+                      _ProviderFactPill(
+                        icon: Icons.track_changes_rounded,
+                        text: _serviceBudgetStatusLabel(budgetStatus),
+                        color: budgetColor,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -1484,15 +1590,17 @@ class _ProviderFactPill extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 15),
           const SizedBox(width: 4),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 150),
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppTheme.muted,
-                fontWeight: FontWeight.w900,
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 150),
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppTheme.muted,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -1570,6 +1678,24 @@ String? _activeCategoryName(ProviderMarketplaceProvider provider) {
   return null;
 }
 
+String _emptyProvidersMessage({
+  required ProviderBudgetMatchIntent? budgetIntent,
+  required WeddingLocationDraft? location,
+}) {
+  if (budgetIntent != null) {
+    final amount = budgetIntent.hasBudget
+        ? ' بميزانية ${_formatMoney(budgetIntent.allocatedValue)} ر.ي'
+        : '';
+    return 'لا يوجد موردون ظاهرون لبند ${budgetIntent.budgetCategoryName}$amount حسب الفلاتر الحالية. امسح الفلاتر أو غيّر المدينة لاستعراض خيارات أوسع.';
+  }
+
+  if (location?.hasRequiredLocation == true) {
+    return 'غيّر المدينة أو الفئة، أو امسح الفلاتر لاستعراض الموردين المتاحين.';
+  }
+
+  return 'أضف موقع الزفاف لتحسين تصفية المدينة، أو امسح الفلاتر لاستعراض الموردين المتاحين.';
+}
+
 _ServiceBudgetStatus _serviceBudgetStatus(
   ProviderBudgetMatchIntent intent,
   double? price,
@@ -1643,6 +1769,13 @@ double? _moneyValueOrNull(String? value) {
   final raw = value?.replaceAll(',', '').trim();
   if (raw == null || raw.isEmpty) return null;
   return double.tryParse(raw);
+}
+
+String _servicePriceLabel(MarketplaceService service) {
+  final price = _moneyValueOrNull(service.basePrice);
+  if (price == null) return 'السعر غير محدد';
+  final currency = service.currency?.trim();
+  return '${_formatMoney(price)} ${currency == null || currency.isEmpty ? 'ر.ي' : currency}';
 }
 
 String _formatMoney(num value) {

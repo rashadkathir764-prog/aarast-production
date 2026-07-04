@@ -3,9 +3,11 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/auth/models/safe_user.dart';
+import 'token_vault.dart';
 
 class AuthStorage {
-  const AuthStorage(this._preferences);
+  const AuthStorage(this._preferences, {TokenVault? tokenVault})
+    : _tokenVault = tokenVault;
 
   static const _accessTokenKey = 'aarast_access_token';
   static const _safeUserKey = 'aarast_safe_user';
@@ -13,8 +15,32 @@ class AuthStorage {
 
   final SharedPreferences _preferences;
 
+  /// When provided (production wiring in main.dart), the access token lives
+  /// in the OS keystore. Without it (widget tests), the legacy
+  /// SharedPreferences location is used so tests need no platform channels.
+  final TokenVault? _tokenVault;
+
   Future<String?> readAccessToken() async {
-    return _preferences.getString(_accessTokenKey);
+    final vault = _tokenVault;
+    if (vault == null) {
+      return _preferences.getString(_accessTokenKey);
+    }
+
+    final secureToken = await vault.read();
+    if (secureToken != null && secureToken.isNotEmpty) {
+      return secureToken;
+    }
+
+    // One-time migration: sessions created before the secure vault existed
+    // stored the token in plaintext SharedPreferences. Move it over and
+    // delete the plaintext copy.
+    final legacyToken = _preferences.getString(_accessTokenKey);
+    if (legacyToken == null || legacyToken.isEmpty) {
+      return null;
+    }
+    await vault.write(legacyToken);
+    await _preferences.remove(_accessTokenKey);
+    return legacyToken;
   }
 
   SafeUser? readUser() {
@@ -34,7 +60,14 @@ class AuthStorage {
     required String accessToken,
     required SafeUser user,
   }) async {
-    await _preferences.setString(_accessTokenKey, accessToken);
+    final vault = _tokenVault;
+    if (vault == null) {
+      await _preferences.setString(_accessTokenKey, accessToken);
+    } else {
+      await vault.write(accessToken);
+      // Never keep a plaintext copy alongside the secure one.
+      await _preferences.remove(_accessTokenKey);
+    }
     await _preferences.setString(_safeUserKey, jsonEncode(user.toJson()));
   }
 
@@ -51,6 +84,7 @@ class AuthStorage {
   }
 
   Future<void> clear() async {
+    await _tokenVault?.delete();
     await _preferences.remove(_accessTokenKey);
     await _preferences.remove(_safeUserKey);
     await _preferences.remove(_activePlanIdKey);

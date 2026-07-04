@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -7,7 +7,10 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
+import '../../onboarding/data/local_plan_migration.dart';
+import '../../onboarding/screens/local_plan_migration_screen.dart';
 import '../../shell/main_shell.dart';
+import '../../wedding_plans/data/wedding_plans_api.dart';
 import '../data/dashboard_summary_sources.dart';
 import 'local_guest_dashboard_screen.dart';
 
@@ -21,6 +24,8 @@ class DashboardEntryScreen extends StatefulWidget {
 class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
   Future<LocalGuestDashboardSummary?>? _guestSummary;
   LocalGuestDashboardSummarySource? _guestSummarySource;
+  Future<LocalPlanSnapshot?>? _migrationSnapshot;
+  LocalPlanMigrationService? _migrationService;
 
   @override
   void didChangeDependencies() {
@@ -30,6 +35,9 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
       database: _localDatabaseOrNull(),
     );
     _guestSummary ??= _guestSummarySource!.loadSummary();
+    _migrationService ??= _buildMigrationService();
+    _migrationSnapshot ??=
+        _migrationService?.loadSnapshot() ?? Future.value(null);
   }
 
   @override
@@ -39,7 +47,32 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
       return const AarastScaffold(child: AarastScreenLoading());
     }
     if (auth.status == AuthStatus.authenticated) {
-      return const MainShell();
+      // A complete guest plan on this device must be offered for migration
+      // BEFORE the shell loads — otherwise weeks of local planning are
+      // silently stranded.
+      return FutureBuilder<LocalPlanSnapshot?>(
+        future: _migrationSnapshot,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const AarastScaffold(child: AarastScreenLoading());
+          }
+          final pending = snapshot.data;
+          final service = _migrationService;
+          if (pending != null && service != null) {
+            return LocalPlanMigrationScreen(
+              snapshot: pending,
+              migrationService: service,
+              onFinished: () {
+                if (!mounted) return;
+                setState(() {
+                  _migrationSnapshot = Future.value(null);
+                });
+              },
+            );
+          }
+          return const MainShell();
+        },
+      );
     }
 
     return FutureBuilder<LocalGuestDashboardSummary?>(
@@ -60,6 +93,20 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
         });
         return const AarastScaffold(child: AarastScreenLoading());
       },
+    );
+  }
+
+  LocalPlanMigrationService? _buildMigrationService() {
+    final WeddingPlansApi weddingPlansApi;
+    try {
+      weddingPlansApi = context.read<WeddingPlansApi>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+    return LocalPlanMigrationService(
+      guestStorage: context.read<GuestOnboardingStorage>(),
+      weddingPlansApi: weddingPlansApi,
+      database: _localDatabaseOrNull(),
     );
   }
 

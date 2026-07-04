@@ -15,6 +15,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   OfflineSyncService({required this.database, required this.apiClient});
 
   static const _lastSyncedAtKey = 'last_synced_at';
+  static const _cacheOwnerUserIdKey = 'cache_owner_user_id';
 
   final LocalDatabase database;
   final ApiClient apiClient;
@@ -70,54 +71,95 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     );
   }
 
+  /// Wipes every cached row, queued write and local meta, then resets the
+  /// in-memory sync state. Called on logout so the next account on this
+  /// device can never see the previous account's financial data, and so
+  /// stale queued writes never replay under a new user's token.
+  Future<void> clearLocalData() async {
+    await database.wipeAll();
+    _state = SyncState.synced;
+    _lastError = null;
+    _lastSyncedAt = null;
+    await refreshStatus();
+  }
+
+  /// Binds the local cache to [userId]. If the cache currently belongs to a
+  /// different account, it is wiped BEFORE any cache write or queue replay
+  /// happens. Must be called right after a session is established.
+  Future<void> ensureCacheOwner(String userId) async {
+    if (userId.isEmpty || userId == 'null') return;
+    final currentOwner = await database.getMeta(_cacheOwnerUserIdKey);
+    if (currentOwner != null && currentOwner != userId) {
+      await clearLocalData();
+    }
+    await database.setMeta(_cacheOwnerUserIdKey, userId);
+  }
+
   Future<void> noteNetworkFailure([String? message]) async {
     _state = SyncState.offline;
     _lastError = message ?? CachePolicy.offlineReadMessage;
     await refreshStatus();
   }
 
+  /// Re-entrancy guard set SYNCHRONOUSLY before any await: app-resume and
+  /// post-login can trigger a sync in the same frame, and replaying the
+  /// same queue twice would duplicate financial records.
+  bool _syncInFlight = false;
+
   Future<void> syncPendingChanges() async {
-    if (_state == SyncState.syncing) return;
-    final items = await database.pendingSyncItems();
-    if (items.isEmpty) {
-      _state = SyncState.synced;
-      _lastError = null;
-      await _markSyncedNow();
-      await refreshStatus();
-      return;
-    }
-
-    _state = SyncState.syncing;
-    _lastError = null;
-    notifyListeners();
-
-    for (final item in items) {
-      try {
-        final response = await apiClient.dio.request<Object?>(
-          item.endpoint,
-          data: item.payload,
-          options: Options(method: item.method),
-        );
-        await _cacheSyncedResponse(item, response.data);
-        await database.markSyncItemSynced(item.id);
-      } on DioException catch (error) {
-        final apiError = ApiException.fromDio(error);
-        await _handleSyncError(item, apiError);
-        if (apiError.isNetworkFailure) break;
-      } on Object catch (error) {
-        await _handleSyncError(item, error);
+    if (_syncInFlight) return;
+    _syncInFlight = true;
+    try {
+      final items = await database.pendingSyncItems();
+      if (items.isEmpty) {
+        _state = SyncState.synced;
+        _lastError = null;
+        await _markSyncedNow();
+        await refreshStatus();
+        return;
       }
-    }
 
-    final remaining = await database.pendingSyncCount();
-    if (remaining == 0) {
-      _state = SyncState.synced;
+      _state = SyncState.syncing;
       _lastError = null;
-      await _markSyncedNow();
-    } else if (_state != SyncState.offline) {
-      _state = SyncState.hasPendingChanges;
+      notifyListeners();
+
+      for (final item in items) {
+        try {
+          final response = await apiClient.dio.request<Object?>(
+            item.endpoint,
+            data: item.payload,
+            options: Options(
+              method: item.method,
+              headers: {
+                // Server-side replay protection: a retry after a lost
+                // response returns the original result, never a duplicate.
+                'X-Client-Request-Id': item.id,
+              },
+            ),
+          );
+          await _cacheSyncedResponse(item, response.data);
+          await database.markSyncItemSynced(item.id);
+        } on DioException catch (error) {
+          final apiError = ApiException.fromDio(error);
+          await _handleSyncError(item, apiError);
+          if (apiError.isNetworkFailure) break;
+        } on Object catch (error) {
+          await _handleSyncError(item, error);
+        }
+      }
+
+      final remaining = await database.pendingSyncCount();
+      if (remaining == 0) {
+        _state = SyncState.synced;
+        _lastError = null;
+        await _markSyncedNow();
+      } else if (_state != SyncState.offline) {
+        _state = SyncState.hasPendingChanges;
+      }
+      await refreshStatus();
+    } finally {
+      _syncInFlight = false;
     }
-    await refreshStatus();
   }
 
   @override
@@ -129,7 +171,25 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<void> _handleSyncError(SyncQueueItem item, Object error) async {
     final message = error is ApiException ? error.message : error.toString();
-    await database.markSyncItemFailed(item.id, message);
+
+    // A 4xx rejection (validation, not-found...) will never succeed by
+    // retrying — block it immediately instead of spinning forever. Network
+    // and server errors stay retryable up to a budget.
+    final isPermanentRejection =
+        error is ApiException &&
+        !error.isNetworkFailure &&
+        (error.statusCode ?? 0) >= 400 &&
+        (error.statusCode ?? 0) < 500;
+    final exhaustedRetries =
+        item.retryCount + 1 >= SyncQueueItem.maxAutoRetries &&
+        !(error is ApiException && error.isNetworkFailure);
+
+    if (isPermanentRejection || exhaustedRetries) {
+      await database.markSyncItemBlocked(item.id, message);
+    } else {
+      await database.markSyncItemFailed(item.id, message);
+    }
+
     _lastError = message;
     if (error is ApiException && error.isNetworkFailure) {
       _state = SyncState.offline;
@@ -150,6 +210,15 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         localId: item.localEntityId!,
         remoteJson: json,
       );
+      // Dependent queued writes (e.g. an expense created offline against a
+      // local category id) must now point at the real server id.
+      final remoteId = json['id']?.toString();
+      if (remoteId != null && remoteId.isNotEmpty) {
+        await database.rewriteQueuedReferences(
+          localId: item.localEntityId!,
+          remoteId: remoteId,
+        );
+      }
       return;
     }
 

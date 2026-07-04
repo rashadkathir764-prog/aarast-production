@@ -23,6 +23,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
@@ -1134,10 +1135,7 @@ export class AdminService {
     if (value === undefined || value === null) return null;
     const normalized = value.trim();
     if (!normalized) return null;
-    if (!/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-    return normalized;
+    return requiredMoneyAmount(normalized, field);
   }
 
   private optionalBoolean(

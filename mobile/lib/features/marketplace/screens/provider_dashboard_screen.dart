@@ -29,7 +29,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
       final hasAccount =
-          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          AppFeatureFlags.devBypassLoginGatesForUxExploration ||
           await AuthActionGuard.hasAccount(context);
       if (!mounted || !hasAccount) return;
       context.read<ProviderDashboardProvider>().loadDashboard();

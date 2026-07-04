@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Expense, ExpenseStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
@@ -251,12 +252,7 @@ export class ExpensesService {
   }
 
   private requiredNonNegativeDecimal(value: string | number, field: string): string {
-    const normalized = String(value).trim();
-    if (!normalized || !/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-
-    return normalized;
+    return requiredMoneyAmount(value, field);
   }
 
   private toResponse(expense: Expense): ExpenseResponse {

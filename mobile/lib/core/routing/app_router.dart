@@ -1,6 +1,5 @@
 import 'package:go_router/go_router.dart';
 
-import '../../features/onboarding/screens/guest_onboarding_flow_screen.dart';
 import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
@@ -35,7 +34,6 @@ import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/sharing/screens/invite_decision_screen.dart';
 import '../../features/home/screens/dashboard_entry_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/shell/rebuild/user_rebuild_shell.dart';
 import '../../features/sharing/screens/add_shared_member_screen.dart';
 import '../../features/sharing/screens/edit_shared_member_screen.dart';
 import '../../features/sharing/screens/shared_wedding_plans_screen.dart';
@@ -54,7 +52,6 @@ import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart'
 import '../../features/shell/screens/wedding_plan_shell.dart';
 import '../../shared/models/quote_finance_context.dart';
 import '../config/app_feature_flags.dart';
-import 'app_route_guard_resolver.dart';
 
 class AppRouter {
   const AppRouter._();
@@ -200,14 +197,6 @@ class AppRouter {
     return onboarding;
   }
 
-  static String? userNavigationShellRedirect(AppFeatureFlags flags) {
-    return AppRouteGuardResolver.featureFlagRedirect(
-      flags: flags,
-      flagName: 'enableNewUserBottomNavigation',
-      disabledRedirect: home,
-    );
-  }
-
   static GoRouter create({AppFeatureFlags flags = AppFeatureFlags.defaults}) {
     return GoRouter(
       initialLocation: splash,
@@ -220,22 +209,17 @@ class AppRouter {
           path: welcome,
           builder: (context, state) => const SmartWelcomeScreen(),
         ),
+        // The smart welcome gateway is the single onboarding truth. Legacy
+        // paths stay registered so old deep links keep working.
         GoRoute(
           path: onboarding,
           redirect: (context, state) => welcome,
-          builder: (context, state) => const GuestOnboardingFlowScreen(),
+          builder: (context, state) => const SmartWelcomeScreen(),
         ),
         GoRoute(
           path: guestOnboardingPreview,
           redirect: (context, state) => welcome,
-          builder: (context, state) => const GuestOnboardingFlowScreen(),
-        ),
-        GoRoute(
-          path: userNavigationShellPreview,
-          redirect: (context, state) {
-            return userNavigationShellRedirect(flags);
-          },
-          builder: (context, state) => const UserRebuildShell(),
+          builder: (context, state) => const SmartWelcomeScreen(),
         ),
         GoRoute(path: login, builder: (context, state) => const LoginScreen()),
         GoRoute(

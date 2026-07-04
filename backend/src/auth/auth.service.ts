@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -14,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtPayload } from './jwt-payload.interface';
+import { DevEchoOtpChannel, OtpChannel } from './otp-channel';
 import { SafeUser, toSafeUser } from './safe-user';
 
 export interface AuthResponse {
@@ -25,7 +28,7 @@ export interface OtpRequestResponse {
   phone: string;
   purpose: OtpPurpose;
   expiresAt: Date;
-  delivery: 'LOCAL_DEV' | 'PROVIDER_PENDING';
+  delivery: 'LOCAL_DEV' | 'PROVIDER_PENDING' | 'WHATSAPP';
   code?: string;
   message?: string;
 }
@@ -42,6 +45,16 @@ export interface OtpVerifyResponse {
 export class AuthService {
   private static readonly otpUnavailableMessage =
     'خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.';
+
+  // Per-account lockout: the IP throttle alone allows ~86k guesses/day
+  // against one account. In-memory is acceptable for the current
+  // single-container deployment; move to a shared store when scaling out.
+  private static readonly maxFailedLogins = 5;
+  private static readonly lockoutWindowMs = 15 * 60_000;
+  private readonly failedLogins = new Map<
+    string,
+    { count: number; lockedUntil: number }
+  >();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -81,11 +94,15 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<AuthResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
+    this.assertNotLockedOut(phone);
+
     const user = await this.prisma.user.findFirst({
       where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
     });
 
     if (!user) {
+      // Counted too, so attackers cannot distinguish unknown phones.
+      this.recordFailedLogin(phone);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -95,8 +112,11 @@ export class AuthService {
 
     const passwordMatch = await bcryptjs.compare(dto.password, user.passwordHash);
     if (!passwordMatch) {
+      this.recordFailedLogin(phone);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    this.failedLogins.delete(phone);
 
     const updatedUser = await this.prisma.user.update({
       where: { id: user.id },
@@ -107,18 +127,41 @@ export class AuthService {
     return { user: toSafeUser(updatedUser), accessToken };
   }
 
+  private assertNotLockedOut(phone: string): void {
+    const entry = this.failedLogins.get(phone);
+    if (!entry) return;
+    if (entry.lockedUntil > Date.now()) {
+      throw new HttpException(
+        'Too many failed login attempts. Try again later.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    if (entry.lockedUntil !== 0) {
+      // Lock expired — start a fresh window.
+      this.failedLogins.delete(phone);
+    }
+  }
+
+  private recordFailedLogin(phone: string): void {
+    const entry = this.failedLogins.get(phone) ?? { count: 0, lockedUntil: 0 };
+    entry.count += 1;
+    if (entry.count >= AuthService.maxFailedLogins) {
+      entry.lockedUntil = Date.now() + AuthService.lockoutWindowMs;
+      entry.count = 0;
+    }
+    this.failedLogins.set(phone, entry);
+  }
+
   async requestOtp(dto: RequestOtpDto): Promise<OtpRequestResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const purpose = dto.purpose;
-    const mode = this.getOtpMode();
+    const channel = this.resolveOtpChannel(this.getOtpMode());
 
-    if (mode === 'disabled' || mode === 'whatsapp') {
+    if (!channel) {
       throw new BadRequestException(AuthService.otpUnavailableMessage);
     }
 
-    // Temporary local development bridge until the Meta WhatsApp OTP provider
-    // is wired. Production never reaches dev mode.
-    const code = this.getDevOtpCode();
+    const code = channel.generateCode();
     const codeHash = await bcryptjs.hash(code, 10);
     const now = new Date();
     const expiresAt = new Date(
@@ -145,14 +188,27 @@ export class AuthService {
       },
     });
 
+    const delivered = await channel.deliver(phone, code, purpose);
+
     return {
       phone,
       purpose,
       expiresAt,
-      delivery: 'LOCAL_DEV',
-      code,
-      message: `رمز التحقق مؤقت للتجربة المحلية: ${code}`,
+      delivery: delivered.delivery,
+      ...(delivered.echoCode ? { code: delivered.echoCode } : {}),
+      ...(delivered.message ? { message: delivered.message } : {}),
     };
+  }
+
+  /**
+   * dev -> local echo channel; whatsapp -> plugged in at release phase 8;
+   * disabled -> null (feature off).
+   */
+  private resolveOtpChannel(mode: string): OtpChannel | null {
+    if (mode === 'dev') {
+      return new DevEchoOtpChannel(this.getDevOtpCode());
+    }
+    return null;
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<OtpVerifyResponse> {

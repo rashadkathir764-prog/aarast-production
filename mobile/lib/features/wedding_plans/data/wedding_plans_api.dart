@@ -32,6 +32,24 @@ class WeddingPlansApi {
     return response;
   }
 
+  /// One-shot idempotent migration of a guest-mode local plan (seed +
+  /// expenses + tasks + guests) into the authenticated account.
+  Future<OnboardingCompleteResponse> importLocalPlan(
+    Map<String, dynamic> payload,
+  ) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/onboarding/import-local',
+      payload,
+    );
+    final response = OnboardingCompleteResponse.fromJson(json);
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: _activePlanToCacheJson(response.activeWeddingPlan),
+    );
+    await _offline?.refreshStatus();
+    return response;
+  }
+
   Future<ActiveWeddingPlan?> getActiveWeddingPlan() async {
     try {
       final response = await _apiClient.dio.get<Object?>(

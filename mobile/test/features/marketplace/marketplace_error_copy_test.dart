@@ -23,5 +23,14 @@ void main() {
       expect(message, 'تحتاج إلى تسجيل الدخول للمتابعة.');
       expect(message, isNot(contains('تحتاجين')));
     });
+    test('structured location errors are shown as Arabic user guidance', () {
+      final message = marketplaceErrorMessage(
+        'location governorate and cityOrDistrict are required for structured location',
+      );
+
+      expect(message, contains('أكمل موقع الزفاف'));
+      expect(message, isNot(contains('governorate')));
+      expect(message, isNot(contains('cityOrDistrict')));
+    });
   });
 }

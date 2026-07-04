@@ -3,10 +3,14 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/providers/auth_controller.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
+import '../../wedding_plans/models/onboarding_complete.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 
 import '../widgets/premium_path_card.dart';
 import '../widgets/premium_role_card.dart';
@@ -73,6 +77,17 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
     setState(() => _isLoading = true);
 
+    // Authenticated users get a real backend plan immediately — a local
+    // draft would strand them in a welcome/home redirect loop.
+    if (_isAuthenticated()) {
+      await _createAccountPlan(
+        planName: planName,
+        locationText: locationText,
+        budgetText: budgetText,
+      );
+      return;
+    }
+
     final guestStorage = context.read<GuestOnboardingStorage>();
     final now = DateTime.now();
 
@@ -103,6 +118,70 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       ),
     );
 
+    if (!mounted) return;
+    context.go(AppRouter.home);
+  }
+
+  bool _isAuthenticated() {
+    try {
+      return context.read<AuthController>().status == AuthStatus.authenticated;
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
+
+  Future<void> _createAccountPlan({
+    required String planName,
+    required String locationText,
+    required String budgetText,
+  }) async {
+    final WeddingPlansProvider plans;
+    AuthStorage? authStorage;
+    final guestStorage = context.read<GuestOnboardingStorage>();
+    try {
+      plans = context.read<WeddingPlansProvider>();
+    } on ProviderNotFoundException {
+      setState(() {
+        _isLoading = false;
+        _setupError = 'تعذر إنشاء الخطة الآن. حاول مرة أخرى.';
+      });
+      return;
+    }
+    try {
+      authStorage = context.read<AuthStorage>();
+    } on ProviderNotFoundException {
+      authStorage = null;
+    }
+
+    final response = await plans.completeOnboarding(
+      OnboardingCompleteRequest(
+        path: 'USER',
+        persona: switch (_selectedPersona) {
+          GuestPersona.bride => 'BRIDE',
+          GuestPersona.helper => 'HELPER',
+          _ => 'GROOM',
+        },
+        title: planName,
+        city: locationText,
+        weddingDate: _selectedDate?.toIso8601String(),
+        estimatedBudget: budgetText.isEmpty ? null : budgetText,
+        currency: _currency,
+      ),
+    );
+
+    if (!mounted) return;
+    if (response == null) {
+      setState(() {
+        _isLoading = false;
+        _setupError =
+            plans.errorMessage ??
+            'تعذر إنشاء الخطة الآن. تحقق من الاتصال وحاول مرة أخرى.';
+      });
+      return;
+    }
+
+    await authStorage?.saveActivePlanId(response.activePlanId);
+    await guestStorage.clearDraft();
     if (!mounted) return;
     context.go(AppRouter.home);
   }

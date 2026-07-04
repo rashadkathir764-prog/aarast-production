@@ -58,9 +58,27 @@ abstract class LocalDatabase {
 
   Future<void> markSyncItemFailed(String id, String error);
 
+  /// Marks an item as permanently rejected so it is never auto-replayed.
+  Future<void> markSyncItemBlocked(String id, String error);
+
   Future<void> markSyncItemSynced(String id);
+
+  /// After a queued create syncs and the server assigns a real id, every
+  /// still-pending payload/endpoint referencing the local id must be
+  /// rewritten — otherwise dependent writes replay with ids the server
+  /// has never seen and fail forever.
+  Future<void> rewriteQueuedReferences({
+    required String localId,
+    required String remoteId,
+  });
 
   Future<int> pendingSyncCount();
 
   Future<Set<String>> pendingEntityKeys();
+
+  /// Deletes every cached row, every queued sync item and all local meta.
+  ///
+  /// Called on logout and when a different account signs in on the same
+  /// device, so financial data never leaks across accounts.
+  Future<void> wipeAll();
 }

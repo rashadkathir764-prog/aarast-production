@@ -25,6 +25,7 @@ class PremiumDashboardView extends StatelessWidget {
     required this.onOpenImportantItem,
     required this.onAddExpense,
     this.personaHeadline,
+    this.notice,
     this.now,
     super.key,
   });
@@ -33,6 +34,9 @@ class PremiumDashboardView extends StatelessWidget {
   final String userName;
   final double bottomPadding;
   final String? personaHeadline;
+
+  /// شارة اختيارية تظهر أسفل الترويسة مباشرة (مثل تنبيه المزامنة للضيف المحلي).
+  final Widget? notice;
 
   /// وقت مرجعي للتحية (للاختبار). فارغ = الوقت الحالي.
   final DateTime? now;
@@ -66,6 +70,10 @@ class PremiumDashboardView extends StatelessWidget {
         onProfile: onProfile,
         now: now,
       ),
+      if (notice != null) ...[
+        const SizedBox(height: 14),
+        notice!,
+      ],
       const SizedBox(height: 18),
       AarastCountdownHero(
         planTitle: summary.title,

@@ -23,6 +23,7 @@ class AppTheme {
 
   static const gold = AarastDesignTokens.gold;
   static const goldSoft = AarastDesignTokens.goldSoft;
+  static const goldDeep = AarastDesignTokens.goldDeep;
 
   static const ink = AarastDesignTokens.ink;
   static const title = AarastDesignTokens.title;

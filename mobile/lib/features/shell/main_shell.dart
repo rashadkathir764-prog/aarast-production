@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/routing/app_router.dart';
@@ -201,12 +202,13 @@ class _MainShellState extends State<MainShell> {
   }
 
   IconData _fabIconForIndex(int index) {
+    // أيقونات Lucide لتوحيد القشرة مع بقية الشاشات الفخمة.
     return switch (index) {
-      1 => Icons.account_balance_wallet_rounded,
-      2 => Icons.check_circle_outline_rounded,
-      3 => Icons.group_add_rounded,
-      4 => Icons.storefront_rounded,
-      _ => Icons.add_rounded,
+      1 => LucideIcons.wallet,
+      2 => LucideIcons.listPlus,
+      3 => LucideIcons.userPlus,
+      4 => LucideIcons.store,
+      _ => LucideIcons.plus,
     };
   }
 

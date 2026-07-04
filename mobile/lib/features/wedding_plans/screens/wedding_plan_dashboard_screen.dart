@@ -15,7 +15,7 @@ import '../../sharing/models/shared_member.dart';
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/royal_home_today_center.dart';
+import '../widgets/premium/premium_dashboard_view.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
@@ -130,7 +130,7 @@ class _WeddingPlanDashboardScreenState
             FadeTransition(opacity: animation, child: child),
         child: KeyedSubtree(
           key: const ValueKey('royal-home-skeleton'),
-          child: RoyalHomeTodaySkeleton(bottomPadding: bottomPadding),
+          child: PremiumDashboardSkeleton(bottomPadding: bottomPadding),
         ),
       );
     }
@@ -193,16 +193,13 @@ class _WeddingPlanDashboardScreenState
             final personaCopy = activePlan?.id == summary.planId
                 ? personaCopyForBackend(activePlan?.persona)
                 : null;
-            return RoyalHomeTodayCenter(
+            return PremiumDashboardView(
               summary: summary,
               userName: personaCopy?.isKnown == true
                   ? personaCopy!.label
                   : auth.user?.name ?? 'صاحب الخطة',
               personaHeadline: personaCopy?.isKnown == true
                   ? personaCopy!.dashboardHeadline
-                  : null,
-              personaSupportText: personaCopy?.isKnown == true
-                  ? personaCopy!.dashboardSupport
                   : null,
               bottomPadding: bottomPadding,
               onNotifications: () =>
@@ -217,14 +214,8 @@ class _WeddingPlanDashboardScreenState
                   context.go(AppRouter.planProviders(summary.planId)),
               onOpenGuests: () =>
                   context.go(AppRouter.guestList(summary.planId)),
-              onOpenParticipants: () =>
-                  context.push(AppRouter.sharing(summary.planId)),
-              onOpenNotifications: () =>
-                  context.push(AppRouter.planNotifications(summary.planId)),
               onOpenImportantItem: _openDashboardItem,
               onOpenNextStep: () => _openNextStep(summary),
-              onOpenTimeline: () =>
-                  context.push(AppRouter.timeline(summary.planId)),
               onAddExpense: () =>
                   context.push(AppRouter.createExpense(summary.planId)),
             );

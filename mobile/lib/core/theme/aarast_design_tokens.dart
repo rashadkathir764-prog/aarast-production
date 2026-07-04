@@ -21,6 +21,12 @@ class AarastDesignTokens {
   static const Color muted = Color(0xFF8A7B7E);
   static const Color border = Color(0xFFEADDE2);
 
+  // Premium gradient stops — للتدرجات الملكية والحلقة الذهبية فقط.
+  static const Color burgundyLight = Color(0xFF8E0B2C);
+  static const Color goldDeep = Color(0xFFB8912A);
+  static const Color goldLight = Color(0xFFF2D888);
+  static const Color goldGlow = Color(0xFFF7E7B3);
+
   // Semantic Status Colors
   static const Color success = Color(0xFF3D8252);
   static const Color successSoft = Color(0xFFE8F4EE);

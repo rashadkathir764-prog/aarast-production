@@ -284,7 +284,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'كيف تحب تبدأ؟',
+            'اختر المسار المناسب لك',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: AppTheme.ink,
@@ -293,8 +293,8 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           ),
           const SizedBox(height: 18),
           PremiumPathCard(
-            title: 'أريد تنظيم زفافي',
-            subtitle: 'ابدأ خطة ذكية للمهام والميزانية والضيوف والموردين',
+            title: 'إنشاء خطتك',
+            subtitle: 'ابدأ خطة جديدة ثم خصصها حسب دورك.',
             icon: LucideIcons.heart,
             isPrimary: true,
             onTap: () => _goTo(_WelcomeStep.roleSelection),
@@ -302,18 +302,19 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           const SizedBox(height: 16),
           PremiumPathCard(
             title: 'وصلتني دعوة لخطة',
-            subtitle:
-                'ادخل برقم الهاتف والرمز، ثم افتح نفس الخطة حسب صلاحياتك فقط',
+            subtitle: 'الدخول إلى خطة تمت دعوتك إليها برقم هاتفك.',
             icon: LucideIcons.mailCheck,
             onTap: () => context.go(AppRouter.inviteAccess),
           ),
           const SizedBox(height: 16),
           PremiumPathCard(
             title: 'أنا مزود خدمة',
-            subtitle: 'اعرض خدماتك واستقبل طلبات العملاء',
+            subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
             icon: LucideIcons.store,
             onTap: () => context.go(AppRouter.providerApply),
           ),
+          const SizedBox(height: 18),
+          _LoginPrompt(onTap: () => context.go(AppRouter.login)),
         ],
       ),
     );
@@ -333,11 +334,21 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'من أنت؟',
+            'خلنا نتعرف عليك',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: AppTheme.ink,
               fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'لنصنع لك تجربة تليق باحتياجاتك',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.muted,
+              height: 1.45,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 12),
@@ -360,19 +371,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
               setState(() => _selectedPersona = GuestPersona.bride);
             },
           ),
-          const SizedBox(height: 10),
-          PremiumRoleCard(
-            title: 'مساهم / مشارك في الخطة',
-            subtitle: 'أساعد في التنظيم والمتابعة',
-            icon: LucideIcons.heartHandshake,
-            isSelected: _selectedPersona == GuestPersona.helper,
-            onTap: () {
-              setState(() => _selectedPersona = GuestPersona.helper);
-            },
-          ),
           const SizedBox(height: 14),
           AarastButton(
-            label: 'متابعة',
+            label: 'التالي',
             icon: LucideIcons.arrowLeft,
             onPressed: _selectedPersona == null
                 ? null
@@ -693,17 +694,15 @@ class _WelcomeHeroContent {
   factory _WelcomeHeroContent.forStep(_WelcomeStep step) {
     return switch (step) {
       _WelcomeStep.pathSelection => const _WelcomeHeroContent(
-        eyebrow: 'بداية هادئة',
-        title: 'أهلاً بك في أعرست',
-        message:
-            'ابدأ بخطة زفاف واضحة تحفظ تفاصيلك محليًا، وافتح المزامنة والمشاركة عندما تحتاج حسابًا.',
+        eyebrow: 'مرحبًا بك',
+        title: 'أعرست',
+        message: 'ابدأ أو تابع من المسار المناسب لك.',
         icon: LucideIcons.heart,
       ),
       _WelcomeStep.roleSelection => const _WelcomeHeroContent(
         eyebrow: 'تخصيص التجربة',
-        title: 'اختر دورك في الخطة',
-        message:
-            'سنرتب الكلمات والأولويات حول دورك، بدون افتراضات أو أرقام غير مؤكدة.',
+        title: 'دورك يحدد التفاصيل',
+        message: 'اختيار بسيط يساعدنا نرتب التجربة لك بوضوح.',
         icon: LucideIcons.users,
       ),
       _WelcomeStep.quickSetup => const _WelcomeHeroContent(
@@ -739,11 +738,7 @@ class _SetupErrorBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            LucideIcons.info,
-            color: AppTheme.danger,
-            size: 20,
-          ),
+          const Icon(LucideIcons.info, color: AppTheme.danger, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -757,6 +752,39 @@ class _SetupErrorBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LoginPrompt extends StatelessWidget {
+  const _LoginPrompt({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'لديك حساب؟',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.muted,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        TextButton(
+          onPressed: onTap,
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.burgundy,
+            textStyle: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          child: const Text('تسجيل الدخول'),
+        ),
+      ],
     );
   }
 }

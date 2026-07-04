@@ -29,9 +29,12 @@ void main() {
       ),
     );
 
-    expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
-    expect(find.text('أريد تنظيم زفافي'), findsOneWidget);
+    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
+    expect(find.text('إنشاء خطتك'), findsOneWidget);
+    expect(find.text('وصلتني دعوة لخطة'), findsOneWidget);
     expect(find.text('أنا مزود خدمة'), findsOneWidget);
+    expect(find.text('لديك حساب؟'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
 
   testWidgets('Organizer path shows role selection', (tester) async {
@@ -48,16 +51,17 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('أريد تنظيم زفافي'));
+    await tester.tap(find.text('إنشاء خطتك'));
     await tester.pumpAndSettle();
 
-    expect(find.text('من أنت؟'), findsOneWidget);
+    expect(find.text('خلنا نتعرف عليك'), findsOneWidget);
+    expect(find.text('لنصنع لك تجربة تليق باحتياجاتك'), findsOneWidget);
     expect(find.text('العريس'), findsOneWidget);
     expect(find.text('أتابع الخطة والميزانية'), findsOneWidget);
     expect(find.text('العروسة'), findsOneWidget);
     expect(find.text('أرتب التفاصيل والاختيارات'), findsOneWidget);
-    expect(find.text('مساهم / مشارك في الخطة'), findsOneWidget);
-    expect(find.text('أساعد في التنظيم والمتابعة'), findsOneWidget);
+    expect(find.text('مساهم / مشارك في الخطة'), findsNothing);
+    expect(find.text('أساعد في التنظيم والمتابعة'), findsNothing);
     expect(find.text('خلّينا نجهز أساس خطتك'), findsNothing);
   });
 
@@ -100,6 +104,57 @@ void main() {
     expect(find.text('provider-apply-opened'), findsOneWidget);
   });
 
+  testWidgets('Invite and login entry points open their own routes', (
+    tester,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    final router = GoRouter(
+      initialLocation: '/welcome',
+      routes: [
+        GoRoute(
+          path: '/welcome',
+          builder: (context, state) => const SmartWelcomeScreen(),
+        ),
+        GoRoute(
+          path: '/invites',
+          builder: (context, state) =>
+              const Scaffold(body: Text('invite-access-opened')),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (context, state) =>
+              const Scaffold(body: Text('login-opened')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
+          Provider<GuestOnboardingStorage>(
+            create: (_) => GuestOnboardingStorage(preferences),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.ensureVisible(find.text('وصلتني دعوة لخطة'));
+    await tester.tap(find.text('وصلتني دعوة لخطة'));
+    await tester.pumpAndSettle();
+    expect(find.text('invite-access-opened'), findsOneWidget);
+
+    router.go('/welcome');
+    await tester.pumpAndSettle();
+    final loginButton = find.widgetWithText(TextButton, 'تسجيل الدخول');
+    await tester.ensureVisible(loginButton);
+    await tester.pumpAndSettle();
+    await tester.tap(loginButton);
+    await tester.pumpAndSettle();
+    expect(find.text('login-opened'), findsOneWidget);
+  });
+
   testWidgets('Organizer path saves complete local plan setup', (tester) async {
     final preferences = await SharedPreferences.getInstance();
     final guestStorage = GuestOnboardingStorage(preferences);
@@ -132,10 +187,10 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify we landed on welcome
-    expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
+    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
 
     // Tap Organizer
-    await tester.tap(find.text('أريد تنظيم زفافي'));
+    await tester.tap(find.text('إنشاء خطتك'));
     await tester.pumpAndSettle();
 
     // Tap Groom, then continue after the selected state is visible.
@@ -143,7 +198,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byIcon(LucideIcons.checkCircle), findsOneWidget);
 
-    final continueButton = find.text('متابعة');
+    final continueButton = find.text('التالي');
     await tester.ensureVisible(continueButton);
     await tester.tap(continueButton);
     await tester.pumpAndSettle();
@@ -253,11 +308,11 @@ void main() {
       );
 
       await tester.pumpAndSettle();
-      await tester.tap(find.text('أريد تنظيم زفافي'));
+      await tester.tap(find.text('إنشاء خطتك'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('العروسة'));
       await tester.pumpAndSettle();
-      final continueButton = find.text('متابعة');
+      final continueButton = find.text('التالي');
       await tester.ensureVisible(continueButton);
       await tester.tap(continueButton);
       await tester.pumpAndSettle();
@@ -345,14 +400,14 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
+    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('أريد تنظيم زفافي'));
+    await tester.tap(find.text('إنشاء خطتك'));
     await tester.pumpAndSettle();
 
-    expect(find.text('من أنت؟'), findsOneWidget);
-    expect(find.text('متابعة'), findsOneWidget);
+    expect(find.text('خلنا نتعرف عليك'), findsOneWidget);
+    expect(find.text('التالي'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

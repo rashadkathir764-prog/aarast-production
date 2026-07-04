@@ -33,12 +33,16 @@ Future<void> _loadFonts() async {
     'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
     'assets/fonts/IBMPlexSansArabic-Bold.ttf',
   ]);
-  await load('packages/lucide_icons/Lucide',
-      ['packages/lucide_icons/assets/lucide.ttf']);
+  await load('packages/lucide_icons/Lucide', [
+    'packages/lucide_icons/assets/lucide.ttf',
+  ]);
 }
 
-Future<void> _pump(WidgetTester tester, Widget child,
-    {required Size size}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  required Size size,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -72,8 +76,8 @@ void main() {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PremiumPathCard(
-            title: 'أريد تنظيم زفافي',
-            subtitle: 'ابدأ خطة ذكية للمهام والميزانية والضيوف والموردين',
+            title: 'إنشاء خطتك',
+            subtitle: 'ابدأ خطة جديدة ثم خصصها حسب دورك.',
             icon: LucideIcons.heart,
             isPrimary: true,
             onTap: () {},
@@ -81,14 +85,14 @@ void main() {
           const SizedBox(height: 14),
           PremiumPathCard(
             title: 'وصلتني دعوة لخطة',
-            subtitle: 'ادخل برقم الهاتف والرمز، ثم افتح نفس الخطة',
+            subtitle: 'الدخول إلى خطة تمت دعوتك إليها برقم هاتفك.',
             icon: LucideIcons.mailCheck,
             onTap: () {},
           ),
           const SizedBox(height: 14),
           PremiumPathCard(
             title: 'أنا مزود خدمة',
-            subtitle: 'اعرض خدماتك واستقبل طلبات العملاء',
+            subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
             icon: LucideIcons.store,
             onTap: () {},
           ),
@@ -105,13 +109,6 @@ void main() {
             title: 'العروسة',
             subtitle: 'أرتب التفاصيل والاختيارات',
             icon: LucideIcons.flower2,
-            onTap: () {},
-          ),
-          const SizedBox(height: 10),
-          PremiumRoleCard(
-            title: 'مساهم / مشارك في الخطة',
-            subtitle: 'أساعد في التنظيم والمتابعة',
-            icon: LucideIcons.heartHandshake,
             onTap: () {},
           ),
         ],
@@ -145,10 +142,7 @@ void main() {
           const SizedBox(height: 12),
           PremiumLocationCard(controller: location),
           const SizedBox(height: 12),
-          PremiumDateField(
-            selectedDate: DateTime(2026, 8, 31),
-            onTap: () {},
-          ),
+          PremiumDateField(selectedDate: DateTime(2026, 8, 31), onTap: () {}),
           const SizedBox(height: 12),
           PremiumBudgetField(
             controller: budget,

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -56,6 +56,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final marketplace = context.read<ProviderMarketplaceProvider>();
+      marketplace.clearError();
       WeddingPlansProvider? plans;
       GuestOnboardingStorage? guestStorage;
       try {
@@ -109,6 +110,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
+    final submitError =
+        marketplace.quoteSubmitErrorMessage ?? marketplace.errorMessage;
     _scheduleInitialPlanContext(plans, marketplace);
 
     return AarastPageScaffold(
@@ -261,9 +264,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  if (marketplace.errorMessage != null) ...[
+                  if (submitError != null) ...[
                     Text(
-                      marketplace.errorMessage!,
+                      submitError,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: AppTheme.danger,
@@ -439,22 +442,21 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     if (!mounted) return;
 
     final guestCount = int.tryParse(_guestCountController.text.trim());
-    final success = await context
-        .read<ProviderMarketplaceProvider>()
-        .createQuoteRequest(
-          providerId: widget.providerId,
-          weddingPlanId: _weddingPlanId,
-          serviceId: _serviceId,
-          eventDate: _eventDate,
-          location: _eventLocation?.toJson(),
-          cityId: _cityId,
-          guestCount: guestCount,
-          contactName: context.read<AuthController>().user?.name,
-          contactPhone: context.read<AuthController>().user?.phone,
-          budgetMin: _budgetMinController.text,
-          budgetMax: _budgetMaxController.text,
-          message: _messageController.text,
-        );
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final success = await marketplace.createQuoteRequest(
+      providerId: widget.providerId,
+      weddingPlanId: _weddingPlanId,
+      serviceId: _serviceId,
+      eventDate: _eventDate,
+      location: _quoteLocationPayload(marketplace),
+      cityId: _cityId,
+      guestCount: guestCount,
+      contactName: context.read<AuthController>().user?.name,
+      contactPhone: context.read<AuthController>().user?.phone,
+      budgetMin: _budgetMinController.text,
+      budgetMax: _budgetMaxController.text,
+      message: _messageController.text,
+    );
 
     if (!mounted) return;
     if (success) {
@@ -466,6 +468,44 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       }
       setState(() => _sent = true);
     }
+  }
+
+  Map<String, dynamic>? _quoteLocationPayload(
+    ProviderMarketplaceProvider marketplace,
+  ) {
+    final location = _eventLocation;
+    final selectedCityName = _selectedCityName(marketplace);
+
+    if (location == null || !location.hasAnyLocation) {
+      return selectedCityName == null ? null : {'city': selectedCityName};
+    }
+
+    if (location.hasRequiredLocation) {
+      return location.toJson();
+    }
+
+    final city = _cleanText(location.cityOrDistrict) ?? selectedCityName;
+    if (city != null) {
+      return {'city': city};
+    }
+
+    // Send an explicit empty object so the backend does not fall back to a
+    // previously stored partial structured location for the selected plan.
+    return const <String, dynamic>{};
+  }
+
+  String? _selectedCityName(ProviderMarketplaceProvider marketplace) {
+    final id = _cityId?.trim();
+    if (id == null || id.isEmpty) return null;
+    for (final city in marketplace.cities) {
+      if (city.id == id) return _cleanText(city.nameAr);
+    }
+    return null;
+  }
+
+  String? _cleanText(String? value) {
+    final text = value?.trim();
+    return text == null || text.isEmpty ? null : text;
   }
 }
 

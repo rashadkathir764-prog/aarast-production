@@ -2,13 +2,13 @@
 
 Date: 2026-06-19
 Stage: Data Seeding
-Status: Planning document only
+Status: Planning document plus limited marketplace bootstrap implementation
 
 ## 1. Decision
 
 Aarast needs curated Yemen-first seed data before onboarding, provider matching, budget presets, and task templates can feel useful.
 
-This document does not create seed scripts or modify database data.
+This document defines the broad seed strategy. The repository now also includes a limited marketplace bootstrap script for production reference data; it is intentionally narrower than the full seed plan and does not create payment, deposit, loan, financing, or confirmed-booking data.
 
 ## 2. Seed Groups
 
@@ -117,7 +117,8 @@ Initial provider categories:
 - Required seed groups are listed.
 - Initial location, budget, provider category, priority, and notification templates are documented.
 - Seed quality rules are documented.
-- No seed scripts, database writes, or migrations are created.
+- Broad seed groups remain documented without migrations or destructive database writes.
+- The limited marketplace bootstrap is idempotent and scoped to city references, provider categories, and one clearly marked test provider path.
 
 ## 10. Risks
 
@@ -129,4 +130,3 @@ Initial provider categories:
 
 - Next stage: `docs/data/TASK_TEMPLATES.md`.
 - Future seed implementation must include QA data source review.
-

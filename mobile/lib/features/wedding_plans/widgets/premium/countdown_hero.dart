@@ -38,7 +38,6 @@ class AarastCountUpText extends StatelessWidget {
     );
   }
 }
-
 /// البطاقة الملكية: عدّاد الأيام + حلقة تقدم ذهبية تُرسم أمام العين.
 ///
 /// حلقة واحدة تحمل رسالتين: القوس الذهبي = كم أنجزت،
@@ -334,4 +333,3 @@ class _CountdownRing extends StatelessWidget {
     );
   }
 }
-

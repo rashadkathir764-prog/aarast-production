@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 
 import '../../../core/offline/local_database.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_progress_ring.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -235,111 +237,108 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         showGuestSetup ||
         showProviderSetup;
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
-      children: [
-        const _PlanCenterHeader(),
-        const SizedBox(height: 10),
-        _PremiumPlanSummaryHero(
-          plan: plan,
-          progressPercent: progressPercent,
-          completedTasks: completedTasks,
-          totalTasks: tasksAvailable ? totalTasks : null,
-          canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, plan),
-        ),
-        const SizedBox(height: 10),
-        _PlanLocationCard(
-          location: planLocation,
-          canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, plan),
-        ),
-        const SizedBox(height: 10),
-        if (showSetupChecklist)
-          _SetupChecklistCard(
-            showLocation: !hasPlanLocation,
-            showBudget: !hasPlanBudget,
-            showTasks: showTaskSetup,
-            showGuests: showGuestSetup,
-            showProviders: showProviderSetup,
-            onTasks: () => _goToTasksTab(plan.id),
-            onBudget: () => canOpenFinance
-                ? _openFinanceOverview(plan.id)
-                : _showFinancialAccessDenied(),
-            onGuests: () => _goToGuestsTab(plan.id),
-            onProviders: () => _goToProvidersTab(plan.id),
-            onEditPlan: () => _showEditPlanSheet(provider, plan),
-          ),
-        if (tasksAvailable && totalTasks > 0) ...[
-          _ProgressSummaryCard(
-            progressPercent: progressPercent,
-            completedTasks: completedTasks,
-            remainingTasks: remainingTasks,
-            lastUpdate: plan.updatedAt,
-          ),
-          const SizedBox(height: 10),
-        ],
-        _PlanSectionsCard(
+    final sections = <Widget>[
+      const _PlanCenterHeader(),
+      _PremiumPlanSummaryHero(
+        plan: plan,
+        progressPercent: progressPercent,
+        completedTasks: completedTasks,
+        totalTasks: tasksAvailable ? totalTasks : null,
+        canManagePlan: canManagePlan,
+        onEdit: () => _showEditPlanSheet(provider, plan),
+      ),
+      _PlanLocationCard(
+        location: planLocation,
+        canManagePlan: canManagePlan,
+        onEdit: () => _showEditPlanSheet(provider, plan),
+      ),
+      if (showSetupChecklist)
+        _SetupChecklistCard(
+          showLocation: !hasPlanLocation,
+          showBudget: !hasPlanBudget,
+          showTasks: showTaskSetup,
+          showGuests: showGuestSetup,
+          showProviders: showProviderSetup,
           onTasks: () => _goToTasksTab(plan.id),
-          onBudget: canOpenFinance
-              ? () => _openFinanceOverview(plan.id)
-              : _showFinancialAccessDenied,
-          onDebts: canOpenDebts
-              ? () => context.push(
-                  AppRouter.debts(plan.id),
-                  extra: widget.sharedMember,
-                )
-              : _showFinancialAccessDenied,
+          onBudget: () => canOpenFinance
+              ? _openFinanceOverview(plan.id)
+              : _showFinancialAccessDenied(),
           onGuests: () => _goToGuestsTab(plan.id),
           onProviders: () => _goToProvidersTab(plan.id),
-          onSharing: canOpenSharing
-              ? () => context.push(AppRouter.sharing(plan.id))
-              : () => _showUnavailable('إدارة المشاركة متاحة لصاحب الخطة فقط.'),
-          sharingEnabled: canOpenSharing,
-          budgetEnabled: canOpenFinance,
-          debtsEnabled: canOpenDebts,
+          onEditPlan: () => _showEditPlanSheet(provider, plan),
         ),
-        const SizedBox(height: 10),
-        _PlanQuotesCard(
-          quotes: planQuotes,
-          canManage: canManagePlan,
-          isSubmitting: marketplace?.isSubmitting ?? false,
-          onBrowseProviders: () => _goToProvidersTab(plan.id),
-          onAccept: marketplace == null
-              ? null
-              : (quote) async {
-                  await marketplace.acceptQuote(quote);
-                },
-          onReject: marketplace == null
-              ? null
-              : (quote) async {
-                  await marketplace.rejectQuote(quote);
-                },
-          onAddExpense: (quote) => context.push(
-            AppRouter.createExpense(plan.id),
-            extra: _quoteFinanceContext(quote),
-          ),
-          onAddDebt: (quote) => context.push(
-            AppRouter.createDebt(plan.id),
-            extra: _quoteFinanceContext(quote),
-          ),
+      if (tasksAvailable && totalTasks > 0)
+        _ProgressSummaryCard(
+          progressPercent: progressPercent,
+          completedTasks: completedTasks,
+          remainingTasks: remainingTasks,
+          lastUpdate: plan.updatedAt,
         ),
-        const SizedBox(height: 10),
-        _ParticipantsCard(
-          roleLabel: roleLabel,
-          participantsCount: provider.sharedMembers?.length,
-          permissionsLabel: _permissionsLabel(isOwner, widget.sharedMember),
-          canManageSharing: canOpenSharing,
-          onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
+      _PlanSectionsCard(
+        onTasks: () => _goToTasksTab(plan.id),
+        onBudget: canOpenFinance
+            ? () => _openFinanceOverview(plan.id)
+            : _showFinancialAccessDenied,
+        onDebts: canOpenDebts
+            ? () => context.push(
+                AppRouter.debts(plan.id),
+                extra: widget.sharedMember,
+              )
+            : _showFinancialAccessDenied,
+        onGuests: () => _goToGuestsTab(plan.id),
+        onProviders: () => _goToProvidersTab(plan.id),
+        onSharing: canOpenSharing
+            ? () => context.push(AppRouter.sharing(plan.id))
+            : () => _showUnavailable('إدارة المشاركة متاحة لصاحب الخطة فقط.'),
+        sharingEnabled: canOpenSharing,
+        budgetEnabled: canOpenFinance,
+        debtsEnabled: canOpenDebts,
+      ),
+      _PlanQuotesCard(
+        quotes: planQuotes,
+        canManage: canManagePlan,
+        isSubmitting: marketplace?.isSubmitting ?? false,
+        onBrowseProviders: () => _goToProvidersTab(plan.id),
+        onAccept: marketplace == null
+            ? null
+            : (quote) async {
+                await marketplace.acceptQuote(quote);
+              },
+        onReject: marketplace == null
+            ? null
+            : (quote) async {
+                await marketplace.rejectQuote(quote);
+              },
+        onAddExpense: (quote) => context.push(
+          AppRouter.createExpense(plan.id),
+          extra: _quoteFinanceContext(quote),
         ),
-        const SizedBox(height: 10),
-        _PlanSettingsCard(
-          plan: plan,
-          canManagePlan: canManagePlan,
-          onEdit: () => _showEditPlanSheet(provider, plan),
-          onArchive: () => _showArchivePlanSheet(provider, plan),
+        onAddDebt: (quote) => context.push(
+          AppRouter.createDebt(plan.id),
+          extra: _quoteFinanceContext(quote),
         ),
-      ],
+      ),
+      _ParticipantsCard(
+        roleLabel: roleLabel,
+        participantsCount: provider.sharedMembers?.length,
+        permissionsLabel: _permissionsLabel(isOwner, widget.sharedMember),
+        canManageSharing: canOpenSharing,
+        onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
+      ),
+      _PlanSettingsCard(
+        plan: plan,
+        canManagePlan: canManagePlan,
+        onEdit: () => _showEditPlanSheet(provider, plan),
+        onArchive: () => _showArchivePlanSheet(provider, plan),
+      ),
+    ];
+
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
+      itemCount: sections.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) =>
+          AarastStaggeredEntry(index: index, child: sections[index]),
     );
   }
 
@@ -461,75 +460,74 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
   Widget _buildLocalPlanBody(double bottomPadding, DashboardSummary? summary) {
     final planId = widget.weddingPlanId;
     final localPlan = summary?.toWeddingPlan();
-    return ListView(
-      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
-      children: [
-        const _PlanCenterHeader(),
-        const SizedBox(height: 10),
-        if (localPlan != null) ...[
-          _PremiumPlanSummaryHero(
-            plan: localPlan,
-            progressPercent: summary!.progressPercentage,
-            completedTasks: summary.completedTasks,
-            totalTasks: summary.totalTasks,
-            canManagePlan: false,
-            onEdit: () => _showUnavailable(
-              'هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.',
-            ),
+    final sections = <Widget>[
+      const _PlanCenterHeader(),
+      if (localPlan != null) ...[
+        _PremiumPlanSummaryHero(
+          plan: localPlan,
+          progressPercent: summary!.progressPercentage,
+          completedTasks: summary.completedTasks,
+          totalTasks: summary.totalTasks,
+          canManagePlan: false,
+          onEdit: () => _showUnavailable(
+            'هذا الإجراء يحتاج تسجيل الدخول عند الحفظ النهائي.',
           ),
-          const SizedBox(height: 10),
-          _PlanLocationCard(
-            location: localPlan.weddingLocation,
-            canManagePlan: false,
-            onEdit: () =>
-                _showUnavailable('تحتاج لتسجيل الدخول لحفظ بيانات الخطة.'),
-          ),
-          const SizedBox(height: 10),
-        ],
-        _SetupChecklistCard(
-          showLocation: localPlan?.weddingLocation.hasAnyLocation != true,
-          showBudget: !_positiveMoney(
-            summary?.budgetTotal ?? localPlan?.estimatedBudget,
-          ),
-          showTasks: (summary?.totalTasks ?? 0) == 0,
-          showGuests: (summary?.guestCount ?? 0) == 0,
-          showProviders:
-              (summary?.quoteRequestsCount ?? 0) == 0 &&
-              (summary?.acceptedProviders ?? 0) == 0,
-          onTasks: () => _goToTasksTab(planId),
-          onBudget: () => _goToMoneyTab(planId),
-          onGuests: () => _goToGuestsTab(planId),
-          onProviders: () => _goToProvidersTab(planId),
-          onEditPlan: () =>
+        ),
+        _PlanLocationCard(
+          location: localPlan.weddingLocation,
+          canManagePlan: false,
+          onEdit: () =>
               _showUnavailable('تحتاج لتسجيل الدخول لحفظ بيانات الخطة.'),
         ),
-        const SizedBox(height: 10),
-        _PlanSectionsCard(
-          onTasks: () => _goToTasksTab(planId),
-          onBudget: () => _goToMoneyTab(planId),
-          onDebts: () => context.push(AppRouter.debts(planId)),
-          onGuests: () => _goToGuestsTab(planId),
-          onProviders: () => _goToProvidersTab(planId),
-          onSharing: () => _showUnavailable(
+      ],
+      _SetupChecklistCard(
+        showLocation: localPlan?.weddingLocation.hasAnyLocation != true,
+        showBudget: !_positiveMoney(
+          summary?.budgetTotal ?? localPlan?.estimatedBudget,
+        ),
+        showTasks: (summary?.totalTasks ?? 0) == 0,
+        showGuests: (summary?.guestCount ?? 0) == 0,
+        showProviders:
+            (summary?.quoteRequestsCount ?? 0) == 0 &&
+            (summary?.acceptedProviders ?? 0) == 0,
+        onTasks: () => _goToTasksTab(planId),
+        onBudget: () => _goToMoneyTab(planId),
+        onGuests: () => _goToGuestsTab(planId),
+        onProviders: () => _goToProvidersTab(planId),
+        onEditPlan: () =>
+            _showUnavailable('تحتاج لتسجيل الدخول لحفظ بيانات الخطة.'),
+      ),
+      _PlanSectionsCard(
+        onTasks: () => _goToTasksTab(planId),
+        onBudget: () => _goToMoneyTab(planId),
+        onDebts: () => context.push(AppRouter.debts(planId)),
+        onGuests: () => _goToGuestsTab(planId),
+        onProviders: () => _goToProvidersTab(planId),
+        onSharing: () => _showUnavailable(
+          'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
+        ),
+        sharingEnabled: false,
+        budgetEnabled: true,
+        debtsEnabled: true,
+      ),
+      if (summary != null)
+        _ParticipantsCard(
+          roleLabel: 'مسودة على الجهاز',
+          participantsCount: 1,
+          permissionsLabel: 'لم تتم المزامنة بعد',
+          canManageSharing: false,
+          onManageSharing: () => _showUnavailable(
             'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
           ),
-          sharingEnabled: false,
-          budgetEnabled: true,
-          debtsEnabled: true,
         ),
-        if (summary != null) ...[
-          const SizedBox(height: 10),
-          _ParticipantsCard(
-            roleLabel: 'مسودة على الجهاز',
-            participantsCount: 1,
-            permissionsLabel: 'لم تتم المزامنة بعد',
-            canManageSharing: false,
-            onManageSharing: () => _showUnavailable(
-              'المشاركة تحتاج تسجيل الدخول عند الحفظ النهائي.',
-            ),
-          ),
-        ],
-      ],
+    ];
+
+    return ListView.separated(
+      padding: EdgeInsets.fromLTRB(12, 8, 12, bottomPadding),
+      itemCount: sections.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 10),
+      itemBuilder: (context, index) =>
+          AarastStaggeredEntry(index: index, child: sections[index]),
     );
   }
 
@@ -903,7 +901,7 @@ class _PlanCenterHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'راجع بيانات الخطة والمسارات المرتبطة بها بدون أرقام أو حالات غير مؤكدة.',
+                  'كل تفاصيل خطتك ومساراتها في مكان واحد، بهدوء وبدون أرقام غير مؤكدة.',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1034,29 +1032,17 @@ class _PremiumPlanSummaryHero extends StatelessWidget {
                       ),
                       const SizedBox(width: 16),
                       if (progressPercent != null)
-                        SizedBox(
-                          width: 64,
-                          height: 64,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                value: progressPercent! / 100,
-                                strokeWidth: 5,
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.1,
-                                ),
-                                color: AppTheme.warmGold,
-                              ),
-                              Text(
-                                '$progressPercent%',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
+                        AarastProgressRing(
+                          progress: progressPercent! / 100,
+                          size: 64,
+                          strokeWidth: 6,
+                          child: Text(
+                            '$progressPercent%',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                     ],
@@ -1555,9 +1541,7 @@ class _PlanLocationCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  hasLocation
-                      ? LucideIcons.mapPin
-                      : LucideIcons.mapPin,
+                  hasLocation ? LucideIcons.mapPin : LucideIcons.mapPinOff,
                   color: hasLocation ? AppTheme.gold : _pcMuted,
                   size: 22,
                 ),
@@ -2287,16 +2271,18 @@ class _PlanCenterLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
-        _SkeletonBox(height: 170),
-        SizedBox(height: 10),
-        _SkeletonBox(height: 124),
-        SizedBox(height: 10),
-        _SkeletonBox(height: 132),
-        SizedBox(height: 10),
-        _SkeletonBox(height: 112),
-      ],
+    return const AarastSkeletonPulse(
+      child: Column(
+        children: [
+          _SkeletonBox(height: 170),
+          SizedBox(height: 10),
+          _SkeletonBox(height: 124),
+          SizedBox(height: 10),
+          _SkeletonBox(height: 132),
+          SizedBox(height: 10),
+          _SkeletonBox(height: 112),
+        ],
+      ),
     );
   }
 }

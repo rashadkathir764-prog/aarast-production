@@ -25,6 +25,7 @@ class PremiumDashboardView extends StatelessWidget {
     required this.onOpenImportantItem,
     required this.onAddExpense,
     this.personaHeadline,
+    this.now,
     super.key,
   });
 
@@ -32,6 +33,9 @@ class PremiumDashboardView extends StatelessWidget {
   final String userName;
   final double bottomPadding;
   final String? personaHeadline;
+
+  /// وقت مرجعي للتحية (للاختبار). فارغ = الوقت الحالي.
+  final DateTime? now;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
   final VoidCallback onOpenPlan;
@@ -60,6 +64,7 @@ class PremiumDashboardView extends StatelessWidget {
         unreadCount: summary.unreadNotificationsCount,
         onNotifications: onNotifications,
         onProfile: onProfile,
+        now: now,
       ),
       const SizedBox(height: 18),
       AarastCountdownHero(
@@ -201,6 +206,7 @@ class _DashboardHeader extends StatelessWidget {
     required this.unreadCount,
     required this.onNotifications,
     required this.onProfile,
+    this.now,
   });
 
   final String userName;
@@ -208,9 +214,10 @@ class _DashboardHeader extends StatelessWidget {
   final int unreadCount;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+  final DateTime? now;
 
   String get _greeting {
-    final hour = DateTime.now().hour;
+    final hour = (now ?? DateTime.now()).hour;
     if (hour >= 5 && hour < 12) return 'صباح الخير';
     if (hour >= 12 && hour < 17) return 'مساء النور';
     return 'مساء الخير';

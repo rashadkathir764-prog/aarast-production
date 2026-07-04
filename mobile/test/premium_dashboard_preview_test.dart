@@ -129,6 +129,8 @@ Future<void> _pumpDashboard(
             summary: summary,
             userName: 'العريس',
             bottomPadding: 36,
+            now: DateTime(2026, 7, 4, 9), // تحية ثابتة: صباح الخير
+
             onNotifications: () {},
             onProfile: () {},
             onOpenPlan: () {},

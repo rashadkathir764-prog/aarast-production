@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -106,24 +106,22 @@ class SharingApi {
     required bool receiveNotifications,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
-    final json = await _apiClient.postJson(
-      '/api/v1/wedding-plans/$weddingPlanId/invites',
-      {
-        'phone': normalizedPhone,
-        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
-        'role': role,
-        'canViewBudget': canViewBudget,
-        'canViewExpenses': canViewExpenses,
-        'canViewDebts': canViewDebts,
-        'canEditPlan': canEditPlan,
-        'canManageTasks': canManageTasks,
-        'canManageGuests': canManageGuests,
-        'canManageProviders': canManageProviders,
-        'canInviteMembers': canInviteMembers,
-        'canManageFinancialRecords': canManageFinancialRecords,
-        'receiveNotifications': receiveNotifications,
-      },
-    );
+    final json = await _apiClient
+        .postJson('/api/v1/wedding-plans/$weddingPlanId/invites', {
+          'phone': normalizedPhone,
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+          'role': role,
+          'canViewBudget': canViewBudget,
+          'canViewExpenses': canViewExpenses,
+          'canViewDebts': canViewDebts,
+          'canEditPlan': canEditPlan,
+          'canManageTasks': canManageTasks,
+          'canManageGuests': canManageGuests,
+          'canManageProviders': canManageProviders,
+          'canInviteMembers': canInviteMembers,
+          'canManageFinancialRecords': canManageFinancialRecords,
+          'receiveNotifications': receiveNotifications,
+        });
     return PlanInvite.fromJson(json);
   }
 
@@ -141,13 +139,23 @@ class SharingApi {
     return PlanInvite.fromJson(json);
   }
 
-  Future<PlanInvite> acceptInvite(String token) async {
+  Future<List<PlanInvite>> getMyInvites() async {
+    final items = await _getJsonMapList('/api/v1/invites/mine');
+    return items.map(PlanInvite.fromJson).toList();
+  }
+
+  Future<AcceptedPlanInvite> acceptInvite(String token) async {
     final json = await _apiClient.postJson(
       '/api/v1/invites/$token/accept',
       const {},
     );
-    return PlanInvite.fromJson(
-      Map<String, dynamic>.from(json['invite'] as Map),
+    return AcceptedPlanInvite(
+      invite: PlanInvite.fromJson(
+        Map<String, dynamic>.from(json['invite'] as Map),
+      ),
+      member: SharedMember.fromJson(
+        Map<String, dynamic>.from(json['member'] as Map),
+      ),
     );
   }
 
@@ -217,4 +225,11 @@ class SharingApi {
       throw const ApiException('رقم الهاتف غير صحيح');
     }
   }
+}
+
+class AcceptedPlanInvite {
+  const AcceptedPlanInvite({required this.invite, required this.member});
+
+  final PlanInvite invite;
+  final SharedMember member;
 }

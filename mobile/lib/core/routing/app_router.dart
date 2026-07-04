@@ -75,6 +75,7 @@ class AppRouter {
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
+  static const inviteAccess = '/invites';
   static String inviteDecision(String token) => '/invites/$token';
   static const more = '/more';
   static const settings = '/settings';
@@ -345,6 +346,10 @@ class AppRouter {
         GoRoute(
           path: notifications,
           builder: (context, state) => const NotificationsScreen(),
+        ),
+        GoRoute(
+          path: inviteAccess,
+          builder: (context, state) => const InviteDecisionScreen(),
         ),
         GoRoute(
           path: '/invites/:token',

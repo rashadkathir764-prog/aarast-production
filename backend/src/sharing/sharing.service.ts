@@ -400,8 +400,29 @@ export class SharingService {
     return this.toInviteResponse(invite);
   }
 
-  async getInvite(token: string): Promise<PlanInviteResponse> {
+  async findInvitesForCurrentUser(
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanInviteResponse[]> {
+    const normalizedPhone = PhoneNormalizer.normalizeOptional(currentUser.phone);
+    const invites = await this.prisma.planInvite.findMany({
+      where: {
+        OR: [
+          { inviteeUserId: currentUser.id },
+          ...(normalizedPhone ? [{ normalizedPhone }] : []),
+        ],
+      },
+      include: this.inviteIncludes(),
+      orderBy: { createdAt: 'desc' },
+    });
+    return invites.map((invite) => this.toInviteResponse(invite));
+  }
+
+  async getInviteForCurrentUser(
+    currentUser: AuthenticatedUser,
+    token: string,
+  ): Promise<PlanInviteResponse> {
     const invite = await this.findInviteByTokenOrThrow(token);
+    this.assertInviteBelongsToCurrentUser(invite, currentUser);
     return this.toInviteResponse(invite);
   }
 
@@ -813,6 +834,22 @@ export class SharingService {
     ) {
       throw new NotFoundException('Invite not found');
     }
+  }
+
+  private assertInviteBelongsToCurrentUser(
+    invite: PlanInvite,
+    currentUser: AuthenticatedUser,
+  ): void {
+    if (invite.inviteeUserId && invite.inviteeUserId === currentUser.id) {
+      return;
+    }
+    if (
+      invite.phone &&
+      PhoneNormalizer.areEquivalent(currentUser.phone, invite.phone)
+    ) {
+      return;
+    }
+    throw new NotFoundException('Invite not found');
   }
 
   private assignableRole(role: SharedMemberRole): SharedMemberRole {

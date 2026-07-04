@@ -9,6 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { OtpCode, OtpPurpose, User } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -277,8 +278,31 @@ export class AuthService {
     });
 
     if (purpose === OtpPurpose.LOGIN) {
-      if (!user || user.status === 'DISABLED') {
+      if (user?.status === 'DISABLED') {
         throw new BadRequestException('OTP code is invalid or expired');
+      }
+
+      if (!user) {
+        const invite = await this.prisma.planInvite.findFirst({
+          where: { normalizedPhone: phone },
+        });
+        if (!invite) {
+          return null;
+        }
+
+        const passwordHash = await bcryptjs.hash(
+          randomBytes(24).toString('hex'),
+          10,
+        );
+        return this.prisma.user.create({
+          data: {
+            name: 'مشارك أعرست',
+            phone,
+            passwordHash,
+            phoneVerifiedAt: now,
+            lastLoginAt: now,
+          },
+        });
       }
 
       return this.prisma.user.update({

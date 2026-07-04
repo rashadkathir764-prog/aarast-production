@@ -144,7 +144,7 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'أدخلي رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.',
+            'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.',
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
               color: AppTheme.muted,

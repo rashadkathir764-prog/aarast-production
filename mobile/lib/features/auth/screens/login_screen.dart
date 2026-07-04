@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'ادخلي بحسابك لمتابعة تنظيم زفافك بسهولة.',
+              'ادخل بحسابك لمتابعة تنظيم زفافك بسهولة.',
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(
                 color: AppTheme.muted,
@@ -157,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'أعرسِت يساعدك ترتبين الميزانية، المهام، الديون، والمشاركات من مكان واحد.',
+              'أعرسِت يساعدك على ترتيب الميزانية والمهام والديون والمشاركات من مكان واحد.',
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
                 color: AppTheme.muted,

@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -11,7 +10,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/models/provider_budget_match_intent.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../models/budget_category.dart';
@@ -19,7 +17,9 @@ import '../models/expense.dart';
 import '../models/expense_form_intent.dart';
 import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
-import '../widgets/yemeni_money_text.dart';
+import '../widgets/premium/budget_pulse_hero.dart';
+import '../widgets/premium/payment_timeline_rail.dart';
+import '../widgets/premium/budget_category_card.dart';
 
 class BudgetExpenseScreen extends StatefulWidget {
   const BudgetExpenseScreen({
@@ -173,47 +173,27 @@ class _FinanceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      color: AppTheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  'الميزانية والمصاريف',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.gold,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              AarastStatusPill(
-                label: statusLabel,
-                color: statusColor,
-                icon: Icons.verified_outlined,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'خصوصية المال محفوظة حسب صلاحيات الخطة. راقب الميزانية والمصاريف بدون أرقام وهمية.',
-            maxLines: 2,
+    // ترويسة مضغوطة: عنوان + شارة حالة في سطر واحد. لا فقرة تطمين مكررة.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            'المال',
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppTheme.title,
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        AarastStatusPill(
+          label: statusLabel,
+          color: statusColor,
+          icon: Icons.verified_outlined,
+        ),
+      ],
     );
   }
 }
@@ -299,8 +279,13 @@ class _FinanceContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _FinanceDonutHero(summary: moneySummary),
-        const SizedBox(height: 16),
+        BudgetPulseHero(
+          summary: moneySummary,
+          onSetupBudget: canManageFinancialRecords
+              ? () => context.push(AppRouter.budgetSetup(weddingPlanId))
+              : null,
+        ),
+        const SizedBox(height: 14),
         _FinanceActionStrip(
           canManageFinancialRecords: canManageFinancialRecords,
           onAddExpense: canManageFinancialRecords
@@ -315,12 +300,16 @@ class _FinanceContent extends StatelessWidget {
           onViewDebts: () =>
               context.push(AppRouter.debts(weddingPlanId), extra: sharedMember),
         ),
-        const SizedBox(height: 16),
-        _TopFinancialObligationsCard(
+        const SizedBox(height: 14),
+        PaymentTimelineRail(
           summary: moneySummary,
           onViewDebts: () => _openDebts(context),
+          onAddDebt: canManageFinancialRecords
+              ? () => context.push(AppRouter.createDebt(weddingPlanId),
+                  extra: sharedMember)
+              : null,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
         if (moneySummary.financialWarnings.isNotEmpty) ...[
           _FinancialWarningsCard(warnings: moneySummary.financialWarnings),
           const SizedBox(height: 18),
@@ -344,24 +333,26 @@ class _FinanceContent extends StatelessWidget {
           Column(
             children: [
               for (var index = 0; index < categoryRows.length; index++) ...[
-                _MoneyCategoryProgressRow(
-                  row: categoryRows[index],
-                  onAddExpense: canManageFinancialRecords
-                      ? () => context.push(
-                          AppRouter.createExpense(weddingPlanId),
-                          extra: ExpenseFormIntent(
-                            budgetCategoryId: categoryRows[index].categoryId,
-                          ),
-                        )
-                      : null,
-                  onOpenDetails: () => context.push(
-                    AppRouter.budgetCategoryDetails(
-                      weddingPlanId,
-                      categoryRows[index].categoryId,
+                staggeredBudgetCard(
+                  BudgetCategoryCard(
+                    row: categoryRows[index],
+                    onAddExpense: canManageFinancialRecords
+                        ? () => context.push(
+                            AppRouter.createExpense(weddingPlanId),
+                            extra: ExpenseFormIntent(
+                              budgetCategoryId: categoryRows[index].categoryId,
+                            ),
+                          )
+                        : null,
+                    onOpenDetails: () => context.push(
+                      AppRouter.budgetCategoryDetails(
+                        weddingPlanId,
+                        categoryRows[index].categoryId,
+                      ),
                     ),
                   ),
-                  onViewProviders: () =>
-                      _openProvidersForCategory(context, categoryRows[index]),
+                  index,
+                  MediaQuery.of(context).disableAnimations,
                 ),
                 if (index != categoryRows.length - 1)
                   const SizedBox(height: 10),
@@ -446,19 +437,6 @@ class _FinanceContent extends StatelessWidget {
     if (!context.mounted) return;
     onChanged();
     await provider.loadFinance(weddingPlanId);
-  }
-
-  void _openProvidersForCategory(
-    BuildContext context,
-    MoneyCategorySummary row,
-  ) {
-    context.go(
-      AppRouter.planProviders(weddingPlanId),
-      extra: ProviderBudgetMatchIntent(
-        budgetCategoryName: row.name,
-        allocatedAmount: row.allocated,
-      ),
-    );
   }
 
   Future<void> _openEditExpense(BuildContext context, Expense expense) async {
@@ -585,329 +563,6 @@ class _FinanceContent extends StatelessWidget {
     } else {
       AarastToast.showError(context, message);
     }
-  }
-}
-
-class _FinanceDonutHero extends StatelessWidget {
-  const _FinanceDonutHero({required this.summary});
-
-  final MoneySummary summary;
-
-  double _parseValue(String? value) {
-    if (value == null) return 0;
-    return double.tryParse(value.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final totalBudget = _parseValue(summary.totalBudget);
-    final totalSpent = _parseValue(summary.totalSpent);
-    final spentPercent = totalBudget > 0
-        ? ((totalSpent / totalBudget) * 100).round()
-        : 0;
-    final remaining = _parseValue(summary.remainingBudget);
-    final decision = _moneyDecision(
-      summary,
-      totalBudget,
-      totalSpent,
-      remaining,
-    );
-
-    double spentRatio = totalBudget > 0 ? (totalSpent / totalBudget) : 0;
-    if (spentRatio > 1) spentRatio = 1;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 8, bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: BoxDecoration(
-        gradient: AppTheme.heroGradient,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.burgundyDark.withValues(alpha: 0.1),
-            blurRadius: 26,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              SizedBox(
-                width: 100,
-                height: 100,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    CustomPaint(
-                      size: const Size(100, 100),
-                      painter: _FinanceDonutPainter(
-                        spentRatio: spentRatio,
-                        budgetColor: AppTheme.pearl,
-                        spentColor: AppTheme.gold,
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '$spentPercent%',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            height: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'تم صرفه',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.82),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _DonutStatHorizontal(
-                      label: 'الميزانية',
-                      value: summary.totalBudget,
-                      color: AppTheme.pearl,
-                    ),
-                    Divider(
-                      height: 24,
-                      thickness: 1,
-                      color: Colors.white.withValues(alpha: 0.15),
-                    ),
-                    _DonutStatHorizontal(
-                      label: 'المصروف',
-                      value: summary.totalSpent,
-                      color: AppTheme.gold,
-                    ),
-                    Divider(
-                      height: 24,
-                      thickness: 1,
-                      color: Colors.white.withValues(alpha: 0.15),
-                    ),
-                    _DonutStatHorizontal(
-                      label: 'المتبقي',
-                      value: summary.remainingBudget,
-                      color: AppTheme.warning,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-            ),
-            child: Row(
-              children: [
-                Icon(decision.icon, color: decision.color, size: 19),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    decision.message,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontSize: 12,
-                      height: 1.35,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MoneyDecision {
-  const _MoneyDecision({
-    required this.message,
-    required this.icon,
-    required this.color,
-  });
-
-  final String message;
-  final IconData icon;
-  final Color color;
-}
-
-_MoneyDecision _moneyDecision(
-  MoneySummary summary,
-  double totalBudget,
-  double totalSpent,
-  double remaining,
-) {
-  if (totalBudget <= 0 && totalSpent <= 0) {
-    return const _MoneyDecision(
-      message: 'ابدأ بتحديد ميزانية عامة أو بند واحد مثل القاعة.',
-      icon: Icons.flag_outlined,
-      color: AppTheme.gold,
-    );
-  }
-  if (totalBudget <= 0 && totalSpent > 0) {
-    return const _MoneyDecision(
-      message: 'سجلت مصاريف بدون ميزانية. حدد الميزانية حتى يظهر المتبقي بدقة.',
-      icon: Icons.warning_amber_rounded,
-      color: AppTheme.warning,
-    );
-  }
-  if (remaining < 0 || summary.budgetStatus == 'OVER_BUDGET') {
-    return const _MoneyDecision(
-      message: 'تجاوزت الميزانية. راجع البنود الأعلى صرفاً قبل أي دفعة جديدة.',
-      icon: Icons.priority_high_rounded,
-      color: AppTheme.dangerSoft,
-    );
-  }
-  if ((summary.dueInstallmentsCount ?? 0) > 0) {
-    return _MoneyDecision(
-      message:
-          'لديك ${summary.dueInstallmentsCount} دفعة قريبة. راجع الباقي عليك.',
-      icon: Icons.event_available_outlined,
-      color: AppTheme.warningSoft,
-    );
-  }
-  return _MoneyDecision(
-    message:
-        'متبقي ${_formatMoney(remaining)} ر.ي. تابع البنود قبل إضافة دفعة جديدة.',
-    icon: Icons.check_circle_outline_rounded,
-    color: AppTheme.successSoft,
-  );
-}
-
-class _DonutStatHorizontal extends StatelessWidget {
-  const _DonutStatHorizontal({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String? value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        _AnimatedMoneyText(
-          value: value ?? '0',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FinanceDonutPainter extends CustomPainter {
-  _FinanceDonutPainter({
-    required this.spentRatio,
-    required this.budgetColor,
-    required this.spentColor,
-  });
-
-  final double spentRatio;
-  final Color budgetColor;
-  final Color spentColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = math.min(size.width / 2, size.height / 2) - 6;
-
-    final trackPaint = Paint()
-      ..color = budgetColor.withValues(alpha: 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(center, radius, trackPaint);
-
-    if (spentRatio > 0) {
-      final spentPaint = Paint()
-        ..color = spentColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10
-        ..strokeCap = StrokeCap.round;
-
-      final shadowPaint = Paint()
-        ..color = spentColor.withValues(alpha: 0.4)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 10
-        ..strokeCap = StrokeCap.round
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-
-      const startAngle = -math.pi / 2;
-      final sweepAngle = 2 * math.pi * spentRatio;
-
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-        shadowPaint,
-      );
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        startAngle,
-        sweepAngle,
-        false,
-        spentPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _FinanceDonutPainter oldDelegate) {
-    return oldDelegate.spentRatio != spentRatio;
   }
 }
 
@@ -1039,532 +694,6 @@ class _BudgetStarterCard extends StatelessWidget {
               ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MoneyCategoryProgressRow extends StatelessWidget {
-  const _MoneyCategoryProgressRow({
-    required this.row,
-    required this.onAddExpense,
-    required this.onOpenDetails,
-    required this.onViewProviders,
-  });
-
-  final MoneyCategorySummary row;
-  final VoidCallback? onAddExpense;
-  final VoidCallback onOpenDetails;
-  final VoidCallback onViewProviders;
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = row.percentUsed;
-    final progressColor = progress >= 1
-        ? AppTheme.danger
-        : progress >= .75
-        ? AppTheme.warning
-        : AppTheme.gold;
-    final spent = _moneyValueOrZero(row.spent);
-    final allocated = _moneyValueOrZero(row.allocated);
-    final remaining = _moneyValueOrZero(row.remaining);
-    final percent = allocated > 0 ? (spent / allocated * 100).round() : 0;
-    final hasBudget = allocated > 0;
-    final hasSpent = spent > 0;
-    final remainingLabel = hasBudget
-        ? '${_formatMoney(remaining)} ر.ي'
-        : 'بعد التحديد';
-    final allocatedLabel = hasBudget
-        ? '${_formatMoney(allocated)} ر.ي'
-        : 'حددها';
-    final stateLabel = row.overBudget == true
-        ? 'تجاوز الميزانية'
-        : !hasBudget
-        ? 'لم تحدد ميزانية بعد'
-        : !hasSpent
-        ? 'لم يسجل مصروف'
-        : remaining <= 0
-        ? 'لا يوجد متبقي'
-        : 'متبقي ${_formatMoney(remaining)} ر.ي';
-    final stateColor = row.overBudget == true
-        ? AppTheme.danger
-        : !hasBudget
-        ? AppTheme.muted
-        : remaining <= 0
-        ? AppTheme.success
-        : AppTheme.burgundy;
-
-    return AarastCard(
-      onTap: onOpenDetails,
-      padding: const EdgeInsets.all(14),
-      color: AppTheme.surface,
-      border: Border.all(color: AppTheme.border),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppTheme.goldSoft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  _categoryIcon(row.name),
-                  color: AppTheme.gold,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTheme.ink,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      hasBudget
-                          ? '${_formatMoney(spent)} ر.ي من ${_formatMoney(allocated)} ر.ي'
-                          : hasSpent
-                          ? '${_formatMoney(spent)} ر.ي مصروف بدون ميزانية محددة'
-                          : 'لم تحدد ميزانية أو مصروفاً بعد',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.muted,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    hasBudget ? '$percent%' : '0%',
-                    textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                      color: progressColor,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hasBudget ? 'تم صرفه' : 'حدد الميزانية',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _CategoryMoneyMetric(
-                  label: 'المخصص',
-                  value: allocatedLabel,
-                  color: AppTheme.info,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _CategoryMoneyMetric(
-                  label: 'دفعت',
-                  value: '${_formatMoney(spent)} ر.ي',
-                  color: AppTheme.burgundy,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _CategoryMoneyMetric(
-                  label: 'باقي',
-                  value: remainingLabel,
-                  color: row.overBudget == true
-                      ? AppTheme.danger
-                      : hasBudget
-                      ? AppTheme.success
-                      : AppTheme.muted,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Stack(
-            children: [
-              Container(
-                height: 7,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppTheme.ink.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-              FractionallySizedBox(
-                widthFactor: progress.clamp(0.0, 1.0),
-                child: Container(
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: progressColor,
-                    borderRadius: BorderRadius.circular(999),
-                    boxShadow: [
-                      BoxShadow(
-                        color: progressColor.withValues(alpha: 0.6),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: AarastStatusPill(
-                  label: stateLabel,
-                  color: stateColor,
-                  icon: row.overBudget == true
-                      ? Icons.warning_amber_rounded
-                      : Icons.account_balance_wallet_outlined,
-                ),
-              ),
-              if (row.expensesCount != null) ...[
-                const SizedBox(width: 8),
-                AarastStatusPill(
-                  label: '${row.expensesCount} سجل',
-                  color: AppTheme.muted,
-                  icon: Icons.receipt_long_outlined,
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              if (onAddExpense != null) ...[
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onAddExpense,
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('إضافة دفعة'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onViewProviders,
-                  icon: const Icon(Icons.storefront_outlined, size: 18),
-                  label: Text(hasBudget ? 'موردين مناسبين' : 'عرض موردين'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CategoryMoneyMetric extends StatelessWidget {
-  const _CategoryMoneyMetric({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: color.withValues(alpha: 0.16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: TextStyle(
-                color: color,
-                fontSize: 12.5,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TopFinancialObligationsCard extends StatelessWidget {
-  const _TopFinancialObligationsCard({
-    required this.summary,
-    required this.onViewDebts,
-  });
-
-  final MoneySummary summary;
-  final VoidCallback onViewDebts;
-
-  @override
-  Widget build(BuildContext context) {
-    final installment = summary.nextInstallment;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.ivory,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.ink.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.ink.withValues(alpha: 0.04),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            onTap: onViewDebts,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(24),
-              bottom: Radius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.dangerSoft,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      color: AppTheme.danger,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'الباقي والدفعات القادمة',
-                          style: TextStyle(
-                            color: AppTheme.ink.withValues(alpha: 0.9),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${summary.debtsCount ?? 0} مبالغ باقية مسجلة',
-                          style: TextStyle(
-                            color: AppTheme.ink.withValues(alpha: 0.5),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        'المتبقي',
-                        style: TextStyle(
-                          color: AppTheme.ink.withValues(alpha: 0.5),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '${summary.debtRemaining ?? '0'} ر.ي',
-                        style: const TextStyle(
-                          color: AppTheme.danger,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: AppTheme.ink.withValues(alpha: 0.05),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(
-                  Icons.event_note_outlined,
-                  color: AppTheme.burgundy,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'القسط القادم',
-                        style: TextStyle(
-                          color: AppTheme.ink.withValues(alpha: 0.7),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      if (installment == null)
-                        Text(
-                          'لا توجد دفعات قادمة حالياً.',
-                          style: TextStyle(
-                            color: AppTheme.ink.withValues(alpha: 0.4),
-                            fontSize: 12,
-                          ),
-                        )
-                      else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              installment.debtTitle ?? 'قسط مرتبط بدين',
-                              style: const TextStyle(
-                                color: AppTheme.ink,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              [
-                                if (installment.creditorName != null)
-                                  installment.creditorName!,
-                                if (installment.dueAt != null)
-                                  _shortDate(installment.dueAt!),
-                                _installmentStateLabel(installment),
-                              ].join(' · '),
-                              style: const TextStyle(
-                                color: AppTheme.muted,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                if (installment != null)
-                  YemeniMoneyText(
-                    _moneyValue(installment.amount),
-                    style: const TextStyle(
-                      color: AppTheme.burgundyDeep,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: AppTheme.ink.withValues(alpha: 0.05),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.history_rounded,
-                  color: AppTheme.gold,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'آخر الدفعات المسجلة',
-                        style: TextStyle(
-                          color: AppTheme.ink.withValues(alpha: 0.7),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        (summary.paidInstallmentsCount ?? 0) == 0
-                            ? 'لا توجد دفعات مسددة مسجلة بعد.'
-                            : 'الدفعات المسددة المسجلة: ${summary.paidInstallmentsCount}',
-                        style: TextStyle(
-                          color: AppTheme.ink.withValues(alpha: 0.5),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -2056,8 +1185,6 @@ String _expenseStatusLabel(String status) {
 num _moneyValue(String value) =>
     num.tryParse(value.replaceAll(',', '').trim()) ?? 0;
 
-num _moneyValueOrZero(String? value) => value == null ? 0 : _moneyValue(value);
-
 String _formatMoney(num value) {
   final rounded = value.round();
   final negative = rounded < 0;
@@ -2082,18 +1209,6 @@ String _warningCopy(MoneyFinancialWarning warning) {
           ? 'تنبيه مالي يحتاج متابعة'
           : warning.message,
   };
-}
-
-String _installmentStateLabel(MoneyNextInstallment installment) {
-  if (installment.status == 'PAID') return 'مدفوع';
-  final dueAt = installment.dueAt;
-  if (dueAt == null) return 'قيد المتابعة';
-  final today = DateTime.now();
-  final startOfToday = DateTime(today.year, today.month, today.day);
-  final dueDay = DateTime(dueAt.year, dueAt.month, dueAt.day);
-  if (dueDay.isBefore(startOfToday)) return 'متأخر';
-  if (dueDay.difference(startOfToday).inDays <= 7) return 'قريب';
-  return 'قادم';
 }
 
 String _shortDate(DateTime date) {

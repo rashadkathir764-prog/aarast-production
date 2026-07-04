@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/aarast_design_tokens.dart';
 import '../../../../core/theme/aarast_motion.dart';
 import '../../../../core/utils/arabic_date_formatter.dart';
+import '../../../../core/widgets/aarast_progress_ring.dart';
 
 /// نص رقمي يتصاعد من الصفر حتى قيمته — نبضة حياة للأرقام المهمة.
 class AarastCountUpText extends StatelessWidget {
@@ -161,7 +162,6 @@ class AarastCountdownHero extends StatelessWidget {
                       progress: clampedProgress.toDouble(),
                       daysRemaining: daysRemaining,
                       progressPercentage: progressPercentage.clamp(0, 100),
-                      reduceMotion: reduceMotion,
                     ),
                   ],
                 ),
@@ -221,31 +221,18 @@ class _CountdownRing extends StatelessWidget {
     required this.progress,
     required this.daysRemaining,
     required this.progressPercentage,
-    required this.reduceMotion,
   });
 
   final double progress;
   final int? daysRemaining;
   final int progressPercentage;
-  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
-    final ring = TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: progress),
-      duration: reduceMotion ? Duration.zero : const Duration(milliseconds: 1500),
-      curve: Curves.easeOutCubic,
-      builder: (context, animatedProgress, child) {
-        return CustomPaint(
-          painter: _ProgressRingPainter(progress: animatedProgress),
-          child: child,
-        );
-      },
-      child: SizedBox(
-        width: 118,
-        height: 118,
-        child: Center(child: _buildCenter(context)),
-      ),
+    final ring = AarastProgressRing(
+      progress: progress,
+      size: 118,
+      child: _buildCenter(context),
     );
 
     return Semantics(
@@ -348,68 +335,3 @@ class _CountdownRing extends StatelessWidget {
   }
 }
 
-class _ProgressRingPainter extends CustomPainter {
-  const _ProgressRingPainter({required this.progress});
-
-  final double progress;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = (size.shortestSide / 2) - 7;
-    const strokeWidth = 9.0;
-    const startAngle = -math.pi / 2;
-
-    final trackPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: 0.14);
-    canvas.drawCircle(center, radius, trackPaint);
-
-    if (progress <= 0) return;
-
-    final sweepAngle = 2 * math.pi * progress.clamp(0.0, 1.0);
-    final rect = Rect.fromCircle(center: center, radius: radius);
-
-    final progressPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: startAngle,
-        endAngle: startAngle + 2 * math.pi,
-        colors: const [
-          AarastDesignTokens.goldDeep,
-          AarastDesignTokens.gold,
-          AarastDesignTokens.goldLight,
-        ],
-        transform: const GradientRotation(startAngle),
-      ).createShader(rect);
-
-    canvas.drawArc(rect, startAngle, sweepAngle, false, progressPaint);
-
-    // نقطة مضيئة على رأس القوس — إحساس "حي".
-    final tipAngle = startAngle + sweepAngle;
-    final tipOffset = Offset(
-      center.dx + radius * math.cos(tipAngle),
-      center.dy + radius * math.sin(tipAngle),
-    );
-    canvas.drawCircle(
-      tipOffset,
-      strokeWidth / 2 + 1.5,
-      Paint()..color = AarastDesignTokens.goldGlow,
-    );
-    canvas.drawCircle(
-      tipOffset,
-      strokeWidth / 2 + 4,
-      Paint()
-        ..color = AarastDesignTokens.gold.withValues(alpha: 0.35)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ProgressRingPainter oldDelegate) =>
-      oldDelegate.progress != progress;
-}

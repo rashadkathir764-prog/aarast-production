@@ -26,6 +26,8 @@ class AarastDesignTokens {
   static const Color goldDeep = Color(0xFFB8912A);
   static const Color goldLight = Color(0xFFF2D888);
   static const Color goldGlow = Color(0xFFF7E7B3);
+  static const Color dangerLight = Color(0xFFD95A6B);
+  static const Color warningLight = Color(0xFFE8A94F);
 
   // Semantic Status Colors
   static const Color success = Color(0xFF3D8252);

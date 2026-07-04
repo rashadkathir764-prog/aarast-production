@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -15,6 +16,7 @@ import '../../sharing/models/shared_member.dart';
 import '../../sharing/providers/sharing_provider.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
+import '../utils/task_display.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({
@@ -51,17 +53,19 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   bool _didPrefill = false;
   bool _didRequestMembers = false;
 
-  static const _categories = [
-    _TaskCategory('GENERAL', 'عامة', Icons.dashboard_customize_outlined),
-    _TaskCategory('VENUE', 'القاعة', Icons.apartment_rounded),
-    _TaskCategory('GUESTS', 'الضيوف', Icons.groups_outlined),
-    _TaskCategory('MONEY', 'المال', Icons.account_balance_wallet_outlined),
-    _TaskCategory('PROVIDERS', 'الموردين', Icons.storefront_outlined),
-    _TaskCategory('ATTIRE', 'الملابس', Icons.checkroom_outlined),
-    _TaskCategory('PHOTOGRAPHY', 'التصوير', Icons.photo_camera_outlined),
-    _TaskCategory('CATERING', 'الضيافة', Icons.room_service_outlined),
-    _TaskCategory('DECOR', 'الزينة', Icons.local_florist_outlined),
-    _TaskCategory('DOCUMENTS', 'المستندات', Icons.description_outlined),
+  // مصدر واحد لأيقونات التصنيف — نفس أيقونات Lucide المستخدمة في بطاقة
+  // المهمة (taskCategoryIcon) حتى يبقى التصنيف متطابقًا بين القائمة والنموذج.
+  static final _categories = [
+    _TaskCategory('GENERAL', 'عامة', LucideIcons.layoutGrid),
+    _TaskCategory('VENUE', 'القاعة', taskCategoryIcon('VENUE')),
+    _TaskCategory('GUESTS', 'الضيوف', taskCategoryIcon('GUESTS')),
+    _TaskCategory('MONEY', 'المال', taskCategoryIcon('MONEY')),
+    _TaskCategory('PROVIDERS', 'الموردين', taskCategoryIcon('PROVIDERS')),
+    _TaskCategory('ATTIRE', 'الملابس', taskCategoryIcon('ATTIRE')),
+    _TaskCategory('PHOTOGRAPHY', 'التصوير', taskCategoryIcon('PHOTOGRAPHY')),
+    _TaskCategory('CATERING', 'الضيافة', taskCategoryIcon('CATERING')),
+    _TaskCategory('DECOR', 'الزينة', taskCategoryIcon('DECOR')),
+    _TaskCategory('DOCUMENTS', 'المستندات', taskCategoryIcon('DOCUMENTS')),
   ];
 
   bool get _isEditMode => widget.taskId != null || widget.initialTask != null;
@@ -125,7 +129,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   const SizedBox(height: 20),
                   const AarastSectionHeader(
                     title: 'تاريخ استحقاق المهمة',
-                    icon: Icons.event_available_rounded,
+                    icon: LucideIcons.calendarCheck,
                   ),
                   const SizedBox(height: 8),
                   Theme(
@@ -147,7 +151,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   const SizedBox(height: 12),
                   AarastButton(
                     label: 'تأكيد التاريخ',
-                    icon: Icons.check_rounded,
+                    icon: LucideIcons.check,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
                   ),
                 ],
@@ -180,7 +184,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   const SizedBox(height: 20),
                   const AarastSectionHeader(
                     title: 'فئة المهمة',
-                    icon: Icons.sell_outlined,
+                    icon: LucideIcons.tag,
                   ),
                   const SizedBox(height: 14),
                   for (final category in _categories)
@@ -246,7 +250,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -284,7 +288,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             decoration: const InputDecoration(
                               labelText: 'عنوان المهمة',
                               hintText: 'مثال: تأكيد قائمة المدعوين',
-                              prefixIcon: Icon(Icons.edit_note_rounded),
+                              prefixIcon: Icon(LucideIcons.pencil),
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -308,7 +312,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                 value: _dueDate == null
                                     ? 'لم يحدد بعد'
                                     : _formatDate(_dueDate!),
-                                icon: Icons.calendar_month_rounded,
+                                icon: LucideIcons.calendar,
                                 selected: _dueDate != null,
                                 onTap: _showCalendarPicker,
                               );
@@ -348,7 +352,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             children: [
                               _PriorityChip(
                                 label: 'منخفضة',
-                                icon: Icons.eco_outlined,
+                                icon: LucideIcons.leaf,
                                 color: AppTheme.success,
                                 selected: _priority == 'LOW',
                                 onTap: () {
@@ -358,7 +362,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               const SizedBox(width: 8),
                               _PriorityChip(
                                 label: 'متوسطة',
-                                icon: Icons.drag_handle_rounded,
+                                icon: LucideIcons.gripHorizontal,
                                 color: AppTheme.gold,
                                 selected: _priority == 'MEDIUM',
                                 onTap: () {
@@ -368,7 +372,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               const SizedBox(width: 8),
                               _PriorityChip(
                                 label: 'عاجلة',
-                                icon: Icons.bolt_rounded,
+                                icon: LucideIcons.zap,
                                 color: AppTheme.danger,
                                 selected: _priority == 'HIGH',
                                 onTap: () {
@@ -409,7 +413,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             AarastStatusPill(
                               label: provider.errorMessage!,
                               color: AppTheme.danger,
-                              icon: Icons.error_outline_rounded,
+                              icon: LucideIcons.alertCircle,
                             ),
                           ],
                         ],
@@ -419,8 +423,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     AarastButton(
                       label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
                       icon: _isEditMode
-                          ? Icons.save_outlined
-                          : Icons.event_available_rounded,
+                          ? LucideIcons.save
+                          : LucideIcons.calendarCheck,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -544,7 +548,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 const SizedBox(height: 20),
                 const AarastSectionHeader(
                   title: 'اختيار مسؤول من المشاركين',
-                  icon: Icons.groups_2_outlined,
+                  icon: LucideIcons.users,
                 ),
                 const SizedBox(height: 12),
                 for (final member in participants) ...[
@@ -671,7 +675,7 @@ class _TaskHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.assignment_turned_in_outlined,
+              LucideIcons.clipboardCheck,
               color: AppTheme.burgundy,
               size: 30,
             ),
@@ -750,7 +754,7 @@ class _ResponsibleSection extends StatelessWidget {
           Row(
             children: [
               const Icon(
-                Icons.person_pin_circle_outlined,
+                LucideIcons.userCheck,
                 color: AppTheme.burgundy,
                 size: 21,
               ),
@@ -775,7 +779,7 @@ class _ResponsibleSection extends StatelessWidget {
               value: selectedParticipant == null
                   ? 'اختر مشاركاً موجوداً'
                   : selectedParticipant.displayName,
-              icon: Icons.groups_2_outlined,
+              icon: LucideIcons.users,
               selected: selectedParticipant != null,
               onTap: () => onSelectParticipant(participants),
             ),
@@ -789,7 +793,7 @@ class _ResponsibleSection extends StatelessWidget {
             decoration: const InputDecoration(
               labelText: 'اسم المسؤول',
               hintText: 'أنا أو اسم الشخص المسؤول',
-              prefixIcon: Icon(Icons.person_outline_rounded),
+              prefixIcon: Icon(LucideIcons.user),
             ),
           ),
           const SizedBox(height: 12),
@@ -811,7 +815,7 @@ class _ResponsibleSection extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                 ),
                 onPressed: onInvite,
-                icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                icon: const Icon(LucideIcons.userPlus, size: 18),
                 label: const Text('دعوته كمشارك في الخطة'),
               ),
             ),
@@ -853,8 +857,8 @@ class _ParticipantRow extends StatelessWidget {
             children: [
               Icon(
                 selected
-                    ? Icons.check_circle_rounded
-                    : Icons.person_outline_rounded,
+                    ? LucideIcons.checkCircle
+                    : LucideIcons.user,
                 color: selected ? AppTheme.burgundy : AppTheme.gold,
               ),
               const SizedBox(width: 12),
@@ -977,7 +981,7 @@ class _SelectorField extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.keyboard_arrow_down_rounded,
+              LucideIcons.chevronDown,
               color: AppTheme.muted,
             ),
           ],
@@ -1073,7 +1077,7 @@ class _CategoryRow extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle_rounded, color: AppTheme.burgundy),
+              const Icon(LucideIcons.checkCircle, color: AppTheme.burgundy),
           ],
         ),
       ),

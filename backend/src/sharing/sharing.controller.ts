@@ -143,12 +143,21 @@ export class ApiV1WeddingPlanInvitesController {
 }
 
 @Controller('api/v1/invites')
+@UseGuards(JwtAuthGuard)
 export class ApiV1InvitesController {
   constructor(private readonly sharingService: SharingService) {}
 
+  @Get('mine')
+  findMyInvites(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.sharingService.findInvitesForCurrentUser(currentUser);
+  }
+
   @Get(':token')
-  getInvite(@Param('token') token: string) {
-    return this.sharingService.getInvite(token);
+  getInvite(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('token') token: string,
+  ) {
+    return this.sharingService.getInviteForCurrentUser(currentUser, token);
   }
 }
 

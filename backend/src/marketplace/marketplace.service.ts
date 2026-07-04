@@ -30,6 +30,7 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { NotificationsService } from '../notifications/notifications.service';
+import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import {
@@ -1029,10 +1030,7 @@ export class MarketplaceService {
     if (value === undefined || value === null) return null;
     const normalized = value.trim();
     if (!normalized) return null;
-    if (!/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-    return normalized;
+    return requiredMoneyAmount(normalized, field);
   }
 
   private assertUuid(value: string, field: string): void {

@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Debt, DebtStatus } from '@prisma/client';
+import { Debt, DebtStatus, Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { applyDebtPaymentDelta } from '../common/money/debt-balance';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
+import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
@@ -170,6 +172,27 @@ export class DebtsService {
         ? PhoneNormalizer.normalizeOptional(dto.creditorPhone, 'creditorPhone')
         : undefined;
 
+    // When any amount changes, paidAmount is clamped to [0, totalAmount]
+    // and status is DERIVED from the balance — an inconsistent pair like
+    // paidAmount > totalAmount with status OPEN must not be representable.
+    const amountsChanged =
+      dto.totalAmount !== undefined || dto.paidAmount !== undefined;
+    const nextTotal =
+      dto.totalAmount !== undefined
+        ? new Prisma.Decimal(
+            this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
+          )
+        : existing.totalAmount;
+    const nextPaid =
+      dto.paidAmount !== undefined
+        ? new Prisma.Decimal(
+            this.requiredNonNegativeDecimal(dto.paidAmount, 'paidAmount'),
+          )
+        : existing.paidAmount;
+    const derived = amountsChanged
+      ? applyDebtPaymentDelta(nextTotal, nextPaid, new Prisma.Decimal(0))
+      : null;
+
     const debt = await this.prisma.debt.update({
       where: { id },
       data: {
@@ -182,16 +205,15 @@ export class DebtsService {
         ...(dto.title !== undefined
           ? { title: this.requiredText(dto.title, 'title') }
           : {}),
-        ...(dto.totalAmount !== undefined
-          ? { totalAmount: this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount') }
-          : {}),
-        ...(dto.paidAmount !== undefined
-          ? { paidAmount: this.requiredNonNegativeDecimal(dto.paidAmount, 'paidAmount') }
-          : {}),
+        ...(dto.totalAmount !== undefined ? { totalAmount: nextTotal } : {}),
+        ...(derived
+          ? { paidAmount: derived.paidAmount, status: derived.status }
+          : dto.status !== undefined
+            ? { status: dto.status }
+            : {}),
         ...(dto.dueDate !== undefined
           ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
           : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(dto.note !== undefined ? { note: this.optionalText(dto.note) } : {}),
       },
     });
@@ -259,12 +281,7 @@ export class DebtsService {
   }
 
   private requiredNonNegativeDecimal(value: string | number, field: string): string {
-    const normalized = String(value).trim();
-    if (!normalized || !/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-
-    return normalized;
+    return requiredMoneyAmount(value, field);
   }
 
   private toResponse(debt: Debt): DebtResponse {

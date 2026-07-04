@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/plan_status_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../models/wedding_plan.dart';
@@ -538,7 +539,7 @@ class _PlanCard extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      plan.status,
+                                      planStatusLabelAr(plan.status),
                                       style: textTheme.labelSmall?.copyWith(
                                         color: isFeatured
                                             ? Colors.white

@@ -20,6 +20,14 @@ _Maintained by /mxSave_
 - Dashboard Command Center redesign is present for Flutter mobile.
 - Aarast Dashboard (Claude Design handoff) implemented in Flutter on 2026-06-08: custom top bar, completion donut, live countdown, budget segmented donut, mini stats, quick actions, alerts, participants, shared plans, custom bottom nav, RTL typography, real data wiring, and permission-aware cards.
 - Dashboard Scaling + Navigation Fix implemented locally on 2026-06-08: `/home` uses `MainShell`, persistent bottom navigation is backed by `IndexedStack`, dashboard content scales through `AspectRatio` + `FittedBox`, and detail/create screens preserve back navigation.
+- **Premium mobile rebuild** on branch `phase/mobile-premium-screens-v1` (2026-07-04). Design system: IBM Plex Sans Arabic display font, unified Lucide icon set, champagne-gold + burgundy tokens, `AarastProgressRing`. Redesigned surfaces, each with golden previews + green suite:
+  - 5 main tabs (P1–P4): Dashboard (`PremiumDashboardView`), Money (`BudgetPulseHero`/`PaymentTimelineRail`), Tasks (`SmartTaskCard`/`TasksProgressHero`), Guests (`GuestMeterHero`/`SmartGuestCard`), Providers (`PremiumVendorCard`). Commits e2cfb57, 8ad6726, 0e6b6ce, f0090f7, a99066e2.
+  - Shell (P5.0, 71e4eed1): `RoyalDashboardBottomNav` + FAB on Lucide, calmed gold breath, champagne active indicator.
+  - Welcome gateway (P5.1, 06a327b8): Lucide icons, step indicator, removed "Dashboard"/"تجربة محلية" leaks.
+  - Auth copy (P5.2, aa7c8701): gender-neutral login/otp.
+  - Guest dashboard unified onto `PremiumDashboardView` via optional `notice` slot (P5.3, 4f8f5b3f).
+  - Level 1 forms: create-expense (P6.0, a6640eca) + create-task (P6.1, 68428363) icons → Lucide; task categories deduped onto shared `taskCategoryIcon`.
+- Language utils added: `currency_label.dart`, `plan_status_label.dart`, `notification_copy.dart`; shared `task_display.dart`/`guest_display.dart`.
 
 ## Open Items
 
@@ -28,9 +36,10 @@ _Maintained by /mxSave_
 - Continue mobile rebuild work behind feature flags using `docs/mobile-ux/MOBILE_IMPLEMENTATION_PLAN.md` and `docs/testing/MOBILE_QA_PLAN.md`.
 - Keep endpoint details in `API_CONTRACT.md`; mobile docs should link there instead of duplicating route lists.
 - Existing uncommitted mobile work is present in the worktree and should be reviewed separately from this docs refresh.
+- **Premium rebuild roadmap (source of truth):** [PLAN-mobile-premium-screens.md](./plans/PLAN-mobile-premium-screens.md) — git-based inventory of the 19 remaining old screens in phases (0 cleanup → أ money → ب providers → ج sharing → د settings → هـ provider-B2B). P6.2 done: `plan_center` icons only (still needs premium hero/cards).
+- **Phase 0 cleanup (do first):** (1) delete dead `RoyalHomeTodayCenter` (~3600 lines, zero callers after P5.3); (2) thread active-plan currency into `create_expense_screen` (7 hardcoded «ر.ي» — wrong for SAR/USD plans); (3) decide login "نسيت كلمة المرور؟" dead link; (4) **push the 12 local commits**.
 
-## Knowledge-DB
+## Documentation
 
-- Project registered in mxLore as `aarast` (project_id **30**) on 2026-06-07.
-- Root reference docs were migrated into mxLore; `AGENTS.md` is also present there.
-- Source of truth for decisions, plans, and specs is the Knowledge-DB; see `CLAUDE.md`.
+- **mxLore is decommissioned** — the `docs/` .md files are the sole source of truth for plans/decisions/specs. Ignore any `/mxMigrateToDb`, Knowledge-DB, or `project_id 30` references in older notes.
+- Plans index: [docs/plans/index.md](./plans/index.md).

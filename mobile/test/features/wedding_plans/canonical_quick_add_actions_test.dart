@@ -13,6 +13,7 @@ import 'package:aarast_mobile/features/wedding_plans/widgets/quick_add_actions.d
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 void main() {
   group('buildCanonicalQuickAddActions', () {
@@ -172,27 +173,27 @@ void main() {
       expect(find.byIcon(Icons.more_horiz), findsNothing);
       expect(find.byIcon(Icons.more_vert), findsNothing);
 
-      await _tapNavIcon(tester, Icons.credit_card_outlined);
+      await _tapNavIcon(tester, LucideIcons.wallet);
       expect(router.state.uri.path, AppRouter.finance('plan-7'));
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
       expect(tester.takeException(), isNull);
 
-      await _tapNavIcon(tester, Icons.checklist_rtl_outlined);
+      await _tapNavIcon(tester, LucideIcons.listChecks);
       expect(router.state.uri.path, AppRouter.tasks('plan-7'));
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await _tapNavIcon(tester, Icons.grid_view_outlined);
+      await _tapNavIcon(tester, LucideIcons.users);
       expect(router.state.uri.path, AppRouter.guestList('plan-7'));
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await _tapNavIcon(tester, Icons.storefront_outlined);
+      await _tapNavIcon(tester, LucideIcons.store);
       expect(router.state.uri.path, AppRouter.planProviders('plan-7'));
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
       expect(tester.takeException(), isNull);
 
-      await _tapNavIcon(tester, Icons.home_outlined);
+      await _tapNavIcon(tester, LucideIcons.home);
       expect(router.state.uri.path, AppRouter.weddingPlanDashboard('plan-7'));
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
       expect(tester.takeException(), isNull);

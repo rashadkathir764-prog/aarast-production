@@ -300,7 +300,6 @@ class MarketplaceApi {
       if (serviceId != null && serviceId.trim().isNotEmpty)
         'serviceId': serviceId.trim(),
       if (eventDate != null) 'eventDate': eventDate.toIso8601String(),
-      if (location != null && location.isNotEmpty) 'location': location,
       if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
       if (guestCount != null && guestCount > 0) 'guestCount': guestCount,
       if (contactName != null && contactName.trim().isNotEmpty)
@@ -314,6 +313,9 @@ class MarketplaceApi {
       if (budgetMax != null && budgetMax.trim().isNotEmpty)
         'budgetMax': budgetMax.trim(),
     };
+    if (location != null) {
+      payload['location'] = location;
+    }
     try {
       final json = await _apiClient.postJson(
         '/providers/$providerId/quote-requests',

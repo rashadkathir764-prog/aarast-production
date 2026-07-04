@@ -10,9 +10,9 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/models/persona_copy.dart';
 import '../../wedding_plans/models/dashboard_summary.dart';
+import '../../wedding_plans/widgets/premium/premium_dashboard_view.dart';
 import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/widgets/royal_home_chrome.dart';
-import '../../wedding_plans/widgets/royal_home_today_center.dart';
 import '../data/dashboard_summary_sources.dart';
 
 class LocalGuestDashboardScreen extends StatefulWidget {
@@ -69,11 +69,10 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
         onProviders: () => context.push(AppRouter.planProviders(planId)),
       ),
-      child: RoyalHomeTodayCenter(
+      child: PremiumDashboardView(
         summary: dashboardSummary,
         userName: personaCopy.label,
         personaHeadline: personaCopy.dashboardHeadline,
-        personaSupportText: personaCopy.dashboardSupport,
         bottomPadding: 158,
         notice: _LocalSyncNotice(
           needsSync: summary.plan.needsSync,
@@ -91,13 +90,10 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
-        onOpenParticipants: () => _requireAccountForSync(context),
-        onOpenNotifications: () => _openLocalNotifications(context, planId),
         onOpenImportantItem: (item) =>
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>
             _openLocalNextStep(context, planId, dashboardSummary),
-        onOpenTimeline: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onAddExpense: () => context.push(AppRouter.createExpense(planId)),
       ),
     );

@@ -44,6 +44,13 @@ class ApiClient {
             error.requestOptions.path,
             error.response?.statusCode,
           );
+          // A 401 outside the auth endpoints means the session token is no
+          // longer valid — every screen would otherwise keep failing with
+          // misleading errors until app restart.
+          if (error.response?.statusCode == 401 &&
+              !error.requestOptions.path.startsWith('/auth')) {
+            onSessionExpired?.call();
+          }
           handler.next(error);
         },
       ),
@@ -52,6 +59,10 @@ class ApiClient {
 
   final Dio dio;
   final TokenProvider _tokenProvider;
+
+  /// Wired by the auth layer after construction; invoked when any
+  /// non-auth request returns 401 so the app can force a clean re-login.
+  void Function()? onSessionExpired;
 
   Future<Map<String, dynamic>> getJson(String path) async {
     try {
@@ -145,7 +156,10 @@ class ApiException implements Exception {
     final data = error.response?.data;
 
     if (statusCode == 401) {
-      return const ApiException('بيانات الدخول غير صحيحة أو انتهت الجلسة.');
+      return const ApiException(
+        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
+        statusCode: 401,
+      );
     }
 
     if (data is Map && data['message'] != null) {

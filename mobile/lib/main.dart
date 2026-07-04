@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,6 +9,7 @@ import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
 import 'core/storage/auth_storage.dart';
+import 'core/storage/token_vault.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
 import 'features/debts/data/debt_installment_api.dart';
@@ -35,7 +38,10 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferences = await SharedPreferences.getInstance();
-  final authStorage = AuthStorage(preferences);
+  final authStorage = AuthStorage(
+    preferences,
+    tokenVault: const SecureTokenVault(),
+  );
   final guestOnboardingStorage = GuestOnboardingStorage(preferences);
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
   final localDatabase = await createLocalDatabase(preferences);
@@ -91,10 +97,20 @@ Future<void> main() async {
         Provider<GuestsApi>.value(value: guestsApi),
         Provider<SettingsApi>.value(value: settingsApi),
         ChangeNotifierProvider(
-          create: (_) => AuthController(
-            authRepository,
-            offlineSyncService: offlineSyncService,
-          )..restoreSession(),
+          create: (_) {
+            final controller = AuthController(
+              authRepository,
+              offlineSyncService: offlineSyncService,
+              guestOnboardingStorage: guestOnboardingStorage,
+            );
+            // A mid-session 401 anywhere forces a clean re-login instead of
+            // degrading every screen into misleading errors.
+            apiClient.onSessionExpired = () {
+              unawaited(controller.handleSessionExpired());
+            };
+            unawaited(controller.restoreSession());
+            return controller;
+          },
         ),
         ChangeNotifierProvider(
           create: (_) => WeddingPlansProvider(weddingPlansApi),

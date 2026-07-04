@@ -13,6 +13,22 @@ enum UserRole {
   PROVIDER
 }
 
+/// Stores the response of a mutating request keyed by the client-generated
+/// request id, so offline-queue replays after a timeout return the original
+/// result instead of duplicating financial records.
+model IdempotencyKey {
+  id        String   @id @default(cuid())
+  userId    String
+  key       String
+  method    String
+  path      String
+  response  Json?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([createdAt])
+}
+
 enum AppRole {
   WEDDING_USER
   PROVIDER
@@ -237,6 +253,7 @@ model WeddingPlan {
   onboardingPath        OnboardingPath?
   persona               WeddingPersona?
   onboardingCompletedAt DateTime?
+  importMigrationId     String?
   status                WeddingPlanStatus  @default(PLANNING)
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
@@ -255,6 +272,7 @@ model WeddingPlan {
   guestGroups           GuestGroup[]
   providerLinks         PlanProviderLink[]
 
+  @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
 }
 
@@ -267,6 +285,8 @@ model BudgetCategory {
   updatedAt     DateTime    @updatedAt
   weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
   expenses      Expense[]
+
+  @@index([weddingPlanId])
 }
 
 model Expense {
@@ -282,6 +302,9 @@ model Expense {
   updatedAt        DateTime        @updatedAt
   weddingPlan      WeddingPlan     @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
   budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
+
+  @@index([weddingPlanId])
+  @@index([budgetCategoryId])
 }
 
 model Debt {
@@ -300,6 +323,8 @@ model Debt {
   updatedAt               DateTime      @updatedAt
   weddingPlan             WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Cascade)
   installments            Installment[]
+
+  @@index([weddingPlanId])
 }
 
 model Installment {
@@ -313,6 +338,9 @@ model Installment {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   debt      Debt              @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId])
+  @@index([status, dueDate])
 }
 
 model WeddingTask {

@@ -122,15 +122,66 @@ class BudgetExpenseApi {
         _isLocalGuestPlanId(category.weddingPlanId)) {
       return _updateLocalBudgetCategory(category: category, payload: data);
     }
-    final json = await _apiClient.patchJson(
-      '/budget-categories/${category.id}',
-      data,
-    );
-    return BudgetCategory.fromJson(json);
+    try {
+      final json = await _apiClient.patchJson(
+        '/budget-categories/${category.id}',
+        data,
+      );
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedBudgetCategories,
+        json: json,
+      );
+      return BudgetCategory.fromJson(json);
+    } on Object catch (error) {
+      // Same offline contract as create: a network failure queues the
+      // write instead of surfacing a hard error.
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      final now = DateTime.now();
+      final localJson = {
+        'id': category.id,
+        'weddingPlanId': category.weddingPlanId,
+        ...data,
+        'updatedAt': now.toIso8601String(),
+      };
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedBudgetCategories,
+        json: localJson,
+        dirty: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'budget_category',
+        operation: 'update',
+        endpoint: '/budget-categories/${category.id}',
+        method: 'PATCH',
+        payload: data,
+        localEntityId: category.id,
+      );
+      await _offline.refreshStatus();
+      return BudgetCategory.fromJson(localJson);
+    }
   }
 
   Future<void> deleteBudgetCategory(String id) async {
-    await _apiClient.deleteJson('/budget-categories/$id');
+    try {
+      await _apiClient.deleteJson('/budget-categories/$id');
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedBudgetCategories,
+        json: {'id': id},
+        dirty: true,
+        deletedLocally: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'budget_category',
+        operation: 'delete',
+        endpoint: '/budget-categories/$id',
+        method: 'DELETE',
+        payload: const {},
+        localEntityId: id,
+      );
+      await _offline.refreshStatus();
+    }
   }
 
   Future<List<Expense>> getExpenses(String weddingPlanId) async {

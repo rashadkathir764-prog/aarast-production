@@ -6,7 +6,10 @@ class AppTheme {
   const AppTheme._();
 
   static const textFontFamily = 'Tajawal';
-  static const displayFontFamily = 'Amiri';
+
+  /// وجه أعرست الحديث للعناوين — IBM Plex Sans Arabic.
+  /// خط Amiri بقي مسجلًا في pubspec لهوية الشعار فقط، لا للعناوين.
+  static const displayFontFamily = 'IBMPlexSansArabic';
 
   // Expose colors directly for easy access
   static const ivory = AarastDesignTokens.ivory;
@@ -20,6 +23,7 @@ class AppTheme {
 
   static const gold = AarastDesignTokens.gold;
   static const goldSoft = AarastDesignTokens.goldSoft;
+  static const goldDeep = AarastDesignTokens.goldDeep;
 
   static const ink = AarastDesignTokens.ink;
   static const title = AarastDesignTokens.title;

@@ -26,11 +26,14 @@ export interface NotificationPreferenceResponse {
   updatedAt: Date;
 }
 
+/// Deliberately minimal: lookup exists only so a plan owner can confirm a
+/// member before inviting. No avatar and no extra profile data — phone
+/// numbers must not become a directory of user photos (culturally
+/// sensitive, privacy-critical in Yemen).
 export interface UserLookupResponse {
   id: string;
   name: string;
   phone: string | null;
-  avatarUrl: string | null;
 }
 
 @Injectable()
@@ -81,7 +84,6 @@ export class UsersService {
         id: true,
         name: true,
         phone: true,
-        avatarUrl: true,
       },
     });
 

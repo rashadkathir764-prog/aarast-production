@@ -189,7 +189,11 @@ class JsonLocalDatabase implements LocalDatabase {
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
     final pending =
         rows
-            .where((row) => row['status'] != SyncQueueItem.synced)
+            .where(
+              (row) =>
+                  row['status'] != SyncQueueItem.synced &&
+                  row['status'] != SyncQueueItem.blocked,
+            )
             .map(SyncQueueItem.fromRow)
             .toList()
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -212,10 +216,48 @@ class JsonLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> markSyncItemBlocked(String id, String error) async {
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    final now = DateTime.now().toIso8601String();
+    for (final row in rows) {
+      if (row['id'] == id) {
+        row['status'] = SyncQueueItem.blocked;
+        row['lastError'] = error;
+        row['updatedAt'] = now;
+      }
+    }
+    await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+  }
+
+  @override
   Future<void> markSyncItemSynced(String id) async {
     final rows = _readList(_tableKey(OfflineTables.syncQueue))
       ..removeWhere((row) => row['id'] == id);
     await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+  }
+
+  @override
+  Future<void> rewriteQueuedReferences({
+    required String localId,
+    required String remoteId,
+  }) async {
+    if (localId.isEmpty || localId == remoteId) return;
+    final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    var changed = false;
+    final now = DateTime.now().toIso8601String();
+    for (final row in rows) {
+      if (row['status'] == SyncQueueItem.synced) continue;
+      final payload = row['payloadJson']?.toString() ?? '';
+      final endpoint = row['endpoint']?.toString() ?? '';
+      if (!payload.contains(localId) && !endpoint.contains(localId)) continue;
+      row['payloadJson'] = payload.replaceAll(localId, remoteId);
+      row['endpoint'] = endpoint.replaceAll(localId, remoteId);
+      row['updatedAt'] = now;
+      changed = true;
+    }
+    if (changed) {
+      await _writeList(_tableKey(OfflineTables.syncQueue), rows);
+    }
   }
 
   @override
@@ -231,6 +273,15 @@ class JsonLocalDatabase implements LocalDatabase {
         if (item.localEntityId != null)
           '${item.entityType}:${item.localEntityId}',
     };
+  }
+
+  @override
+  Future<void> wipeAll() async {
+    for (final table in OfflineTables.cacheTables) {
+      await _writeList(_tableKey(table), []);
+    }
+    await _writeList(_tableKey(OfflineTables.syncQueue), []);
+    await _writeMap(_metaKey, {});
   }
 
   Future<void> _ensureList(String key) async {

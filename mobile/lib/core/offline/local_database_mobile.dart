@@ -223,8 +223,8 @@ class SqliteLocalDatabase implements LocalDatabase {
   Future<List<SyncQueueItem>> pendingSyncItems() async {
     final rows = await _db.query(
       OfflineTables.syncQueue,
-      where: 'status != ?',
-      whereArgs: [SyncQueueItem.synced],
+      where: 'status != ? AND status != ?',
+      whereArgs: [SyncQueueItem.synced, SyncQueueItem.blocked],
       orderBy: 'createdAt ASC',
     );
     return rows.map(SyncQueueItem.fromRow).toList();
@@ -254,8 +254,54 @@ class SqliteLocalDatabase implements LocalDatabase {
   }
 
   @override
+  Future<void> markSyncItemBlocked(String id, String error) async {
+    await _db.update(
+      OfflineTables.syncQueue,
+      {
+        'status': SyncQueueItem.blocked,
+        'lastError': error,
+        'updatedAt': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  @override
   Future<void> markSyncItemSynced(String id) async {
     await _db.delete(OfflineTables.syncQueue, where: 'id = ?', whereArgs: [id]);
+  }
+
+  @override
+  Future<void> rewriteQueuedReferences({
+    required String localId,
+    required String remoteId,
+  }) async {
+    if (localId.isEmpty || localId == remoteId) return;
+    await _db.transaction((txn) async {
+      final rows = await txn.query(
+        OfflineTables.syncQueue,
+        where: 'status != ?',
+        whereArgs: [SyncQueueItem.synced],
+      );
+      for (final row in rows) {
+        final payload = row['payloadJson']?.toString() ?? '';
+        final endpoint = row['endpoint']?.toString() ?? '';
+        if (!payload.contains(localId) && !endpoint.contains(localId)) {
+          continue;
+        }
+        await txn.update(
+          OfflineTables.syncQueue,
+          {
+            'payloadJson': payload.replaceAll(localId, remoteId),
+            'endpoint': endpoint.replaceAll(localId, remoteId),
+            'updatedAt': DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [row['id']],
+        );
+      }
+    });
   }
 
   @override
@@ -278,6 +324,17 @@ class SqliteLocalDatabase implements LocalDatabase {
     return {
       for (final row in rows) '${row['entityType']}:${row['localEntityId']}',
     };
+  }
+
+  @override
+  Future<void> wipeAll() async {
+    await _db.transaction((txn) async {
+      for (final table in OfflineTables.cacheTables) {
+        await txn.delete(table);
+      }
+      await txn.delete(OfflineTables.syncQueue);
+      await txn.delete(OfflineTables.localMeta);
+    });
   }
 
   Database get _db {

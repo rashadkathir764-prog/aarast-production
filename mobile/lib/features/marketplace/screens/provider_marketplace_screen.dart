@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../widgets/premium/premium_vendor_card.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
@@ -1420,7 +1424,6 @@ class _ProviderCard extends StatelessWidget {
     final category = service?.category?.nameAr.trim();
     final serviceTitle = service?.title.trim();
     final location = _providerLocationLabel(provider);
-    final hasRating = provider.ratingCount > 0;
     final price = _moneyValueOrNull(service?.basePrice);
     final budgetStatus = budgetIntent == null
         ? null
@@ -1429,138 +1432,39 @@ class _ProviderCard extends StatelessWidget {
         ? AppTheme.gold
         : _serviceBudgetStatusColor(budgetStatus);
 
-    return AarastCard(
-      padding: const EdgeInsets.all(12),
-      onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _ProviderImage(url: provider.coverUrl ?? provider.logoUrl),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        provider.businessName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: AppTheme.ink,
-                              fontWeight: FontWeight.w900,
-                              height: 1.25,
-                            ),
-                      ),
-                    ),
-                    IconButton(
-                      tooltip: 'حفظ المورد',
-                      onPressed: onFavorite,
-                      constraints: const BoxConstraints.tightFor(
-                        width: 38,
-                        height: 38,
-                      ),
-                      padding: EdgeInsets.zero,
-                      icon: Icon(
-                        isFavorite
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        color: isFavorite ? AppTheme.burgundy : AppTheme.muted,
-                      ),
-                    ),
-                  ],
-                ),
-                if (category != null && category.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    category,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.burgundy,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-                if (serviceTitle != null && serviceTitle.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    serviceTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    if (hasRating)
-                      _ProviderFactPill(
-                        icon: Icons.star_rounded,
-                        text:
-                            '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
-                        color: AppTheme.gold,
-                      ),
-                    if (location != null)
-                      _ProviderFactPill(
-                        icon: Icons.place_outlined,
-                        text: location,
-                        color: AppTheme.muted,
-                      ),
-                    if (service != null)
-                      _ProviderFactPill(
-                        icon: Icons.payments_outlined,
-                        text: _servicePriceLabel(service),
-                        color: budgetColor,
-                      ),
-                    if (budgetStatus != null)
-                      _ProviderFactPill(
-                        icon: Icons.track_changes_rounded,
-                        text: _serviceBudgetStatusLabel(budgetStatus),
-                        color: budgetColor,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: onTap,
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      icon: const Icon(Icons.info_outline_rounded, size: 18),
-                      label: const Text('التفاصيل'),
-                    ),
-                    FilledButton.icon(
-                      key: Key('super5-provider-quote-${provider.id}'),
-                      onPressed: onRequestQuote,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 38),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      icon: const Icon(Icons.request_quote_outlined, size: 18),
-                      label: const Text('طلب عرض'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+    return PremiumVendorCard(
+      businessName: provider.businessName,
+      isFeatured: provider.isFeatured,
+      ratingAverage: provider.ratingAverage,
+      ratingCount: provider.ratingCount,
+      categoryLabel: category,
+      serviceTitle: serviceTitle,
+      logoUrl: provider.logoUrl ?? provider.coverUrl,
+      isFavorite: isFavorite,
+      onFavorite: onFavorite,
+      onDetails: onTap,
+      onRequestQuote: onRequestQuote,
+      quoteButtonKey: Key('super5-provider-quote-${provider.id}'),
+      facts: [
+        if (location != null)
+          VendorFact(
+            icon: LucideIcons.mapPin,
+            text: location,
+            color: AppTheme.muted,
           ),
-        ],
-      ),
+        if (service != null)
+          VendorFact(
+            icon: LucideIcons.wallet,
+            text: _servicePriceLabel(service),
+            color: budgetColor,
+          ),
+        if (budgetStatus != null)
+          VendorFact(
+            icon: LucideIcons.target,
+            text: _serviceBudgetStatusLabel(budgetStatus),
+            color: budgetColor,
+          ),
+      ],
     );
   }
 }
@@ -1605,40 +1509,6 @@ class _ProviderFactPill extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ProviderImage extends StatelessWidget {
-  const _ProviderImage({this.url});
-
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    final imageUrl = url?.trim();
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        width: 84,
-        height: 84,
-        color: AppTheme.ivory,
-        child: imageUrl == null || imageUrl.isEmpty
-            ? const Icon(
-                Icons.storefront_rounded,
-                color: AppTheme.gold,
-                size: 34,
-              )
-            : Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.storefront_rounded,
-                  color: AppTheme.gold,
-                  size: 34,
-                ),
-              ),
       ),
     );
   }
@@ -1774,8 +1644,7 @@ double? _moneyValueOrNull(String? value) {
 String _servicePriceLabel(MarketplaceService service) {
   final price = _moneyValueOrNull(service.basePrice);
   if (price == null) return 'السعر غير محدد';
-  final currency = service.currency?.trim();
-  return '${_formatMoney(price)} ${currency == null || currency.isEmpty ? 'ر.ي' : currency}';
+  return '${_formatMoney(price)} ${currencyLabelAr(service.currency)}';
 }
 
 String _formatMoney(num value) {

@@ -13,6 +13,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _quoteSubmitErrorMessage;
   String? _noticeMessage;
   String _search = '';
   String? _cityId;
@@ -34,6 +35,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get quoteSubmitErrorMessage => _quoteSubmitErrorMessage;
   String? get noticeMessage => _noticeMessage;
   String get search => _search;
   String? get cityId => _cityId;
@@ -242,6 +244,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _quoteSubmitErrorMessage = null;
     _noticeMessage = null;
     notifyListeners();
 
@@ -266,13 +269,14 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _quoteSubmitErrorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إرسال طلب عرض السعر.';
+      _quoteSubmitErrorMessage = 'تعذر إرسال طلب عرض السعر.';
       return false;
     } finally {
       _isSubmitting = false;
+      _errorMessage = null;
       notifyListeners();
     }
   }
@@ -448,6 +452,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _quoteSubmitErrorMessage = null;
     _noticeMessage = null;
     notifyListeners();
   }
@@ -741,6 +746,11 @@ class ProviderDashboardProvider extends ChangeNotifier {
 @visibleForTesting
 String marketplaceErrorMessage(String message) {
   final normalized = message.trim();
+  if (normalized.contains(
+    'location governorate and cityOrDistrict are required for structured location',
+  )) {
+    return 'أكمل موقع الزفاف: المحافظة والمدينة أو المديرية مطلوبة قبل إرسال الطلب.';
+  }
   if (normalized.isEmpty ||
       normalized.contains(aarastBackendConnectionErrorMessage) ||
       normalized.contains('هذه الخدمة غير متاحة') ||

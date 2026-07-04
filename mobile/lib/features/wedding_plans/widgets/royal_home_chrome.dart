@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -128,8 +129,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                         children: [
                           Expanded(
                             child: _RoyalNavItem(
-                              icon: Icons.home_outlined,
-                              activeIcon: Icons.home_rounded,
+                              icon: LucideIcons.home,
                               label: 'الرئيسية',
                               active: activeIndex == 0,
                               onTap: onHome,
@@ -137,8 +137,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                           ),
                           Expanded(
                             child: _RoyalNavItem(
-                              icon: Icons.credit_card_outlined,
-                              activeIcon: Icons.credit_card_rounded,
+                              icon: LucideIcons.wallet,
                               label: 'المال',
                               active: activeIndex == 1,
                               onTap: onMoney,
@@ -146,8 +145,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                           ),
                           Expanded(
                             child: _RoyalNavItem(
-                              icon: Icons.checklist_rtl_outlined,
-                              activeIcon: Icons.checklist_rtl_rounded,
+                              icon: LucideIcons.listChecks,
                               label: 'المهام',
                               active: activeIndex == 2,
                               onTap: onTasks,
@@ -155,8 +153,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                           ),
                           Expanded(
                             child: _RoyalNavItem(
-                              icon: Icons.grid_view_outlined,
-                              activeIcon: Icons.grid_view_rounded,
+                              icon: LucideIcons.users,
                               label: 'الضيوف',
                               active: activeIndex == 3,
                               onTap: onGuests,
@@ -164,8 +161,7 @@ class RoyalDashboardBottomNav extends StatelessWidget {
                           ),
                           Expanded(
                             child: _RoyalNavItem(
-                              icon: Icons.storefront_outlined,
-                              activeIcon: Icons.storefront_rounded,
+                              icon: LucideIcons.store,
                               label: 'الموردون',
                               active: activeIndex == 4,
                               onTap: onProviders,
@@ -209,13 +205,15 @@ class _RoyalSmartFloatingActionButtonState
   @override
   void initState() {
     super.initState();
+    // نَفَس ذهبي هادئ وبطيء — لا نبض صاخب. مساحة السطوع منخفضة
+    // ومدة أطول حتى يبقى الزر ملكيًّا ثابتًا لا وامضًا.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 2600),
     )..repeat(reverse: true);
     _glowAnimation = Tween<double>(
-      begin: 0.3,
-      end: 0.7,
+      begin: 0.18,
+      end: 0.36,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
@@ -251,7 +249,7 @@ class _RoyalSmartFloatingActionButtonState
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [AppTheme.gold, AppTheme.warning],
+                        colors: [AppTheme.goldDeep, AppTheme.gold],
                       ),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.4),
@@ -259,12 +257,12 @@ class _RoyalSmartFloatingActionButtonState
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.warning.withValues(
+                          color: AppTheme.goldDeep.withValues(
                             alpha: _glowAnimation.value,
                           ),
-                          blurRadius: 24,
-                          spreadRadius: _glowAnimation.value * 8,
-                          offset: const Offset(0, 10),
+                          blurRadius: 22,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 9),
                         ),
                       ],
                     ),
@@ -278,10 +276,10 @@ class _RoyalSmartFloatingActionButtonState
                     transitionBuilder: (child, animation) =>
                         ScaleTransition(scale: animation, child: child),
                     child: Icon(
-                      widget.icon ?? Icons.add_rounded,
+                      widget.icon ?? LucideIcons.plus,
                       key: ValueKey(widget.icon),
                       color: Colors.white,
-                      size: 32,
+                      size: 30,
                     ),
                   ),
                 ),
@@ -540,22 +538,20 @@ class _RoyalActionTile extends StatelessWidget {
 class _RoyalNavItem extends StatelessWidget {
   const _RoyalNavItem({
     required this.icon,
-    required this.activeIcon,
     required this.label,
     required this.active,
     this.onTap,
   });
 
   final IconData icon;
-  final IconData activeIcon;
   final String label;
   final bool active;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = AppTheme.burgundy;
-    final inactiveColor = AppTheme.muted;
+    const activeColor = AppTheme.burgundy;
+    const inactiveColor = AppTheme.muted;
 
     return _PressScale(
       onTap: onTap,
@@ -564,10 +560,10 @@ class _RoyalNavItem extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
           color: active
-              ? activeColor.withValues(alpha: 0.08)
+              ? activeColor.withValues(alpha: 0.09)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
@@ -575,15 +571,16 @@ class _RoyalNavItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // أيقونة Lucide مفردة الوزن — التمييز باللون + السماكة + المؤشّر.
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 220),
               transitionBuilder: (child, animation) =>
                   ScaleTransition(scale: animation, child: child),
               child: Icon(
-                active ? activeIcon : icon,
-                key: ValueKey(active),
+                icon,
+                key: ValueKey('$label-$active'),
                 color: active ? activeColor : inactiveColor,
-                size: 24,
+                size: 22,
               ),
             ),
             const SizedBox(height: 4),
@@ -593,8 +590,23 @@ class _RoyalNavItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: active ? activeColor : inactiveColor,
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 3),
+            // مؤشّر ذهبي شامبانيّ صغير للتبويب النشط — لمسة ملكية هادئة
+            // بمساحة محجوزة دائمًا حتى لا يقفز الارتفاع بين الحالات.
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              height: 3,
+              width: active ? 16 : 0,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.goldDeep, AppTheme.gold],
+                ),
+                borderRadius: BorderRadius.circular(99),
               ),
             ),
           ],

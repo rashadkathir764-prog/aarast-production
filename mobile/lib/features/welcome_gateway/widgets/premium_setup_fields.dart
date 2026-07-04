@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/arabic_number_formatter.dart';
 
@@ -97,7 +98,7 @@ class PremiumDateField extends StatelessWidget {
                 child: Row(
                   children: [
                     const Icon(
-                      Icons.calendar_today_rounded,
+                      LucideIcons.calendar,
                       color: AppTheme.gold,
                       size: 22,
                     ),
@@ -122,7 +123,7 @@ class PremiumDateField extends StatelessWidget {
                 ),
               ),
               Icon(
-                Icons.edit_calendar_rounded,
+                LucideIcons.calendarDays,
                 color: AppTheme.muted,
                 size: 20,
               ),
@@ -241,8 +242,9 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                   icon: Padding(
                     padding: const EdgeInsetsDirectional.only(start: 6.0),
                     child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
+                      LucideIcons.chevronDown,
                       color: AppTheme.muted,
+                      size: 18,
                     ),
                   ),
                   style: const TextStyle(
@@ -278,7 +280,7 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                   controller: widget.controller,
                   hintText: 'مثال: 3000000',
                   isNumber: true,
-                  icon: Icons.account_balance_wallet_rounded,
+                  icon: LucideIcons.wallet,
                   onChanged: widget.onChanged,
                 ),
                 AnimatedSwitcher(
@@ -294,8 +296,8 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                       children: [
                         Icon(
                           _budgetWords.isEmpty
-                              ? Icons.info_outline_rounded
-                              : Icons.check_circle_rounded,
+                              ? LucideIcons.info
+                              : LucideIcons.checkCircle,
                           color: AppTheme.gold,
                           size: 14,
                         ),
@@ -356,7 +358,7 @@ class PremiumLocationCard extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.only(top: 12),
               child: Icon(
-                Icons.location_on_rounded,
+                LucideIcons.mapPin,
                 color: AppTheme.gold,
                 size: 24,
               ),
@@ -405,9 +407,9 @@ class PremiumLocationCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             const Icon(
-              Icons.edit_location_alt_outlined,
+              LucideIcons.pencil,
               color: AppTheme.gold,
-              size: 28,
+              size: 22,
             ),
           ],
         ),

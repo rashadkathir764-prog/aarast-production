@@ -66,5 +66,16 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.aarast.invites</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>aarast</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

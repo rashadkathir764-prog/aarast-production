@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
+import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../data/auth_repository.dart';
 import '../models/auth_otp.dart';
 import '../models/safe_user.dart';
@@ -12,23 +13,33 @@ import '../models/safe_user.dart';
 enum AuthStatus { checking, authenticated, unauthenticated }
 
 class AuthController extends ChangeNotifier {
-  AuthController(this._authRepository, {OfflineSyncService? offlineSyncService})
-    : _offlineSyncService = offlineSyncService;
+  AuthController(
+    this._authRepository, {
+    OfflineSyncService? offlineSyncService,
+    GuestOnboardingStorage? guestOnboardingStorage,
+  }) : _offlineSyncService = offlineSyncService,
+       _guestOnboardingStorage = guestOnboardingStorage;
 
   final AuthRepository _authRepository;
   final OfflineSyncService? _offlineSyncService;
+  final GuestOnboardingStorage? _guestOnboardingStorage;
 
   AuthStatus _status = AuthStatus.checking;
   SafeUser? _user;
   bool _isSubmitting = false;
   String? _errorMessage;
   OtpRequestResult? _otpRequest;
+  bool _sessionExpired = false;
 
   AuthStatus get status => _status;
   SafeUser? get user => _user;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
   OtpRequestResult? get otpRequest => _otpRequest;
+
+  /// True right after a mid-session 401 invalidated the session. The UI
+  /// redirects to login once, then acknowledges.
+  bool get sessionExpired => _sessionExpired;
 
   Future<void> restoreSession() async {
     _status = AuthStatus.checking;
@@ -45,6 +56,7 @@ class AuthController extends ChangeNotifier {
     try {
       _user = await _authRepository.me();
       if (_user != null) {
+        await _offlineSyncService?.ensureCacheOwner(_user!.id);
         await _offlineSyncService?.cacheCurrentUser(_user!);
       }
       _status = AuthStatus.authenticated;
@@ -69,6 +81,7 @@ class AuthController extends ChangeNotifier {
         password: password,
       );
       _user = response.user;
+      await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
       unawaited(_offlineSyncService?.syncPendingChanges());
@@ -89,6 +102,7 @@ class AuthController extends ChangeNotifier {
         password: password,
       );
       _user = response.user;
+      await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
       unawaited(_offlineSyncService?.syncPendingChanges());
@@ -123,6 +137,7 @@ class AuthController extends ChangeNotifier {
       );
       if (response.user != null) {
         _user = response.user;
+        await _offlineSyncService?.ensureCacheOwner(response.user!.id);
         await _offlineSyncService?.cacheCurrentUser(response.user!);
       }
       if (response.accessToken != null) {
@@ -134,9 +149,32 @@ class AuthController extends ChangeNotifier {
 
   Future<void> logout() async {
     await _authRepository.logout();
+    // Privacy hard-rule: shared devices are common in Yemen. Everything
+    // financial that this account cached locally must go with the session —
+    // cache, queued writes and any onboarding draft tied to this session.
+    await _offlineSyncService?.clearLocalData();
+    await _guestOnboardingStorage?.clearDraft();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+  }
+
+  /// Called by the API layer when any non-auth request returns 401. Ends
+  /// the session cleanly instead of letting every screen degrade into
+  /// misleading errors. Local cache is kept: the SAME account will log in
+  /// again and `ensureCacheOwner` protects against a different one.
+  Future<void> handleSessionExpired() async {
+    if (_status != AuthStatus.authenticated) return;
+    await _authRepository.logout();
+    _user = null;
+    _status = AuthStatus.unauthenticated;
+    _sessionExpired = true;
+    _errorMessage = 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.';
+    notifyListeners();
+  }
+
+  void acknowledgeSessionExpiry() {
+    _sessionExpired = false;
   }
 
   void clearError() {

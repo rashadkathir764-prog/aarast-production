@@ -133,6 +133,16 @@ The current production image does not include a production-safe admin reset comm
 
 Before launch, create an approved one-off admin creation flow that accepts secrets from Dokploy environment variables or a secure console prompt. Never paste the admin password, Meta token, WhatsApp token, JWT secret, or database password into chat or commit them.
 
+## Marketplace Bootstrap
+
+The production marketplace can be initialized without running the broad development seed by using the limited, idempotent bootstrap script:
+
+```sh
+AARAST_PROVIDER_TEST_PASSWORD="set-this-outside-git" npm run prod:bootstrap-marketplace
+```
+
+The script upserts Yemen-first city references, provider categories, one clearly marked test provider account, and one active provider service. It does not delete data and must not be used as a payment, booking, deposit, loan, credit, or financing setup.
+
 ## Health Checks
 
 After deploy:

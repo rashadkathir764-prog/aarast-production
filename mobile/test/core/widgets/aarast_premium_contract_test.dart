@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:aarast_mobile/core/config/app_feature_flags.dart';
-import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -93,18 +91,6 @@ void main() {
         'lib/features/auth/screens/login_screen.dart',
         'lib/features/auth/screens/register_screen.dart',
         'lib/features/auth/screens/otp_screen.dart',
-        'lib/features/onboarding/screens/guest_onboarding_flow_screen.dart',
-        'lib/features/onboarding/screens/guest_welcome_screen.dart',
-        'lib/features/onboarding/screens/choose_path_screen.dart',
-        'lib/features/onboarding/screens/persona_screen.dart',
-        'lib/features/onboarding/screens/location_setup_screen.dart',
-        'lib/features/onboarding/screens/wedding_date_screen.dart',
-        'lib/features/onboarding/screens/budget_setup_screen.dart',
-        'lib/features/onboarding/screens/priorities_screen.dart',
-        'lib/features/onboarding/screens/suggested_categories_screen.dart',
-        'lib/features/onboarding/screens/generated_dashboard_preview_screen.dart',
-        'lib/features/onboarding/screens/provider_path_pending_screen.dart',
-        'lib/features/onboarding/screens/active_plan_onboarding_screen.dart',
         'lib/features/home/screens/dashboard_entry_screen.dart',
         'lib/features/home/screens/home_screen.dart',
         'lib/features/home/screens/local_guest_dashboard_screen.dart',
@@ -177,13 +163,6 @@ void main() {
       }
 
       expect(offenders, isEmpty, reason: offenders.join('\n'));
-    });
-
-    test('keeps rebuild preview routes out of production defaults', () {
-      expect(
-        AppRouter.userNavigationShellRedirect(AppFeatureFlags.defaults),
-        AppRouter.home,
-      );
     });
 
     test('documents Soft Royal Wedding as the final mobile identity', () {

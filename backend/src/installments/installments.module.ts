@@ -9,6 +9,7 @@ import {
   InstallmentsController,
   WeddingPlanInstallmentsController,
 } from './installments.controller';
+import { InstallmentsOverdueScheduler } from './installments-overdue.scheduler';
 import { InstallmentsService } from './installments.service';
 
 @Module({
@@ -20,6 +21,6 @@ import { InstallmentsService } from './installments.service';
     ApiV1DebtInstallmentsController,
     ApiV1InstallmentsController,
   ],
-  providers: [InstallmentsService],
+  providers: [InstallmentsService, InstallmentsOverdueScheduler],
 })
 export class InstallmentsModule {}

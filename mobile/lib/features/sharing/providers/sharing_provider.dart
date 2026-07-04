@@ -20,10 +20,12 @@ class SharingProvider extends ChangeNotifier {
   SharingAuthGateKind? _authGateKind;
   List<SharedMember> _members = const [];
   List<PlanInvite> _invites = const [];
+  List<PlanInvite> _myInvites = const [];
   List<SharedWeddingPlan> _sharedPlans = const [];
   SharedMember? _selectedMember;
   SharedUserLookup? _lookupUser;
   PlanInvite? _selectedInvite;
+  SharedMember? _acceptedInviteMember;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -33,10 +35,12 @@ class SharingProvider extends ChangeNotifier {
   SharingAuthGateKind? get authGateKind => _authGateKind;
   List<SharedMember> get members => _members;
   List<PlanInvite> get invites => _invites;
+  List<PlanInvite> get myInvites => _myInvites;
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
   SharedMember? get selectedMember => _selectedMember;
   SharedUserLookup? get lookupUser => _lookupUser;
   PlanInvite? get selectedInvite => _selectedInvite;
+  SharedMember? get acceptedInviteMember => _acceptedInviteMember;
 
   Future<void> loadMembers(String weddingPlanId) async {
     _isLoading = true;
@@ -271,14 +275,60 @@ class SharingProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> loadMyInvites({String? token}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _selectedInvite = null;
+    _acceptedInviteMember = null;
+    notifyListeners();
+    try {
+      final invites = await _api.getMyInvites();
+      final cleanToken = token?.trim();
+      _myInvites = cleanToken == null || cleanToken.isEmpty
+          ? invites
+          : invites.where((invite) => invite.token == cleanToken).toList();
+      if (_myInvites.length == 1) {
+        _selectedInvite = _myInvites.single;
+      }
+      if (cleanToken != null && cleanToken.isNotEmpty && _myInvites.isEmpty) {
+        _errorMessage =
+            'هذه الدعوة مرتبطة برقم آخر. أدخل الرقم الذي وصلت إليه الدعوة.';
+      }
+    } on ApiException catch (error) {
+      _errorMessage = _sharingErrorMessage(error.message);
+    } catch (_) {
+      _errorMessage = 'تعذر تحميل الدعوات المرتبطة بهذا الرقم.';
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearInviteAccessState() {
+    _myInvites = const [];
+    _selectedInvite = null;
+    _acceptedInviteMember = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<bool> respondToInvite(String token, {required bool accept}) async {
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
     try {
-      _selectedInvite = accept
-          ? await _api.acceptInvite(token)
-          : await _api.declineInvite(token);
+      if (accept) {
+        final result = await _api.acceptInvite(token);
+        _selectedInvite = result.invite;
+        _acceptedInviteMember = result.member;
+      } else {
+        _selectedInvite = await _api.declineInvite(token);
+        _acceptedInviteMember = null;
+      }
+      _myInvites = [
+        for (final invite in _myInvites)
+          invite.token == token ? _selectedInvite! : invite,
+      ];
       return true;
     } on ApiException catch (error) {
       _errorMessage = _sharingErrorMessage(error.message);

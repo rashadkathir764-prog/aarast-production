@@ -1,0 +1,359 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/network/api_client.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/storage/auth_storage.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
+import '../data/local_plan_migration.dart';
+
+/// Shown right after login when a complete guest plan exists on the device.
+///
+/// Trust rules:
+/// - Local data is deleted ONLY after the server confirms the import.
+/// - Discarding is explicit and double-confirmed.
+class LocalPlanMigrationScreen extends StatefulWidget {
+  const LocalPlanMigrationScreen({
+    super.key,
+    required this.snapshot,
+    required this.migrationService,
+    required this.onFinished,
+  });
+
+  final LocalPlanSnapshot snapshot;
+  final LocalPlanMigrationService migrationService;
+  final VoidCallback onFinished;
+
+  @override
+  State<LocalPlanMigrationScreen> createState() =>
+      _LocalPlanMigrationScreenState();
+}
+
+class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
+  bool _isUploading = false;
+  String? _errorMessage;
+
+  Future<void> _migrate() async {
+    setState(() {
+      _isUploading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await widget.migrationService.migrate(widget.snapshot);
+      if (!mounted) return;
+
+      // Server confirmed — only now is it safe to clear local guest data.
+      AuthStorage? authStorage;
+      OfflineSyncService? offlineSync;
+      try {
+        authStorage = context.read<AuthStorage>();
+      } on ProviderNotFoundException {
+        authStorage = null;
+      }
+      try {
+        offlineSync = context.read<OfflineSyncService>();
+      } on ProviderNotFoundException {
+        offlineSync = null;
+      }
+
+      await authStorage?.saveActivePlanId(response.activePlanId);
+      await widget.migrationService.guestStorage.clearDraft();
+      await offlineSync?.clearLocalData();
+
+      if (!mounted) return;
+      widget.onFinished();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isUploading = false;
+        _errorMessage = error.message;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isUploading = false;
+        _errorMessage = 'تعذر رفع الخطة الآن. تحقق من الاتصال وحاول مرة أخرى.';
+      });
+    }
+  }
+
+  Future<void> _confirmDiscard() async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'تجاهل الخطة المحلية نهائياً؟',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.title,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'سيتم حذف الخطة المحفوظة على هذا الجهاز ولن تتمكن من استعادتها لاحقاً.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.muted,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                AarastButton(
+                  label: 'احتفظ بالخطة',
+                  onPressed: () => Navigator.of(sheetContext).pop(false),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(true),
+                  child: const Text(
+                    'نعم، تجاهلها نهائياً',
+                    style: TextStyle(
+                      color: AppTheme.danger,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+    await widget.migrationService.guestStorage.clearDraft();
+    if (!mounted) return;
+    widget.onFinished();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final draft = widget.snapshot.draft;
+    final theme = Theme.of(context);
+
+    return AarastScreenFrame(
+      maxWidth: 600,
+      safeAreaBottom: true,
+      child: ColoredBox(
+        color: AppTheme.ivory,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AarastCard(
+                  padding: const EdgeInsets.all(20),
+                  color: AppTheme.pearl,
+                  border: Border.all(
+                    color: AppTheme.gold.withValues(alpha: 0.28),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: AppTheme.goldSoft,
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusLg,
+                          ),
+                          border: Border.all(
+                            color: AppTheme.gold.withValues(alpha: 0.32),
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.cloud_upload_rounded,
+                          color: AppTheme.burgundy,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'وجدنا خطتك المحفوظة على هذا الجهاز',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: AppTheme.title,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'ارفعها إلى حسابك حتى تبقى محفوظة وتقدر تشاركها مع عائلتك من أي جهاز.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.muted,
+                          height: 1.55,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                AarastCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        draft.planName ?? 'خطة زفافي',
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: AppTheme.title,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _CountChip(
+                            icon: Icons.payments_rounded,
+                            label: 'المصاريف',
+                            count: widget.snapshot.expenses.length,
+                          ),
+                          _CountChip(
+                            icon: Icons.checklist_rounded,
+                            label: 'المهام',
+                            count: widget.snapshot.tasks.length,
+                          ),
+                          _CountChip(
+                            icon: Icons.groups_rounded,
+                            label: 'الضيوف',
+                            count: widget.snapshot.guests.length,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.dangerSoft,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.danger.withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.danger,
+                        fontWeight: FontWeight.w700,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                AarastButton(
+                  label: 'رفع الخطة إلى حسابي',
+                  icon: Icons.cloud_upload_rounded,
+                  isLoading: _isUploading,
+                  onPressed: _isUploading ? null : _migrate,
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: _isUploading ? null : _confirmDiscard,
+                  child: Text(
+                    'تجاهل الخطة المحلية',
+                    style: TextStyle(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w800,
+                      fontSize: theme.textTheme.bodyMedium?.fontSize,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.lock_outline_rounded,
+                      size: 16,
+                      color: AppTheme.muted,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'لن تُحذف بياناتك من الجهاز حتى يكتمل الرفع بنجاح.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountChip extends StatelessWidget {
+  const _CountChip({
+    required this.icon,
+    required this.label,
+    required this.count,
+  });
+
+  final IconData icon;
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.goldSoft,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppTheme.gold.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppTheme.burgundy),
+          const SizedBox(width: 6),
+          Text(
+            '$label: $count',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.ink,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

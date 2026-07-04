@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { BudgetCategory } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import { CreateBudgetCategoryDto } from './dto/create-budget-category.dto';
@@ -121,13 +122,7 @@ export class BudgetCategoriesService {
     value: string | number | null | undefined,
   ): string | null {
     if (value === undefined || value === null) return null;
-
-    const normalized = String(value).trim();
-    if (!normalized || !/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException('amount must be a valid non-negative decimal value');
-    }
-
-    return normalized;
+    return requiredMoneyAmount(value, 'amount');
   }
 
   private toResponse(category: BudgetCategory): BudgetCategoryResponse {

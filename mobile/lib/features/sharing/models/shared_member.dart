@@ -1,4 +1,4 @@
-﻿import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/phone/phone_number_utils.dart';
 
 class SharedMember {
   const SharedMember({
@@ -167,28 +167,48 @@ class PlanInvite {
     required this.role,
     required this.status,
     required this.expiresAt,
+    required this.canViewBudget,
+    required this.canViewExpenses,
+    required this.canViewDebts,
+    required this.canEditPlan,
+    required this.canManageTasks,
+    required this.canManageGuests,
+    required this.canManageProviders,
+    required this.canInviteMembers,
+    required this.canManageFinancialRecords,
     this.name,
     this.phone,
     this.email,
     this.weddingPlanTitle,
+    this.inviterName,
   });
 
   factory PlanInvite.fromJson(Map<String, dynamic> json) {
     final plan = json['weddingPlan'];
+    final inviter = json['inviter'];
     return PlanInvite(
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
       token: json['token']?.toString() ?? '',
       role: json['role']?.toString() ?? 'VIEWER',
       status: json['status']?.toString() ?? 'PENDING',
+      canViewBudget: json['canViewBudget'] == true,
+      canViewExpenses: json['canViewExpenses'] == true,
+      canViewDebts: json['canViewDebts'] == true,
+      canEditPlan: json['canEditPlan'] == true,
+      canManageTasks: json['canManageTasks'] == true,
+      canManageGuests: json['canManageGuests'] == true,
+      canManageProviders: json['canManageProviders'] == true,
+      canInviteMembers: json['canInviteMembers'] == true,
+      canManageFinancialRecords: json['canManageFinancialRecords'] == true,
       expiresAt:
           _dateTimeOrNull(json['expiresAt']) ??
           DateTime.now().add(const Duration(days: 14)),
       name: json['name']?.toString(),
-      phone:
-          json['normalizedPhone']?.toString() ?? json['phone']?.toString(),
+      phone: json['normalizedPhone']?.toString() ?? json['phone']?.toString(),
       email: json['email']?.toString(),
       weddingPlanTitle: plan is Map ? plan['title']?.toString() : null,
+      inviterName: inviter is Map ? inviter['name']?.toString() : null,
     );
   }
 
@@ -198,12 +218,37 @@ class PlanInvite {
   final String role;
   final String status;
   final DateTime expiresAt;
+  final bool canViewBudget;
+  final bool canViewExpenses;
+  final bool canViewDebts;
+  final bool canEditPlan;
+  final bool canManageTasks;
+  final bool canManageGuests;
+  final bool canManageProviders;
+  final bool canInviteMembers;
+  final bool canManageFinancialRecords;
   final String? name;
   final String? phone;
   final String? email;
   final String? weddingPlanTitle;
+  final String? inviterName;
 
   bool get isPending => status == 'PENDING';
+  bool get isAccepted => status == 'ACCEPTED';
+
+  List<String> get permissionLabels {
+    final labels = <String>['عرض الخطة'];
+    if (canManageTasks) labels.add('المهام');
+    if (canManageGuests) labels.add('الضيوف');
+    if (canManageProviders) labels.add('الخدمات والموردون');
+    if (canInviteMembers) labels.add('دعوة أعضاء');
+    if (canManageFinancialRecords) {
+      labels.add('إدارة المال');
+    } else if (canViewBudget || canViewExpenses || canViewDebts) {
+      labels.add('عرض مالي محدود');
+    }
+    return labels;
+  }
 
   String get displayName {
     final value = name?.trim();

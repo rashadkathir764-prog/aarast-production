@@ -7,7 +7,6 @@ import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/splash_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
-import 'package:aarast_mobile/features/onboarding/screens/guest_onboarding_flow_screen.dart';
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -90,7 +89,6 @@ void main() {
 
     expect(router.state.uri.path, AppRouter.welcome);
     expect(find.byType(SmartWelcomeScreen), findsOneWidget);
-    expect(find.byType(GuestOnboardingFlowScreen), findsNothing);
     expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
   });
 

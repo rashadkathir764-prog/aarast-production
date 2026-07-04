@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Debt, DebtStatus, Installment, InstallmentStatus } from '@prisma/client';
+import { Debt, Installment, InstallmentStatus, Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { applyDebtPaymentDelta } from '../common/money/debt-balance';
+import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
 import { CreateInstallmentDto } from './dto/create-installment.dto';
@@ -36,15 +38,27 @@ export class InstallmentsService {
       currentUser,
     );
 
-    const installment = await this.prisma.installment.create({
-      data: {
-        debtId,
-        amount: this.requiredNonNegativeDecimal(dto.amount, 'amount'),
-        dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
-        paidAt: this.optionalDate(dto.paidAt, 'paidAt'),
-        status: dto.status ?? InstallmentStatus.PENDING,
-        note: this.optionalText(dto.note),
-      },
+    const status = dto.status ?? InstallmentStatus.PENDING;
+    const installment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.installment.create({
+        data: {
+          debtId,
+          amount: this.requiredNonNegativeDecimal(dto.amount, 'amount'),
+          dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
+          paidAt:
+            this.optionalDate(dto.paidAt, 'paidAt') ??
+            (status === InstallmentStatus.PAID ? new Date() : null),
+          status,
+          note: this.optionalText(dto.note),
+        },
+      });
+
+      // Creating an already-paid installment must count towards the debt.
+      if (status === InstallmentStatus.PAID) {
+        await this.applyDebtDelta(tx, debtId, created.amount);
+      }
+
+      return created;
     });
 
     return this.toResponse(installment);
@@ -102,21 +116,61 @@ export class InstallmentsService {
       currentUser,
     );
 
-    const installment = await this.prisma.installment.update({
-      where: { id },
-      data: {
-        ...(dto.amount !== undefined
-          ? { amount: this.requiredNonNegativeDecimal(dto.amount, 'amount') }
-          : {}),
-        ...(dto.dueDate !== undefined
-          ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
-          : {}),
-        ...(dto.paidAt !== undefined
-          ? { paidAt: this.optionalDate(dto.paidAt, 'paidAt') }
-          : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.note !== undefined ? { note: this.optionalText(dto.note) } : {}),
-      },
+    const nextAmount =
+      dto.amount !== undefined
+        ? this.requiredNonNegativeDecimal(dto.amount, 'amount')
+        : undefined;
+
+    const installment = await this.prisma.$transaction(async (tx) => {
+      // Row lock so a concurrent pay/update cannot interleave between our
+      // read and our write — debt consistency depends on the exact
+      // before/after states.
+      await this.lockInstallmentRow(tx, id);
+      const current = await tx.installment.findUniqueOrThrow({
+        where: { id },
+      });
+
+      const updated = await tx.installment.update({
+        where: { id },
+        data: {
+          ...(nextAmount !== undefined ? { amount: nextAmount } : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
+            : {}),
+          ...(dto.paidAt !== undefined
+            ? { paidAt: this.optionalDate(dto.paidAt, 'paidAt') }
+            : {}),
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          ...(dto.note !== undefined
+            ? { note: this.optionalText(dto.note) }
+            : {}),
+          // Marking as paid through a generic update still stamps paidAt.
+          ...(dto.status === InstallmentStatus.PAID &&
+          dto.paidAt === undefined &&
+          !current.paidAt
+            ? { paidAt: new Date() }
+            : {}),
+        },
+      });
+
+      // Every status/amount transition keeps the parent debt consistent:
+      // pay adds, un-pay subtracts, editing a paid amount applies the diff.
+      const wasPaid = current.status === InstallmentStatus.PAID;
+      const isPaid = updated.status === InstallmentStatus.PAID;
+      const zero = new Prisma.Decimal(0);
+      let delta = zero;
+      if (!wasPaid && isPaid) {
+        delta = updated.amount;
+      } else if (wasPaid && !isPaid) {
+        delta = current.amount.negated();
+      } else if (wasPaid && isPaid && !updated.amount.equals(current.amount)) {
+        delta = updated.amount.sub(current.amount);
+      }
+      if (!delta.equals(zero)) {
+        await this.applyDebtDelta(tx, current.debtId, delta);
+      }
+
+      return updated;
     });
 
     return this.toResponse(installment);
@@ -135,38 +189,27 @@ export class InstallmentsService {
 
     const now = new Date();
     const installment = await this.prisma.$transaction(async (tx) => {
-      const paidInstallment = await tx.installment.update({
-        where: { id },
-        data: {
-          status: InstallmentStatus.PAID,
-          paidAt: existing.paidAt ?? now,
-        },
+      // Atomic compare-and-set: two concurrent pays of the same
+      // installment must increment the debt exactly once.
+      const transition = await tx.installment.updateMany({
+        where: { id, status: { not: InstallmentStatus.PAID } },
+        data: { status: InstallmentStatus.PAID },
       });
 
-      if (existing.status !== InstallmentStatus.PAID) {
-        const currentPaidAmount = Number(debt.paidAmount.toString());
-        const installmentAmount = Number(existing.amount.toString());
-        const totalAmount = Number(debt.totalAmount.toString());
-        const nextPaidAmount = Math.min(
-          currentPaidAmount + installmentAmount,
-          totalAmount,
-        );
-
-        await tx.debt.update({
-          where: { id: debt.id },
-          data: {
-            paidAmount: nextPaidAmount.toFixed(2),
-            status:
-              nextPaidAmount >= totalAmount
-                ? DebtStatus.PAID
-                : nextPaidAmount > 0
-                  ? DebtStatus.PARTIALLY_PAID
-                  : DebtStatus.OPEN,
-          },
+      if (transition.count === 1) {
+        const paid = await tx.installment.findUniqueOrThrow({
+          where: { id },
         });
+        if (!paid.paidAt) {
+          await tx.installment.update({
+            where: { id },
+            data: { paidAt: now },
+          });
+        }
+        await this.applyDebtDelta(tx, paid.debtId, paid.amount);
       }
 
-      return paidInstallment;
+      return tx.installment.findUniqueOrThrow({ where: { id } });
     });
 
     return this.toResponse(installment);
@@ -182,8 +225,49 @@ export class InstallmentsService {
       debt.weddingPlanId,
       currentUser,
     );
-    await this.prisma.installment.delete({ where: { id } });
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.lockInstallmentRow(tx, id);
+      const current = await tx.installment.findUnique({ where: { id } });
+      if (!current) return; // Already deleted — idempotent.
+
+      await tx.installment.delete({ where: { id } });
+
+      // Deleting a paid installment gives the amount back to the debt
+      // balance; the ledger and its installments must never diverge.
+      if (current.status === InstallmentStatus.PAID) {
+        await this.applyDebtDelta(tx, current.debtId, current.amount.negated());
+      }
+    });
+
     return { id, deleted: true };
+  }
+
+  /**
+   * Applies a payment delta to the parent debt INSIDE the caller's
+   * transaction. The debt row is re-read within the transaction and the
+   * update itself holds the row lock until commit, so concurrent payments
+   * of different installments cannot lose increments.
+   */
+  private async applyDebtDelta(
+    tx: Prisma.TransactionClient,
+    debtId: string,
+    delta: Prisma.Decimal,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Debt" WHERE id = ${debtId} FOR UPDATE`;
+    const debt = await tx.debt.findUniqueOrThrow({ where: { id: debtId } });
+    const next = applyDebtPaymentDelta(debt.totalAmount, debt.paidAmount, delta);
+    await tx.debt.update({
+      where: { id: debtId },
+      data: { paidAmount: next.paidAmount, status: next.status },
+    });
+  }
+
+  private async lockInstallmentRow(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Installment" WHERE id = ${id} FOR UPDATE`;
   }
 
   private async findInstallmentOrThrow(
@@ -229,12 +313,7 @@ export class InstallmentsService {
   }
 
   private requiredNonNegativeDecimal(value: string | number, field: string): string {
-    const normalized = String(value).trim();
-    if (!normalized || !/^\d+(\.\d+)?$/.test(normalized)) {
-      throw new BadRequestException(`${field} must be a valid non-negative decimal value`);
-    }
-
-    return normalized;
+    return requiredMoneyAmount(value, field);
   }
 
   private toResponse(installment: Installment): InstallmentResponse {

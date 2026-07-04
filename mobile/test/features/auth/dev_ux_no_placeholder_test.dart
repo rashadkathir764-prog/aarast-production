@@ -28,7 +28,7 @@ void main() {
       const BudgetExpenseScreen(weddingPlanId: localPlanId),
     );
 
-    expect(find.text('الميزانية والمصاريف'), findsOneWidget);
+    expect(find.text('المال'), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });

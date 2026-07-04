@@ -21,7 +21,7 @@ export class UsersController {
   }
 
   @Get('lookup')
-  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
   lookupByPhone(@Query('phone') phone: string) {
     return this.usersService.lookupByPhone(phone);
   }

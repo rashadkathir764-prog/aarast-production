@@ -6,6 +6,7 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -29,7 +30,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
       final hasAccount =
-          !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
+          AppFeatureFlags.devBypassLoginGatesForUxExploration ||
           await AuthActionGuard.hasAccount(context);
       if (!mounted || !hasAccount) return;
       context.read<ProviderDashboardProvider>().loadDashboard();
@@ -1075,7 +1076,7 @@ class _QuoteTile extends StatelessWidget {
                     ),
                     decoration: const InputDecoration(
                       labelText: 'المبلغ (اختياري)',
-                      suffixText: 'YER',
+                      suffixText: 'ر.ي',
                     ),
                     validator: (value) {
                       final text = value?.trim() ?? '';
@@ -1369,7 +1370,7 @@ String _statusInitial(String status) {
 String _priceText(String? value, String? currency) {
   final clean = value?.trim();
   if (clean == null || clean.isEmpty) return 'حسب الطلب';
-  return '$clean ${currency ?? 'YER'}';
+  return '$clean ${currencyLabelAr(currency)}';
 }
 
 String _dateText(DateTime value) {

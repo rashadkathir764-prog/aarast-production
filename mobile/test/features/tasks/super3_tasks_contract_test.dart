@@ -132,12 +132,8 @@ void main() {
     await _pumpTasksScreen(tester, harness);
 
     expect(find.text('المهام'), findsWidgets);
-    expect(
-      find.text(
-        'تابع تجهيزات زفافك خطوة بخطوة، وركّز على المهام المؤكدة فقط بدون اقتراحات وهمية.',
-      ),
-      findsWidgets,
-    );
+    // ملاحظة: أُزيلت فقرة التطمين المكررة من الترويسة في إعادة تصميم Premium
+    // (تُقال مرة واحدة في الـ onboarding لا في كل شاشة).
     expect(find.text('تأكيد القاعة'), findsWidgets);
     expect(find.text('إنجاز المهام'), findsOneWidget);
     expect(find.text('حساب محفوظ'), findsNothing);

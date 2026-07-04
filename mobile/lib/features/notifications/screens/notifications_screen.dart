@@ -9,6 +9,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
+import '../utils/notification_copy.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({this.weddingPlanId, super.key});
@@ -227,6 +228,11 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = _tone(notification.type);
+    final copy = localizeNotification(
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+    );
     return AarastCard(
       color: notification.isUnread ? tone.background : AppTheme.ivory,
       border: Border.all(
@@ -256,7 +262,7 @@ class _NotificationCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        notification.title,
+                        copy.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleMedium
@@ -279,7 +285,7 @@ class _NotificationCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  notification.body,
+                  copy.body,
                   textAlign: TextAlign.right,
                   style: const TextStyle(
                     color: AppTheme.muted,

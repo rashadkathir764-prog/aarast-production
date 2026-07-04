@@ -152,7 +152,9 @@ void main() {
       );
 
       expect(find.text(summary.seed.title), findsOneWidget);
-      expect(find.text('اعّرست'), findsOneWidget);
+      // الترويسة الفخمة ترحّب بدور المستخدم ضمن تحية شخصية
+      // («‹تحية›، العريس») بدل شعار العلامة المفرد في الودجت القديم.
+      expect(find.textContaining('العريس'), findsOneWidget);
       expect(find.text('وضع تجربة التصميم'), findsNothing);
 
       final syncAction = find.byKey(const Key('royal-local-sync-action'));

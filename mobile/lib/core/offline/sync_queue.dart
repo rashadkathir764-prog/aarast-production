@@ -37,6 +37,14 @@ class SyncQueueItem {
   static const failed = 'failed';
   static const synced = 'synced';
 
+  /// Permanently rejected by the server (validation error) or exhausted its
+  /// retry budget — excluded from automatic replay so the app never spins
+  /// forever on an unfixable item. Manual retry can re-queue it.
+  static const blocked = 'blocked';
+
+  /// Transient failures are retried at most this many times automatically.
+  static const maxAutoRetries = 5;
+
   final String id;
   final String entityType;
   final String operation;

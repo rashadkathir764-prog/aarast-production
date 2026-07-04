@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -16,6 +16,9 @@ import '../../sharing/providers/sharing_provider.dart';
 import '../models/task_summary.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
+import '../utils/task_display.dart';
+import '../widgets/premium/smart_task_card.dart';
+import '../widgets/premium/tasks_progress_hero.dart';
 
 class TaskTimelineScreen extends StatefulWidget {
   const TaskTimelineScreen({required this.weddingPlanId, super.key});
@@ -107,48 +110,28 @@ class _TasksHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      color: AppTheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  'المهام',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.burgundyDark,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const AarastStatusPill(
-                label: 'قائمة العمل',
-                color: AppTheme.burgundy,
-                backgroundColor: AppTheme.burgundySoft,
-                icon: Icons.checklist_rtl_rounded,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'تابع تجهيزات زفافك خطوة بخطوة، وركّز على المهام المؤكدة فقط بدون اقتراحات وهمية.',
-            maxLines: 2,
+    // ترويسة مضغوطة: عنوان + شارة في سطر واحد. لا فقرة تطمين مكررة.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            'المهام',
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: AppTheme.title,
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 10),
+        const AarastStatusPill(
+          label: 'قائمة العمل',
+          color: AppTheme.burgundy,
+          backgroundColor: AppTheme.burgundySoft,
+          icon: Icons.checklist_rtl_rounded,
+        ),
+      ],
     );
   }
 }
@@ -217,7 +200,7 @@ class _TaskTimelineContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        _TopTasksCommandCard(
+        TasksProgressHero(
           summary: summary,
           isLocalPlan: _isLocalGuestPlanId(weddingPlanId),
         ),
@@ -259,23 +242,29 @@ class _TaskTimelineContent extends StatelessWidget {
             ),
           )
         else
-          for (final task in visibleTasks) ...[
-            _PremiumTaskCard(
-              task: task,
-              isBusy: provider.isSubmitting,
-              onMarkDone: task.isDone
-                  ? null
-                  : () => _markDoneWithUndo(context, provider, task),
-              onReopen: task.isDone
-                  ? () => _reopenTask(context, provider, task)
-                  : null,
-              onEdit: () => context.push(
-                AppRouter.editTask(weddingPlanId, task.id),
-                extra: task,
+          for (var i = 0; i < visibleTasks.length; i++) ...[
+            _staggeredTask(
+              SmartTaskCard(
+                task: visibleTasks[i],
+                isBusy: provider.isSubmitting,
+                onMarkDone: visibleTasks[i].isDone
+                    ? null
+                    : () =>
+                        _markDoneWithUndo(context, provider, visibleTasks[i]),
+                onReopen: visibleTasks[i].isDone
+                    ? () => _reopenTask(context, provider, visibleTasks[i])
+                    : null,
+                onEdit: () => context.push(
+                  AppRouter.editTask(weddingPlanId, visibleTasks[i].id),
+                  extra: visibleTasks[i],
+                ),
+                onDelete: () =>
+                    _confirmDelete(context, provider, visibleTasks[i]),
               ),
-              onDelete: () => _confirmDelete(context, provider, task),
+              i,
+              MediaQuery.of(context).disableAnimations,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
           ],
       ],
     );
@@ -416,191 +405,6 @@ class _TaskTimelineContent extends StatelessWidget {
     if (confirmed == true && context.mounted) {
       await provider.deleteTask(weddingPlanId, task.id);
     }
-  }
-}
-
-class _TopTasksCommandCard extends StatelessWidget {
-  const _TopTasksCommandCard({
-    required this.summary,
-    required this.isLocalPlan,
-  });
-
-  final TaskSummary summary;
-  final bool isLocalPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: AppTheme.softShadow(),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              _ProgressSeal(value: summary.completionRatio),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'إنجاز المهام',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.ink,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: summary.completionRatio,
-                        minHeight: 6,
-                        backgroundColor: AppTheme.border,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          AppTheme.burgundy,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                          '${summary.completionPercent}%',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: AppTheme.burgundy,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const Spacer(),
-                        if (isLocalPlan)
-                          Flexible(
-                            child: AarastStatusPill(
-                              label: 'تخطيط محلي',
-                              color: AppTheme.gold,
-                              backgroundColor: AppTheme.goldSoft,
-                              icon: Icons.phone_iphone_rounded,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Divider(height: 1, thickness: 1, color: AppTheme.border),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final itemWidth = constraints.maxWidth < 330
-                  ? constraints.maxWidth
-                  : (constraints.maxWidth - 10) / 2;
-              return Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: [
-                  _StatusMetric(
-                    width: itemWidth,
-                    label: 'الإجمالي',
-                    value: summary.total.toString(),
-                    icon: Icons.format_list_bulleted_rounded,
-                    color: AppTheme.muted,
-                  ),
-                  _StatusMetric(
-                    width: itemWidth,
-                    label: 'مكتملة',
-                    value: summary.completed.toString(),
-                    icon: Icons.check_circle_outline_rounded,
-                    color: AppTheme.success,
-                  ),
-                  _StatusMetric(
-                    width: itemWidth,
-                    label: 'اليوم',
-                    value: summary.dueToday.toString(),
-                    icon: Icons.today_rounded,
-                    color: AppTheme.burgundy,
-                  ),
-                  _StatusMetric(
-                    width: itemWidth,
-                    label: 'متأخرة',
-                    value: summary.overdue.toString(),
-                    icon: Icons.warning_amber_rounded,
-                    color: summary.overdue > 0
-                        ? AppTheme.danger
-                        : AppTheme.muted,
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatusMetric extends StatelessWidget {
-  const _StatusMetric({
-    required this.width,
-    required this.label,
-    required this.value,
-    required this.icon,
-    this.color = AppTheme.burgundy,
-  });
-
-  final double width;
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: color.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: color, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.muted,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              value,
-              textDirection: TextDirection.ltr,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -765,34 +569,6 @@ class _ImportantTaskRow extends StatelessWidget {
   }
 }
 
-class _ProgressSeal extends StatelessWidget {
-  const _ProgressSeal({required this.value});
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 58,
-      height: 58,
-      decoration: BoxDecoration(
-        color: AppTheme.burgundySoft,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.burgundy.withValues(alpha: 0.3)),
-      ),
-      child: Center(
-        child: Text(
-          '${(value * 100).round()}%',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.burgundy,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TimelineFilterBar extends StatelessWidget {
   const _TimelineFilterBar({required this.selected, required this.onChanged});
 
@@ -870,385 +646,6 @@ class _FilterButton extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PremiumTaskCard extends StatelessWidget {
-  const _PremiumTaskCard({
-    required this.task,
-    required this.isBusy,
-    required this.onDelete,
-    required this.onEdit,
-    this.onMarkDone,
-    this.onReopen,
-  });
-
-  final WeddingTask task;
-  final bool isBusy;
-  final VoidCallback? onMarkDone;
-  final VoidCallback? onReopen;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDone = task.isDone;
-    final priorityColor = _priorityColor(task.priority);
-    final isLate = _isLateTask(task);
-    final statusColor = isDone
-        ? AppTheme.success
-        : isLate
-        ? AppTheme.danger
-        : AppTheme.burgundy;
-
-    return AarastCard(
-      padding: EdgeInsets.zero,
-      color: isDone ? AppTheme.surface : AppTheme.surface,
-      onTap: onEdit,
-      border: Border.all(
-        color: isLate
-            ? AppTheme.dangerSoft
-            : isDone
-            ? AppTheme.border
-            : AppTheme.burgundy.withAlpha(30),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: Stack(
-          children: [
-            PositionedDirectional(
-              top: 0,
-              bottom: 0,
-              start: 0,
-              child: Container(
-                width: 4,
-                color: isDone
-                    ? AppTheme.success
-                    : isLate
-                    ? AppTheme.danger
-                    : priorityColor,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 15, 18, 15),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TaskCheckButton(
-                    isDone: isDone,
-                    isBusy: isBusy,
-                    onPressed: onMarkDone,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          task.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                color: isDone ? AppTheme.muted : AppTheme.ink,
-                                fontWeight: FontWeight.w900,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : TextDecoration.none,
-                              ),
-                        ),
-                        if (task.hasDescription) ...[
-                          const SizedBox(height: 5),
-                          Text(
-                            task.description!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: isDone
-                                      ? AppTheme.muted
-                                      : AppTheme.muted,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.35,
-                                ),
-                          ),
-                        ],
-                        const SizedBox(height: 10),
-                        _TaskResponsibleLine(task: task, isDone: isDone),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            _TaskMetaPill(
-                              label: _categoryLabel(task.taskCategory),
-                              color: AppTheme.burgundy,
-                              icon: Icons.sell_outlined,
-                            ),
-                            _TaskMetaPill(
-                              label: _priorityLabel(task.priority),
-                              color: priorityColor,
-                              icon: Icons.flag_rounded,
-                            ),
-                            _TaskMetaPill(
-                              label: isLate
-                                  ? 'متأخرة'
-                                  : _statusLabel(task.status),
-                              color: statusColor,
-                              icon: isDone
-                                  ? Icons.check_circle_rounded
-                                  : isLate
-                                  ? Icons.warning_amber_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                            ),
-                            _TaskMetaPill(
-                              label: task.dueDate == null
-                                  ? 'بدون موعد'
-                                  : _relativeDueLabel(task.dueDate!),
-                              color: task.dueDate == null
-                                  ? AppTheme.muted
-                                  : isLate
-                                  ? AppTheme.danger
-                                  : AppTheme.gold,
-                              icon: Icons.calendar_month_rounded,
-                            ),
-                            OfflinePendingBadge(
-                              entityType: 'task',
-                              entityId: task.id,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    tooltip: 'إجراءات المهمة',
-                    icon: const Icon(
-                      Icons.more_vert_rounded,
-                      color: AppTheme.muted,
-                    ),
-                    onSelected: (value) {
-                      if (value == 'done') onMarkDone?.call();
-                      if (value == 'reopen') onReopen?.call();
-                      if (value == 'edit') onEdit();
-                      if (value == 'delete') onDelete();
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem<String>(
-                        value: isDone ? 'reopen' : 'done',
-                        enabled: isDone ? onReopen != null : onMarkDone != null,
-                        child: Row(
-                          children: [
-                            Icon(
-                              isDone
-                                  ? Icons.restart_alt_rounded
-                                  : Icons.check_circle_outline_rounded,
-                              color: isDone
-                                  ? AppTheme.burgundy
-                                  : AppTheme.success,
-                            ),
-                            const SizedBox(width: 10),
-                            Text(isDone ? 'إعادة فتح المهمة' : 'إنجاز المهمة'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.edit_note_rounded,
-                              color: AppTheme.burgundy,
-                            ),
-                            SizedBox(width: 10),
-                            Text('تعديل المهمة'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline_rounded,
-                              color: AppTheme.danger,
-                            ),
-                            SizedBox(width: 10),
-                            Text('حذف المهمة'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TaskCheckButton extends StatelessWidget {
-  const _TaskCheckButton({
-    required this.isDone,
-    required this.isBusy,
-    this.onPressed,
-  });
-
-  final bool isDone;
-  final bool isBusy;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: isBusy ? null : onPressed,
-      borderRadius: BorderRadius.circular(999),
-      child: AnimatedContainer(
-        duration: AppTheme.motionFast,
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: isDone ? AppTheme.success : AppTheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: isDone ? AppTheme.success : AppTheme.border,
-            width: 1.4,
-          ),
-        ),
-        child: isDone
-            ? const Icon(Icons.check_rounded, color: Colors.white, size: 19)
-            : const Icon(Icons.done_rounded, color: AppTheme.muted, size: 18),
-      ),
-    );
-  }
-}
-
-class _TaskResponsibleLine extends StatelessWidget {
-  const _TaskResponsibleLine({required this.task, required this.isDone});
-
-  final WeddingTask task;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final phone = task.responsiblePhoneDisplay;
-    final textColor = isDone ? AppTheme.muted : AppTheme.ink;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppTheme.ivory.withAlpha(isDone ? 90 : 180),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.gold.withAlpha(34)),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Icon(
-            Icons.person_outline_rounded,
-            size: 17,
-            color: isDone ? AppTheme.muted : AppTheme.burgundy,
-          ),
-          Text(
-            'المسؤول: ${task.responsibleLabel}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          if (phone != null)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 188),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.phone_iphone_rounded,
-                    size: 15,
-                    color: AppTheme.muted,
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      phone,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textDirection: TextDirection.ltr,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: AppTheme.muted,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          if (task.hasResponsibleParticipant)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppTheme.goldSoft,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppTheme.gold.withAlpha(65)),
-              ),
-              child: Text(
-                'مشارك في الخطة',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.burgundy,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TaskMetaPill extends StatelessWidget {
-  const _TaskMetaPill({
-    required this.label,
-    required this.color,
-    required this.icon,
-  });
-
-  final String label;
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withAlpha(13),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withAlpha(34)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1389,10 +786,20 @@ List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
   };
 }
 
-bool _isLateTask(WeddingTask task) {
-  final dueDate = task.dueDate;
-  if (dueDate == null || task.isDone) return false;
-  return _dateOnly(dueDate).isBefore(_dateOnly(DateTime.now()));
+bool _isLateTask(WeddingTask task) => isTaskLate(task);
+
+Widget _staggeredTask(Widget card, int index, bool reduceMotion) {
+  if (reduceMotion) return card;
+  return card
+      .animate()
+      .fadeIn(delay: (45 * index).ms, duration: 340.ms)
+      .slideY(
+        begin: 0.08,
+        end: 0,
+        delay: (45 * index).ms,
+        duration: 340.ms,
+        curve: Curves.easeOutCubic,
+      );
 }
 
 bool _isSameDay(DateTime first, DateTime second) {
@@ -1517,53 +924,6 @@ String _relativeDueLabel(DateTime date) {
 
 String _shortDate(DateTime date) {
   return formatArabicCompactDate(date);
-}
-
-String _priorityLabel(String priority) {
-  return switch (priority) {
-    'LOW' => 'منخفضة',
-    'MEDIUM' => 'متوسطة',
-    'HIGH' => 'عالية',
-    'URGENT' => 'عالية',
-    _ => priority,
-  };
-}
-
-Color _priorityColor(String priority) {
-  return switch (priority) {
-    'LOW' => AppTheme.success,
-    'MEDIUM' => AppTheme.gold,
-    'HIGH' => AppTheme.danger,
-    'URGENT' => AppTheme.danger,
-    _ => AppTheme.muted,
-  };
-}
-
-String _statusLabel(String status) {
-  return switch (status) {
-    'DONE' => 'مكتملة',
-    'IN_PROGRESS' => 'قيد التنفيذ',
-    'TODO' => 'لم تبدأ',
-    'CANCELLED' => 'ملغية',
-    _ => status,
-  };
-}
-
-String _categoryLabel(String? category) {
-  final value = category?.trim();
-  if (value == null || value.isEmpty || value == 'GENERAL') return 'أخرى';
-  return switch (value) {
-    'VENUE' => 'القاعة',
-    'GUESTS' => 'الضيوف',
-    'MONEY' => 'المال',
-    'PROVIDERS' => 'الموردين',
-    'ATTIRE' => 'الملابس',
-    'PHOTOGRAPHY' => 'التصوير',
-    'CATERING' => 'الضيافة',
-    'DECOR' => 'الزينة',
-    'DOCUMENTS' => 'المستندات',
-    _ => value,
-  };
 }
 
 List<SharedMember> _membersForPlan(

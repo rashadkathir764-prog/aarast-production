@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/quote_finance_context.dart';
@@ -63,6 +64,23 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
 
   bool get _isEditMode =>
       widget.expenseId != null || widget.initialExpense != null;
+
+  /// عملة الخطة النشطة كتسمية عربية. تُقرأ دفاعيًا: الخطط المحلية/الضيف قد
+  /// تُعرض بدون WeddingPlansProvider (اختبارات معزولة) فتسقط للافتراضي «ر.ي».
+  String get _currencyLabel {
+    final provider = context.read<WeddingPlansProvider?>();
+    String? code;
+    if (provider != null) {
+      for (final plan in provider.plans) {
+        if (plan.id == widget.weddingPlanId) {
+          code = plan.currency;
+          break;
+        }
+      }
+      code ??= provider.selectedPlan?.currency ?? provider.activePlan?.currency;
+    }
+    return currencyLabelAr(code);
+  }
 
   @override
   void initState() {
@@ -187,6 +205,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                           const SizedBox(height: 14),
                           if (isHallExpense) ...[
                             _HallExpenseFields(
+                              currencyLabel: _currencyLabel,
                               hallNameController: _hallNameController,
                               hallTotalController: _hallTotalController,
                               amountController: _amountController,
@@ -258,10 +277,10 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                                   const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'المبلغ',
-                                suffixText: 'ر.ي',
-                                prefixIcon: Icon(
+                                suffixText: _currencyLabel,
+                                prefixIcon: const Icon(
                                   LucideIcons.wallet,
                                 ),
                               ),
@@ -716,14 +735,15 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
       if (_hallNameController.text.trim().isNotEmpty)
         'اسم الصالة: ${_hallNameController.text.trim()}',
       if (_hallTotal > 0)
-        'إجمالي تكلفة الصالة: ${_moneyPayload(_hallTotal)} ر.ي',
+        'إجمالي تكلفة الصالة: ${_moneyPayload(_hallTotal)} $_currencyLabel',
       if (_paymentAmount > 0)
-        'مبلغ هذه الدفعة: ${_moneyPayload(_paymentAmount)} ر.ي',
+        'مبلغ هذه الدفعة: ${_moneyPayload(_paymentAmount)} $_currencyLabel',
       'نوع الدفعة: $_paymentType',
       'طريقة الدفع: $_paymentMethod',
       if (_bookingDate != null) 'تاريخ الحجز: ${_formatDate(_bookingDate!)}',
       if (_weddingDate != null) 'تاريخ المناسبة: ${_formatDate(_weddingDate!)}',
-      if (_hallRemaining > 0) 'المتبقي: ${_moneyPayload(_hallRemaining)} ر.ي',
+      if (_hallRemaining > 0)
+        'المتبقي: ${_moneyPayload(_hallRemaining)} $_currencyLabel',
       if (_hallRemaining > 0 && _remainingDueDate != null)
         'موعد دفع الباقي: ${_formatDate(_remainingDueDate!)}',
       if (_hallContactNameController.text.trim().isNotEmpty)
@@ -755,7 +775,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
         dueDate: _remainingDueDate ?? _defaultRemainingDueDate(),
         status: 'OPEN',
         note:
-            'باقي تكلفة الصالة بعد دفعة ${_moneyPayload(_paymentAmount)} ر.ي.',
+            'باقي تكلفة الصالة بعد دفعة ${_moneyPayload(_paymentAmount)} $_currencyLabel.',
       );
       if (debt == null) return false;
       return debtProvider.createInstallment(
@@ -886,6 +906,7 @@ class _CategoryDateRow extends StatelessWidget {
 
 class _HallExpenseFields extends StatelessWidget {
   const _HallExpenseFields({
+    required this.currencyLabel,
     required this.hallNameController,
     required this.hallTotalController,
     required this.amountController,
@@ -914,6 +935,7 @@ class _HallExpenseFields extends StatelessWidget {
     required this.onServiceToggled,
   });
 
+  final String currencyLabel;
   final TextEditingController hallNameController;
   final TextEditingController hallTotalController;
   final TextEditingController amountController;
@@ -996,10 +1018,10 @@ class _HallExpenseFields extends StatelessWidget {
           textAlign: TextAlign.right,
           textInputAction: TextInputAction.next,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'إجمالي تكلفة الصالة',
-            suffixText: 'ر.ي',
-            prefixIcon: Icon(LucideIcons.badgeDollarSign),
+            suffixText: currencyLabel,
+            prefixIcon: const Icon(LucideIcons.badgeDollarSign),
           ),
           validator: _positiveRequired('إجمالي تكلفة الصالة مطلوب'),
         ),
@@ -1009,10 +1031,10 @@ class _HallExpenseFields extends StatelessWidget {
           textAlign: TextAlign.right,
           textInputAction: TextInputAction.next,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'مبلغ هذه الدفعة',
-            suffixText: 'ر.ي',
-            prefixIcon: Icon(LucideIcons.wallet),
+            suffixText: currencyLabel,
+            prefixIcon: const Icon(LucideIcons.wallet),
           ),
           validator: _nonNegativeRequired('مبلغ الدفعة غير صحيح'),
         ),
@@ -1050,6 +1072,7 @@ class _HallExpenseFields extends StatelessWidget {
         ],
         const SizedBox(height: 14),
         _HallPaymentSummary(
+          currencyLabel: currencyLabel,
           totalAmount: totalAmount,
           paidAmount: paidAmount,
           remainingAmount: remainingAmount,
@@ -1264,11 +1287,13 @@ class _ReadOnlyInfoRow extends StatelessWidget {
 
 class _HallPaymentSummary extends StatelessWidget {
   const _HallPaymentSummary({
+    required this.currencyLabel,
     required this.totalAmount,
     required this.paidAmount,
     required this.remainingAmount,
   });
 
+  final String currencyLabel;
   final num totalAmount;
   final num paidAmount;
   final num remainingAmount;
@@ -1287,9 +1312,21 @@ class _HallPaymentSummary extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _SummaryLine(label: 'إجمالي الصالة', value: totalAmount),
-          _SummaryLine(label: 'المدفوع الآن', value: paidAmount),
-          _SummaryLine(label: 'المتبقي', value: remainingAmount),
+          _SummaryLine(
+            label: 'إجمالي الصالة',
+            value: totalAmount,
+            currencyLabel: currencyLabel,
+          ),
+          _SummaryLine(
+            label: 'المدفوع الآن',
+            value: paidAmount,
+            currencyLabel: currencyLabel,
+          ),
+          _SummaryLine(
+            label: 'المتبقي',
+            value: remainingAmount,
+            currencyLabel: currencyLabel,
+          ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: percentage / 100,
@@ -1312,10 +1349,15 @@ class _HallPaymentSummary extends StatelessWidget {
 }
 
 class _SummaryLine extends StatelessWidget {
-  const _SummaryLine({required this.label, required this.value});
+  const _SummaryLine({
+    required this.label,
+    required this.value,
+    required this.currencyLabel,
+  });
 
   final String label;
   final num value;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -1333,7 +1375,7 @@ class _SummaryLine extends StatelessWidget {
             ),
           ),
           Text(
-            '${_formatMoney(value)} ر.ي',
+            '${_formatMoney(value)} $currencyLabel',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: AppTheme.ink,
               fontWeight: FontWeight.w900,

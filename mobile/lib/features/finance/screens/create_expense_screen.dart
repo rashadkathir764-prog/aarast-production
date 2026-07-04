@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -131,7 +132,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -179,7 +180,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                             decoration: const InputDecoration(
                               labelText: 'عنوان المصروف',
                               hintText: 'مثال: دفعة صالة الأفراح',
-                              prefixIcon: Icon(Icons.receipt_long_outlined),
+                              prefixIcon: Icon(LucideIcons.receipt),
                             ),
                             validator: _required('عنوان المصروف مطلوب'),
                           ),
@@ -261,7 +262,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                                 labelText: 'المبلغ',
                                 suffixText: 'ر.ي',
                                 prefixIcon: Icon(
-                                  Icons.account_balance_wallet_outlined,
+                                  LucideIcons.wallet,
                                 ),
                               ),
                               validator: _nonNegativeRequired(
@@ -285,7 +286,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                             children: [
                               _StatusChip(
                                 label: 'مخطط',
-                                icon: Icons.schedule_rounded,
+                                icon: LucideIcons.clock,
                                 color: AppTheme.gold,
                                 selected: _status == 'PLANNED',
                                 onTap: () {
@@ -295,7 +296,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               const SizedBox(width: 8),
                               _StatusChip(
                                 label: 'مدفوع',
-                                icon: Icons.check_circle_rounded,
+                                icon: LucideIcons.checkCircle,
                                 color: AppTheme.success,
                                 selected: _status == 'PAID',
                                 onTap: () {
@@ -305,7 +306,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               const SizedBox(width: 8),
                               _StatusChip(
                                 label: 'ملغي',
-                                icon: Icons.block_rounded,
+                                icon: LucideIcons.ban,
                                 color: AppTheme.muted,
                                 selected: _status == 'CANCELLED',
                                 onTap: () {
@@ -331,7 +332,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                             AarastStatusPill(
                               label: provider.errorMessage!,
                               color: AppTheme.danger,
-                              icon: Icons.error_outline_rounded,
+                              icon: LucideIcons.alertCircle,
                             ),
                           ],
                         ],
@@ -341,8 +342,8 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                     AarastButton(
                       label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المصروف',
                       icon: _isEditMode
-                          ? Icons.save_outlined
-                          : Icons.check_rounded,
+                          ? LucideIcons.save
+                          : LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -545,7 +546,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                   const SizedBox(height: 20),
                   AarastSectionHeader(
                     title: title,
-                    icon: Icons.calendar_month_rounded,
+                    icon: LucideIcons.calendar,
                   ),
                   const SizedBox(height: 8),
                   Theme(
@@ -567,7 +568,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                   const SizedBox(height: 12),
                   AarastButton(
                     label: 'تأكيد التاريخ',
-                    icon: Icons.check_rounded,
+                    icon: LucideIcons.check,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
                   ),
                 ],
@@ -601,19 +602,19 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                   const SizedBox(height: 20),
                   const AarastSectionHeader(
                     title: 'تصنيف الميزانية',
-                    icon: Icons.category_outlined,
+                    icon: LucideIcons.tags,
                   ),
                   const SizedBox(height: 14),
                   _CategoryRow(
                     label: 'بدون تصنيف',
-                    icon: Icons.remove_circle_outline_rounded,
+                    icon: LucideIcons.minusCircle,
                     selected: _budgetCategoryId == null,
                     onTap: () => Navigator.of(sheetContext).pop(''),
                   ),
                   for (final category in provider.budgetCategories)
                     _CategoryRow(
                       label: category.name,
-                      icon: Icons.folder_outlined,
+                      icon: LucideIcons.folder,
                       selected: category.id == _budgetCategoryId,
                       onTap: () => Navigator.of(sheetContext).pop(category.id),
                     ),
@@ -796,7 +797,7 @@ class _ExpenseHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.account_balance_wallet_outlined,
+              LucideIcons.wallet,
               color: Colors.white,
               size: 30,
             ),
@@ -852,14 +853,14 @@ class _CategoryDateRow extends StatelessWidget {
     final categoryField = _SelectorField(
       label: 'التصنيف',
       value: category?.name ?? 'بدون تصنيف',
-      icon: Icons.folder_outlined,
+      icon: LucideIcons.folder,
       selected: category != null,
       onTap: onCategoryTap,
     );
     final dateField = _SelectorField(
       label: dateLabel,
       value: expenseDate == null ? 'لم يحدد بعد' : _formatDate(expenseDate!),
-      icon: Icons.calendar_month_rounded,
+      icon: LucideIcons.calendar,
       selected: expenseDate != null,
       onTap: onDateTap,
     );
@@ -980,10 +981,10 @@ class _HallExpenseFields extends StatelessWidget {
           decoration: InputDecoration(
             labelText: 'اسم الصالة',
             hintText: 'مثال: قاعة الملكة',
-            prefixIcon: const Icon(Icons.apartment_rounded),
+            prefixIcon: const Icon(LucideIcons.building2),
             suffixIcon: IconButton(
               tooltip: 'اختيار من الموردين',
-              icon: const Icon(Icons.storefront_outlined),
+              icon: const Icon(LucideIcons.store),
               onPressed: onChooseProvider,
             ),
           ),
@@ -998,7 +999,7 @@ class _HallExpenseFields extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'إجمالي تكلفة الصالة',
             suffixText: 'ر.ي',
-            prefixIcon: Icon(Icons.price_check_rounded),
+            prefixIcon: Icon(LucideIcons.badgeDollarSign),
           ),
           validator: _positiveRequired('إجمالي تكلفة الصالة مطلوب'),
         ),
@@ -1011,7 +1012,7 @@ class _HallExpenseFields extends StatelessWidget {
           decoration: const InputDecoration(
             labelText: 'مبلغ هذه الدفعة',
             suffixText: 'ر.ي',
-            prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+            prefixIcon: Icon(LucideIcons.wallet),
           ),
           validator: _nonNegativeRequired('مبلغ الدفعة غير صحيح'),
         ),
@@ -1035,7 +1036,7 @@ class _HallExpenseFields extends StatelessWidget {
           value: bookingDate == null
               ? 'لم يحدد بعد'
               : _formatDate(bookingDate!),
-          icon: Icons.event_available_rounded,
+          icon: LucideIcons.calendarCheck,
           selected: bookingDate != null,
           onTap: onBookingDateTap,
         ),
@@ -1044,7 +1045,7 @@ class _HallExpenseFields extends StatelessWidget {
           _ReadOnlyInfoRow(
             label: 'تاريخ المناسبة',
             value: _formatDate(weddingDate!),
-            icon: Icons.favorite_rounded,
+            icon: LucideIcons.heart,
           ),
         ],
         const SizedBox(height: 14),
@@ -1076,7 +1077,7 @@ class _HallExpenseFields extends StatelessWidget {
             value: remainingDueDate == null
                 ? 'قبل المناسبة أو اختر تاريخاً'
                 : _formatDate(remainingDueDate!),
-            icon: Icons.notifications_active_outlined,
+            icon: LucideIcons.bellRing,
             selected: remainingDueDate != null,
             onTap: onRemainingDueDateTap,
           ),
@@ -1086,7 +1087,7 @@ class _HallExpenseFields extends StatelessWidget {
           const AarastStatusPill(
             label: 'هذه الصالة مضافة مسبقاً. راجعها حتى لا يتكرر الحجز.',
             color: AppTheme.gold,
-            icon: Icons.info_outline_rounded,
+            icon: LucideIcons.info,
           ),
         ],
         const SizedBox(height: 12),
@@ -1094,8 +1095,8 @@ class _HallExpenseFields extends StatelessWidget {
           onPressed: onToggleDetails,
           icon: Icon(
             showDetails
-                ? Icons.keyboard_arrow_up_rounded
-                : Icons.keyboard_arrow_down_rounded,
+                ? LucideIcons.chevronUp
+                : LucideIcons.chevronDown,
           ),
           label: const Text('تفاصيل الصالة'),
         ),
@@ -1106,7 +1107,7 @@ class _HallExpenseFields extends StatelessWidget {
             textAlign: TextAlign.right,
             decoration: const InputDecoration(
               labelText: 'اسم المسؤول',
-              prefixIcon: Icon(Icons.person_outline_rounded),
+              prefixIcon: Icon(LucideIcons.user),
             ),
           ),
           const SizedBox(height: 12),
@@ -1116,7 +1117,7 @@ class _HallExpenseFields extends StatelessWidget {
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
               labelText: 'رقم المسؤول',
-              prefixIcon: Icon(Icons.phone_outlined),
+              prefixIcon: Icon(LucideIcons.phone),
             ),
           ),
           const SizedBox(height: 12),
@@ -1125,7 +1126,7 @@ class _HallExpenseFields extends StatelessWidget {
             textAlign: TextAlign.right,
             decoration: const InputDecoration(
               labelText: 'عنوان الصالة',
-              prefixIcon: Icon(Icons.location_on_outlined),
+              prefixIcon: Icon(LucideIcons.mapPin),
             ),
           ),
           const SizedBox(height: 12),
@@ -1400,7 +1401,7 @@ class _SelectorField extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.keyboard_arrow_down_rounded,
+              LucideIcons.chevronDown,
               color: AppTheme.muted,
             ),
           ],
@@ -1500,7 +1501,7 @@ class _CategoryRow extends StatelessWidget {
               ),
             ),
             if (selected)
-              const Icon(Icons.check_circle_rounded, color: AppTheme.burgundy),
+              const Icon(LucideIcons.checkCircle, color: AppTheme.burgundy),
           ],
         ),
       ),

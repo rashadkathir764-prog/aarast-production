@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class PremiumRoleCard extends StatefulWidget {
@@ -141,15 +142,15 @@ class _PremiumRoleCardState extends State<PremiumRoleCard>
                 ),
                 if (widget.isSelected)
                   const Icon(
-                    Icons.check_circle_rounded,
+                    LucideIcons.checkCircle,
                     color: AppTheme.burgundy,
                     size: 24,
                   )
                 else
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
+                  const Icon(
+                    LucideIcons.chevronLeft,
                     color: AppTheme.disabled,
-                    size: 16,
+                    size: 18,
                   ),
               ],
             ),

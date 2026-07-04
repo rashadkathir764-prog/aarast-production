@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -294,15 +295,23 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           PremiumPathCard(
             title: 'أريد تنظيم زفافي',
             subtitle: 'ابدأ خطة ذكية للمهام والميزانية والضيوف والموردين',
-            icon: Icons.favorite_rounded,
+            icon: LucideIcons.heart,
             isPrimary: true,
             onTap: () => _goTo(_WelcomeStep.roleSelection),
           ),
           const SizedBox(height: 16),
           PremiumPathCard(
+            title: 'وصلتني دعوة لخطة',
+            subtitle:
+                'ادخل برقم الهاتف والرمز، ثم افتح نفس الخطة حسب صلاحياتك فقط',
+            icon: LucideIcons.mailCheck,
+            onTap: () => context.go(AppRouter.inviteAccess),
+          ),
+          const SizedBox(height: 16),
+          PremiumPathCard(
             title: 'أنا مزود خدمة',
             subtitle: 'اعرض خدماتك واستقبل طلبات العملاء',
-            icon: Icons.storefront_rounded,
+            icon: LucideIcons.store,
             onTap: () => context.go(AppRouter.providerApply),
           ),
         ],
@@ -335,7 +344,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           PremiumRoleCard(
             title: 'العريس',
             subtitle: 'أتابع الخطة والميزانية',
-            icon: Icons.person,
+            icon: LucideIcons.user,
             isSelected: _selectedPersona == GuestPersona.groom,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.groom);
@@ -345,7 +354,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           PremiumRoleCard(
             title: 'العروسة',
             subtitle: 'أرتب التفاصيل والاختيارات',
-            icon: Icons.person_3,
+            icon: LucideIcons.flower2,
             isSelected: _selectedPersona == GuestPersona.bride,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.bride);
@@ -355,7 +364,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           PremiumRoleCard(
             title: 'مساهم / مشارك في الخطة',
             subtitle: 'أساعد في التنظيم والمتابعة',
-            icon: Icons.handshake_rounded,
+            icon: LucideIcons.heartHandshake,
             isSelected: _selectedPersona == GuestPersona.helper,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.helper);
@@ -364,7 +373,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           const SizedBox(height: 14),
           AarastButton(
             label: 'متابعة',
-            icon: Icons.arrow_back_rounded,
+            icon: LucideIcons.arrowLeft,
             onPressed: _selectedPersona == null
                 ? null
                 : () => _goTo(_WelcomeStep.quickSetup),
@@ -397,7 +406,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'هذه البيانات مطلوبة قبل فتح Dashboard حتى تبدأ الخطة بوضوح.',
+            'خطوة أخيرة صغيرة — بهذه البيانات نفتح لك لوحة واضحة تبدأ بها بثقة.',
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -428,7 +437,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                 PremiumTextField(
                   controller: _planNameController,
                   hintText: 'عرسنا، خطة زفاف رشاد...',
-                  icon: Icons.edit_rounded,
+                  icon: LucideIcons.pencil,
                   onChanged: (_) => setState(() => _setupError = null),
                 ),
                 const SizedBox(height: 12),
@@ -489,7 +498,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
                 AarastButton(
                   label: 'حفظ ومتابعة',
-                  icon: Icons.arrow_back_rounded,
+                  icon: LucideIcons.arrowLeft,
                   isLoading: _isLoading,
                   onPressed: _isLoading || _selectedPersona == null
                       ? null
@@ -542,9 +551,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           ],
         ),
         child: const Icon(
-          Icons.arrow_forward_rounded,
+          LucideIcons.arrowRight,
           color: AppTheme.ink,
-          size: 22,
+          size: 20,
         ),
       ),
     );
@@ -623,8 +632,52 @@ class _WelcomeHero extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
+          // مؤشّر خطوات للمسار الخطّي فقط (الدور ← البيانات) — نقطتان.
+          // اختيار المسار تفرّع وليس خطوة، فلا نعرضه فيه.
+          if (step != _WelcomeStep.pathSelection) ...[
+            const SizedBox(height: 14),
+            _WelcomeStepDots(
+              activeIndex: step == _WelcomeStep.roleSelection ? 0 : 1,
+            ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// نقطتا تقدّم أنيقتان: المرحلة النشطة شريط ذهبي ممدود، والأخرى نقطة هادئة.
+class _WelcomeStepDots extends StatelessWidget {
+  const _WelcomeStepDots({required this.activeIndex});
+
+  final int activeIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < 2; i++) ...[
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            height: 6,
+            width: i == activeIndex ? 26 : 6,
+            decoration: BoxDecoration(
+              gradient: i == activeIndex
+                  ? const LinearGradient(
+                      colors: [AppTheme.goldDeep, AppTheme.gold],
+                    )
+                  : null,
+              color: i == activeIndex
+                  ? null
+                  : AppTheme.gold.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          if (i == 0) const SizedBox(width: 6),
+        ],
+      ],
     );
   }
 }
@@ -644,21 +697,21 @@ class _WelcomeHeroContent {
         title: 'أهلاً بك في أعرست',
         message:
             'ابدأ بخطة زفاف واضحة تحفظ تفاصيلك محليًا، وافتح المزامنة والمشاركة عندما تحتاج حسابًا.',
-        icon: Icons.favorite_rounded,
+        icon: LucideIcons.heart,
       ),
       _WelcomeStep.roleSelection => const _WelcomeHeroContent(
         eyebrow: 'تخصيص التجربة',
         title: 'اختر دورك في الخطة',
         message:
             'سنرتب الكلمات والأولويات حول دورك، بدون افتراضات أو أرقام غير مؤكدة.',
-        icon: Icons.person_search_rounded,
+        icon: LucideIcons.users,
       ),
       _WelcomeStep.quickSetup => const _WelcomeHeroContent(
         eyebrow: 'بيانات أساسية',
         title: 'افتح لوحة واضحة',
         message:
             'هذه البيانات مطلوبة قبل فتح لوحة التحكم حتى لا تبدأ الخطة ناقصة أو مربكة.',
-        icon: Icons.edit_calendar_rounded,
+        icon: LucideIcons.calendarDays,
       ),
     };
   }
@@ -687,7 +740,7 @@ class _SetupErrorBanner extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
-            Icons.info_outline_rounded,
+            LucideIcons.info,
             color: AppTheme.danger,
             size: 20,
           ),

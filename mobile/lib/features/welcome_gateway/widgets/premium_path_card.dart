@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class PremiumPathCard extends StatefulWidget {
@@ -140,8 +141,8 @@ class _PremiumPathCardState extends State<PremiumPathCard>
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
+                    LucideIcons.chevronLeft,
+                    size: 18,
                     color: widget.isPrimary
                         ? AppTheme.burgundy
                         : AppTheme.muted,

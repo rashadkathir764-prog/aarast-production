@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
@@ -89,6 +90,10 @@ void main() {
       ),
     );
 
+    // Three path cards now (organizer / invite / provider) — the provider
+    // card can sit below the fold, so bring it into view before tapping.
+    await tester.ensureVisible(find.text('أنا مزود خدمة'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('أنا مزود خدمة'));
     await tester.pumpAndSettle();
 
@@ -136,7 +141,7 @@ void main() {
     // Tap Groom, then continue after the selected state is visible.
     await tester.tap(find.text('العريس'));
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    expect(find.byIcon(LucideIcons.checkCircle), findsOneWidget);
 
     final continueButton = find.text('متابعة');
     await tester.ensureVisible(continueButton);

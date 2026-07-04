@@ -41,7 +41,7 @@ void main() {
         reason:
             'new_dashboard_widgets.dart was an unused dashboard variant. '
             'The canonical production dashboard lives in '
-            'royal_home_today_center.dart and royal_home_chrome.dart.',
+            'PremiumDashboardView (premium/) and royal_home_chrome.dart.',
       );
 
       final planCenter = File(

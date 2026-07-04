@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -12,6 +13,7 @@ import '../models/debt.dart';
 import '../models/debt_summary.dart';
 import '../models/installment.dart';
 import '../providers/debt_installment_provider.dart';
+import '../widgets/premium/debt_pulse_hero.dart';
 
 class DebtInstallmentScreen extends StatefulWidget {
   const DebtInstallmentScreen({
@@ -76,7 +78,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
               children: [
                 IconButton(
                   onPressed: _goBack,
-                  icon: const Icon(Icons.arrow_forward_rounded),
+                  icon: const Icon(LucideIcons.arrowRight),
                   tooltip: 'رجوع',
                 ),
                 const SizedBox(width: 4),
@@ -114,7 +116,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                       AppRouter.createDebt(widget.weddingPlanId),
                       extra: widget.sharedMember,
                     ),
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(LucideIcons.plus),
                     tooltip: 'إضافة مبلغ باقي',
                     style: IconButton.styleFrom(
                       backgroundColor: AppTheme.burgundy,
@@ -222,10 +224,10 @@ class _DebtInstallmentContent extends StatelessWidget {
           AarastEmptyState(
             title: 'تعذر تحميل الديون',
             message: provider.errorMessage!,
-            icon: Icons.error_outline_rounded,
+            icon: LucideIcons.alertCircle,
             action: ElevatedButton.icon(
               onPressed: () => provider.loadDebts(weddingPlanId),
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(LucideIcons.refreshCw),
               label: const Text('إعادة المحاولة'),
             ),
           ),
@@ -249,7 +251,14 @@ class _DebtInstallmentContent extends StatelessWidget {
         ],
         _DebtSearchRow(controller: searchController),
         const SizedBox(height: 12),
-        _DebtSummaryGrid(summary: summary, dueInstallments: dueInstallments),
+        DebtPulseHero(
+          summary: summary,
+          nextDueDate: _nearestInstallment(dueInstallments)?.dueDate,
+          hasOverdue: debts.any(
+            (debt) =>
+                _debtUiStatus(debt, dueInstallments) == _DebtUiStatus.overdue,
+          ),
+        ),
         const SizedBox(height: 12),
         _DebtFilterChips(
           selectedFilter: selectedFilter,
@@ -260,14 +269,14 @@ class _DebtInstallmentContent extends StatelessWidget {
           AarastEmptyState(
             title: 'لا يوجد مبلغ باقي بعد',
             message: 'أضف مبلغاً لم يكتمل دفعه حتى يظهر موعده ومتبقيه هنا',
-            icon: Icons.receipt_long_outlined,
+            icon: LucideIcons.receipt,
             action: canManageFinancialRecords
                 ? ElevatedButton.icon(
                     onPressed: () => context.push(
                       AppRouter.createDebt(weddingPlanId),
                       extra: sharedMember,
                     ),
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(LucideIcons.plus),
                     label: const Text('إضافة مبلغ باقي'),
                   )
                 : null,
@@ -276,7 +285,7 @@ class _DebtInstallmentContent extends StatelessWidget {
           const AarastEmptyState(
             title: 'لا توجد نتائج مطابقة',
             message: 'جرّب تغيير كلمة البحث أو حالة التصفية',
-            icon: Icons.search_off_rounded,
+            icon: LucideIcons.searchX,
           )
         else
           for (final debt in visibleDebts) ...[
@@ -299,7 +308,7 @@ class _DebtInstallmentContent extends StatelessWidget {
                 AppRouter.createDebt(weddingPlanId),
                 extra: sharedMember,
               ),
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(LucideIcons.plus),
               label: const Text('إضافة مبلغ باقي'),
             ),
           ),
@@ -316,174 +325,20 @@ class _DebtSearchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            textAlign: TextAlign.right,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: 'ابحث عن شخص أو مبلغ باقي...',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: controller.text.isEmpty
-                  ? null
-                  : IconButton(
-                      onPressed: controller.clear,
-                      icon: const Icon(Icons.close_rounded),
-                      tooltip: 'مسح البحث',
-                    ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.tune_rounded),
-          tooltip: 'تصفية',
-        ),
-      ],
-    );
-  }
-}
-
-class _DebtSummaryGrid extends StatelessWidget {
-  const _DebtSummaryGrid({
-    required this.summary,
-    required this.dueInstallments,
-  });
-
-  final DebtSummary summary;
-  final List<Installment> dueInstallments;
-
-  @override
-  Widget build(BuildContext context) {
-    final nextInstallment = _nearestInstallment(dueInstallments);
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final itemWidth = constraints.maxWidth < 340
-            ? constraints.maxWidth
-            : (constraints.maxWidth - 10) / 2;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _SummaryTile(
-              width: itemWidth,
-              label: 'إجمالي المبالغ',
-              moneyValue: _moneyValue(summary.totalDebt),
-              color: AppTheme.burgundy,
-              icon: Icons.account_balance_wallet_outlined,
-            ),
-            _SummaryTile(
-              width: itemWidth,
-              label: 'المدفوع',
-              moneyValue: _moneyValue(summary.totalPaid),
-              color: AppTheme.success,
-              icon: Icons.check_circle_outline_rounded,
-            ),
-            _SummaryTile(
-              width: itemWidth,
-              label: 'المتبقي',
-              moneyValue: _moneyValue(summary.remainingDebt),
-              color: AppTheme.danger,
-              icon: Icons.pending_actions_rounded,
-            ),
-            _SummaryTile(
-              width: itemWidth,
-              label: 'أقرب دفعة',
-              value: nextInstallment?.dueDate == null
-                  ? '-'
-                  : _shortDate(nextInstallment!.dueDate!),
-              color: AppTheme.ink,
-              icon: Icons.calendar_month_rounded,
-              ltrValue: true,
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({
-    required this.width,
-    required this.label,
-    required this.color,
-    required this.icon,
-    this.value,
-    this.moneyValue,
-    this.ltrValue = false,
-  });
-
-  final double width;
-  final String label;
-  final String? value;
-  final num? moneyValue;
-  final Color color;
-  final IconData icon;
-  final bool ltrValue;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: AarastCard(
-        padding: const EdgeInsets.all(12),
-        radius: AppTheme.radiusMd,
-        border: Border.all(color: AppTheme.border),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+    return TextField(
+      controller: controller,
+      textAlign: TextAlign.right,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'ابحث عن شخص أو مبلغ باقي...',
+        prefixIcon: const Icon(LucideIcons.search),
+        suffixIcon: controller.text.isEmpty
+            ? null
+            : IconButton(
+                onPressed: controller.clear,
+                icon: const Icon(LucideIcons.x),
+                tooltip: 'مسح البحث',
               ),
-              child: Icon(icon, color: color, size: 19),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  if (moneyValue == null)
-                    Text(
-                      value ?? '',
-                      textDirection: ltrValue ? TextDirection.ltr : null,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    )
-                  else
-                    YemeniMoneyText(
-                      moneyValue!,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -511,7 +366,7 @@ class _DebtFilterChips extends StatelessWidget {
               onSelected: (_) => onFilterChanged(filter),
               showCheckmark: false,
               avatar: selectedFilter == filter
-                  ? const Icon(Icons.check_rounded, size: 16)
+                  ? const Icon(LucideIcons.check, size: 16)
                   : null,
               labelStyle: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: selectedFilter == filter ? Colors.white : AppTheme.muted,
@@ -592,7 +447,7 @@ class _DebtCard extends StatelessWidget {
               AarastStatusPill(label: _debtUiStatusLabel(status), color: color),
               const SizedBox(width: 6),
               const Icon(
-                Icons.chevron_left_rounded,
+                LucideIcons.chevronLeft,
                 color: AppTheme.muted,
                 size: 22,
               ),
@@ -788,7 +643,7 @@ class _DebtAccessDeniedState extends StatelessWidget {
         AarastEmptyState(
           title: 'الباقي والدفعات خاصة',
           message: 'ليست لديك صلاحية عرض التفاصيل المالية.',
-          icon: Icons.lock_outline_rounded,
+          icon: LucideIcons.lock,
         ),
       ],
     );
@@ -829,7 +684,7 @@ class _InlineError extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger),
+          const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
@@ -88,7 +90,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                   ],
                   AarastButton(
                     label: latest == null ? 'اطلب عرض سعر' : 'طلب عرض سعر جديد',
-                    icon: Icons.chat_bubble_outline_rounded,
+                    icon: LucideIcons.messageCircle,
                     onPressed: () => context.push(
                       AppRouter.providerQuote(widget.providerId),
                     ),
@@ -113,12 +115,12 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           if (state.errorMessage != null && provider == null) {
             return _DetailsFrame(
               child: AarastEmptyState(
-                icon: Icons.error_outline_rounded,
+                icon: LucideIcons.alertCircle,
                 title: 'تعذر فتح المورد',
                 message: state.errorMessage!,
                 action: OutlinedButton.icon(
                   onPressed: () => state.loadProviderDetails(widget.providerId),
-                  icon: const Icon(Icons.refresh_rounded),
+                  icon: const Icon(LucideIcons.refreshCw),
                   label: const Text('إعادة المحاولة'),
                 ),
               ),
@@ -128,7 +130,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           if (provider == null) {
             return const _DetailsFrame(
               child: AarastEmptyState(
-                icon: Icons.storefront_outlined,
+                icon: LucideIcons.store,
                 title: 'المورد غير متاح',
                 message: 'لم نتمكن من العثور على تفاصيل هذا المورد.',
               ),
@@ -187,7 +189,7 @@ class _DetailsFrame extends StatelessWidget {
             onPressed: () {
               if (context.canPop()) context.pop();
             },
-            icon: const Icon(Icons.chevron_right_rounded),
+            icon: const Icon(LucideIcons.chevronRight),
           ),
         ),
         const SizedBox(height: 80),
@@ -212,12 +214,10 @@ class _DetailsTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        _RoundButton(icon: Icons.chevron_right_rounded, onTap: onBack),
+        _RoundButton(icon: LucideIcons.chevronRight, onTap: onBack),
         const Spacer(),
         _RoundButton(
-          icon: isFavorite
-              ? Icons.favorite_rounded
-              : Icons.favorite_border_rounded,
+          icon: isFavorite ? LucideIcons.heart : LucideIcons.heart,
           onTap: onFavorite,
         ),
       ],
@@ -262,23 +262,22 @@ class _ProviderHero extends StatelessWidget {
                         AarastStatusPill(
                           label:
                               '${provider.ratingAverage.toStringAsFixed(1)} (${provider.ratingCount})',
-                          icon: Icons.star_rounded,
+                          icon: LucideIcons.star,
                           color: AppTheme.gold,
                           backgroundColor: AppTheme.ivory,
                         ),
                       if (provider.city?.nameAr != null)
                         AarastStatusPill(
                           label: provider.city!.nameAr,
-                          icon: Icons.place_outlined,
+                          icon: LucideIcons.mapPin,
                           color: AppTheme.burgundy,
                           backgroundColor: AppTheme.burgundySoft,
                         ),
                       if (provider.isFeatured)
-                        const AarastStatusPill(
-                          label: 'مميز',
-                          icon: Icons.verified_rounded,
+                        const _ProviderHeroPill(
+                          label: 'مرجع تخطيطي',
+                          icon: LucideIcons.badgeCheck,
                           color: AppTheme.success,
-                          backgroundColor: AppTheme.successSoft,
                         ),
                     ],
                   ),
@@ -288,6 +287,28 @@ class _ProviderHero extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ProviderHeroPill extends StatelessWidget {
+  const _ProviderHeroPill({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastStatusPill(
+      label: label,
+      icon: icon,
+      color: color,
+      backgroundColor: AppTheme.successSoft,
     );
   }
 }
@@ -311,21 +332,13 @@ class _HeroImage extends StatelessWidget {
       ),
       child: imageUrl == null || imageUrl.isEmpty
           ? const Center(
-              child: Icon(
-                Icons.storefront_rounded,
-                color: AppTheme.gold,
-                size: 64,
-              ),
+              child: Icon(LucideIcons.store, color: AppTheme.gold, size: 64),
             )
           : Image.network(
               imageUrl,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) => const Center(
-                child: Icon(
-                  Icons.storefront_rounded,
-                  color: AppTheme.gold,
-                  size: 64,
-                ),
+                child: Icon(LucideIcons.store, color: AppTheme.gold, size: 64),
               ),
             ),
     );
@@ -345,7 +358,7 @@ class _AboutCard extends StatelessWidget {
         children: [
           const AarastSectionHeader(
             title: 'نبذة عن المورد',
-            icon: Icons.info_outline_rounded,
+            icon: LucideIcons.info,
           ),
           const SizedBox(height: 12),
           Text(
@@ -369,14 +382,14 @@ class _AboutCard extends StatelessWidget {
                   label:
                       PhoneNumberUtils.display(provider.phone) ??
                       provider.phone!.trim(),
-                  icon: Icons.phone_outlined,
+                  icon: LucideIcons.phone,
                   color: AppTheme.ink,
                   backgroundColor: AppTheme.ivory,
                 ),
               if (provider.address?.trim().isNotEmpty == true)
                 AarastStatusPill(
                   label: provider.address!.trim(),
-                  icon: Icons.location_city_outlined,
+                  icon: LucideIcons.building2,
                   color: AppTheme.gold,
                   backgroundColor: AppTheme.ivory,
                 ),
@@ -402,12 +415,12 @@ class _ServicesSection extends StatelessWidget {
         children: [
           const AarastSectionHeader(
             title: 'الخدمات المتاحة',
-            icon: Icons.design_services_outlined,
+            icon: LucideIcons.wand,
           ),
           const SizedBox(height: 12),
           if (services.isEmpty)
             const AarastEmptyState(
-              icon: Icons.design_services_outlined,
+              icon: LucideIcons.wand,
               title: 'لا توجد خدمات منشورة',
               message: 'سيظهر هنا كتالوج خدمات المورد عند إضافته.',
             )
@@ -446,7 +459,7 @@ class _ServiceTile extends StatelessWidget {
               color: AppTheme.ivory,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.auto_awesome_rounded, color: AppTheme.gold),
+            child: const Icon(LucideIcons.sparkles, color: AppTheme.gold),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -480,7 +493,7 @@ class _ServiceTile extends StatelessWidget {
               AppRouter.providerQuote(providerId),
               extra: service.id,
             ),
-            icon: const Icon(Icons.chevron_left_rounded),
+            icon: const Icon(LucideIcons.chevronLeft),
           ),
         ],
       ),
@@ -501,7 +514,7 @@ class _PackagesSection extends StatelessWidget {
         children: [
           const AarastSectionHeader(
             title: 'الباقات',
-            icon: Icons.inventory_2_outlined,
+            icon: LucideIcons.package,
           ),
           const SizedBox(height: 12),
           if (packages.isEmpty)
@@ -537,7 +550,7 @@ class _PackageTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.card_giftcard_rounded, color: AppTheme.burgundy),
+          const Icon(LucideIcons.gift, color: AppTheme.burgundy),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -585,10 +598,7 @@ class _ReviewsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const AarastSectionHeader(
-            title: 'التقييمات',
-            icon: Icons.star_border_rounded,
-          ),
+          const AarastSectionHeader(title: 'التقييمات', icon: LucideIcons.star),
           const SizedBox(height: 12),
           if (reviews.isEmpty)
             const Text(
@@ -626,7 +636,7 @@ class _ReviewTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.star_rounded, color: AppTheme.gold, size: 18),
+              const Icon(LucideIcons.star, color: AppTheme.gold, size: 18),
               const SizedBox(width: 4),
               Text(
                 '${review.rating}/5',
@@ -687,5 +697,18 @@ class _RoundButton extends StatelessWidget {
 String _priceText(String? value, String? currency) {
   final clean = value?.trim();
   if (clean == null || clean.isEmpty) return 'السعر غير منشور';
-  return '$clean ${currency ?? 'ر.س'}';
+  final amount = num.tryParse(clean.replaceAll(',', ''));
+  final formatted = amount == null ? clean : _formatMoney(amount);
+  return '$formatted ${currencyLabelAr(currency)}';
+}
+
+String _formatMoney(num value) {
+  final rounded = value.round();
+  final digits = rounded.abs().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return '${rounded < 0 ? '-' : ''}$buffer';
 }

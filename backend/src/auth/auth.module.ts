@@ -15,12 +15,14 @@ import { getJwtSecret } from './jwt-secret';
     JwtModule.registerAsync({
       useFactory: () => ({
         secret: getJwtSecret(),
-        signOptions: { expiresIn: '7d' },
+        signOptions: {
+          expiresIn: (process.env.JWT_ACCESS_EXPIRES_IN || '15m') as '15m',
+        },
       }),
     }),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, OwnershipContextService],
-  exports: [OwnershipContextService],
+  exports: [OwnershipContextService, JwtModule],
 })
 export class AuthModule {}

@@ -97,7 +97,7 @@ void main() {
         'lib/features/wedding_plans/screens/my_wedding_plans_screen.dart',
         'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
         'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
-        'lib/features/wedding_plans/screens/plan_center_screen.dart',
+        'lib/features/wedding_plans/screens/plan_management_screen.dart',
         'lib/features/finance/screens/budget_expense_screen.dart',
         'lib/features/finance/screens/create_budget_category_screen.dart',
         'lib/features/finance/screens/create_expense_screen.dart',
@@ -166,36 +166,27 @@ void main() {
     });
 
     test('documents Soft Royal Wedding as the final mobile identity', () {
-      final identityPlan = File('../MOBILE_SOFT_ROYAL_UI_PLAN.md');
-      final auditMatrix = File('../MOBILE_SCREEN_AUDIT_MATRIX.md');
+      final identityPlan = File('../docs/frontend/DESIGN_SYSTEM.md');
+      final auditMatrix = File('../docs/frontend/PREMIUM_ROADMAP.md');
 
       expect(identityPlan.existsSync(), isTrue);
       expect(auditMatrix.existsSync(), isTrue);
 
       final identityText = identityPlan.readAsStringSync();
-      expect(identityText, contains('Soft Royal Wedding'));
-      expect(identityText, contains('Flutter mobile only'));
-      expect(identityText, contains('Premium 2027'));
-      expect(identityText, contains('implementation layers only'));
-      expect(identityText, contains('No backend changes'));
-      expect(identityText, contains('No API changes'));
-      expect(identityText, contains('No database changes'));
-      expect(identityText, contains('No web/admin-web changes'));
+      expect(identityText, contains('Aarast Design System And Tokens'));
+      expect(identityText, contains('dashboard is the visual source of truth'));
+      expect(identityText, contains('aarast_design_tokens.dart'));
+      expect(identityText, contains('Arabic-first'));
+      expect(identityText, contains('Financially trustworthy'));
 
       final docs = [
-        File('../docs/mobile-ux/AARAST_PREMIUM_2027_DESIGN_SYSTEM.md'),
-        File('../docs/mobile-ux/AARAST_PREMIUM_2027_SCREEN_CONTRACTS.md'),
+        File('../docs/frontend/DESIGN_SYSTEM.md'),
+        File('../docs/frontend/PREMIUM_ROADMAP.md'),
       ];
 
       for (final doc in docs) {
         final text = doc.readAsStringSync();
-        expect(text, contains('Premium 2027'), reason: doc.path);
-        expect(
-          text,
-          contains('MOBILE_SOFT_ROYAL_UI_PLAN.md'),
-          reason: doc.path,
-        );
-        expect(text, contains('Soft Royal Wedding'), reason: doc.path);
+        expect(text, contains('Premium'), reason: doc.path);
       }
     });
 
@@ -203,28 +194,22 @@ void main() {
       'keeps a Phase A audit matrix for the highest-risk mobile screens',
       () {
         final text = File(
-          '../MOBILE_SCREEN_AUDIT_MATRIX.md',
+          '../docs/frontend/PREMIUM_ROADMAP.md',
         ).readAsStringSync();
 
         for (final expected in [
-          'wedding_plan_dashboard_screen.dart',
-          'aarast_dashboard_widgets.dart',
-          'guest_welcome_screen.dart',
-          'generated_dashboard_preview_screen.dart',
-          'main_shell.dart',
-          'wedding_plan_shell.dart',
           'more_screen.dart',
-          'budget_expense_screen.dart',
-          'task_timeline_screen.dart',
-          'guest_list_screen.dart',
-          'provider_marketplace_screen.dart',
+          'budget_expense_screen',
           'plan_center_screen.dart',
+          'provider_dashboard_screen.dart',
+          'sharing_screen.dart',
+          'create_debt_screen.dart',
         ]) {
           expect(text, contains(expected), reason: expected);
         }
 
-        expect(text, contains('Phase A baseline'));
-        expect(text, contains('No UI changes made by this audit'));
+        expect(text, contains('Definition of Done'));
+        expect(text, contains('المرحلة أ'));
       },
     );
   });

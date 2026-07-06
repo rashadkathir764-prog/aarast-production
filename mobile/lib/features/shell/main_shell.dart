@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/routing/app_router.dart';
+import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../home/screens/home_screen.dart';
@@ -111,82 +112,90 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
 
-    return Theme(
-      data: shellTheme,
-      child: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          backgroundColor: AppTheme.ivory,
-          extendBody: true,
-          body: IndexedStack(
-            index: _index,
-            children: [
-              // Index 0: Home overview. Plan lists are explicit routes.
-              _buildLazyTab(
-                0,
-                _activePlanId != null
-                    ? WeddingPlanDashboardScreen(
-                        key: ValueKey('home-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
-                        embedded: true,
-                      )
-                    : const HomeScreen(embedded: true),
-              ),
-
-              // Index 1: Money
-              _buildLazyTab(
-                1,
-                _activePlanId != null
-                    ? BudgetExpenseScreen(
-                        key: ValueKey('money-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
-                        embedded: true,
-                      )
-                    : _buildNoPlanFallback('المال'),
-              ),
-
-              // Index 2: Tasks
-              _buildLazyTab(
-                2,
-                _activePlanId != null
-                    ? TaskTimelineScreen(
-                        key: ValueKey('tasks-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
-                      )
-                    : _buildNoPlanFallback('المهام'),
-              ),
-
-              // Index 3: Guests
-              _buildLazyTab(
-                3,
-                _activePlanId != null
-                    ? GuestListScreen(
-                        key: ValueKey('guests-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
-                        showLocalFab: false,
-                        openAddRequest: _guestAddRequest,
-                      )
-                    : _buildNoPlanFallback('الضيوف'),
-              ),
-
-              // Index 4: Vendors marketplace
-              _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
-            ],
-          ),
-          floatingActionButton: _activePlanId == null || !_showsQuickFab(_index)
-              ? null
-              : RoyalSmartFloatingActionButton(
-                  icon: _fabIconForIndex(_index),
-                  onPressed: _showQuickAdd,
+    return RootTabBackScope(
+      activeIndex: _index,
+      onReturnToRoot: () => _onItemTapped(0),
+      child: Theme(
+        data: shellTheme,
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Scaffold(
+            backgroundColor: AppTheme.ivory,
+            extendBody: true,
+            body: IndexedStack(
+              index: _index,
+              children: [
+                // Index 0: Home overview. Plan lists are explicit routes.
+                _buildLazyTab(
+                  0,
+                  _activePlanId != null
+                      ? WeddingPlanDashboardScreen(
+                          key: ValueKey('home-$_activePlanId'),
+                          weddingPlanId: _activePlanId!,
+                          embedded: true,
+                        )
+                      : const HomeScreen(embedded: true),
                 ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-          bottomNavigationBar: RoyalDashboardBottomNav(
-            activeIndex: _index,
-            onHome: () => _onItemTapped(0),
-            onMoney: () => _onItemTapped(1),
-            onTasks: () => _onItemTapped(2),
-            onGuests: () => _onItemTapped(3),
-            onProviders: () => _onItemTapped(4),
+
+                // Index 1: Money
+                _buildLazyTab(
+                  1,
+                  _activePlanId != null
+                      ? BudgetExpenseScreen(
+                          key: ValueKey('money-$_activePlanId'),
+                          weddingPlanId: _activePlanId!,
+                          embedded: true,
+                        )
+                      : _buildNoPlanFallback('المال'),
+                ),
+
+                // Index 2: Tasks
+                _buildLazyTab(
+                  2,
+                  _activePlanId != null
+                      ? TaskTimelineScreen(
+                          key: ValueKey('tasks-$_activePlanId'),
+                          weddingPlanId: _activePlanId!,
+                        )
+                      : _buildNoPlanFallback('المهام'),
+                ),
+
+                // Index 3: Guests
+                _buildLazyTab(
+                  3,
+                  _activePlanId != null
+                      ? GuestListScreen(
+                          key: ValueKey('guests-$_activePlanId'),
+                          weddingPlanId: _activePlanId!,
+                          showLocalFab: false,
+                          openAddRequest: _guestAddRequest,
+                        )
+                      : _buildNoPlanFallback('الضيوف'),
+                ),
+
+                // Index 4: Vendors marketplace
+                _buildLazyTab(
+                  4,
+                  const ProviderMarketplaceScreen(embedded: true),
+                ),
+              ],
+            ),
+            floatingActionButton:
+                _activePlanId == null || !_showsQuickFab(_index)
+                ? null
+                : RoyalSmartFloatingActionButton(
+                    icon: _fabIconForIndex(_index),
+                    onPressed: _showQuickAdd,
+                  ),
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+            bottomNavigationBar: RoyalDashboardBottomNav(
+              activeIndex: _index,
+              onHome: () => _onItemTapped(0),
+              onMoney: () => _onItemTapped(1),
+              onTasks: () => _onItemTapped(2),
+              onGuests: () => _onItemTapped(3),
+              onProviders: () => _onItemTapped(4),
+            ),
           ),
         ),
       ),

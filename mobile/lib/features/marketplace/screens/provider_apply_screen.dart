@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -68,7 +69,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
               context.go(AppRouter.home);
             }
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       child: ListView(
@@ -106,7 +107,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                   children: [
                     const AarastSectionHeader(
                       title: 'بيانات النشاط',
-                      icon: Icons.storefront_rounded,
+                      icon: LucideIcons.store,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -114,7 +115,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'اسم النشاط / اسم المزود',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                        prefixIcon: Icon(LucideIcons.badge),
                       ),
                       validator: (value) =>
                           value == null || value.trim().length < 2
@@ -132,7 +133,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                     _ApplyDropdown(
                       value: _safeCityId(marketplace),
                       label: 'المدينة',
-                      icon: Icons.place_outlined,
+                      icon: LucideIcons.mapPin,
                       items: marketplace.cities
                           .map(
                             (city) => DropdownMenuItem(
@@ -149,7 +150,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                     _ApplyDropdown(
                       value: _safeCategoryId(marketplace),
                       label: 'فئة الخدمة',
-                      icon: Icons.category_outlined,
+                      icon: LucideIcons.shapes,
                       items: marketplace.categories
                           .map(
                             (category) => DropdownMenuItem(
@@ -170,7 +171,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                       decoration: const InputDecoration(
                         labelText: 'نبذة مختصرة',
                         hintText: 'اكتب ما يميز خدمتك ومناطق التغطية...',
-                        prefixIcon: Icon(Icons.notes_outlined),
+                        prefixIcon: Icon(LucideIcons.fileText),
                       ),
                     ),
                     if (marketplace.cities.isEmpty ||
@@ -191,7 +192,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.send_rounded),
+                          : const Icon(LucideIcons.send),
                       label: const Text('إرسال طلب الانضمام'),
                     ),
                   ],
@@ -255,7 +256,7 @@ class ProviderApplyStatusScreen extends StatelessWidget {
         children: [
           const SizedBox(height: 32),
           AarastEmptyState(
-            icon: Icons.mark_email_read_outlined,
+            icon: LucideIcons.mailCheck,
             title: 'تم استلام طلبك',
             message:
                 'سيتم مراجعة بياناتك، وبعد الموافقة ستظهر لوحة المزود وخدماتك في المكان المناسب.',
@@ -265,13 +266,13 @@ class ProviderApplyStatusScreen extends StatelessWidget {
               children: [
                 FilledButton.icon(
                   onPressed: () => context.go(AppRouter.home),
-                  icon: const Icon(Icons.home_rounded),
+                  icon: const Icon(LucideIcons.home),
                   label: const Text('العودة للرئيسية'),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () => context.go(AppRouter.providerMarketplace),
-                  icon: const Icon(Icons.storefront_outlined),
+                  icon: const Icon(LucideIcons.store),
                   label: const Text('فتح الموردين'),
                 ),
               ],
@@ -294,7 +295,7 @@ class _ApplyIntroCard extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.verified_user_outlined, color: AppTheme.gold),
+          Icon(LucideIcons.shieldCheck, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -325,22 +326,23 @@ class _AuthRequiredCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastEmptyState(
-      icon: Icons.lock_outline_rounded,
+      icon: LucideIcons.lock,
       title: 'تسجيل الدخول مطلوب',
-      message: 'يرجى إنشاء حساب أو تسجيل الدخول أولًا لإرسال طلب الانضمام كمزود.',
+      message:
+          'يرجى إنشاء حساب أو تسجيل الدخول أولًا لإرسال طلب الانضمام كمزود.',
       action: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
           FilledButton.icon(
             onPressed: onLogin,
-            icon: const Icon(Icons.login_rounded),
+            icon: const Icon(LucideIcons.logIn),
             label: const Text('تسجيل الدخول'),
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: onRegisterProvider,
-            icon: const Icon(Icons.storefront_rounded),
+            icon: const Icon(LucideIcons.store),
             label: const Text('إنشاء حساب كمزود'),
           ),
         ],
@@ -358,14 +360,14 @@ class _AlreadyProviderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastEmptyState(
-      icon: Icons.store_mall_directory_outlined,
+      icon: LucideIcons.store,
       title: status == 'ACTIVE' ? 'حساب المزود نشط' : 'طلبك قيد المراجعة',
       message: status == 'ACTIVE'
           ? 'يمكنك فتح لوحة المزود لإدارة الخدمات والطلبات.'
           : 'تم استلام طلبك مسبقًا. ستظهر حالة الحساب من لوحة المزود.',
       action: FilledButton.icon(
         onPressed: onDashboard,
-        icon: const Icon(Icons.dashboard_customize_outlined),
+        icon: const Icon(LucideIcons.layoutDashboard),
         label: const Text('فتح لوحة المزود'),
       ),
     );
@@ -397,7 +399,7 @@ class _ProviderReviewNote extends StatelessWidget {
       color: AppTheme.surface,
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, color: AppTheme.burgundy),
+          Icon(LucideIcons.info, color: AppTheme.burgundy),
           SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -7,12 +8,14 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/quote_finance_context.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/debt.dart';
 import '../providers/debt_installment_provider.dart';
 
@@ -75,6 +78,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DebtInstallmentProvider>();
+    final currencyLabel = _currencyLabel(context);
 
     return AarastScreenFrame(
       maxWidth: 500,
@@ -87,7 +91,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -112,7 +116,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const _DebtHero(),
+                    _DebtHero(fromQuote: widget.quoteContext != null),
                     const SizedBox(height: 18),
                     AarastCard(
                       padding: const EdgeInsets.all(18),
@@ -125,7 +129,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             decoration: const InputDecoration(
                               labelText: 'لمن باقي المبلغ؟',
                               hintText: 'مثال: قاعة الفرح',
-                              prefixIcon: Icon(Icons.person_outline),
+                              prefixIcon: Icon(LucideIcons.user),
                             ),
                             validator: _required('اسم الجهة أو الشخص مطلوب'),
                           ),
@@ -152,7 +156,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             decoration: const InputDecoration(
                               labelText: 'عنوان المبلغ',
                               hintText: 'مثال: باقي الصالة',
-                              prefixIcon: Icon(Icons.receipt_long_outlined),
+                              prefixIcon: Icon(LucideIcons.receipt),
                             ),
                             validator: _required('عنوان المبلغ مطلوب'),
                           ),
@@ -163,12 +167,10 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'إجمالي المبلغ',
-                              suffixText: 'YER',
-                              prefixIcon: Icon(
-                                Icons.account_balance_wallet_outlined,
-                              ),
+                              suffixText: currencyLabel,
+                              prefixIcon: const Icon(LucideIcons.wallet),
                             ),
                             validator: _nonNegativeRequired(
                               'إجمالي المبلغ مطلوب',
@@ -181,12 +183,10 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'المبلغ المدفوع (اختياري)',
-                              suffixText: 'YER',
-                              prefixIcon: Icon(
-                                Icons.check_circle_outline_rounded,
-                              ),
+                              suffixText: currencyLabel,
+                              prefixIcon: const Icon(LucideIcons.checkCircle),
                             ),
                             validator: _nonNegativeOptional,
                           ),
@@ -196,7 +196,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                             value: _dueDate == null
                                 ? 'لم يحدد بعد'
                                 : _formatDate(_dueDate!),
-                            icon: Icons.calendar_month_rounded,
+                            icon: LucideIcons.calendarDays,
                             selected: _dueDate != null,
                             onTap: _showCalendarPicker,
                           ),
@@ -265,7 +265,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                               label:
                                   _localErrorMessage ?? provider.errorMessage!,
                               color: AppTheme.danger,
-                              icon: Icons.error_outline_rounded,
+                              icon: LucideIcons.alertCircle,
                             ),
                           ],
                         ],
@@ -274,7 +274,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                     const SizedBox(height: 18),
                     AarastButton(
                       label: 'حفظ المبلغ',
-                      icon: Icons.check_rounded,
+                      icon: LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -286,6 +286,20 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
         ],
       ),
     );
+  }
+
+  String _currencyLabel(BuildContext context) {
+    final quoteCurrency = widget.quoteContext?.currency;
+    if (quoteCurrency?.trim().isNotEmpty == true) {
+      return currencyLabelAr(quoteCurrency);
+    }
+    final plans = context.read<WeddingPlansProvider?>();
+    for (final plan in plans?.plans ?? const []) {
+      if (plan.id == widget.weddingPlanId) {
+        return currencyLabelAr(plan.currency);
+      }
+    }
+    return currencyLabelAr(null);
   }
 
   void _setStatus(String value) => setState(() => _status = value);
@@ -354,7 +368,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                   const SizedBox(height: 20),
                   const AarastSectionHeader(
                     title: 'تاريخ الاستحقاق',
-                    icon: Icons.event_available_rounded,
+                    icon: LucideIcons.calendarCheck,
                   ),
                   const SizedBox(height: 8),
                   Theme(
@@ -376,7 +390,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                   const SizedBox(height: 12),
                   AarastButton(
                     label: 'تأكيد التاريخ',
-                    icon: Icons.check_rounded,
+                    icon: LucideIcons.check,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
                   ),
                 ],
@@ -461,7 +475,9 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
 }
 
 class _DebtHero extends StatelessWidget {
-  const _DebtHero();
+  const _DebtHero({required this.fromQuote});
+
+  final bool fromQuote;
 
   @override
   Widget build(BuildContext context) {
@@ -478,7 +494,7 @@ class _DebtHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.account_balance_wallet_outlined,
+              LucideIcons.wallet,
               color: AppTheme.burgundy,
               size: 30,
             ),
@@ -489,7 +505,7 @@ class _DebtHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'سجل الباقي بوضوح',
+                  fromQuote ? 'حوّل العرض إلى التزام واضح' : 'سجل الباقي بوضوح',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
@@ -567,10 +583,7 @@ class _SelectorField extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.muted,
-            ),
+            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
           ],
         ),
       ),
@@ -611,7 +624,7 @@ class _StatusChoice extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (selected) ...[
-                Icon(Icons.check_circle_rounded, color: color, size: 15),
+                Icon(LucideIcons.checkCircle, color: color, size: 15),
                 const SizedBox(width: 5),
               ],
               Flexible(

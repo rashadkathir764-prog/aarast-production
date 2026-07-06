@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 
@@ -13,7 +14,7 @@ class PermissionChip extends StatelessWidget {
     return Chip(
       label: Text(label),
       avatar: Icon(
-        enabled ? Icons.check_circle : Icons.lock_outline,
+        enabled ? LucideIcons.checkCircle : LucideIcons.lock,
         size: 18,
         color: enabled ? AppTheme.deepBurgundy : AppTheme.mediumGray,
       ),

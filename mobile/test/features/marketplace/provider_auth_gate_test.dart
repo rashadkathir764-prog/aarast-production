@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_auth_gate.dart';
 import 'package:flutter/material.dart';
@@ -175,11 +176,128 @@ void main() {
       expect(find.text('login'), findsNothing);
     },
   );
+
+  testWidgets('provider dashboard blocks an authenticated wedding user', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+    final authRepository = AuthRepository(apiClient, authStorage);
+    final authController = _AuthenticatedAuthController(
+      authRepository,
+      user: const SafeUser(
+        id: 'user-1',
+        name: 'Wedding User',
+        role: 'USER',
+        appRole: 'WEDDING_USER',
+        status: 'ACTIVE',
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: AppRouter.providerDashboard,
+      routes: [
+        GoRoute(
+          path: AppRouter.home,
+          builder: (context, state) => const Scaffold(body: Text('home')),
+        ),
+        GoRoute(
+          path: AppRouter.providerApply,
+          builder: (context, state) => const Scaffold(body: Text('apply')),
+        ),
+        GoRoute(
+          path: AppRouter.providerDashboard,
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            providerAccountRequired: true,
+            child: const Text('provider-dashboard-opened'),
+          ),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthStorage>.value(value: authStorage),
+          Provider<AuthRepository>.value(value: authRepository),
+          ChangeNotifierProvider<AuthController>.value(value: authController),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('provider-account-required-gate')),
+      findsOneWidget,
+    );
+    expect(find.text('provider-dashboard-opened'), findsNothing);
+  });
+
+  testWidgets(
+    'provider dashboard opens for an authenticated provider account',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final authStorage = AuthStorage(preferences);
+      final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+      final authRepository = AuthRepository(apiClient, authStorage);
+      final authController = _AuthenticatedAuthController(
+        authRepository,
+        user: const SafeUser(
+          id: 'provider-user',
+          name: 'Provider User',
+          role: 'PROVIDER',
+          appRole: 'PROVIDER',
+          status: 'ACTIVE',
+        ),
+      );
+      final router = GoRouter(
+        initialLocation: AppRouter.providerDashboard,
+        routes: [
+          GoRoute(
+            path: AppRouter.providerDashboard,
+            builder: (context, state) => ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              providerAccountRequired: true,
+              child: const Text('provider-dashboard-opened'),
+            ),
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: authStorage),
+            Provider<AuthRepository>.value(value: authRepository),
+            ChangeNotifierProvider<AuthController>.value(value: authController),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('provider-dashboard-opened'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-account-required-gate')),
+        findsNothing,
+      );
+    },
+  );
 }
 
 class _AuthenticatedAuthController extends AuthController {
-  _AuthenticatedAuthController(super.authRepository);
+  _AuthenticatedAuthController(super.authRepository, {SafeUser? user})
+    : _user = user;
+
+  final SafeUser? _user;
 
   @override
   AuthStatus get status => AuthStatus.authenticated;
+
+  @override
+  SafeUser? get user => _user;
 }

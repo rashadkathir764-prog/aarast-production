@@ -24,6 +24,10 @@ import {
 } from './dto/admin-review.dto';
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
+import {
+  AdminConversationReportQueryDto,
+  AdminConversationReportStatusDto,
+} from './dto/admin-conversation-report.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, AdminGuard)
@@ -139,6 +143,19 @@ export class AdminController {
   @Delete('reviews/:id')
   hideReview(@Param('id') id: string) {
     return this.adminService.hideReview(id);
+  }
+
+  @Get('conversation-reports')
+  listConversationReports(@Query() query: AdminConversationReportQueryDto) {
+    return this.adminService.listConversationReports(query);
+  }
+
+  @Patch('conversation-reports/:id/status')
+  updateConversationReportStatus(
+    @Param('id') id: string,
+    @Body() dto: AdminConversationReportStatusDto,
+  ) {
+    return this.adminService.updateConversationReportStatus(id, dto);
   }
 
   @Get('notifications')

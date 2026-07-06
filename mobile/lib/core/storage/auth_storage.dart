@@ -10,6 +10,7 @@ class AuthStorage {
     : _tokenVault = tokenVault;
 
   static const _accessTokenKey = 'aarast_access_token';
+  static const _refreshTokenKey = 'aarast_refresh_token';
   static const _safeUserKey = 'aarast_safe_user';
   static const _activePlanIdKey = 'aarast_active_plan_id';
 
@@ -56,8 +57,17 @@ class AuthStorage {
     }
   }
 
+  Future<String?> readRefreshToken() async {
+    final vault = _tokenVault;
+    if (vault == null) {
+      return _preferences.getString(_refreshTokenKey);
+    }
+    return vault.readRefresh();
+  }
+
   Future<void> saveSession({
     required String accessToken,
+    String? refreshToken,
     required SafeUser user,
   }) async {
     final vault = _tokenVault;
@@ -67,6 +77,17 @@ class AuthStorage {
       await vault.write(accessToken);
       // Never keep a plaintext copy alongside the secure one.
       await _preferences.remove(_accessTokenKey);
+    }
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      if (vault == null) {
+        await _preferences.setString(_refreshTokenKey, refreshToken);
+      } else {
+        await vault.writeRefresh(refreshToken);
+        await _preferences.remove(_refreshTokenKey);
+      }
+    } else {
+      await vault?.deleteRefresh();
+      await _preferences.remove(_refreshTokenKey);
     }
     await _preferences.setString(_safeUserKey, jsonEncode(user.toJson()));
   }
@@ -85,7 +106,9 @@ class AuthStorage {
 
   Future<void> clear() async {
     await _tokenVault?.delete();
+    await _tokenVault?.deleteRefresh();
     await _preferences.remove(_accessTokenKey);
+    await _preferences.remove(_refreshTokenKey);
     await _preferences.remove(_safeUserKey);
     await _preferences.remove(_activePlanIdKey);
   }

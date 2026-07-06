@@ -290,7 +290,7 @@ async function run() {
     check('update adds and trims debt phone', res.body?.creditorPhone === '+967 733 456 789');
     check('updated debt title changed', res.body?.title === 'Updated debt');
     check('updated debt totalAmount changed', res.body?.totalAmount === '600000');
-    check('updated debt status changed', res.body?.status === 'OPEN');
+    check('updated debt status follows paid amount', res.body?.status === 'PARTIALLY_PAID');
     check('updated debt does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

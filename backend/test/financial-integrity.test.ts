@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import { DebtStatus, Prisma } from '@prisma/client';
@@ -65,4 +67,41 @@ test('money validation rejects overflow, extra decimals and garbage', () => {
   assert.throws(() => requiredMoneyAmount('-5', 'amount'), BadRequestException);
   assert.throws(() => requiredMoneyAmount('abc', 'amount'), BadRequestException);
   assert.throws(() => requiredMoneyAmount('', 'amount'), BadRequestException);
+});
+
+test('wedding plan financial children cannot cascade-delete private data', () => {
+  const schema = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8');
+  for (const model of [
+    'BudgetCategory',
+    'Expense',
+    'Debt',
+    'WeddingTask',
+    'SharedMember',
+    'PlanInvite',
+    'Guest',
+    'GuestGroup',
+    'PlanProviderLink',
+  ]) {
+    const block = schema.match(new RegExp(`model ${model} \\{[\\s\\S]*?\\n\\}`))?.[0];
+    assert.ok(block, `missing ${model} model`);
+    assert.match(block, /weddingPlan\s+WeddingPlan\??\s+@relation\([^\n]*onDelete: Restrict\)/);
+  }
+  const notification = schema.match(/model Notification \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(notification);
+  assert.match(notification, /weddingPlan\s+WeddingPlan\?\s+@relation\([^\n]*onDelete: SetNull\)/);
+});
+
+test('money summary reports manage permission through PermissionService', () => {
+  const service = readFileSync(
+    join(process.cwd(), 'src/money/money-summary.service.ts'),
+    'utf8',
+  );
+  assert.match(
+    service,
+    /const canManageFinancialRecords =\s*this\.permissions\.canManageFinancialRecords\(context\);/,
+  );
+  assert.doesNotMatch(
+    service,
+    /context\.sharedMember\?\.canManageFinancialRecords/,
+  );
 });

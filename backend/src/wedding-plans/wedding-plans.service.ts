@@ -95,28 +95,37 @@ export class WeddingPlansService {
     const city =
       this.optionalText(dto.city) ?? cityFromWeddingLocation(location);
 
-    const plan = await this.prisma.weddingPlan.create({
-      data: {
-        ownerUserId: currentUser.id,
-        title: this.requiredText(dto.title, 'title'),
-        city,
-        ...(dto.location !== undefined
-          ? { location: location ?? Prisma.DbNull }
-          : {}),
-        weddingDate: this.optionalDate(dto.weddingDate),
-        priorities: this.normalizePriorities(dto.priorities),
-        estimatedBudget: this.optionalNonNegativeDecimal(dto.estimatedBudget),
-        currency: this.optionalText(dto.currency) ?? 'YER',
-        onboardingPath: dto.onboardingPath ?? null,
-        persona: dto.persona ?? null,
-        ...(selectedCategories.length > 0
-          ? {
-              budgetCategories: {
-                create: selectedCategories.map((name) => ({ name })),
-              },
-            }
-          : {}),
-      },
+    const plan = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.weddingPlan.create({
+        data: {
+          ownerUserId: currentUser.id,
+          title: this.requiredText(dto.title, 'title'),
+          city,
+          ...(dto.location !== undefined
+            ? { location: location ?? Prisma.DbNull }
+            : {}),
+          weddingDate: this.optionalDate(dto.weddingDate),
+          priorities: this.normalizePriorities(dto.priorities),
+          estimatedBudget: this.optionalNonNegativeDecimal(dto.estimatedBudget),
+          currency: this.optionalText(dto.currency) ?? 'YER',
+          onboardingPath: dto.onboardingPath ?? null,
+          persona: dto.persona ?? null,
+          ...(selectedCategories.length > 0
+            ? {
+                budgetCategories: {
+                  create: selectedCategories.map((name) => ({ name })),
+                },
+              }
+            : {}),
+        },
+      });
+
+      await tx.user.update({
+        where: { id: currentUser.id },
+        data: { activeWeddingPlanId: created.id },
+      });
+
+      return created;
     });
 
     return this.toResponse(plan);

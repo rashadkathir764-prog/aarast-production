@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -18,6 +20,70 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test(
+    'user conversation inbox route stays authenticated and quote scoped',
+    () {
+      final source = File(
+        'lib/core/routing/app_router.dart',
+      ).readAsStringSync();
+
+      expect(
+        source,
+        contains("static const conversations = '/conversations';"),
+      );
+      expect(source, contains('path: conversations'));
+      expect(source, contains('const ConversationListView()'));
+      expect(source, contains('ProviderAuthGate('));
+    },
+  );
+
+  testWidgets(
+    'authenticated user opens the inbox and a quote-scoped conversation',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        quoteRequests: const [
+          QuoteRequest(
+            id: 'quote-user-1',
+            providerId: 'provider-1',
+            status: 'SENT',
+            lifecycleStatus: 'PENDING_PROVIDER',
+            provider: ProviderSummary(
+              id: 'provider-1',
+              businessName: 'استديو وعد',
+              ratingAverage: 0,
+              ratingCount: 0,
+            ),
+          ),
+        ],
+      );
+
+      await _pumpMarketplace(
+        tester,
+        state,
+        authenticated: true,
+        withRouter: true,
+      );
+
+      await tester.tap(find.byKey(const Key('user-conversations-action')));
+      await tester.pumpAndSettle();
+      expect(find.text('conversations-opened'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('quote-conversation-quote-user-1')),
+        320,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(
+        find.byKey(const Key('quote-conversation-quote-user-1')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('quote-chat-quote-user-1'), findsOneWidget);
+    },
+  );
+
   testWidgets(
     'Super 5 providers tab is public and does not render fake provider facts',
     (tester) async {
@@ -300,6 +366,17 @@ Future<void> _pumpMarketplace(
               GoRoute(
                 path: AppRouter.providerMarketplace,
                 builder: (context, state) => const ProviderMarketplaceScreen(),
+              ),
+              GoRoute(
+                path: '/conversations',
+                builder: (context, state) =>
+                    const Scaffold(body: Text('conversations-opened')),
+              ),
+              GoRoute(
+                path: '/quotes/:id/conversation',
+                builder: (context, state) => Scaffold(
+                  body: Text('quote-chat-${state.pathParameters['id']}'),
+                ),
               ),
               GoRoute(
                 path: '/providers/:id/quote',

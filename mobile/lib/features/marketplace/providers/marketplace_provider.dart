@@ -569,6 +569,8 @@ class ProviderDashboardProvider extends ChangeNotifier {
     required String phone,
     required String cityId,
     String? description,
+    String? logoUrl,
+    String? coverUrl,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -580,6 +582,8 @@ class ProviderDashboardProvider extends ChangeNotifier {
         phone: phone,
         cityId: cityId,
         description: description,
+        logoUrl: logoUrl,
+        coverUrl: coverUrl,
       );
       _hasProviderProfile = true;
       return true;
@@ -592,6 +596,61 @@ class ProviderDashboardProvider extends ChangeNotifier {
     } finally {
       _isSubmitting = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> addServiceImage({
+    required String serviceId,
+    required String imageUrl,
+    String? altText,
+  }) async {
+    _errorMessage = null;
+    try {
+      final image = await _api.addServiceImage(
+        serviceId: serviceId,
+        imageUrl: imageUrl,
+        altText: altText,
+      );
+      _services = _services
+          .map(
+            (service) => service.id == serviceId
+                ? service.copyWith(images: [...service.images, image])
+                : service,
+          )
+          .toList(growable: false);
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> deleteServiceImage({
+    required String serviceId,
+    required String imageId,
+  }) async {
+    _errorMessage = null;
+    try {
+      await _api.deleteServiceImage(serviceId: serviceId, imageId: imageId);
+      _services = _services
+          .map(
+            (service) => service.id == serviceId
+                ? service.copyWith(
+                    images: service.images
+                        .where((image) => image.id != imageId)
+                        .toList(growable: false),
+                  )
+                : service,
+          )
+          .toList(growable: false);
+      notifyListeners();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      notifyListeners();
+      return false;
     }
   }
 

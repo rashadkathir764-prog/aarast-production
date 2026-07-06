@@ -89,7 +89,7 @@ void main() {
 
     expect(router.state.uri.path, AppRouter.welcome);
     expect(find.byType(SmartWelcomeScreen), findsOneWidget);
-    expect(find.text('كيف تحب تبدأ؟'), findsOneWidget);
+    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
   });
 
   testWidgets('returning guest with local plan opens dashboard', (

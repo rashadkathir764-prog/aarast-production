@@ -1,0 +1,50 @@
+# Scope And Phases
+
+Snapshot date: 2026-07-05
+
+This is the compact phase source. Older phase files were archived during the
+2026-07 documentation consolidation.
+
+## Active Scope
+
+Current implemented scope includes:
+
+- Auth, profile, OTP helpers, and settings.
+- WeddingPlan ownership and active-plan flows.
+- Dashboard summary.
+- Budget categories, expenses, debts, installments, and money summary.
+- Tasks, checklists, assignments, and timeline.
+- Guests and guest groups.
+- Sharing, invites, roles, and permissions.
+- Notifications.
+- Provider references, quote requests/offers, favorites, reviews, services,
+  packages, provider dashboard operations, and city/category catalog.
+- Admin dashboard APIs and admin web operations.
+- Flutter mobile flows for the planning, money, task, sharing, provider, and
+  account surfaces.
+- Mobile SQLite/offline cache and selected sync queue behavior.
+- Five-tab provider portal and quote-scoped conversation UI.
+- Quote-scoped conversations, real-time delivery, unread/read state, mute,
+  block, reporting, and admin moderation.
+- Signed provider, avatar, and chat media upload.
+- Rotating refresh sessions and mobile single-retry behavior.
+
+## Release Validation In Flight
+
+The integrated provider portal, conversation/media, and refresh-session slices
+still require environment-backed smoke and device QA before a release claim.
+
+## Current Phase Discipline
+
+- Keep route-level backend details in `docs/backend/API_CONTRACT.md`.
+- Keep deployment details in `docs/deployment/`.
+- Keep mobile rebuild and premium-screen implementation work in
+  `docs/frontend/`.
+- Do not implement future-phase features early.
+- Do not create backend, Flutter, admin, deployment, migration, or package
+  changes from a documentation task.
+
+## Later Phases
+
+Later phases may explore a larger marketplace, production AI, or FinTech only
+after explicit approval. Those areas are not current MVP behavior.

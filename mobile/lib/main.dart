@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
@@ -12,6 +13,9 @@ import 'core/storage/auth_storage.dart';
 import 'core/storage/token_vault.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
+import 'features/chat/data/chat_api.dart';
+import 'features/chat/data/chat_realtime_client.dart';
+import 'features/chat/providers/chat_provider.dart';
 import 'features/debts/data/debt_installment_api.dart';
 import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
@@ -52,6 +56,7 @@ Future<void> main() async {
   WidgetsBinding.instance.addObserver(offlineSyncService);
   await offlineSyncService.refreshStatus();
   final authRepository = AuthRepository(apiClient, authStorage);
+  apiClient.refreshSession = authRepository.refreshSession;
   final weddingPlansApi = WeddingPlansApi(
     apiClient,
     offline: offlineSyncService,
@@ -71,6 +76,9 @@ Future<void> main() async {
   final sharingApi = SharingApi(apiClient, offline: offlineSyncService);
   final marketplaceApi = MarketplaceApi(apiClient, offline: offlineSyncService);
   final providerDashboardApi = ProviderDashboardApi(apiClient);
+  final mediaUploadApi = MediaUploadApi(apiClient);
+  final chatApi = ChatApi(apiClient);
+  final chatRealtimeClient = ChatRealtimeClient(authStorage);
   final notificationsApi = NotificationsApi(apiClient);
   final guestsApi = GuestsApi(apiClient, offline: offlineSyncService);
   final settingsApi = SettingsApi(apiClient);
@@ -93,6 +101,9 @@ Future<void> main() async {
         Provider<SharingApi>.value(value: sharingApi),
         Provider<MarketplaceApi>.value(value: marketplaceApi),
         Provider<ProviderDashboardApi>.value(value: providerDashboardApi),
+        Provider<MediaUploadApi>.value(value: mediaUploadApi),
+        Provider<ChatApi>.value(value: chatApi),
+        Provider<ChatRealtimeClient>.value(value: chatRealtimeClient),
         Provider<NotificationsApi>.value(value: notificationsApi),
         Provider<GuestsApi>.value(value: guestsApi),
         Provider<SettingsApi>.value(value: settingsApi),
@@ -153,6 +164,13 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => ProviderDashboardProvider(providerDashboardApi),
+        ),
+        ChangeNotifierProvider<ChatProvider>(
+          create: (_) => ChatProvider(
+            api: chatApi,
+            realtime: chatRealtimeClient,
+            authStorage: authStorage,
+          ),
         ),
       ],
       child: const AarastApp(),

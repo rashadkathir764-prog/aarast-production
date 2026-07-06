@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'core/routing/app_router.dart';
+import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_controller.dart';
 
@@ -19,9 +20,12 @@ class _AarastAppState extends State<AarastApp> {
   // Created once per app lifetime: rebuilding the root widget must never
   // recreate the router, or the whole navigation state would be lost.
   late final GoRouter _router = AppRouter.create();
+  late final AarastBackButtonDispatcher _backButtonDispatcher =
+      AarastBackButtonDispatcher(_router);
 
   @override
   void dispose() {
+    _backButtonDispatcher.dispose();
     _router.dispose();
     super.dispose();
   }
@@ -46,7 +50,10 @@ class _AarastAppState extends State<AarastApp> {
       supportedLocales: const [Locale('ar')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: AppTheme.light(),
-      routerConfig: _router,
+      routeInformationProvider: _router.routeInformationProvider,
+      routeInformationParser: _router.routeInformationParser,
+      routerDelegate: _router.routerDelegate,
+      backButtonDispatcher: _backButtonDispatcher,
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,

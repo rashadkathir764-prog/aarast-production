@@ -4,13 +4,22 @@ import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 
 typedef TokenProvider = Future<String?> Function();
+typedef SessionRefresher = Future<bool> Function();
 
 const aarastBackendConnectionErrorMessage =
     'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
 
 class ApiClient {
-  ApiClient({required TokenProvider tokenProvider})
+  ApiClient({required TokenProvider tokenProvider, Dio? uploadDio})
     : _tokenProvider = tokenProvider,
+      _uploadDio =
+          uploadDio ??
+          Dio(
+            BaseOptions(
+              connectTimeout: const Duration(seconds: 12),
+              receiveTimeout: const Duration(seconds: 12),
+            ),
+          ),
       dio = Dio(
         BaseOptions(
           baseUrl: ApiConfig.baseUrl,
@@ -39,7 +48,7 @@ class ApiClient {
           );
           handler.next(response);
         },
-        onError: (error, handler) {
+        onError: (error, handler) async {
           _debugAuthLoginStatus(
             error.requestOptions.path,
             error.response?.statusCode,
@@ -47,8 +56,25 @@ class ApiClient {
           // A 401 outside the auth endpoints means the session token is no
           // longer valid — every screen would otherwise keep failing with
           // misleading errors until app restart.
-          if (error.response?.statusCode == 401 &&
-              !error.requestOptions.path.startsWith('/auth')) {
+          if (_canRefresh(error)) {
+            try {
+              final refreshed = await _refreshOnce();
+              if (refreshed) {
+                final options = error.requestOptions;
+                options.extra[_refreshRetryKey] = true;
+                final token = await _tokenProvider();
+                if (token != null && token.isNotEmpty) {
+                  options.headers['Authorization'] = 'Bearer $token';
+                }
+                handler.resolve(await dio.fetch<Object?>(options));
+                return;
+              }
+            } on Object {
+              handler.next(error);
+              return;
+            }
+            onSessionExpired?.call();
+          } else if (_isFinalUnauthorized(error)) {
             onSessionExpired?.call();
           }
           handler.next(error);
@@ -58,11 +84,42 @@ class ApiClient {
   }
 
   final Dio dio;
+  final Dio _uploadDio;
   final TokenProvider _tokenProvider;
+  static const _refreshRetryKey = 'aarast_refresh_retried';
+  Future<bool>? _refreshInFlight;
+
+  SessionRefresher? refreshSession;
 
   /// Wired by the auth layer after construction; invoked when any
   /// non-auth request returns 401 so the app can force a clean re-login.
   void Function()? onSessionExpired;
+
+  bool _canRefresh(DioException error) {
+    return error.response?.statusCode == 401 &&
+        !error.requestOptions.path.startsWith('/auth') &&
+        error.requestOptions.extra[_refreshRetryKey] != true &&
+        refreshSession != null;
+  }
+
+  bool _isFinalUnauthorized(DioException error) {
+    return error.response?.statusCode == 401 &&
+        !error.requestOptions.path.startsWith('/auth');
+  }
+
+  Future<bool> _refreshOnce() async {
+    final active = _refreshInFlight;
+    if (active != null) return active;
+    final callback = refreshSession;
+    if (callback == null) return false;
+    final future = callback();
+    _refreshInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_refreshInFlight, future)) _refreshInFlight = null;
+    }
+  }
 
   Future<Map<String, dynamic>> getJson(String path) async {
     try {
@@ -114,6 +171,27 @@ class ApiClient {
     try {
       final response = await dio.delete<Object?>(path);
       return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
+  Future<void> putBytes(
+    String url,
+    Uint8List bytes, {
+    required String contentType,
+  }) async {
+    try {
+      await _uploadDio.put<void>(
+        url,
+        data: Stream<List<int>>.value(bytes),
+        options: Options(
+          headers: {
+            Headers.contentTypeHeader: contentType,
+            Headers.contentLengthHeader: bytes.length,
+          },
+        ),
+      );
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
     }

@@ -443,13 +443,22 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OutlinedButton.icon(
-                onPressed: () => context.push(AppRouter.favoriteProviders),
-                icon: const Icon(Icons.favorite_border_rounded, size: 18),
-                label: const Text('فتح المحفوظات'),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  key: const Key('user-conversations-action'),
+                  onPressed: () => context.push(AppRouter.conversations),
+                  icon: const Icon(Icons.forum_outlined, size: 18),
+                  label: const Text('المحادثات'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => context.push(AppRouter.favoriteProviders),
+                  icon: const Icon(Icons.favorite_border_rounded, size: 18),
+                  label: const Text('فتح المحفوظات'),
+                ),
+              ],
             ),
           ] else
             const _PublicBrowseNote(),
@@ -1300,17 +1309,26 @@ class _QuoteRequestTile extends StatelessWidget {
             height: 1.4,
           ),
         ),
-        if (quote.weddingPlanId?.trim().isNotEmpty == true) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: OutlinedButton.icon(
-              onPressed: onOpenPlanCenter,
-              icon: const Icon(Icons.event_note_outlined, size: 18),
-              label: const Text('فتح مركز الخطة'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            FilledButton.icon(
+              key: Key('quote-conversation-${quote.id}'),
+              onPressed: () =>
+                  context.push(AppRouter.quoteConversation(quote.id)),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+              label: const Text('محادثة المزوّد'),
             ),
-          ),
-        ],
+            if (quote.weddingPlanId?.trim().isNotEmpty == true)
+              OutlinedButton.icon(
+                onPressed: onOpenPlanCenter,
+                icon: const Icon(Icons.event_note_outlined, size: 18),
+                label: const Text('فتح مركز الخطة'),
+              ),
+          ],
+        ),
       ],
     );
   }

@@ -14,6 +14,7 @@ class ProviderAuthGate extends StatelessWidget {
     required this.resumeLocation,
     this.embedded = false,
     this.registerAsProvider = false,
+    this.providerAccountRequired = false,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class ProviderAuthGate extends StatelessWidget {
   final String resumeLocation;
   final bool embedded;
   final bool registerAsProvider;
+  final bool providerAccountRequired;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,12 @@ class ProviderAuthGate extends StatelessWidget {
     if (auth.status == AuthStatus.checking) {
       return const AarastScaffold(child: AarastScreenLoading());
     }
-    if (auth.status == AuthStatus.authenticated) return child;
+    if (auth.status == AuthStatus.authenticated) {
+      if (!providerAccountRequired || auth.user?.isProviderAccount == true) {
+        return child;
+      }
+      return _ProviderAccountRequiredGate(embedded: embedded);
+    }
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -132,5 +139,94 @@ class ProviderAuthGate extends StatelessWidget {
     final uri = Uri.parse(location);
     final query = {...uri.queryParameters, 'resume': resumeLocation};
     return uri.replace(queryParameters: query).toString();
+  }
+}
+
+class _ProviderAccountRequiredGate extends StatelessWidget {
+  const _ProviderAccountRequiredGate({required this.embedded});
+
+  final bool embedded;
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        backgroundColor: AppTheme.ivory,
+        body: SafeArea(
+          bottom: !embedded,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.fromLTRB(20, 24, 20, embedded ? 120 : 24),
+                children: [
+                  AarastCard(
+                    key: const Key('provider-account-required-gate'),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppTheme.goldSoft,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.storefront_rounded,
+                            color: AppTheme.goldDeep,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'هذا المسار للمزوّدين فقط',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                color: AppTheme.ink,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'حسابك الحالي حساب تخطيط زفاف. افتح لوحة العريس/العروسة أو قدّم طلب الانضمام كمزوّد.',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppTheme.muted,
+                                fontWeight: FontWeight.w700,
+                                height: 1.5,
+                              ),
+                        ),
+                        const SizedBox(height: 18),
+                        AarastButton(
+                          key: const Key('provider-account-required-apply'),
+                          label: 'تقديم طلب مزوّد',
+                          icon: Icons.store_mall_directory_rounded,
+                          onPressed: () => context.go(AppRouter.providerApply),
+                        ),
+                        const SizedBox(height: 10),
+                        AarastButton(
+                          key: const Key('provider-account-required-home'),
+                          label: 'فتح لوحة التخطيط',
+                          icon: Icons.favorite_rounded,
+                          variant: AarastButtonVariant.secondary,
+                          onPressed: () => context.go(AppRouter.home),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

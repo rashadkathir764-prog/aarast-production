@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -116,7 +117,7 @@ class _SharingContent extends StatelessWidget {
       return const AuthGatePanel(
         title: AuthActionGuard.sharingLoginGateTitle,
         body: AuthActionGuard.sharingLoginGateBody,
-        icon: Icons.group_add_outlined,
+        icon: LucideIcons.userPlus,
       );
     }
 
@@ -124,7 +125,7 @@ class _SharingContent extends StatelessWidget {
       return const AuthGatePanel(
         title: AuthActionGuard.sessionExpiredTitle,
         body: AuthActionGuard.sharingSessionExpiredBody,
-        icon: Icons.lock_clock_outlined,
+        icon: LucideIcons.fileClock,
       );
     }
 
@@ -144,7 +145,7 @@ class _SharingContent extends StatelessWidget {
           const SizedBox(height: 16),
           AarastButton(
             label: 'إعادة المحاولة',
-            icon: Icons.refresh_rounded,
+            icon: LucideIcons.refreshCw,
             onPressed: () => provider.loadMembers(weddingPlanId),
           ),
         ],
@@ -153,11 +154,21 @@ class _SharingContent extends StatelessWidget {
 
     return ListView(
       children: [
+        _SharingHero(
+          memberCount: provider.members.length,
+          pendingInviteCount: provider.invites
+              .where((invite) => invite.isPending)
+              .length,
+          financialAccessCount: provider.members
+              .where((member) => member.hasFinancialAccess)
+              .length,
+        ),
+        const SizedBox(height: 12),
         const _PrivacyNotice(),
         const SizedBox(height: 12),
         AarastButton(
           label: 'إضافة عضو',
-          icon: Icons.person_add,
+          icon: LucideIcons.userPlus,
           onPressed: provider.isSubmitting
               ? null
               : () => context.push(AppRouter.addSharedMember(weddingPlanId)),
@@ -238,6 +249,67 @@ class _SharingContent extends StatelessWidget {
   }
 }
 
+class _SharingHero extends StatelessWidget {
+  const _SharingHero({
+    required this.memberCount,
+    required this.pendingInviteCount,
+    required this.financialAccessCount,
+  });
+
+  final int memberCount;
+  final int pendingInviteCount;
+  final int financialAccessCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      color: AppTheme.ivory,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.shieldCheck, color: AppTheme.burgundy),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'مشاركة آمنة للخطة',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.deepBurgundy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              AarastStatusPill(
+                label: '$memberCount عضو',
+                icon: LucideIcons.users,
+                color: AppTheme.burgundy,
+              ),
+              AarastStatusPill(
+                label: '$pendingInviteCount دعوة معلقة',
+                icon: LucideIcons.mail,
+                color: AppTheme.gold,
+              ),
+              AarastStatusPill(
+                label: '$financialAccessCount وصول مالي',
+                icon: LucideIcons.walletCards,
+                color: AppTheme.success,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PendingInviteCard extends StatelessWidget {
   const _PendingInviteCard({required this.invite, required this.onCancel});
 
@@ -253,7 +325,7 @@ class _PendingInviteCard extends StatelessWidget {
         border: Border.all(color: AppTheme.border),
         child: Row(
           children: [
-            const Icon(Icons.schedule_send_outlined, color: AppTheme.gold),
+            const Icon(LucideIcons.send, color: AppTheme.gold),
             const SizedBox(width: 10),
             Expanded(
               child: Column(

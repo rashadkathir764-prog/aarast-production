@@ -51,6 +51,13 @@ addCheck(
 const appRoutes = read(join(srcRoot, 'App.tsx'));
 const sidebar = read(join(srcRoot, 'layout', 'Sidebar.tsx'));
 const dashboard = read(join(srcRoot, 'pages', 'DashboardPage.tsx'));
+const adminApi = read(join(srcRoot, 'api', 'admin.ts'));
+const adminRuntimeSmoke = read(join(process.cwd(), 'scripts', 'admin-runtime-smoke.mjs'));
+const conversationReportsPagePath = join(
+  srcRoot,
+  'pages',
+  'ConversationReportsPage.tsx',
+);
 
 addCheck(
   'Unsupported admin pages are not routed',
@@ -68,6 +75,21 @@ addCheck(
     !dashboard.includes('تحتاج API') &&
     !dashboard.includes('حجوزات') &&
     !dashboard.includes('حالة دفع'),
+);
+
+addCheck(
+  'Conversation report moderation is fully routed',
+  appRoutes.includes('path="conversation-reports"') &&
+    sidebar.includes('/conversation-reports') &&
+    adminApi.includes('/admin/conversation-reports') &&
+    sourceFiles.includes(conversationReportsPagePath),
+);
+
+addCheck(
+  'Admin runtime smoke has no hardcoded credential fallback',
+  !adminRuntimeSmoke.includes('ADMIN_SMOKE_ALLOW_DEV_CREDENTIALS') &&
+    !adminRuntimeSmoke.includes('Aarast@') &&
+    !adminRuntimeSmoke.includes("|| '770"),
 );
 
 for (const check of checks) {

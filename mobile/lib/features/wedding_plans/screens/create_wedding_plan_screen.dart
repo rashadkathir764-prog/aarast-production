@@ -1,9 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
@@ -22,7 +24,9 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _budgetController = TextEditingController();
-  final _currencyController = TextEditingController(text: 'YER');
+  final _currencyController = TextEditingController(
+    text: currencyLabelAr(defaultCurrencyCode),
+  );
   final _governorateController = TextEditingController();
   final _cityOrDistrictController = TextEditingController();
   final _areaOrNeighborhoodController = TextEditingController();
@@ -66,7 +70,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                   const SizedBox(height: 20),
                   const AarastSectionHeader(
                     title: 'تاريخ الزفاف',
-                    icon: Icons.calendar_month_rounded,
+                    icon: LucideIcons.calendarDays,
                   ),
                   const SizedBox(height: 8),
                   Theme(
@@ -88,7 +92,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                   const SizedBox(height: 12),
                   AarastButton(
                     label: 'تأكيد التاريخ',
-                    icon: Icons.check_rounded,
+                    icon: LucideIcons.check,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
                   ),
                 ],
@@ -121,7 +125,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -159,7 +163,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                             decoration: const InputDecoration(
                               labelText: 'عنوان الخطة',
                               hintText: 'مثال: حفلتنا الكبيرة',
-                              prefixIcon: Icon(Icons.list_alt_rounded),
+                              prefixIcon: Icon(LucideIcons.list),
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -185,7 +189,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                             value: _weddingDate == null
                                 ? 'اختر التاريخ'
                                 : _formatDate(_weddingDate!),
-                            icon: Icons.calendar_month_rounded,
+                            icon: LucideIcons.calendarDays,
                             selected: _weddingDate != null,
                             onTap: _showCalendarPicker,
                           ),
@@ -204,9 +208,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'الميزانية التقديرية',
                                     hintText: '2,500,000',
-                                    prefixIcon: Icon(
-                                      Icons.account_balance_wallet_outlined,
-                                    ),
+                                    prefixIcon: Icon(LucideIcons.wallet),
                                   ),
                                 ),
                               ),
@@ -228,7 +230,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                             AarastStatusPill(
                               label: provider.errorMessage!,
                               color: AppTheme.danger,
-                              icon: Icons.error_outline_rounded,
+                              icon: LucideIcons.alertCircle,
                             ),
                           ],
                         ],
@@ -247,7 +249,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
                     const SizedBox(height: 18),
                     AarastButton(
                       label: 'إنشاء الخطة',
-                      icon: Icons.chevron_left_rounded,
+                      icon: LucideIcons.chevronLeft,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -300,9 +302,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
       location: location.toJson(),
       weddingDate: _weddingDate,
       estimatedBudget: budget.isEmpty ? null : budget,
-      currency: _currencyController.text.trim().isEmpty
-          ? 'YER'
-          : _currencyController.text.trim(),
+      currency: currencyCodeFromDisplayInput(_currencyController.text),
     );
 
     if (plan != null && mounted) {
@@ -312,7 +312,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text(notice)));
       }
-      _goBack();
+      context.go(AppRouter.weddingPlanDashboard(plan.id));
     }
   }
 
@@ -401,21 +401,21 @@ class _PlanPreviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _PreviewMetric(
-                  icon: Icons.account_balance_wallet_outlined,
+                  icon: LucideIcons.wallet,
                   value: budget,
                   label: 'الميزانية',
                 ),
               ),
               Expanded(
                 child: _PreviewMetric(
-                  icon: Icons.checklist_rounded,
+                  icon: LucideIcons.listChecks,
                   value: '0',
                   label: 'المهام',
                 ),
               ),
               Expanded(
                 child: _PreviewMetric(
-                  icon: Icons.location_on_outlined,
+                  icon: LucideIcons.mapPin,
                   value: city,
                   label: title,
                 ),
@@ -526,10 +526,7 @@ class _SelectorField extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.muted,
-            ),
+            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
           ],
         ),
       ),

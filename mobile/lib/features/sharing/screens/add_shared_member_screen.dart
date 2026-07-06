@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -80,7 +81,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
           onPressed: () {
             if (context.canPop()) context.pop();
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       child:
@@ -157,7 +158,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.person_add_alt_1_rounded),
+                      : const Icon(LucideIcons.userPlus),
                   label: const Text('إرسال دعوة المشاركة'),
                 ),
                 const SizedBox(height: 20),
@@ -277,7 +278,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       return const AuthGatePanel(
         title: AuthActionGuard.sharingLoginGateTitle,
         body: AuthActionGuard.sharingLoginGateBody,
-        icon: Icons.group_add_outlined,
+        icon: LucideIcons.userPlus,
       );
     }
 
@@ -285,7 +286,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       return const AuthGatePanel(
         title: AuthActionGuard.sessionExpiredTitle,
         body: AuthActionGuard.sharingSessionExpiredBody,
-        icon: Icons.lock_clock_outlined,
+        icon: LucideIcons.fileClock,
       );
     }
 
@@ -339,7 +340,7 @@ class _PhoneLookupCard extends StatelessWidget {
         children: [
           const AarastSectionHeader(
             title: 'البحث عن العضو',
-            icon: Icons.phone_iphone_rounded,
+            icon: LucideIcons.smartphone,
           ),
           const SizedBox(height: 14),
           ContactPhoneField(
@@ -355,7 +356,7 @@ class _PhoneLookupCard extends StatelessWidget {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: isLookingUp ? null : onLookup,
-            icon: const Icon(Icons.manage_search_rounded),
+            icon: const Icon(LucideIcons.search),
             label: const Text('بحث عن المستخدم'),
           ),
           if (foundUser != null) ...[
@@ -396,7 +397,7 @@ class _FoundUserCard extends StatelessWidget {
               children: [
                 const AarastStatusPill(
                   label: 'مستخدم مسجل',
-                  icon: Icons.verified_rounded,
+                  icon: LucideIcons.badgeCheck,
                   color: AppTheme.success,
                   backgroundColor: AppTheme.ivory,
                 ),
@@ -491,7 +492,7 @@ class _LookupEmpty extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppTheme.gold),
+          const Icon(LucideIcons.info, color: AppTheme.gold),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -522,7 +523,7 @@ class _RoleDropdown extends StatelessWidget {
         initialValue: value,
         decoration: const InputDecoration(
           labelText: 'الدور',
-          prefixIcon: Icon(Icons.admin_panel_settings_outlined),
+          prefixIcon: Icon(LucideIcons.shieldCheck),
         ),
         items: const [
           DropdownMenuItem(value: 'VIEWER', child: Text('مشاهد')),
@@ -593,7 +594,7 @@ class _PermissionSwitches extends StatelessWidget {
         children: [
           const AarastSectionHeader(
             title: 'الصلاحيات',
-            icon: Icons.privacy_tip_outlined,
+            icon: LucideIcons.shieldCheck,
           ),
           const SizedBox(height: 8),
           _PermissionTile(
@@ -601,70 +602,70 @@ class _PermissionSwitches extends StatelessWidget {
             onChanged: onManageTasksChanged,
             title: 'إدارة المهام',
             subtitle: 'إضافة وتعديل مهام الخطة.',
-            icon: Icons.checklist_rtl_rounded,
+            icon: LucideIcons.listChecks,
           ),
           _PermissionTile(
             value: canManageGuests,
             onChanged: onManageGuestsChanged,
             title: 'إدارة الضيوف',
             subtitle: 'إضافة الضيوف وتحديث حضورهم.',
-            icon: Icons.groups_outlined,
+            icon: LucideIcons.users,
           ),
           _PermissionTile(
             value: canManageProviders,
             onChanged: onManageProvidersChanged,
             title: 'إدارة الموردين والعروض',
             subtitle: 'طلب عروض الأسعار وقبولها أو رفضها.',
-            icon: Icons.storefront_outlined,
+            icon: LucideIcons.store,
           ),
           _PermissionTile(
             value: canEditPlan,
             onChanged: onEditPlanChanged,
             title: 'تعديل الخطة',
             subtitle: 'تعديل بيانات الخطة الأساسية.',
-            icon: Icons.edit_calendar_outlined,
+            icon: LucideIcons.calendarDays,
           ),
           _PermissionTile(
             value: canInviteMembers,
             onChanged: onInviteMembersChanged,
             title: 'دعوة مشاركين',
             subtitle: 'إرسال الدعوات وإدارة المشاركين.',
-            icon: Icons.person_add_alt_outlined,
+            icon: LucideIcons.userPlus,
           ),
           _PermissionTile(
             value: canViewBudget,
             onChanged: onViewBudgetChanged,
             title: 'عرض الميزانية',
             subtitle: 'إظهار ملخص الميزانية فقط.',
-            icon: Icons.account_balance_wallet_outlined,
+            icon: LucideIcons.wallet,
           ),
           _PermissionTile(
             value: canViewExpenses,
             onChanged: onViewExpensesChanged,
             title: 'عرض المصاريف',
             subtitle: 'السماح بقراءة المصاريف المسجلة.',
-            icon: Icons.receipt_long_outlined,
+            icon: LucideIcons.receipt,
           ),
           _PermissionTile(
             value: canViewDebts,
             onChanged: onViewDebtsChanged,
             title: 'عرض الديون والأقساط',
             subtitle: 'بيانات مالية خاصة، فعليها عند الحاجة فقط.',
-            icon: Icons.credit_card_rounded,
+            icon: LucideIcons.creditCard,
           ),
           _PermissionTile(
             value: canManageFinancialRecords,
             onChanged: onManageFinancialRecordsChanged,
             title: 'إدارة السجلات المالية',
             subtitle: 'إضافة وتعديل المصاريف والديون.',
-            icon: Icons.edit_note_rounded,
+            icon: LucideIcons.fileText,
           ),
           _PermissionTile(
             value: receiveNotifications,
             onChanged: onReceiveNotificationsChanged,
             title: 'استلام تنبيهات الخطة',
             subtitle: 'إظهار الأحداث المهمة المرتبطة بالخطة.',
-            icon: Icons.notifications_active_outlined,
+            icon: LucideIcons.bellRing,
           ),
         ],
       ),
@@ -735,7 +736,7 @@ class _PrivacyHint extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.lock_outline_rounded, color: AppTheme.gold),
+          Icon(LucideIcons.lock, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(

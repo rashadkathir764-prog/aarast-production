@@ -147,7 +147,7 @@ void main() {
       await taskApi.createTask(weddingPlanId: localPlanId, title: 'حجز القاعة');
       await financeApi.createExpense(
         weddingPlanId: localPlanId,
-        title: 'عربون القاعة',
+        title: 'دفعة القاعة',
         amount: '500000',
       );
       await debtApi.createDebt(
@@ -178,7 +178,7 @@ void main() {
         harness,
         const BudgetExpenseScreen(weddingPlanId: localPlanId),
       );
-      expect(find.text('عربون القاعة'), findsOneWidget);
+      expect(find.text('دفعة القاعة'), findsOneWidget);
       expect(find.text(cloudMessage), findsNothing);
 
       await _pumpLocalScreen(
@@ -217,7 +217,7 @@ void main() {
 
     await tester.enterText(
       _textFormFieldWithLabel('عنوان المصروف'),
-      'عربون القاعة',
+      'دفعة القاعة',
     );
     await tester.enterText(_textFormFieldWithLabel('المبلغ'), '500000');
     final submit = find.text('حفظ المصروف');
@@ -227,7 +227,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(financeProvider.expenses, hasLength(1));
-    expect(financeProvider.expenses.single.title, 'عربون القاعة');
+    expect(financeProvider.expenses.single.title, 'دفعة القاعة');
     expect(financeProvider.expenses.single.amount, '500000');
     expect(financeProvider.noticeMessage, localMessage);
     expect(find.text(cloudMessage), findsNothing);

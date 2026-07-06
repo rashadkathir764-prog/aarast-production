@@ -3,6 +3,7 @@ import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart
 import 'package:aarast_mobile/features/wedding_plans/models/active_wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -84,6 +85,89 @@ void main() {
         expect(activePlan, isNull);
       },
     );
+
+    test('createWeddingPlan marks the created plan active locally', () async {
+      final api = WeddingPlansApi(
+        _client((options) {
+          expect(options.path, '/wedding-plans');
+          return _activePlanJson(id: 'plan-new', title: 'New plan');
+        }),
+      );
+      final provider = WeddingPlansProvider(api);
+
+      final plan = await provider.createWeddingPlan(title: 'New plan');
+
+      expect(plan?.id, 'plan-new');
+      expect(provider.activePlan?.id, 'plan-new');
+      expect(provider.selectedPlan?.id, 'plan-new');
+    });
+
+    test('WeddingPlan preserves administrative preferences from the API', () {
+      final plan = WeddingPlan.fromJson({
+        ..._activePlanJson(),
+        'priorities': ['budget', 'providers'],
+        'onboardingPath': 'USER',
+        'persona': 'GROOM',
+      });
+
+      expect(plan.priorities, ['budget', 'providers']);
+      expect(plan.onboardingPath, 'USER');
+      expect(plan.persona, 'GROOM');
+    });
+
+    test('editing and archiving keep active plan state truthful', () async {
+      final api = WeddingPlansApi(
+        _client((options) {
+          if (options.path.endsWith('/archive')) {
+            return {
+              ..._activePlanJson(title: 'الخطة المعدلة'),
+              'status': 'ARCHIVED',
+              'priorities': ['providers'],
+            };
+          }
+          if (options.method == 'PATCH') {
+            return {
+              ..._activePlanJson(title: 'الخطة المعدلة'),
+              'priorities': ['providers'],
+              'persona': 'BRIDE',
+            };
+          }
+          return _activePlanJson();
+        }),
+      );
+      final provider = WeddingPlansProvider(api);
+
+      await provider.createWeddingPlan(title: 'الخطة الذهبية');
+      await provider.updateWeddingPlan('plan-1', {
+        'title': 'الخطة المعدلة',
+        'priorities': ['providers'],
+      });
+
+      expect(provider.activePlan?.title, 'الخطة المعدلة');
+      expect(provider.activePlan?.priorities, ['providers']);
+
+      await provider.archiveWeddingPlan('plan-1');
+
+      expect(provider.activePlan, isNull);
+      expect(provider.selectedPlan?.status, 'ARCHIVED');
+    });
+
+    test('setActiveWeddingPlan uses api v1 set-active endpoint', () async {
+      late RequestOptions capturedRequest;
+      final api = WeddingPlansApi(
+        _client((options) {
+          capturedRequest = options;
+          return _activePlanJson(id: 'plan-2', title: 'Second plan');
+        }),
+      );
+
+      final active = await api.setActiveWeddingPlan('plan-2');
+
+      expect(capturedRequest.path, '/api/v1/wedding-plans/plan-2/set-active');
+      expect(capturedRequest.method, 'POST');
+      expect(active.id, 'plan-2');
+      expect(active.title, 'Second plan');
+    });
 
     test(
       'getDashboardSummary uses api v1 summary endpoint and parses counts',
@@ -189,11 +273,14 @@ Map<String, dynamic> _onboardingResponseJson() {
   };
 }
 
-Map<String, dynamic> _activePlanJson() {
+Map<String, dynamic> _activePlanJson({
+  String id = 'plan-1',
+  String title = 'خطتنا الذهبية',
+}) {
   return {
-    'id': 'plan-1',
+    'id': id,
     'ownerUserId': 'user-1',
-    'title': 'خطتنا الذهبية',
+    'title': title,
     'city': 'صنعاء',
     'location': {'city': 'صنعاء'},
     'weddingDate': '2026-12-24T00:00:00.000Z',

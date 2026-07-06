@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -38,7 +39,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           child: AarastEmptyState(
             title: 'لا يمكن تعديل العضو الآن',
             message: 'افتح العضو من شاشة المشاركة حتى يمكن تعديل صلاحياته.',
-            icon: Icons.group_outlined,
+            icon: LucideIcons.users,
           ),
         ),
       );
@@ -158,7 +159,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           const SizedBox(height: 10),
           AarastButton(
             label: 'إزالة العضو',
-            icon: Icons.delete_outline,
+            icon: LucideIcons.trash2,
             variant: AarastButtonVariant.danger,
             onPressed: provider.isSubmitting
                 ? null

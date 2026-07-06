@@ -3,42 +3,70 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('Plan Center truth contract', () {
-    final source = File(
-      '${_findMobileRoot()}lib/features/wedding_plans/screens/plan_center_screen.dart',
-    ).readAsStringSync();
+  group('Plan management truth contract', () {
+    final mobileRoot = _findMobileRoot();
 
-    test('completed location and budget suppress setup rows', () {
-      expect(source, contains('showLocation: !hasPlanLocation'));
-      expect(source, contains('showBudget: !hasPlanBudget'));
-      expect(source, contains('location.hasAnyLocation'));
-      expect(source, contains('_positiveMoney(summary?.budgetTotal)'));
-      expect(source, contains('_positiveMoney(plan.estimatedBudget)'));
+    test('legacy plan center path exports the focused management screen', () {
+      final source = File(
+        '${mobileRoot}lib/features/wedding_plans/screens/plan_center_screen.dart',
+      ).readAsStringSync();
+
+      expect(source, contains("export 'plan_management_screen.dart';"));
+      expect(
+        source.split('\n').where((line) => line.trim().isNotEmpty),
+        hasLength(1),
+      );
+    });
+
+    test('management screen loads real plan and administrative summary data', () {
+      final source = File(
+        '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
+      ).readAsStringSync();
+
+      expect(
+        source,
+        matches(RegExp(r'loadWeddingPlan\(\s*widget\.weddingPlanId,?\s*\)')),
+      );
+      expect(source, contains('loadDashboard('));
+      expect(source, contains('PlanManagementView('));
+      expect(source, contains('summary?.participantCount'));
+      expect(source, contains('summary?.permissions.canManagePlan'));
+    });
+
+    test('server and local edits preserve structured administrative fields', () {
+      final source = File(
+        '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
+      ).readAsStringSync();
+
+      for (final field in [
+        "'title':",
+        "'weddingDate':",
+        "'currency':",
+        "'location':",
+        "'priorities':",
+      ]) {
+        expect(source, contains(field));
+      }
+      expect(source, contains('GuestOnboardingStorage'));
+      expect(source, contains('saveDraft('));
+      expect(source, contains('governorate'));
+      expect(source, contains('areaOrNeighborhood'));
+      expect(source, contains('detailedAddress'));
     });
 
     test(
-      'missing optional address is not displayed as saved optional data',
+      'danger area uses archive only and never invents unsupported actions',
       () {
-        expect(source, isNot(contains("'أضف موقع الزفاف'")));
-        expect(
-          source,
-          isNot(contains("_locationValue(location.governorate, 'اختياري')")),
-        );
-        expect(
-          source,
-          isNot(contains("_locationValue(location.cityOrDistrict, 'اختياري')")),
-        );
-        expect(
-          source,
-          contains("_locationValue(location.areaOrNeighborhood, 'لم يضف بعد')"),
-        );
+        final source = File(
+          '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
+        ).readAsStringSync();
+
+        expect(source, contains('archiveWeddingPlan('));
+        expect(source, isNot(contains('deleteWeddingPlan')));
+        expect(source, isNot(contains('copyWeddingPlan')));
+        expect(source, isNot(contains('exportWeddingPlan')));
       },
     );
-    test('generic unavailable copy is not used as metric data', () {
-      expect(source, isNot(contains("?? 'غير متاح'")));
-      expect(source, contains("?? 'لا توجد بيانات'"));
-      expect(source, contains("?? 'لم تتم المزامنة'"));
-    });
   });
 }
 

@@ -1,9 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -60,7 +62,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
           onPressed: () {
             if (context.canPop()) context.pop();
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       child: !canManageListing
@@ -73,13 +75,13 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                   )
                 else
                   AarastEmptyState(
-                    icon: Icons.lock_clock_outlined,
+                    icon: LucideIcons.fileClock,
                     title: 'إضافة الخدمات بعد الاعتماد',
                     message:
                         'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الخدمات بعد أن تصبح الحالة نشطة.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
-                      icon: const Icon(Icons.dashboard_customize_outlined),
+                      icon: const Icon(LucideIcons.layoutDashboard),
                       label: const Text('فتح لوحة المزود'),
                     ),
                   ),
@@ -103,7 +105,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: 'اسم الخدمة',
-                            prefixIcon: Icon(Icons.design_services_outlined),
+                            prefixIcon: Icon(LucideIcons.wand),
                           ),
                           validator: (value) =>
                               value == null || value.trim().length < 2
@@ -115,7 +117,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           initialValue: _safeCategoryId(marketplace),
                           decoration: const InputDecoration(
                             labelText: 'الفئة',
-                            prefixIcon: Icon(Icons.category_outlined),
+                            prefixIcon: Icon(LucideIcons.shapes),
                           ),
                           items: marketplace.categories
                               .map(
@@ -135,7 +137,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           initialValue: _safeCityId(marketplace),
                           decoration: const InputDecoration(
                             labelText: 'مدينة الخدمة اختياري',
-                            prefixIcon: Icon(Icons.place_outlined),
+                            prefixIcon: Icon(LucideIcons.mapPin),
                           ),
                           items: [
                             const DropdownMenuItem<String>(
@@ -158,7 +160,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           decoration: const InputDecoration(
                             labelText: 'الوصف',
                             hintText: 'ما الذي تشمل الخدمة؟',
-                            prefixIcon: Icon(Icons.notes_outlined),
+                            prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -167,9 +169,10 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           keyboardType: TextInputType.number,
                           textDirection: TextDirection.ltr,
                           textAlign: TextAlign.right,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'السعر من',
-                            prefixIcon: Icon(Icons.payments_outlined),
+                            suffixText: currencyLabelAr(defaultCurrencyCode),
+                            prefixIcon: Icon(LucideIcons.wallet),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -177,7 +180,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                           controller: _priceUnitController,
                           decoration: const InputDecoration(
                             labelText: 'مدة الخدمة / ملاحظات السعر',
-                            prefixIcon: Icon(Icons.timer_outlined),
+                            prefixIcon: Icon(LucideIcons.timer),
                           ),
                         ),
                         if (dashboard.errorMessage != null) ...[
@@ -195,7 +198,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.add_rounded),
+                              : const Icon(LucideIcons.plus),
                           label: const Text('إضافة الخدمة'),
                         ),
                       ],
@@ -230,7 +233,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       description: _descriptionController.text,
       basePrice: _basePriceController.text,
       priceUnit: _priceUnitController.text,
-      currency: 'YER',
+      currency: defaultCurrencyCode,
       cityId: _cityId,
     );
 
@@ -257,7 +260,7 @@ class _ServiceIntro extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.auto_awesome_rounded, color: AppTheme.gold),
+          Icon(LucideIcons.sparkles, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(

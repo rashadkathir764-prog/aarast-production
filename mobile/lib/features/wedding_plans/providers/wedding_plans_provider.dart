@@ -112,6 +112,7 @@ class WeddingPlansProvider extends ChangeNotifier {
         currency: currency,
       );
       _selectedPlan = plan;
+      _activePlan = ActiveWeddingPlan.fromWeddingPlan(plan);
       _plans = [plan, ..._plans.where((item) => item.id != plan.id)];
       if (plan.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
@@ -122,6 +123,31 @@ class WeddingPlansProvider extends ChangeNotifier {
       return null;
     } catch (_) {
       _errorMessage = 'تعذر إنشاء خطة الزفاف.';
+      return null;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<ActiveWeddingPlan?> setActiveWeddingPlan(String id) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final active = await _api.setActiveWeddingPlan(id);
+      _activePlan = active;
+      final plan = active.toWeddingPlan();
+      _selectedPlan = plan;
+      _plans = [plan, ..._plans.where((item) => item.id != plan.id)];
+      return active;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return null;
+    } catch (_) {
+      _errorMessage = 'تعذر فتح الخطة المختارة.';
       return null;
     } finally {
       _isSubmitting = false;
@@ -169,6 +195,9 @@ class WeddingPlansProvider extends ChangeNotifier {
       final plan = await _api.updateWeddingPlan(id, data);
       _selectedPlan = plan;
       _plans = [for (final item in _plans) item.id == id ? plan : item];
+      if (_activePlan?.id == id) {
+        _activePlan = ActiveWeddingPlan.fromWeddingPlan(plan);
+      }
       if (plan.id.startsWith('local-')) {
         _noticeMessage = CachePolicy.offlineWriteMessage;
       }
@@ -195,6 +224,9 @@ class WeddingPlansProvider extends ChangeNotifier {
       final plan = await _api.archiveWeddingPlan(id);
       _selectedPlan = plan;
       _plans = [for (final item in _plans) item.id == id ? plan : item];
+      if (_activePlan?.id == id) {
+        _activePlan = null;
+      }
       return plan;
     } on ApiException catch (error) {
       _errorMessage = error.message;

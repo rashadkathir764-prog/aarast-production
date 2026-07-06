@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 
@@ -15,14 +17,14 @@ class SupportScreen extends StatelessWidget {
       subtitle: 'إرشادات آمنة وحلول سريعة داخل أعرست',
       showBack: true,
       child: ListView(
-        children: [
+        children: AarastStagger.children(context, [
           const _SupportIntroCard(),
           const SizedBox(height: 14),
           _SupportActionCard(
             title: 'أحتاج مساعدة في الحساب أو التنبيهات',
             body:
                 'راجع إعدادات الحساب والتنبيهات، ثم احفظ التغييرات إذا كانت متاحة لحسابك.',
-            icon: Icons.settings_outlined,
+            icon: LucideIcons.settings,
             buttonLabel: 'فتح الإعدادات',
             onPressed: () => context.push(AppRouter.settings),
           ),
@@ -31,7 +33,7 @@ class SupportScreen extends StatelessWidget {
             title: 'أبحث عن تنبيه أو دعوة',
             body:
                 'افتح التنبيهات المحفوظة لمراجعة دعوات المشاركة، عروض الأسعار، والمهام المهمة.',
-            icon: Icons.notifications_none_rounded,
+            icon: LucideIcons.bell,
             buttonLabel: 'فتح التنبيهات',
             onPressed: () => context.push(AppRouter.notifications),
           ),
@@ -40,14 +42,14 @@ class SupportScreen extends StatelessWidget {
             title: 'مشكلة في خطة مشتركة',
             body:
                 'تحقق من الخطط المشتركة معك وصلاحيات كل خطة قبل طلب تعديل من مالك الخطة.',
-            icon: Icons.groups_2_outlined,
+            icon: LucideIcons.users,
             buttonLabel: 'الخطط المشتركة',
             onPressed: () => context.push(AppRouter.sharedWeddingPlans),
           ),
           const SizedBox(height: 14),
           const _SupportBoundaryCard(),
           const SizedBox(height: 90),
-        ],
+        ]),
       ),
     );
   }
@@ -63,7 +65,7 @@ class _SupportIntroCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SupportIcon(icon: Icons.support_agent_outlined),
+          _SupportIcon(icon: LucideIcons.headphones),
           SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -140,7 +142,7 @@ class _SupportActionCard extends StatelessWidget {
           const SizedBox(height: 14),
           AarastButton(
             label: buttonLabel,
-            icon: Icons.chevron_left_rounded,
+            icon: LucideIcons.chevronLeft,
             variant: AarastButtonVariant.secondary,
             onPressed: onPressed,
           ),
@@ -162,7 +164,7 @@ class _SupportBoundaryCard extends StatelessWidget {
         children: [
           AarastSectionHeader(
             title: 'حدود الدعم في هذه النسخة',
-            icon: Icons.privacy_tip_outlined,
+            icon: LucideIcons.shieldCheck,
           ),
           SizedBox(height: 10),
           _BoundaryLine(
@@ -194,11 +196,7 @@ class _BoundaryLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.check_circle_outline,
-            color: AppTheme.gold,
-            size: 18,
-          ),
+          const Icon(LucideIcons.checkCircle, color: AppTheme.gold, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

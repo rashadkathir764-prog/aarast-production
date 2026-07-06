@@ -86,6 +86,8 @@ class AppTheme {
   static const double radiusMd = AarastDesignTokens.radiusMd;
   static const double radiusLg = AarastDesignTokens.radiusLg;
   static const double radiusXl = AarastDesignTokens.radiusXl;
+  static const double radius2xl = AarastDesignTokens.radius2xl;
+  static const double radiusPill = AarastDesignTokens.radiusPill;
   static const double radiusCard = 24;
 
   static const double gapXs = 6;
@@ -94,10 +96,40 @@ class AppTheme {
   static const double gapLg = 18;
   static const double gapXl = 24;
 
-  static const EdgeInsets screenPadding = AarastDesignTokens.screenPadding;
+  // Canonical spacing scale (re-exported so features import AppTheme only)
+  static const double space2 = AarastDesignTokens.space2;
+  static const double space4 = AarastDesignTokens.space4;
+  static const double space6 = AarastDesignTokens.space6;
+  static const double space8 = AarastDesignTokens.space8;
+  static const double space10 = AarastDesignTokens.space10;
+  static const double space12 = AarastDesignTokens.space12;
+  static const double space14 = AarastDesignTokens.space14;
+  static const double space16 = AarastDesignTokens.space16;
+  static const double space18 = AarastDesignTokens.space18;
+  static const double space20 = AarastDesignTokens.space20;
+  static const double space24 = AarastDesignTokens.space24;
+  static const double space28 = AarastDesignTokens.space28;
+  static const double space32 = AarastDesignTokens.space32;
 
+  // Icon sizes + metrics
+  static const double iconSm = AarastDesignTokens.iconSm;
+  static const double iconMd = AarastDesignTokens.iconMd;
+  static const double iconLg = AarastDesignTokens.iconLg;
+  static const double iconXl = AarastDesignTokens.iconXl;
+  static const double minTapTarget = AarastDesignTokens.minTapTarget;
+  static const double bottomNavHeight = AarastDesignTokens.bottomNavHeight;
+  static const double screenMaxWidth = AarastDesignTokens.screenMaxWidth;
+
+  static const EdgeInsets screenPadding = AarastDesignTokens.screenPadding;
+  static const EdgeInsets cardPadding = AarastDesignTokens.cardPadding;
+  static const EdgeInsets listItemPadding = AarastDesignTokens.listItemPadding;
+
+  static const Duration motionQuick = AarastDesignTokens.motionQuick;
   static const Duration motionFast = AarastDesignTokens.motionFast;
   static const Duration motionMedium = AarastDesignTokens.motionStandard;
+  static const Duration motionSlow = AarastDesignTokens.motionSlow;
+  static const Curve motionCurve = AarastDesignTokens.motionCurve;
+  static const Curve motionExitCurve = AarastDesignTokens.motionExitCurve;
 
   static const LinearGradient pageGradient = AarastDesignTokens.pageGradient;
   static const LinearGradient heroGradient =

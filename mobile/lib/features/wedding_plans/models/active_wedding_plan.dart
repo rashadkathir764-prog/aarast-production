@@ -40,6 +40,25 @@ class ActiveWeddingPlan {
     );
   }
 
+  factory ActiveWeddingPlan.fromWeddingPlan(WeddingPlan plan) {
+    return ActiveWeddingPlan(
+      id: plan.id,
+      ownerUserId: plan.ownerUserId,
+      title: plan.title,
+      city: plan.city,
+      location: plan.location,
+      weddingDate: plan.weddingDate,
+      estimatedBudget: plan.estimatedBudget,
+      priorities: plan.priorities,
+      onboardingPath: plan.onboardingPath,
+      persona: plan.persona,
+      currency: plan.currency,
+      status: plan.status,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+    );
+  }
+
   final String id;
   final String ownerUserId;
   final String title;
@@ -73,6 +92,9 @@ class ActiveWeddingPlan {
       location: location,
       weddingDate: weddingDate,
       estimatedBudget: estimatedBudget,
+      priorities: priorities,
+      onboardingPath: onboardingPath,
+      persona: persona,
       currency: currency,
       status: status,
       createdAt: createdAt,

@@ -7,7 +7,7 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "test": "node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/quote-lifecycle.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts",
+    "test": "node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts",
     "prisma:generate": "prisma generate",
     "smoke": "npm run smoke:health && npm run smoke:auth",
     "smoke:health": "node scripts/smoke/health-smoke.js",
@@ -49,8 +49,12 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.24",
+    "@nestjs/platform-socket.io": "^11.1.24",
     "@nestjs/schedule": "^6.1.3",
     "@nestjs/throttler": "^6.5.0",
+    "@nestjs/websockets": "^11.1.24",
+    "@aws-sdk/client-s3": "^3.1079.0",
+    "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
@@ -59,7 +63,8 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.1"
   },
   "overrides": {
     "multer": "2.2.0"

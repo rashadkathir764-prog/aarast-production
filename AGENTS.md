@@ -19,23 +19,22 @@ These rules apply to AI agents and automation working on Aarast / اعّرست.
 - Do not implement future-phase features early.
 - Do not create Flutter screens unless the active phase explicitly asks for Flutter work.
 - Do not create backend modules unless the active phase explicitly asks for backend implementation.
-- Do not add confirmed bookings, deposits, payment status, payment processing, loans, credit, financing flows, FinTech, AI, or internal chat unless explicitly approved.
+- Do not add confirmed bookings, deposits, payment status, payment processing, loans, credit, financing flows, FinTech, AI, or open messaging outside the approved quote-scoped conversation flow unless explicitly approved.
 
 ## Read Before Work
 
 Before implementation tasks, agents must read the relevant approved documentation first:
 
-- `PRODUCT_VISION.md`
-- `MVP_SCOPE.md`
-- `PHASES.md`
-- `DATABASE_PLAN.md`
-- `API_PLAN.md`
-- `TESTING_PLAN.md`
-- `SMOKE_TESTS.md`
-- `GIT_WORKTREE_GUIDE.md`
-- `DEPLOYMENT_PLAN.md`
-- `DECISIONS.md`
-- Any phase-specific docs.
+- `docs/README.md`
+- `docs/project/PRODUCT.md`
+- `docs/project/SCOPE_AND_PHASES.md`
+- `docs/project/STATUS.md`
+- `docs/project/DECISIONS.md`
+- `docs/backend/API_CONTRACT.md`
+- `docs/backend/DATABASE.md`
+- `docs/qa/README.md`
+- `docs/deployment/README.md`
+- Any phase-specific active doc linked from `docs/README.md`.
 
 ## File Discipline
 
@@ -78,5 +77,7 @@ For the Docs Foundation task:
 - Do not run database migrations.
 - Do not create Dockerfiles, docker-compose files, or Dokploy configuration.
 - Do not modify business logic.
+- Archived files under `docs/archive/2026-07-docs-consolidation/` are historical
+  references only and must not be treated as active source-of-truth docs.
 
 ## Imported Claude Cowork project instructions

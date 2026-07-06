@@ -60,7 +60,7 @@ void main() {
       json: {
         'id': 'local-expense-1',
         'weddingPlanId': guestPlanId,
-        'title': 'عربون المصور',
+        'title': 'دفعة المصور',
         'amount': '50000',
         'budgetCategoryId': 'local-budget-category-9',
         'status': 'PAID',

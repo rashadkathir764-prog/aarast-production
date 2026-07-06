@@ -13,6 +13,9 @@ class WeddingPlan {
     this.location,
     this.weddingDate,
     this.estimatedBudget,
+    this.priorities = const [],
+    this.onboardingPath,
+    this.persona,
   });
 
   factory WeddingPlan.fromJson(Map<String, dynamic> json) {
@@ -24,6 +27,9 @@ class WeddingPlan {
       location: _mapOrNull(json['location']),
       weddingDate: _dateTimeOrNull(json['weddingDate']),
       estimatedBudget: json['estimatedBudget']?.toString(),
+      priorities: _stringList(json['priorities']),
+      onboardingPath: json['onboardingPath']?.toString(),
+      persona: json['persona']?.toString(),
       currency: json['currency']?.toString() ?? 'YER',
       status: json['status']?.toString() ?? 'PLANNING',
       createdAt: _dateTimeOrNull(json['createdAt']) ?? DateTime.now(),
@@ -38,6 +44,9 @@ class WeddingPlan {
   final Map<String, dynamic>? location;
   final DateTime? weddingDate;
   final String? estimatedBudget;
+  final List<String> priorities;
+  final String? onboardingPath;
+  final String? persona;
   final String currency;
   final String status;
   final DateTime createdAt;
@@ -75,5 +84,10 @@ class WeddingPlan {
     if (value is Map<String, dynamic>) return value;
     if (value is Map) return Map<String, dynamic>.from(value);
     return null;
+  }
+
+  static List<String> _stringList(Object? value) {
+    if (value is! List) return const [];
+    return value.map((item) => item.toString()).toList(growable: false);
   }
 }

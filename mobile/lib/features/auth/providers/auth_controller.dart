@@ -147,6 +147,38 @@ class AuthController extends ChangeNotifier {
     });
   }
 
+  Future<bool> updateAvatar({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) {
+    return _submit(() async {
+      _user = await _authRepository.updateAvatar(
+        bytes: bytes,
+        fileName: fileName,
+        contentType: contentType,
+      );
+      if (_user != null) {
+        await _offlineSyncService?.cacheCurrentUser(_user!);
+      }
+    });
+  }
+
+  Future<void> refreshCurrentUser() async {
+    if (_status != AuthStatus.authenticated) return;
+    try {
+      _user = await _authRepository.me();
+      if (_user != null) {
+        await _offlineSyncService?.cacheCurrentUser(_user!);
+      }
+      notifyListeners();
+    } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        await handleSessionExpired();
+      }
+    }
+  }
+
   Future<void> logout() async {
     await _authRepository.logout();
     // Privacy hard-rule: shared devices are common in Yemen. Everything

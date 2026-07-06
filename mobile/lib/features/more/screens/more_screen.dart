@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
@@ -24,6 +26,8 @@ class MoreScreen extends StatefulWidget {
 }
 
 class _MoreScreenState extends State<MoreScreen> {
+  static const _avatarMaxBytes = 5 * 1024 * 1024;
+
   Future<GuestOnboardingDraft?>? _identityDraftFuture;
 
   @override
@@ -66,6 +70,7 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
           _MoreHeader(
             name: name,
+            avatarUrl: user?.avatarUrl,
             notificationCount: notifications?.unreadCount ?? 0,
             onNotifications: () => context.push(AppRouter.notifications),
           ),
@@ -80,8 +85,11 @@ class _MoreScreenState extends State<MoreScreen> {
               return _ProfileCard(
                 name: name,
                 phone: phone,
+                avatarUrl: user?.avatarUrl,
+                isUpdatingAvatar: auth.isSubmitting,
                 roleLabel: identity.roleLabel,
                 personaLabel: identity.personaLabel,
+                onEditAvatar: () => _changeAvatar(context),
               );
             },
           ),
@@ -96,7 +104,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'الخطط المشتركة معي',
                 subtitle: 'الخطط التي تمت مشاركتها معك للوصول إليها',
-                icon: Icons.groups_2_outlined,
+                icon: LucideIcons.users,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.sharedWeddingPlans),
@@ -104,7 +112,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'خططي',
                 subtitle: 'إدارة كل خطط الزفاف الخاصة بك',
-                icon: Icons.event_note_outlined,
+                icon: LucideIcons.calendarDays,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.weddingPlans),
@@ -112,7 +120,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'إنشاء خطة زفاف',
                 subtitle: 'ابدأ خطة جديدة لتنظيم يومك المميز',
-                icon: Icons.add_circle_outline_rounded,
+                icon: LucideIcons.plusCircle,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.createWeddingPlan),
@@ -130,7 +138,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'الموردون المحفوظون',
                 subtitle: 'افتح الصالات والمصورين والخدمات التي حفظتها',
-                icon: Icons.favorite_border_rounded,
+                icon: LucideIcons.heart,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.favoriteProviders),
@@ -138,7 +146,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'تصفح الموردين',
                 subtitle: 'ابحث عن موردين واطلب عروض أسعار بدون حجز أو دفع',
-                icon: Icons.storefront_outlined,
+                icon: LucideIcons.store,
                 iconColor: AppTheme.gold,
                 iconBackground: AppTheme.goldSoft,
                 onTap: () => context.push(AppRouter.providerMarketplace),
@@ -156,7 +164,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'الإعدادات',
                 subtitle: 'تخصيص التطبيق والتفضيلات',
-                icon: Icons.settings_outlined,
+                icon: LucideIcons.settings,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.settings),
@@ -164,7 +172,7 @@ class _MoreScreenState extends State<MoreScreen> {
               _MoreActionTile(
                 title: 'الدعم والمساعدة',
                 subtitle: 'تواصل معنا أو استعرض الأسئلة الشائعة',
-                icon: Icons.support_agent_outlined,
+                icon: LucideIcons.headphones,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.support),
@@ -212,7 +220,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
-                      Icons.logout_rounded,
+                      LucideIcons.logOut,
                       color: AppTheme.danger,
                       size: 30,
                     ),
@@ -251,7 +259,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       Expanded(
                         child: AarastButton(
                           label: 'خروج',
-                          icon: Icons.logout_rounded,
+                          icon: LucideIcons.logOut,
                           variant: AarastButtonVariant.danger,
                           onPressed: () => Navigator.of(sheetContext).pop(true),
                         ),
@@ -270,6 +278,132 @@ class _MoreScreenState extends State<MoreScreen> {
       await context.read<AuthController>().logout();
       if (context.mounted) context.go(AppRouter.login);
     }
+  }
+
+  Future<void> _changeAvatar(BuildContext context) async {
+    if (!await AuthActionGuard.requireAccount(
+      context,
+      reason: 'سجّل الدخول لتحديث صورة حسابك ومزامنتها بأمان.',
+    )) {
+      return;
+    }
+    if (!context.mounted) return;
+
+    final source = await _showAvatarSourceSheet(context);
+    if (source == null || !context.mounted) return;
+
+    final file = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 86,
+      maxWidth: 1600,
+    );
+    if (file == null || !context.mounted) return;
+
+    final size = await file.length();
+    if (!context.mounted) return;
+    if (size > _avatarMaxBytes) {
+      _showNotice(context, 'حجم الصورة يجب ألا يتجاوز 5MB.');
+      return;
+    }
+
+    final contentType = _avatarContentType(file);
+    if (contentType == null) {
+      _showNotice(context, 'اختر صورة بصيغة JPG أو PNG أو WebP.');
+      return;
+    }
+
+    final bytes = await file.readAsBytes();
+    if (!context.mounted) return;
+
+    final auth = context.read<AuthController>();
+    final ok = await auth.updateAvatar(
+      bytes: bytes,
+      fileName: _avatarFileName(file),
+      contentType: contentType,
+    );
+    if (!context.mounted) return;
+
+    _showNotice(
+      context,
+      ok ? 'تم تحديث صورة الحساب.' : auth.errorMessage ?? 'تعذر تحديث الصورة.',
+    );
+  }
+
+  static Future<ImageSource?> _showAvatarSourceSheet(BuildContext context) {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 18),
+                  Text(
+                    'تحديث صورة الحساب',
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 14),
+                  _AvatarSourceTile(
+                    icon: LucideIcons.camera,
+                    title: 'التقاط بالكاميرا',
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(ImageSource.camera),
+                  ),
+                  const SizedBox(height: 8),
+                  _AvatarSourceTile(
+                    icon: LucideIcons.image,
+                    title: 'اختيار من المعرض',
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(ImageSource.gallery),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static String? _avatarContentType(XFile file) {
+    final mimeType = file.mimeType?.trim().toLowerCase();
+    if (mimeType == 'image/jpeg' ||
+        mimeType == 'image/png' ||
+        mimeType == 'image/webp') {
+      return mimeType;
+    }
+    final name = _avatarFileName(file).toLowerCase();
+    if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+    if (name.endsWith('.png')) return 'image/png';
+    if (name.endsWith('.webp')) return 'image/webp';
+    return null;
+  }
+
+  static String _avatarFileName(XFile file) {
+    final name = file.name.trim();
+    if (name.isNotEmpty) return name;
+    final pathParts = file.path.split(RegExp(r'[\\/]'));
+    final fromPath = pathParts.isEmpty ? '' : pathParts.last.trim();
+    return fromPath.isEmpty ? 'avatar.jpg' : fromPath;
+  }
+
+  static void _showNotice(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<GuestOnboardingDraft?> _loadIdentityDraft() async {
@@ -402,9 +536,11 @@ class _MoreHeader extends StatelessWidget {
     required this.name,
     required this.notificationCount,
     required this.onNotifications,
+    this.avatarUrl,
   });
 
   final String name;
+  final String? avatarUrl;
   final int notificationCount;
   final VoidCallback onNotifications;
 
@@ -439,12 +575,13 @@ class _MoreHeader extends StatelessWidget {
         ),
         const SizedBox(width: 14),
         _RoundIconButton(
-          icon: Icons.person_outline_rounded,
+          icon: LucideIcons.user,
+          avatarUrl: avatarUrl,
           onTap: () => _showAccountSnack(context, name),
         ),
         const SizedBox(width: 10),
         _RoundIconButton(
-          icon: Icons.notifications_none_rounded,
+          icon: LucideIcons.bell,
           badge: notificationCount > 0 ? '$notificationCount' : null,
           onTap: onNotifications,
         ),
@@ -460,14 +597,21 @@ class _MoreHeader extends StatelessWidget {
 }
 
 class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, this.onTap, this.badge});
+  const _RoundIconButton({
+    required this.icon,
+    this.onTap,
+    this.badge,
+    this.avatarUrl,
+  });
 
   final IconData icon;
   final VoidCallback? onTap;
   final String? badge;
+  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = avatarUrl?.trim();
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
@@ -483,7 +627,19 @@ class _RoundIconButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(icon, color: AppTheme.burgundy),
+            if (imageUrl == null || imageUrl.isEmpty)
+              Icon(icon, color: AppTheme.burgundy)
+            else
+              ClipOval(
+                child: Image.network(
+                  imageUrl,
+                  width: 46,
+                  height: 46,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) =>
+                      Icon(icon, color: AppTheme.burgundy),
+                ),
+              ),
             if (badge != null)
               PositionedDirectional(
                 top: 1,
@@ -517,21 +673,72 @@ class _RoundIconButton extends StatelessWidget {
   }
 }
 
+class _AvatarSourceTile extends StatelessWidget {
+  const _AvatarSourceTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.ivory,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.burgundy),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.name,
     this.phone,
+    this.avatarUrl,
+    this.isUpdatingAvatar = false,
     this.roleLabel,
     this.personaLabel,
+    this.onEditAvatar,
   });
 
   final String name;
   final String? phone;
+  final String? avatarUrl;
+  final bool isUpdatingAvatar;
   final String? roleLabel;
   final String? personaLabel;
+  final VoidCallback? onEditAvatar;
 
   @override
   Widget build(BuildContext context) {
+    final imageUrl = avatarUrl?.trim();
     return AarastCard(
       padding: const EdgeInsets.all(20),
       color: AppTheme.surface,
@@ -539,18 +746,24 @@ class _ProfileCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 76,
-                height: 76,
+              DecoratedBox(
                 decoration: BoxDecoration(
-                  color: AppTheme.ivory,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.gold.withAlpha(90)),
+                  border: Border.all(color: AppTheme.gold.withAlpha(95)),
                 ),
-                child: const Icon(
-                  Icons.person_outline_rounded,
-                  color: AppTheme.gold,
-                  size: 38,
+                child: CircleAvatar(
+                  radius: 38,
+                  backgroundColor: AppTheme.ivory,
+                  backgroundImage: imageUrl == null || imageUrl.isEmpty
+                      ? null
+                      : NetworkImage(imageUrl),
+                  child: imageUrl == null || imageUrl.isEmpty
+                      ? const Icon(
+                          LucideIcons.user,
+                          color: AppTheme.gold,
+                          size: 38,
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(width: 16),
@@ -585,18 +798,33 @@ class _ProfileCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AppTheme.gold,
-                  shape: BoxShape.circle,
-                  boxShadow: AppTheme.softShadow(opacity: .08),
-                ),
-                child: const Icon(
-                  Icons.edit_outlined,
-                  color: AppTheme.ivory,
-                  size: 19,
+              Tooltip(
+                message: 'تعديل صورة الحساب',
+                child: InkWell(
+                  onTap: isUpdatingAvatar ? null : onEditAvatar,
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppTheme.gold,
+                      shape: BoxShape.circle,
+                      boxShadow: AppTheme.softShadow(opacity: .08),
+                    ),
+                    child: isUpdatingAvatar
+                        ? const Padding(
+                            padding: EdgeInsets.all(10),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppTheme.ivory,
+                            ),
+                          )
+                        : const Icon(
+                            LucideIcons.pencil,
+                            color: AppTheme.ivory,
+                            size: 19,
+                          ),
+                  ),
                 ),
               ),
             ],
@@ -735,7 +963,7 @@ class _MoreActionTile extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Icon(
-              Icons.chevron_left_rounded,
+              LucideIcons.chevronLeft,
               color: AppTheme.muted,
               size: 24,
             ),
@@ -770,7 +998,7 @@ class _LogoutTile extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: const Icon(
-                Icons.logout_rounded,
+                LucideIcons.logOut,
                 color: AppTheme.danger,
                 size: 24,
               ),
@@ -786,7 +1014,7 @@ class _LogoutTile extends StatelessWidget {
               ),
             ),
             const Icon(
-              Icons.chevron_left_rounded,
+              LucideIcons.chevronLeft,
               color: AppTheme.danger,
               size: 24,
             ),
@@ -812,7 +1040,7 @@ class _OptionalLoginTile extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         child: Row(
           children: [
-            Icon(Icons.login_rounded, color: AppTheme.gold),
+            Icon(LucideIcons.logIn, color: AppTheme.gold),
             SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -823,7 +1051,7 @@ class _OptionalLoginTile extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Icons.chevron_left_rounded, color: AppTheme.gold),
+            Icon(LucideIcons.chevronLeft, color: AppTheme.gold),
           ],
         ),
       ),

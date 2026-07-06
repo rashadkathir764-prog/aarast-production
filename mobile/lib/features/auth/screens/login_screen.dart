@@ -271,7 +271,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (success && mounted) {
-      context.go(_safeResumeLocation(context) ?? AppRouter.home);
+      final defaultLocation = auth.user?.isProviderAccount == true
+          ? AppRouter.providerDashboard
+          : AppRouter.home;
+      context.go(_safeResumeLocation(context) ?? defaultLocation);
     }
   }
 

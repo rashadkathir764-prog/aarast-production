@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -72,7 +73,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
               context.go(AppRouter.providerDashboard);
             }
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       child: ListView(
@@ -88,13 +89,13 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
             )
           else if (profile == null)
             AarastEmptyState(
-              icon: Icons.storefront_rounded,
+              icon: LucideIcons.store,
               title: 'لا يوجد ملف مزود',
               message:
                   'أرسل طلب الانضمام أولاً حتى تتمكن من تعديل بيانات المزود.',
               action: FilledButton.icon(
                 onPressed: () => context.go(AppRouter.providerApply),
-                icon: const Icon(Icons.assignment_ind_outlined),
+                icon: const Icon(LucideIcons.contact),
                 label: const Text('طلب الانضمام كمزود'),
               ),
             )
@@ -110,7 +111,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                   children: [
                     const AarastSectionHeader(
                       title: 'بيانات الظهور للعملاء',
-                      icon: Icons.storefront_rounded,
+                      icon: LucideIcons.store,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -118,7 +119,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'اسم النشاط / اسم المزود',
-                        prefixIcon: Icon(Icons.badge_outlined),
+                        prefixIcon: Icon(LucideIcons.badge),
                       ),
                       validator: (value) =>
                           value == null || value.trim().length < 2
@@ -136,7 +137,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                     _ProfileDropdown(
                       value: _safeCityId(marketplace),
                       label: 'المدينة',
-                      icon: Icons.place_outlined,
+                      icon: LucideIcons.mapPin,
                       items: marketplace.cities
                           .map(
                             (city) => DropdownMenuItem(
@@ -157,7 +158,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                       decoration: const InputDecoration(
                         labelText: 'نبذة مختصرة',
                         hintText: 'اكتب ما يميز خدمتك ومناطق التغطية...',
-                        prefixIcon: Icon(Icons.notes_outlined),
+                        prefixIcon: Icon(LucideIcons.fileText),
                       ),
                     ),
                     if (profile.primaryCategory?.nameAr.trim().isNotEmpty ==
@@ -184,7 +185,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                               height: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.save_outlined),
+                          : const Icon(LucideIcons.save),
                       label: const Text('حفظ التعديل'),
                     ),
                   ],
@@ -245,7 +246,7 @@ class _ProfileEditNotice extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppTheme.gold),
+          const Icon(LucideIcons.info, color: AppTheme.gold),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -275,7 +276,7 @@ class _LockedCategoryNote extends StatelessWidget {
       color: AppTheme.burgundySoft,
       child: Row(
         children: [
-          const Icon(Icons.lock_outline_rounded, color: AppTheme.burgundy),
+          const Icon(LucideIcons.lock, color: AppTheme.burgundy),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

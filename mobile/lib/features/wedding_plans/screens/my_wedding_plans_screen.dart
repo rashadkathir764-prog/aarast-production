@@ -220,7 +220,28 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                               child: _PlanCard(
                                 plan: plan,
                                 isFeatured: isFeatured,
-                                onTap: () {
+                                onTap: () async {
+                                  final active = await context
+                                      .read<WeddingPlansProvider>()
+                                      .setActiveWeddingPlan(plan.id);
+                                  if (!context.mounted) return;
+                                  if (active == null) {
+                                    ScaffoldMessenger.of(context)
+                                      ..hideCurrentSnackBar()
+                                      ..showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            context
+                                                    .read<
+                                                      WeddingPlansProvider
+                                                    >()
+                                                    .errorMessage ??
+                                                'تعذر فتح الخطة المختارة.',
+                                          ),
+                                        ),
+                                      );
+                                    return;
+                                  }
                                   if (widget.onSelectPlan != null) {
                                     widget.onSelectPlan!(plan.id);
                                   } else {

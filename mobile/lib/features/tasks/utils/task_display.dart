@@ -11,10 +11,10 @@ import '../models/wedding_task.dart';
 DateTime taskDateOnly(DateTime date) =>
     DateTime(date.year, date.month, date.day);
 
-bool isTaskLate(WeddingTask task) {
+bool isTaskLate(WeddingTask task, {DateTime? now}) {
   final dueDate = task.dueDate;
   if (dueDate == null || task.isDone) return false;
-  return taskDateOnly(dueDate).isBefore(taskDateOnly(DateTime.now()));
+  return taskDateOnly(dueDate).isBefore(taskDateOnly(now ?? DateTime.now()));
 }
 
 Color taskPriorityColor(String priority) {
@@ -80,8 +80,8 @@ IconData taskCategoryIcon(String? category) {
   };
 }
 
-String taskRelativeDueLabel(DateTime date) {
-  final today = taskDateOnly(DateTime.now());
+String taskRelativeDueLabel(DateTime date, {DateTime? now}) {
+  final today = taskDateOnly(now ?? DateTime.now());
   final target = taskDateOnly(date);
   final diff = target.difference(today).inDays;
   if (diff < 0) return 'متأخر ${-diff} ${-diff == 1 ? 'يوم' : 'يوم'}';

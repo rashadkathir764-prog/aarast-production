@@ -194,6 +194,25 @@ class MarketplaceService {
   final bool isActive;
   final bool isFeatured;
   final List<ProviderServiceImage> images;
+
+  MarketplaceService copyWith({List<ProviderServiceImage>? images}) {
+    return MarketplaceService(
+      id: id,
+      providerId: providerId,
+      title: title,
+      isFeatured: isFeatured,
+      isActive: isActive,
+      provider: provider,
+      category: category,
+      categoryId: categoryId,
+      description: description,
+      basePrice: basePrice,
+      priceUnit: priceUnit,
+      currency: currency,
+      city: city,
+      images: images ?? this.images,
+    );
+  }
 }
 
 class ProviderServiceImage {

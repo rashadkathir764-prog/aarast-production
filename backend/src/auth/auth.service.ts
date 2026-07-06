@@ -16,13 +16,22 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { JwtPayload } from './jwt-payload.interface';
 import { DevEchoOtpChannel, OtpChannel } from './otp-channel';
+import {
+  createRefreshTokenValue,
+  hashRefreshToken,
+  refreshTokenExpiry,
+} from './refresh-token-policy';
 import { SafeUser, toSafeUser } from './safe-user';
 
 export interface AuthResponse {
   user: SafeUser;
   accessToken: string;
+  refreshToken: string;
+  refreshTokenExpiresAt: Date;
 }
 
 export interface OtpRequestResponse {
@@ -40,6 +49,8 @@ export interface OtpVerifyResponse {
   purpose: OtpPurpose;
   user?: SafeUser;
   accessToken?: string;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: Date;
 }
 
 @Injectable()
@@ -89,8 +100,7 @@ export class AuthService {
       },
     });
 
-    const accessToken = this.signToken(user.id, user.phone);
-    return { user: toSafeUser(user), accessToken };
+    return this.createAuthResponse(user);
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
@@ -124,8 +134,76 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const accessToken = this.signToken(updatedUser.id, updatedUser.phone);
-    return { user: toSafeUser(updatedUser), accessToken };
+    return this.createAuthResponse(updatedUser);
+  }
+
+  async refresh(dto: RefreshDto): Promise<AuthResponse> {
+    const tokenHash = hashRefreshToken(dto.refreshToken);
+    const now = new Date();
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.refreshToken.findUnique({
+        where: { tokenHash },
+        include: { user: true },
+      });
+      if (
+        !existing ||
+        existing.revokedAt ||
+        existing.expiresAt <= now ||
+        existing.user.status === 'DISABLED'
+      ) {
+        throw new UnauthorizedException('Session is invalid or expired');
+      }
+
+      const nextToken = createRefreshTokenValue();
+      const nextExpiresAt = refreshTokenExpiry(now);
+      const replacement = await tx.refreshToken.create({
+        data: {
+          userId: existing.userId,
+          tokenHash: hashRefreshToken(nextToken),
+          expiresAt: nextExpiresAt,
+        },
+      });
+      const revoked = await tx.refreshToken.updateMany({
+        where: { id: existing.id, revokedAt: null, expiresAt: { gt: now } },
+        data: { revokedAt: now },
+      });
+      if (revoked.count !== 1) {
+        throw new UnauthorizedException('Session is invalid or expired');
+      }
+      await tx.refreshToken.update({
+        where: { id: existing.id },
+        data: { replacedById: replacement.id },
+      });
+
+      return {
+        user: toSafeUser(existing.user),
+        accessToken: this.signToken(existing.user.id, existing.user.phone),
+        refreshToken: nextToken,
+        refreshTokenExpiresAt: nextExpiresAt,
+      };
+    });
+  }
+
+  async logout(userId: string, dto: LogoutDto) {
+    if (!dto.refreshToken) return this.logoutAll(userId);
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId,
+        tokenHash: hashRefreshToken(dto.refreshToken),
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+    return { revoked: result.count };
+  }
+
+  async logoutAll(userId: string) {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { revoked: result.count };
   }
 
   private assertNotLockedOut(phone: string): void {
@@ -249,9 +327,9 @@ export class AuthService {
     });
 
     const user = await this.handleVerifiedOtp(phone, purpose, now);
-    const accessToken =
+    const auth =
       purpose === OtpPurpose.LOGIN && user
-        ? this.signToken(user.id, user.phone)
+        ? await this.createAuthResponse(user)
         : undefined;
 
     return {
@@ -259,7 +337,31 @@ export class AuthService {
       phone,
       purpose,
       ...(user ? { user: toSafeUser(user) } : {}),
-      ...(accessToken ? { accessToken } : {}),
+      ...(auth
+        ? {
+            accessToken: auth.accessToken,
+            refreshToken: auth.refreshToken,
+            refreshTokenExpiresAt: auth.refreshTokenExpiresAt,
+          }
+        : {}),
+    };
+  }
+
+  private async createAuthResponse(user: User): Promise<AuthResponse> {
+    const refreshToken = createRefreshTokenValue();
+    const refreshTokenExpiresAt = refreshTokenExpiry();
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashRefreshToken(refreshToken),
+        expiresAt: refreshTokenExpiresAt,
+      },
+    });
+    return {
+      user: toSafeUser(user),
+      accessToken: this.signToken(user.id, user.phone),
+      refreshToken,
+      refreshTokenExpiresAt,
     };
   }
 

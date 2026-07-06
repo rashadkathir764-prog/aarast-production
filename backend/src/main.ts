@@ -4,23 +4,8 @@ import { Logger, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { getCorsOrigins } from './common/config/cors-origins';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-
-function getCorsOrigins(): false | (string | RegExp)[] {
-  const configuredOrigins = process.env.CORS_ORIGINS?.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-
-  if (configuredOrigins?.length) {
-    return configuredOrigins;
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    return false;
-  }
-
-  return [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
-}
 
 /**
  * Fail fast on broken configuration: a typo'd env var must stop the

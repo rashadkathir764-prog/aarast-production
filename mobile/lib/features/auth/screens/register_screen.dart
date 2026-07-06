@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -124,9 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     label: providerMode
                         ? 'اسم النشاط / اسم المزود'
                         : 'الاسم الكامل',
-                    icon: providerMode
-                        ? Icons.storefront_rounded
-                        : Icons.person_rounded,
+                    icon: providerMode ? LucideIcons.store : LucideIcons.user,
                     textInputAction: TextInputAction.next,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -147,7 +146,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     controller: _phoneController,
                     label: providerMode ? 'رقم التواصل' : 'رقم الهاتف',
                     hint: 'مثال: 77xxxxxxx',
-                    icon: Icons.phone_rounded,
+                    icon: LucideIcons.phone,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
                     suffixIcon: ContactPhoneFieldSuffix(
@@ -167,7 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   AuthTextField(
                     controller: _emailController,
                     label: 'البريد الإلكتروني اختياري',
-                    icon: Icons.mail_rounded,
+                    icon: LucideIcons.mail,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                   ),
@@ -176,7 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _ProviderDropdown(
                       value: _safeCityId(marketplace),
                       label: 'المدينة',
-                      icon: Icons.place_outlined,
+                      icon: LucideIcons.mapPin,
                       items: marketplace.cities
                           .map(
                             (city) => DropdownMenuItem(
@@ -193,7 +192,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _ProviderDropdown(
                       value: _safeCategoryId(marketplace),
                       label: 'الفئة',
-                      icon: Icons.category_outlined,
+                      icon: LucideIcons.shapes,
                       items: marketplace.categories
                           .map(
                             (category) => DropdownMenuItem(
@@ -210,7 +209,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       controller: _descriptionController,
                       label: 'نبذة مختصرة',
                       hint: 'الخدمات، المدينة، وما يميز نشاطك',
-                      icon: Icons.notes_outlined,
+                      icon: LucideIcons.fileText,
                       maxLines: 3,
                       textInputAction: TextInputAction.next,
                     ),
@@ -219,7 +218,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   AuthTextField(
                     controller: _passwordController,
                     label: 'كلمة المرور',
-                    icon: Icons.lock_rounded,
+                    icon: LucideIcons.lock,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
@@ -231,9 +230,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         setState(() => _obscurePassword = !_obscurePassword);
                       },
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded,
+                        _obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff,
                       ),
                     ),
                     validator: (value) {
@@ -258,8 +255,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   AarastButton(
                     label: providerMode ? 'إرسال طلب الانضمام' : 'إنشاء حساب',
                     icon: providerMode
-                        ? Icons.assignment_ind_outlined
-                        : Icons.person_add_alt_1_rounded,
+                        ? LucideIcons.contact
+                        : LucideIcons.userPlus,
                     isLoading: auth.isSubmitting || dashboard.isSubmitting,
                     onPressed: _submit,
                   ),
@@ -326,6 +323,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             description: _descriptionController.text,
           );
       if (applied && mounted) {
+        await auth.refreshCurrentUser();
+        if (!mounted) return;
         context.go(AppRouter.providerApplyStatus);
       }
       return;
@@ -398,7 +397,7 @@ class _AccountTypeSegmentedControl extends StatelessWidget {
                 child: _SegmentOption(
                   selected: value == _AccountType.customer,
                   label: 'عميل',
-                  icon: Icons.favorite_border_rounded,
+                  icon: LucideIcons.heart,
                   onTap: () => onChanged(_AccountType.customer),
                 ),
               ),
@@ -407,7 +406,7 @@ class _AccountTypeSegmentedControl extends StatelessWidget {
                 child: _SegmentOption(
                   selected: value == _AccountType.provider,
                   label: 'مزود',
-                  icon: Icons.storefront_rounded,
+                  icon: LucideIcons.store,
                   onTap: () => onChanged(_AccountType.provider),
                 ),
               ),

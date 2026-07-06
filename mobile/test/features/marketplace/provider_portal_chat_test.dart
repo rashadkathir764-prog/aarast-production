@@ -1,0 +1,327 @@
+import 'dart:io';
+
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/chat/data/chat_api.dart';
+import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
+import 'package:aarast_mobile/features/chat/models/chat_models.dart';
+import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
+import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
+import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
+import 'package:aarast_mobile/features/marketplace/screens/provider_portal_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() {
+  test('app provider tree wires chat and media dependencies', () {
+    final source = File('lib/main.dart').readAsStringSync();
+
+    expect(source, contains('Provider<MediaUploadApi>'));
+    expect(source, contains('Provider<ChatApi>'));
+    expect(source, contains('Provider<ChatRealtimeClient>'));
+    expect(source, contains('ChangeNotifierProvider<ChatProvider>'));
+    expect(source, contains('ChatProvider('));
+  });
+
+  test('user chat surfaces initialize the realtime session', () {
+    final listSource = File(
+      'lib/features/chat/widgets/conversation_list_view.dart',
+    ).readAsStringSync();
+    final quoteEntrySource = File(
+      'lib/features/chat/screens/quote_conversation_entry_screen.dart',
+    ).readAsStringSync();
+
+    expect(listSource, contains('.initialize()'));
+    expect(listSource, contains('onRefresh: chat.initialize'));
+    expect(quoteEntrySource, contains('.initialize()'));
+  });
+
+  test('direct conversation routes require an authenticated account', () {
+    final source = File('lib/core/routing/app_router.dart').readAsStringSync();
+
+    expect(
+      source,
+      matches(
+        RegExp(r"path: '/conversations/:id',[\s\S]{0,450}ProviderAuthGate\("),
+      ),
+    );
+    expect(
+      source,
+      matches(
+        RegExp(
+          r"path: '/quotes/:id/conversation',[\s\S]{0,450}ProviderAuthGate\(",
+        ),
+      ),
+    );
+  });
+
+  test(
+    'chat initialization connects realtime once and refreshes REST',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      final api = _CountingChatApi();
+      final realtime = _CountingRealtimeClient(storage);
+      final chat = ChatProvider(
+        api: api,
+        realtime: realtime,
+        authStorage: storage,
+      );
+
+      await chat.initialize();
+      await chat.initialize();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(realtime.connectCalls, 1);
+      expect(api.listCalls, 2);
+      chat.dispose();
+    },
+  );
+
+  test('home entry sends provider accounts to the provider portal', () {
+    final source = File(
+      'lib/features/home/screens/dashboard_entry_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('auth.user?.isProviderAccount == true'));
+    expect(source, contains('ProviderPortalScreen'));
+    expect(source, contains('MainShell'));
+  });
+
+  test('provider portal keeps the five approved Arabic destinations', () {
+    final portalSource = File(
+      'lib/features/marketplace/screens/provider_portal_screen.dart',
+    ).readAsStringSync();
+    final navigationSource = File(
+      'lib/features/marketplace/widgets/provider_portal_bottom_nav.dart',
+    ).readAsStringSync();
+    final source = '$portalSource\n$navigationSource';
+    for (final label in ['الرئيسية', 'الطلبات', 'الخدمات', 'الرسائل', 'ملفي']) {
+      expect(source, contains(label));
+    }
+    expect(source, contains('IndexedStack'));
+    expect(source, contains('ProviderPortalBottomNav'));
+    expect(source, isNot(contains('حجز مؤكد')));
+    expect(source, isNot(contains('دفع')));
+  });
+
+  test('chat conversation parses unread state and quote context', () {
+    final conversation = ChatConversation.fromJson({
+      'id': 'conversation-1',
+      'quoteRequestId': 'quote-1',
+      'unreadCount': 2,
+      'muted': false,
+      'blocked': false,
+      'counterpart': {
+        'id': 'provider-user-1',
+        'name': 'قاعة الياسمين',
+        'avatarUrl': 'https://cdn.example/logo.webp',
+      },
+      'quoteRequest': {
+        'id': 'quote-1',
+        'status': 'SENT',
+        'provider': {'id': 'provider-1', 'businessName': 'قاعة الياسمين'},
+        'service': {'id': 'service-1', 'title': 'تنسيق القاعة'},
+      },
+      'lastMessage': {
+        'id': 'message-1',
+        'conversationId': 'conversation-1',
+        'senderUserId': 'provider-user-1',
+        'body': 'مرحبًا، وصل طلبكم',
+        'createdAt': '2026-07-05T10:00:00.000Z',
+        'attachments': <Object?>[],
+      },
+      'createdAt': '2026-07-05T09:00:00.000Z',
+      'updatedAt': '2026-07-05T10:00:00.000Z',
+    });
+
+    expect(conversation.unreadCount, 2);
+    expect(conversation.counterpart.name, 'قاعة الياسمين');
+    expect(conversation.serviceTitle, 'تنسيق القاعة');
+    expect(conversation.lastMessage?.body, 'مرحبًا، وصل طلبكم');
+  });
+
+  test('message page preserves chronological order and cursor', () {
+    final page = ChatMessagePage.fromJson({
+      'items': [
+        {
+          'id': 'message-1',
+          'conversationId': 'conversation-1',
+          'senderUserId': 'user-1',
+          'body': 'الرسالة الأولى',
+          'createdAt': '2026-07-05T10:00:00.000Z',
+          'attachments': <Object?>[],
+        },
+      ],
+      'nextCursor': 'message-0',
+    });
+    expect(page.items.single.id, 'message-1');
+    expect(page.nextCursor, 'message-0');
+  });
+
+  testWidgets('provider portal is usable at 320px and switches tabs', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 760);
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ProviderDashboardProvider>.value(
+            value: _FakeProviderDashboardProvider(),
+          ),
+          ChangeNotifierProvider<ChatProvider>.value(
+            value: _FakeChatProvider(authStorage),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const ProviderPortalScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('الرئيسية'), findsOneWidget);
+    expect(find.text('استديو أعرست'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.bySemanticsLabel('الطلبات'));
+    await tester.pumpAndSettle();
+    final closedFilterRect = tester.getRect(find.text('مغلق'));
+    expect(closedFilterRect.left, greaterThanOrEqualTo(0));
+    expect(closedFilterRect.right, lessThanOrEqualTo(320));
+    expect(tester.getSize(find.text('الكل')).height, lessThanOrEqualTo(24));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('الخدمات'));
+    await tester.pumpAndSettle();
+    expect(find.text('الخدمات والباقات'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('الرسائل'));
+    await tester.pumpAndSettle();
+    expect(find.text('لا توجد محادثات بعد'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('ملفي'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('provider-settings-action')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('الحساب والتطبيق'), findsOneWidget);
+    expect(find.text('الإعدادات'), findsOneWidget);
+    expect(find.text('مزامنة الآن'), findsOneWidget);
+    expect(find.text('تسجيل الخروج'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+class _FakeProviderDashboardProvider extends ProviderDashboardProvider {
+  _FakeProviderDashboardProvider()
+    : super(ProviderDashboardApi(ApiClient(tokenProvider: () async => null)));
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  String? get errorMessage => null;
+
+  @override
+  ProviderDashboardProfile? get profile => const ProviderDashboardProfile(
+    id: 'provider-1',
+    businessName: 'استديو أعرست',
+    status: 'ACTIVE',
+    ratingAverage: 4.8,
+    ratingCount: 12,
+    phone: '+967777000111',
+    cityId: 'city-1',
+    city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
+  );
+
+  @override
+  ProviderDashboardSummary get summary => const ProviderDashboardSummary(
+    servicesCount: 2,
+    activeServicesCount: 2,
+    quoteRequestsCount: 1,
+    newQuoteRequestsCount: 1,
+    averageRating: 4.8,
+    ratingCount: 12,
+  );
+
+  @override
+  List<MarketplaceService> get services => const [];
+
+  @override
+  List<ProviderPackage> get packages => const [];
+
+  @override
+  List<QuoteRequest> get quoteRequests => const [];
+
+  @override
+  Future<void> loadDashboard() async {}
+}
+
+class _FakeChatProvider extends ChatProvider {
+  _FakeChatProvider(AuthStorage storage)
+    : super(
+        api: ChatApi(ApiClient(tokenProvider: () async => null)),
+        realtime: ChatRealtimeClient(storage),
+        authStorage: storage,
+      );
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  String? get errorMessage => null;
+
+  @override
+  List<ChatConversation> get conversations => const [];
+
+  @override
+  Future<void> initialize() async {}
+
+  @override
+  Future<void> loadConversations() async {}
+}
+
+class _CountingChatApi extends ChatApi {
+  _CountingChatApi() : super(ApiClient(tokenProvider: () async => null));
+
+  int listCalls = 0;
+
+  @override
+  Future<List<ChatConversation>> listConversations() async {
+    listCalls += 1;
+    return const [];
+  }
+}
+
+class _CountingRealtimeClient extends ChatRealtimeClient {
+  _CountingRealtimeClient(super.storage);
+
+  int connectCalls = 0;
+
+  @override
+  Future<void> connect({
+    required void Function(ChatMessage message) onMessage,
+    required void Function(String conversationId, String userId) onRead,
+  }) async {
+    connectCalls += 1;
+  }
+}

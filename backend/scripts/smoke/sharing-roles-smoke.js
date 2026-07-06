@@ -134,10 +134,20 @@ async function run() {
 
   {
     const res = await request('GET', `/api/v1/invites/${editorInviteToken}`);
-    check('public invite preview - HTTP 200', res.status === 200);
-    check('public invite preview has plan title', res.body?.weddingPlan?.title === 'Sharing Roles Plan');
-    check('public invite preview status is PENDING', res.body?.status === 'PENDING');
-    check('public invite preview does not expose passwordHash', !hasPasswordHash(res.body));
+    check('invite preview without token returns 401', res.status === 401);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/invites/${editorInviteToken}`, null, outsider.token);
+    check('wrong user cannot preview targeted invite', res.status === 404);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/invites/${editorInviteToken}`, null, editor.token);
+    check('targeted invite preview - HTTP 200', res.status === 200);
+    check('targeted invite preview has plan title', res.body?.weddingPlan?.title === 'Sharing Roles Plan');
+    check('targeted invite preview status is PENDING', res.body?.status === 'PENDING');
+    check('targeted invite preview does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {

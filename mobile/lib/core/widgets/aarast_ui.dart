@@ -10,8 +10,11 @@ export 'aarast_error_state.dart';
 export 'aarast_loading_state.dart';
 export 'aarast_metric_tile.dart';
 export 'aarast_pressable.dart';
+export 'aarast_skeleton.dart';
 export 'aarast_status_badge.dart';
 
+/// غلاف الصفحات الموحّد — مبني فوق [AarastScreenFrame] حتى تتطابق كل
+/// الشاشات في الخلفية والحدود والـ SafeArea، ويضيف ترويسة فاخرة اختيارية.
 class AarastPageScaffold extends StatelessWidget {
   const AarastPageScaffold({
     required this.child,
@@ -21,9 +24,12 @@ class AarastPageScaffold extends StatelessWidget {
     this.showBack = false,
     this.onBack,
     this.padding = AppTheme.screenPadding,
+    this.maxWidth = 560,
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.resizeToAvoidBottomInset,
+    this.safeAreaBottom = true,
+    this.extendBody = false,
     super.key,
   });
 
@@ -34,53 +40,44 @@ class AarastPageScaffold extends StatelessWidget {
   final bool showBack;
   final VoidCallback? onBack;
   final EdgeInsetsGeometry padding;
+  final double maxWidth;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
   final bool? resizeToAvoidBottomInset;
+  final bool safeAreaBottom;
+  final bool extendBody;
 
   @override
   Widget build(BuildContext context) {
     final hasHeader =
         title != null || subtitle != null || actions.isNotEmpty || showBack;
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.ivory,
-        bottomNavigationBar: bottomNavigationBar,
-        floatingActionButton: floatingActionButton,
-        resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        body: DecoratedBox(
-          decoration: AppTheme.screenDecoration(),
-          child: SafeArea(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Padding(
-                  padding: padding,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (hasHeader) ...[
-                        AarastFadeSlide(
-                          child: AarastPageHeader(
-                            title: title,
-                            subtitle: subtitle,
-                            actions: actions,
-                            showBack: showBack,
-                            onBack: onBack,
-                          ),
-                        ),
-                        const SizedBox(height: AppTheme.gapLg),
-                      ],
-                      Expanded(child: child),
-                    ],
-                  ),
+    return AarastScreenFrame(
+      maxWidth: maxWidth,
+      bottomNavigationBar: bottomNavigationBar,
+      floatingActionButton: floatingActionButton,
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+      safeAreaBottom: safeAreaBottom,
+      extendBody: extendBody,
+      child: Padding(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (hasHeader) ...[
+              AarastFadeSlide(
+                child: AarastPageHeader(
+                  title: title,
+                  subtitle: subtitle,
+                  actions: actions,
+                  showBack: showBack,
+                  onBack: onBack,
                 ),
               ),
-            ),
-          ),
+              const SizedBox(height: AppTheme.gapLg),
+            ],
+            Expanded(child: child),
+          ],
         ),
       ),
     );
@@ -270,6 +267,7 @@ class AarastCard extends StatelessWidget {
 class AarastSectionHeader extends StatelessWidget {
   const AarastSectionHeader({
     required this.title,
+    this.subtitle,
     this.icon,
     this.actionLabel,
     this.onAction,
@@ -277,6 +275,7 @@ class AarastSectionHeader extends StatelessWidget {
   });
 
   final String title;
+  final String? subtitle;
   final IconData? icon;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -284,19 +283,39 @@ class AarastSectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (icon != null) ...[
           Icon(icon, color: AppTheme.burgundy, size: 20),
           const SizedBox(width: 8),
         ],
         Expanded(
-          child: Text(
-            title,
-            textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.right,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  subtitle!,
+                  textAlign: TextAlign.right,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         if (actionLabel != null && onAction != null)

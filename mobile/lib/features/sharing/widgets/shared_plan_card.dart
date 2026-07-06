@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
@@ -30,6 +33,12 @@ class SharedPlanCard extends StatelessWidget {
                 enabled: true,
               ),
               const Spacer(),
+              const Icon(
+                LucideIcons.calendarHeart,
+                color: AppTheme.warmGold,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 flex: 3,
                 child: Text(
@@ -54,6 +63,7 @@ class SharedPlanCard extends StatelessWidget {
             label: 'الحالة',
             value: plan.status == 'ARCHIVED' ? 'مؤرشفة' : 'قيد التخطيط',
           ),
+          _InfoLine(label: 'العملة', value: currencyLabelAr(plan.currency)),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,

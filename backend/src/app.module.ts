@@ -24,6 +24,8 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AdminModule } from './admin/admin.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { GuestsModule } from './guests/guests.module';
+import { ConversationsModule } from './conversations/conversations.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -54,6 +56,8 @@ import { GuestsModule } from './guests/guests.module';
     NotificationsModule,
     GuestsModule,
     AdminModule,
+    ConversationsModule,
+    MediaModule,
   ],
   controllers: [HealthController],
   providers: [

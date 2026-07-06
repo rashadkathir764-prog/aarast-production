@@ -51,10 +51,10 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
 
   String? _budgetCategoryId;
   String _status = 'PLANNED';
-  String _paymentType = 'عربون';
+  String _paymentType = 'دفعة أولى';
   String _paymentMethod = 'نقداً';
   DateTime? _expenseDate;
-  DateTime? _bookingDate;
+  DateTime? _agreementDate;
   DateTime? _remainingDueDate;
   DateTime? _weddingDate;
   bool _didPrefill = false;
@@ -215,7 +215,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               addressController: _hallAddressController,
                               paymentType: _paymentType,
                               paymentMethod: _paymentMethod,
-                              bookingDate: _bookingDate,
+                              agreementDate: _agreementDate,
                               weddingDate: _weddingDate,
                               remainingDueDate: _remainingDueDate,
                               showDetails: _showHallDetails,
@@ -235,11 +235,11 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               onPaymentMethodChanged: (value) {
                                 setState(() => _paymentMethod = value);
                               },
-                              onBookingDateTap: () => _pickDateFor(
-                                title: 'تاريخ الحجز',
-                                current: _bookingDate,
+                              onAgreementDateTap: () => _pickDateFor(
+                                title: 'تاريخ الاتفاق',
+                                current: _agreementDate,
                                 onSelected: (date) =>
-                                    setState(() => _bookingDate = date),
+                                    setState(() => _agreementDate = date),
                               ),
                               onRemainingDueDateTap: () => _pickDateFor(
                                 title: 'موعد دفع الباقي',
@@ -280,9 +280,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                               decoration: InputDecoration(
                                 labelText: 'المبلغ',
                                 suffixText: _currencyLabel,
-                                prefixIcon: const Icon(
-                                  LucideIcons.wallet,
-                                ),
+                                prefixIcon: const Icon(LucideIcons.wallet),
                               ),
                               validator: _nonNegativeRequired(
                                 'المبلغ غير صحيح',
@@ -360,9 +358,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                     const SizedBox(height: 18),
                     AarastButton(
                       label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المصروف',
-                      icon: _isEditMode
-                          ? LucideIcons.save
-                          : LucideIcons.check,
+                      icon: _isEditMode ? LucideIcons.save : LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -440,7 +436,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     }
     _status = 'PAID';
     _expenseDate ??= DateTime.now();
-    _bookingDate ??= DateTime.now();
+    _agreementDate ??= DateTime.now();
     _remainingDueDate ??= _defaultRemainingDueDate();
   }
 
@@ -563,10 +559,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
                 children: [
                   const _SheetHandle(),
                   const SizedBox(height: 20),
-                  AarastSectionHeader(
-                    title: title,
-                    icon: LucideIcons.calendar,
-                  ),
+                  AarastSectionHeader(title: title, icon: LucideIcons.calendar),
                   const SizedBox(height: 8),
                   Theme(
                     data: Theme.of(sheetContext).copyWith(
@@ -740,7 +733,8 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
         'مبلغ هذه الدفعة: ${_moneyPayload(_paymentAmount)} $_currencyLabel',
       'نوع الدفعة: $_paymentType',
       'طريقة الدفع: $_paymentMethod',
-      if (_bookingDate != null) 'تاريخ الحجز: ${_formatDate(_bookingDate!)}',
+      if (_agreementDate != null)
+        'تاريخ الاتفاق: ${_formatDate(_agreementDate!)}',
       if (_weddingDate != null) 'تاريخ المناسبة: ${_formatDate(_weddingDate!)}',
       if (_hallRemaining > 0)
         'المتبقي: ${_moneyPayload(_hallRemaining)} $_currencyLabel',
@@ -915,7 +909,7 @@ class _HallExpenseFields extends StatelessWidget {
     required this.addressController,
     required this.paymentType,
     required this.paymentMethod,
-    required this.bookingDate,
+    required this.agreementDate,
     required this.weddingDate,
     required this.remainingDueDate,
     required this.showDetails,
@@ -928,7 +922,7 @@ class _HallExpenseFields extends StatelessWidget {
     required this.onChooseProvider,
     required this.onPaymentTypeChanged,
     required this.onPaymentMethodChanged,
-    required this.onBookingDateTap,
+    required this.onAgreementDateTap,
     required this.onRemainingDueDateTap,
     required this.onToggleDetails,
     required this.onToggleReminder,
@@ -944,7 +938,7 @@ class _HallExpenseFields extends StatelessWidget {
   final TextEditingController addressController;
   final String paymentType;
   final String paymentMethod;
-  final DateTime? bookingDate;
+  final DateTime? agreementDate;
   final DateTime? weddingDate;
   final DateTime? remainingDueDate;
   final bool showDetails;
@@ -957,16 +951,15 @@ class _HallExpenseFields extends StatelessWidget {
   final VoidCallback onChooseProvider;
   final ValueChanged<String> onPaymentTypeChanged;
   final ValueChanged<String> onPaymentMethodChanged;
-  final VoidCallback onBookingDateTap;
+  final VoidCallback onAgreementDateTap;
   final VoidCallback onRemainingDueDateTap;
   final VoidCallback onToggleDetails;
   final ValueChanged<bool> onToggleReminder;
   final ValueChanged<String> onServiceToggled;
 
   static const _paymentTypes = [
-    'عربون',
     'دفعة أولى',
-    'دفعة ثانية',
+    'دفعة متابعة',
     'دفعة نهائية',
     'مبلغ كامل',
   ];
@@ -1054,13 +1047,13 @@ class _HallExpenseFields extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _SelectorField(
-          label: 'تاريخ الحجز / الاتفاق',
-          value: bookingDate == null
+          label: 'تاريخ الاتفاق',
+          value: agreementDate == null
               ? 'لم يحدد بعد'
-              : _formatDate(bookingDate!),
+              : _formatDate(agreementDate!),
           icon: LucideIcons.calendarCheck,
-          selected: bookingDate != null,
-          onTap: onBookingDateTap,
+          selected: agreementDate != null,
+          onTap: onAgreementDateTap,
         ),
         if (weddingDate != null) ...[
           const SizedBox(height: 12),
@@ -1108,7 +1101,7 @@ class _HallExpenseFields extends StatelessWidget {
         if (duplicateWarning) ...[
           const SizedBox(height: 12),
           const AarastStatusPill(
-            label: 'هذه الصالة مضافة مسبقاً. راجعها حتى لا يتكرر الحجز.',
+            label: 'هذه الصالة مضافة مسبقاً. راجعها حتى لا يتكرر المصروف.',
             color: AppTheme.gold,
             icon: LucideIcons.info,
           ),
@@ -1117,9 +1110,7 @@ class _HallExpenseFields extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: onToggleDetails,
           icon: Icon(
-            showDetails
-                ? LucideIcons.chevronUp
-                : LucideIcons.chevronDown,
+            showDetails ? LucideIcons.chevronUp : LucideIcons.chevronDown,
           ),
           label: const Text('تفاصيل الصالة'),
         ),
@@ -1442,10 +1433,7 @@ class _SelectorField extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              LucideIcons.chevronDown,
-              color: AppTheme.muted,
-            ),
+            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
           ],
         ),
       ),

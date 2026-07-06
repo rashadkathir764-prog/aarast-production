@@ -32,8 +32,9 @@ Future<void> _loadFonts() async {
     'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
     'assets/fonts/IBMPlexSansArabic-Bold.ttf',
   ]);
-  await load('packages/lucide_icons/Lucide',
-      ['packages/lucide_icons/assets/lucide.ttf']);
+  await load('packages/lucide_icons/Lucide', [
+    'packages/lucide_icons/assets/lucide.ttf',
+  ]);
 }
 
 final _now = DateTime(2026, 7, 4);
@@ -60,8 +61,11 @@ WeddingTask _task({
   );
 }
 
-Future<void> _pump(WidgetTester tester, Widget child,
-    {required Size size}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  required Size size,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -131,6 +135,7 @@ void main() {
           for (final t in tasks) ...[
             SmartTaskCard(
               task: t,
+              now: _now,
               isBusy: false,
               onEdit: () {},
               onDelete: () {},

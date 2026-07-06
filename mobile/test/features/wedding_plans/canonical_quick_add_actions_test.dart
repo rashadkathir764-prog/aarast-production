@@ -258,7 +258,7 @@ void main() {
 
     test('plan center does not push routes owned by the plan shell', () {
       final source = File(
-        'lib/features/wedding_plans/screens/plan_center_screen.dart',
+        'lib/features/wedding_plans/screens/plan_management_screen.dart',
       ).readAsStringSync();
 
       expect(source, isNot(contains('context.push(AppRouter.finance')));

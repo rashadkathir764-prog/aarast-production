@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -60,7 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: AppTheme.burgundy,
         onRefresh: _refreshAccountAndLoad,
         child: ListView(
-          children: [
+          children: AarastStagger.children(context, [
             _AccountCard(
               name: auth.user?.name ?? 'مستخدم اعّرست',
               phone: auth.user?.phone,
@@ -68,9 +71,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 14),
             if (_isCheckingAccount)
-              const Padding(
-                padding: EdgeInsets.only(top: 80),
-                child: Center(child: CircularProgressIndicator()),
+              AarastSkeleton.list(
+                rows: 2,
+                rowHeight: 210,
+                withHeader: false,
+                inline: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
               )
             else if (_showLoginGate)
               const SizedBox(
@@ -79,24 +85,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'سجّل الدخول لإدارة الإعدادات',
                   body:
                       'الإعدادات مرتبطة بحسابك حتى نحفظ تفضيلات التنبيهات والمزامنة بأمان.',
-                  icon: Icons.settings_outlined,
+                  icon: LucideIcons.settings,
                 ),
               )
             else if (provider.isLoading && draft == null)
-              const Padding(
-                padding: EdgeInsets.only(top: 80),
-                child: Center(child: CircularProgressIndicator()),
+              AarastSkeleton.list(
+                rows: 2,
+                rowHeight: 210,
+                withHeader: false,
+                inline: true,
+                padding: const EdgeInsets.symmetric(vertical: 8),
               )
             else if (provider.errorMessage != null && draft == null)
-              AarastEmptyState(
-                icon: Icons.error_outline_rounded,
+              AarastErrorState(
                 title: 'تعذر تحميل الإعدادات',
                 message: provider.errorMessage!,
-                action: OutlinedButton.icon(
-                  onPressed: provider.loadSettings,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('إعادة المحاولة'),
-                ),
+                onRetry: provider.loadSettings,
               )
             else if (draft != null) ...[
               _NotificationSettingsCard(
@@ -120,22 +124,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
-              FilledButton.icon(
+              AarastButton(
+                label: 'حفظ الإعدادات',
+                icon: LucideIcons.save,
+                isLoading: provider.isSubmitting,
                 onPressed: provider.isSubmitting || !provider.hasChanges
                     ? null
                     : provider.saveSettings,
-                icon: provider.isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: const Text('حفظ الإعدادات'),
               ),
             ],
             const SizedBox(height: 90),
-          ],
+          ]),
         ),
       ),
     );
@@ -163,10 +162,7 @@ class _AccountCard extends StatelessWidget {
               color: AppTheme.ivory,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
-            child: const Icon(
-              Icons.person_outline_rounded,
-              color: AppTheme.gold,
-            ),
+            child: const Icon(LucideIcons.user, color: AppTheme.gold),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -226,7 +222,7 @@ class _NotificationSettingsCard extends StatelessWidget {
       child: Column(
         children: [
           const _SettingsHeader(
-            icon: Icons.notifications_active_outlined,
+            icon: LucideIcons.bellRing,
             title: 'تفضيلات التنبيهات',
           ),
           _SwitchRow(
@@ -299,18 +295,18 @@ class _StaticPreferencesCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const _SettingsHeader(
-            icon: Icons.language_outlined,
+            icon: LucideIcons.languages,
             title: 'العرض والخصوصية',
             compact: true,
           ),
           const SizedBox(height: 10),
           const Text(
-            'اللغة الحالية: العربية',
+            'لغة التطبيق: العربية — أعرست مصمم عربي أولاً.',
             style: TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
-            'آخر حفظ: ${updatedAt.day}/${updatedAt.month}/${updatedAt.year}',
+            'آخر حفظ: ${formatArabicCompactDate(updatedAt)}',
             style: const TextStyle(
               color: AppTheme.muted,
               fontWeight: FontWeight.w700,

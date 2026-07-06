@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -89,7 +90,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final suppressData = _isLocalPlanNotifications || _suppressAccountData;
 
     if (!_isLocalPlanNotifications && _isCheckingAccount) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(
+        rows: 5,
+        rowHeight: 108,
+        withHeader: false,
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      );
     }
 
     if (!_isLocalPlanNotifications && _showLoginGate) {
@@ -102,7 +108,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     if (!suppressData && provider.isLoading && notifications.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(
+        rows: 5,
+        rowHeight: 108,
+        withHeader: false,
+        padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+      );
     }
 
     if (!suppressData &&
@@ -110,16 +121,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         notifications.isEmpty) {
       return ListView(
         children: [
-          const SizedBox(height: 90),
-          AarastEmptyState(
-            icon: Icons.error_outline_rounded,
+          const SizedBox(height: 60),
+          AarastErrorState(
             title: 'تعذر تحميل التنبيهات',
             message: provider.errorMessage!,
-            action: OutlinedButton.icon(
-              onPressed: _load,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('إعادة المحاولة'),
-            ),
+            onRetry: _load,
           ),
         ],
       );
@@ -143,10 +149,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final notification = notifications[index];
-        return _NotificationCard(
-          notification: notification,
-          onTap: () => _openNotification(provider, notification),
-          onArchive: () => provider.archiveNotification(notification),
+        return AarastStagger.item(
+          context,
+          _NotificationCard(
+            notification: notification,
+            onTap: () => _openNotification(provider, notification),
+            onArchive: () => provider.archiveNotification(notification),
+          ),
+          index,
         );
       },
     );

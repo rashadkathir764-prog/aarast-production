@@ -8,6 +8,12 @@ abstract class TokenVault {
   Future<void> write(String token);
 
   Future<void> delete();
+
+  Future<String?> readRefresh();
+
+  Future<void> writeRefresh(String token);
+
+  Future<void> deleteRefresh();
 }
 
 /// Production vault backed by the platform keystore/keychain via
@@ -19,6 +25,7 @@ class SecureTokenVault implements TokenVault {
   const SecureTokenVault([this._storage = _defaultStorage]);
 
   static const _accessTokenKey = 'aarast_access_token';
+  static const _refreshTokenKey = 'aarast_refresh_token';
 
   static const _defaultStorage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -45,5 +52,24 @@ class SecureTokenVault implements TokenVault {
   @override
   Future<void> delete() {
     return _storage.delete(key: _accessTokenKey);
+  }
+
+  @override
+  Future<String?> readRefresh() async {
+    try {
+      return await _storage.read(key: _refreshTokenKey);
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
+  Future<void> writeRefresh(String token) {
+    return _storage.write(key: _refreshTokenKey, value: token);
+  }
+
+  @override
+  Future<void> deleteRefresh() {
+    return _storage.delete(key: _refreshTokenKey);
   }
 }

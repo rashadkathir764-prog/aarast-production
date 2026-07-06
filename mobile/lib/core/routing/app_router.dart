@@ -5,6 +5,9 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/chat/screens/chat_screen.dart';
+import '../../features/chat/screens/quote_conversation_entry_screen.dart';
+import '../../features/chat/widgets/conversation_list_view.dart';
 import '../../features/debts/screens/create_debt_screen.dart';
 import '../../features/debts/screens/create_installment_screen.dart';
 import '../../features/debts/screens/debt_details_screen.dart';
@@ -23,9 +26,9 @@ import '../../features/marketplace/screens/add_provider_service_screen.dart';
 import '../../features/marketplace/screens/edit_provider_profile_screen.dart';
 import '../../features/marketplace/screens/favorite_providers_screen.dart';
 import '../../features/marketplace/screens/provider_apply_screen.dart';
-import '../../features/marketplace/screens/provider_dashboard_screen.dart';
 import '../../features/marketplace/screens/provider_details_screen.dart';
 import '../../features/marketplace/screens/provider_marketplace_screen.dart';
+import '../../features/marketplace/screens/provider_portal_screen.dart';
 import '../../features/marketplace/screens/quote_request_screen.dart';
 import '../../features/marketplace/models/provider_budget_match_intent.dart';
 import '../../features/marketplace/widgets/provider_auth_gate.dart';
@@ -67,6 +70,7 @@ class AppRouter {
   static const createWeddingPlan = '/wedding-plans/create';
   static const providerMarketplace = '/providers';
   static const favoriteProviders = '/providers/favorites';
+  static const conversations = '/conversations';
   static const providerApply = '/provider/apply';
   static const providerApplyStatus = '/provider/apply/status';
   static const providerDashboard = '/provider/dashboard';
@@ -85,6 +89,14 @@ class AppRouter {
 
   static String providerDetails(String id) {
     return '/providers/$id';
+  }
+
+  static String conversation(String id) {
+    return '/conversations/$id';
+  }
+
+  static String quoteConversation(String quoteRequestId) {
+    return '/quotes/$quoteRequestId/conversation';
   }
 
   static String providerQuoteRequest(String id) {
@@ -312,7 +324,8 @@ class AppRouter {
           builder: (context, state) => ProviderAuthGate(
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
-            child: const ProviderDashboardScreen(),
+            providerAccountRequired: true,
+            child: const ProviderPortalScreen(),
           ),
         ),
         GoRoute(
@@ -320,6 +333,7 @@ class AppRouter {
           builder: (context, state) => ProviderAuthGate(
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
+            providerAccountRequired: true,
             child: const EditProviderProfileScreen(),
           ),
         ),
@@ -332,6 +346,7 @@ class AppRouter {
           builder: (context, state) => ProviderAuthGate(
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
+            providerAccountRequired: true,
             child: const AddProviderServiceScreen(),
           ),
         ),
@@ -340,8 +355,39 @@ class AppRouter {
           builder: (context, state) => ProviderAuthGate(
             resumeLocation: state.uri.toString(),
             registerAsProvider: true,
+            providerAccountRequired: true,
             child: const AddProviderPackageScreen(),
           ),
+        ),
+        // Secure quote chat: every list, detail, and quote entry route requires
+        // a real account. Backend ownership still limits each conversation to
+        // the requester and the provider attached to that quote request.
+        GoRoute(
+          path: conversations,
+          builder: (context, state) => ProviderAuthGate(
+            resumeLocation: state.uri.toString(),
+            child: const ConversationListView(),
+          ),
+        ),
+        GoRoute(
+          path: '/conversations/:id',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              child: ChatScreen(conversationId: id),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/quotes/:id/conversation',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return ProviderAuthGate(
+              resumeLocation: state.uri.toString(),
+              child: QuoteConversationEntryScreen(quoteRequestId: id),
+            );
+          },
         ),
         GoRoute(
           path: notifications,

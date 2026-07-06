@@ -20,6 +20,7 @@ class SmartTaskCard extends StatelessWidget {
     required this.onDelete,
     this.onMarkDone,
     this.onReopen,
+    this.now,
     super.key,
   });
 
@@ -29,16 +30,17 @@ class SmartTaskCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback? onMarkDone;
   final VoidCallback? onReopen;
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
     final isDone = task.isDone;
-    final isLate = isTaskLate(task);
+    final isLate = isTaskLate(task, now: now);
     final spineColor = isDone
         ? AarastDesignTokens.success
         : isLate
-            ? AarastDesignTokens.danger
-            : taskPriorityColor(task.priority);
+        ? AarastDesignTokens.danger
+        : taskPriorityColor(task.priority);
 
     return Material(
       color: Colors.transparent,
@@ -66,8 +68,7 @@ class SmartTaskCard extends StatelessWidget {
                   child: Container(width: 4, color: spineColor),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
+                  padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -100,9 +101,11 @@ class SmartTaskCard extends StatelessWidget {
                                 if (task.priority == 'HIGH' ||
                                     task.priority == 'URGENT') ...[
                                   const SizedBox(width: 6),
-                                  Icon(LucideIcons.flame,
-                                      size: 12,
-                                      color: taskPriorityColor(task.priority)),
+                                  Icon(
+                                    LucideIcons.flame,
+                                    size: 12,
+                                    color: taskPriorityColor(task.priority),
+                                  ),
                                 ],
                               ],
                             ),
@@ -125,7 +128,12 @@ class SmartTaskCard extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            _MetaRow(task: task, isDone: isDone, isLate: isLate),
+                            _MetaRow(
+                              task: task,
+                              isDone: isDone,
+                              isLate: isLate,
+                              now: now,
+                            ),
                             const SizedBox(height: 8),
                             _ResponsibleLine(task: task, isDone: isDone),
                           ],
@@ -155,22 +163,24 @@ class _MetaRow extends StatelessWidget {
     required this.task,
     required this.isDone,
     required this.isLate,
+    required this.now,
   });
 
   final WeddingTask task;
   final bool isDone;
   final bool isLate;
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
     final dueColor = task.dueDate == null
         ? AarastDesignTokens.muted
         : isLate
-            ? AarastDesignTokens.danger
-            : AarastDesignTokens.gold;
+        ? AarastDesignTokens.danger
+        : AarastDesignTokens.gold;
     final dueLabel = task.dueDate == null
         ? 'بدون موعد'
-        : taskRelativeDueLabel(task.dueDate!);
+        : taskRelativeDueLabel(task.dueDate!, now: now);
 
     return Wrap(
       spacing: 6,
@@ -195,8 +205,9 @@ class _ResponsibleLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final phone = task.responsiblePhoneDisplay;
-    final textColor =
-        isDone ? AarastDesignTokens.muted : AarastDesignTokens.ink;
+    final textColor = isDone
+        ? AarastDesignTokens.muted
+        : AarastDesignTokens.ink;
 
     return Container(
       width: double.infinity,
@@ -204,17 +215,22 @@ class _ResponsibleLine extends StatelessWidget {
       decoration: BoxDecoration(
         color: AarastDesignTokens.ivory,
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusMd),
-        border: Border.all(color: AarastDesignTokens.gold.withValues(alpha: 0.13)),
+        border: Border.all(
+          color: AarastDesignTokens.gold.withValues(alpha: 0.13),
+        ),
       ),
       child: Wrap(
         spacing: 8,
         runSpacing: 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Icon(LucideIcons.user,
-              size: 15,
-              color:
-                  isDone ? AarastDesignTokens.muted : AarastDesignTokens.burgundy),
+          Icon(
+            LucideIcons.user,
+            size: 15,
+            color: isDone
+                ? AarastDesignTokens.muted
+                : AarastDesignTokens.burgundy,
+          ),
           Text(
             'المسؤول: ${task.responsibleLabel}',
             maxLines: 1,
@@ -229,8 +245,11 @@ class _ResponsibleLine extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(LucideIcons.phone,
-                    size: 13, color: AarastDesignTokens.muted),
+                const Icon(
+                  LucideIcons.phone,
+                  size: 13,
+                  color: AarastDesignTokens.muted,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   phone,
@@ -248,10 +267,12 @@ class _ResponsibleLine extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: AarastDesignTokens.goldSoft,
-                borderRadius:
-                    BorderRadius.circular(AarastDesignTokens.radiusPill),
+                borderRadius: BorderRadius.circular(
+                  AarastDesignTokens.radiusPill,
+                ),
                 border: Border.all(
-                    color: AarastDesignTokens.gold.withValues(alpha: 0.26)),
+                  color: AarastDesignTokens.gold.withValues(alpha: 0.26),
+                ),
               ),
               child: const Text(
                 'مشارك في الخطة',
@@ -352,10 +373,7 @@ class _GoldBurstCheck extends StatelessWidget {
           )
           // توهج ذهبي ينبثق مرة واحدة لحظة الإنجاز.
           .then()
-          .shimmer(
-            duration: 500.ms,
-            color: AarastDesignTokens.goldGlow,
-          );
+          .shimmer(duration: 500.ms, color: AarastDesignTokens.goldGlow);
     }
 
     return Semantics(
@@ -405,8 +423,11 @@ class _TaskMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       tooltip: 'إجراءات المهمة',
-      icon: const Icon(LucideIcons.moreVertical,
-          color: AarastDesignTokens.muted, size: 18),
+      icon: const Icon(
+        LucideIcons.moreVertical,
+        color: AarastDesignTokens.muted,
+        size: 18,
+      ),
       onSelected: (value) {
         switch (value) {
           case 'done':
@@ -453,8 +474,10 @@ class _TaskMenu extends StatelessWidget {
           value: 'delete',
           child: Row(
             children: [
-              Icon(Icons.delete_outline_rounded,
-                  color: AarastDesignTokens.danger),
+              Icon(
+                Icons.delete_outline_rounded,
+                color: AarastDesignTokens.danger,
+              ),
               SizedBox(width: 10),
               Text('حذف المهمة'),
             ],

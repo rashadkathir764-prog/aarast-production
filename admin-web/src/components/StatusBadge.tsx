@@ -10,6 +10,8 @@ const statusMap: Record<string, { label: string; bg: string; color: string }> = 
   SUSPENDED: { label: 'موقوف', bg: '#F5F5F5', color: '#616161' },
   DISABLED: { label: 'معطل', bg: '#F5F5F5', color: '#616161' },
   OPEN: { label: 'مفتوح', bg: '#E3F2FD', color: '#0D47A1' },
+  REVIEWED: { label: 'تمت المراجعة', bg: '#EBF7EE', color: '#2D8A5D' },
+  DISMISSED: { label: 'مرفوض', bg: '#F5F5F5', color: '#616161' },
   PUBLISHED: { label: 'منشور', bg: '#EBF7EE', color: '#2D8A5D' },
   UNREAD: { label: 'غير مقروء', bg: '#E3F2FD', color: '#0D47A1' },
   READ: { label: 'مقروء', bg: '#F5F5F5', color: '#616161' },

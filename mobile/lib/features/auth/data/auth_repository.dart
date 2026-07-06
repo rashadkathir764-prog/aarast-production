@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
@@ -25,6 +25,7 @@ class AuthRepository {
     final response = _parseAuthResponse(json, operation: 'login');
     await _authStorage.saveSession(
       accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
       user: response.user,
     );
     return response;
@@ -46,6 +47,7 @@ class AuthRepository {
     final response = _parseAuthResponse(json, operation: 'register');
     await _authStorage.saveSession(
       accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
       user: response.user,
     );
     return response;
@@ -82,9 +84,12 @@ class AuthRepository {
       'code': code,
     });
     final response = OtpVerifyResult.fromJson(json);
-    if (response.accessToken != null && response.user != null) {
+    if (response.accessToken != null &&
+        response.refreshToken != null &&
+        response.user != null) {
       await _authStorage.saveSession(
         accessToken: response.accessToken!,
+        refreshToken: response.refreshToken!,
         user: response.user!,
       );
     } else if (response.user != null) {
@@ -95,9 +100,77 @@ class AuthRepository {
 
   Future<String?> readAccessToken() => _authStorage.readAccessToken();
 
+  Future<bool> refreshSession() async {
+    final refreshToken = await _authStorage.readRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+    try {
+      final json = await _apiClient.postJson('/auth/refresh', {
+        'refreshToken': refreshToken,
+      });
+      final response = _parseAuthResponse(json, operation: 'refresh');
+      await _authStorage.saveSession(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+        user: response.user,
+      );
+      return true;
+    } on ApiException catch (error) {
+      if (!error.isUnauthorized) rethrow;
+      await _authStorage.clear();
+      return false;
+    }
+  }
+
   SafeUser? readCachedUser() => _authStorage.readUser();
 
-  Future<void> logout() => _authStorage.clear();
+  Future<SafeUser> updateAvatar({
+    required Uint8List bytes,
+    required String fileName,
+    required String contentType,
+  }) async {
+    try {
+      final ticket = await _apiClient.postJson('/media/uploads/presign', {
+        'purpose': 'user-avatar',
+        'fileName': fileName,
+        'contentType': contentType,
+        'byteSize': bytes.length,
+      });
+      final uploadUrl = ticket['uploadUrl']?.toString() ?? '';
+      final publicUrl = ticket['publicUrl']?.toString() ?? '';
+      if (uploadUrl.isEmpty || publicUrl.isEmpty) {
+        throw const ApiException('تعذر تجهيز رفع الصورة.');
+      }
+      await _apiClient.putBytes(uploadUrl, bytes, contentType: contentType);
+      final user = SafeUser.fromJson(
+        await _apiClient.patchJson('/users/me', {'avatarUrl': publicUrl}),
+      );
+      await _authStorage.saveUser(user);
+      return user;
+    } on ApiException catch (error) {
+      if (error.statusCode == 503 ||
+          error.message.toLowerCase().contains('media storage')) {
+        throw const ApiException(
+          'خدمة رفع الصور غير متاحة الآن. يرجى المحاولة مرة أخرى لاحقًا.',
+          statusCode: 503,
+        );
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> logout() async {
+    final refreshToken = await _authStorage.readRefreshToken();
+    try {
+      await _apiClient.postJson('/auth/logout', {
+        if (refreshToken != null && refreshToken.isNotEmpty)
+          'refreshToken': refreshToken,
+      });
+    } on Object {
+      // Local logout must always complete, even when the network is down.
+    } finally {
+      await _authStorage.clear();
+    }
+  }
 
   AuthResponse _parseAuthResponse(
     Map<String, dynamic> json, {

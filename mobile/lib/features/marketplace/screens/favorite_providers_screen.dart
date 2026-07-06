@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
@@ -58,7 +60,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
               context.go(AppRouter.providerMarketplace);
             }
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
           tooltip: 'رجوع',
         ),
       ],
@@ -75,13 +77,13 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
               )
             else if (_showLoginGate)
               AarastEmptyState(
-                icon: Icons.favorite_border_rounded,
+                icon: LucideIcons.heart,
                 title: 'سجل الدخول لفتح المفضلة',
                 message:
                     'حفظ الموردين مرتبط بحسابك حتى تجدهم مرة أخرى من أي جهاز.',
                 action: FilledButton.icon(
                   onPressed: () => context.go(AppRouter.login),
-                  icon: const Icon(Icons.login_rounded),
+                  icon: const Icon(LucideIcons.logIn),
                   label: const Text('تسجيل الدخول'),
                 ),
               )
@@ -98,18 +100,18 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
               )
             else if (favorites.isEmpty)
               AarastEmptyState(
-                icon: Icons.favorite_border_rounded,
+                icon: LucideIcons.heart,
                 title: 'لا توجد مفضلة بعد',
                 message:
                     'اضغط على القلب بجانب أي مورد ليظهر هنا للمقارنة والمتابعة.',
                 action: OutlinedButton.icon(
                   onPressed: () => context.go(AppRouter.providerMarketplace),
-                  icon: const Icon(Icons.storefront_outlined),
+                  icon: const Icon(LucideIcons.store),
                   label: const Text('تصفح الموردين'),
                 ),
               )
             else ...[
-              _FavoriteSummary(count: favorites.length),
+              _FavoriteProvidersHero(count: favorites.length),
               const SizedBox(height: 10),
               const _FavoriteCompareNote(),
               const SizedBox(height: 12),
@@ -155,7 +157,7 @@ class _FavoriteCompareNote extends StatelessWidget {
       border: Border.all(color: AppTheme.border),
       child: Row(
         children: [
-          const Icon(Icons.compare_arrows_rounded, color: AppTheme.gold),
+          const Icon(LucideIcons.arrowLeftRight, color: AppTheme.gold),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -173,8 +175,8 @@ class _FavoriteCompareNote extends StatelessWidget {
   }
 }
 
-class _FavoriteSummary extends StatelessWidget {
-  const _FavoriteSummary({required this.count});
+class _FavoriteProvidersHero extends StatelessWidget {
+  const _FavoriteProvidersHero({required this.count});
 
   final int count;
 
@@ -191,12 +193,12 @@ class _FavoriteSummary extends StatelessWidget {
               color: AppTheme.burgundySoft,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: const Icon(Icons.favorite_rounded, color: AppTheme.burgundy),
+            child: const Icon(LucideIcons.heart, color: AppTheme.burgundy),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '$count مورد محفوظ',
+              '$count مورد محفوظ للمقارنة',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: AppTheme.ink,
                 fontWeight: FontWeight.w900,
@@ -205,7 +207,7 @@ class _FavoriteSummary extends StatelessWidget {
           ),
           TextButton.icon(
             onPressed: () => context.go(AppRouter.providerMarketplace),
-            icon: const Icon(Icons.add_rounded),
+            icon: const Icon(LucideIcons.plus),
             label: const Text('إضافة'),
           ),
         ],
@@ -287,19 +289,19 @@ class _FavoriteProviderCard extends StatelessWidget {
                       children: [
                         if (category != null && category.isNotEmpty)
                           _FavoriteFactPill(
-                            icon: Icons.category_outlined,
+                            icon: LucideIcons.shapes,
                             text: category,
                             color: AppTheme.burgundy,
                           ),
                         if (serviceTitle != null && serviceTitle.isNotEmpty)
                           _FavoriteFactPill(
-                            icon: Icons.design_services_outlined,
+                            icon: LucideIcons.wand,
                             text: serviceTitle,
                             color: AppTheme.muted,
                           ),
                         if (service != null)
                           _FavoriteFactPill(
-                            icon: Icons.payments_outlined,
+                            icon: LucideIcons.wallet,
                             text: _favoriteServicePriceLabel(service),
                             color: AppTheme.gold,
                           ),
@@ -310,7 +312,7 @@ class _FavoriteProviderCard extends StatelessWidget {
               ),
               IconButton(
                 onPressed: onRemove,
-                icon: const Icon(Icons.favorite_rounded),
+                icon: const Icon(LucideIcons.heart),
                 color: AppTheme.burgundy,
                 tooltip: 'إزالة من المفضلة',
               ),
@@ -322,7 +324,7 @@ class _FavoriteProviderCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onOpen,
-                  icon: const Icon(Icons.visibility_outlined, size: 18),
+                  icon: const Icon(LucideIcons.eye, size: 18),
                   label: const Text('التفاصيل'),
                 ),
               ),
@@ -330,7 +332,7 @@ class _FavoriteProviderCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: onQuote,
-                  icon: const Icon(Icons.request_quote_outlined, size: 18),
+                  icon: const Icon(LucideIcons.receipt, size: 18),
                   label: const Text('طلب عرض'),
                 ),
               ),
@@ -448,6 +450,5 @@ String _favoriteServicePriceLabel(MarketplaceService service) {
     if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
     buffer.write(digits[i]);
   }
-  final currency = service.currency?.trim();
-  return '${rounded < 0 ? '-' : ''}$buffer ${currency == null || currency.isEmpty ? 'ر.ي' : currency}';
+  return '${rounded < 0 ? '-' : ''}$buffer ${currencyLabelAr(service.currency)}';
 }

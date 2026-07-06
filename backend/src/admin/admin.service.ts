@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   City,
+  ConversationReportStatus,
   Notification,
   NotificationPriority,
   NotificationType,
@@ -35,6 +36,10 @@ import {
 } from './dto/admin-review.dto';
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
+import {
+  AdminConversationReportQueryDto,
+  AdminConversationReportStatusDto,
+} from './dto/admin-conversation-report.dto';
 
 interface Pagination {
   page: number;
@@ -346,6 +351,67 @@ export class AdminService {
     });
     await this.recalculateProviderRating(existing.providerId);
     return { ...this.toAdminReviewResponse(review), deleted: false };
+  }
+
+  async listConversationReports(query: AdminConversationReportQueryDto) {
+    const pagination = this.parsePagination(query.page, query.limit);
+    const where: Prisma.ConversationReportWhereInput = query.status
+      ? { status: this.parseConversationReportStatus(query.status) }
+      : {};
+    const [total, reports] = await this.prisma.$transaction([
+      this.prisma.conversationReport.count({ where }),
+      this.prisma.conversationReport.findMany({
+        where,
+        select: {
+          id: true,
+          conversationId: true,
+          reason: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+          reporter: {
+            select: { id: true, name: true, phone: true, avatarUrl: true },
+          },
+          conversation: {
+            select: {
+              quoteRequestId: true,
+              quoteRequest: {
+                select: {
+                  provider: { select: { id: true, businessName: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        skip: pagination.skip,
+        take: pagination.limit,
+      }),
+    ]);
+    return this.paginate(reports, total, pagination);
+  }
+
+  async updateConversationReportStatus(
+    id: string,
+    dto: AdminConversationReportStatusDto,
+  ) {
+    const existing = await this.prisma.conversationReport.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Conversation report not found');
+    return this.prisma.conversationReport.update({
+      where: { id },
+      data: { status: this.parseConversationReportStatus(dto.status) },
+      select: {
+        id: true,
+        conversationId: true,
+        reason: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async listNotifications(query: AdminNotificationQueryDto) {
@@ -671,11 +737,18 @@ export class AdminService {
       throw new BadRequestException('Admins cannot disable their own account');
     }
     await this.findUserOrThrow(id);
-    const user = await this.prisma.user.update({
-      where: { id },
-      data: { status: UserStatus.DISABLED },
-      select: this.userSelect(true),
-    });
+    const now = new Date();
+    const [user] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id },
+        data: { status: UserStatus.DISABLED },
+        select: this.userSelect(true),
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
     return this.toUserResponse(user);
   }
 
@@ -1068,6 +1141,18 @@ export class AdminService {
       return ReviewStatus[normalized as keyof typeof ReviewStatus];
     }
     throw new BadRequestException('review status is not supported');
+  }
+
+  private parseConversationReportStatus(
+    value: string,
+  ): ConversationReportStatus {
+    const normalized = this.requiredText(value, 'status').toUpperCase();
+    if (normalized in ConversationReportStatus) {
+      return ConversationReportStatus[
+        normalized as keyof typeof ConversationReportStatus
+      ];
+    }
+    throw new BadRequestException('conversation report status is not supported');
   }
 
   private parseNotificationType(value: string): NotificationType {

@@ -1,9 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
@@ -59,7 +61,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
           onPressed: () {
             if (context.canPop()) context.pop();
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       child: !canManageListing
@@ -72,13 +74,13 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                   )
                 else
                   AarastEmptyState(
-                    icon: Icons.lock_clock_outlined,
+                    icon: LucideIcons.fileClock,
                     title: 'إضافة الباقات بعد الاعتماد',
                     message:
                         'الإدارة تراجع حساب المزود أولاً. يمكنك إضافة الباقات بعد أن تصبح الحالة نشطة.',
                     action: FilledButton.icon(
                       onPressed: () => context.go(AppRouter.providerDashboard),
-                      icon: const Icon(Icons.dashboard_customize_outlined),
+                      icon: const Icon(LucideIcons.layoutDashboard),
                       label: const Text('فتح لوحة المزود'),
                     ),
                   ),
@@ -102,7 +104,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: 'اسم الباقة',
-                            prefixIcon: Icon(Icons.inventory_2_outlined),
+                            prefixIcon: Icon(LucideIcons.package),
                           ),
                           validator: (value) =>
                               value == null || value.trim().length < 2
@@ -114,7 +116,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           initialValue: _safeServiceId(services),
                           decoration: const InputDecoration(
                             labelText: 'خدمة مرتبطة اختياري',
-                            prefixIcon: Icon(Icons.design_services_outlined),
+                            prefixIcon: Icon(LucideIcons.wand),
                           ),
                           items: [
                             const DropdownMenuItem<String>(
@@ -136,9 +138,10 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           keyboardType: TextInputType.number,
                           textDirection: TextDirection.ltr,
                           textAlign: TextAlign.right,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'السعر',
-                            prefixIcon: Icon(Icons.payments_outlined),
+                            suffixText: currencyLabelAr(defaultCurrencyCode),
+                            prefixIcon: Icon(LucideIcons.wallet),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -148,7 +151,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           maxLength: 220,
                           decoration: const InputDecoration(
                             labelText: 'الوصف',
-                            prefixIcon: Icon(Icons.notes_outlined),
+                            prefixIcon: Icon(LucideIcons.fileText),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -158,7 +161,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           decoration: const InputDecoration(
                             labelText: 'المميزات',
                             hintText: 'اكتب كل ميزة في سطر مستقل',
-                            prefixIcon: Icon(Icons.checklist_rtl_rounded),
+                            prefixIcon: Icon(LucideIcons.listChecks),
                           ),
                         ),
                         if (dashboard.errorMessage != null) ...[
@@ -176,7 +179,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.add_rounded),
+                              : const Icon(LucideIcons.plus),
                           label: const Text('إضافة الباقة'),
                         ),
                       ],
@@ -209,7 +212,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       serviceId: _serviceId,
       description: _descriptionController.text,
       price: _priceController.text,
-      currency: 'YER',
+      currency: defaultCurrencyCode,
       items: items,
     );
 
@@ -236,7 +239,7 @@ class _PackageIntro extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          Icon(Icons.card_giftcard_rounded, color: AppTheme.gold),
+          Icon(LucideIcons.gift, color: AppTheme.gold),
           SizedBox(width: 12),
           Expanded(
             child: Text(

@@ -92,8 +92,7 @@ export class MoneySummaryService {
     const canViewExpenses = this.permissions.canReadFinancial(context, 'expenses');
     const canViewDebts = this.permissions.canReadFinancial(context, 'debts');
     const canManageFinancialRecords =
-      context.isOwner ||
-      Boolean(context.sharedMember?.canManageFinancialRecords);
+      this.permissions.canManageFinancialRecords(context);
 
     if (!canViewBudget && !canViewExpenses && !canViewDebts) {
       throw new NotFoundException('Wedding plan not found');

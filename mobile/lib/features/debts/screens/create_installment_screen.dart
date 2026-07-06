@@ -1,12 +1,15 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../providers/debt_installment_provider.dart';
 
 class CreateInstallmentScreen extends StatefulWidget {
@@ -38,6 +41,10 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DebtInstallmentProvider>();
+    final currencyLabel = _planCurrencyLabel(
+      context,
+      provider.selectedDebt?.weddingPlanId,
+    );
 
     return AarastScreenFrame(
       maxWidth: 500,
@@ -50,7 +57,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -87,10 +94,10 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'المبلغ',
-                              suffixText: 'YER',
-                              prefixIcon: Icon(Icons.payments_outlined),
+                              suffixText: currencyLabel,
+                              prefixIcon: const Icon(LucideIcons.wallet),
                             ),
                             validator: _nonNegativeRequired(
                               'المبلغ يجب أن يكون رقماً غير سالب',
@@ -104,7 +111,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                                 value: _dueDate == null
                                     ? 'لم يحدد بعد'
                                     : _formatDate(_dueDate!),
-                                icon: Icons.event_available_rounded,
+                                icon: LucideIcons.calendarCheck,
                                 selected: _dueDate != null,
                                 onTap: () =>
                                     _showCalendarPicker(mode: _DateMode.due),
@@ -114,7 +121,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                                 value: _paidAt == null
                                     ? 'لم يحدد بعد'
                                     : _formatDate(_paidAt!),
-                                icon: Icons.check_circle_outline_rounded,
+                                icon: LucideIcons.checkCircle,
                                 selected: _paidAt != null,
                                 onTap: () =>
                                     _showCalendarPicker(mode: _DateMode.paid),
@@ -202,7 +209,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                             AarastStatusPill(
                               label: provider.errorMessage!,
                               color: AppTheme.danger,
-                              icon: Icons.error_outline_rounded,
+                              icon: LucideIcons.alertCircle,
                             ),
                           ],
                         ],
@@ -211,7 +218,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                     const SizedBox(height: 18),
                     AarastButton(
                       label: 'حفظ القسط',
-                      icon: Icons.check_rounded,
+                      icon: LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -253,8 +260,8 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                         ? 'تاريخ الاستحقاق'
                         : 'تاريخ الدفع',
                     icon: mode == _DateMode.due
-                        ? Icons.event_available_rounded
-                        : Icons.check_circle_outline_rounded,
+                        ? LucideIcons.calendarCheck
+                        : LucideIcons.checkCircle,
                   ),
                   const SizedBox(height: 8),
                   Theme(
@@ -276,7 +283,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                   const SizedBox(height: 12),
                   AarastButton(
                     label: 'تأكيد التاريخ',
-                    icon: Icons.check_rounded,
+                    icon: LucideIcons.check,
                     onPressed: () => Navigator.of(sheetContext).pop(tempDate),
                   ),
                 ],
@@ -329,6 +336,14 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
   }
 }
 
+String _planCurrencyLabel(BuildContext context, String? weddingPlanId) {
+  final plans = context.watch<WeddingPlansProvider?>();
+  for (final plan in plans?.plans ?? const []) {
+    if (plan.id == weddingPlanId) return currencyLabelAr(plan.currency);
+  }
+  return currencyLabelAr(null);
+}
+
 class _InstallmentHero extends StatelessWidget {
   const _InstallmentHero();
 
@@ -347,7 +362,7 @@ class _InstallmentHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.payments_outlined,
+              LucideIcons.wallet,
               color: Colors.white,
               size: 30,
             ),
@@ -436,10 +451,7 @@ class _SelectorField extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppTheme.muted,
-            ),
+            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
           ],
         ),
       ),
@@ -480,7 +492,7 @@ class _StatusChoice extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (selected) ...[
-                Icon(Icons.check_circle_rounded, color: color, size: 15),
+                Icon(LucideIcons.checkCircle, color: color, size: 15),
                 const SizedBox(width: 5),
               ],
               Flexible(

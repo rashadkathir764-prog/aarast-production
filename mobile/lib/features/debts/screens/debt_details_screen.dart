@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -6,7 +7,9 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/debt.dart';
 import '../models/installment.dart';
 import '../providers/debt_installment_provider.dart';
@@ -55,7 +58,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
               children: [
                 IconButton(
                   onPressed: _goBack,
-                  icon: const Icon(Icons.arrow_forward_rounded),
+                  icon: const Icon(LucideIcons.arrowRight),
                   tooltip: 'رجوع',
                 ),
                 const SizedBox(width: 12),
@@ -88,7 +91,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
                 IconButton(
                   onPressed: () =>
                       context.push(AppRouter.createInstallment(widget.debtId)),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const Icon(LucideIcons.plus),
                   tooltip: 'إضافة قسط',
                   style: IconButton.styleFrom(
                     backgroundColor: AppTheme.burgundy,
@@ -136,6 +139,7 @@ class _DebtDetailsContent extends StatelessWidget {
     }
 
     final debt = provider.selectedDebt;
+    final currencyLabel = _planCurrencyLabel(context, debt?.weddingPlanId);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -148,11 +152,11 @@ class _DebtDetailsContent extends StatelessWidget {
         if (debt == null)
           const _MissingDebtContextCard()
         else
-          _DebtOverviewCard(debt: debt),
+          _DebtOverviewCard(debt: debt, currencyLabel: currencyLabel),
         const SizedBox(height: 20),
         AarastSectionHeader(
           title: 'الأقساط',
-          icon: Icons.payments_outlined,
+          icon: LucideIcons.wallet,
           actionLabel: 'إضافة',
           onAction: () => context.push(AppRouter.createInstallment(debtId)),
         ),
@@ -161,17 +165,20 @@ class _DebtDetailsContent extends StatelessWidget {
           AarastEmptyState(
             title: 'لا توجد أقساط لهذا الدين',
             message: 'أضف أول قسط لتتضح مواعيد السداد والمتابعة.',
-            icon: Icons.event_note_outlined,
+            icon: LucideIcons.calendarDays,
             action: ElevatedButton.icon(
               onPressed: () =>
                   context.push(AppRouter.createInstallment(debtId)),
-              icon: const Icon(Icons.add_rounded),
+              icon: const Icon(LucideIcons.plus),
               label: const Text('إضافة قسط'),
             ),
           )
         else
           for (final installment in provider.installments) ...[
-            _InstallmentDetailCard(installment: installment),
+            _InstallmentDetailCard(
+              installment: installment,
+              currencyLabel: currencyLabel,
+            ),
             const SizedBox(height: 10),
           ],
       ],
@@ -180,9 +187,10 @@ class _DebtDetailsContent extends StatelessWidget {
 }
 
 class _DebtOverviewCard extends StatelessWidget {
-  const _DebtOverviewCard({required this.debt});
+  const _DebtOverviewCard({required this.debt, required this.currencyLabel});
 
   final Debt debt;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +217,7 @@ class _DebtOverviewCard extends StatelessWidget {
                   border: Border.all(color: Colors.white.withAlpha(36)),
                 ),
                 child: const Icon(
-                  Icons.receipt_long_outlined,
+                  LucideIcons.receipt,
                   color: AppTheme.gold,
                   size: 28,
                 ),
@@ -280,16 +288,31 @@ class _DebtOverviewCard extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _HeroAmount(width: width, label: 'الإجمالي', value: total),
-                  _HeroAmount(width: width, label: 'المدفوع', value: paid),
-                  _HeroAmount(width: width, label: 'المتبقي', value: remaining),
+                  _HeroAmount(
+                    width: width,
+                    label: 'الإجمالي',
+                    value: total,
+                    currencyLabel: currencyLabel,
+                  ),
+                  _HeroAmount(
+                    width: width,
+                    label: 'المدفوع',
+                    value: paid,
+                    currencyLabel: currencyLabel,
+                  ),
+                  _HeroAmount(
+                    width: width,
+                    label: 'المتبقي',
+                    value: remaining,
+                    currencyLabel: currencyLabel,
+                  ),
                   _HeroLabel(
                     width: width,
                     label: 'الاستحقاق',
                     value: debt.dueDate == null
                         ? 'غير محدد'
                         : _shortDate(debt.dueDate!),
-                    icon: Icons.calendar_month_rounded,
+                    icon: LucideIcons.calendarDays,
                   ),
                 ],
               );
@@ -317,19 +340,21 @@ class _HeroAmount extends StatelessWidget {
     required this.width,
     required this.label,
     required this.value,
+    required this.currencyLabel,
   });
 
   final double width;
   final String label;
   final num value;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
     return _HeroLabel(
       width: width,
       label: label,
-      value: '${_formatMoney(value)} ر.ي',
-      icon: Icons.account_balance_wallet_outlined,
+      value: '${_formatMoney(value)} $currencyLabel',
+      icon: LucideIcons.wallet,
     );
   }
 }
@@ -394,9 +419,13 @@ class _HeroLabel extends StatelessWidget {
 }
 
 class _InstallmentDetailCard extends StatelessWidget {
-  const _InstallmentDetailCard({required this.installment});
+  const _InstallmentDetailCard({
+    required this.installment,
+    required this.currencyLabel,
+  });
 
   final Installment installment;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -414,7 +443,7 @@ class _InstallmentDetailCard extends StatelessWidget {
               color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: Icon(Icons.payments_outlined, color: color),
+            child: Icon(LucideIcons.wallet, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -422,7 +451,7 @@ class _InstallmentDetailCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_formatMoney(_moneyValue(installment.amount))} ر.ي',
+                  '${_formatMoney(_moneyValue(installment.amount))} $currencyLabel',
                   textDirection: TextDirection.ltr,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppTheme.ink,
@@ -442,13 +471,13 @@ class _InstallmentDetailCard extends StatelessWidget {
                       AarastStatusPill(
                         label: 'استحقاق ${_shortDate(installment.dueDate!)}',
                         color: AppTheme.gold,
-                        icon: Icons.event_available_rounded,
+                        icon: LucideIcons.calendarCheck,
                       ),
                     if (installment.paidAt != null)
                       AarastStatusPill(
                         label: 'دفع ${_shortDate(installment.paidAt!)}',
                         color: AppTheme.success,
-                        icon: Icons.check_circle_outline_rounded,
+                        icon: LucideIcons.checkCircle,
                       ),
                   ],
                 ),
@@ -473,6 +502,14 @@ class _InstallmentDetailCard extends StatelessWidget {
   }
 }
 
+String _planCurrencyLabel(BuildContext context, String? weddingPlanId) {
+  final plans = context.watch<WeddingPlansProvider?>();
+  for (final plan in plans?.plans ?? const []) {
+    if (plan.id == weddingPlanId) return currencyLabelAr(plan.currency);
+  }
+  return currencyLabelAr(null);
+}
+
 class _MissingDebtContextCard extends StatelessWidget {
   const _MissingDebtContextCard();
 
@@ -482,7 +519,7 @@ class _MissingDebtContextCard extends StatelessWidget {
       title: 'بيانات الدين غير مكتملة',
       message:
           'يمكن عرض الأقساط هنا، ولرؤية بيانات الدين كاملة افتح الدين من القائمة.',
-      icon: Icons.info_outline_rounded,
+      icon: LucideIcons.info,
     );
   }
 }
@@ -540,7 +577,7 @@ class _InlineError extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger),
+          const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

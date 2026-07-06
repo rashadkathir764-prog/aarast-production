@@ -1,11 +1,14 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../providers/finance_provider.dart';
 
 class CreateBudgetCategoryScreen extends StatefulWidget {
@@ -48,6 +51,7 @@ class _CreateBudgetCategoryScreenState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
 
     return AarastScreenFrame(
       maxWidth: 500,
@@ -60,7 +64,7 @@ class _CreateBudgetCategoryScreenState
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -98,7 +102,7 @@ class _CreateBudgetCategoryScreenState
                             decoration: const InputDecoration(
                               labelText: 'اسم التصنيف',
                               hintText: 'مثال: القاعة، الضيافة، التصوير...',
-                              prefixIcon: Icon(Icons.sell_outlined),
+                              prefixIcon: Icon(LucideIcons.tag),
                             ),
                             validator: _required('اسم التصنيف مطلوب'),
                           ),
@@ -109,10 +113,10 @@ class _CreateBudgetCategoryScreenState
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'المبلغ المستهدف (اختياري)',
-                              suffixText: 'ر.ي',
-                              prefixIcon: Icon(Icons.track_changes_rounded),
+                              suffixText: currencyLabel,
+                              prefixIcon: const Icon(LucideIcons.target),
                             ),
                             validator: _nonNegativeOptional,
                           ),
@@ -121,7 +125,7 @@ class _CreateBudgetCategoryScreenState
                             AarastStatusPill(
                               label: provider.errorMessage!,
                               color: AppTheme.danger,
-                              icon: Icons.error_outline_rounded,
+                              icon: LucideIcons.alertCircle,
                             ),
                           ],
                         ],
@@ -130,7 +134,7 @@ class _CreateBudgetCategoryScreenState
                     const SizedBox(height: 18),
                     AarastButton(
                       label: 'حفظ التصنيف',
-                      icon: Icons.check_rounded,
+                      icon: LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: _submit,
                     ),
@@ -182,6 +186,16 @@ class _CreateBudgetCategoryScreenState
   }
 }
 
+String _planCurrencyLabel(BuildContext context, String weddingPlanId) {
+  final provider = context.watch<WeddingPlansProvider?>();
+  for (final plan in provider?.plans ?? const []) {
+    if (plan.id == weddingPlanId) return currencyLabelAr(plan.currency);
+  }
+  return currencyLabelAr(
+    provider?.selectedPlan?.currency ?? provider?.activePlan?.currency,
+  );
+}
+
 class _CategoryHero extends StatelessWidget {
   const _CategoryHero();
 
@@ -200,7 +214,7 @@ class _CategoryHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.create_new_folder_outlined,
+              LucideIcons.folderPlus,
               color: AppTheme.burgundy,
               size: 30,
             ),

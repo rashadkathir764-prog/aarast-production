@@ -178,6 +178,20 @@ class WeddingPlansApi {
     }
   }
 
+  Future<ActiveWeddingPlan> setActiveWeddingPlan(String id) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/wedding-plans/$id/set-active',
+      {},
+    );
+    final plan = ActiveWeddingPlan.fromJson(json);
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedWeddingPlans,
+      json: _activePlanToCacheJson(plan),
+    );
+    await _offline?.refreshStatus();
+    return plan;
+  }
+
   Future<WeddingPlan> updateWeddingPlan(
     String id,
     Map<String, dynamic> data,

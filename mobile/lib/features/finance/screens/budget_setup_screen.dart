@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../providers/finance_provider.dart';
 
 class BudgetSetupScreen extends StatefulWidget {
@@ -47,6 +50,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
     final existingNames = provider.budgetCategories
         .map((category) => category.name.trim())
         .where((name) => name.isNotEmpty)
@@ -66,7 +70,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
                 children: [
                   IconButton(
                     onPressed: _goBack,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+                    icon: const Icon(LucideIcons.arrowRight),
                     tooltip: 'رجوع',
                   ),
                   const SizedBox(width: 12),
@@ -98,6 +102,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
                 for (final item in _items) ...[
                   _BudgetSetupRow(
                     item: item,
+                    currencyLabel: currencyLabel,
                     alreadyExists: existingNames.contains(item.name),
                     onChanged: (value) {
                       setState(() => item.selected = value);
@@ -110,7 +115,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
                   AarastStatusPill(
                     label: provider.errorMessage!,
                     color: AppTheme.danger,
-                    icon: Icons.error_outline_rounded,
+                    icon: LucideIcons.alertCircle,
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -118,7 +123,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
                   label: selectedCount == 0
                       ? 'اختر بنداً للحفظ'
                       : 'حفظ $selectedCount بند',
-                  icon: Icons.check_rounded,
+                  icon: LucideIcons.check,
                   isLoading: provider.isSubmitting,
                   onPressed: selectedCount == 0 ? null : _submit,
                 ),
@@ -228,7 +233,7 @@ class _BudgetSetupHero extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.tune_rounded,
+              LucideIcons.slidersHorizontal,
               color: AppTheme.burgundy,
               size: 30,
             ),
@@ -289,12 +294,12 @@ class _SetupToolbar extends StatelessWidget {
         ),
         TextButton.icon(
           onPressed: onSelectEssentials,
-          icon: const Icon(Icons.auto_awesome_rounded, size: 17),
+          icon: const Icon(LucideIcons.sparkles, size: 17),
           label: const Text('الأساسيات'),
         ),
         TextButton.icon(
           onPressed: onClear,
-          icon: const Icon(Icons.clear_rounded, size: 17),
+          icon: const Icon(LucideIcons.x, size: 17),
           label: const Text('مسح'),
         ),
       ],
@@ -305,11 +310,13 @@ class _SetupToolbar extends StatelessWidget {
 class _BudgetSetupRow extends StatelessWidget {
   const _BudgetSetupRow({
     required this.item,
+    required this.currencyLabel,
     required this.alreadyExists,
     required this.onChanged,
   });
 
   final _BudgetSetupItem item;
+  final String currencyLabel;
   final bool alreadyExists;
   final ValueChanged<bool> onChanged;
 
@@ -371,9 +378,9 @@ class _BudgetSetupRow extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'المبلغ',
-                suffixText: 'ر.ي',
+                suffixText: currencyLabel,
                 isDense: true,
               ),
             ),
@@ -382,6 +389,16 @@ class _BudgetSetupRow extends StatelessWidget {
       ),
     );
   }
+}
+
+String _planCurrencyLabel(BuildContext context, String weddingPlanId) {
+  final provider = context.watch<WeddingPlansProvider?>();
+  for (final plan in provider?.plans ?? const []) {
+    if (plan.id == weddingPlanId) return currencyLabelAr(plan.currency);
+  }
+  return currencyLabelAr(
+    provider?.selectedPlan?.currency ?? provider?.activePlan?.currency,
+  );
 }
 
 class _BudgetSetupItem {
@@ -403,16 +420,16 @@ class _BudgetSetupItem {
 }
 
 const _defaultBudgetItems = [
-  _BudgetTemplate('الصالة', Icons.maps_home_work_outlined),
-  _BudgetTemplate('الغداء', Icons.restaurant_rounded),
-  _BudgetTemplate('العشاء', Icons.dinner_dining_rounded),
-  _BudgetTemplate('الفنان', Icons.mic_external_on_outlined),
-  _BudgetTemplate('الماء والضيافة', Icons.local_drink_outlined),
-  _BudgetTemplate('التصوير', Icons.photo_camera_outlined),
-  _BudgetTemplate('الكوشة', Icons.chair_alt_outlined),
-  _BudgetTemplate('الأزياء', Icons.checkroom_outlined),
-  _BudgetTemplate('الزينة والورود', Icons.local_florist_outlined, false),
-  _BudgetTemplate('المواصلات', Icons.directions_car_outlined, false),
+  _BudgetTemplate('الصالة', LucideIcons.building2),
+  _BudgetTemplate('الغداء', LucideIcons.utensils),
+  _BudgetTemplate('العشاء', LucideIcons.utensils),
+  _BudgetTemplate('الفنان', LucideIcons.mic),
+  _BudgetTemplate('الماء والضيافة', LucideIcons.cupSoda),
+  _BudgetTemplate('التصوير', LucideIcons.camera),
+  _BudgetTemplate('الكوشة', LucideIcons.armchair),
+  _BudgetTemplate('الأزياء', LucideIcons.shirt),
+  _BudgetTemplate('الزينة والورود', LucideIcons.flower2, false),
+  _BudgetTemplate('المواصلات', LucideIcons.car, false),
 ];
 
 class _BudgetTemplate {

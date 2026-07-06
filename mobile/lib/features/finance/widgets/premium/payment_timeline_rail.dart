@@ -21,6 +21,7 @@ class PaymentTimelineRail extends StatelessWidget {
     required this.summary,
     required this.onViewDebts,
     this.onAddDebt,
+    this.now,
     super.key,
   });
 
@@ -29,6 +30,7 @@ class PaymentTimelineRail extends StatelessWidget {
 
   /// يظهر زر تسجيل "باقي عليك" في الحالة الفارغة لمن يملك الصلاحية.
   final VoidCallback? onAddDebt;
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
@@ -41,45 +43,51 @@ class PaymentTimelineRail extends StatelessWidget {
     final nodes = <Widget>[];
 
     if (overdue > 0) {
-      nodes.add(_RailNode(
-        dot: _PulsingDot(
-          color: AarastDesignTokens.danger,
-          reduceMotion: reduceMotion,
+      nodes.add(
+        _RailNode(
+          dot: _PulsingDot(
+            color: AarastDesignTokens.danger,
+            reduceMotion: reduceMotion,
+          ),
+          title: overdue == 1 ? 'قسط متأخر' : '$overdue أقساط متأخرة',
+          subtitle: 'عالجها أولًا حتى لا تتراكم عليك.',
+          titleColor: AarastDesignTokens.danger,
+          onTap: onViewDebts,
         ),
-        title: overdue == 1 ? 'قسط متأخر' : '$overdue أقساط متأخرة',
-        subtitle: 'عالجها أولًا حتى لا تتراكم عليك.',
-        titleColor: AarastDesignTokens.danger,
-        onTap: onViewDebts,
-      ));
+      );
     }
 
     if (next != null) {
       final dueAt = next.dueAt;
       final who = (next.creditorName ?? next.debtTitle ?? '').trim();
-      nodes.add(_RailNode(
-        dot: const _GlowDot(color: AarastDesignTokens.gold),
-        title: 'القسط القادم${who.isEmpty ? '' : ' — $who'}',
-        subtitle: dueAt == null
-            ? 'بدون موعد محدد'
-            : '${formatArabicCompactDate(dueAt)} · ${_relativeDue(dueAt)}',
-        trailing: _AmountText(value: _money(next.amount)),
-        onTap: onViewDebts,
-      ));
+      nodes.add(
+        _RailNode(
+          dot: const _GlowDot(color: AarastDesignTokens.gold),
+          title: 'القسط القادم${who.isEmpty ? '' : ' — $who'}',
+          subtitle: dueAt == null
+              ? 'بدون موعد محدد'
+              : '${formatArabicCompactDate(dueAt)} · ${_relativeDue(dueAt, now)}',
+          trailing: _AmountText(value: _money(next.amount)),
+          onTap: onViewDebts,
+        ),
+      );
     }
 
     if (debtRemaining > 0 || debtsCount > 0) {
-      nodes.add(_RailNode(
-        dot: const _SolidDot(color: AarastDesignTokens.ink),
-        title: 'إجمالي الباقي عليك',
-        subtitle: debtsCount == 0
-            ? 'كل المبالغ المسجلة'
-            : '$debtsCount ${debtsCount == 1 ? 'مبلغ مسجل' : 'مبالغ مسجلة'}',
-        trailing: _AmountText(
-          value: debtRemaining,
-          color: AarastDesignTokens.danger,
+      nodes.add(
+        _RailNode(
+          dot: const _SolidDot(color: AarastDesignTokens.ink),
+          title: 'إجمالي الباقي عليك',
+          subtitle: debtsCount == 0
+              ? 'كل المبالغ المسجلة'
+              : '$debtsCount ${debtsCount == 1 ? 'مبلغ مسجل' : 'مبالغ مسجلة'}',
+          trailing: _AmountText(
+            value: debtRemaining,
+            color: AarastDesignTokens.danger,
+          ),
+          onTap: onViewDebts,
         ),
-        onTap: onViewDebts,
-      ));
+      );
     }
 
     return Container(
@@ -106,11 +114,15 @@ class PaymentTimelineRail extends StatelessWidget {
                 height: 38,
                 decoration: BoxDecoration(
                   color: AarastDesignTokens.burgundySoft,
-                  borderRadius:
-                      BorderRadius.circular(AarastDesignTokens.radiusSm),
+                  borderRadius: BorderRadius.circular(
+                    AarastDesignTokens.radiusSm,
+                  ),
                 ),
-                child: const Icon(LucideIcons.calendarClock,
-                    color: AarastDesignTokens.burgundy, size: 19),
+                child: const Icon(
+                  LucideIcons.calendarClock,
+                  color: AarastDesignTokens.burgundy,
+                  size: 19,
+                ),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -178,8 +190,8 @@ class PaymentTimelineRail extends StatelessWidget {
         );
   }
 
-  static String _relativeDue(DateTime dueAt) {
-    final today = DateTime.now();
+  static String _relativeDue(DateTime dueAt, DateTime? referenceDate) {
+    final today = referenceDate ?? DateTime.now();
     final due = DateTime(dueAt.year, dueAt.month, dueAt.day);
     final now = DateTime(today.year, today.month, today.day);
     final days = due.difference(now).inDays;
@@ -210,9 +222,7 @@ class _ConnectedNode extends StatelessWidget {
                 SizedBox(
                   width: 16,
                   height: 16,
-                  child: Center(
-                    child: (node as _RailNode).dot,
-                  ),
+                  child: Center(child: (node as _RailNode).dot),
                 ),
                 if (!isLast)
                   Expanded(
@@ -290,10 +300,7 @@ class _RailNode extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: 8),
-              trailing!,
-            ],
+            if (trailing != null) ...[const SizedBox(width: 8), trailing!],
           ],
         ),
       ),
@@ -334,8 +341,11 @@ class _EmptyRail extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
       child: Row(
         children: [
-          const Icon(LucideIcons.badgeCheck,
-              color: AarastDesignTokens.success, size: 20),
+          const Icon(
+            LucideIcons.badgeCheck,
+            color: AarastDesignTokens.success,
+            size: 20,
+          ),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(

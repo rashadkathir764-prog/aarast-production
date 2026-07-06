@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../../../core/config/app_feature_flags.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -90,7 +92,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     _budgetMaxController.text = intent.requestMax!.round().toString();
     if (_messageController.text.trim().isEmpty) {
       _messageController.text =
-          'ميزانية بند ${intent.budgetCategoryName}: ${intent.allocatedValue.round()} ر.ي. أريد عرضاً مناسباً لهذا النطاق.';
+          'ميزانية بند ${intent.budgetCategoryName}: ${intent.allocatedValue.round()}. أريد عرضاً مناسباً لهذا النطاق.';
     }
   }
 
@@ -107,6 +109,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final plans = context.watch<WeddingPlansProvider>();
+    final currencyLabel = _selectedCurrencyLabel(plans);
     final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
@@ -124,7 +127,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
           onPressed: () {
             if (context.canPop()) context.pop();
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       resizeToAvoidBottomInset: true,
@@ -139,7 +142,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               key: _formKey,
               child: ListView(
                 children: [
-                  _QuoteIntro(provider: provider),
+                  _QuoteRequestHero(provider: provider),
                   const SizedBox(height: 18),
                   AarastCard(
                     child: Column(
@@ -149,7 +152,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           initialValue: _weddingPlanId,
                           decoration: const InputDecoration(
                             labelText: 'خطة الزفاف',
-                            prefixIcon: Icon(Icons.event_note_outlined),
+                            prefixIcon: Icon(LucideIcons.calendarDays),
                           ),
                           items: plans.plans
                               .map(
@@ -167,7 +170,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           initialValue: _safeSelectedService(services),
                           decoration: const InputDecoration(
                             labelText: 'الخدمة',
-                            prefixIcon: Icon(Icons.design_services_outlined),
+                            prefixIcon: Icon(LucideIcons.wand),
                           ),
                           items: [
                             const DropdownMenuItem<String>(
@@ -189,7 +192,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           initialValue: _cityId,
                           decoration: const InputDecoration(
                             labelText: 'المدينة',
-                            prefixIcon: Icon(Icons.place_outlined),
+                            prefixIcon: Icon(LucideIcons.mapPin),
                           ),
                           items: marketplace.cities
                               .map(
@@ -215,7 +218,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
                             labelText: 'عدد الضيوف المتوقع',
-                            prefixIcon: Icon(Icons.people_outline_rounded),
+                            prefixIcon: Icon(LucideIcons.users),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -225,8 +228,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                               child: TextFormField(
                                 controller: _budgetMinController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'أقل ميزانية',
+                                  suffixText: currencyLabel,
                                 ),
                               ),
                             ),
@@ -235,8 +239,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                               child: TextFormField(
                                 controller: _budgetMaxController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'أعلى ميزانية',
+                                  suffixText: currencyLabel,
                                 ),
                               ),
                             ),
@@ -251,7 +256,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                             labelText: 'رسالة للمورد',
                             hintText:
                                 'اكتب تفاصيل التاريخ، الموقع، والاحتياج...',
-                            prefixIcon: Icon(Icons.notes_outlined),
+                            prefixIcon: Icon(LucideIcons.fileText),
                           ),
                           validator: (value) {
                             if (value == null || value.trim().length < 8) {
@@ -283,7 +288,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.send_rounded),
+                        : const Icon(LucideIcons.send),
                     label: const Text('إرسال الطلب'),
                   ),
                   const SizedBox(height: 24),
@@ -298,6 +303,17 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     return services.any((service) => service.id == _serviceId)
         ? _serviceId
         : null;
+  }
+
+  String _selectedCurrencyLabel(WeddingPlansProvider plans) {
+    final planId = _weddingPlanId;
+    if (planId != null) {
+      final plan = _findWeddingPlan(plans.plans, planId);
+      if (plan != null) return currencyLabelAr(plan.currency);
+    }
+    final activeCurrency = plans.activePlan?.currency;
+    final selectedCurrency = plans.selectedPlan?.currency;
+    return currencyLabelAr(activeCurrency ?? selectedCurrency);
   }
 
   Future<void> _loadGuestLocationContext(
@@ -538,7 +554,7 @@ class _QuoteLocationContext extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            hasLocation ? Icons.location_on_outlined : Icons.add_location_alt,
+            hasLocation ? LucideIcons.mapPin : LucideIcons.mapPin,
             color: hasLocation ? AppTheme.success : AppTheme.burgundy,
           ),
           const SizedBox(width: 10),
@@ -601,7 +617,7 @@ class _QuoteContactContext extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.phone_in_talk_outlined, color: AppTheme.burgundy),
+          const Icon(LucideIcons.phoneCall, color: AppTheme.burgundy),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -648,7 +664,7 @@ class _QuoteSentState extends StatelessWidget {
       children: [
         const SizedBox(height: 48),
         AarastEmptyState(
-          icon: Icons.mark_email_read_outlined,
+          icon: LucideIcons.mailCheck,
           title: 'تم إرسال طلبك للمزود',
           message: 'سيظهر الطلب لدى المزود ضمن طلبات عروض الأسعار.',
           action: Column(
@@ -657,13 +673,13 @@ class _QuoteSentState extends StatelessWidget {
             children: [
               FilledButton.icon(
                 onPressed: onMarketplace,
-                icon: const Icon(Icons.storefront_outlined),
+                icon: const Icon(LucideIcons.store),
                 label: const Text('العودة للموردين'),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () => context.go(AppRouter.home),
-                icon: const Icon(Icons.home_rounded),
+                icon: const Icon(LucideIcons.home),
                 label: const Text('الرئيسية'),
               ),
             ],
@@ -685,12 +701,12 @@ class _QuoteAuthRequired extends StatelessWidget {
       children: [
         const SizedBox(height: 48),
         AarastEmptyState(
-          icon: Icons.lock_outline_rounded,
+          icon: LucideIcons.lock,
           title: 'تسجيل الدخول مطلوب',
           message: 'سجّل الدخول أولاً لإرسال طلب عرض سعر للمزود.',
           action: FilledButton.icon(
             onPressed: onLogin,
-            icon: const Icon(Icons.login_rounded),
+            icon: const Icon(LucideIcons.logIn),
             label: const Text('تسجيل الدخول'),
           ),
         ),
@@ -699,8 +715,8 @@ class _QuoteAuthRequired extends StatelessWidget {
   }
 }
 
-class _QuoteIntro extends StatelessWidget {
-  const _QuoteIntro({required this.provider});
+class _QuoteRequestHero extends StatelessWidget {
+  const _QuoteRequestHero({required this.provider});
 
   final MarketplaceProvider? provider;
 
@@ -718,7 +734,7 @@ class _QuoteIntro extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             ),
             child: const Icon(
-              Icons.chat_bubble_outline_rounded,
+              LucideIcons.messageCircle,
               color: AppTheme.burgundy,
             ),
           ),
@@ -756,7 +772,7 @@ class _DateField extends StatelessWidget {
       child: InputDecorator(
         decoration: const InputDecoration(
           labelText: 'تاريخ المناسبة',
-          prefixIcon: Icon(Icons.calendar_today_outlined),
+          prefixIcon: Icon(LucideIcons.calendar),
         ),
         child: Text(
           value == null

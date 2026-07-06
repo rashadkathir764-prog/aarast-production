@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -33,6 +35,8 @@ class SharedMemberCard extends StatelessWidget {
                 enabled: true,
               ),
               const Spacer(),
+              const Icon(LucideIcons.user, color: AppTheme.warmGold, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 flex: 3,
                 child: Column(
@@ -62,6 +66,25 @@ class SharedMemberCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
+          if (member.hasFinancialAccess) ...[
+            const Row(
+              children: [
+                Icon(
+                  LucideIcons.shieldCheck,
+                  color: AppTheme.success,
+                  size: 18,
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'لديه صلاحية مالية محددة',
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
           const Text(
             'الصلاحيات المالية خاصة ولا تظهر إلا عند تفعيلها.',
             textAlign: TextAlign.right,

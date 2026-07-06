@@ -11,6 +11,7 @@ import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 
 class _FakeTokenVault implements TokenVault {
   String? stored;
+  String? refreshStored;
 
   @override
   Future<String?> read() async => stored;
@@ -23,6 +24,19 @@ class _FakeTokenVault implements TokenVault {
   @override
   Future<void> delete() async {
     stored = null;
+  }
+
+  @override
+  Future<String?> readRefresh() async => refreshStored;
+
+  @override
+  Future<void> writeRefresh(String token) async {
+    refreshStored = token;
+  }
+
+  @override
+  Future<void> deleteRefresh() async {
+    refreshStored = null;
   }
 }
 
@@ -38,19 +52,68 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('AuthStorage with TokenVault', () {
-    test('saveSession stores token in vault, never in plaintext prefs',
-        () async {
-      SharedPreferences.setMockInitialValues({});
-      final preferences = await SharedPreferences.getInstance();
-      final vault = _FakeTokenVault();
-      final storage = AuthStorage(preferences, tokenVault: vault);
+    test(
+      'saveSession stores token in vault, never in plaintext prefs',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final vault = _FakeTokenVault();
+        final storage = AuthStorage(preferences, tokenVault: vault);
 
-      await storage.saveSession(accessToken: 'jwt-secret', user: _user('u1'));
+        await storage.saveSession(accessToken: 'jwt-secret', user: _user('u1'));
 
-      expect(vault.stored, 'jwt-secret');
-      expect(preferences.getString('aarast_access_token'), isNull);
-      expect(await storage.readAccessToken(), 'jwt-secret');
-    });
+        expect(vault.stored, 'jwt-secret');
+        expect(preferences.getString('aarast_access_token'), isNull);
+        expect(await storage.readAccessToken(), 'jwt-secret');
+      },
+    );
+
+    test(
+      'saveSession keeps access and refresh tokens in the secure vault',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final vault = _FakeTokenVault();
+        final storage = AuthStorage(preferences, tokenVault: vault);
+
+        await storage.saveSession(
+          accessToken: 'access-secret',
+          refreshToken: 'refresh-secret',
+          user: _user('u1'),
+        );
+
+        expect(await storage.readAccessToken(), 'access-secret');
+        expect(await storage.readRefreshToken(), 'refresh-secret');
+        expect(preferences.getString('aarast_refresh_token'), isNull);
+
+        await storage.clear();
+        expect(vault.refreshStored, isNull);
+      },
+    );
+
+    test(
+      'access-only sessions clear any stale refresh token',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final vault = _FakeTokenVault();
+        final storage = AuthStorage(preferences, tokenVault: vault);
+
+        await storage.saveSession(
+          accessToken: 'old-access',
+          refreshToken: 'old-refresh',
+          user: _user('u1'),
+        );
+        await storage.saveSession(
+          accessToken: 'legacy-access',
+          user: _user('u1'),
+        );
+
+        expect(await storage.readAccessToken(), 'legacy-access');
+        expect(await storage.readRefreshToken(), isNull);
+        expect(preferences.getString('aarast_refresh_token'), isNull);
+      },
+    );
 
     test('legacy plaintext token migrates into vault on first read', () async {
       SharedPreferences.setMockInitialValues({
@@ -119,26 +182,28 @@ void main() {
       expect(await service.database.pendingSyncCount(), 0);
     });
 
-    test('ensureCacheOwner wipes cache when a different account signs in',
-        () async {
-      final service = await buildService();
-      await service.ensureCacheOwner('user-a');
-      await service.database.saveCachedItem(
-        table: OfflineTables.cachedDebts,
-        json: {'id': 'debt-1', 'amount': '200000'},
-      );
+    test(
+      'ensureCacheOwner wipes cache when a different account signs in',
+      () async {
+        final service = await buildService();
+        await service.ensureCacheOwner('user-a');
+        await service.database.saveCachedItem(
+          table: OfflineTables.cachedDebts,
+          json: {'id': 'debt-1', 'amount': '200000'},
+        );
 
-      await service.ensureCacheOwner('user-b');
+        await service.ensureCacheOwner('user-b');
 
-      final rows = await service.database.readCachedList(
-        table: OfflineTables.cachedDebts,
-      );
-      expect(
-        rows,
-        isEmpty,
-        reason: "user-b must never see user-a's financial data",
-      );
-    });
+        final rows = await service.database.readCachedList(
+          table: OfflineTables.cachedDebts,
+        );
+        expect(
+          rows,
+          isEmpty,
+          reason: "user-b must never see user-a's financial data",
+        );
+      },
+    );
 
     test('ensureCacheOwner keeps cache for the same account', () async {
       final service = await buildService();

@@ -43,6 +43,8 @@ class OtpVerifyResult {
     required this.purpose,
     this.user,
     this.accessToken,
+    this.refreshToken,
+    this.refreshTokenExpiresAt,
   });
 
   factory OtpVerifyResult.fromJson(Map<String, dynamic> json) {
@@ -54,6 +56,10 @@ class OtpVerifyResult {
           ? SafeUser.fromJson(json['user'] as Map<String, dynamic>)
           : null,
       accessToken: json['accessToken']?.toString(),
+      refreshToken: json['refreshToken']?.toString(),
+      refreshTokenExpiresAt: DateTime.tryParse(
+        json['refreshTokenExpiresAt']?.toString() ?? '',
+      ),
     );
   }
 
@@ -62,4 +68,6 @@ class OtpVerifyResult {
   final String purpose;
   final SafeUser? user;
   final String? accessToken;
+  final String? refreshToken;
+  final DateTime? refreshTokenExpiresAt;
 }

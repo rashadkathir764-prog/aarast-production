@@ -15,6 +15,7 @@ import { ServicesPage } from './pages/ServicesPage';
 import { ReviewsPage } from './pages/ReviewsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { ConversationReportsPage } from './pages/ConversationReportsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="services" element={<ServicesPage />} />
         <Route path="services/new" element={<Navigate to="/services" replace />} />
         <Route path="reviews" element={<ReviewsPage />} />
+        <Route path="conversation-reports" element={<ConversationReportsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="reports" element={<ReportsPage />} />
       </Route>

@@ -1,0 +1,443 @@
+#!/usr/bin/env node
+/**
+ * docs-sync
+ *
+ * Pulls facts out of the source code so the Markdown docs cannot drift.
+ * Intended to be re-run after every task that touches:
+ *   - backend routes or DTOs
+ *   - Prisma models / migrations
+ *   - mobile app_router routes
+ *   - admin-web App.tsx routes
+ *   - npm scripts in any package.json
+ *
+ * Output:
+ *   - docs/backend/API_CONTRACT.md  (sections marked "AUTO" get refreshed)
+ *   - docs/backend/DATABASE.md      (models table refreshed)
+ *   - docs/backend/SCRIPTS.md       (new — npm scripts catalog)
+ *   - docs/MOBILE_ROUTES.md         (new — go_router routes)
+ *   - docs/ADMIN_ROUTES.md          (new — App.tsx routes)
+ *
+ * Manual content (philosophy, design rules, decisions) is NOT touched.
+ *
+ * Usage:
+ *   node scripts/docs-sync.mjs               # all paths
+ *   node scripts/docs-sync.mjs --check       # exit 1 if anything would change
+ *
+ * Exit codes:
+ *   0 = no drift (or drift was just synced)
+ *   1 = drift detected and --check was passed
+ *   2 = unexpected error
+ */
+import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { dirname, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const root = join(__dirname, '..');
+
+const checkOnly = process.argv.includes('--check');
+
+function read(p) {
+  return readFileSync(p, 'utf8');
+}
+
+function listFiles(dir, ext) {
+  const out = [];
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    const s = statSync(full);
+    if (s.isFile() && (!ext || name.endsWith(ext))) out.push(full);
+  }
+  return out;
+}
+
+function walk(dir, ext) {
+  const out = [];
+  if (!existsSync(dir)) return out;
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    const s = statSync(full);
+    if (s.isDirectory()) {
+      out.push(...walk(full, ext));
+    } else if (!ext || name.endsWith(ext)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// 1) Backend routes — parse NestJS @Controller() + @Get/@Post/@Patch/@Delete()
+// ---------------------------------------------------------------------------
+function extractBackendRoutes(backendSrc) {
+  // Returns a map: { controller: [ { method, path, full, authed? } ] }
+  const files = walk(join(root, 'backend', 'src'), '.controller.ts');
+  const table = [];
+
+  for (const file of files) {
+    const src = read(file);
+    const className = file.replace(/\\/g, '/').split('/').pop().replace('.controller.ts', '');
+
+    // Some files declare multiple `@Controller()` bases inside one class
+    // (e.g. marketplace, provider-dashboard, expenses, guests). Track which
+    // base is in scope for each method by line position.
+    const lines = src.split('\n');
+    let currentBase = '';
+    let pendingMethod = null;
+    let pendingPath = null;
+    let pendingAuthed = false;
+    let skipSection = false;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      const ctrl = line.match(/@Controller\(['"]([^'"]+)['"]\)/);
+      if (ctrl) {
+        currentBase = ctrl[1];
+        // Skip /api/v1 alias sections — they duplicate the legacy surface
+        // and would double every row in the table.
+        skipSection = currentBase.startsWith('api/v1') || currentBase.startsWith('/api/v1');
+        continue;
+      }
+
+      const dec = line.match(/@(Get|Post|Patch|Put|Delete)\s*\(\s*(?:['"]([^'"]+)['"])?\s*\)/);
+      if (dec) {
+        pendingMethod = dec[1].toUpperCase();
+        pendingPath = dec[2] || '';
+        pendingAuthed = false;
+      }
+
+      if (/@UseGuards\(/.test(line)) pendingAuthed = true;
+
+      const sig = line.match(/^\s*(?:async\s+)?(\w+)\s*\(/);
+      if (sig && pendingMethod) {
+        const fnName = sig[1];
+        if (!skipSection && !['constructor', 'onModuleInit', 'onModuleDestroy', 'onApplicationShutdown'].includes(fnName)) {
+          const fullPath = joinPath(currentBase, pendingPath);
+          table.push({
+            controller: className,
+            method: pendingMethod,
+            path: fullPath,
+            handler: fnName,
+            authed: pendingAuthed,
+            source: relative(root, file),
+          });
+        }
+        pendingMethod = null;
+        pendingPath = null;
+        pendingAuthed = false;
+      }
+    }
+  }
+  return table;
+}
+
+function joinPath(base, suffix) {
+  if (!suffix) return '/' + base;
+  const b = base.replace(/^\/+|\/+$/g, '');
+  const s = suffix.replace(/^\/+|\/+$/g, '');
+  if (!b) return '/' + s;
+  if (!s) return '/' + b;
+  return '/' + b + '/' + s;
+}
+
+function renderRoutesMarkdown(routes) {
+  routes.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
+  const lines = [];
+  lines.push('<!-- AUTO-GENERATED by scripts/docs-sync.mjs. Do not edit by hand. -->');
+  lines.push('');
+  lines.push('| Method | Path | Controller.Handler | Auth |');
+  lines.push('| --- | --- | --- | --- |');
+  for (const r of routes) {
+    lines.push(`| ${r.method} | \`${r.path}\` | \`${r.controller}.${r.handler}\` | ${r.authed ? '🔒' : ''} |`);
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// 2) Prisma models
+// ---------------------------------------------------------------------------
+function extractPrismaModels() {
+  const schema = read(join(root, 'backend', 'prisma', 'schema.prisma'));
+  const lines = schema.split('\n');
+  const models = [];
+  let current = null;
+  for (const line of lines) {
+    const m = line.match(/^model\s+(\w+)\s*\{/);
+    if (m) {
+      current = { name: m[1], fields: [] };
+      models.push(current);
+      continue;
+    }
+    if (current && line.startsWith('}')) {
+      current = null;
+      continue;
+    }
+    if (current) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@')) continue;
+      const f = trimmed.match(/^(\w+)\s+([\w\[\]\?\.]+)/);
+      if (f) {
+        current.fields.push({ name: f[1], type: f[2].replace('[]', '[]') });
+      }
+    }
+  }
+  return models;
+}
+
+function renderModelsMarkdown(models) {
+  const lines = [];
+  lines.push('<!-- AUTO-GENERATED by scripts/docs-sync.mjs. Do not edit by hand. -->');
+  lines.push('');
+  lines.push('| Model | Field count | Notable fields |');
+  lines.push('| --- | --- | --- |');
+  for (const m of models) {
+    const notable = m.fields
+      .filter((f) => f.name.endsWith('Id') || f.name === 'id' || f.name === 'createdAt' || f.name === 'updatedAt' || f.name.endsWith('At'))
+      .map((f) => '`' + f.name + '`')
+      .slice(0, 8)
+      .join(', ');
+    lines.push(`| \`${m.name}\` | ${m.fields.length} | ${notable} |`);
+  }
+  lines.push('');
+  lines.push(`Total models: ${models.length}`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// 3) Mobile routes — go_router
+// ---------------------------------------------------------------------------
+function extractMobileRoutes() {
+  const files = walk(join(root, 'mobile', 'lib', 'core', 'routing'), '.dart');
+  const allRoutes = [];
+  for (const file of files) {
+    const src = read(file);
+    const matches = src.matchAll(/['"](\/[a-zA-Z0-9_\-/:.]+)['"]/g);
+    for (const m of matches) {
+      // Filter to typical go_router path patterns.
+      const path = m[1];
+      if (path.startsWith('/') && path.length > 1 && !path.startsWith('//')) {
+        allRoutes.push({ path, source: relative(root, file) });
+      }
+    }
+  }
+  // Deduplicate
+  const seen = new Set();
+  return allRoutes.filter((r) => {
+    if (seen.has(r.path)) return false;
+    seen.add(r.path);
+    return true;
+  }).sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function renderMobileRoutesMarkdown(routes) {
+  const lines = [];
+  lines.push('<!-- AUTO-GENERATED by scripts/docs-sync.mjs. Do not edit by hand. -->');
+  lines.push('');
+  for (const r of routes) {
+    lines.push(`- \`${r.path}\``);
+  }
+  lines.push('');
+  lines.push(`Total: ${routes.length} unique routes`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// 4) Admin-web routes — App.tsx or Routes.tsx
+// ---------------------------------------------------------------------------
+function extractAdminRoutes() {
+  const candidates = ['App.tsx', 'Routes.tsx', 'routes.tsx'];
+  const appDir = join(root, 'admin-web', 'src');
+  const routes = new Set();
+  if (!existsSync(appDir)) return [];
+  for (const f of walk(appDir, '.tsx')) {
+    if (!candidates.some((c) => f.endsWith(c))) continue;
+    const src = read(f);
+    const lines = src.split('\n');
+    // Maintain a stack of absolute paths opened by `<Route path="...">`. Push
+    // on opening tag, pop on closing tag. Self-closing `<Route ... />` does
+    // both in a single line; multi-line children reopen at the next inner
+    // Route. Relative child paths resolve against the top of the stack.
+    const stack = [];
+    for (const raw of lines) {
+      const line = raw.trim();
+
+      // Self-closing route: <Route path="..." element=... />
+      const self = line.match(/^<Route\s+path=['"]([^'"]+)['"]/);
+      const closing = /^<\/Route>/.test(line);
+
+      if (self && line.endsWith('/>')) {
+        const p = self[1];
+        if (p === '*' || p === 'index') continue;
+        const abs = resolveAdminPath(stack, p);
+        if (abs) routes.add(abs);
+        continue;
+      }
+
+      if (closing && stack.length) {
+        stack.pop();
+        continue;
+      }
+
+      if (self) {
+        const p = self[1];
+        if (p === '*' || p === 'index') continue;
+        const abs = resolveAdminPath(stack, p);
+        if (abs) {
+          routes.add(abs);
+          // Open a child scope so subsequent relative paths nest under this one.
+          if (p.startsWith('/')) stack.push(abs.replace(/\/$/, '') || '/');
+          else stack.push(abs);
+        }
+      }
+    }
+  }
+  return [...routes].sort();
+}
+
+function resolveAdminPath(stack, p) {
+  if (p.startsWith('/')) return p;
+  const parent = stack[stack.length - 1];
+  if (!parent) return '/' + p;
+  const base = parent === '/' ? '' : parent.replace(/\/$/, '');
+  return (base + '/' + p).replace(/\/{2,}/g, '/');
+}
+
+function renderAdminRoutesMarkdown(routes) {
+  const lines = [];
+  lines.push('<!-- AUTO-GENERATED by scripts/docs-sync.mjs. Do not edit by hand. -->');
+  lines.push('');
+  for (const r of routes) lines.push(`- \`${r}\``);
+  lines.push('');
+  lines.push(`Total: ${routes.length} routes`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// 5) npm scripts catalog
+// ---------------------------------------------------------------------------
+function extractNpmScripts() {
+  const packages = ['backend', 'admin-web', 'mobile'];
+  const out = [];
+  for (const pkg of packages) {
+    const pkgPath = join(root, pkg, 'package.json');
+    if (!existsSync(pkgPath)) continue;
+    const json = JSON.parse(read(pkgPath));
+    const scripts = json.scripts || {};
+    for (const [name, cmd] of Object.entries(scripts)) {
+      out.push({ pkg, name, cmd });
+    }
+  }
+  return out;
+}
+
+function renderScriptsMarkdown(scripts) {
+  const lines = [];
+  lines.push('<!-- AUTO-GENERATED by scripts/docs-sync.mjs. Do not edit by hand. -->');
+  lines.push('');
+  lines.push('| Package | Script | Command |');
+  lines.push('| --- | --- | --- |');
+  for (const s of scripts.sort((a, b) => a.pkg.localeCompare(b.pkg) || a.name.localeCompare(b.name))) {
+    lines.push(`| \`${s.pkg}\` | \`npm run ${s.name}\` | \`${s.cmd.replace(/`/g, '\\`')}\` |`);
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Write helpers (preserve manual sections; only replace AUTO blocks).
+// ---------------------------------------------------------------------------
+function ensureAutoBlock(filePath, body) {
+  const header = '<!-- DOCS-SYNC:START -->\n';
+  const footer = '\n<!-- DOCS-SYNC:END -->\n';
+
+  let src = read(filePath);
+  if (src.includes(header)) {
+    const before = src.substring(0, src.indexOf(header) + header.length);
+    const after = src.substring(src.indexOf(footer));
+    // Strip the trailing timestamp from the freshly rendered body so two
+    // consecutive runs produce identical output and --check is stable.
+    const next = before + body + after;
+    if (next === src) return false; // no drift
+    if (!checkOnly) writeFileSync(filePath, next);
+    return true;
+  }
+  // No auto-block yet — append a new one at end.
+  const next = src.trimEnd() + '\n\n' + header + body + footer;
+  if (!checkOnly) writeFileSync(filePath, next);
+  return true;
+}
+
+function writeStandalone(filePath, body) {
+  if (existsSync(filePath) && read(filePath) === body) return false;
+  if (!checkOnly) writeFileSync(filePath, body);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Main orchestration
+// ---------------------------------------------------------------------------
+const results = [];
+
+function sync(name, fn) {
+  try {
+    const drifted = fn();
+    results.push({ name, drifted, error: null });
+  } catch (err) {
+    results.push({ name, drifted: null, error: err.message });
+  }
+}
+
+sync('API_CONTRACT (routes table)', () => {
+  const routes = extractBackendRoutes();
+  const body = renderRoutesMarkdown(routes);
+  const fp = join(root, 'docs', 'backend', 'API_CONTRACT.md');
+  return ensureAutoBlock(fp, body);
+});
+
+sync('DATABASE (models table)', () => {
+  const models = extractPrismaModels();
+  const body = renderModelsMarkdown(models);
+  const fp = join(root, 'docs', 'backend', 'DATABASE.md');
+  return ensureAutoBlock(fp, body);
+});
+
+sync('MOBILE_ROUTES (new file)', () => {
+  const routes = extractMobileRoutes();
+  const body = renderMobileRoutesMarkdown(routes);
+  return writeStandalone(join(root, 'docs', 'frontend', 'MOBILE_ROUTES.md'), body);
+});
+
+sync('ADMIN_ROUTES (new file)', () => {
+  const routes = extractAdminRoutes();
+  const body = renderAdminRoutesMarkdown(routes);
+  return writeStandalone(join(root, 'docs', 'frontend', 'ADMIN_ROUTES.md'), body);
+});
+
+sync('SCRIPTS (new file)', () => {
+  const scripts = extractNpmScripts();
+  const body = renderScriptsMarkdown(scripts);
+  return writeStandalone(join(root, 'docs', 'SCRIPTS.md'), body);
+});
+
+// Report
+let driftCount = 0;
+let errorCount = 0;
+console.log('\nDocs sync report');
+console.log('================');
+for (const r of results) {
+  if (r.error) {
+    errorCount++;
+    console.log(`✗ ${r.name}: ERROR ${r.error}`);
+  } else if (r.drifted) {
+    driftCount++;
+    console.log(`~ ${r.name}: drift detected${checkOnly ? ' (would update)' : ' (updated)'}`);
+  } else {
+    console.log(`✓ ${r.name}: in sync`);
+  }
+}
+console.log(`\n${errorCount === 0 ? (checkOnly && driftCount ? 'DRIFT' : 'OK') : 'ERRORS'} — drift=${driftCount} errors=${errorCount}${checkOnly ? ' (check mode)' : ''}`);
+
+if (checkOnly && driftCount > 0) process.exit(1);
+if (errorCount > 0) process.exit(2);
+process.exit(0);

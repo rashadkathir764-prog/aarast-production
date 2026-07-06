@@ -34,8 +34,9 @@ Future<void> _loadFonts() async {
     'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
     'assets/fonts/IBMPlexSansArabic-Bold.ttf',
   ]);
-  await load('packages/lucide_icons/Lucide',
-      ['packages/lucide_icons/assets/lucide.ttf']);
+  await load('packages/lucide_icons/Lucide', [
+    'packages/lucide_icons/assets/lucide.ttf',
+  ]);
 }
 
 MoneySummary _healthyBudget() {
@@ -82,15 +83,17 @@ MoneySummary _healthyBudget() {
   );
 }
 
+final _previewNow = DateTime(2026, 7, 3);
+
 MoneySummary _noBudget() {
-  return MoneySummary(
-    weddingPlanId: 'p2',
-    totalSpent: '700000',
-  );
+  return MoneySummary(weddingPlanId: 'p2', totalSpent: '700000');
 }
 
-Future<void> _pump(WidgetTester tester, Widget child,
-    {required Size size}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  required Size size,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -126,11 +129,18 @@ void main() {
           BudgetPulseHero(summary: s, onSetupBudget: () {}),
           const SizedBox(height: 14),
           PaymentTimelineRail(
-              summary: s, onViewDebts: () {}, onAddDebt: () {}),
+            summary: s,
+            onViewDebts: () {},
+            onAddDebt: () {},
+            now: _previewNow,
+          ),
           const SizedBox(height: 14),
           for (final row in s.categorySummaries) ...[
             BudgetCategoryCard(
-                row: row, onOpenDetails: () {}, onAddExpense: () {}),
+              row: row,
+              onOpenDetails: () {},
+              onAddExpense: () {},
+            ),
             const SizedBox(height: 10),
           ],
         ],
@@ -151,8 +161,7 @@ void main() {
         children: [
           BudgetPulseHero(summary: s, onSetupBudget: () {}),
           const SizedBox(height: 14),
-          PaymentTimelineRail(
-              summary: s, onViewDebts: () {}, onAddDebt: () {}),
+          PaymentTimelineRail(summary: s, onViewDebts: () {}, onAddDebt: () {}),
         ],
       ),
       size: const Size(420, 700),

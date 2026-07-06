@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../providers/finance_provider.dart';
@@ -50,6 +53,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
     final category = _initialCategory(provider.budgetCategories);
     final expenses = _visibleExpenses(provider.expenses);
     final total = expenses.fold<num>(
@@ -69,7 +73,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               children: [
                 IconButton(
                   onPressed: _goBack,
-                  icon: const Icon(Icons.arrow_forward_rounded),
+                  icon: const Icon(LucideIcons.arrowRight),
                   tooltip: 'رجوع',
                 ),
                 const SizedBox(width: 10),
@@ -90,7 +94,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                   onPressed: () => context.push(
                     AppRouter.createExpense(widget.weddingPlanId),
                   ),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const Icon(LucideIcons.plus),
                   tooltip: 'إضافة مصروف',
                   style: IconButton.styleFrom(
                     backgroundColor: AppTheme.burgundy,
@@ -100,19 +104,23 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _SummaryCard(count: expenses.length, total: total),
+            _SummaryCard(
+              count: expenses.length,
+              total: total,
+              currencyLabel: currencyLabel,
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _searchController,
               textAlign: TextAlign.right,
               decoration: InputDecoration(
                 hintText: 'ابحث عن مصروف أو ملاحظة...',
-                prefixIcon: const Icon(Icons.search_rounded),
+                prefixIcon: const Icon(LucideIcons.search),
                 suffixIcon: _searchController.text.trim().isEmpty
                     ? null
                     : IconButton(
                         onPressed: _searchController.clear,
-                        icon: const Icon(Icons.close_rounded),
+                        icon: const Icon(LucideIcons.x),
                         tooltip: 'مسح البحث',
                       ),
               ),
@@ -129,12 +137,13 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               const AarastEmptyState(
                 title: 'لا توجد مصاريف مطابقة',
                 message: 'غيّر البحث أو الفلتر لعرض سجلات أخرى.',
-                icon: Icons.search_off_rounded,
+                icon: LucideIcons.searchX,
               )
             else
               for (final expense in expenses) ...[
                 _ExpenseCard(
                   expense: expense,
+                  currencyLabel: currencyLabel,
                   categoryName: _categoryName(
                     provider.budgetCategories,
                     expense.budgetCategoryId,
@@ -242,10 +251,15 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.count, required this.total});
+  const _SummaryCard({
+    required this.count,
+    required this.total,
+    required this.currencyLabel,
+  });
 
   final int count;
   final num total;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +268,7 @@ class _SummaryCard extends StatelessWidget {
       border: Border.all(color: AppTheme.goldSoft),
       child: Row(
         children: [
-          const Icon(Icons.receipt_long_outlined, color: AppTheme.gold),
+          const Icon(LucideIcons.receipt, color: AppTheme.gold),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -266,7 +280,7 @@ class _SummaryCard extends StatelessWidget {
             ),
           ),
           Text(
-            '${_formatMoney(total)} ر.ي',
+            '${_formatMoney(total)} $currencyLabel',
             textDirection: TextDirection.ltr,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: AppTheme.burgundy,
@@ -316,6 +330,7 @@ class _FilterRow extends StatelessWidget {
 class _ExpenseCard extends StatelessWidget {
   const _ExpenseCard({
     required this.expense,
+    required this.currencyLabel,
     required this.categoryName,
     required this.isBusy,
     required this.onEdit,
@@ -323,6 +338,7 @@ class _ExpenseCard extends StatelessWidget {
   });
 
   final Expense expense;
+  final String currencyLabel;
   final String categoryName;
   final bool isBusy;
   final VoidCallback onEdit;
@@ -343,7 +359,7 @@ class _ExpenseCard extends StatelessWidget {
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: Icon(Icons.receipt_long_outlined, color: color),
+            child: Icon(LucideIcons.receipt, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -371,13 +387,13 @@ class _ExpenseCard extends StatelessWidget {
                     AarastStatusPill(
                       label: categoryName,
                       color: AppTheme.gold,
-                      icon: Icons.folder_outlined,
+                      icon: LucideIcons.folder,
                     ),
                     if (expense.expenseDate != null)
                       AarastStatusPill(
                         label: formatArabicCompactDate(expense.expenseDate!),
                         color: AppTheme.muted,
-                        icon: Icons.calendar_month_rounded,
+                        icon: LucideIcons.calendarDays,
                       ),
                   ],
                 ),
@@ -401,7 +417,7 @@ class _ExpenseCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${_formatMoney(_moneyValue(expense.amount))} ر.ي',
+                '${_formatMoney(_moneyValue(expense.amount))} $currencyLabel',
                 textDirection: TextDirection.ltr,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: AppTheme.burgundy,
@@ -432,6 +448,16 @@ class _ExpenseCard extends StatelessWidget {
       ),
     );
   }
+}
+
+String _planCurrencyLabel(BuildContext context, String weddingPlanId) {
+  final provider = context.watch<WeddingPlansProvider?>();
+  for (final plan in provider?.plans ?? const []) {
+    if (plan.id == weddingPlanId) return currencyLabelAr(plan.currency);
+  }
+  return currencyLabelAr(
+    provider?.selectedPlan?.currency ?? provider?.activePlan?.currency,
+  );
 }
 
 class _Skeleton extends StatelessWidget {

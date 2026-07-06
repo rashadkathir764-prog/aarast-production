@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../marketplace/models/provider_budget_match_intent.dart';
+import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../models/expense_form_intent.dart';
@@ -44,6 +47,7 @@ class _BudgetCategoryDetailsScreenState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
     final category = _findCategory(provider.budgetCategories);
     final expenses = provider.expenses
         .where((expense) => expense.budgetCategoryId == widget.budgetCategoryId)
@@ -68,10 +72,14 @@ class _BudgetCategoryDetailsScreenState
               const AarastEmptyState(
                 title: 'البند غير موجود',
                 message: 'ربما تم حذف هذا البند أو لم يتم تحميل البيانات بعد.',
-                icon: Icons.folder_off_outlined,
+                icon: LucideIcons.folderX,
               )
             else ...[
-              _CategoryHero(category: category, summary: summary!),
+              _CategoryHero(
+                category: category,
+                summary: summary!,
+                currencyLabel: currencyLabel,
+              ),
               const SizedBox(height: 14),
               _ActionGrid(
                 onAddExpense: () => _openCreateExpense(category),
@@ -84,7 +92,7 @@ class _BudgetCategoryDetailsScreenState
               const SizedBox(height: 20),
               AarastSectionHeader(
                 title: 'مصاريف هذا البند',
-                icon: Icons.receipt_long_outlined,
+                icon: LucideIcons.receipt,
                 actionLabel: expenses.length > 3 ? 'عرض الكل' : null,
                 onAction: expenses.length > 3
                     ? () => context.push(
@@ -98,16 +106,16 @@ class _BudgetCategoryDetailsScreenState
                 AarastEmptyState(
                   title: 'لا توجد مصاريف في هذا البند',
                   message: 'أضف أول مصروف ليظهر أثره على المتبقي من الميزانية.',
-                  icon: Icons.receipt_long_outlined,
+                  icon: LucideIcons.receipt,
                   action: ElevatedButton.icon(
                     onPressed: () => _openCreateExpense(category),
-                    icon: const Icon(Icons.add_rounded),
+                    icon: const Icon(LucideIcons.plus),
                     label: const Text('إضافة مصروف'),
                   ),
                 )
               else
                 for (final expense in expenses.take(5)) ...[
-                  _ExpenseTile(expense: expense),
+                  _ExpenseTile(expense: expense, currencyLabel: currencyLabel),
                   const SizedBox(height: 10),
                 ],
             ],
@@ -179,7 +187,7 @@ class _BudgetCategoryDetailsScreenState
                   const SizedBox(height: 18),
                   const AarastSectionHeader(
                     title: 'تعديل بند الميزانية',
-                    icon: Icons.edit_outlined,
+                    icon: LucideIcons.pencil,
                   ),
                   const SizedBox(height: 14),
                   TextField(
@@ -187,7 +195,7 @@ class _BudgetCategoryDetailsScreenState
                     textAlign: TextAlign.right,
                     decoration: const InputDecoration(
                       labelText: 'اسم البند',
-                      prefixIcon: Icon(Icons.folder_outlined),
+                      prefixIcon: Icon(LucideIcons.folder),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -197,16 +205,19 @@ class _BudgetCategoryDetailsScreenState
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'المبلغ المخصص',
-                      suffixText: 'ر.ي',
-                      prefixIcon: Icon(Icons.track_changes_rounded),
+                      suffixText: _planCurrencyLabel(
+                        context,
+                        widget.weddingPlanId,
+                      ),
+                      prefixIcon: const Icon(LucideIcons.target),
                     ),
                   ),
                   const SizedBox(height: 16),
                   AarastButton(
                     label: 'حفظ التعديل',
-                    icon: Icons.check_rounded,
+                    icon: LucideIcons.check,
                     onPressed: () async {
                       final name = nameController.text.trim();
                       final amount = amountController.text.trim();
@@ -299,7 +310,7 @@ class _Header extends StatelessWidget {
       children: [
         IconButton(
           onPressed: onBack,
-          icon: const Icon(Icons.arrow_forward_rounded),
+          icon: const Icon(LucideIcons.arrowRight),
           tooltip: 'رجوع',
         ),
         const SizedBox(width: 10),
@@ -320,10 +331,15 @@ class _Header extends StatelessWidget {
 }
 
 class _CategoryHero extends StatelessWidget {
-  const _CategoryHero({required this.category, required this.summary});
+  const _CategoryHero({
+    required this.category,
+    required this.summary,
+    required this.currencyLabel,
+  });
 
   final BudgetCategory category;
   final MoneyCategorySummary summary;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -387,9 +403,21 @@ class _CategoryHero extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _HeroMetric(label: 'المخصص', value: allocated),
-              _HeroMetric(label: 'المدفوع', value: spent),
-              _HeroMetric(label: 'المتبقي', value: remaining),
+              _HeroMetric(
+                label: 'المخصص',
+                value: allocated,
+                currencyLabel: currencyLabel,
+              ),
+              _HeroMetric(
+                label: 'المدفوع',
+                value: spent,
+                currencyLabel: currencyLabel,
+              ),
+              _HeroMetric(
+                label: 'المتبقي',
+                value: remaining,
+                currencyLabel: currencyLabel,
+              ),
             ],
           ),
         ],
@@ -399,10 +427,15 @@ class _CategoryHero extends StatelessWidget {
 }
 
 class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.label, required this.value});
+  const _HeroMetric({
+    required this.label,
+    required this.value,
+    required this.currencyLabel,
+  });
 
   final String label;
   final num value;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -426,7 +459,7 @@ class _HeroMetric extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            '${_formatMoney(value)} ر.ي',
+            '${_formatMoney(value)} $currencyLabel',
             textDirection: TextDirection.ltr,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -462,18 +495,22 @@ class _ActionGrid extends StatelessWidget {
       children: [
         _ActionButton(
           label: 'إضافة مصروف',
-          icon: Icons.add_rounded,
+          icon: LucideIcons.plus,
           onTap: onAddExpense,
         ),
-        _ActionButton(label: 'تعديل البند', icon: Icons.edit, onTap: onEdit),
+        _ActionButton(
+          label: 'تعديل البند',
+          icon: LucideIcons.pencil,
+          onTap: onEdit,
+        ),
         _ActionButton(
           label: 'موردين مناسبين',
-          icon: Icons.storefront_outlined,
+          icon: LucideIcons.store,
           onTap: onProviders,
         ),
         _ActionButton(
           label: 'حذف',
-          icon: Icons.delete_outline,
+          icon: LucideIcons.trash2,
           onTap: onDelete,
           muted: onDelete == null,
         ),
@@ -512,9 +549,10 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _ExpenseTile extends StatelessWidget {
-  const _ExpenseTile({required this.expense});
+  const _ExpenseTile({required this.expense, required this.currencyLabel});
 
   final Expense expense;
+  final String currencyLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +561,7 @@ class _ExpenseTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          Icon(Icons.receipt_long_outlined, color: color),
+          Icon(LucideIcons.receipt, color: color),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -551,7 +589,7 @@ class _ExpenseTile extends StatelessWidget {
                       AarastStatusPill(
                         label: formatArabicCompactDate(expense.expenseDate!),
                         color: AppTheme.muted,
-                        icon: Icons.calendar_month_rounded,
+                        icon: LucideIcons.calendarDays,
                       ),
                   ],
                 ),
@@ -559,7 +597,7 @@ class _ExpenseTile extends StatelessWidget {
             ),
           ),
           Text(
-            '${_formatMoney(_moneyValue(expense.amount))} ر.ي',
+            '${_formatMoney(_moneyValue(expense.amount))} $currencyLabel',
             textDirection: TextDirection.ltr,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               color: AppTheme.burgundy,
@@ -570,6 +608,16 @@ class _ExpenseTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _planCurrencyLabel(BuildContext context, String weddingPlanId) {
+  final provider = context.watch<WeddingPlansProvider?>();
+  for (final plan in provider?.plans ?? const []) {
+    if (plan.id == weddingPlanId) return currencyLabelAr(plan.currency);
+  }
+  return currencyLabelAr(
+    provider?.selectedPlan?.currency ?? provider?.activePlan?.currency,
+  );
 }
 
 class _SheetHandle extends StatelessWidget {
@@ -633,21 +681,21 @@ MoneyCategorySummary _categorySummary(
 
 IconData _categoryIcon(String name) {
   if (name.contains('قاعة') || name.contains('صالة')) {
-    return Icons.apartment_rounded;
+    return LucideIcons.building2;
   }
-  if (name.contains('تصوير')) return Icons.photo_camera_outlined;
+  if (name.contains('تصوير')) return LucideIcons.camera;
   if (name.contains('ضيافة') ||
       name.contains('غداء') ||
       name.contains('عشاء') ||
       name.contains('ماء')) {
-    return Icons.room_service_outlined;
+    return LucideIcons.bell;
   }
   if (name.contains('لبس') ||
       name.contains('ملابس') ||
       name.contains('أزياء')) {
-    return Icons.checkroom_outlined;
+    return LucideIcons.shirt;
   }
-  return Icons.category_outlined;
+  return LucideIcons.shapes;
 }
 
 Color _expenseStatusColor(String status) {

@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>يحتاج أعرست إلى الكاميرا لتحديث صورة حسابك عند اختيار التقاط صورة جديدة.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>يحتاج أعرست إلى معرض الصور لاختيار صورة حسابك.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>قد يحتاج أعرست إلى حفظ الصور التي تختارها أو تلتقطها لحسابك.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -56,7 +57,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               context.go(AppRouter.home);
             }
           },
-          icon: const Icon(Icons.chevron_right_rounded),
+          icon: const Icon(LucideIcons.chevronRight),
         ),
       ],
       child: RefreshIndicator(
@@ -124,12 +125,12 @@ class _AuthRequiredCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastEmptyState(
-      icon: Icons.lock_outline_rounded,
+      icon: LucideIcons.lock,
       title: 'تسجيل الدخول مطلوب',
       message: 'يرجى تسجيل الدخول لعرض لوحة المزود أو إرسال طلب الانضمام.',
       action: FilledButton.icon(
         onPressed: onLogin,
-        icon: const Icon(Icons.login_rounded),
+        icon: const Icon(LucideIcons.logIn),
         label: const Text('تسجيل الدخول'),
       ),
     );
@@ -144,13 +145,13 @@ class _NoProviderProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastEmptyState(
-      icon: Icons.storefront_rounded,
+      icon: LucideIcons.store,
       title: 'لا يوجد حساب مزود',
       message:
           'أرسل طلب الانضمام كمزود. بعد المراجعة ستظهر لوحة المزود وخدماتك هنا.',
       action: FilledButton.icon(
         onPressed: onApply,
-        icon: const Icon(Icons.assignment_ind_outlined),
+        icon: const Icon(LucideIcons.contact),
         label: const Text('طلب الانضمام كمزود'),
       ),
     );
@@ -180,7 +181,7 @@ class _ProviderProfileCard extends StatelessWidget {
                   children: [
                     AarastStatusPill(
                       label: _providerStatusLabel(profile.status),
-                      icon: Icons.verified_user_outlined,
+                      icon: LucideIcons.shieldCheck,
                       color: _providerStatusColor(profile.status),
                       backgroundColor: _providerStatusColor(
                         profile.status,
@@ -236,21 +237,21 @@ class _ProviderProfileCard extends StatelessWidget {
                   label:
                       PhoneNumberUtils.display(profile.phone) ??
                       profile.phone!.trim(),
-                  icon: Icons.phone_outlined,
+                  icon: LucideIcons.phone,
                   color: AppTheme.ink,
                   backgroundColor: AppTheme.ivory,
                 ),
               if (profile.primaryCategory?.nameAr.trim().isNotEmpty == true)
                 AarastStatusPill(
                   label: profile.primaryCategory!.nameAr.trim(),
-                  icon: Icons.category_outlined,
+                  icon: LucideIcons.shapes,
                   color: AppTheme.burgundy,
                   backgroundColor: AppTheme.burgundySoft,
                 ),
               AarastStatusPill(
                 label:
                     '${profile.ratingAverage.toStringAsFixed(1)} (${profile.ratingCount})',
-                icon: Icons.star_rounded,
+                icon: LucideIcons.star,
                 color: AppTheme.gold,
                 backgroundColor: AppTheme.ivory,
               ),
@@ -259,7 +260,7 @@ class _ProviderProfileCard extends StatelessWidget {
           const SizedBox(height: 14),
           OutlinedButton.icon(
             onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
+            icon: const Icon(LucideIcons.pencil),
             label: const Text('تعديل الملف'),
           ),
         ],
@@ -281,7 +282,7 @@ class _ProviderStatusNotice extends StatelessWidget {
         color: AppTheme.successSoft,
         child: Row(
           children: [
-            Icon(Icons.verified_outlined, color: AppTheme.success),
+            Icon(LucideIcons.badgeCheck, color: AppTheme.success),
             SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -309,8 +310,8 @@ class _ProviderStatusNotice extends StatelessWidget {
         children: [
           Icon(
             status == 'NEEDS_CHANGES'
-                ? Icons.edit_note_outlined
-                : Icons.pending_actions_outlined,
+                ? LucideIcons.fileText
+                : LucideIcons.clock,
             color: _providerStatusColor(status),
           ),
           const SizedBox(width: 12),
@@ -374,28 +375,28 @@ class _ProviderStats extends StatelessWidget {
       childAspectRatio: 1.18,
       children: [
         _StatBox(
-          icon: Icons.design_services_outlined,
+          icon: LucideIcons.wand,
           label: 'الخدمات',
           value: '${summary.activeServicesCount}/${summary.servicesCount}',
           color: AppTheme.burgundy,
           bg: AppTheme.burgundySoft,
         ),
         _StatBox(
-          icon: Icons.inventory_2_outlined,
+          icon: LucideIcons.package,
           label: 'الباقات',
           value: '$packageCount',
           color: AppTheme.gold,
           bg: AppTheme.ivory,
         ),
         _StatBox(
-          icon: Icons.chat_bubble_outline_rounded,
+          icon: LucideIcons.messageCircle,
           label: 'طلبات العروض',
           value: '${summary.quoteRequestsCount}',
           color: AppTheme.ink,
           bg: AppTheme.ivory,
         ),
         _StatBox(
-          icon: Icons.person_search_outlined,
+          icon: LucideIcons.users,
           label: 'العملاء المحتملين',
           value: '${summary.newQuoteRequestsCount}',
           color: AppTheme.success,
@@ -417,7 +418,7 @@ class _ProviderGuideCard extends StatelessWidget {
       color: AppTheme.ivory,
       child: Row(
         children: [
-          const Icon(Icons.lightbulb_outline_rounded, color: AppTheme.gold),
+          const Icon(LucideIcons.lightbulb, color: AppTheme.gold),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -455,7 +456,7 @@ class _ProviderServices extends StatelessWidget {
         children: [
           AarastSectionHeader(
             title: 'الخدمات',
-            icon: Icons.design_services_outlined,
+            icon: LucideIcons.wand,
             actionLabel: canManageListing ? 'إضافة' : null,
             onAction: canManageListing
                 ? () => context.push(AppRouter.providerServiceNew)
@@ -468,7 +469,7 @@ class _ProviderServices extends StatelessWidget {
           ],
           if (services.isEmpty)
             AarastEmptyState(
-              icon: Icons.design_services_outlined,
+              icon: LucideIcons.wand,
               title: 'لا توجد خدمات بعد',
               message: canManageListing
                   ? 'أضف خدمة ليبدأ كتالوج المزود بالظهور للعملاء.'
@@ -477,7 +478,7 @@ class _ProviderServices extends StatelessWidget {
                   ? OutlinedButton.icon(
                       onPressed: () =>
                           context.push(AppRouter.providerServiceNew),
-                      icon: const Icon(Icons.add_rounded),
+                      icon: const Icon(LucideIcons.plus),
                       label: const Text('إضافة خدمة'),
                     )
                   : null,
@@ -510,7 +511,7 @@ class _ProviderPackages extends StatelessWidget {
         children: [
           AarastSectionHeader(
             title: 'الباقات',
-            icon: Icons.inventory_2_outlined,
+            icon: LucideIcons.package,
             actionLabel: canManageListing ? 'إضافة' : null,
             onAction: canManageListing
                 ? () => context.push(AppRouter.providerPackageNew)
@@ -523,7 +524,7 @@ class _ProviderPackages extends StatelessWidget {
           ],
           if (packages.isEmpty)
             AarastEmptyState(
-              icon: Icons.card_giftcard_rounded,
+              icon: LucideIcons.gift,
               title: 'لا توجد باقات بعد',
               message: canManageListing
                   ? 'أضف باقة واضحة لتسهل على العملاء مقارنة عروضك.'
@@ -532,7 +533,7 @@ class _ProviderPackages extends StatelessWidget {
                   ? OutlinedButton.icon(
                       onPressed: () =>
                           context.push(AppRouter.providerPackageNew),
-                      icon: const Icon(Icons.add_rounded),
+                      icon: const Icon(LucideIcons.plus),
                       label: const Text('إضافة باقة'),
                     )
                   : null,
@@ -561,12 +562,12 @@ class _ProviderQuotes extends StatelessWidget {
         children: [
           const AarastSectionHeader(
             title: 'طلبات عروض الأسعار',
-            icon: Icons.chat_bubble_outline_rounded,
+            icon: LucideIcons.messageCircle,
           ),
           const SizedBox(height: 12),
           if (quotes.isEmpty)
             const AarastEmptyState(
-              icon: Icons.chat_bubble_outline_rounded,
+              icon: LucideIcons.messageCircle,
               title: 'لا توجد طلبات حالية',
               message: 'ستظهر طلبات العملاء هنا عند إرسال عروض سعر لك.',
             )
@@ -595,7 +596,7 @@ class _LockedListingNotice extends StatelessWidget {
       ),
       child: const Row(
         children: [
-          Icon(Icons.lock_clock_outlined, color: AppTheme.gold, size: 20),
+          Icon(LucideIcons.fileClock, color: AppTheme.gold, size: 20),
           SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -685,7 +686,7 @@ class _ServiceCard extends StatelessWidget {
       child: Row(
         children: [
           _TileIcon(
-            icon: Icons.auto_awesome_rounded,
+            icon: LucideIcons.sparkles,
             color: AppTheme.gold,
             background: AppTheme.ivory,
           ),
@@ -770,7 +771,7 @@ class _PackageCard extends StatelessWidget {
           Row(
             children: [
               _TileIcon(
-                icon: Icons.card_giftcard_rounded,
+                icon: LucideIcons.gift,
                 color: AppTheme.burgundy,
                 background: AppTheme.burgundySoft,
               ),
@@ -826,7 +827,7 @@ class _PackageCard extends StatelessWidget {
               Row(
                 children: [
                   const Icon(
-                    Icons.check_circle_outline_rounded,
+                    LucideIcons.checkCircle,
                     size: 16,
                     color: AppTheme.success,
                   ),
@@ -1003,14 +1004,14 @@ class _QuoteTile extends StatelessWidget {
                         OutlinedButton.icon(
                           onPressed: () =>
                               _updateStatus(sheetContext, quote.id, 'VIEWED'),
-                          icon: const Icon(Icons.visibility_outlined),
+                          icon: const Icon(LucideIcons.eye),
                           label: const Text('قيد الرد'),
                         ),
                       if (quote.status == 'SENT' || quote.status == 'VIEWED')
                         FilledButton.icon(
                           onPressed: () =>
                               _showOfferComposer(sheetContext, quote),
-                          icon: const Icon(Icons.request_quote_outlined),
+                          icon: const Icon(LucideIcons.receipt),
                           label: const Text('إرسال عرض سعر'),
                         ),
                       if (quote.status == 'SENT' || quote.status == 'VIEWED')
@@ -1215,16 +1216,12 @@ class _Logo extends StatelessWidget {
         height: 78,
         color: AppTheme.ivory,
         child: imageUrl == null || imageUrl.isEmpty
-            ? const Icon(
-                Icons.storefront_rounded,
-                color: AppTheme.gold,
-                size: 36,
-              )
+            ? const Icon(LucideIcons.store, color: AppTheme.gold, size: 36)
             : Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) => const Icon(
-                  Icons.storefront_rounded,
+                  LucideIcons.store,
                   color: AppTheme.gold,
                   size: 36,
                 ),

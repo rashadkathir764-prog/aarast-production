@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import 'aarast_design_tokens.dart';
 
@@ -12,6 +13,41 @@ class AarastMotion {
 
   static Duration duration(BuildContext context, Duration value) {
     return reduceMotion(context) ? Duration.zero : value;
+  }
+}
+
+/// الدخول المتدرج الموحّد — نفس لغة اللوحة الملكية حرفياً:
+/// كل عنصر يطفو للأعلى بفارق نَفَس قصير (60ms) مع fade ناعم.
+/// كل الشاشات تستخدم هذا الحرس الواحد — لا نسخ محلية للـ stagger.
+class AarastStagger {
+  const AarastStagger._();
+
+  static const _step = Duration(milliseconds: 60);
+  static const _entry = Duration(milliseconds: 420);
+
+  /// يلفّ عنصراً واحداً بترتيبه [index] ضمن القائمة.
+  /// التأخير مسقوف عند 8 خطوات حتى لا تتأخر عناصر القوائم الطويلة
+  /// المبنية كسولاً أثناء التمرير.
+  static Widget item(BuildContext context, Widget child, int index) {
+    if (AarastMotion.reduceMotion(context) || child is SizedBox) return child;
+    final delay = _step * index.clamp(0, 8);
+    return child
+        .animate()
+        .fadeIn(delay: delay, duration: _entry, curve: Curves.easeOutCubic)
+        .slideY(
+          begin: 0.06,
+          end: 0,
+          delay: delay,
+          duration: _entry,
+          curve: Curves.easeOutCubic,
+        );
+  }
+
+  /// يلفّ قائمة أطفال كاملة — جاهزة لـ ListView/Column مباشرة.
+  static List<Widget> children(BuildContext context, List<Widget> items) {
+    return [
+      for (var i = 0; i < items.length; i++) item(context, items[i], i),
+    ];
   }
 }
 

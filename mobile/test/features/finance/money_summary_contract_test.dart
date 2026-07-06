@@ -179,7 +179,7 @@ void main() {
       );
       await financeApi.createExpense(
         weddingPlanId: localPlanId,
-        title: 'عربون القاعة',
+        title: 'دفعة القاعة',
         amount: '250000',
         status: 'PAID',
       );

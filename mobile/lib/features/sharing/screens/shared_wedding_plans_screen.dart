@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -97,7 +98,7 @@ class _SharedPlansContent extends StatelessWidget {
       return const AuthGatePanel(
         title: AuthActionGuard.sharingLoginGateTitle,
         body: AuthActionGuard.sharingLoginGateBody,
-        icon: Icons.diversity_3_outlined,
+        icon: LucideIcons.users,
       );
     }
 
@@ -105,7 +106,7 @@ class _SharedPlansContent extends StatelessWidget {
       return const AuthGatePanel(
         title: AuthActionGuard.sessionExpiredTitle,
         body: AuthActionGuard.sharingSessionExpiredBody,
-        icon: Icons.lock_clock_outlined,
+        icon: LucideIcons.fileClock,
       );
     }
 
@@ -125,7 +126,7 @@ class _SharedPlansContent extends StatelessWidget {
           const SizedBox(height: 16),
           AarastButton(
             label: 'إعادة المحاولة',
-            icon: Icons.refresh_rounded,
+            icon: LucideIcons.refreshCw,
             onPressed: provider.loadSharedPlans,
           ),
         ],
@@ -137,7 +138,7 @@ class _SharedPlansContent extends StatelessWidget {
         children: const [
           SizedBox(height: 70),
           AarastEmptyState(
-            icon: Icons.diversity_3_outlined,
+            icon: LucideIcons.users,
             title: 'لا توجد خطط مشتركة',
             message: 'ستظهر هنا الخطط التي يشاركها أصحابها معك.',
           ),
@@ -147,6 +148,25 @@ class _SharedPlansContent extends StatelessWidget {
 
     return ListView(
       children: [
+        AarastCard(
+          color: AppTheme.ivory,
+          child: Row(
+            children: [
+              const Icon(LucideIcons.users, color: AppTheme.burgundy),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '${provider.sharedPlans.length} خطة مشتركة معك',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.deepBurgundy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         Text(
           'هذه الخطط ظهرت لك بصلاحيات محددة من مالك الخطة.',
           style: Theme.of(

@@ -15,43 +15,45 @@ void main() {
     return database;
   }
 
-  test('rewriteQueuedReferences fixes local FK ids in pending payloads',
-      () async {
-    final database = await buildDatabase();
-    await database.enqueueSync(
-      entityType: 'expense',
-      operation: 'create',
-      endpoint: '/wedding-plans/plan-1/expenses',
-      method: 'POST',
-      payload: {
-        'title': 'عربون القاعة',
-        'amount': '200000',
-        'budgetCategoryId': 'local-budget-category-7',
-      },
-      localEntityId: 'local-expense-1',
-    );
-    await database.enqueueSync(
-      entityType: 'budget_category',
-      operation: 'update',
-      endpoint: '/budget-categories/local-budget-category-7',
-      method: 'PATCH',
-      payload: {'name': 'القاعة'},
-      localEntityId: 'local-budget-category-7',
-    );
+  test(
+    'rewriteQueuedReferences fixes local FK ids in pending payloads',
+    () async {
+      final database = await buildDatabase();
+      await database.enqueueSync(
+        entityType: 'expense',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/expenses',
+        method: 'POST',
+        payload: {
+          'title': 'دفعة القاعة',
+          'amount': '200000',
+          'budgetCategoryId': 'local-budget-category-7',
+        },
+        localEntityId: 'local-expense-1',
+      );
+      await database.enqueueSync(
+        entityType: 'budget_category',
+        operation: 'update',
+        endpoint: '/budget-categories/local-budget-category-7',
+        method: 'PATCH',
+        payload: {'name': 'القاعة'},
+        localEntityId: 'local-budget-category-7',
+      );
 
-    await database.rewriteQueuedReferences(
-      localId: 'local-budget-category-7',
-      remoteId: 'srv-cat-99',
-    );
+      await database.rewriteQueuedReferences(
+        localId: 'local-budget-category-7',
+        remoteId: 'srv-cat-99',
+      );
 
-    final items = await database.pendingSyncItems();
-    final expense = items.firstWhere((item) => item.entityType == 'expense');
-    final category = items.firstWhere(
-      (item) => item.entityType == 'budget_category',
-    );
-    expect(expense.payload['budgetCategoryId'], 'srv-cat-99');
-    expect(category.endpoint, '/budget-categories/srv-cat-99');
-  });
+      final items = await database.pendingSyncItems();
+      final expense = items.firstWhere((item) => item.entityType == 'expense');
+      final category = items.firstWhere(
+        (item) => item.entityType == 'budget_category',
+      );
+      expect(expense.payload['budgetCategoryId'], 'srv-cat-99');
+      expect(category.endpoint, '/budget-categories/srv-cat-99');
+    },
+  );
 
   test('blocked items are excluded from automatic replay', () async {
     final database = await buildDatabase();

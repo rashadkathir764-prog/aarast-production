@@ -551,6 +551,8 @@ class ProviderDashboardApi {
     required String phone,
     required String cityId,
     String? description,
+    String? logoUrl,
+    String? coverUrl,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
     final json = await _apiClient.patchJson('/provider/me/profile', {
@@ -558,8 +560,33 @@ class ProviderDashboardApi {
       'phone': normalizedPhone,
       'cityId': cityId.trim(),
       'description': description?.trim(),
+      if (logoUrl != null) 'logoUrl': logoUrl.trim(),
+      if (coverUrl != null) 'coverUrl': coverUrl.trim(),
     });
     return ProviderDashboardProfile.fromJson(json);
+  }
+
+  Future<ProviderServiceImage> addServiceImage({
+    required String serviceId,
+    required String imageUrl,
+    String? altText,
+  }) async {
+    final json = await _apiClient
+        .postJson('/provider/me/services/$serviceId/images', {
+          'imageUrl': imageUrl.trim(),
+          if (altText != null && altText.trim().isNotEmpty)
+            'altText': altText.trim(),
+        });
+    return ProviderServiceImage.fromJson(json);
+  }
+
+  Future<void> deleteServiceImage({
+    required String serviceId,
+    required String imageId,
+  }) async {
+    await _apiClient.deleteJson(
+      '/provider/me/services/$serviceId/images/$imageId',
+    );
   }
 
   Future<MarketplaceService> createService({

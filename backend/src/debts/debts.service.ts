@@ -55,6 +55,23 @@ export class DebtsService {
       'creditorPhone',
     );
 
+    // Same invariant as update(): paidAmount is clamped to
+    // [0, totalAmount] and status derived from the balance, so an
+    // inconsistent row (paid > total with status OPEN) can never be
+    // created. An explicit CANCELLED survives because cancellation is
+    // orthogonal to the balance.
+    const totalAmount = new Prisma.Decimal(
+      this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
+    );
+    const requestedPaid = new Prisma.Decimal(
+      this.optionalNonNegativeDecimal(dto.paidAmount, 'paidAmount') ?? '0',
+    );
+    const derived = applyDebtPaymentDelta(
+      totalAmount,
+      requestedPaid,
+      new Prisma.Decimal(0),
+    );
+
     const debt = await this.prisma.debt.create({
       data: {
         weddingPlanId,
@@ -62,10 +79,13 @@ export class DebtsService {
         creditorPhone,
         creditorNormalizedPhone,
         title: this.requiredText(dto.title, 'title'),
-        totalAmount: this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
-        paidAmount: this.optionalNonNegativeDecimal(dto.paidAmount, 'paidAmount') ?? '0',
+        totalAmount,
+        paidAmount: derived.paidAmount,
         dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
-        status: dto.status ?? DebtStatus.OPEN,
+        status:
+          dto.status === DebtStatus.CANCELLED
+            ? DebtStatus.CANCELLED
+            : derived.status,
         note: this.optionalText(dto.note),
       },
     });

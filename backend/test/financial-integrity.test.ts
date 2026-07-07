@@ -11,6 +11,7 @@ import {
   optionalMoneyAmount,
   requiredMoneyAmount,
 } from "../src/common/validation/money";
+import { DebtsService } from "../src/debts/debts.service";
 import { ExpensesService } from "../src/expenses/expenses.service";
 import { FinancialCommitmentsService } from "../src/financial-commitments/financial-commitments.service";
 
@@ -219,6 +220,87 @@ test("wedding plan financial children cannot cascade-delete private data", () =>
     notification,
     /weddingPlan\s+WeddingPlan\?\s+@relation\([^\n]*onDelete: SetNull\)/,
   );
+});
+
+test("debt creation clamps paid to total and derives status", async () => {
+  const created: any[] = [];
+  const prisma = {
+    debt: {
+      create: async ({ data }: any) => {
+        created.push(data);
+        return {
+          id: `debt-${created.length}`,
+          weddingPlanId: data.weddingPlanId,
+          creditorName: data.creditorName,
+          creditorPhone: data.creditorPhone ?? null,
+          creditorNormalizedPhone: data.creditorNormalizedPhone ?? null,
+          title: data.title,
+          totalAmount: new Prisma.Decimal(data.totalAmount),
+          paidAmount: new Prisma.Decimal(data.paidAmount),
+          dueDate: data.dueDate ?? null,
+          status: data.status,
+          note: data.note ?? null,
+          createdAt: new Date("2026-07-07T00:00:00.000Z"),
+          updatedAt: new Date("2026-07-07T00:00:00.000Z"),
+        };
+      },
+    },
+  };
+  const permissions = {
+    assertFinancialManageable: async () => undefined,
+  };
+  const service = new DebtsService(prisma as any, permissions as any);
+  const user = { id: "user-1" } as any;
+
+  // Overpaid on create used to persist paid > total with status OPEN.
+  const overpaid = await service.create(user, "plan-1", {
+    creditorName: "أحمد",
+    title: "دين قات",
+    totalAmount: "100",
+    paidAmount: "150",
+  } as any);
+  assert.equal(overpaid.paidAmount, "100");
+  assert.equal(overpaid.status, DebtStatus.PAID);
+
+  const partial = await service.create(user, "plan-1", {
+    creditorName: "أحمد",
+    title: "دين ذهب",
+    totalAmount: "100",
+    paidAmount: "40",
+    status: DebtStatus.OPEN,
+  } as any);
+  assert.equal(partial.status, DebtStatus.PARTIALLY_PAID);
+
+  // Cancellation is orthogonal to the balance and must survive.
+  const cancelled = await service.create(user, "plan-1", {
+    creditorName: "أحمد",
+    title: "ملغي",
+    totalAmount: "100",
+    status: DebtStatus.CANCELLED,
+  } as any);
+  assert.equal(cancelled.status, DebtStatus.CANCELLED);
+});
+
+test("database CHECK constraints guard every financial amount column", () => {
+  const migration = readFileSync(
+    join(
+      process.cwd(),
+      "prisma/migrations/20260707120000_add_financial_check_constraints/migration.sql",
+    ),
+    "utf8",
+  );
+  for (const constraint of [
+    "Expense_amount_non_negative",
+    "Debt_amounts_non_negative",
+    "Debt_paid_within_total",
+    "Installment_amount_non_negative",
+    "FinancialCommitment_amounts_non_negative",
+    "FinancialCommitment_paid_within_total",
+    "FinancialInstallment_amount_non_negative",
+    "FinancialPaymentRecord_amount_positive",
+  ]) {
+    assert.match(migration, new RegExp(`ADD CONSTRAINT "${constraint}"`));
+  }
 });
 
 test("money summary reports manage permission through PermissionService", () => {

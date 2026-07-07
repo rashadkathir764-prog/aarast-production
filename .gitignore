@@ -32,3 +32,7 @@ runtime-data/
 design_web_refs/
 tmp/
 temp/
+
+# Local AI tooling state and backups
+.codex/
+_ai_backups/

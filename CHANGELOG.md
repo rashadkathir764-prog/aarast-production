@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-07 - Launch Readiness Phase 0
+
+- Removed legacy root files (`old_aarast_dashboard_widgets.dart`, `update_dashboard.py`) and untracked local tooling state (`.codex/`, `design_web_refs/` photos) with matching `.gitignore` entries.
+- Added `test/password-reset-logic.test.ts` to the backend `npm test` suite (60 tests total).
+- Hardened the backend Docker image: dev dependencies are pruned from the runtime layer, the Prisma client is regenerated after pruning, and the container now runs as the non-root `node` user. The `prisma` CLI moved to production dependencies because the container runs `migrate deploy` at startup.
+- Added GitHub Actions CI (`.github/workflows/ci.yml`): backend typecheck + tests, backend Docker image build, admin-web build, mobile `flutter analyze` + tests, and docs verification.
+- Tagged the nine golden preview test files with `@Tags(['golden'])` and added `mobile/dart_test.yaml`; CI excludes golden tests because their PNGs are Windows-rendered, while local runs still include them.
+- No product behavior, API contract, database schema, or deployment topology changed.
+
 ## 2026-06-21 - Markdown Source-of-Truth Refresh
 
 - Refreshed documentation to make `API_CONTRACT.md` the route-level API source of truth.

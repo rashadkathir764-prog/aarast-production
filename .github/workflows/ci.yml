@@ -31,6 +31,63 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build backend
 
+  # Boots the real compiled backend against real Postgres + Redis and runs
+  # all 23 smoke suites end-to-end — the same command used before releases.
+  backend-e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: aarast_ci
+          POSTGRES_USER: aarast
+          POSTGRES_PASSWORD: aarast_ci_password
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U aarast -d aarast_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://aarast:aarast_ci_password@127.0.0.1:5432/aarast_ci?schema=public
+      JWT_SECRET: ci-smoke-secret
+      REDIS_URL: redis://127.0.0.1:6379
+      AUTH_OTP_MODE: dev
+      PORT: 3115
+      SMOKE_BASE_URL: http://127.0.0.1:3115
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run build
+      - run: npx prisma migrate deploy
+      - name: Boot backend and run all smoke suites
+        run: |
+          node dist/main.js &
+          for i in $(seq 1 30); do
+            curl -fs http://127.0.0.1:3115/health && break
+            sleep 1
+          done
+          node scripts/smoke/all-smoke.js
+
   admin-web:
     runs-on: ubuntu-latest
     defaults:

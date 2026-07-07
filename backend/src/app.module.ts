@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import { IdempotencyInterceptor } from "./common/idempotency/idempotency.interceptor";
 import { MetricsController } from "./common/observability/metrics.controller";
+import { ResilientThrottlerStorage } from "./common/redis/resilient-throttler-storage";
 import { HealthController } from "./health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
@@ -47,7 +48,11 @@ import { MediaModule } from "./media/media.module";
             },
           ],
           ...(redisUrl
-            ? { storage: new ThrottlerStorageRedisService(redisUrl) }
+            ? {
+                storage: new ResilientThrottlerStorage(
+                  new ThrottlerStorageRedisService(redisUrl),
+                ),
+              }
             : {}),
         };
       },

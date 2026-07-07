@@ -13,6 +13,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { paymentsRecordedTotal } from "../common/observability/metrics";
 import {
   DEFAULT_LIST_CAP,
   ListQueryDto,
@@ -153,6 +154,7 @@ export class FinancialCommitmentsService {
 
       return created;
     });
+    if (initialPaidAmount.gt(0)) paymentsRecordedTotal.inc();
 
     return this.toCommitmentResponse(commitment);
   }
@@ -341,6 +343,7 @@ export class FinancialCommitmentsService {
       await this.applyPaymentDelta(tx, locked, amount);
       return created;
     });
+    paymentsRecordedTotal.inc();
 
     return this.toPaymentRecordResponse(payment);
   }
@@ -453,6 +456,7 @@ export class FinancialCommitmentsService {
       }
       return created;
     });
+    if (status === InstallmentStatus.PAID) paymentsRecordedTotal.inc();
 
     return this.toInstallmentResponse(installment);
   }
@@ -550,6 +554,9 @@ export class FinancialCommitmentsService {
       currentUser,
     );
 
+    // Repeating pay on an already-PAID installment is a no-op, so the
+    // counter must only tick when a record was actually written.
+    let recordedPayment = false;
     const installment = await this.prisma.$transaction(async (tx) => {
       const current = await tx.financialInstallment.findUniqueOrThrow({
         where: { id },
@@ -581,8 +588,10 @@ export class FinancialCommitmentsService {
         },
       });
       await this.applyPaymentDelta(tx, locked, current.amount);
+      recordedPayment = true;
       return updated;
     });
+    if (recordedPayment) paymentsRecordedTotal.inc();
 
     return this.toInstallmentResponse(installment);
   }

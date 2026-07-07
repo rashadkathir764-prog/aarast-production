@@ -6,6 +6,8 @@ node_modules/
 .env.*
 !.env.example
 deploy/dokploy/.env
+deploy/monitoring/secrets/*
+!deploy/monitoring/secrets/.gitkeep
 
 # Build and test output
 dist/

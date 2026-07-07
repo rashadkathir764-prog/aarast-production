@@ -1,0 +1,72 @@
+# Aarast monitoring stack: Prometheus + Alertmanager + Grafana.
+#
+# Deploy next to the app compose (deploy/dokploy). It reaches the backend
+# over the shared external network, so set MONITORING_APP_NETWORK to the
+# network the backend joined (for Dokploy that is `dokploy-network`).
+#
+# Secrets: put the backend METRICS_TOKEN in ./secrets/metrics_token
+# (single line, no quotes). The file is git-ignored.
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./secrets/metrics_token:/etc/prometheus/secrets/metrics_token:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+      - app
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3200}:3000"
+    networks:
+      - monitoring
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+
+networks:
+  monitoring:
+  app:
+    external: true
+    name: ${MONITORING_APP_NETWORK:-dokploy-network}

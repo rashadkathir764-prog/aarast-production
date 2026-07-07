@@ -1,0 +1,56 @@
+groups:
+  - name: aarast-api
+    rules:
+      - alert: BackendDown
+        expr: up{job="aarast-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Aarast backend is unreachable"
+          description: "Prometheus has not scraped {{ $labels.instance }} for 1 minute."
+
+      - alert: HighErrorRate
+        expr: >
+          sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m]))
+          /
+          sum(rate(http_request_duration_seconds_count[5m]))
+          > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "More than 5% of requests are failing"
+          description: "5xx ratio is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: HighLatencyP95
+        expr: >
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p95 latency above 1s"
+          description: "p95 is {{ $value }}s over the last 5 minutes."
+
+      - alert: EventLoopLagHigh
+        expr: nodejs_eventloop_lag_p99_seconds{job="aarast-backend"} > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Node.js event loop is saturated"
+          description: "p99 event-loop lag is {{ $value }}s — the process cannot keep up."
+
+      - alert: OtpFailureSpike
+        expr: >
+          sum(rate(aarast_otp_verifications_total{outcome="failure"}[15m])) > 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OTP verification failures spiking"
+          description: "Sustained >1 failed OTP verification/sec — possible brute-force attempt or broken delivery channel."

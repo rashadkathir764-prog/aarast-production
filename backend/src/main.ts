@@ -96,6 +96,10 @@ async function bootstrap() {
 
   app.useGlobalFilters(new GlobalExceptionFilter());
 
+  // SIGTERM from rolling deploys must drain in-flight requests instead
+  // of dropping them mid-transaction.
+  app.enableShutdownHooks();
+
   await app.listen(port);
   logger.log(
     `Aarast API listening on :${port} (env=${process.env.NODE_ENV ?? 'development'})`,

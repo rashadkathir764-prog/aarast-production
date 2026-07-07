@@ -10,6 +10,10 @@ import { JwtService } from '@nestjs/jwt';
 import { OtpCode, OtpPurpose, User } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
 import { randomBytes } from 'crypto';
+import {
+  otpRequestsTotal,
+  otpVerificationsTotal,
+} from '../common/observability/metrics';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
@@ -270,6 +274,7 @@ export class AuthService {
     });
 
     const delivered = await channel.deliver(phone, code, purpose);
+    otpRequestsTotal.inc({ delivery: delivered.delivery });
 
     return {
       phone,
@@ -299,6 +304,7 @@ export class AuthService {
     const now = new Date();
 
     if (this.getOtpMode() !== 'dev' && code === this.getDevOtpCode()) {
+      otpVerificationsTotal.inc({ outcome: 'failure' });
       throw new BadRequestException('OTP code is invalid or expired');
     }
 
@@ -314,12 +320,14 @@ export class AuthService {
           data: { consumedAt: now },
         });
       }
+      otpVerificationsTotal.inc({ outcome: 'failure' });
       throw new BadRequestException('OTP code is invalid or expired');
     }
 
     const matches = await bcryptjs.compare(code, otp.codeHash);
     if (!matches) {
       await this.recordFailedOtpAttempt(otp, now);
+      otpVerificationsTotal.inc({ outcome: 'failure' });
       throw new BadRequestException('OTP code is invalid or expired');
     }
 
@@ -327,6 +335,7 @@ export class AuthService {
       where: { id: otp.id },
       data: { consumedAt: now },
     });
+    otpVerificationsTotal.inc({ outcome: 'success' });
 
     const user = await this.handleVerifiedOtp(phone, purpose, now);
     const auth =

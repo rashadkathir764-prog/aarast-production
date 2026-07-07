@@ -17,6 +17,11 @@ and runtime checks override historical completion reports.
 
 - Backend: NestJS 11, Prisma 6, PostgreSQL, 15-minute access JWTs, and
   rotating 30-day refresh sessions.
+- Scale/observability: optional Redis (shared throttling + Socket.IO
+  adapter, fail-open when Redis drops), request-id correlation,
+  token-guarded Prometheus `/metrics`, JSON production logs, optional
+  Sentry via `SENTRY_DSN`, nightly pg_dump sidecar in the Dokploy
+  compose.
 - Mobile: Flutter, Provider, go_router, dio, sqflite, and secure token storage.
 - Admin web: React 18, Vite, and TypeScript strict mode.
 - Local runtime: Docker Compose backend/database.

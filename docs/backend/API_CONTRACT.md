@@ -968,6 +968,7 @@ configuration, and smoke checks.
 | GET | `/me/quote-requests/:id` | `marketplace.findMyQuoteRequest` |  |
 | PATCH | `/me/quote-requests/:id/cancel` | `marketplace.cancelMyQuoteRequest` |  |
 | POST | `/media/uploads/presign` | `media.presign` |  |
+| GET | `/metrics` | `metrics.metrics` |  |
 | GET | `/notifications` | `notifications.list` |  |
 | DELETE | `/notifications/:id` | `notifications.remove` |  |
 | GET | `/notifications/:id` | `notifications.findOne` |  |

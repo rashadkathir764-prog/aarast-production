@@ -42,4 +42,4 @@
 | `backend` | `npm run smoke:wedding-plan` | `node scripts/smoke/wedding-plan-smoke.js` |
 | `backend` | `npm run start` | `node dist/main.js` |
 | `backend` | `npm run start:dev` | `node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts` |
-| `backend` | `npm run test` | `node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts` |
+| `backend` | `npm run test` | `node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/password-reset-logic.test.ts` |

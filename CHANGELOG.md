@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-07 - Launch Readiness Wave 2 (Scale, Observability, Hardening)
+
+- Backend now uses Redis (optional `REDIS_URL`) for cross-replica rate limiting and Socket.IO delivery, failing open with a logged warning when Redis is unreachable instead of returning 500s.
+- Added request-id correlation (`X-Request-Id`), per-request access logs, a token-guarded Prometheus `/metrics` endpoint, JSON logs in production, and optional Sentry capture for 5xx responses (`SENTRY_DSN`).
+- Dokploy compose gains Redis and a nightly `pg_dump` backup sidecar with retention; media (S3), Sentry, metrics, and backup variables documented in `.env.example`.
+- Admin web now actually serves its security headers (nginx `add_header` inheritance bug) and ships a strict Content-Security-Policy with the API origin injected at container start.
+- Mobile release builds sign with an upload keystore via git-ignored `android/key.properties`, with R8 minification, resource shrinking, and Flutter ProGuard rules; `flutter build apk --release` verified.
+- Unbounded list endpoints (expenses, guests, tasks, debts, financial commitments, payment records) accept opt-in `take`/`skip` pagination and are bounded by a 1000-row safety cap; responses stay arrays so existing clients are unaffected.
+- CI gains a `backend-e2e` job that boots the compiled backend against Postgres 16 + Redis 7 and runs all 23 smoke suites; the suite passes locally (23/23).
+
 ## 2026-07-07 - Launch Readiness Phase 0
 
 - Removed legacy root files (`old_aarast_dashboard_widgets.dart`, `update_dashboard.py`) and untracked local tooling state (`.codex/`, `design_web_refs/` photos) with matching `.gitignore` entries.

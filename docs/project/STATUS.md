@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-06
+Snapshot date: 2026-07-08
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -19,9 +19,16 @@ and runtime checks override historical completion reports.
   rotating 30-day refresh sessions.
 - Scale/observability: optional Redis (shared throttling + Socket.IO
   adapter, fail-open when Redis drops), request-id correlation,
-  token-guarded Prometheus `/metrics`, JSON production logs, optional
-  Sentry via `SENTRY_DSN`, nightly pg_dump sidecar in the Dokploy
-  compose.
+  token-guarded Prometheus `/metrics` with business counters, JSON
+  production logs, optional Sentry via `SENTRY_DSN`, graceful shutdown
+  draining, nightly pg_dump sidecar in the Dokploy compose, and a
+  deployable Prometheus/Grafana/Alertmanager stack under
+  `deploy/monitoring/`.
+- Financial integrity: database CHECK constraints (non-negative amounts,
+  paid ≤ total, positive payment records) enforce money invariants below
+  the application layer.
+- Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
+  mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, sqflite, and secure token storage.
 - Admin web: React 18, Vite, and TypeScript strict mode.
 - Local runtime: Docker Compose backend/database.

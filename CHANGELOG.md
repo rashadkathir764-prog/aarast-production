@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-07-08 - Launch Readiness Wave 3 (10/10 Push)
+
+- Financial data now has database-level CHECK constraints (non-negative amounts, paid ≤ total, positive payment records) on every money table as a last line of defense below the application layer; `Debt.create` was fixed to clamp `paidAmount` to `[0, total]` and derive status, closing a path that could persist `paid > total` with a caller-chosen status. Constraint rejection verified live against Postgres.
+- CI gains secret scanning (gitleaks over full history — 262 commits verified clean, one false positive allowlisted with justification) and a `dependency-audit` gate (`npm audit --audit-level=high`); admin-web upgraded Vite 5→7 to clear the esbuild dev-server advisory. Both projects report 0 vulnerabilities. Dependabot enabled for npm, pub, docker, and Actions.
+- Added a deployable monitoring stack under `deploy/monitoring/` (Prometheus + Alertmanager + Grafana) with a provisioned dashboard, alert rules (backend down, >5% 5xx, p95 >1s, event-loop saturation, OTP failure spikes), and backend business counters (`aarast_otp_requests_total`, `aarast_otp_verifications_total`, `aarast_payments_recorded_total`) verified incrementing live. Backend now drains in-flight requests on SIGTERM (`enableShutdownHooks`).
+- Added a zero-dependency load-test script (`backend/scripts/load/load-test.js`); measured ~1,500 req/s at 50 connections (p95 56ms, 0 errors in 45k requests) on a dev machine, saturation knee documented. Added a verified backup-restore script (restores into a scratch container, checked against a real dump), container memory limits, and a scaling runbook (`docs/deployment/SCALING.md`).
+- Admin web gains Vitest + Testing Library (14 tests: auth role-gating, error mapping, token storage, API client, ErrorBoundary) and a top-level ErrorBoundary so a render crash shows a recoverable Arabic message instead of a blank screen; `npm test` runs in CI.
+- Mobile: fixed a silent-data-loss bug where a permanently-rejected offline write (4xx or retry-exhausted) was excluded from the pending count and reported as a false "synced" green state; it now surfaces as a sync error. Added 7 tests covering the sync error paths and cross-user cache wipe. 357 mobile tests pass; analyzer clean.
+- Store readiness: verified the release signing pipeline end-to-end (a signed AAB was built and its certificate confirmed to be the upload key, not debug); added a Play release guide, an Arabic privacy policy, a Play data-safety answer sheet, and store listing copy. `.gitignore` now blocks keystores and signing config from ever being committed.
+
 ## 2026-07-07 - Launch Readiness Wave 2 (Scale, Observability, Hardening)
 
 - Backend now uses Redis (optional `REDIS_URL`) for cross-replica rate limiting and Socket.IO delivery, failing open with a logged warning when Redis is unreachable instead of returning 500s.

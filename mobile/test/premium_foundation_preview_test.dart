@@ -4,6 +4,9 @@
 //
 // Regenerate with:
 //   flutter test test/premium_foundation_preview_test.dart --update-goldens
+@Tags(['golden'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

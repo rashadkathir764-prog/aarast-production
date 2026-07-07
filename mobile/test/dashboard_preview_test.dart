@@ -5,6 +5,9 @@
 //
 // Regenerate the images with:
 //   flutter test test/dashboard_preview_test.dart --update-goldens
+@Tags(['golden'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';

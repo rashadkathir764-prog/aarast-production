@@ -1,0 +1,8 @@
+# Test tags for the Aarast mobile suite.
+#
+# golden: pixel-comparison tests whose PNGs were generated on Windows.
+#         CI runs on Linux where font rasterization differs, so CI excludes
+#         them with `flutter test --exclude-tags golden`. Regenerate locally
+#         with `flutter test <file> --update-goldens`.
+tags:
+  golden:

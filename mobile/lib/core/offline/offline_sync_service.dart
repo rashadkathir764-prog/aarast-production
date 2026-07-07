@@ -56,7 +56,14 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     _lastSyncedAt = lastSyncedRaw == null
         ? null
         : DateTime.tryParse(lastSyncedRaw);
-    if (_state != SyncState.syncing && _state != SyncState.offline) {
+    // syncError is preserved like syncing/offline: an error state must not
+    // self-clear just because the pending count dropped to zero (blocked
+    // items are excluded from that count). Only a fresh sync attempt clears
+    // it — otherwise a permanently rejected write would flip back to a
+    // false "synced".
+    if (_state != SyncState.syncing &&
+        _state != SyncState.offline &&
+        _state != SyncState.syncError) {
       _state = _pendingCount > 0
           ? SyncState.hasPendingChanges
           : SyncState.synced;
@@ -123,6 +130,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       _lastError = null;
       notifyListeners();
 
+      var blockedAny = false;
       for (final item in items) {
         try {
           final response = await apiClient.dio.request<Object?>(
@@ -141,18 +149,24 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           await database.markSyncItemSynced(item.id);
         } on DioException catch (error) {
           final apiError = ApiException.fromDio(error);
-          await _handleSyncError(item, apiError);
+          blockedAny = await _handleSyncError(item, apiError) || blockedAny;
           if (apiError.isNetworkFailure) break;
         } on Object catch (error) {
-          await _handleSyncError(item, error);
+          blockedAny = await _handleSyncError(item, error) || blockedAny;
         }
       }
 
       final remaining = await database.pendingSyncCount();
-      if (remaining == 0) {
+      if (remaining == 0 && !blockedAny) {
         _state = SyncState.synced;
         _lastError = null;
         await _markSyncedNow();
+      } else if (blockedAny && _state != SyncState.offline) {
+        // Blocked items are excluded from pendingSyncCount, so remaining
+        // can be 0 while a write was permanently rejected. Surfacing
+        // syncError (not a false "synced") is what tells the user a
+        // change — possibly a financial one — did not go through.
+        _state = SyncState.syncError;
       } else if (_state != SyncState.offline) {
         _state = SyncState.hasPendingChanges;
       }
@@ -169,7 +183,10 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _handleSyncError(SyncQueueItem item, Object error) async {
+  /// Returns true if the item was permanently blocked (not just failed for
+  /// a later retry), so the caller can surface it instead of reporting a
+  /// clean sync.
+  Future<bool> _handleSyncError(SyncQueueItem item, Object error) async {
     final message = error is ApiException ? error.message : error.toString();
 
     // A 4xx rejection (validation, not-found...) will never succeed by
@@ -184,7 +201,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         item.retryCount + 1 >= SyncQueueItem.maxAutoRetries &&
         !(error is ApiException && error.isNetworkFailure);
 
-    if (isPermanentRejection || exhaustedRetries) {
+    final blocked = isPermanentRejection || exhaustedRetries;
+    if (blocked) {
       await database.markSyncItemBlocked(item.id, message);
     } else {
       await database.markSyncItemFailed(item.id, message);
@@ -196,6 +214,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       _state = SyncState.syncError;
     }
+    return blocked;
   }
 
   Future<void> _cacheSyncedResponse(SyncQueueItem item, Object? data) async {

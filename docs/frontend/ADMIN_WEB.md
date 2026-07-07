@@ -14,10 +14,20 @@ From `admin-web/`:
 ```powershell
 npm run build
 npm run typecheck
+npm test
 npm run smoke:admin-runtime
 npm run smoke:routes
 npm run smoke:honesty
 ```
+
+Unit tests run on Vitest + Testing Library (jsdom). They cover the auth
+API (ADMIN role gating, error mapping, token storage), the `apiRequest`
+client (bearer header, error extraction), and the `ErrorBoundary`
+recovery UI. `npm test` runs in CI on every push.
+
+A top-level `ErrorBoundary` (`src/components/ErrorBoundary.tsx`) wraps
+the app so a render-time exception shows a recoverable Arabic message
+instead of a blank screen.
 
 ## Rules
 

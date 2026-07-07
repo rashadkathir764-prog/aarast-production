@@ -150,16 +150,11 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                   _InlineError(message: provider.errorMessage!),
                 ],
                 const SizedBox(height: 18),
-                FilledButton.icon(
+                AarastButton(
+                  label: 'إرسال دعوة المشاركة',
+                  icon: LucideIcons.userPlus,
+                  isLoading: provider.isSubmitting,
                   onPressed: provider.isSubmitting ? null : _submit,
-                  icon: provider.isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(LucideIcons.userPlus),
-                  label: const Text('إرسال دعوة المشاركة'),
                 ),
                 const SizedBox(height: 20),
               ],
@@ -271,7 +266,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   Widget? _authGateFor(SharingProvider provider) {
     if (_isCheckingSharingAccess) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.form(fields: 3, withButton: true);
     }
 
     if (_showLoginGate) {

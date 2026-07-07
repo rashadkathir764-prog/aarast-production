@@ -165,12 +165,23 @@ Future<void> main() async {
         ChangeNotifierProvider(
           create: (_) => ProviderDashboardProvider(providerDashboardApi),
         ),
-        ChangeNotifierProvider<ChatProvider>(
+        ChangeNotifierProxyProvider<AuthController, ChatProvider>(
           create: (_) => ChatProvider(
             api: chatApi,
             realtime: chatRealtimeClient,
             authStorage: authStorage,
           ),
+          update: (_, auth, chat) {
+            final provider =
+                chat ??
+                ChatProvider(
+                  api: chatApi,
+                  realtime: chatRealtimeClient,
+                  authStorage: authStorage,
+                );
+            provider.syncSessionUser(auth.user?.id);
+            return provider;
+          },
         ),
       ],
       child: const AarastApp(),

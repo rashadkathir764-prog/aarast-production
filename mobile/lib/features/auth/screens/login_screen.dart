@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: InkWell(
-                      onTap: _showForgotPasswordSheet,
+                      onTap: _openResetPassword,
                       borderRadius: BorderRadius.circular(8),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -181,84 +181,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _showForgotPasswordSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        final sheetText = Theme.of(sheetContext).textTheme;
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          decoration: const BoxDecoration(
-            color: AppTheme.ivory,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.border,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                Center(
-                  child: Container(
-                    width: 62,
-                    height: 62,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.goldSoft,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.lock_reset_rounded,
-                      color: AppTheme.goldDeep,
-                      size: 30,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'استعادة كلمة المرور',
-                  textAlign: TextAlign.center,
-                  style: sheetText.titleLarge?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'خدمة استعادة كلمة المرور قيد التجهيز وستتوفر قريباً. '
-                  'إذا كنت بحاجة للدخول الآن، تواصل مع فريق الدعم وسنساعدك '
-                  'في الوصول إلى حسابك.',
-                  textAlign: TextAlign.center,
-                  style: sheetText.bodyMedium?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
-                    height: 1.55,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                AarastButton(
-                  label: 'حسناً، فهمت',
-                  icon: Icons.check_rounded,
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  void _openResetPassword() {
+    final phone = _phoneController.text.trim();
+    final location = phone.isEmpty
+        ? AppRouter.resetPassword
+        : Uri.parse(
+            AppRouter.resetPassword,
+          ).replace(queryParameters: {'phone': phone}).toString();
+    context.push(location);
   }
 
   Future<void> _submit() async {

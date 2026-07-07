@@ -31,14 +31,8 @@ function loadLocalEnvFile() {
 }
 
 function configureSmokeDatabaseUrl() {
-  loadLocalEnvFile();
-
   if (process.env.SMOKE_DATABASE_URL) {
     process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
-    return;
-  }
-
-  if (process.env.DATABASE_URL) {
     return;
   }
 
@@ -50,6 +44,13 @@ function configureSmokeDatabaseUrl() {
   if (isLocalComposeBackend) {
     process.env.DATABASE_URL = LOCAL_COMPOSE_DATABASE_URL;
     process.env.SMOKE_DATABASE_URL = LOCAL_COMPOSE_DATABASE_URL;
+    return;
+  }
+
+  loadLocalEnvFile();
+
+  if (process.env.DATABASE_URL) {
+    return;
   }
 }
 

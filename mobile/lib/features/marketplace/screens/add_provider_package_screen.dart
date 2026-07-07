@@ -68,10 +68,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
           ? ListView(
               children: [
                 if (dashboard.isLoading && dashboard.profile == null)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 120),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
+                  AarastSkeleton.form(fields: 4, inline: true)
                 else
                   AarastEmptyState(
                     icon: LucideIcons.fileClock,
@@ -169,18 +166,11 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
                           _InlineError(message: dashboard.errorMessage!),
                         ],
                         const SizedBox(height: 18),
-                        FilledButton.icon(
+                        AarastButton(
+                          label: 'إضافة الباقة',
+                          icon: LucideIcons.plus,
+                          isLoading: dashboard.isSubmitting,
                           onPressed: dashboard.isSubmitting ? null : _submit,
-                          icon: dashboard.isSubmitting
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(LucideIcons.plus),
-                          label: const Text('إضافة الباقة'),
                         ),
                       ],
                     ),

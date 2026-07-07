@@ -25,8 +25,11 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 | --- | --- |
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user. |
-| BudgetCategory | Implemented for owner-scoped WeddingPlan budget groups, with optional target amounts and links to expenses. |
-| Expense | Implemented for owner-scoped WeddingPlan spending records with amount, status, optional date, optional note, and optional BudgetCategory link. |
+| BudgetCategory | Implemented for owner-scoped WeddingPlan budget groups, with optional target amounts and links to expenses, financial commitments, payment records, and financial installments. |
+| FinancialCommitment | Implemented as the phase-2 money backbone for agreed costs. Every commitment belongs to a WeddingPlan and BudgetCategory and may link to a provider, accepted quote, or plan-provider link. Remaining amount is derived from total amount minus paid amount. |
+| FinancialPaymentRecord | Implemented for actual money-out records under a FinancialCommitment. Creating or deleting a record updates the parent commitment balance. This is manual planning data, not payment processing. |
+| FinancialInstallment | Implemented for scheduled commitment payments. A financial installment belongs to a FinancialCommitment and BudgetCategory; paying it creates a payment record and updates the commitment balance. |
+| Expense | Implemented for owner-scoped WeddingPlan actual money-out records with amount, paid status, optional date, optional note, and required BudgetCategory link for new records. New money flows should use FinancialCommitment + FinancialPaymentRecord for agreed costs, remaining balances, and payments. |
 | Debt | Implemented for owner-scoped WeddingPlan obligations, including creditor, optional manually entered creditor phone, title, total amount, paid amount, optional due date, status, and optional note. Contact picking is not implemented in Phase 2A. |
 | Installment | Implemented for owner-scoped scheduled payments under debts, including amount, optional due date, optional paid date, status, and optional note. |
 | Task | Implemented as `WeddingTask` for owner-scoped WeddingPlan planning work, including title, optional description, optional due date, status, priority, checklist/assignment support, and timestamps. |
@@ -57,15 +60,22 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 - WeddingPlan implementation depends on database persistence and an authenticated user context.
 - Persistence/Auth readiness work has already moved past the original docs-only foundation. Future schema changes must still be explicit, phased, migrated, and smoke-tested.
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
-- WeddingPlan now has implemented BudgetCategory, Expense, Debt, WeddingTask, and SharedMember relations.
+- WeddingPlan now has implemented BudgetCategory, FinancialCommitment,
+  FinancialPaymentRecord, FinancialInstallment, Expense, Debt, WeddingTask, and
+  SharedMember relations.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
-- Financial data such as expenses, debts, and installments must be private by default.
-- SharedMember permissions are implemented as a backend slice; financial endpoints remain protected and must not expose expenses, debts, or installments to shared members unless permissions explicitly allow it in an approved endpoint flow.
+- Financial data such as financial commitments, payment records, expenses,
+  debts, and installments must be private by default.
+- SharedMember permissions are implemented as a backend slice; financial
+  endpoints remain protected and must not expose financial commitments, payment
+  records, expenses, debts, or installments to shared members unless permissions
+  explicitly allow it in an approved endpoint flow.
 - Marketplace entities support planning and quote/lead context; they must not replace the financial planning core.
-- No payment, deposit, confirmed booking, loan, credit, or financing data should be added until explicitly approved in a later phase.
+- No payment processing, deposit, confirmed booking, loan, credit, or financing
+  data should be added until explicitly approved in a later phase.
 - Production migrations and Docker/Dokploy deployment work remain separate from docs-only tasks unless explicitly requested.
 - New database migrations are outside docs-only tasks.
 
@@ -82,6 +92,9 @@ The backend now includes the approved provider-reference and quote-lead foundati
 - `City` and `ProviderCategory` for Yemen-first marketplace filters.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, `PlanProviderLink`, and `BookingLead` for saved providers, reviews, quote leads, accepted planning provider links, and non-paid lead context.
+- `FinancialCommitment`, `FinancialPaymentRecord`, and
+  `FinancialInstallment` for category-first agreed costs, actual money-out
+  records, and scheduled commitment payments.
 - `WeddingTaskChecklistItem` plus task assignment support.
 - `PlanInvite` for invite-based collaboration.
 
@@ -95,11 +108,14 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `IdempotencyKey` | 7 | `id`, `userId`, `createdAt` |
 | `User` | 36 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `RefreshToken` | 10 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
-| `WeddingPlan` | 30 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
-| `BudgetCategory` | 8 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 33 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `BudgetCategory` | 11 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `Expense` | 12 | `id`, `weddingPlanId`, `budgetCategoryId`, `createdAt`, `updatedAt` |
 | `Debt` | 15 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `Installment` | 10 | `id`, `debtId`, `paidAt`, `createdAt`, `updatedAt` |
+| `FinancialCommitment` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `planProviderLinkId`, `quoteRequestId`, `quoteOfferId`, `legacyDebtId` |
+| `FinancialPaymentRecord` | 15 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyExpenseId`, `createdAt`, `updatedAt` |
+| `FinancialInstallment` | 14 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 15 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
@@ -111,15 +127,15 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `ProviderCategory` | 11 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 36 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
+| `Provider` | 37 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
-| `QuoteRequest` | 30 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
-| `QuoteOffer` | 14 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
-| `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `QuoteRequest` | 31 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteOffer` | 15 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
+| `PlanProviderLink` | 13 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `BookingLead` | 15 | `id`, `userId`, `weddingPlanId`, `providerId`, `quoteRequestId`, `createdAt`, `updatedAt` |
 | `Conversation` | 10 | `id`, `quoteRequestId`, `lastMessageAt`, `closedAt`, `createdAt`, `updatedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `lastReadAt`, `mutedAt`, `blockedAt`, `createdAt`, `updatedAt` |
@@ -127,5 +143,5 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 34
+Total models: 37
 <!-- DOCS-SYNC:END -->

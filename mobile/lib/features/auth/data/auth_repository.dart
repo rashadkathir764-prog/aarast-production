@@ -98,6 +98,32 @@ class AuthRepository {
     return response;
   }
 
+  /// يطلب رمز استعادة كلمة المرور. الخادم لا يكشف وجود الحساب من عدمه.
+  Future<OtpRequestResult> requestPasswordReset({
+    required String phone,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    final json = await _apiClient.postJson('/auth/password-reset/request', {
+      'phone': normalizedPhone,
+    });
+    return OtpRequestResult.fromJson(json);
+  }
+
+  /// يؤكد الاستعادة بالرمز وكلمة المرور الجديدة — الخادم يستهلك الرمز
+  /// ويبطل كل الجلسات القائمة، فيبقى الدخول بكلمة المرور الجديدة فقط.
+  Future<void> confirmPasswordReset({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    await _apiClient.postJson('/auth/password-reset/confirm', {
+      'phone': normalizedPhone,
+      'code': code,
+      'newPassword': newPassword,
+    });
+  }
+
   Future<String?> readAccessToken() => _authStorage.readAccessToken();
 
   Future<bool> refreshSession() async {

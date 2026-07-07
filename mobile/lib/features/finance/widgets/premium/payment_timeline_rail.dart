@@ -34,10 +34,15 @@ class PaymentTimelineRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final overdue = summary.overdueInstallmentsCount ?? 0;
-    final next = summary.nextInstallment;
-    final debtRemaining = _money(summary.debtRemaining);
-    final debtsCount = summary.debtsCount ?? 0;
+    final overdue =
+        (summary.overdueInstallmentsCount ?? 0) +
+        (summary.financialOverdueInstallmentsCount ?? 0);
+    final next = summary.nextFinancialInstallment ?? summary.nextInstallment;
+    final debtRemaining = _money(summary.outstandingTotal) > 0
+        ? _money(summary.outstandingTotal)
+        : _money(summary.debtRemaining);
+    final debtsCount =
+        (summary.debtsCount ?? 0) + (summary.commitmentsCount ?? 0);
     final reduceMotion = AarastMotion.reduceMotion(context);
 
     final nodes = <Widget>[];

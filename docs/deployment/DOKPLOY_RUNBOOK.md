@@ -50,14 +50,15 @@ Optional:
 - `OTP_EXPIRES_MINUTES`
 - `OTP_MAX_ATTEMPTS`
 - `AARAST_EXPOSE_OTP_IN_SMOKE`
-- `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_ACCESS_TOKEN`
-- `WHATSAPP_VERIFY_TOKEN`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USER`
 - `SMTP_PASS`
 - `EMAIL_FROM`
+
+WhatsApp/Meta OTP provider secrets are not part of the current deployment
+contract. Keep production OTP disabled until the approved Meta provider phase is
+started.
 
 Use the Docker network service name for PostgreSQL:
 

@@ -21,11 +21,7 @@ double _money(String? raw) {
 /// الحلقة تتلون حسب الخطر: ذهبية وأنت آمن، كهرمانية قرب الحد،
 /// حمراء عند التجاوز. الرقم الأهم (المتبقي) هو الأكبر في البطاقة.
 class BudgetPulseHero extends StatelessWidget {
-  const BudgetPulseHero({
-    required this.summary,
-    this.onSetupBudget,
-    super.key,
-  });
+  const BudgetPulseHero({required this.summary, this.onSetupBudget, super.key});
 
   final MoneySummary summary;
 
@@ -36,9 +32,13 @@ class BudgetPulseHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final reduceMotion = AarastMotion.reduceMotion(context);
     final total = _money(summary.totalBudget);
-    final spent = _money(summary.totalSpent);
+    final spent = _money(summary.confirmedCostTotal) > 0
+        ? _money(summary.confirmedCostTotal)
+        : _money(summary.totalSpent);
     final hasBudget = summary.hasUsableBudget;
-    final ratio = summary.spendingRatio;
+    final ratio = summary.commitmentRatio > 0
+        ? summary.commitmentRatio
+        : summary.spendingRatio;
     final status = summary.budgetStatus;
 
     final isOver = status == 'OVER_BUDGET';
@@ -51,16 +51,16 @@ class BudgetPulseHero extends StatelessWidget {
             AarastDesignTokens.dangerSoft,
           ]
         : isWarning
-            ? const [
-                AarastDesignTokens.warning,
-                AarastDesignTokens.warningLight,
-                AarastDesignTokens.warningSoft,
-              ]
-            : const [
-                AarastDesignTokens.goldDeep,
-                AarastDesignTokens.gold,
-                AarastDesignTokens.goldLight,
-              ];
+        ? const [
+            AarastDesignTokens.warning,
+            AarastDesignTokens.warningLight,
+            AarastDesignTokens.warningSoft,
+          ]
+        : const [
+            AarastDesignTokens.goldDeep,
+            AarastDesignTokens.gold,
+            AarastDesignTokens.goldLight,
+          ];
 
     Widget card = Container(
       decoration: BoxDecoration(
@@ -114,11 +114,11 @@ class BudgetPulseHero extends StatelessWidget {
     if (reduceMotion) return card;
 
     return card.animate().shimmer(
-          delay: 650.ms,
-          duration: 1200.ms,
-          color: AarastDesignTokens.gold.withValues(alpha: 0.30),
-          angle: math.pi / 8,
-        );
+      delay: 650.ms,
+      duration: 1200.ms,
+      color: AarastDesignTokens.gold.withValues(alpha: 0.30),
+      angle: math.pi / 8,
+    );
   }
 
   Widget _buildBudgetBody(
@@ -135,8 +135,8 @@ class BudgetPulseHero extends StatelessWidget {
     final hint = switch (status) {
       'OVER_BUDGET' =>
         'تجاوزت الميزانية — راجع البنود وقرر وش يتأجل ووش يستمر.',
-      'DANGER' || 'WARNING' =>
-        'اقتربت من الحد — تابع البنود قبل إضافة دفعة جديدة.',
+      'DANGER' ||
+      'WARNING' => 'اقتربت من الحد — تابع البنود قبل إضافة دفعة جديدة.',
       _ => 'وضعك المالي مريح — سجّل كل دفعة أولًا بأول ليبقى كذلك.',
     };
     final hintIcon = switch (status) {
@@ -176,7 +176,7 @@ class BudgetPulseHero extends StatelessWidget {
                   const SizedBox(height: 14),
                   _HeroMoneyRow(label: 'الميزانية', value: total),
                   const SizedBox(height: 6),
-                  _HeroMoneyRow(label: 'المصروف', value: spent),
+                  _HeroMoneyRow(label: 'التكلفة المؤكدة', value: spent),
                 ],
               ),
             ),
@@ -270,13 +270,10 @@ class BudgetPulseHero extends StatelessWidget {
                     hasLooseSpending
                         ? 'مصاريفك تمشي بلا سقف'
                         : 'لنحدد سقفك المالي',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineMedium
-                        ?.copyWith(
-                          color: AarastDesignTokens.goldSoft,
-                          height: 1.25,
-                        ),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: AarastDesignTokens.goldSoft,
+                      height: 1.25,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -327,11 +324,13 @@ class BudgetPulseHero extends StatelessWidget {
               style: FilledButton.styleFrom(
                 backgroundColor: AarastDesignTokens.gold,
                 foregroundColor: AarastDesignTokens.burgundyDark,
-                minimumSize:
-                    const Size.fromHeight(AarastDesignTokens.minTapTarget),
+                minimumSize: const Size.fromHeight(
+                  AarastDesignTokens.minTapTarget,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(AarastDesignTokens.radiusMd),
+                  borderRadius: BorderRadius.circular(
+                    AarastDesignTokens.radiusMd,
+                  ),
                 ),
                 textStyle: const TextStyle(
                   fontSize: 14.5,
@@ -412,8 +411,9 @@ class YemeniMoneyHeroText extends StatelessWidget {
     final reduceMotion = AarastMotion.reduceMotion(context);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: value),
-      duration:
-          reduceMotion ? Duration.zero : const Duration(milliseconds: 1400),
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 1400),
       curve: Curves.easeOutExpo,
       builder: (context, animated, _) {
         return Text(

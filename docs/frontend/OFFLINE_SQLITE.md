@@ -34,6 +34,9 @@ Unsupported desktop platforms and Flutter web use a JSON fallback in `shared_pre
 - `cached_budget_items`: expense cache.
 - `cached_debts`: debt cache.
 - `cached_installments`: installment cache.
+- `cached_financial_commitments`: category-first agreed-cost cache.
+- `cached_financial_payment_records`: actual money-out record cache.
+- `cached_financial_installments`: commitment installment cache.
 - `cached_provider_categories`: provider category reference cache.
 - `cached_cities`: city reference cache.
 - `cached_providers`: marketplace provider cache.
@@ -45,6 +48,11 @@ Unsupported desktop platforms and Flutter web use a JSON fallback in `shared_pre
 ## Read Strategy
 
 Feature API classes remain the boundary used by UI providers. On successful remote reads, API classes update the local cache. On network failure, they return cached rows when available and mark sync state as offline. If no cache exists, the existing Arabic error flow is preserved.
+
+Financial commitments, payment records, and financial installments use their
+own cache tables. They must not be folded into the old expense/debt cache,
+because expenses mean actual money paid while commitments represent agreed
+costs and remaining obligations.
 
 ## Offline Write Queue
 

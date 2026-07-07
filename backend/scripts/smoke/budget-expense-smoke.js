@@ -328,7 +328,7 @@ async function run() {
       title: 'Shared Managed Expense',
       amount: '50000.00',
       budgetCategoryId: managerCategoryId,
-      status: 'PLANNED',
+      status: 'PAID',
       note: 'Finance manager smoke expense',
     }, financeManagerToken);
     check('finance manager creates expense - HTTP 201', res.status === 201);
@@ -358,13 +358,13 @@ async function run() {
     const res = await request('PATCH', `/expenses/${expenseId}`, {
       title: 'Updated Hall Expense',
       amount: '300000.00',
-      status: 'PLANNED',
+      status: 'PAID',
       note: 'Updated smoke expense',
     }, ownerToken);
     check('PATCH expense - HTTP 200', res.status === 200);
     check('updated expense title changed', res.body?.title === 'Updated Hall Expense');
     check('updated expense amount changed', res.body?.amount === '300000');
-    check('updated expense status changed', res.body?.status === 'PLANNED');
+    check('updated expense status stays paid', res.body?.status === 'PAID');
     check('updated expense does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

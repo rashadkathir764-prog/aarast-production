@@ -95,13 +95,9 @@ class _SplashScreenState extends State<SplashScreen>
                     children: [
                       const AarastPremiumBrandMark(),
                       const SizedBox(height: 16), // Moved closer to the mark
-                      SizedBox(
-                        width: 48,
-                        height: 48,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppTheme.gold, // Premium gold loader
-                        ),
+                      const AarastInlineSpinner(
+                        dimension: 48,
+                        color: AppTheme.gold, // Premium gold loader
                       ),
                     ],
                   ),

@@ -9,6 +9,8 @@ const baseUrl = (
   process.env.VITE_API_BASE_URL ||
   "http://127.0.0.1:3115"
 ).replace(/\/$/, "");
+const localComposeDatabaseUrl =
+  "postgresql://aarast:aarast_dev_password@localhost:5433/aarast?schema=public";
 
 const checks = [];
 let token = "";
@@ -94,6 +96,25 @@ function loadBackendEnvIfNeeded() {
   }
 }
 
+function configureLocalAdminDatabaseUrl() {
+  if (process.env.ADMIN_SMOKE_DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.ADMIN_SMOKE_DATABASE_URL;
+    return;
+  }
+
+  if (process.env.SMOKE_DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.SMOKE_DATABASE_URL;
+    return;
+  }
+
+  if (isLocalTarget()) {
+    process.env.DATABASE_URL = localComposeDatabaseUrl;
+    return;
+  }
+
+  loadBackendEnvIfNeeded();
+}
+
 async function createLocalSmokeAdmin() {
   if (!isLocalTarget()) {
     throw new Error(
@@ -101,7 +122,7 @@ async function createLocalSmokeAdmin() {
     );
   }
 
-  loadBackendEnvIfNeeded();
+  configureLocalAdminDatabaseUrl();
   if (!process.env.DATABASE_URL) {
     throw new Error(
       "DATABASE_URL is required to auto-provision a local admin smoke account.",

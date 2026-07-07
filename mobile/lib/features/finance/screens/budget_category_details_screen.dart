@@ -110,7 +110,7 @@ class _BudgetCategoryDetailsScreenState
                   action: ElevatedButton.icon(
                     onPressed: () => _openCreateExpense(category),
                     icon: const Icon(LucideIcons.plus),
-                    label: const Text('إضافة مصروف'),
+                    label: const Text('تسجيل مصروف مدفوع'),
                   ),
                 )
               else
@@ -494,7 +494,7 @@ class _ActionGrid extends StatelessWidget {
       runSpacing: 10,
       children: [
         _ActionButton(
-          label: 'إضافة مصروف',
+          label: 'تسجيل مصروف مدفوع',
           icon: LucideIcons.plus,
           onTap: onAddExpense,
         ),

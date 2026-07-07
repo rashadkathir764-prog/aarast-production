@@ -1,0 +1,942 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import {
+  FinancialCommitment,
+  FinancialCommitmentSourceType,
+  FinancialCommitmentStatus,
+  FinancialInstallment,
+  FinancialPaymentRecord,
+  InstallmentStatus,
+  Prisma,
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { requiredMoneyAmount } from "../common/validation/money";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
+import { CreateFinancialCommitmentDto } from "./dto/create-financial-commitment.dto";
+import { CreateFinancialInstallmentDto } from "./dto/create-financial-installment.dto";
+import { CreateFinancialPaymentRecordDto } from "./dto/create-financial-payment-record.dto";
+import { UpdateFinancialCommitmentDto } from "./dto/update-financial-commitment.dto";
+import { UpdateFinancialInstallmentDto } from "./dto/update-financial-installment.dto";
+
+export interface FinancialCommitmentResponse {
+  id: string;
+  weddingPlanId: string;
+  budgetCategoryId: string;
+  providerId: string | null;
+  planProviderLinkId: string | null;
+  quoteRequestId: string | null;
+  quoteOfferId: string | null;
+  sourceType: FinancialCommitmentSourceType;
+  title: string;
+  partyName: string | null;
+  partyPhone: string | null;
+  totalAmount: string;
+  paidAmount: string;
+  remainingAmount: string;
+  dueDate: Date | null;
+  agreementDate: Date | null;
+  status: FinancialCommitmentStatus;
+  note: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FinancialPaymentRecordResponse {
+  id: string;
+  weddingPlanId: string;
+  financialCommitmentId: string;
+  budgetCategoryId: string;
+  title: string;
+  amount: string;
+  paidAt: Date;
+  method: string | null;
+  note: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FinancialInstallmentResponse {
+  id: string;
+  weddingPlanId: string;
+  financialCommitmentId: string;
+  budgetCategoryId: string;
+  amount: string;
+  dueDate: Date | null;
+  paidAt: Date | null;
+  status: InstallmentStatus;
+  note: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface NormalizedFinancialReferences {
+  providerId: string | null;
+  planProviderLinkId: string | null;
+  quoteRequestId: string | null;
+  quoteOfferId: string | null;
+}
+
+@Injectable()
+export class FinancialCommitmentsService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionService: PermissionService,
+  ) {}
+
+  async create(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    dto: CreateFinancialCommitmentDto,
+  ): Promise<FinancialCommitmentResponse> {
+    await this.permissionService.assertFinancialManageable(
+      weddingPlanId,
+      currentUser,
+    );
+    await this.assertCategoryBelongsToPlan(dto.budgetCategoryId, weddingPlanId);
+    const refs = await this.normalizeReferences(weddingPlanId, dto);
+    const totalAmount = this.requiredPositiveDecimal(
+      dto.totalAmount,
+      "totalAmount",
+    );
+    const paidAmount = this.optionalNonNegativeDecimal(
+      dto.paidAmount,
+      "paidAmount",
+    );
+    const initialPaidAmount = paidAmount ?? new Prisma.Decimal(0);
+    this.assertPaidDoesNotExceedTotal(totalAmount, initialPaidAmount);
+    const status =
+      dto.status === FinancialCommitmentStatus.CANCELLED
+        ? FinancialCommitmentStatus.CANCELLED
+        : this.deriveCommitmentStatus(totalAmount, initialPaidAmount);
+
+    const commitment = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.financialCommitment.create({
+        data: {
+          weddingPlanId,
+          budgetCategoryId: dto.budgetCategoryId.trim(),
+          ...refs,
+          sourceType:
+            dto.sourceType ?? FinancialCommitmentSourceType.MANUAL_COMMITMENT,
+          title: this.requiredText(dto.title, "title"),
+          partyName: this.optionalText(dto.partyName),
+          partyPhone: this.optionalText(dto.partyPhone),
+          totalAmount,
+          paidAmount: initialPaidAmount,
+          dueDate: this.optionalDate(dto.dueDate, "dueDate"),
+          agreementDate: this.optionalDate(dto.agreementDate, "agreementDate"),
+          status,
+          note: this.optionalText(dto.note),
+        },
+      });
+
+      if (initialPaidAmount.gt(0)) {
+        await tx.financialPaymentRecord.create({
+          data: {
+            weddingPlanId,
+            financialCommitmentId: created.id,
+            budgetCategoryId: created.budgetCategoryId,
+            title: `دفعة أولى: ${created.title}`,
+            amount: initialPaidAmount,
+            paidAt: created.agreementDate ?? new Date(),
+          },
+        });
+      }
+
+      return created;
+    });
+
+    return this.toCommitmentResponse(commitment);
+  }
+
+  async findForPlan(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<FinancialCommitmentResponse[]> {
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      "debts",
+    );
+
+    const commitments = await this.prisma.financialCommitment.findMany({
+      where: { weddingPlanId },
+      orderBy: [{ createdAt: "desc" }],
+    });
+
+    return commitments.map((commitment) =>
+      this.toCommitmentResponse(commitment),
+    );
+  }
+
+  async findOne(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<FinancialCommitmentResponse> {
+    const commitment = await this.findCommitmentOrThrow(id);
+    await this.permissionService.assertFinancialReadable(
+      commitment.weddingPlanId,
+      currentUser,
+      "debts",
+    );
+    return this.toCommitmentResponse(commitment);
+  }
+
+  async update(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: UpdateFinancialCommitmentDto,
+  ): Promise<FinancialCommitmentResponse> {
+    const existing = await this.findCommitmentOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
+    if (dto.budgetCategoryId !== undefined) {
+      await this.assertCategoryBelongsToPlan(
+        dto.budgetCategoryId,
+        existing.weddingPlanId,
+      );
+    }
+
+    const refs = await this.normalizeReferences(existing.weddingPlanId, {
+      providerId:
+        dto.providerId !== undefined ? dto.providerId : existing.providerId,
+      planProviderLinkId:
+        dto.planProviderLinkId !== undefined
+          ? dto.planProviderLinkId
+          : existing.planProviderLinkId,
+      quoteRequestId:
+        dto.quoteRequestId !== undefined
+          ? dto.quoteRequestId
+          : existing.quoteRequestId,
+      quoteOfferId:
+        dto.quoteOfferId !== undefined
+          ? dto.quoteOfferId
+          : existing.quoteOfferId,
+    });
+    const nextTotal =
+      dto.totalAmount !== undefined
+        ? this.requiredPositiveDecimal(dto.totalAmount, "totalAmount")
+        : existing.totalAmount;
+    this.assertPaidDoesNotExceedTotal(nextTotal, existing.paidAmount);
+    const nextStatus =
+      dto.status === FinancialCommitmentStatus.CANCELLED
+        ? FinancialCommitmentStatus.CANCELLED
+        : dto.status !== undefined || dto.totalAmount !== undefined
+          ? this.deriveCommitmentStatus(nextTotal, existing.paidAmount)
+          : existing.status;
+
+    const nextBudgetCategoryId =
+      dto.budgetCategoryId !== undefined
+        ? dto.budgetCategoryId.trim()
+        : existing.budgetCategoryId;
+    const commitment = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.financialCommitment.update({
+        where: { id },
+        data: {
+          ...(dto.budgetCategoryId !== undefined
+            ? { budgetCategoryId: nextBudgetCategoryId }
+            : {}),
+          ...refs,
+          ...(dto.sourceType !== undefined
+            ? { sourceType: dto.sourceType }
+            : {}),
+          ...(dto.title !== undefined
+            ? { title: this.requiredText(dto.title, "title") }
+            : {}),
+          ...(dto.partyName !== undefined
+            ? { partyName: this.optionalText(dto.partyName) }
+            : {}),
+          ...(dto.partyPhone !== undefined
+            ? { partyPhone: this.optionalText(dto.partyPhone) }
+            : {}),
+          ...(dto.totalAmount !== undefined ? { totalAmount: nextTotal } : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
+            : {}),
+          ...(dto.agreementDate !== undefined
+            ? {
+                agreementDate: this.optionalDate(
+                  dto.agreementDate,
+                  "agreementDate",
+                ),
+              }
+            : {}),
+          ...(dto.status !== undefined || dto.totalAmount !== undefined
+            ? { status: nextStatus }
+            : {}),
+          ...(dto.note !== undefined
+            ? { note: this.optionalText(dto.note) }
+            : {}),
+        },
+      });
+      if (nextBudgetCategoryId !== existing.budgetCategoryId) {
+        await tx.financialPaymentRecord.updateMany({
+          where: { financialCommitmentId: id },
+          data: { budgetCategoryId: nextBudgetCategoryId },
+        });
+        await tx.financialInstallment.updateMany({
+          where: { financialCommitmentId: id },
+          data: { budgetCategoryId: nextBudgetCategoryId },
+        });
+      }
+      return updated;
+    });
+
+    return this.toCommitmentResponse(commitment);
+  }
+
+  async remove(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<{ id: string; deleted: true }> {
+    const commitment = await this.findCommitmentOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      commitment.weddingPlanId,
+      currentUser,
+    );
+    await this.prisma.financialCommitment.delete({ where: { id } });
+    return { id, deleted: true };
+  }
+
+  async createPaymentRecord(
+    currentUser: AuthenticatedUser,
+    financialCommitmentId: string,
+    dto: CreateFinancialPaymentRecordDto,
+  ): Promise<FinancialPaymentRecordResponse> {
+    const commitment = await this.findCommitmentOrThrow(financialCommitmentId);
+    await this.permissionService.assertFinancialManageable(
+      commitment.weddingPlanId,
+      currentUser,
+    );
+    this.assertCommitmentCanReceivePayment(commitment);
+    const amount = this.requiredPositiveDecimal(dto.amount, "amount");
+
+    const payment = await this.prisma.$transaction(async (tx) => {
+      const locked = await this.lockCommitment(tx, financialCommitmentId);
+      this.assertPaymentWithinRemaining(locked, amount);
+      const created = await tx.financialPaymentRecord.create({
+        data: {
+          weddingPlanId: locked.weddingPlanId,
+          financialCommitmentId: locked.id,
+          budgetCategoryId: locked.budgetCategoryId,
+          title: this.optionalText(dto.title) ?? `دفعة: ${locked.title}`,
+          amount,
+          paidAt: this.optionalDate(dto.paidAt, "paidAt") ?? new Date(),
+          method: this.optionalText(dto.method),
+          note: this.optionalText(dto.note),
+        },
+      });
+      await this.applyPaymentDelta(tx, locked, amount);
+      return created;
+    });
+
+    return this.toPaymentRecordResponse(payment);
+  }
+
+  async listPaymentRecordsForCommitment(
+    currentUser: AuthenticatedUser,
+    financialCommitmentId: string,
+  ): Promise<FinancialPaymentRecordResponse[]> {
+    const commitment = await this.findCommitmentOrThrow(financialCommitmentId);
+    await this.permissionService.assertFinancialReadable(
+      commitment.weddingPlanId,
+      currentUser,
+      "expenses",
+    );
+
+    const records = await this.prisma.financialPaymentRecord.findMany({
+      where: { financialCommitmentId },
+      orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+    });
+
+    return records.map((record) => this.toPaymentRecordResponse(record));
+  }
+
+  async listPaymentRecordsForPlan(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<FinancialPaymentRecordResponse[]> {
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      "expenses",
+    );
+
+    const records = await this.prisma.financialPaymentRecord.findMany({
+      where: { weddingPlanId },
+      orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+    });
+
+    return records.map((record) => this.toPaymentRecordResponse(record));
+  }
+
+  async removePaymentRecord(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<{ id: string; deleted: true }> {
+    const existing = await this.findPaymentRecordOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      const locked = await this.lockCommitment(
+        tx,
+        existing.financialCommitmentId,
+      );
+      await tx.financialPaymentRecord.delete({ where: { id } });
+      await this.applyPaymentDelta(tx, locked, existing.amount.negated());
+    });
+
+    return { id, deleted: true };
+  }
+
+  async createInstallment(
+    currentUser: AuthenticatedUser,
+    financialCommitmentId: string,
+    dto: CreateFinancialInstallmentDto,
+  ): Promise<FinancialInstallmentResponse> {
+    const commitment = await this.findCommitmentOrThrow(financialCommitmentId);
+    await this.permissionService.assertFinancialManageable(
+      commitment.weddingPlanId,
+      currentUser,
+    );
+    const amount = this.requiredPositiveDecimal(dto.amount, "amount");
+    const status = dto.status ?? InstallmentStatus.PENDING;
+
+    const installment = await this.prisma.$transaction(async (tx) => {
+      const locked = await this.lockCommitment(tx, financialCommitmentId);
+      const created = await tx.financialInstallment.create({
+        data: {
+          weddingPlanId: locked.weddingPlanId,
+          financialCommitmentId: locked.id,
+          budgetCategoryId: locked.budgetCategoryId,
+          amount,
+          dueDate: this.optionalDate(dto.dueDate, "dueDate"),
+          paidAt:
+            this.optionalDate(dto.paidAt, "paidAt") ??
+            (status === InstallmentStatus.PAID ? new Date() : null),
+          status,
+          note: this.optionalText(dto.note),
+        },
+      });
+      if (status === InstallmentStatus.PAID) {
+        this.assertPaymentWithinRemaining(locked, amount);
+        await tx.financialPaymentRecord.create({
+          data: {
+            weddingPlanId: locked.weddingPlanId,
+            financialCommitmentId: locked.id,
+            budgetCategoryId: locked.budgetCategoryId,
+            title: `قسط: ${locked.title}`,
+            amount,
+            paidAt: created.paidAt ?? new Date(),
+            note: created.note,
+          },
+        });
+        await this.applyPaymentDelta(tx, locked, amount);
+      }
+      return created;
+    });
+
+    return this.toInstallmentResponse(installment);
+  }
+
+  async listInstallmentsForCommitment(
+    currentUser: AuthenticatedUser,
+    financialCommitmentId: string,
+  ): Promise<FinancialInstallmentResponse[]> {
+    const commitment = await this.findCommitmentOrThrow(financialCommitmentId);
+    await this.permissionService.assertFinancialReadable(
+      commitment.weddingPlanId,
+      currentUser,
+      "debts",
+    );
+
+    const installments = await this.prisma.financialInstallment.findMany({
+      where: { financialCommitmentId },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+    });
+
+    return installments.map((installment) =>
+      this.toInstallmentResponse(installment),
+    );
+  }
+
+  async listDueInstallmentsForPlan(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<FinancialInstallmentResponse[]> {
+    await this.permissionService.assertFinancialReadable(
+      weddingPlanId,
+      currentUser,
+      "debts",
+    );
+
+    const installments = await this.prisma.financialInstallment.findMany({
+      where: {
+        weddingPlanId,
+        status: { in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE] },
+      },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+    });
+
+    return installments.map((installment) =>
+      this.toInstallmentResponse(installment),
+    );
+  }
+
+  async updateInstallment(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: UpdateFinancialInstallmentDto,
+  ): Promise<FinancialInstallmentResponse> {
+    const existing = await this.findInstallmentOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
+    if (existing.status === InstallmentStatus.PAID) {
+      throw new BadRequestException(
+        "Paid financial installments cannot be edited; adjust the payment record instead",
+      );
+    }
+    if (dto.status === InstallmentStatus.PAID) {
+      return this.payInstallment(currentUser, id, dto.paidAt);
+    }
+
+    const installment = await this.prisma.financialInstallment.update({
+      where: { id },
+      data: {
+        ...(dto.amount !== undefined
+          ? { amount: this.requiredPositiveDecimal(dto.amount, "amount") }
+          : {}),
+        ...(dto.dueDate !== undefined
+          ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
+          : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(dto.note !== undefined
+          ? { note: this.optionalText(dto.note) }
+          : {}),
+      },
+    });
+
+    return this.toInstallmentResponse(installment);
+  }
+
+  async payInstallment(
+    currentUser: AuthenticatedUser,
+    id: string,
+    paidAt?: string | null,
+  ): Promise<FinancialInstallmentResponse> {
+    const existing = await this.findInstallmentOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
+
+    const installment = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.financialInstallment.findUniqueOrThrow({
+        where: { id },
+      });
+      if (current.status === InstallmentStatus.PAID) return current;
+
+      const locked = await this.lockCommitment(
+        tx,
+        current.financialCommitmentId,
+      );
+      this.assertPaymentWithinRemaining(locked, current.amount);
+      const paidDate = this.optionalDate(paidAt, "paidAt") ?? new Date();
+      const updated = await tx.financialInstallment.update({
+        where: { id },
+        data: {
+          status: InstallmentStatus.PAID,
+          paidAt: paidDate,
+        },
+      });
+      await tx.financialPaymentRecord.create({
+        data: {
+          weddingPlanId: locked.weddingPlanId,
+          financialCommitmentId: locked.id,
+          budgetCategoryId: locked.budgetCategoryId,
+          title: `قسط: ${locked.title}`,
+          amount: current.amount,
+          paidAt: paidDate,
+          note: current.note,
+        },
+      });
+      await this.applyPaymentDelta(tx, locked, current.amount);
+      return updated;
+    });
+
+    return this.toInstallmentResponse(installment);
+  }
+
+  async removeInstallment(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<{ id: string; deleted: true }> {
+    const existing = await this.findInstallmentOrThrow(id);
+    await this.permissionService.assertFinancialManageable(
+      existing.weddingPlanId,
+      currentUser,
+    );
+    if (existing.status === InstallmentStatus.PAID) {
+      throw new BadRequestException(
+        "Paid financial installments cannot be deleted; adjust the payment record instead",
+      );
+    }
+
+    await this.prisma.financialInstallment.delete({ where: { id } });
+    return { id, deleted: true };
+  }
+
+  private async findCommitmentOrThrow(
+    id: string,
+  ): Promise<FinancialCommitment> {
+    const commitment = await this.prisma.financialCommitment.findUnique({
+      where: { id },
+    });
+    if (!commitment)
+      throw new NotFoundException("Financial commitment not found");
+    return commitment;
+  }
+
+  private async findPaymentRecordOrThrow(
+    id: string,
+  ): Promise<FinancialPaymentRecord> {
+    const record = await this.prisma.financialPaymentRecord.findUnique({
+      where: { id },
+    });
+    if (!record)
+      throw new NotFoundException("Financial payment record not found");
+    return record;
+  }
+
+  private async findInstallmentOrThrow(
+    id: string,
+  ): Promise<FinancialInstallment> {
+    const installment = await this.prisma.financialInstallment.findUnique({
+      where: { id },
+    });
+    if (!installment) {
+      throw new NotFoundException("Financial installment not found");
+    }
+    return installment;
+  }
+
+  private async assertCategoryBelongsToPlan(
+    budgetCategoryId: string | null | undefined,
+    weddingPlanId: string,
+  ): Promise<void> {
+    const normalizedId = this.optionalId(budgetCategoryId);
+    if (!normalizedId) {
+      throw new BadRequestException("budgetCategoryId is required");
+    }
+    const category = await this.prisma.budgetCategory.findFirst({
+      where: { id: normalizedId, weddingPlanId },
+    });
+    if (!category) {
+      throw new BadRequestException(
+        "budgetCategoryId must belong to the wedding plan",
+      );
+    }
+  }
+
+  private async normalizeReferences(
+    weddingPlanId: string,
+    input: {
+      providerId?: string | null;
+      planProviderLinkId?: string | null;
+      quoteRequestId?: string | null;
+      quoteOfferId?: string | null;
+    },
+  ): Promise<NormalizedFinancialReferences> {
+    let providerId = this.optionalId(input.providerId);
+    let planProviderLinkId = this.optionalId(input.planProviderLinkId);
+    let quoteRequestId = this.optionalId(input.quoteRequestId);
+    const quoteOfferId = this.optionalId(input.quoteOfferId);
+
+    if (providerId) {
+      const provider = await this.prisma.provider.findUnique({
+        where: { id: providerId },
+      });
+      if (!provider) throw new BadRequestException("providerId is invalid");
+    }
+
+    if (planProviderLinkId) {
+      const link = await this.prisma.planProviderLink.findFirst({
+        where: { id: planProviderLinkId, weddingPlanId },
+      });
+      if (!link) {
+        throw new BadRequestException(
+          "planProviderLinkId must belong to the wedding plan",
+        );
+      }
+      if (providerId && providerId !== link.providerId) {
+        throw new BadRequestException(
+          "providerId must match the linked plan provider",
+        );
+      }
+      providerId = providerId ?? link.providerId;
+    }
+
+    if (quoteRequestId) {
+      const quoteRequest = await this.prisma.quoteRequest.findFirst({
+        where: { id: quoteRequestId, weddingPlanId },
+      });
+      if (!quoteRequest) {
+        throw new BadRequestException(
+          "quoteRequestId must belong to the wedding plan",
+        );
+      }
+      if (providerId && providerId !== quoteRequest.providerId) {
+        throw new BadRequestException(
+          "providerId must match the quote request",
+        );
+      }
+      providerId = providerId ?? quoteRequest.providerId;
+    }
+
+    if (quoteOfferId) {
+      const offer = await this.prisma.quoteOffer.findFirst({
+        where: {
+          id: quoteOfferId,
+          quoteRequest: { weddingPlanId },
+        },
+        include: { quoteRequest: true },
+      });
+      if (!offer) {
+        throw new BadRequestException(
+          "quoteOfferId must belong to the wedding plan",
+        );
+      }
+      if (providerId && providerId !== offer.providerId) {
+        throw new BadRequestException("providerId must match the quote offer");
+      }
+      if (quoteRequestId && quoteRequestId !== offer.quoteRequestId) {
+        throw new BadRequestException(
+          "quoteRequestId must match the quote offer",
+        );
+      }
+      providerId = providerId ?? offer.providerId;
+      quoteRequestId = quoteRequestId ?? offer.quoteRequestId;
+    }
+
+    return {
+      providerId,
+      planProviderLinkId,
+      quoteRequestId,
+      quoteOfferId,
+    };
+  }
+
+  private async lockCommitment(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<FinancialCommitment> {
+    await tx.$queryRaw`SELECT id FROM "FinancialCommitment" WHERE id = ${id} FOR UPDATE`;
+    return tx.financialCommitment.findUniqueOrThrow({ where: { id } });
+  }
+
+  private async applyPaymentDelta(
+    tx: Prisma.TransactionClient,
+    commitment: FinancialCommitment,
+    delta: Prisma.Decimal,
+  ): Promise<void> {
+    const nextPaid = this.clampDecimal(
+      commitment.paidAmount.add(delta),
+      new Prisma.Decimal(0),
+      commitment.totalAmount,
+    );
+    await tx.financialCommitment.update({
+      where: { id: commitment.id },
+      data: {
+        paidAmount: nextPaid,
+        status:
+          commitment.status === FinancialCommitmentStatus.CANCELLED
+            ? FinancialCommitmentStatus.CANCELLED
+            : this.deriveCommitmentStatus(commitment.totalAmount, nextPaid),
+      },
+    });
+  }
+
+  private assertCommitmentCanReceivePayment(
+    commitment: FinancialCommitment,
+  ): void {
+    if (commitment.status === FinancialCommitmentStatus.CANCELLED) {
+      throw new BadRequestException(
+        "Cancelled commitments cannot receive payments",
+      );
+    }
+  }
+
+  private assertPaymentWithinRemaining(
+    commitment: FinancialCommitment,
+    amount: Prisma.Decimal,
+  ): void {
+    this.assertCommitmentCanReceivePayment(commitment);
+    const remaining = commitment.totalAmount.sub(commitment.paidAmount);
+    if (amount.gt(remaining)) {
+      throw new BadRequestException("amount cannot exceed remainingAmount");
+    }
+  }
+
+  private assertPaidDoesNotExceedTotal(
+    totalAmount: Prisma.Decimal,
+    paidAmount: Prisma.Decimal,
+  ): void {
+    if (paidAmount.gt(totalAmount)) {
+      throw new BadRequestException("paidAmount cannot exceed totalAmount");
+    }
+  }
+
+  private deriveCommitmentStatus(
+    totalAmount: Prisma.Decimal,
+    paidAmount: Prisma.Decimal,
+  ): FinancialCommitmentStatus {
+    if (totalAmount.lte(0) || paidAmount.lte(0)) {
+      return FinancialCommitmentStatus.OPEN;
+    }
+    if (paidAmount.gte(totalAmount)) return FinancialCommitmentStatus.PAID;
+    return FinancialCommitmentStatus.PARTIALLY_PAID;
+  }
+
+  private clampDecimal(
+    value: Prisma.Decimal,
+    min: Prisma.Decimal,
+    max: Prisma.Decimal,
+  ): Prisma.Decimal {
+    if (value.lt(min)) return min;
+    if (value.gt(max)) return max;
+    return value;
+  }
+
+  private requiredText(value: string, field: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) throw new BadRequestException(`${field} must not be empty`);
+    return trimmed;
+  }
+
+  private optionalText(value: string | null | undefined): string | null {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  private optionalId(value: string | null | undefined): string | null {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  private optionalDate(
+    value: string | null | undefined,
+    field: string,
+  ): Date | null {
+    if (value === undefined || value === null) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const timestamp = Date.parse(trimmed);
+    if (Number.isNaN(timestamp)) {
+      throw new BadRequestException(`${field} must be a valid ISO date string`);
+    }
+    return new Date(timestamp);
+  }
+
+  private requiredNonNegativeDecimal(
+    value: string | number,
+    field: string,
+  ): Prisma.Decimal {
+    return new Prisma.Decimal(requiredMoneyAmount(value, field));
+  }
+
+  private optionalNonNegativeDecimal(
+    value: string | number | null | undefined,
+    field: string,
+  ): Prisma.Decimal | null {
+    if (value === undefined || value === null) return null;
+    return this.requiredNonNegativeDecimal(value, field);
+  }
+
+  private requiredPositiveDecimal(
+    value: string | number,
+    field: string,
+  ): Prisma.Decimal {
+    const amount = this.requiredNonNegativeDecimal(value, field);
+    if (amount.lte(0)) {
+      throw new BadRequestException(`${field} must be greater than zero`);
+    }
+    return amount;
+  }
+
+  private toCommitmentResponse(
+    commitment: FinancialCommitment,
+  ): FinancialCommitmentResponse {
+    const remaining = commitment.totalAmount.sub(commitment.paidAmount);
+    return {
+      id: commitment.id,
+      weddingPlanId: commitment.weddingPlanId,
+      budgetCategoryId: commitment.budgetCategoryId,
+      providerId: commitment.providerId,
+      planProviderLinkId: commitment.planProviderLinkId,
+      quoteRequestId: commitment.quoteRequestId,
+      quoteOfferId: commitment.quoteOfferId,
+      sourceType: commitment.sourceType,
+      title: commitment.title,
+      partyName: commitment.partyName,
+      partyPhone: commitment.partyPhone,
+      totalAmount: commitment.totalAmount.toString(),
+      paidAmount: commitment.paidAmount.toString(),
+      remainingAmount: remaining.gt(0) ? remaining.toString() : "0",
+      dueDate: commitment.dueDate,
+      agreementDate: commitment.agreementDate,
+      status: commitment.status,
+      note: commitment.note,
+      createdAt: commitment.createdAt,
+      updatedAt: commitment.updatedAt,
+    };
+  }
+
+  private toPaymentRecordResponse(
+    record: FinancialPaymentRecord,
+  ): FinancialPaymentRecordResponse {
+    return {
+      id: record.id,
+      weddingPlanId: record.weddingPlanId,
+      financialCommitmentId: record.financialCommitmentId,
+      budgetCategoryId: record.budgetCategoryId,
+      title: record.title,
+      amount: record.amount.toString(),
+      paidAt: record.paidAt,
+      method: record.method,
+      note: record.note,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+  }
+
+  private toInstallmentResponse(
+    installment: FinancialInstallment,
+  ): FinancialInstallmentResponse {
+    return {
+      id: installment.id,
+      weddingPlanId: installment.weddingPlanId,
+      financialCommitmentId: installment.financialCommitmentId,
+      budgetCategoryId: installment.budgetCategoryId,
+      amount: installment.amount.toString(),
+      dueDate: installment.dueDate,
+      paidAt: installment.paidAt,
+      status: installment.status,
+      note: installment.note,
+      createdAt: installment.createdAt,
+      updatedAt: installment.updatedAt,
+    };
+  }
+}

@@ -4,6 +4,7 @@ import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
+import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/chat/screens/quote_conversation_entry_screen.dart';
@@ -17,7 +18,9 @@ import '../../features/finance/screens/budget_category_details_screen.dart';
 import '../../features/finance/screens/budget_setup_screen.dart';
 import '../../features/finance/screens/create_budget_category_screen.dart';
 import '../../features/finance/screens/create_expense_screen.dart';
+import '../../features/finance/screens/create_financial_commitment_screen.dart';
 import '../../features/finance/screens/expenses_screen.dart';
+import '../../features/finance/screens/record_payment_screen.dart';
 import '../../features/finance/models/expense_form_intent.dart';
 import '../../features/finance/models/expense.dart';
 import '../../features/guests/screens/guest_list_screen.dart';
@@ -64,6 +67,7 @@ class AppRouter {
   static const onboarding = '/onboarding';
   static const login = '/login';
   static const register = '/register';
+  static const resetPassword = '/reset-password';
   static const otp = '/otp';
   static const home = '/home';
   static const weddingPlans = '/wedding-plans';
@@ -133,6 +137,17 @@ class AppRouter {
 
   static String createExpense(String id) {
     return '/wedding-plans/$id/expenses/create';
+  }
+
+  static String createFinancialCommitment(
+    String id, {
+    String sourceType = 'MANUAL_COMMITMENT',
+  }) {
+    return '/wedding-plans/$id/financial-commitments/create?sourceType=$sourceType';
+  }
+
+  static String recordPayment(String id) {
+    return '/wedding-plans/$id/payments/record';
   }
 
   static String expenses(String id) {
@@ -239,6 +254,12 @@ class AppRouter {
           path: register,
           builder: (context, state) => RegisterScreen(
             startAsProvider: state.uri.queryParameters['type'] == 'provider',
+          ),
+        ),
+        GoRoute(
+          path: resetPassword,
+          builder: (context, state) => ResetPasswordScreen(
+            initialPhone: state.uri.queryParameters['phone'],
           ),
         ),
         GoRoute(
@@ -572,6 +593,35 @@ class AppRouter {
               weddingPlanId: id,
               quoteContext: quoteContext,
               initialBudgetCategoryId: formIntent?.budgetCategoryId,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/financial-commitments/create',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final sourceType =
+                state.uri.queryParameters['sourceType'] ?? 'MANUAL_COMMITMENT';
+            final initialCategoryId = state.extra is String
+                ? state.extra! as String
+                : null;
+            return CreateFinancialCommitmentScreen(
+              weddingPlanId: id,
+              initialSourceType: sourceType,
+              initialBudgetCategoryId: initialCategoryId,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/payments/record',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            final initialCommitmentId = state.extra is String
+                ? state.extra! as String
+                : null;
+            return RecordPaymentScreen(
+              weddingPlanId: id,
+              initialCommitmentId: initialCommitmentId,
             );
           },
         ),

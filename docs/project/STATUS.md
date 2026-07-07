@@ -25,8 +25,9 @@ and runtime checks override historical completion reports.
 ## Active Implemented Scope
 
 - Authentication, OTP helpers, profile, and settings.
-- Wedding plans, onboarding, dashboard summaries, money, tasks, guests,
-  sharing, permissions, notifications, and offline/cache support.
+- Wedding plans, onboarding, dashboard summaries, money, financial
+  commitments, payment records, tasks, guests, sharing, permissions,
+  notifications, and offline/cache support.
 - Provider catalog, favorites, reviews, quote requests/offers, provider
   dashboard operations, and admin catalog/provider operations.
 - Quote-scoped conversations, authenticated Socket.IO delivery, unread/read,
@@ -57,7 +58,8 @@ release claim.
   server-side.
 - Provider quote permissions require explicit ownership checks before broader
   shared-plan decisions.
-- Financial data remains private by default.
+- Financial data remains private by default, including financial commitments,
+  payment records, expenses, debts, and installments.
 - Existing unrelated working-tree changes must be preserved.
 
 ## Documentation State

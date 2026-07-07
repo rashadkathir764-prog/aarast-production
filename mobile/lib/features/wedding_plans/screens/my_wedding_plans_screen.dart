@@ -168,17 +168,24 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
               ),
             ),
             if (provider.isLoading && provider.plans.isEmpty)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(color: AppTheme.burgundy),
+              SliverToBoxAdapter(
+                child: AarastSkeleton.list(
+                  rows: 3,
+                  rowHeight: 150,
+                  withHeader: false,
+                  inline: true,
                 ),
               )
             else if (provider.errorMessage != null && provider.plans.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    provider.errorMessage!,
-                    style: const TextStyle(color: AppTheme.danger),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                  child: AarastErrorState(
+                    title: 'تعذر تحميل خططك',
+                    message: provider.errorMessage!,
+                    onRetry: () => context
+                        .read<WeddingPlansProvider>()
+                        .loadMyWeddingPlans(),
                   ),
                 ),
               )

@@ -18,6 +18,8 @@ import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshDto } from './dto/refresh.dto';
+import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
+import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
 import { JwtPayload } from './jwt-payload.interface';
 import { DevEchoOtpChannel, OtpChannel } from './otp-channel';
 import {
@@ -280,7 +282,7 @@ export class AuthService {
   }
 
   /**
-   * dev -> local echo channel; whatsapp -> plugged in at release phase 8;
+   * dev -> local echo channel; whatsapp -> pending provider phase;
    * disabled -> null (feature off).
    */
   private resolveOtpChannel(mode: string): OtpChannel | null {
@@ -345,6 +347,62 @@ export class AuthService {
           }
         : {}),
     };
+  }
+
+  /**
+   * Issues a RESET_PASSWORD OTP. Never reveals whether the phone belongs to
+   * an account: the OTP is created for any well-formed phone, and only the
+   * device holding that phone can complete the reset.
+   */
+  async requestPasswordReset(
+    dto: PasswordResetRequestDto,
+  ): Promise<OtpRequestResponse> {
+    return this.requestOtp({
+      phone: dto.phone,
+      purpose: OtpPurpose.RESET_PASSWORD,
+    });
+  }
+
+  /**
+   * Consumes a RESET_PASSWORD OTP, sets the new password, and revokes every
+   * refresh token so stolen sessions die with the old password.
+   */
+  async confirmPasswordReset(
+    dto: PasswordResetConfirmDto,
+  ): Promise<{ reset: true; phone: string }> {
+    const verification = await this.verifyOtp({
+      phone: dto.phone,
+      code: dto.code,
+      purpose: OtpPurpose.RESET_PASSWORD,
+    });
+
+    const user = await this.prisma.user.findFirst({
+      where: {
+        phone: { in: PhoneNormalizer.lookupVariants(verification.phone) },
+      },
+    });
+
+    // Same generic error as a wrong code — a consumed OTP on an unknown
+    // phone must not disclose account existence.
+    if (!user || user.status === 'DISABLED') {
+      throw new BadRequestException('OTP code is invalid or expired');
+    }
+
+    const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: user.id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    this.failedLogins.delete(verification.phone);
+
+    return { reset: true, phone: verification.phone };
   }
 
   private async createAuthResponse(user: User): Promise<AuthResponse> {

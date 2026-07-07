@@ -12,7 +12,8 @@ Current implemented scope includes:
 - Auth, profile, OTP helpers, and settings.
 - WeddingPlan ownership and active-plan flows.
 - Dashboard summary.
-- Budget categories, expenses, debts, installments, and money summary.
+- Budget categories, financial commitments, payment records, expenses, debts,
+  installments, and money summary.
 - Tasks, checklists, assignments, and timeline.
 - Guests and guest groups.
 - Sharing, invites, roles, and permissions.

@@ -104,8 +104,9 @@ Future<void> _loadFonts() async {
   await load('Amiri', ['assets/fonts/Amiri-Bold.ttf']);
   // خط أيقونات Lucide حتى تُعاين الأيقونات فعليًا في الـ goldens.
   // الخطوط القادمة من حزمة تُسجَّل بصيغة packages/<pkg>/<family>.
-  await load('packages/lucide_icons/Lucide',
-      ['packages/lucide_icons/assets/lucide.ttf']);
+  await load('packages/lucide_icons/Lucide', [
+    'packages/lucide_icons/assets/lucide.ttf',
+  ]);
 }
 
 Future<void> _pumpDashboard(
@@ -138,9 +139,10 @@ Future<void> _pumpDashboard(
             onOpenTasks: () {},
             onOpenProviders: () {},
             onOpenGuests: () {},
+            onOpenSharing: () {},
             onOpenNextStep: () {},
             onOpenImportantItem: (_) {},
-            onAddExpense: () {},
+            onRecordPayment: () {},
           ),
         ),
       ),
@@ -155,18 +157,25 @@ void main() {
   setUpAll(_loadFonts);
 
   testWidgets('premium dashboard — active plan (420)', (tester) async {
-    await _pumpDashboard(tester, _activePlanSummary(),
-        size: const Size(420, 1400));
+    await _pumpDashboard(
+      tester,
+      _activePlanSummary(),
+      size: const Size(420, 1400),
+    );
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/premium_dashboard_active.png'),
     );
   });
 
-  testWidgets('premium dashboard — fresh plan setup journey (420)',
-      (tester) async {
-    await _pumpDashboard(tester, _freshPlanSummary(),
-        size: const Size(420, 1500));
+  testWidgets('premium dashboard — fresh plan setup journey (420)', (
+    tester,
+  ) async {
+    await _pumpDashboard(
+      tester,
+      _freshPlanSummary(),
+      size: const Size(420, 1500),
+    );
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/premium_dashboard_fresh.png'),

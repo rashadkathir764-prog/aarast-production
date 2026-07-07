@@ -14,7 +14,7 @@ import '../../sharing/models/shared_member.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
-import '../models/expense_form_intent.dart';
+import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/premium/budget_pulse_hero.dart';
@@ -182,9 +182,9 @@ class _FinanceHeader extends StatelessWidget {
             'المال',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: AppTheme.title,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
           ),
         ),
         const SizedBox(width: 10),
@@ -221,6 +221,15 @@ class _FinanceContent extends StatelessWidget {
         ? const <BudgetCategory>[]
         : provider.budgetCategories;
     final expenses = suppressErrors ? const <Expense>[] : provider.expenses;
+    final commitments = suppressErrors
+        ? const <FinancialCommitment>[]
+        : provider.financialCommitments;
+    final payments = suppressErrors
+        ? const <FinancialPaymentRecord>[]
+        : provider.financialPaymentRecords;
+    final dueFinancialInstallments = suppressErrors
+        ? const <FinancialInstallment>[]
+        : provider.dueFinancialInstallments;
     final moneySummary = suppressErrors
         ? MoneySummary.empty(weddingPlanId)
         : provider.moneySummary;
@@ -229,6 +238,7 @@ class _FinanceContent extends StatelessWidget {
         provider.isLoading &&
         budgetCategories.isEmpty &&
         expenses.isEmpty &&
+        commitments.isEmpty &&
         !moneySummary.hasAnyData) {
       return const _FinanceLoadingState();
     }
@@ -236,7 +246,8 @@ class _FinanceContent extends StatelessWidget {
     if (!suppressErrors &&
         provider.errorMessage != null &&
         budgetCategories.isEmpty &&
-        expenses.isEmpty) {
+        expenses.isEmpty &&
+        commitments.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
@@ -288,27 +299,47 @@ class _FinanceContent extends StatelessWidget {
         const SizedBox(height: 14),
         _FinanceActionStrip(
           canManageFinancialRecords: canManageFinancialRecords,
-          onAddExpense: canManageFinancialRecords
-              ? () => context.push(AppRouter.createExpense(weddingPlanId))
-              : null,
           onAddCategory: canManageFinancialRecords
               ? () => context.push(
                   AppRouter.createBudgetCategory(weddingPlanId),
                   extra: sharedMember,
                 )
               : null,
-          onViewDebts: () =>
-              context.push(AppRouter.debts(weddingPlanId), extra: sharedMember),
+          onAddCommitment: canManageFinancialRecords
+              ? () => _openFinancialCommitment(
+                  context,
+                  sourceType: 'PROVIDER_SERVICE',
+                )
+              : null,
+          onRecordPayment: canManageFinancialRecords
+              ? () => _openRecordPayment(context)
+              : null,
+          onAddManualDebt: canManageFinancialRecords
+              ? () =>
+                    _openFinancialCommitment(context, sourceType: 'MANUAL_DEBT')
+              : null,
         ),
         const SizedBox(height: 14),
         PaymentTimelineRail(
           summary: moneySummary,
           onViewDebts: () => _openDebts(context),
           onAddDebt: canManageFinancialRecords
-              ? () => context.push(AppRouter.createDebt(weddingPlanId),
-                  extra: sharedMember)
+              ? () =>
+                    _openFinancialCommitment(context, sourceType: 'MANUAL_DEBT')
               : null,
         ),
+        const SizedBox(height: 18),
+        _FinancialCommitmentsSection(
+          commitments: commitments,
+          canManageFinancialRecords: canManageFinancialRecords,
+          onAddCommitment: () => _openFinancialCommitment(context),
+          onRecordPayment: (commitmentId) =>
+              _openRecordPayment(context, commitmentId: commitmentId),
+        ),
+        const SizedBox(height: 18),
+        _FinancialPaymentsSection(payments: payments),
+        const SizedBox(height: 18),
+        _FinancialInstallmentsSection(installments: dueFinancialInstallments),
         const SizedBox(height: 22),
         if (moneySummary.financialWarnings.isNotEmpty) ...[
           _FinancialWarningsCard(warnings: moneySummary.financialWarnings),
@@ -338,10 +369,8 @@ class _FinanceContent extends StatelessWidget {
                     row: categoryRows[index],
                     onAddExpense: canManageFinancialRecords
                         ? () => context.push(
-                            AppRouter.createExpense(weddingPlanId),
-                            extra: ExpenseFormIntent(
-                              budgetCategoryId: categoryRows[index].categoryId,
-                            ),
+                            AppRouter.createFinancialCommitment(weddingPlanId),
+                            extra: categoryRows[index].categoryId,
                           )
                         : null,
                     onOpenDetails: () => context.push(
@@ -437,6 +466,36 @@ class _FinanceContent extends StatelessWidget {
     if (!context.mounted) return;
     onChanged();
     await provider.loadFinance(weddingPlanId);
+  }
+
+  Future<void> _openFinancialCommitment(
+    BuildContext context, {
+    String sourceType = 'MANUAL_COMMITMENT',
+  }) async {
+    final changed = await context.push<bool>(
+      AppRouter.createFinancialCommitment(
+        weddingPlanId,
+        sourceType: sourceType,
+      ),
+    );
+    if (changed == true && context.mounted) {
+      onChanged();
+      await provider.loadFinance(weddingPlanId);
+    }
+  }
+
+  Future<void> _openRecordPayment(
+    BuildContext context, {
+    String? commitmentId,
+  }) async {
+    final changed = await context.push<bool>(
+      AppRouter.recordPayment(weddingPlanId),
+      extra: commitmentId,
+    );
+    if (changed == true && context.mounted) {
+      onChanged();
+      await provider.loadFinance(weddingPlanId);
+    }
   }
 
   Future<void> _openEditExpense(BuildContext context, Expense expense) async {
@@ -703,21 +762,23 @@ class _BudgetStarterCard extends StatelessWidget {
 class _FinanceActionStrip extends StatelessWidget {
   const _FinanceActionStrip({
     required this.canManageFinancialRecords,
-    required this.onAddExpense,
     required this.onAddCategory,
-    required this.onViewDebts,
+    required this.onAddCommitment,
+    required this.onRecordPayment,
+    required this.onAddManualDebt,
   });
 
   final bool canManageFinancialRecords;
-  final VoidCallback? onAddExpense;
   final VoidCallback? onAddCategory;
-  final VoidCallback onViewDebts;
+  final VoidCallback? onAddCommitment;
+  final VoidCallback? onRecordPayment;
+  final VoidCallback? onAddManualDebt;
 
   @override
   Widget build(BuildContext context) {
     final helper = canManageFinancialRecords
-        ? 'ابدأ من هنا: حدد بنداً، سجل مصروفاً، أو تابع المبلغ الباقي عليك.'
-        : 'يمكنك مراجعة البنود والمبالغ المتاحة حسب صلاحياتك.';
+        ? '\u0627\u0628\u062f\u0623 \u0645\u0646 \u0627\u0644\u062a\u0635\u0646\u064a\u0641\u060c \u062b\u0645 \u0627\u0631\u0628\u0637 \u0627\u0644\u062a\u0643\u0644\u0641\u0629 \u0628\u0627\u0644\u0645\u0648\u0631\u062f \u0623\u0648 \u0627\u0644\u062f\u064a\u0646\u060c \u0648\u0628\u0639\u062f\u0647\u0627 \u0633\u062c\u0644 \u0627\u0644\u062f\u0641\u0639\u0627\u062a \u0627\u0644\u0641\u0639\u0644\u064a\u0629.'
+        : '\u064a\u0645\u0643\u0646\u0643 \u0645\u0631\u0627\u062c\u0639\u0629 \u0627\u0644\u0628\u0646\u0648\u062f \u0648\u0627\u0644\u0645\u0628\u0627\u0644\u063a \u0627\u0644\u0645\u062a\u0627\u062d\u0629 \u062d\u0633\u0628 \u0635\u0644\u0627\u062d\u064a\u0627\u062a\u0643.';
 
     return AarastCard(
       padding: const EdgeInsets.all(12),
@@ -736,30 +797,37 @@ class _FinanceActionStrip extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 1.6,
             children: [
-              Expanded(
-                child: _FinanceShortcutCard(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'مصروف الآن',
-                  onTap: onAddExpense,
-                ),
+              _FinanceShortcutCard(
+                icon: Icons.category_outlined,
+                label:
+                    '\u0625\u0636\u0627\u0641\u0629 \u0628\u0646\u062f \u0645\u064a\u0632\u0627\u0646\u064a\u0629',
+                onTap: onAddCategory,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _FinanceShortcutCard(
-                  icon: Icons.category_outlined,
-                  label: 'بند ميزانية',
-                  onTap: onAddCategory,
-                ),
+              _FinanceShortcutCard(
+                icon: Icons.handshake_outlined,
+                label:
+                    '\u062d\u062c\u0632 \u0645\u0648\u0631\u062f / \u062e\u062f\u0645\u0629',
+                onTap: onAddCommitment,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _FinanceShortcutCard(
-                  icon: Icons.credit_card_outlined,
-                  label: 'باقي عليك',
-                  onTap: onViewDebts,
-                ),
+              _FinanceShortcutCard(
+                icon: Icons.payments_outlined,
+                label:
+                    '\u062a\u0633\u062c\u064a\u0644 \u062f\u0641\u0639\u0629',
+                onTap: onRecordPayment,
+              ),
+              _FinanceShortcutCard(
+                icon: Icons.account_balance_wallet_outlined,
+                label:
+                    '\u0625\u0636\u0627\u0641\u0629 \u062f\u064a\u0646 \u064a\u062f\u0648\u064a',
+                onTap: onAddManualDebt,
               ),
             ],
           ),
@@ -809,6 +877,377 @@ class _FinanceShortcutCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FinancialCommitmentsSection extends StatelessWidget {
+  const _FinancialCommitmentsSection({
+    required this.commitments,
+    required this.canManageFinancialRecords,
+    required this.onAddCommitment,
+    required this.onRecordPayment,
+  });
+
+  final List<FinancialCommitment> commitments;
+  final bool canManageFinancialRecords;
+  final VoidCallback onAddCommitment;
+  final ValueChanged<String> onRecordPayment;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = commitments
+        .where((commitment) => !commitment.isCancelled)
+        .take(4)
+        .toList();
+
+    return _FinanceSectionCard(
+      title: 'الالتزامات / الحجوزات',
+      icon: Icons.handshake_outlined,
+      actionLabel: canManageFinancialRecords ? 'إضافة' : null,
+      onAction: canManageFinancialRecords ? onAddCommitment : null,
+      child: active.isEmpty
+          ? const _TinyEmptyText(message: 'لا توجد التزامات مالية مؤكدة بعد.')
+          : Column(
+              children: [
+                for (var index = 0; index < active.length; index++) ...[
+                  _CommitmentTile(
+                    commitment: active[index],
+                    onRecordPayment: canManageFinancialRecords
+                        ? () => onRecordPayment(active[index].id)
+                        : null,
+                  ),
+                  if (index != active.length - 1)
+                    Divider(
+                      height: 18,
+                      color: AppTheme.border.withValues(alpha: .65),
+                    ),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _FinancialPaymentsSection extends StatelessWidget {
+  const _FinancialPaymentsSection({required this.payments});
+
+  final List<FinancialPaymentRecord> payments;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = payments.take(4).toList();
+
+    return _FinanceSectionCard(
+      title: 'الدفعات',
+      icon: Icons.payments_outlined,
+      child: latest.isEmpty
+          ? const _TinyEmptyText(
+              message: 'الدفعة تسجل هنا فقط عندما يخرج المال فعلًا.',
+            )
+          : Column(
+              children: [
+                for (var index = 0; index < latest.length; index++) ...[
+                  _MoneyEventTile(
+                    title: latest[index].title,
+                    subtitle: _shortDate(latest[index].paidAt),
+                    amount: latest[index].amount,
+                    icon: Icons.receipt_long_outlined,
+                    color: AppTheme.success,
+                  ),
+                  if (index != latest.length - 1)
+                    Divider(
+                      height: 18,
+                      color: AppTheme.border.withValues(alpha: .65),
+                    ),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _FinancialInstallmentsSection extends StatelessWidget {
+  const _FinancialInstallmentsSection({required this.installments});
+
+  final List<FinancialInstallment> installments;
+
+  @override
+  Widget build(BuildContext context) {
+    final due = installments.take(4).toList();
+
+    return _FinanceSectionCard(
+      title: 'الأقساط القادمة',
+      icon: Icons.event_repeat_outlined,
+      child: due.isEmpty
+          ? const _TinyEmptyText(message: 'لا توجد أقساط مالية قادمة الآن.')
+          : Column(
+              children: [
+                for (var index = 0; index < due.length; index++) ...[
+                  _MoneyEventTile(
+                    title: 'قسط مالي',
+                    subtitle: due[index].dueDate == null
+                        ? 'بدون تاريخ'
+                        : _shortDate(due[index].dueDate!),
+                    amount: due[index].amount,
+                    icon: Icons.event_available_outlined,
+                    color: AppTheme.gold,
+                  ),
+                  if (index != due.length - 1)
+                    Divider(
+                      height: 18,
+                      color: AppTheme.border.withValues(alpha: .65),
+                    ),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _FinanceSectionCard extends StatelessWidget {
+  const _FinanceSectionCard({
+    required this.title,
+    required this.icon,
+    required this.child,
+    this.actionLabel,
+    this.onAction,
+  });
+
+  final String title;
+  final IconData icon;
+  final Widget child;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(14),
+      border: Border.all(color: AppTheme.border),
+      color: AppTheme.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: AppTheme.burgundy),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (actionLabel != null && onAction != null)
+                TextButton(onPressed: onAction, child: Text(actionLabel!)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _CommitmentTile extends StatelessWidget {
+  const _CommitmentTile({required this.commitment, this.onRecordPayment});
+
+  final FinancialCommitment commitment;
+  final VoidCallback? onRecordPayment;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = _moneyValue(commitment.remainingAmount);
+    final statusColor = switch (commitment.status) {
+      'PAID' => AppTheme.success,
+      'CANCELLED' => AppTheme.muted,
+      _ => AppTheme.gold,
+    };
+    final sourceLabel = commitment.isProviderLinked
+        ? 'مورد / خدمة'
+        : commitment.isManualDebt
+        ? 'دين يدوي'
+        : 'التزام مالي';
+    final party = commitment.partyName?.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: Icon(Icons.account_balance_outlined, color: statusColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    commitment.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      AarastStatusPill(label: sourceLabel, color: statusColor),
+                      if (party != null && party.isNotEmpty)
+                        AarastStatusPill(
+                          label: party,
+                          color: AppTheme.muted,
+                          icon: Icons.person_outline_rounded,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _formatMoney(_moneyValue(commitment.totalAmount)),
+                  style: const TextStyle(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'باقي ${_formatMoney(remaining)}',
+                  style: TextStyle(
+                    color: remaining <= 0 ? AppTheme.success : AppTheme.danger,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        if (onRecordPayment != null && remaining > 0) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              onPressed: onRecordPayment,
+              icon: const Icon(Icons.payments_outlined, size: 18),
+              label: const Text('تسجيل دفعة'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MoneyEventTile extends StatelessWidget {
+  const _MoneyEventTile({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    required this.icon,
+    required this.color,
+  });
+
+  final String title;
+  final String subtitle;
+  final String amount;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTheme.muted,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          _formatMoney(_moneyValue(amount)),
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w900,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TinyEmptyText extends StatelessWidget {
+  const _TinyEmptyText({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      textAlign: TextAlign.right,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: AppTheme.muted,
+        fontWeight: FontWeight.w700,
+        height: 1.35,
       ),
     );
   }

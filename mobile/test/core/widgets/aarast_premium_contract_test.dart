@@ -85,22 +85,34 @@ void main() {
     });
 
     test('routes every production screen through Premium 2027 wrappers', () {
+      // كل شاشة موجهة في التطبيق — لا شاشة خارج المستوى الفاخر الموحّد.
+      // ملفات export الخالصة وقشرة الـ ShellRoute خارج القائمة عمداً.
       const screenFiles = [
         'lib/core/widgets/coming_soon_screen.dart',
         'lib/features/auth/screens/splash_screen.dart',
         'lib/features/auth/screens/login_screen.dart',
         'lib/features/auth/screens/register_screen.dart',
         'lib/features/auth/screens/otp_screen.dart',
+        'lib/features/auth/screens/reset_password_screen.dart',
+        'lib/features/chat/screens/chat_screen.dart',
+        'lib/features/chat/screens/quote_conversation_entry_screen.dart',
         'lib/features/home/screens/dashboard_entry_screen.dart',
         'lib/features/home/screens/home_screen.dart',
         'lib/features/home/screens/local_guest_dashboard_screen.dart',
+        'lib/features/onboarding/screens/local_plan_migration_screen.dart',
+        'lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
         'lib/features/wedding_plans/screens/my_wedding_plans_screen.dart',
         'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
         'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
         'lib/features/wedding_plans/screens/plan_management_screen.dart',
         'lib/features/finance/screens/budget_expense_screen.dart',
+        'lib/features/finance/screens/budget_setup_screen.dart',
+        'lib/features/finance/screens/budget_category_details_screen.dart',
         'lib/features/finance/screens/create_budget_category_screen.dart',
         'lib/features/finance/screens/create_expense_screen.dart',
+        'lib/features/finance/screens/create_financial_commitment_screen.dart',
+        'lib/features/finance/screens/expenses_screen.dart',
+        'lib/features/finance/screens/record_payment_screen.dart',
         'lib/features/debts/screens/debt_installment_screen.dart',
         'lib/features/debts/screens/create_debt_screen.dart',
         'lib/features/debts/screens/debt_details_screen.dart',
@@ -118,11 +130,15 @@ void main() {
         'lib/features/marketplace/screens/quote_request_screen.dart',
         'lib/features/marketplace/screens/provider_apply_screen.dart',
         'lib/features/marketplace/screens/provider_dashboard_screen.dart',
+        'lib/features/marketplace/screens/provider_portal_screen.dart',
         'lib/features/marketplace/screens/add_provider_service_screen.dart',
         'lib/features/marketplace/screens/add_provider_package_screen.dart',
+        'lib/features/marketplace/screens/edit_provider_profile_screen.dart',
+        'lib/features/marketplace/screens/favorite_providers_screen.dart',
         'lib/features/notifications/screens/notifications_screen.dart',
         'lib/features/more/screens/more_screen.dart',
         'lib/features/settings/screens/settings_screen.dart',
+        'lib/features/support/screens/support_screen.dart',
       ];
 
       final premiumWrapperPattern = RegExp(
@@ -140,6 +156,27 @@ void main() {
           reason: '$path must render through the Premium 2027 system',
         );
       }
+    });
+
+    test('bans raw CircularProgressIndicator outside the design system', () {
+      // حالة التحميل الفاخرة إلزامية: AarastSkeleton للجسم،
+      // AarastButton.isLoading أو AarastInlineSpinner للأزرار.
+      final roots = [Directory('lib/features'), Directory('lib/shared')];
+      final offenders = <String>[];
+
+      for (final root in roots.where((directory) => directory.existsSync())) {
+        for (final entity in root.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final lines = entity.readAsLinesSync();
+          for (var index = 0; index < lines.length; index += 1) {
+            if (lines[index].contains('CircularProgressIndicator')) {
+              offenders.add('${entity.path}:${index + 1}');
+            }
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
 
     test('does not allow legacy screen shell primitives in routed screens', () {

@@ -387,7 +387,7 @@ class _InvitesStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
     if (provider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(rows: 3, rowHeight: 120, withHeader: false);
     }
 
     if (openedInvite != null) {

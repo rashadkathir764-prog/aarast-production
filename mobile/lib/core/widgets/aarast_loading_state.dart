@@ -33,6 +33,31 @@ class AarastLoadingState extends StatelessWidget {
   }
 }
 
+/// سبنر صغير موحّد لأزرار الأيقونات والمواضع الضيقة — الشاشات لا تبني
+/// CircularProgressIndicator مباشرة؛ سبنر الأزرار النصية عبر
+/// AarastButton.isLoading وهذا للأيقونية.
+class AarastInlineSpinner extends StatelessWidget {
+  const AarastInlineSpinner({
+    this.dimension = 18,
+    this.color = AppTheme.burgundy,
+    super.key,
+  });
+
+  final double dimension;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: dimension,
+      child: CircularProgressIndicator(
+        strokeWidth: 2,
+        valueColor: AlwaysStoppedAnimation<Color>(color),
+      ),
+    );
+  }
+}
+
 class AarastScreenLoading extends StatelessWidget {
   const AarastScreenLoading({this.label, super.key});
 

@@ -22,11 +22,38 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   required Future<void> Function(String route, {bool refreshDashboard})
   openRoute,
 }) {
-  final expense = RoyalHomeAction(
-    icon: Icons.account_balance_wallet_outlined,
-    label: 'إضافة مصروف',
+  final category = RoyalHomeAction(
+    icon: Icons.create_new_folder_outlined,
+    label: 'إضافة بند ميزانية',
     onTap: () => openRoute(
-      AppRouter.createExpense(planId),
+      AppRouter.createBudgetCategory(planId),
+      refreshDashboard: refreshDashboardOnExpense,
+    ),
+  );
+  final commitment = RoyalHomeAction(
+    icon: Icons.handshake_outlined,
+    label: 'حجز مورد / تكلفة خدمة',
+    onTap: () => openRoute(
+      AppRouter.createFinancialCommitment(
+        planId,
+        sourceType: 'PROVIDER_SERVICE',
+      ),
+      refreshDashboard: refreshDashboardOnExpense,
+    ),
+  );
+  final payment = RoyalHomeAction(
+    icon: Icons.payments_outlined,
+    label: 'تسجيل دفعة',
+    onTap: () => openRoute(
+      AppRouter.recordPayment(planId),
+      refreshDashboard: refreshDashboardOnExpense,
+    ),
+  );
+  final manualDebt = RoyalHomeAction(
+    icon: Icons.account_balance_outlined,
+    label: 'إضافة دين يدوي',
+    onTap: () => openRoute(
+      AppRouter.createFinancialCommitment(planId, sourceType: 'MANUAL_DEBT'),
       refreshDashboard: refreshDashboardOnExpense,
     ),
   );
@@ -40,27 +67,17 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     label: 'إضافة ضيف',
     onTap: () => openRoute(AppRouter.guestListAdd(planId)),
   );
-  final debt = RoyalHomeAction(
-    icon: Icons.attach_money_rounded,
-    label: 'إضافة دين/قسط',
-    onTap: () => openRoute(AppRouter.createDebt(planId)),
-  );
   final quote = RoyalHomeAction(
     icon: Icons.request_quote_outlined,
     label: 'طلب عرض سعر',
     onTap: onRequestQuote ?? () => openRoute(AppRouter.planProviders(planId)),
   );
-  final category = RoyalHomeAction(
-    icon: Icons.create_new_folder_outlined,
-    label: 'إضافة تصنيف',
-    onTap: () => openRoute(AppRouter.createBudgetCategory(planId)),
-  );
 
   return switch (contextOrder) {
-    QuickAddContext.money => [expense, debt, category],
-    QuickAddContext.tasks => [task, expense, guest, debt, quote],
-    QuickAddContext.guests => [guest, task, expense, debt, quote],
-    QuickAddContext.providers => [quote, expense, task, guest, debt],
-    QuickAddContext.dashboard => [expense, task, guest, debt, quote],
+    QuickAddContext.money => [category, commitment, payment, manualDebt],
+    QuickAddContext.tasks => [task, payment, guest, commitment, quote],
+    QuickAddContext.guests => [guest, task, payment, commitment, quote],
+    QuickAddContext.providers => [quote, commitment, payment, task, guest],
+    QuickAddContext.dashboard => [commitment, payment, task, guest, quote],
   };
 }

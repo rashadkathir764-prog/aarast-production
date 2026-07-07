@@ -207,17 +207,19 @@ class _WeddingPlanDashboardScreenState
               onProfile: () => context.push(AppRouter.more),
               onOpenPlan: () =>
                   context.push(AppRouter.planCenter(summary.planId)),
-              onOpenMoney: () =>
-                  context.go(AppRouter.finance(summary.planId)),
+              onOpenMoney: () => context.go(AppRouter.finance(summary.planId)),
               onOpenTasks: () => context.go(AppRouter.tasks(summary.planId)),
               onOpenProviders: () =>
                   context.go(AppRouter.planProviders(summary.planId)),
               onOpenGuests: () =>
                   context.go(AppRouter.guestList(summary.planId)),
+              onOpenSharing: () => _isLocalGuestPlan
+                  ? _requireAccountForSharing()
+                  : context.push(AppRouter.sharing(summary.planId)),
               onOpenImportantItem: _openDashboardItem,
               onOpenNextStep: () => _openNextStep(summary),
-              onAddExpense: () =>
-                  context.push(AppRouter.createExpense(summary.planId)),
+              onRecordPayment: () =>
+                  context.push(AppRouter.recordPayment(summary.planId)),
             );
           },
         ),
@@ -239,6 +241,14 @@ class _WeddingPlanDashboardScreenState
     } on ProviderNotFoundException {
       return null;
     }
+  }
+
+  Future<bool> _requireAccountForSharing() {
+    return AuthActionGuard.requireAccount(
+      context,
+      reason:
+          'المشاركة تحتاج حساباً حتى نحفظ الصلاحيات والدعوات ونربطها بخطتك بأمان.',
+    );
   }
 
   void _openDashboardItem(DashboardImportantItem item) {
@@ -291,7 +301,6 @@ class _WeddingPlanDashboardScreenState
     }
     context.go(AppRouter.planCenter(widget.weddingPlanId));
   }
-
 }
 
 class _DashboardStateList extends StatelessWidget {

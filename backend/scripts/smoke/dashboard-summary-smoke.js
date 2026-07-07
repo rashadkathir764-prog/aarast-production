@@ -11,9 +11,10 @@ const http = require('http');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
-const OWNER_PHONE = `+9675${timestamp.toString().slice(-7)}`;
-const VIEWER_PHONE = `+9676${timestamp.toString().slice(-7)}`;
-const UNRELATED_PHONE = `+9679${timestamp.toString().slice(-7)}`;
+const suffix = `${timestamp.toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`;
+const OWNER_PHONE = `+9675${suffix}`;
+const VIEWER_PHONE = `+9676${suffix}`;
+const UNRELATED_PHONE = `+9679${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
 
 let passed = 0;
@@ -144,15 +145,20 @@ async function run() {
   }
 
   {
-    await request('POST', `/wedding-plans/${planId}/budget-categories`, {
+    const categoryRes = await request('POST', `/wedding-plans/${planId}/budget-categories`, {
       name: 'Hall',
       targetAmount: '800',
     }, owner.token);
-    await request('POST', `/wedding-plans/${planId}/expenses`, {
+    check('owner creates budget category - HTTP 201', categoryRes.status === 201);
+    check('budget category has id', typeof categoryRes.body?.id === 'string');
+
+    const expenseRes = await request('POST', `/wedding-plans/${planId}/expenses`, {
       title: 'Paid deposit placeholder-free expense',
       amount: '300',
       status: 'PAID',
+      budgetCategoryId: categoryRes.body?.id,
     }, owner.token);
+    check('owner creates categorized paid expense - HTTP 201', expenseRes.status === 201);
     const debtRes = await request('POST', `/wedding-plans/${planId}/debts`, {
       creditorName: 'Family Support',
       title: 'Family support debt',

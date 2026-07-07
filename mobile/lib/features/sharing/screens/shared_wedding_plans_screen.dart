@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -91,7 +92,7 @@ class _SharedPlansContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isCheckingAccount) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(rows: 4, rowHeight: 108, withHeader: true);
     }
 
     if (showLoginGate) {
@@ -111,23 +112,17 @@ class _SharedPlansContent extends StatelessWidget {
     }
 
     if (provider.isLoading && provider.sharedPlans.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(rows: 4, rowHeight: 108, withHeader: true);
     }
 
     if (provider.errorMessage != null && provider.sharedPlans.isEmpty) {
       return ListView(
         children: [
-          const SizedBox(height: 120),
-          Text(
-            provider.errorMessage!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.danger),
-          ),
-          const SizedBox(height: 16),
-          AarastButton(
-            label: 'إعادة المحاولة',
-            icon: LucideIcons.refreshCw,
-            onPressed: provider.loadSharedPlans,
+          const SizedBox(height: 40),
+          AarastErrorState(
+            title: 'تعذر تحميل الخطط المشتركة',
+            message: provider.errorMessage!,
+            onRetry: provider.loadSharedPlans,
           ),
         ],
       );
@@ -147,7 +142,7 @@ class _SharedPlansContent extends StatelessWidget {
     }
 
     return ListView(
-      children: [
+      children: AarastStagger.children(context, [
         AarastCard(
           color: AppTheme.ivory,
           child: Row(
@@ -183,7 +178,7 @@ class _SharedPlansContent extends StatelessWidget {
               extra: plan.sharedMember,
             ),
           ),
-      ],
+      ]),
     );
   }
 }

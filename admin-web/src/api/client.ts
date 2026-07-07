@@ -1,7 +1,7 @@
 const fallbackBaseUrl = 'http://127.0.0.1:3115';
 
 export const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL?.toString().replace(/\/$/, '') ??
+  import.meta.env.VITE_API_BASE_URL?.toString().trim().replace(/\/$/, '') ||
   fallbackBaseUrl;
 
 export const adminTokenKey = 'admin_token';

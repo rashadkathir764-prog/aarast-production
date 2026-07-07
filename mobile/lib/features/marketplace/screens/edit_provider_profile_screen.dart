@@ -83,10 +83,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
         ),
         children: [
           if (dashboard.isLoading && profile == null)
-            const Padding(
-              padding: EdgeInsets.only(top: 120),
-              child: Center(child: CircularProgressIndicator()),
-            )
+            AarastSkeleton.form(fields: 4, inline: true)
           else if (profile == null)
             AarastEmptyState(
               icon: LucideIcons.store,
@@ -177,16 +174,11 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
                       _InlineError(message: dashboard.errorMessage!),
                     ],
                     const SizedBox(height: 18),
-                    FilledButton.icon(
+                    AarastButton(
+                      label: 'حفظ التعديل',
+                      icon: LucideIcons.save,
+                      isLoading: dashboard.isSubmitting,
                       onPressed: dashboard.isSubmitting ? null : _submit,
-                      icon: dashboard.isSubmitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(LucideIcons.save),
-                      label: const Text('حفظ التعديل'),
                     ),
                   ],
                 ),

@@ -5,6 +5,7 @@ import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/expense.dart';
 import 'package:aarast_mobile/features/finance/models/expense_summary.dart';
+import 'package:aarast_mobile/features/finance/models/financial_commitment.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/budget_category_details_screen.dart';
@@ -61,7 +62,11 @@ void main() {
 
       expect(source, isNot(contains('عربون')));
       expect(source, isNot(contains('الحجز')));
-      expect(source, contains('تاريخ الاتفاق'));
+      expect(source, isNot(contains('تاريخ الاتفاق')));
+      expect(source, isNot(contains('موعد دفع الباقي')));
+      expect(source, contains('تسجيل مصروف مدفوع'));
+      expect(source, contains('المبلغ المدفوع'));
+      expect(source, contains('تصنيف مالي'));
     });
   });
 
@@ -237,6 +242,27 @@ class _FakeBudgetExpenseApi extends BudgetExpenseApi {
         ),
       ],
     );
+  }
+
+  @override
+  Future<List<FinancialCommitment>> getFinancialCommitments(
+    String weddingPlanId,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<List<FinancialPaymentRecord>> getFinancialPaymentRecords(
+    String weddingPlanId,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<List<FinancialInstallment>> getDueFinancialInstallments(
+    String weddingPlanId,
+  ) async {
+    return const [];
   }
 }
 

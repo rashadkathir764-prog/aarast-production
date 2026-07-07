@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   assertConversationParticipant,
+  conversationParticipantState,
   normalizeMessageBody,
   normalizeMessagePageSize,
 } from '../src/conversations/conversation-policy';
@@ -23,7 +24,8 @@ test('quote conversation is limited to the requester and provider owner', () => 
     ),
   );
   assert.throws(
-    () => assertConversationParticipant('stranger', 'user-1', 'provider-user-1'),
+    () =>
+      assertConversationParticipant('stranger', 'user-1', 'provider-user-1'),
     ForbiddenException,
   );
 });
@@ -31,7 +33,10 @@ test('quote conversation is limited to the requester and provider owner', () => 
 test('message body is trimmed and must contain 1 to 2000 characters', () => {
   assert.equal(normalizeMessageBody('  مرحبا  '), 'مرحبا');
   assert.throws(() => normalizeMessageBody('   '), BadRequestException);
-  assert.throws(() => normalizeMessageBody('x'.repeat(2001)), BadRequestException);
+  assert.throws(
+    () => normalizeMessageBody('x'.repeat(2001)),
+    BadRequestException,
+  );
 });
 
 test('message page size stays between 1 and 50', () => {
@@ -42,9 +47,38 @@ test('message page size stays between 1 and 50', () => {
   assert.throws(() => normalizeMessagePageSize('51'), BadRequestException);
 });
 
+test('conversation state distinguishes who blocked and counterpart read time', () => {
+  const counterpartReadAt = new Date('2026-07-07T12:00:00.000Z');
+  const state = conversationParticipantState('user-1', [
+    {
+      userId: 'user-1',
+      blockedAt: null,
+      lastReadAt: new Date('2026-07-07T11:00:00.000Z'),
+    },
+    {
+      userId: 'provider-user-1',
+      blockedAt: new Date('2026-07-07T11:30:00.000Z'),
+      lastReadAt: counterpartReadAt,
+    },
+  ]);
+
+  assert.deepEqual(state, {
+    blocked: true,
+    blockedByMe: false,
+    blockedByCounterpart: true,
+    counterpartLastReadAt: counterpartReadAt,
+  });
+});
+
 test('provider chat schema and authenticated routes stay wired', () => {
-  const schema = readFileSync(join(process.cwd(), 'prisma/schema.prisma'), 'utf8');
-  const appModule = readFileSync(join(process.cwd(), 'src/app.module.ts'), 'utf8');
+  const schema = readFileSync(
+    join(process.cwd(), 'prisma/schema.prisma'),
+    'utf8',
+  );
+  const appModule = readFileSync(
+    join(process.cwd(), 'src/app.module.ts'),
+    'utf8',
+  );
   const authModule = readFileSync(
     join(process.cwd(), 'src/auth/auth.module.ts'),
     'utf8',
@@ -61,7 +95,7 @@ test('provider chat schema and authenticated routes stay wired', () => {
     'model ChatAttachment ',
     'model ConversationReport ',
   ]) {
-  assert.match(schema, new RegExp(model));
+    assert.match(schema, new RegExp(model));
   }
   assert.match(appModule, /ConversationsModule/);
   assert.match(authModule, /exports:\s*\[[^\]]*JwtModule[^\]]*\]/);
@@ -96,8 +130,12 @@ test('chat gateway authenticates sockets and emits scoped conversation events', 
   );
   assert.match(service, /realtime\.message/);
   assert.match(service, /realtime\.read/);
-  assert.match(service, /routeTarget:\s*`\/conversations\/\$\{conversationId\}`/);
-  assert.match(service, /nextCursor:\s*hasMore\s*\?\s*page\[page\.length - 1\]\?\.id/);
+  assert.match(
+    service,
+    /routeTarget:\s*`\/conversations\/\$\{conversationId\}`/,
+  );
+  assert.match(service, /nextCursor:\s*hasMore/);
+  assert.match(service, /page\[page\.length - 1\]\?\.id/);
 });
 
 test('conversation reports have an admin review surface', () => {

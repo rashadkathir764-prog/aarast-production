@@ -109,7 +109,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           final reviews = state.reviewsFor(widget.providerId);
 
           if (state.isLoading && provider == null) {
-            return const Center(child: CircularProgressIndicator());
+            return AarastSkeleton.page(heroHeight: 220, tiles: 3, cards: 2);
           }
 
           if (state.errorMessage != null && provider == null) {

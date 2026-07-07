@@ -85,10 +85,17 @@ void main() {
         apiClient,
         offline: offline,
       ).createTask(weddingPlanId: planId, title: 'حجز القاعة');
+      final category = await BudgetExpenseApi(apiClient, offline: offline)
+          .createBudgetCategory(
+            weddingPlanId: planId,
+            name: 'الصالة',
+            targetAmount: '2500000',
+          );
       await BudgetExpenseApi(apiClient, offline: offline).createExpense(
         weddingPlanId: planId,
         title: 'دفعة القاعة',
         amount: '500000',
+        budgetCategoryId: category.id,
       );
       final debt = await DebtInstallmentApi(apiClient, offline: offline)
           .createDebt(

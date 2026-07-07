@@ -17,7 +17,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 void main() {
   group('buildCanonicalQuickAddActions', () {
-    test('emits the five canonical actions with stable labels', () {
+    test('emits the canonical dashboard actions with stable labels', () {
       final calls = <String>[];
       Future<void> open(String route, {bool refreshDashboard = false}) async {
         calls.add('$route|rf=$refreshDashboard');
@@ -31,10 +31,10 @@ void main() {
 
       expect(actions.length, 5);
       expect(actions.map((a) => a.label).toList(), <String>[
-        'إضافة مصروف',
+        'حجز مورد / تكلفة خدمة',
+        'تسجيل دفعة',
         'إضافة مهمة',
         'إضافة ضيف',
-        'إضافة دين/قسط',
         'طلب عرض سعر',
       ]);
     });
@@ -56,10 +56,13 @@ void main() {
       }
 
       expect(calls, <String>[
-        AppRouter.createExpense('plan-7'),
+        AppRouter.createFinancialCommitment(
+          'plan-7',
+          sourceType: 'PROVIDER_SERVICE',
+        ),
+        AppRouter.recordPayment('plan-7'),
         AppRouter.createTask('plan-7'),
         AppRouter.guestListAdd('plan-7'),
-        AppRouter.createDebt('plan-7'),
         AppRouter.planProviders('plan-7'),
       ]);
     });
@@ -71,7 +74,45 @@ void main() {
       );
     });
 
-    test('forwards refreshDashboardOnExpense to expense open only', () {
+    test('money context exposes the financial backbone actions only', () {
+      final calls = <String>[];
+      Future<void> open(String route, {bool refreshDashboard = false}) async {
+        calls.add(route);
+      }
+
+      final actions = buildCanonicalQuickAddActions(
+        _DummyContext(),
+        planId: 'plan-money',
+        contextOrder: QuickAddContext.money,
+        openRoute: open,
+      );
+
+      expect(actions.map((a) => a.label).toList(), <String>[
+        'إضافة بند ميزانية',
+        'حجز مورد / تكلفة خدمة',
+        'تسجيل دفعة',
+        'إضافة دين يدوي',
+      ]);
+
+      for (final action in actions) {
+        action.onTap();
+      }
+
+      expect(calls, <String>[
+        AppRouter.createBudgetCategory('plan-money'),
+        AppRouter.createFinancialCommitment(
+          'plan-money',
+          sourceType: 'PROVIDER_SERVICE',
+        ),
+        AppRouter.recordPayment('plan-money'),
+        AppRouter.createFinancialCommitment(
+          'plan-money',
+          sourceType: 'MANUAL_DEBT',
+        ),
+      ]);
+    });
+
+    test('forwards refreshDashboardOnExpense to money-changing opens', () {
       final calls = <String>[];
       Future<void> open(String route, {bool refreshDashboard = false}) async {
         calls.add('$route|rf=$refreshDashboard');
@@ -88,9 +129,11 @@ void main() {
         action.onTap();
       }
 
-      // Only the first action (expense) propagates refreshDashboard=true.
-      expect(calls[0].endsWith('|rf=true'), isTrue);
-      for (var i = 1; i < calls.length; i++) {
+      // The dashboard finance actions propagate refreshDashboard=true.
+      for (var i = 0; i < 2; i++) {
+        expect(calls[i].endsWith('|rf=true'), isTrue, reason: calls[i]);
+      }
+      for (var i = 2; i < calls.length; i++) {
         expect(calls[i].endsWith('|rf=false'), isTrue, reason: calls[i]);
       }
     });
@@ -105,7 +148,7 @@ void main() {
           contextOrder: QuickAddContext.money,
           openRoute: open,
         ).first.label,
-        'إضافة مصروف',
+        'إضافة بند ميزانية',
       );
       expect(
         buildCanonicalQuickAddActions(

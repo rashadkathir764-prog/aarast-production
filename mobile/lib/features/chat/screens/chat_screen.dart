@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/media/media_upload_api.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/chat_models.dart';
@@ -23,6 +24,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   MediaUploadTicket? _attachment;
   bool _isUploading = false;
+  ChatProvider? _chatProvider;
 
   @override
   void initState() {
@@ -36,7 +38,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _chatProvider ??= context.read<ChatProvider>();
+  }
+
+  @override
   void dispose() {
+    _chatProvider?.closeConversation(widget.conversationId);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -58,7 +67,8 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: chat.isLoading && messages.isEmpty
                 ? const AarastScreenLoading(label: 'جارٍ تحميل الرسائل...')
-                : chat.errorMessage != null && messages.isEmpty
+                : chat.hasConversationLoadError(widget.conversationId) &&
+                      messages.isEmpty
                 ? AarastErrorState(
                     title: 'تعذر تحميل المحادثة',
                     message: chat.errorMessage!,
@@ -74,18 +84,40 @@ class _ChatScreenState extends State<ChatScreen> {
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-                    itemCount: messages.length,
+                    itemCount:
+                        messages.length +
+                        (chat.canLoadOlder(widget.conversationId) ? 1 : 0),
                     itemBuilder: (context, index) {
-                      final message = messages[index];
+                      final hasOlder = chat.canLoadOlder(widget.conversationId);
+                      if (hasOlder && index == 0) {
+                        return Center(
+                          child: TextButton.icon(
+                            key: const Key('chat-load-older'),
+                            onPressed:
+                                chat.isLoadingOlder(widget.conversationId)
+                                ? null
+                                : _loadOlder,
+                            icon: chat.isLoadingOlder(widget.conversationId)
+                                ? const AarastInlineSpinner(dimension: 16)
+                                : const Icon(LucideIcons.history, size: 18),
+                            label: const Text('تحميل رسائل أقدم'),
+                          ),
+                        );
+                      }
+                      final message = messages[index - (hasOlder ? 1 : 0)];
                       return _MessageBubble(
                         message: message,
                         mine: message.senderUserId == chat.currentUserId,
+                        read: chat.isMessageRead(message),
                       );
                     },
                   ),
           ),
           if (conversation?.blocked == true)
-            const _BlockedNotice()
+            _BlockedNotice(
+              blockedByMe: conversation?.blockedByMe == true,
+              blockedByCounterpart: conversation?.blockedByCounterpart == true,
+            )
           else
             _Composer(
               controller: _controller,
@@ -121,6 +153,12 @@ class _ChatScreenState extends State<ChatScreen> {
         purpose: 'chat-image',
       );
       if (mounted) setState(() => _attachment = ticket);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -141,10 +179,41 @@ class _ChatScreenState extends State<ChatScreen> {
       body.isEmpty ? 'صورة' : body,
       attachments: attachment == null ? const [] : [attachment],
     );
-    if (!mounted || !ok) return;
+    if (!mounted) return;
+    if (!ok) {
+      final message = context.read<ChatProvider>().errorMessage;
+      if (message != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+      return;
+    }
     _controller.clear();
     setState(() => _attachment = null);
     _scrollToEnd();
+  }
+
+  Future<void> _loadOlder() async {
+    final previousMax = _scrollController.hasClients
+        ? _scrollController.position.maxScrollExtent
+        : 0.0;
+    final previousOffset = _scrollController.hasClients
+        ? _scrollController.offset
+        : 0.0;
+    await context.read<ChatProvider>().loadOlder(widget.conversationId);
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      final addedExtent =
+          _scrollController.position.maxScrollExtent - previousMax;
+      _scrollController.jumpTo(
+        (previousOffset + addedExtent).clamp(
+          0.0,
+          _scrollController.position.maxScrollExtent,
+        ),
+      );
+    });
   }
 
   Future<void> _handleAction(
@@ -153,13 +222,28 @@ class _ChatScreenState extends State<ChatScreen> {
     String action,
   ) async {
     if (conversation == null) return;
+    bool? succeeded;
+    String? successMessage;
     if (action == 'mute') {
-      await chat.setMuted(conversation, !conversation.muted);
+      succeeded = await chat.setMuted(conversation, !conversation.muted);
     } else if (action == 'block') {
-      await chat.setBlocked(conversation, !conversation.blocked);
+      succeeded = await chat.setBlocked(
+        conversation,
+        !conversation.blockedByMe,
+      );
     } else if (action == 'report' && mounted) {
       final reason = await _reportReason(context);
-      if (reason != null) await chat.report(conversation, reason);
+      if (reason != null) {
+        succeeded = await chat.report(conversation, reason);
+        successMessage = 'تم إرسال البلاغ للمراجعة.';
+      }
+    }
+    if (!mounted || succeeded == null) return;
+    final message = succeeded ? successMessage : chat.errorMessage;
+    if (message != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -243,7 +327,7 @@ class _ChatHeader extends StatelessWidget {
                 PopupMenuItem(
                   value: 'block',
                   child: Text(
-                    conversation?.blocked == true
+                    conversation?.blockedByMe == true
                         ? 'إلغاء الحظر'
                         : 'حظر المحادثة',
                   ),
@@ -259,10 +343,15 @@ class _ChatHeader extends StatelessWidget {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.mine});
+  const _MessageBubble({
+    required this.message,
+    required this.mine,
+    required this.read,
+  });
 
   final ChatMessage message;
   final bool mine;
+  final bool read;
 
   @override
   Widget build(BuildContext context) {
@@ -313,6 +402,15 @@ class _MessageBubble extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 'جارٍ الإرسال...',
+                style: TextStyle(
+                  color: mine ? Colors.white70 : AppTheme.muted,
+                  fontSize: 10,
+                ),
+              ),
+            ] else if (read) ...[
+              const SizedBox(height: 5),
+              Text(
+                'تمت القراءة',
                 style: TextStyle(
                   color: mine ? Colors.white70 : AppTheme.muted,
                   fontSize: 10,
@@ -392,10 +490,7 @@ class _Composer extends StatelessWidget {
                   tooltip: 'إرسال',
                   onPressed: isBusy ? null : onSend,
                   icon: isBusy
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                      ? const AarastInlineSpinner(color: AppTheme.surface)
                       : const Icon(LucideIcons.send),
                 ),
               ],
@@ -408,18 +503,31 @@ class _Composer extends StatelessWidget {
 }
 
 class _BlockedNotice extends StatelessWidget {
-  const _BlockedNotice();
+  const _BlockedNotice({
+    required this.blockedByMe,
+    required this.blockedByCounterpart,
+  });
+
+  final bool blockedByMe;
+  final bool blockedByCounterpart;
 
   @override
   Widget build(BuildContext context) {
-    return const SafeArea(
+    return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Text(
-          'المحادثة محظورة. ألغِ الحظر من القائمة للمتابعة.',
+          blockedByMe
+              ? 'أنت حظرت هذه المحادثة. ألغِ الحظر من القائمة للمتابعة.'
+              : blockedByCounterpart
+              ? 'أوقف الطرف الآخر المحادثة. لا يمكن إرسال رسائل جديدة الآن.'
+              : 'المحادثة محظورة. لا يمكن إرسال رسائل جديدة الآن.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w800),
+          style: const TextStyle(
+            color: AppTheme.danger,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
     );

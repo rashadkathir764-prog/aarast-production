@@ -172,7 +172,7 @@ void main() {
       final financeApi = BudgetExpenseApi(apiClient, offline: offline);
       final debtApi = DebtInstallmentApi(apiClient, offline: offline);
 
-      await financeApi.createBudgetCategory(
+      final category = await financeApi.createBudgetCategory(
         weddingPlanId: localPlanId,
         name: 'القاعة',
         targetAmount: '1000000',
@@ -181,6 +181,7 @@ void main() {
         weddingPlanId: localPlanId,
         title: 'دفعة القاعة',
         amount: '250000',
+        budgetCategoryId: category.id,
         status: 'PAID',
       );
       final debt = await debtApi.createDebt(
@@ -210,4 +211,69 @@ void main() {
       );
     },
   );
+
+  test('local financial commitments reject impossible balances', () async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final apiClient = ApiClient(tokenProvider: () async => null);
+    final database = await createLocalDatabase(preferences);
+    final offline = OfflineSyncService(
+      database: database,
+      apiClient: apiClient,
+    );
+    final financeApi = BudgetExpenseApi(apiClient, offline: offline);
+    const planId = 'guest-plan-money-balance-guards';
+
+    final category = await financeApi.createBudgetCategory(
+      weddingPlanId: planId,
+      name: 'الصالة',
+      targetAmount: '1000',
+    );
+
+    expect(
+      () => financeApi.createFinancialCommitment(
+        weddingPlanId: planId,
+        budgetCategoryId: category.id,
+        title: 'التزام صفر',
+        totalAmount: '0',
+      ),
+      throwsA(isA<ApiException>()),
+    );
+    expect(
+      () => financeApi.createFinancialCommitment(
+        weddingPlanId: planId,
+        budgetCategoryId: category.id,
+        title: 'التزام مدفوع أكثر من الإجمالي',
+        totalAmount: '100',
+        paidAmount: '150',
+      ),
+      throwsA(isA<ApiException>()),
+    );
+
+    final commitment = await financeApi.createFinancialCommitment(
+      weddingPlanId: planId,
+      budgetCategoryId: category.id,
+      title: 'التزام صحيح',
+      totalAmount: '100',
+      paidAmount: '60',
+    );
+
+    expect(
+      () => financeApi.createFinancialPaymentRecord(
+        commitmentId: commitment.id,
+        amount: '50',
+      ),
+      throwsA(isA<ApiException>()),
+    );
+
+    final payment = await financeApi.createFinancialPaymentRecord(
+      commitmentId: commitment.id,
+      amount: '40',
+    );
+    expect(payment.amount, '40.00');
+
+    final commitments = await financeApi.getFinancialCommitments(planId);
+    expect(commitments.single.paidAmount, '100.00');
+    expect(commitments.single.remainingAmount, '0.00');
+  });
 }

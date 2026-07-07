@@ -20,6 +20,16 @@ coverage/
 .flutter-plugins-dependencies
 .packages
 
+# Android signing — the upload keystore and its passwords must NEVER be
+# committed. Losing or leaking this key compromises the Play listing.
+**/key.properties
+!**/key.properties.example
+*.jks
+*.keystore
+# Release artifacts
+*.aab
+*.apk
+
 # Editor and IDE settings
 .idea/
 .vscode/

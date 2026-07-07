@@ -8,8 +8,8 @@ old files are preserved as `.md.txt` archive references.
 
 ## Current Count
 
-- Active project `.md` files: 29.
-- Curated human-written docs: 26.
+- Active project `.md` files: 33.
+- Curated human-written docs: 30.
 - Generated reference tables: 3.
 - Archived historical files: 103 under
   `docs/archive/2026-07-docs-consolidation/`.
@@ -74,6 +74,13 @@ changing behavior.
 - `docs/deployment/README.md`
 - `docs/deployment/DOKPLOY_RUNBOOK.md`
 - `docs/deployment/SCALING.md`
+- `docs/deployment/STORE_RELEASE.md`
+- `docs/deployment/STORE_LISTING.md`
+- `docs/deployment/PLAY_DATA_SAFETY.md`
+
+### Legal
+
+- `docs/legal/PRIVACY_POLICY.md`
 
 ### Archive
 
@@ -104,6 +111,10 @@ changing behavior.
 | Deployment | `docs/deployment/README.md` |
 | Dokploy runbook | `docs/deployment/DOKPLOY_RUNBOOK.md` |
 | Scaling and capacity | `docs/deployment/SCALING.md` |
+| Play Store release | `docs/deployment/STORE_RELEASE.md` |
+| Store listing copy | `docs/deployment/STORE_LISTING.md` |
+| Play data-safety answers | `docs/deployment/PLAY_DATA_SAFETY.md` |
+| Privacy policy | `docs/legal/PRIVACY_POLICY.md` |
 
 ## Archive Rules
 

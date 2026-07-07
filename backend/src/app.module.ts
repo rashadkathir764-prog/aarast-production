@@ -40,11 +40,16 @@ import { MediaModule } from "./media/media.module";
     ThrottlerModule.forRootAsync({
       useFactory: () => {
         const redisUrl = process.env.REDIS_URL?.trim();
+        // Tunable so load tests and unusual deployments can raise the
+        // global ceiling without a rebuild. Per-route @Throttle limits
+        // on auth endpoints are unaffected.
+        const limit = Number(process.env.THROTTLE_LIMIT ?? 1_000);
+        const ttl = Number(process.env.THROTTLE_TTL_MS ?? 60_000);
         return {
           throttlers: [
             {
-              ttl: 60_000,
-              limit: 1_000,
+              ttl: Number.isFinite(ttl) && ttl > 0 ? ttl : 60_000,
+              limit: Number.isFinite(limit) && limit > 0 ? limit : 1_000,
             },
           ],
           ...(redisUrl

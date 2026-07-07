@@ -8,8 +8,8 @@ old files are preserved as `.md.txt` archive references.
 
 ## Current Count
 
-- Active project `.md` files: 28.
-- Curated human-written docs: 25.
+- Active project `.md` files: 29.
+- Curated human-written docs: 26.
 - Generated reference tables: 3.
 - Archived historical files: 103 under
   `docs/archive/2026-07-docs-consolidation/`.
@@ -73,6 +73,7 @@ changing behavior.
 
 - `docs/deployment/README.md`
 - `docs/deployment/DOKPLOY_RUNBOOK.md`
+- `docs/deployment/SCALING.md`
 
 ### Archive
 
@@ -102,6 +103,7 @@ changing behavior.
 | Mobile QA | `docs/qa/MOBILE_QA.md` |
 | Deployment | `docs/deployment/README.md` |
 | Dokploy runbook | `docs/deployment/DOKPLOY_RUNBOOK.md` |
+| Scaling and capacity | `docs/deployment/SCALING.md` |
 
 ## Archive Rules
 

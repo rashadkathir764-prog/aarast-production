@@ -16,6 +16,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    # Memory limits keep one runaway service from OOM-killing the host.
+    deploy:
+      resources:
+        limits:
+          memory: ${POSTGRES_MEMORY_LIMIT:-1g}
     networks:
       - aarast_internal
 
@@ -29,6 +34,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          # maxmemory 256mb + fragmentation headroom
+          memory: 384m
     networks:
       - aarast_internal
 
@@ -51,6 +61,10 @@ services:
       HEALTHCHECK_PORT: 8080
     volumes:
       - aarast_postgres_backups:/backups
+    deploy:
+      resources:
+        limits:
+          memory: 256m
     networks:
       - aarast_internal
 
@@ -84,6 +98,8 @@ services:
       AARAST_MEDIA_FORCE_PATH_STYLE: ${AARAST_MEDIA_FORCE_PATH_STYLE:-false}
       OTP_EXPIRES_MINUTES: ${OTP_EXPIRES_MINUTES:-5}
       OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-5}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-1000}
+      THROTTLE_TTL_MS: ${THROTTLE_TTL_MS:-60000}
       AARAST_EXPOSE_OTP_IN_SMOKE: "false"
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
@@ -107,6 +123,10 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: ${BACKEND_MEMORY_LIMIT:-768m}
     networks:
       - aarast_internal
 
@@ -131,6 +151,10 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 128m
     networks:
       - aarast_internal
 

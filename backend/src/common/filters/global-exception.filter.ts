@@ -8,6 +8,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import * as Sentry from '@sentry/node';
 
 interface ResponseLike {
   status(code: number): ResponseLike;
@@ -43,6 +44,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         `${route} -> ${mapped.status}: ${this.describe(exception)}`,
         exception instanceof Error ? exception.stack : undefined,
       );
+      // No-op unless Sentry.init ran at bootstrap (SENTRY_DSN set).
+      Sentry.captureException(exception, { tags: { route } });
     } else {
       this.logger.warn(`${route} -> ${mapped.status}: ${mapped.message}`);
     }

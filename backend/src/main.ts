@@ -1,11 +1,14 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConsoleLogger, Logger, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import * as Sentry from '@sentry/node';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { getCorsOrigins } from './common/config/cors-origins';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { requestObservability } from './common/observability/request-observability.middleware';
+import { RedisIoAdapter } from './common/redis/redis-io.adapter';
 
 /**
  * Fail fast on broken configuration: a typo'd env var must stop the
@@ -37,8 +40,35 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   validateEnvironment(logger);
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const sentryDsn = process.env.SENTRY_DSN?.trim();
+  if (sentryDsn) {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: process.env.NODE_ENV ?? 'development',
+      tracesSampleRate: 0.1,
+    });
+  }
+
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // JSON logs in production so Dokploy/aggregators can parse fields
+    // instead of scraping pretty-printed text.
+    logger:
+      process.env.NODE_ENV === 'production'
+        ? new ConsoleLogger({ json: true })
+        : undefined,
+  });
   const port = Number(process.env.PORT ?? 3000);
+
+  const redisUrl = process.env.REDIS_URL?.trim();
+  if (redisUrl) {
+    const redisIoAdapter = new RedisIoAdapter(app);
+    await redisIoAdapter.connectToRedis(redisUrl);
+    app.useWebSocketAdapter(redisIoAdapter);
+  } else if (process.env.NODE_ENV === 'production') {
+    logger.warn(
+      'REDIS_URL is not set — Socket.IO delivery and rate limiting are single-instance only.',
+    );
+  }
 
   // Behind Dokploy/NPM every request arrives from the proxy IP. Without
   // trust proxy the throttler rate-limits ALL users collectively instead
@@ -46,6 +76,7 @@ async function bootstrap() {
   app.set('trust proxy', 1);
 
   app.use(helmet());
+  app.use(requestObservability);
 
   app.enableCors({
     origin: getCorsOrigins(),

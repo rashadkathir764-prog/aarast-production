@@ -2,7 +2,9 @@ import { Module } from "@nestjs/common";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import { IdempotencyInterceptor } from "./common/idempotency/idempotency.interceptor";
+import { MetricsController } from "./common/observability/metrics.controller";
 import { HealthController } from "./health.controller";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
@@ -31,12 +33,25 @@ import { MediaModule } from "./media/media.module";
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60_000,
-        limit: 1_000,
+    // With REDIS_URL the throttle counters are shared across replicas;
+    // without it they fall back to per-process memory, which is only
+    // correct while a single instance is deployed.
+    ThrottlerModule.forRootAsync({
+      useFactory: () => {
+        const redisUrl = process.env.REDIS_URL?.trim();
+        return {
+          throttlers: [
+            {
+              ttl: 60_000,
+              limit: 1_000,
+            },
+          ],
+          ...(redisUrl
+            ? { storage: new ThrottlerStorageRedisService(redisUrl) }
+            : {}),
+        };
       },
-    ]),
+    }),
     PrismaModule,
     AuthModule,
     MeModule,
@@ -61,7 +76,7 @@ import { MediaModule } from "./media/media.module";
     ConversationsModule,
     MediaModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
   providers: [
     {
       provide: APP_GUARD,

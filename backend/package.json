@@ -7,7 +7,7 @@
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "test": "node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts",
+    "test": "node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/password-reset-logic.test.ts",
     "prisma:generate": "prisma generate",
     "smoke": "npm run smoke:health && npm run smoke:auth",
     "smoke:health": "node scripts/smoke/health-smoke.js",
@@ -61,6 +61,7 @@
     "class-validator": "^0.15.1",
     "helmet": "^8.2.0",
     "passport": "^0.7.0",
+    "prisma": "^6.19.3",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -73,7 +74,6 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.10.1",
     "@types/passport-jwt": "^4.0.1",
-    "prisma": "^6.19.3",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3"

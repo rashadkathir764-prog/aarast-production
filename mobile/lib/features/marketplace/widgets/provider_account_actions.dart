@@ -57,10 +57,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                 subtitle: 'تحديث الملف والخدمات والطلبات والمحادثات',
                 icon: LucideIcons.refreshCw,
                 trailing: _isSyncing
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const AarastInlineSpinner(dimension: 20)
                     : null,
                 onTap: _isBusy ? null : _sync,
               ),
@@ -72,10 +69,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                 icon: LucideIcons.logOut,
                 color: AppTheme.danger,
                 trailing: _isLoggingOut
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                    ? const AarastInlineSpinner(dimension: 20)
                     : null,
                 onTap: _isBusy ? null : _confirmLogout,
               ),

@@ -6,6 +6,7 @@ import '../data/budget_expense_api.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../models/expense_summary.dart';
+import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
 
 class FinanceProvider extends ChangeNotifier {
@@ -19,6 +20,9 @@ class FinanceProvider extends ChangeNotifier {
   String? _noticeMessage;
   List<BudgetCategory> _budgetCategories = const [];
   List<Expense> _expenses = const [];
+  List<FinancialCommitment> _financialCommitments = const [];
+  List<FinancialPaymentRecord> _financialPaymentRecords = const [];
+  List<FinancialInstallment> _dueFinancialInstallments = const [];
   ExpenseSummary _summary = ExpenseSummary.empty();
   MoneySummary _moneySummary = MoneySummary.empty('');
 
@@ -28,6 +32,11 @@ class FinanceProvider extends ChangeNotifier {
   String? get noticeMessage => _noticeMessage;
   List<BudgetCategory> get budgetCategories => _budgetCategories;
   List<Expense> get expenses => _expenses;
+  List<FinancialCommitment> get financialCommitments => _financialCommitments;
+  List<FinancialPaymentRecord> get financialPaymentRecords =>
+      _financialPaymentRecords;
+  List<FinancialInstallment> get dueFinancialInstallments =>
+      _dueFinancialInstallments;
   ExpenseSummary get summary => _summary;
   MoneySummary get moneySummary => _moneySummary;
 
@@ -52,11 +61,19 @@ class FinanceProvider extends ChangeNotifier {
             ? _api.getExpenseSummary(weddingPlanId)
             : Future<ExpenseSummary>.value(ExpenseSummary.empty()),
         _api.getMoneySummary(weddingPlanId),
+        _api.getFinancialCommitments(weddingPlanId),
+        canReadExpenses
+            ? _api.getFinancialPaymentRecords(weddingPlanId)
+            : Future<List<FinancialPaymentRecord>>.value(const []),
+        _api.getDueFinancialInstallments(weddingPlanId),
       ]);
       _budgetCategories = results[0] as List<BudgetCategory>;
       _expenses = results[1] as List<Expense>;
       _summary = results[2] as ExpenseSummary;
       _moneySummary = results[3] as MoneySummary;
+      _financialCommitments = results[4] as List<FinancialCommitment>;
+      _financialPaymentRecords = results[5] as List<FinancialPaymentRecord>;
+      _dueFinancialInstallments = results[6] as List<FinancialInstallment>;
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -179,7 +196,7 @@ class FinanceProvider extends ChangeNotifier {
     required String title,
     required String amount,
     String? budgetCategoryId,
-    String status = 'PLANNED',
+    String status = 'PAID',
     DateTime? expenseDate,
     String? note,
   }) async {
@@ -212,6 +229,113 @@ class FinanceProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إنشاء المصروف.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createFinancialCommitment({
+    required String weddingPlanId,
+    required String budgetCategoryId,
+    required String title,
+    required String totalAmount,
+    String sourceType = 'MANUAL_COMMITMENT',
+    String? providerId,
+    String? planProviderLinkId,
+    String? quoteRequestId,
+    String? quoteOfferId,
+    String? partyName,
+    String? partyPhone,
+    String? paidAmount,
+    DateTime? dueDate,
+    DateTime? agreementDate,
+    String? note,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final commitment = await _api.createFinancialCommitment(
+        weddingPlanId: weddingPlanId,
+        budgetCategoryId: budgetCategoryId,
+        title: title,
+        totalAmount: totalAmount,
+        sourceType: sourceType,
+        providerId: providerId,
+        planProviderLinkId: planProviderLinkId,
+        quoteRequestId: quoteRequestId,
+        quoteOfferId: quoteOfferId,
+        partyName: partyName,
+        partyPhone: partyPhone,
+        paidAmount: paidAmount,
+        dueDate: dueDate,
+        agreementDate: agreementDate,
+        note: note,
+      );
+      _financialCommitments = [
+        commitment,
+        ..._financialCommitments.where((item) => item.id != commitment.id),
+      ];
+      await _refreshFinancialState(weddingPlanId);
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (commitment.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر إنشاء الالتزام المالي.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createFinancialPaymentRecord({
+    required String weddingPlanId,
+    required String commitmentId,
+    required String amount,
+    String? title,
+    DateTime? paidAt,
+    String? method,
+    String? note,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final payment = await _api.createFinancialPaymentRecord(
+        commitmentId: commitmentId,
+        amount: amount,
+        title: title,
+        paidAt: paidAt,
+        method: method,
+        note: note,
+      );
+      _financialPaymentRecords = [
+        payment,
+        ..._financialPaymentRecords.where((item) => item.id != payment.id),
+      ];
+      await _refreshFinancialState(weddingPlanId);
+      if (payment.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تسجيل الدفعة.';
       return false;
     } finally {
       _isSubmitting = false;
@@ -309,7 +433,7 @@ class FinanceProvider extends ChangeNotifier {
     required String title,
     required String amount,
     String? budgetCategoryId,
-    String status = 'PLANNED',
+    String status = 'PAID',
     DateTime? expenseDate,
     String? note,
   }) async {
@@ -382,6 +506,19 @@ class FinanceProvider extends ChangeNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _refreshFinancialState(String weddingPlanId) async {
+    final results = await Future.wait<Object>([
+      _api.getMoneySummary(weddingPlanId),
+      _api.getFinancialCommitments(weddingPlanId),
+      _api.getFinancialPaymentRecords(weddingPlanId),
+      _api.getDueFinancialInstallments(weddingPlanId),
+    ]);
+    _moneySummary = results[0] as MoneySummary;
+    _financialCommitments = results[1] as List<FinancialCommitment>;
+    _financialPaymentRecords = results[2] as List<FinancialPaymentRecord>;
+    _dueFinancialInstallments = results[3] as List<FinancialInstallment>;
   }
 
   void clearError() {

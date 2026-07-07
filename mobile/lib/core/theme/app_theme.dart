@@ -50,36 +50,12 @@ class AppTheme {
   // Backward Compatibility Aliases for other screens
   static const deepBurgundy = burgundy;
   static const warmGold = gold;
-  static const charcoal = ink;
   static const mediumGray = muted;
   static const burgundyDeep = burgundyDark;
   static const burgundyBright = burgundy;
   static const burgundy2 = burgundyDark;
   static const gold2 = goldSoft;
   static const successBg = successSoft;
-
-  static const dMaroon = burgundy;
-  static const dMaroonDeep = burgundyDark;
-  static const dMaroonBright = burgundy;
-  static const dGold = gold;
-  static const dGold2 = gold;
-  static const dGoldDeep = gold;
-  static const dBg = ivory;
-  static const dCard = pearl;
-  static const dCard2 = surface;
-  static const dInk = ink;
-  static const dInkSoft = muted;
-  static const dMuted = muted;
-  static const dLine = border;
-  static const dGreen = success;
-  static const dGreenBg = successSoft;
-  static const dOrange = warning;
-  static const dBlue = AarastDesignTokens.info;
-  static const dBlueBg = AarastDesignTokens.infoSoft;
-  static const dPinkBg = dangerSoft;
-  static const dCreamBg = pearl;
-  static const dMaroon2 = burgundyDark;
-  static const dTrack = disabled;
 
   // Common sizing
   static const double radiusSm = AarastDesignTokens.radiusSm;

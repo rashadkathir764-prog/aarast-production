@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -110,7 +111,7 @@ class _SharingContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isCheckingSharingAccess) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(rows: 4, rowHeight: 96, withHeader: true);
     }
 
     if (showLoginGate) {
@@ -130,30 +131,24 @@ class _SharingContent extends StatelessWidget {
     }
 
     if (provider.isLoading && provider.members.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return AarastSkeleton.list(rows: 4, rowHeight: 96, withHeader: true);
     }
 
     if (provider.errorMessage != null && provider.members.isEmpty) {
       return ListView(
         children: [
-          const SizedBox(height: 120),
-          Text(
-            provider.errorMessage!,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.danger),
-          ),
-          const SizedBox(height: 16),
-          AarastButton(
-            label: 'إعادة المحاولة',
-            icon: LucideIcons.refreshCw,
-            onPressed: () => provider.loadMembers(weddingPlanId),
+          const SizedBox(height: 40),
+          AarastErrorState(
+            title: 'تعذر تحميل المشاركة',
+            message: provider.errorMessage!,
+            onRetry: () => provider.loadMembers(weddingPlanId),
           ),
         ],
       );
     }
 
     return ListView(
-      children: [
+      children: AarastStagger.children(context, [
         _SharingHero(
           memberCount: provider.members.length,
           pendingInviteCount: provider.invites
@@ -244,7 +239,7 @@ class _SharingContent extends StatelessWidget {
                     context.push(AppRouter.editSharedMember(member.id));
                   },
           ),
-      ],
+      ]),
     );
   }
 }

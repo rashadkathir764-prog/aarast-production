@@ -1,0 +1,145 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
+import 'package:aarast_mobile/features/auth/screens/reset_password_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class _FakeAuthRepository extends AuthRepository {
+  _FakeAuthRepository(super.apiClient, super.authStorage);
+
+  int requestCalls = 0;
+  String? lastConfirmPhone;
+  String? lastConfirmCode;
+  String? lastConfirmPassword;
+  bool failConfirm = false;
+
+  @override
+  Future<OtpRequestResult> requestPasswordReset({
+    required String phone,
+  }) async {
+    requestCalls += 1;
+    return OtpRequestResult(
+      phone: phone,
+      purpose: 'RESET_PASSWORD',
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      delivery: 'LOCAL_DEV',
+      code: '123456',
+      message: 'رمز التحقق مؤقت للتجربة المحلية: 123456',
+    );
+  }
+
+  @override
+  Future<void> confirmPasswordReset({
+    required String phone,
+    required String code,
+    required String newPassword,
+  }) async {
+    if (failConfirm) {
+      throw const ApiException('OTP code is invalid or expired');
+    }
+    lastConfirmPhone = phone;
+    lastConfirmCode = code;
+    lastConfirmPassword = newPassword;
+  }
+}
+
+Future<_FakeAuthRepository> _fakeRepository() async {
+  SharedPreferences.setMockInitialValues({});
+  final preferences = await SharedPreferences.getInstance();
+  final authStorage = AuthStorage(preferences);
+  final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+  return _FakeAuthRepository(apiClient, authStorage);
+}
+
+Future<void> _pumpResetScreen(
+  WidgetTester tester,
+  _FakeAuthRepository repository,
+) async {
+  await tester.pumpWidget(
+    Provider<AuthRepository>.value(
+      value: repository,
+      child: const MaterialApp(home: ResetPasswordScreen()),
+    ),
+  );
+  await tester.pump(const Duration(milliseconds: 600));
+}
+
+void main() {
+  testWidgets('reset flow walks phone → code → new password → success', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    await _pumpResetScreen(tester, repository);
+
+    expect(find.text('استعادة كلمة المرور'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    expect(repository.requestCalls, 1);
+    expect(
+      find.text('رمز التحقق مؤقت للتجربة المحلية: 123456'),
+      findsOneWidget,
+    );
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '123456');
+    await tester.enterText(fields.at(1), 'new-secret');
+    await tester.enterText(fields.at(2), 'new-secret');
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pumpAndSettle();
+
+    expect(repository.lastConfirmCode, '123456');
+    expect(repository.lastConfirmPassword, 'new-secret');
+    expect(find.text('تم تغيير كلمة المرور'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
+  });
+
+  testWidgets('reset flow blocks mismatched password confirmation', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    await _pumpResetScreen(tester, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '123456');
+    await tester.enterText(fields.at(1), 'new-secret');
+    await tester.enterText(fields.at(2), 'different');
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('كلمتا المرور غير متطابقتين'), findsOneWidget);
+    expect(repository.lastConfirmPassword, isNull);
+  });
+
+  testWidgets('reset flow surfaces the server error without leaking details', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository()
+      ..failConfirm = true;
+    await _pumpResetScreen(tester, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '999999');
+    await tester.enterText(fields.at(1), 'new-secret');
+    await tester.enterText(fields.at(2), 'new-secret');
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('OTP code is invalid or expired'), findsOneWidget);
+    expect(find.text('تم تغيير كلمة المرور'), findsNothing);
+  });
+}

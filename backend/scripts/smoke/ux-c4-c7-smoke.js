@@ -197,6 +197,9 @@ async function run() {
 
   const financeBefore = await prisma.expense.count({ where: { weddingPlanId: planId } });
   const debtsBefore = await prisma.debt.count({ where: { weddingPlanId: planId } });
+  const commitmentsBefore = await prisma.financialCommitment.count({
+    where: { weddingPlanId: planId },
+  });
   const acceptResponse = await request(
     'PATCH',
     `/api/v1/quote-offers/${offerId}/accept`,
@@ -215,7 +218,13 @@ async function run() {
   check(
     'accepted quote response includes next actions',
     Array.isArray(acceptResponse.body?.nextActions) &&
-      acceptResponse.body.nextActions.includes('recordDebt'),
+      acceptResponse.body.nextActions.includes('createFinancialCommitment') &&
+      acceptResponse.body.nextActions.includes('recordPayment'),
+  );
+  check(
+    'accepted quote response suggests financial commitment',
+    acceptResponse.body?.financialSuggestion?.recommendedAction ===
+      'CREATE_FINANCIAL_COMMITMENT',
   );
   check(
     'accept creates no automatic expense',
@@ -224,6 +233,11 @@ async function run() {
   check(
     'accept creates no automatic debt',
     (await prisma.debt.count({ where: { weddingPlanId: planId } })) === debtsBefore,
+  );
+  check(
+    'accept creates no automatic financial commitment',
+    (await prisma.financialCommitment.count({ where: { weddingPlanId: planId } })) ===
+      commitmentsBefore,
   );
 
   const inviteResponse = await request(

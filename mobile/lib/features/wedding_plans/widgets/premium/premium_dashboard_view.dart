@@ -21,9 +21,10 @@ class PremiumDashboardView extends StatelessWidget {
     required this.onOpenTasks,
     required this.onOpenProviders,
     required this.onOpenGuests,
+    required this.onOpenSharing,
     required this.onOpenNextStep,
     required this.onOpenImportantItem,
-    required this.onAddExpense,
+    required this.onRecordPayment,
     this.personaHeadline,
     this.notice,
     this.now,
@@ -47,9 +48,10 @@ class PremiumDashboardView extends StatelessWidget {
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
+  final VoidCallback onOpenSharing;
   final VoidCallback onOpenNextStep;
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
-  final VoidCallback onAddExpense;
+  final VoidCallback onRecordPayment;
 
   bool get _hasBudget => (parseAmount(summary.totalBudgetForDisplay) ?? 0) > 0;
   bool get _hasTasks => summary.totalTasks > 0;
@@ -70,10 +72,7 @@ class PremiumDashboardView extends StatelessWidget {
         onProfile: onProfile,
         now: now,
       ),
-      if (notice != null) ...[
-        const SizedBox(height: 14),
-        notice!,
-      ],
+      if (notice != null) ...[const SizedBox(height: 14), notice!],
       const SizedBox(height: 18),
       AarastCountdownHero(
         planTitle: summary.title,
@@ -135,10 +134,10 @@ class PremiumDashboardView extends StatelessWidget {
             caption: summary.totalTasks == 0
                 ? 'ابدأ بأول مهمة'
                 : summary.overdueTasks > 0
-                    ? '${summary.overdueTasks} متأخرة'
-                    : summary.todayTasks > 0
-                        ? '${summary.todayTasks} اليوم'
-                        : 'تحت السيطرة',
+                ? '${summary.overdueTasks} متأخرة'
+                : summary.todayTasks > 0
+                ? '${summary.todayTasks} اليوم'
+                : 'تحت السيطرة',
             icon: LucideIcons.listChecks,
             onTap: onOpenTasks,
           ),
@@ -157,19 +156,24 @@ class PremiumDashboardView extends StatelessWidget {
             caption: summary.receivedQuotes > 0
                 ? '${summary.receivedQuotes} عرض وصل'
                 : summary.pendingQuoteRequests > 0
-                    ? '${summary.pendingQuoteRequests} بانتظار رد'
-                    : 'استكشف',
+                ? '${summary.pendingQuoteRequests} بانتظار رد'
+                : 'استكشف',
             icon: LucideIcons.store,
             onTap: onOpenProviders,
           ),
         ],
       ),
       const SizedBox(height: 14),
+      AarastParticipantsGlanceCard(
+        summary: summary,
+        onOpenSharing: onOpenSharing,
+      ),
+      const SizedBox(height: 14),
       if (summary.canViewMoney)
         AarastMoneyGlanceCard(
           summary: summary,
           onOpenMoney: onOpenMoney,
-          onAddExpense: onAddExpense,
+          onRecordPayment: onRecordPayment,
         ),
       if (!_isFreshPlan && smartAction == null) ...[
         const SizedBox(height: 14),
@@ -253,30 +257,36 @@ class _DashboardHeader extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 'أعرست',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(color: AarastDesignTokens.title),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: AarastDesignTokens.title,
+                ),
               ),
               if (isLocalOnly) ...[
                 const SizedBox(height: 6),
                 InkWell(
                   onTap: onProfile,
-                  borderRadius:
-                      BorderRadius.circular(AarastDesignTokens.radiusPill),
+                  borderRadius: BorderRadius.circular(
+                    AarastDesignTokens.radiusPill,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AarastDesignTokens.goldSoft,
-                      borderRadius:
-                          BorderRadius.circular(AarastDesignTokens.radiusPill),
+                      borderRadius: BorderRadius.circular(
+                        AarastDesignTokens.radiusPill,
+                      ),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(LucideIcons.smartphone,
-                            size: 12, color: AarastDesignTokens.warning),
+                        Icon(
+                          LucideIcons.smartphone,
+                          size: 12,
+                          color: AarastDesignTokens.warning,
+                        ),
                         SizedBox(width: 5),
                         Text(
                           'محفوظ محليًا · فعّل المزامنة',
@@ -355,7 +365,9 @@ class _HeaderIconButton extends StatelessWidget {
                       color: AarastDesignTokens.danger,
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: AarastDesignTokens.surface, width: 1.5),
+                        color: AarastDesignTokens.surface,
+                        width: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -380,8 +392,11 @@ class _AllClearCard extends StatelessWidget {
       ),
       child: const Row(
         children: [
-          Icon(LucideIcons.badgeCheck,
-              color: AarastDesignTokens.success, size: 24),
+          Icon(
+            LucideIcons.badgeCheck,
+            color: AarastDesignTokens.success,
+            size: 24,
+          ),
           SizedBox(width: 12),
           Expanded(
             child: Text(

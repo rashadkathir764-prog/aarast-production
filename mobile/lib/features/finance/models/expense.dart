@@ -19,7 +19,7 @@
       budgetCategoryId: json['budgetCategoryId']?.toString(),
       title: json['title'].toString(),
       amount: json['amount'].toString(),
-      status: json['status']?.toString() ?? 'PLANNED',
+      status: json['status']?.toString() ?? 'PAID',
       expenseDate: _dateTimeOrNull(json['expenseDate']),
       note: json['note']?.toString(),
       createdAt: _dateTimeOrNow(json['createdAt']),

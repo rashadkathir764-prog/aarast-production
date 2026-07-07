@@ -24,13 +24,22 @@ void main() {
     test('back the legacy AppTheme aliases used by production screens', () {
       expect(AppTheme.deepBurgundy, AarastDesignTokens.royalMaroon);
       expect(AppTheme.warmGold, AarastDesignTokens.champagneGold);
-      expect(AppTheme.dBg, AarastDesignTokens.warmIvory);
-      expect(AppTheme.dCard, AarastDesignTokens.pearl);
-      expect(AppTheme.dInk, AarastDesignTokens.ink);
-      expect(AppTheme.dLine, AarastDesignTokens.hairline);
-      expect(AppTheme.dBlue, AarastDesignTokens.info);
-      expect(AppTheme.dBlueBg, AarastDesignTokens.infoSoft);
-      expect(AppTheme.dTrack, AarastDesignTokens.disabled);
+      expect(AppTheme.mediumGray, AarastDesignTokens.muted);
+      expect(AppTheme.burgundyDeep, AarastDesignTokens.burgundyDark);
+      expect(AppTheme.burgundyBright, AarastDesignTokens.burgundy);
+      expect(AppTheme.burgundy2, AarastDesignTokens.burgundyDark);
+      expect(AppTheme.gold2, AarastDesignTokens.goldSoft);
+      expect(AppTheme.successBg, AarastDesignTokens.successSoft);
+    });
+
+    test('re-exports the canonical scale so features import AppTheme only', () {
+      expect(AppTheme.space16, AarastDesignTokens.space16);
+      expect(AppTheme.iconMd, AarastDesignTokens.iconMd);
+      expect(AppTheme.minTapTarget, AarastDesignTokens.minTapTarget);
+      expect(AppTheme.radiusPill, AarastDesignTokens.radiusPill);
+      expect(AppTheme.motionQuick, AarastDesignTokens.motionQuick);
+      expect(AppTheme.motionSlow, AarastDesignTokens.motionSlow);
+      expect(AppTheme.cardPadding, AarastDesignTokens.cardPadding);
     });
 
     test('define a complete visual rhythm for cards and motion', () {

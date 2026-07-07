@@ -12,8 +12,8 @@ export interface OtpDeliveryResult {
 /**
  * Seam for OTP delivery. AuthService owns generation/storage/verification;
  * a channel only produces the code format and delivers it out-of-band.
- * The WhatsApp Business channel plugs in here (release plan phase 8)
- * without touching AuthService logic.
+ * Production WhatsApp delivery intentionally remains unimplemented until the
+ * approved Meta provider phase is started.
  */
 export interface OtpChannel {
   generateCode(): string;

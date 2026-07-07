@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -23,7 +24,10 @@ void main() {
     expect(source, contains('Provider<MediaUploadApi>'));
     expect(source, contains('Provider<ChatApi>'));
     expect(source, contains('Provider<ChatRealtimeClient>'));
-    expect(source, contains('ChangeNotifierProvider<ChatProvider>'));
+    expect(
+      source,
+      contains('ChangeNotifierProxyProvider<AuthController, ChatProvider>'),
+    );
     expect(source, contains('ChatProvider('));
   });
 
@@ -65,6 +69,15 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
       final storage = AuthStorage(preferences);
+      await storage.saveSession(
+        accessToken: 'access-token',
+        user: const SafeUser(
+          id: 'user-1',
+          name: 'المستخدم',
+          role: 'USER',
+          status: 'ACTIVE',
+        ),
+      );
       final api = _CountingChatApi();
       final realtime = _CountingRealtimeClient(storage);
       final chat = ChatProvider(
@@ -116,7 +129,10 @@ void main() {
       'quoteRequestId': 'quote-1',
       'unreadCount': 2,
       'muted': false,
-      'blocked': false,
+      'blocked': true,
+      'blockedByMe': false,
+      'blockedByCounterpart': true,
+      'counterpartLastReadAt': '2026-07-05T10:01:00.000Z',
       'counterpart': {
         'id': 'provider-user-1',
         'name': 'قاعة الياسمين',
@@ -141,6 +157,12 @@ void main() {
     });
 
     expect(conversation.unreadCount, 2);
+    expect(conversation.blockedByMe, isFalse);
+    expect(conversation.blockedByCounterpart, isTrue);
+    expect(
+      conversation.counterpartLastReadAt,
+      DateTime.parse('2026-07-05T10:01:00.000Z'),
+    );
     expect(conversation.counterpart.name, 'قاعة الياسمين');
     expect(conversation.serviceTitle, 'تنسيق القاعة');
     expect(conversation.lastMessage?.body, 'مرحبًا، وصل طلبكم');
@@ -320,7 +342,12 @@ class _CountingRealtimeClient extends ChatRealtimeClient {
   @override
   Future<void> connect({
     required void Function(ChatMessage message) onMessage,
-    required void Function(String conversationId, String userId) onRead,
+    required void Function(
+      String conversationId,
+      String userId,
+      DateTime? lastReadAt,
+    )
+    onRead,
   }) async {
     connectCalls += 1;
   }

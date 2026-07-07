@@ -95,7 +95,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     AppRouter.createExpense(widget.weddingPlanId),
                   ),
                   icon: const Icon(LucideIcons.plus),
-                  tooltip: 'إضافة مصروف',
+                  tooltip: 'تسجيل مصروف مدفوع',
                   style: IconButton.styleFrom(
                     backgroundColor: AppTheme.burgundy,
                     foregroundColor: Colors.white,

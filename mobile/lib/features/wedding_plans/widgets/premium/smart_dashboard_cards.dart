@@ -49,8 +49,9 @@ class SmartAction {
 
 /// يحسب أهم خطوة الآن بأولوية: مال مستحق ← مهام متأخرة ← عروض وصلت ← مهام اليوم.
 SmartAction? resolveSmartAction(DashboardSummary summary) {
-  final backendItem =
-      summary.importantItems.isNotEmpty ? summary.importantItems.first : null;
+  final backendItem = summary.importantItems.isNotEmpty
+      ? summary.importantItems.first
+      : null;
   if (backendItem != null) {
     return SmartAction(
       title: backendItem.title,
@@ -64,7 +65,8 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
   if ((summary.dueInstallmentsCount ?? 0) > 0) {
     return SmartAction(
       title: 'قسط مستحق ينتظرك',
-      reason: 'لديك ${summary.dueInstallmentsCount} قسط حان موعده — سدّده قبل ما يتراكم.',
+      reason:
+          'لديك ${summary.dueInstallmentsCount} قسط حان موعده — سدّده قبل ما يتراكم.',
       icon: LucideIcons.calendarClock,
       tone: SmartActionTone.urgent,
     );
@@ -72,7 +74,8 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
   if (summary.overdueTasks > 0) {
     return SmartAction(
       title: 'مهام متأخرة تحتاجك',
-      reason: '${summary.overdueTasks} مهمة تجاوزت موعدها — رتبها اليوم يرتاح بالك.',
+      reason:
+          '${summary.overdueTasks} مهمة تجاوزت موعدها — رتبها اليوم يرتاح بالك.',
       icon: LucideIcons.alarmClock,
       tone: SmartActionTone.urgent,
     );
@@ -80,7 +83,8 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
   if (summary.receivedQuotes > 0) {
     return SmartAction(
       title: 'وصلك عرض سعر جديد',
-      reason: '${summary.receivedQuotes} عرض بانتظار قرارك — قارن واختر براحتك.',
+      reason:
+          '${summary.receivedQuotes} عرض بانتظار قرارك — قارن واختر براحتك.',
       icon: LucideIcons.mailOpen,
       tone: SmartActionTone.celebrate,
     );
@@ -96,7 +100,8 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
   if (summary.pendingInvites > 0) {
     return SmartAction(
       title: 'دعوة مشاركة معلقة',
-      reason: '${summary.pendingInvites} دعوة لم يُرد عليها بعد — تابعها من المشاركة.',
+      reason:
+          '${summary.pendingInvites} دعوة لم يُرد عليها بعد — تابعها من المشاركة.',
       icon: LucideIcons.userPlus,
       tone: SmartActionTone.attention,
     );
@@ -106,8 +111,10 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
 
 IconData _iconForType(String type) {
   final upper = type.toUpperCase();
-  if (upper.contains('INSTALLMENT') || upper.contains('MONEY') ||
-      upper.contains('BUDGET') || upper.contains('EXPENSE')) {
+  if (upper.contains('INSTALLMENT') ||
+      upper.contains('MONEY') ||
+      upper.contains('BUDGET') ||
+      upper.contains('EXPENSE')) {
     return LucideIcons.wallet;
   }
   if (upper.contains('TASK')) return LucideIcons.listChecks;
@@ -144,18 +151,18 @@ class AarastNextActionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   Color get _accent => switch (action.tone) {
-        SmartActionTone.urgent => AarastDesignTokens.danger,
-        SmartActionTone.attention => AarastDesignTokens.gold,
-        SmartActionTone.celebrate => AarastDesignTokens.success,
-        SmartActionTone.calm => AarastDesignTokens.info,
-      };
+    SmartActionTone.urgent => AarastDesignTokens.danger,
+    SmartActionTone.attention => AarastDesignTokens.gold,
+    SmartActionTone.celebrate => AarastDesignTokens.success,
+    SmartActionTone.calm => AarastDesignTokens.info,
+  };
 
   Color get _accentSoft => switch (action.tone) {
-        SmartActionTone.urgent => AarastDesignTokens.dangerSoft,
-        SmartActionTone.attention => AarastDesignTokens.goldSoft,
-        SmartActionTone.celebrate => AarastDesignTokens.successSoft,
-        SmartActionTone.calm => AarastDesignTokens.infoSoft,
-      };
+    SmartActionTone.urgent => AarastDesignTokens.dangerSoft,
+    SmartActionTone.attention => AarastDesignTokens.goldSoft,
+    SmartActionTone.celebrate => AarastDesignTokens.successSoft,
+    SmartActionTone.calm => AarastDesignTokens.infoSoft,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -209,61 +216,61 @@ class AarastNextActionCard extends StatelessWidget {
                   child: Container(width: 4, color: _accent),
                 ),
                 Padding(
-                    padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 12, 14),
-                    child: Row(
-                      children: [
-                        iconBadge,
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'الخطوة الذكية',
-                                style: TextStyle(
-                                  color: _accent,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.2,
-                                ),
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 12, 14),
+                  child: Row(
+                    children: [
+                      iconBadge,
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'الخطوة الذكية',
+                              style: TextStyle(
+                                color: _accent,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                action.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AarastDesignTokens.ink,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.3,
-                                ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              action.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AarastDesignTokens.ink,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                height: 1.3,
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                action.reason,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AarastDesignTokens.muted,
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.45,
-                                ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              action.reason,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AarastDesignTokens.muted,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                height: 1.45,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          LucideIcons.chevronLeft,
-                          size: 20,
-                          color: AarastDesignTokens.muted.withValues(alpha: 0.7),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        LucideIcons.chevronLeft,
+                        size: 20,
+                        color: AarastDesignTokens.muted.withValues(alpha: 0.7),
+                      ),
+                    ],
                   ),
+                ),
               ],
             ),
           ),
@@ -307,7 +314,9 @@ class AarastSetupJourneyCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AarastDesignTokens.surface,
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
-        border: Border.all(color: AarastDesignTokens.gold.withValues(alpha: 0.45)),
+        border: Border.all(
+          color: AarastDesignTokens.gold.withValues(alpha: 0.45),
+        ),
         boxShadow: [
           BoxShadow(
             color: AarastDesignTokens.gold.withValues(alpha: 0.12),
@@ -322,8 +331,11 @@ class AarastSetupJourneyCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.sparkles,
-                  color: AarastDesignTokens.gold, size: 20),
+              const Icon(
+                LucideIcons.sparkles,
+                color: AarastDesignTokens.gold,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
@@ -391,8 +403,11 @@ class _SetupStepRow extends StatelessWidget {
               color: AarastDesignTokens.success,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.check_rounded,
-                color: Colors.white, size: 18),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
           )
         : Container(
             width: 30,
@@ -455,8 +470,9 @@ class _SetupStepRow extends StatelessWidget {
                             : AarastDesignTokens.ink,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
-                        decoration:
-                            step.done ? TextDecoration.lineThrough : null,
+                        decoration: step.done
+                            ? TextDecoration.lineThrough
+                            : null,
                         decorationColor: AarastDesignTokens.muted,
                       ),
                     ),
@@ -604,17 +620,234 @@ class _PulseTile extends StatelessWidget {
 // لمحة المال — بطاقة واحدة هادئة: ٣ أرقام وشريط حي، أو دعوة لتحديد الميزانية.
 // ---------------------------------------------------------------------------
 
+class AarastParticipantsGlanceCard extends StatelessWidget {
+  const AarastParticipantsGlanceCard({
+    required this.summary,
+    required this.onOpenSharing,
+    super.key,
+  });
+
+  final DashboardSummary summary;
+  final VoidCallback onOpenSharing;
+
+  bool get _canManageSharing =>
+      summary.permissions.isOwner || summary.permissions.canManageMembers;
+
+  String get _roleLabel {
+    final role = (summary.currentUserRole ?? summary.permissions.role ?? '')
+        .toUpperCase();
+    if (summary.permissions.isOwner || role == 'OWNER') return 'مالك الخطة';
+    if (role.contains('MANAGER')) return 'مدير';
+    if (role.contains('CONTRIBUTOR')) return 'مساهم';
+    if (role.contains('VIEWER')) return 'مشاهد';
+    if (summary.isLocalOnly) return 'خطة محلية';
+    return 'عضو في الخطة';
+  }
+
+  String get _body {
+    if (summary.isLocalOnly) {
+      return 'المشاركة تحتاج حساباً لحفظ الصلاحيات والدعوات بأمان.';
+    }
+    if (summary.participantCount <= 1 && summary.pendingInvites == 0) {
+      return 'أنت فقط على هذه الخطة حتى الآن.';
+    }
+    if (summary.pendingInvites > 0) {
+      return '${summary.pendingInvites} دعوة بانتظار الرد.';
+    }
+    return 'صلاحيات المشاركين مرتبطة بهذه الخطة.';
+  }
+
+  String get _actionLabel {
+    if (summary.isLocalOnly) return 'تفعيل المشاركة';
+    return _canManageSharing ? 'إدارة المشاركين' : 'عرض المشاركة';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpenSharing,
+        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AarastDesignTokens.surface,
+            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+            border: Border.all(color: AarastDesignTokens.border),
+            boxShadow: [
+              BoxShadow(
+                color: AarastDesignTokens.ink.withValues(alpha: 0.04),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AarastDesignTokens.infoSoft,
+                      borderRadius: BorderRadius.circular(
+                        AarastDesignTokens.radiusSm,
+                      ),
+                    ),
+                    child: const Icon(
+                      LucideIcons.users,
+                      color: AarastDesignTokens.info,
+                      size: 19,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'المشاركون في الخطة',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AarastDesignTokens.title,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    LucideIcons.chevronLeft,
+                    size: 20,
+                    color: AarastDesignTokens.muted.withValues(alpha: 0.7),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _ParticipantMetric(
+                    label: 'المشاركون',
+                    value: summary.participantCount.toString(),
+                  ),
+                  _ParticipantMetric(
+                    label: 'دعوات معلقة',
+                    value: summary.pendingInvites.toString(),
+                  ),
+                  _ParticipantMetric(label: 'دورك', value: _roleLabel),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: AarastDesignTokens.infoSoft.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(
+                    AarastDesignTokens.radiusSm,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.shieldCheck,
+                      size: 16,
+                      color: AarastDesignTokens.info,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _body,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AarastDesignTokens.ink,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  _actionLabel,
+                  style: const TextStyle(
+                    color: AarastDesignTokens.burgundy,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ParticipantMetric extends StatelessWidget {
+  const _ParticipantMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AarastDesignTokens.muted,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(
+                color: AarastDesignTokens.ink,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class AarastMoneyGlanceCard extends StatelessWidget {
   const AarastMoneyGlanceCard({
     required this.summary,
     required this.onOpenMoney,
-    required this.onAddExpense,
+    required this.onRecordPayment,
     super.key,
   });
 
   final DashboardSummary summary;
   final VoidCallback onOpenMoney;
-  final VoidCallback onAddExpense;
+  final VoidCallback onRecordPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -654,11 +887,15 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                     height: 38,
                     decoration: BoxDecoration(
                       color: AarastDesignTokens.goldSoft,
-                      borderRadius:
-                          BorderRadius.circular(AarastDesignTokens.radiusSm),
+                      borderRadius: BorderRadius.circular(
+                        AarastDesignTokens.radiusSm,
+                      ),
                     ),
-                    child: const Icon(LucideIcons.wallet,
-                        color: AarastDesignTokens.gold, size: 19),
+                    child: const Icon(
+                      LucideIcons.wallet,
+                      color: AarastDesignTokens.gold,
+                      size: 19,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   const Expanded(
@@ -672,10 +909,13 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: onAddExpense,
-                    tooltip: 'إضافة مصروف',
-                    icon: const Icon(Icons.add_circle_rounded,
-                        color: AarastDesignTokens.burgundy, size: 26),
+                    onPressed: onRecordPayment,
+                    tooltip: 'تسجيل دفعة',
+                    icon: const Icon(
+                      Icons.add_circle_rounded,
+                      color: AarastDesignTokens.burgundy,
+                      size: 26,
+                    ),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
                       minWidth: AarastDesignTokens.minTapTarget,
@@ -689,16 +929,22 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AarastDesignTokens.goldSoft.withValues(alpha: 0.6),
-                    borderRadius:
-                        BorderRadius.circular(AarastDesignTokens.radiusSm),
+                    borderRadius: BorderRadius.circular(
+                      AarastDesignTokens.radiusSm,
+                    ),
                   ),
                   child: const Row(
                     children: [
-                      Icon(LucideIcons.flag,
-                          size: 16, color: AarastDesignTokens.warning),
+                      Icon(
+                        LucideIcons.flag,
+                        size: 16,
+                        color: AarastDesignTokens.warning,
+                      ),
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -746,8 +992,9 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                     builder: (context, value, _) => LinearProgressIndicator(
                       value: value,
                       minHeight: 7,
-                      backgroundColor: AarastDesignTokens.border
-                          .withValues(alpha: 0.6),
+                      backgroundColor: AarastDesignTokens.border.withValues(
+                        alpha: 0.6,
+                      ),
                       valueColor: AlwaysStoppedAnimation(
                         nearLimit
                             ? AarastDesignTokens.warning

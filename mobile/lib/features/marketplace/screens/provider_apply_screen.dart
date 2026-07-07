@@ -86,10 +86,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                   context.go('${AppRouter.register}?type=provider'),
             )
           else if (dashboard.isLoading && dashboard.profile == null)
-            const Padding(
-              padding: EdgeInsets.only(top: 120),
-              child: Center(child: CircularProgressIndicator()),
-            )
+            AarastSkeleton.form(fields: 4, inline: true)
           else if (hasProfile)
             _AlreadyProviderCard(
               status: dashboard.profile?.status ?? 'PENDING',
@@ -184,16 +181,11 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                       _InlineError(message: dashboard.errorMessage!),
                     ],
                     const SizedBox(height: 18),
-                    FilledButton.icon(
+                    AarastButton(
+                      label: 'إرسال طلب الانضمام',
+                      icon: LucideIcons.send,
+                      isLoading: dashboard.isSubmitting,
                       onPressed: dashboard.isSubmitting ? null : _submit,
-                      icon: dashboard.isSubmitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(LucideIcons.send),
-                      label: const Text('إرسال طلب الانضمام'),
                     ),
                   ],
                 ),

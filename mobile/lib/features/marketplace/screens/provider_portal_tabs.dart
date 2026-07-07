@@ -817,10 +817,7 @@ class _ServiceManagementCard extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: busy ? null : onAddImage,
             icon: busy
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const AarastInlineSpinner()
                 : const Icon(LucideIcons.imagePlus),
             label: const Text('إضافة صورة للعمل'),
           ),

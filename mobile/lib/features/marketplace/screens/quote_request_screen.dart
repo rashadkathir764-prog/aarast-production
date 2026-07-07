@@ -280,16 +280,11 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  FilledButton.icon(
+                  AarastButton(
+                    label: 'إرسال الطلب',
+                    icon: LucideIcons.send,
+                    isLoading: marketplace.isSubmitting,
                     onPressed: marketplace.isSubmitting ? null : _submit,
-                    icon: marketplace.isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(LucideIcons.send),
-                    label: const Text('إرسال الطلب'),
                   ),
                   const SizedBox(height: 24),
                 ],

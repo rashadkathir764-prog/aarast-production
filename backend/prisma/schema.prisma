@@ -75,6 +75,20 @@ enum InstallmentStatus {
   CANCELLED
 }
 
+enum FinancialCommitmentSourceType {
+  PROVIDER_SERVICE
+  MANUAL_DEBT
+  MANUAL_COMMITMENT
+  OTHER
+}
+
+enum FinancialCommitmentStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
 enum WeddingTaskStatus {
   TODO
   IN_PROGRESS
@@ -274,50 +288,56 @@ model RefreshToken {
 }
 
 model WeddingPlan {
-  id                    String             @id @default(cuid())
-  ownerUserId           String
-  title                 String
-  city                  String?
-  location              Json?
-  weddingDate           DateTime?
-  priorities            String[]           @default([])
-  estimatedBudget       Decimal?           @db.Decimal(14, 2)
-  currency              String             @default("YER")
-  onboardingPath        OnboardingPath?
-  persona               WeddingPersona?
-  onboardingCompletedAt DateTime?
-  importMigrationId     String?
-  status                WeddingPlanStatus  @default(PLANNING)
-  createdAt             DateTime           @default(now())
-  updatedAt             DateTime           @updatedAt
-  owner                 User               @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
-  activeForUsers        User[]             @relation("ActiveWeddingPlan")
-  budgetCategories      BudgetCategory[]
-  expenses              Expense[]
-  debts                 Debt[]
-  tasks                 WeddingTask[]
-  sharedMembers         SharedMember[]
-  planInvites           PlanInvite[]
-  quoteRequests         QuoteRequest[]
-  bookingLeads          BookingLead[]
-  notifications         Notification[]
-  guests                Guest[]
-  guestGroups           GuestGroup[]
-  providerLinks         PlanProviderLink[]
+  id                      String                   @id @default(cuid())
+  ownerUserId             String
+  title                   String
+  city                    String?
+  location                Json?
+  weddingDate             DateTime?
+  priorities              String[]                 @default([])
+  estimatedBudget         Decimal?                 @db.Decimal(14, 2)
+  currency                String                   @default("YER")
+  onboardingPath          OnboardingPath?
+  persona                 WeddingPersona?
+  onboardingCompletedAt   DateTime?
+  importMigrationId       String?
+  status                  WeddingPlanStatus        @default(PLANNING)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  owner                   User                     @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
+  activeForUsers          User[]                   @relation("ActiveWeddingPlan")
+  budgetCategories        BudgetCategory[]
+  expenses                Expense[]
+  debts                   Debt[]
+  financialCommitments    FinancialCommitment[]
+  financialPaymentRecords FinancialPaymentRecord[]
+  financialInstallments   FinancialInstallment[]
+  tasks                   WeddingTask[]
+  sharedMembers           SharedMember[]
+  planInvites             PlanInvite[]
+  quoteRequests           QuoteRequest[]
+  bookingLeads            BookingLead[]
+  notifications           Notification[]
+  guests                  Guest[]
+  guestGroups             GuestGroup[]
+  providerLinks           PlanProviderLink[]
 
   @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
 }
 
 model BudgetCategory {
-  id            String      @id @default(cuid())
-  weddingPlanId String
-  name          String
-  targetAmount  Decimal?    @db.Decimal(14, 2)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  weddingPlan   WeddingPlan @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  expenses      Expense[]
+  id                      String                   @id @default(cuid())
+  weddingPlanId           String
+  name                    String
+  targetAmount            Decimal?                 @db.Decimal(14, 2)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  weddingPlan             WeddingPlan              @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  expenses                Expense[]
+  financialCommitments    FinancialCommitment[]
+  financialPaymentRecords FinancialPaymentRecord[]
+  financialInstallments   FinancialInstallment[]
 
   @@index([weddingPlanId])
 }
@@ -374,6 +394,88 @@ model Installment {
 
   @@index([debtId])
   @@index([status, dueDate])
+}
+
+model FinancialCommitment {
+  id                 String                        @id @default(cuid())
+  weddingPlanId      String
+  budgetCategoryId   String
+  providerId         String?
+  planProviderLinkId String?
+  quoteRequestId     String?
+  quoteOfferId       String?
+  sourceType         FinancialCommitmentSourceType @default(MANUAL_COMMITMENT)
+  title              String
+  partyName          String?
+  partyPhone         String?
+  totalAmount        Decimal                       @db.Decimal(14, 2)
+  paidAmount         Decimal                       @default(0) @db.Decimal(14, 2)
+  dueDate            DateTime?
+  agreementDate      DateTime?
+  status             FinancialCommitmentStatus     @default(OPEN)
+  note               String?
+  legacyDebtId       String?                       @unique
+  createdAt          DateTime                      @default(now())
+  updatedAt          DateTime                      @updatedAt
+  weddingPlan        WeddingPlan                   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  budgetCategory     BudgetCategory                @relation(fields: [budgetCategoryId], references: [id], onDelete: Restrict)
+  provider           Provider?                     @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  planProviderLink   PlanProviderLink?             @relation(fields: [planProviderLinkId], references: [id], onDelete: SetNull)
+  quoteRequest       QuoteRequest?                 @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer         QuoteOffer?                   @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  paymentRecords     FinancialPaymentRecord[]
+  installments       FinancialInstallment[]
+
+  @@index([weddingPlanId, status])
+  @@index([budgetCategoryId])
+  @@index([providerId])
+  @@index([planProviderLinkId])
+  @@index([quoteRequestId])
+  @@index([quoteOfferId])
+  @@index([sourceType])
+}
+
+model FinancialPaymentRecord {
+  id                    String              @id @default(cuid())
+  weddingPlanId         String
+  financialCommitmentId String
+  budgetCategoryId      String
+  title                 String
+  amount                Decimal             @db.Decimal(14, 2)
+  paidAt                DateTime            @default(now())
+  method                String?
+  note                  String?
+  legacyExpenseId       String?             @unique
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  weddingPlan           WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  financialCommitment   FinancialCommitment @relation(fields: [financialCommitmentId], references: [id], onDelete: Cascade)
+  budgetCategory        BudgetCategory      @relation(fields: [budgetCategoryId], references: [id], onDelete: Restrict)
+
+  @@index([weddingPlanId, paidAt])
+  @@index([financialCommitmentId])
+  @@index([budgetCategoryId])
+}
+
+model FinancialInstallment {
+  id                    String              @id @default(cuid())
+  weddingPlanId         String
+  financialCommitmentId String
+  budgetCategoryId      String
+  amount                Decimal             @db.Decimal(14, 2)
+  dueDate               DateTime?
+  paidAt                DateTime?
+  status                InstallmentStatus   @default(PENDING)
+  note                  String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  weddingPlan           WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  financialCommitment   FinancialCommitment @relation(fields: [financialCommitmentId], references: [id], onDelete: Cascade)
+  budgetCategory        BudgetCategory      @relation(fields: [budgetCategoryId], references: [id], onDelete: Restrict)
+
+  @@index([weddingPlanId, status, dueDate])
+  @@index([financialCommitmentId])
+  @@index([budgetCategoryId])
 }
 
 model WeddingTask {
@@ -605,42 +707,43 @@ model ProviderCategory {
 }
 
 model Provider {
-  id                String             @id @default(uuid())
-  userId            String?            @unique
-  cityId            String
-  primaryCategoryId String?
-  businessName      String
-  ownerName         String?
-  phone             String
-  whatsapp          String?
-  email             String?
-  description       String?            @db.Text
-  address           String?
-  latitude          Decimal?           @db.Decimal(10, 7)
-  longitude         Decimal?           @db.Decimal(10, 7)
-  logoUrl           String?
-  coverUrl          String?
-  status            ProviderStatus     @default(PENDING)
-  reviewNote        String?            @db.Text
-  reviewedAt        DateTime?
-  reviewedById      String?
-  isFeatured        Boolean            @default(false)
-  ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
-  ratingCount       Int                @default(0)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  city              City               @relation(fields: [cityId], references: [id])
-  primaryCategory   ProviderCategory?  @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
-  reviewedBy        User?              @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  services          ProviderService[]
-  packages          ProviderPackage[]
-  favorites         FavoriteProvider[]
-  reviews           ProviderReview[]
-  quoteRequests     QuoteRequest[]
-  quoteOffers       QuoteOffer[]
-  bookingLeads      BookingLead[]
-  planLinks         PlanProviderLink[]
+  id                   String                @id @default(uuid())
+  userId               String?               @unique
+  cityId               String
+  primaryCategoryId    String?
+  businessName         String
+  ownerName            String?
+  phone                String
+  whatsapp             String?
+  email                String?
+  description          String?               @db.Text
+  address              String?
+  latitude             Decimal?              @db.Decimal(10, 7)
+  longitude            Decimal?              @db.Decimal(10, 7)
+  logoUrl              String?
+  coverUrl             String?
+  status               ProviderStatus        @default(PENDING)
+  reviewNote           String?               @db.Text
+  reviewedAt           DateTime?
+  reviewedById         String?
+  isFeatured           Boolean               @default(false)
+  ratingAverage        Decimal               @default(0) @db.Decimal(3, 2)
+  ratingCount          Int                   @default(0)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  user                 User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  city                 City                  @relation(fields: [cityId], references: [id])
+  primaryCategory      ProviderCategory?     @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  reviewedBy           User?                 @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  services             ProviderService[]
+  packages             ProviderPackage[]
+  favorites            FavoriteProvider[]
+  reviews              ProviderReview[]
+  quoteRequests        QuoteRequest[]
+  quoteOffers          QuoteOffer[]
+  bookingLeads         BookingLead[]
+  planLinks            PlanProviderLink[]
+  financialCommitments FinancialCommitment[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
@@ -733,7 +836,7 @@ model ProviderReview {
 }
 
 model QuoteRequest {
-  id                     String             @id @default(uuid())
+  id                     String                @id @default(uuid())
   userId                 String
   weddingPlanId          String?
   providerId             String
@@ -745,23 +848,24 @@ model QuoteRequest {
   contactName            String?
   contactPhone           String?
   contactNormalizedPhone String?
-  message                String?            @db.Text
-  budgetMin              Decimal?           @db.Decimal(14, 2)
-  budgetMax              Decimal?           @db.Decimal(14, 2)
-  status                 QuoteRequestStatus @default(SENT)
+  message                String?               @db.Text
+  budgetMin              Decimal?              @db.Decimal(14, 2)
+  budgetMax              Decimal?              @db.Decimal(14, 2)
+  status                 QuoteRequestStatus    @default(SENT)
   acceptedAt             DateTime?
   rejectedAt             DateTime?
   cancelledAt            DateTime?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weddingPlan            WeddingPlan?       @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
-  provider               Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service                ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  city                   City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan            WeddingPlan?          @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider               Provider              @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service                ProviderService?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  city                   City?                 @relation(fields: [cityId], references: [id], onDelete: SetNull)
   bookingLeads           BookingLead[]
   offers                 QuoteOffer[]
   providerLinks          PlanProviderLink[]
+  financialCommitments   FinancialCommitment[]
   conversation           Conversation?
 
   @@index([userId, status])
@@ -771,38 +875,40 @@ model QuoteRequest {
 }
 
 model QuoteOffer {
-  id             String             @id @default(uuid())
-  quoteRequestId String
-  providerId     String
-  title          String?
-  message        String?            @db.Text
-  amount         Decimal?           @db.Decimal(14, 2)
-  currency       String             @default("YER")
-  validUntil     DateTime?
-  status         QuoteOfferStatus   @default(PENDING)
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  quoteRequest   QuoteRequest       @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
-  provider       Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  providerLinks  PlanProviderLink[]
+  id                   String                @id @default(uuid())
+  quoteRequestId       String
+  providerId           String
+  title                String?
+  message              String?               @db.Text
+  amount               Decimal?              @db.Decimal(14, 2)
+  currency             String                @default("YER")
+  validUntil           DateTime?
+  status               QuoteOfferStatus      @default(PENDING)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  quoteRequest         QuoteRequest          @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  provider             Provider              @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerLinks        PlanProviderLink[]
+  financialCommitments FinancialCommitment[]
 
   @@index([quoteRequestId, status])
   @@index([providerId, status])
 }
 
 model PlanProviderLink {
-  id             String                 @id @default(uuid())
-  weddingPlanId  String
-  providerId     String
-  quoteRequestId String?
-  quoteOfferId   String?
-  status         PlanProviderLinkStatus @default(ACTIVE)
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-  weddingPlan    WeddingPlan            @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  provider       Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  quoteRequest   QuoteRequest?          @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
-  quoteOffer     QuoteOffer?            @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  id                   String                 @id @default(uuid())
+  weddingPlanId        String
+  providerId           String
+  quoteRequestId       String?
+  quoteOfferId         String?
+  status               PlanProviderLinkStatus @default(ACTIVE)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  weddingPlan          WeddingPlan            @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  provider             Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  quoteRequest         QuoteRequest?          @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer           QuoteOffer?            @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  financialCommitments FinancialCommitment[]
 
   @@unique([weddingPlanId, providerId])
   @@index([providerId, status])

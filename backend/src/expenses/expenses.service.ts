@@ -42,15 +42,18 @@ export class ExpensesService {
     dto: CreateExpenseDto,
   ): Promise<ExpenseResponse> {
     await this.permissionService.assertFinancialManageable(weddingPlanId, currentUser);
-    await this.assertCategoryBelongsToPlan(dto.budgetCategoryId, weddingPlanId);
+    const budgetCategoryId = this.requiredBudgetCategoryId(
+      dto.budgetCategoryId,
+    );
+    await this.assertCategoryBelongsToPlan(budgetCategoryId, weddingPlanId);
 
     const expense = await this.prisma.expense.create({
       data: {
         weddingPlanId,
-        budgetCategoryId: this.optionalId(dto.budgetCategoryId),
+        budgetCategoryId,
         title: this.requiredText(dto.title, 'title'),
-        amount: this.requiredNonNegativeDecimal(dto.amount, 'amount'),
-        status: dto.status ?? ExpenseStatus.PAID,
+        amount: this.requiredPositiveDecimal(dto.amount, 'amount'),
+        status: this.requiredPaidStatus(dto.status),
         expenseDate: this.optionalDate(dto.expenseDate),
         note: this.optionalText(dto.note),
       },
@@ -162,12 +165,18 @@ export class ExpensesService {
           ? { title: this.requiredText(dto.title, 'title') }
           : {}),
         ...(dto.amount !== undefined
-          ? { amount: this.requiredNonNegativeDecimal(dto.amount, 'amount') }
+          ? { amount: this.requiredPositiveDecimal(dto.amount, 'amount') }
           : {}),
         ...(dto.budgetCategoryId !== undefined
-          ? { budgetCategoryId: this.optionalId(dto.budgetCategoryId) }
+          ? {
+              budgetCategoryId: this.requiredBudgetCategoryId(
+                dto.budgetCategoryId,
+              ),
+            }
           : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(dto.status !== undefined
+          ? { status: this.requiredPaidStatus(dto.status) }
+          : {}),
         ...(dto.expenseDate !== undefined
           ? { expenseDate: this.optionalDate(dto.expenseDate) }
           : {}),
@@ -239,6 +248,16 @@ export class ExpensesService {
     return trimmed || null;
   }
 
+  private requiredBudgetCategoryId(value: string | null | undefined): string {
+    const normalized = this.optionalId(value);
+    if (!normalized) {
+      throw new BadRequestException(
+        'budgetCategoryId is required for paid expenses',
+      );
+    }
+    return normalized;
+  }
+
   private optionalDate(value: string | null | undefined): Date | null {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
@@ -251,8 +270,21 @@ export class ExpensesService {
     return new Date(timestamp);
   }
 
-  private requiredNonNegativeDecimal(value: string | number, field: string): string {
-    return requiredMoneyAmount(value, field);
+  private requiredPositiveDecimal(value: string | number, field: string): string {
+    const normalized = requiredMoneyAmount(value, field);
+    if (Number(normalized) <= 0) {
+      throw new BadRequestException(`${field} must be greater than zero`);
+    }
+    return normalized;
+  }
+
+  private requiredPaidStatus(status: ExpenseStatus | undefined): ExpenseStatus {
+    if (status !== undefined && status !== ExpenseStatus.PAID) {
+      throw new BadRequestException(
+        'Expenses record money that was actually paid; use financial commitments for remaining or planned amounts',
+      );
+    }
+    return ExpenseStatus.PAID;
   }
 
   private toResponse(expense: Expense): ExpenseResponse {

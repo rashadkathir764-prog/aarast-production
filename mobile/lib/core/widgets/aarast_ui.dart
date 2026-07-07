@@ -7,6 +7,7 @@ import 'aarast_pressable.dart';
 export 'aarast_bottom_sheet.dart';
 export 'aarast_button.dart';
 export 'aarast_error_state.dart';
+export 'aarast_feature_header.dart';
 export 'aarast_loading_state.dart';
 export 'aarast_metric_tile.dart';
 export 'aarast_pressable.dart';

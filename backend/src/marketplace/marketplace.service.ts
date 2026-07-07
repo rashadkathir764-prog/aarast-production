@@ -3,7 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   City,
   FavoriteProvider,
@@ -26,27 +26,27 @@ import {
   ReviewStatus,
   User,
   WeddingPlan,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { PhoneNormalizer } from '../common/phone/phone-normalizer';
-import { NotificationsService } from '../notifications/notifications.service';
-import { requiredMoneyAmount } from '../common/validation/money';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionService } from '../sharing/permission.service';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { NotificationsService } from "../notifications/notifications.service";
+import { requiredMoneyAmount } from "../common/validation/money";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
 import {
   normalizeWeddingLocationInput,
   weddingLocationResponse,
-} from '../wedding-plans/wedding-location';
-import { CreatePlanQuoteRequestDto } from './dto/create-plan-quote-request.dto';
-import { CreateProviderReviewDto } from './dto/create-provider-review.dto';
-import { CreateQuoteRequestDto } from './dto/create-quote-request.dto';
-import { ListProvidersQueryDto } from './dto/list-providers-query.dto';
-import { ListServicesQueryDto } from './dto/list-services-query.dto';
-import { UpdateProviderReviewDto } from './dto/update-provider-review.dto';
+} from "../wedding-plans/wedding-location";
+import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
+import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
+import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
+import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
+import { ListServicesQueryDto } from "./dto/list-services-query.dto";
+import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import {
   assertQuoteRequestTransition,
   quoteLifecycleStatus,
-} from './quote-lifecycle';
+} from "./quote-lifecycle";
 
 interface Pagination {
   page: number;
@@ -72,9 +72,11 @@ type ServiceWithDetails = ProviderService & {
   city: City | null;
   images: ProviderServiceImage[];
 };
-type PackageWithService = ProviderPackage & { service?: ProviderService | null };
+type PackageWithService = ProviderPackage & {
+  service?: ProviderService | null;
+};
 type ReviewWithUser = ProviderReview & {
-  user: Pick<User, 'id' | 'name' | 'phone'>;
+  user: Pick<User, "id" | "name" | "phone">;
 };
 type FavoriteWithProvider = FavoriteProvider & {
   provider: ProviderWithCity;
@@ -83,7 +85,10 @@ type QuoteWithRelations = QuoteRequest & {
   provider: ProviderWithCity;
   service?: (ProviderService & { category: ProviderCategory }) | null;
   city?: City | null;
-  weddingPlan?: Pick<WeddingPlan, 'id' | 'title' | 'city' | 'weddingDate'> | null;
+  weddingPlan?: Pick<
+    WeddingPlan,
+    "id" | "title" | "city" | "weddingDate"
+  > | null;
   offers?: QuoteOffer[];
   providerLinks?: PlanProviderLink[];
 };
@@ -99,7 +104,7 @@ export class MarketplaceService {
   async findCities() {
     const cities = await this.prisma.city.findMany({
       where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
+      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
     });
 
     return cities.map((city) => this.toCityResponse(city));
@@ -108,7 +113,7 @@ export class MarketplaceService {
   async findCategories() {
     const categories = await this.prisma.providerCategory.findMany({
       where: { isActive: true },
-      orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
+      orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
     });
 
     return categories.map((category) => this.toCategoryResponse(category));
@@ -116,25 +121,31 @@ export class MarketplaceService {
 
   async findProviders(query: ListProvidersQueryDto) {
     const pagination = this.parsePagination(query.page, query.limit);
-    const and: Prisma.ProviderWhereInput[] = [{ status: ProviderStatus.ACTIVE }];
+    const and: Prisma.ProviderWhereInput[] = [
+      { status: ProviderStatus.ACTIVE },
+    ];
     const where: Prisma.ProviderWhereInput = { AND: and };
 
     if (query.cityId) {
-      this.assertUuid(query.cityId, 'cityId');
+      this.assertUuid(query.cityId, "cityId");
       and.push({ cityId: query.cityId });
     }
 
     if (query.categoryId) {
-      this.assertUuid(query.categoryId, 'categoryId');
+      this.assertUuid(query.categoryId, "categoryId");
       and.push({
         OR: [
           { primaryCategoryId: query.categoryId },
-          { services: { some: { categoryId: query.categoryId, isActive: true } } },
+          {
+            services: {
+              some: { categoryId: query.categoryId, isActive: true },
+            },
+          },
         ],
       });
     }
 
-    const featured = this.optionalBoolean(query.featured, 'featured');
+    const featured = this.optionalBoolean(query.featured, "featured");
     if (featured !== null) {
       and.push({ isFeatured: featured });
     }
@@ -143,10 +154,10 @@ export class MarketplaceService {
     if (search) {
       and.push({
         OR: [
-          { businessName: { contains: search, mode: 'insensitive' } },
-          { ownerName: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { address: { contains: search, mode: 'insensitive' } },
+          { businessName: { contains: search, mode: "insensitive" } },
+          { ownerName: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          { address: { contains: search, mode: "insensitive" } },
         ],
       });
     }
@@ -157,9 +168,9 @@ export class MarketplaceService {
         where,
         include: { city: true, primaryCategory: true },
         orderBy: [
-          { isFeatured: 'desc' },
-          { ratingAverage: 'desc' },
-          { createdAt: 'desc' },
+          { isFeatured: "desc" },
+          { ratingAverage: "desc" },
+          { createdAt: "desc" },
         ],
         skip: pagination.skip,
         take: pagination.limit,
@@ -174,7 +185,7 @@ export class MarketplaceService {
   }
 
   async findProvider(id: string) {
-    this.assertUuid(id, 'providerId');
+    this.assertUuid(id, "providerId");
     const provider = await this.prisma.provider.findFirst({
       where: { id, status: ProviderStatus.ACTIVE },
       include: {
@@ -184,15 +195,15 @@ export class MarketplaceService {
           where: { isActive: true },
           include: {
             category: true,
-            images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+            images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
           },
-          orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+          orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
         },
       },
     });
 
     if (!provider) {
-      throw new NotFoundException('Provider not found');
+      throw new NotFoundException("Provider not found");
     }
 
     return this.toProviderResponse(provider);
@@ -206,9 +217,9 @@ export class MarketplaceService {
         provider: { include: { city: true, primaryCategory: true } },
         category: true,
         city: true,
-        images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
       },
-      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     });
 
     return services.map((service) => this.toServiceResponse(service));
@@ -225,17 +236,17 @@ export class MarketplaceService {
     };
 
     if (query.providerId) {
-      this.assertUuid(query.providerId, 'providerId');
+      this.assertUuid(query.providerId, "providerId");
       where.providerId = query.providerId;
     }
 
     if (query.categoryId) {
-      this.assertUuid(query.categoryId, 'categoryId');
+      this.assertUuid(query.categoryId, "categoryId");
       where.categoryId = query.categoryId;
     }
 
     if (query.cityId) {
-      this.assertUuid(query.cityId, 'cityId');
+      this.assertUuid(query.cityId, "cityId");
       and.push({
         OR: [
           { cityId: query.cityId },
@@ -248,15 +259,19 @@ export class MarketplaceService {
     if (search) {
       and.push({
         OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { provider: { businessName: { contains: search, mode: 'insensitive' } } },
+          { title: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          {
+            provider: {
+              businessName: { contains: search, mode: "insensitive" },
+            },
+          },
         ],
       });
     }
 
-    const minPrice = this.optionalDecimal(query.minPrice, 'minPrice');
-    const maxPrice = this.optionalDecimal(query.maxPrice, 'maxPrice');
+    const minPrice = this.optionalDecimal(query.minPrice, "minPrice");
+    const maxPrice = this.optionalDecimal(query.maxPrice, "maxPrice");
     if (minPrice !== null || maxPrice !== null) {
       where.basePrice = {
         ...(minPrice !== null ? { gte: minPrice } : {}),
@@ -272,12 +287,12 @@ export class MarketplaceService {
           provider: { include: { city: true, primaryCategory: true } },
           category: true,
           city: true,
-          images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+          images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
         },
         orderBy: [
-          { isFeatured: 'desc' },
-          { basePrice: 'asc' },
-          { createdAt: 'desc' },
+          { isFeatured: "desc" },
+          { basePrice: "asc" },
+          { createdAt: "desc" },
         ],
         skip: pagination.skip,
         take: pagination.limit,
@@ -292,7 +307,7 @@ export class MarketplaceService {
   }
 
   async findService(id: string) {
-    this.assertUuid(id, 'serviceId');
+    this.assertUuid(id, "serviceId");
     const service = await this.prisma.providerService.findFirst({
       where: {
         id,
@@ -303,12 +318,12 @@ export class MarketplaceService {
         provider: { include: { city: true, primaryCategory: true } },
         category: true,
         city: true,
-        images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
       },
     });
 
     if (!service) {
-      throw new NotFoundException('Service not found');
+      throw new NotFoundException("Service not found");
     }
 
     return this.toServiceResponse(service);
@@ -319,7 +334,7 @@ export class MarketplaceService {
     const packages = await this.prisma.providerPackage.findMany({
       where: { providerId, isActive: true },
       include: { service: true },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return packages.map((providerPackage) =>
@@ -332,7 +347,7 @@ export class MarketplaceService {
     const reviews = await this.prisma.providerReview.findMany({
       where: { providerId, status: ReviewStatus.PUBLISHED },
       include: { user: { select: { id: true, name: true, phone: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return reviews.map((review) => this.toReviewResponse(review));
@@ -359,7 +374,7 @@ export class MarketplaceService {
   }
 
   async unfavoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
-    this.assertUuid(providerId, 'providerId');
+    this.assertUuid(providerId, "providerId");
     await this.prisma.favoriteProvider.deleteMany({
       where: {
         userId: currentUser.id,
@@ -377,7 +392,7 @@ export class MarketplaceService {
         provider: { status: ProviderStatus.ACTIVE },
       },
       include: { provider: { include: { city: true, primaryCategory: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return favorites.map((favorite) => this.toFavoriteResponse(favorite));
@@ -409,24 +424,28 @@ export class MarketplaceService {
       await this.findActiveProviderServiceOrThrow(dto.serviceId, providerId);
     }
 
-    const budgetMin = this.optionalDecimal(dto.budgetMin, 'budgetMin');
-    const budgetMax = this.optionalDecimal(dto.budgetMax, 'budgetMax');
+    const budgetMin = this.optionalDecimal(dto.budgetMin, "budgetMin");
+    const budgetMax = this.optionalDecimal(dto.budgetMax, "budgetMax");
     if (
       budgetMin !== null &&
       budgetMax !== null &&
       Number(budgetMin) > Number(budgetMax)
     ) {
-      throw new BadRequestException('budgetMin must be less than or equal to budgetMax');
+      throw new BadRequestException(
+        "budgetMin must be less than or equal to budgetMax",
+      );
     }
 
     const storedPlanLocation =
       plan?.location &&
-      typeof plan.location === 'object' &&
+      typeof plan.location === "object" &&
       !Array.isArray(plan.location)
         ? (plan.location as Record<string, unknown>)
         : undefined;
     const location = normalizeWeddingLocationInput(
-      dto.location !== undefined ? dto.location ?? undefined : storedPlanLocation,
+      dto.location !== undefined
+        ? (dto.location ?? undefined)
+        : storedPlanLocation,
       plan?.city ?? city?.nameAr ?? null,
     );
     const contactName =
@@ -435,7 +454,7 @@ export class MarketplaceService {
       this.optionalText(dto.contactPhone) ?? currentUser.phone;
     const contactNormalizedPhone = PhoneNormalizer.normalizeOptional(
       contactPhone,
-      'contactPhone',
+      "contactPhone",
     );
 
     const quote = await this.prisma.quoteRequest.create({
@@ -444,7 +463,7 @@ export class MarketplaceService {
         providerId,
         weddingPlanId: dto.weddingPlanId ?? null,
         serviceId: dto.serviceId ?? null,
-        eventDate: this.optionalDate(dto.eventDate, 'eventDate'),
+        eventDate: this.optionalDate(dto.eventDate, "eventDate"),
         location: location ?? Prisma.JsonNull,
         cityId: dto.cityId ?? null,
         guestCount: dto.guestCount ?? null,
@@ -463,9 +482,9 @@ export class MarketplaceService {
       weddingPlanId: quote.weddingPlanId,
       type: NotificationType.QUOTE_REQUEST_SUBMITTED,
       priority: NotificationPriority.NORMAL,
-      title: 'تم إرسال طلب عرض السعر',
+      title: "تم إرسال طلب عرض السعر",
       body: `تم إرسال طلبك إلى ${quote.provider.businessName}. سنعرض الرد عند وصول عرض حقيقي من المورد.`,
-      entityType: 'quote_request',
+      entityType: "quote_request",
       entityId: quote.id,
       routeTarget: quote.weddingPlanId
         ? `/wedding-plans/${quote.weddingPlanId}/plan-center`
@@ -486,10 +505,7 @@ export class MarketplaceService {
     weddingPlanId: string,
     dto: CreatePlanQuoteRequestDto,
   ) {
-    await this.permissions.assertProviderManageable(
-      weddingPlanId,
-      currentUser,
-    );
+    await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
     return this.createQuoteRequest(currentUser, dto.providerId, {
       ...dto,
       weddingPlanId,
@@ -504,7 +520,7 @@ export class MarketplaceService {
     const quotes = await this.prisma.quoteRequest.findMany({
       where: { weddingPlanId },
       include: this.quoteInclude(),
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return quotes.map((quote) => this.toQuoteResponse(quote));
@@ -522,7 +538,10 @@ export class MarketplaceService {
     currentUser: AuthenticatedUser,
     id: string,
   ) {
-    const existing = await this.findAccessibleQuoteRequestOrThrow(currentUser, id);
+    const existing = await this.findAccessibleQuoteRequestOrThrow(
+      currentUser,
+      id,
+    );
     if (existing.weddingPlanId) {
       await this.permissions.assertProviderManageable(
         existing.weddingPlanId,
@@ -532,7 +551,7 @@ export class MarketplaceService {
     assertQuoteRequestTransition(
       existing.status,
       QuoteRequestStatus.CANCELLED,
-      'requester',
+      "requester",
     );
     const quote = await this.prisma.quoteRequest.update({
       where: { id: existing.id },
@@ -549,23 +568,22 @@ export class MarketplaceService {
   async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
     const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
     if (!offer.quoteRequest.weddingPlanId) {
-      throw new BadRequestException('Quote offer is not linked to a wedding plan');
+      throw new BadRequestException(
+        "Quote offer is not linked to a wedding plan",
+      );
     }
     if (offer.status !== QuoteOfferStatus.PENDING) {
-      throw new ConflictException('Quote offer is not pending');
+      throw new ConflictException("Quote offer is not pending");
     }
     const weddingPlanId = offer.quoteRequest.weddingPlanId;
-    await this.permissions.assertProviderManageable(
-      weddingPlanId,
-      currentUser,
-    );
+    await this.permissions.assertProviderManageable(weddingPlanId, currentUser);
     assertQuoteRequestTransition(
       offer.quoteRequest.status,
       QuoteRequestStatus.ACCEPTED,
-      'requester',
+      "requester",
     );
     if (offer.validUntil && offer.validUntil.getTime() < Date.now()) {
-      throw new ConflictException('Quote offer has expired');
+      throw new ConflictException("Quote offer has expired");
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -620,9 +638,9 @@ export class MarketplaceService {
       weddingPlanId,
       type: NotificationType.QUOTE_ACCEPTED,
       priority: NotificationPriority.HIGH,
-      title: 'تم قبول عرض السعر',
-      body: 'أصبح المورد ضمن موردي الخطة المقبولين. لم يتم إنشاء مصروف أو دين تلقائيًا.',
-      entityType: 'quote_request',
+      title: "تم قبول عرض السعر",
+      body: "أصبح المورد ضمن موردي الخطة المقبولين. لم يتم إنشاء التزام مالي أو دفعة تلقائيًا.",
+      entityType: "quote_request",
       entityId: offer.quoteRequestId,
       routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
       data: {
@@ -647,17 +665,24 @@ export class MarketplaceService {
       },
       automaticFinancialRecordCreated: false,
       financialSuggestion: {
-        recommendedAction: result.offer.amount ? 'RECORD_EXPENSE_OR_DEBT' : 'NONE',
+        recommendedAction: result.offer.amount
+          ? "CREATE_FINANCIAL_COMMITMENT"
+          : "NONE",
         message:
-          'Offer acceptance links the provider to the plan only. Record an expense, debt, or follow-up task separately if needed.',
+          "Offer acceptance links the provider to the plan only. Create a financial commitment to track agreed cost, payments, remaining amount, and installments.",
         quotedAmount: result.offer.amount?.toString() ?? null,
         currency: result.offer.currency ?? null,
+        sourceType: "PROVIDER_SERVICE",
+        providerId: offer.providerId,
+        planProviderLinkId: result.link.id,
+        quoteRequestId: offer.quoteRequestId,
+        quoteOfferId: offer.id,
       },
       nextActions: [
-        'recordExpense',
-        'recordDebt',
-        'createFollowUpTask',
-        'viewAcceptedProvider',
+        "createFinancialCommitment",
+        "recordPayment",
+        "createFollowUpTask",
+        "viewAcceptedProvider",
       ],
     };
   }
@@ -665,7 +690,7 @@ export class MarketplaceService {
   async rejectQuoteOffer(currentUser: AuthenticatedUser, id: string) {
     const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
     if (offer.status !== QuoteOfferStatus.PENDING) {
-      throw new ConflictException('Quote offer is not pending');
+      throw new ConflictException("Quote offer is not pending");
     }
     if (offer.quoteRequest.weddingPlanId) {
       await this.permissions.assertProviderManageable(
@@ -676,7 +701,7 @@ export class MarketplaceService {
     assertQuoteRequestTransition(
       offer.quoteRequest.status,
       QuoteRequestStatus.REJECTED,
-      'requester',
+      "requester",
     );
 
     const rejected = await this.prisma.$transaction(async (tx) => {
@@ -699,9 +724,9 @@ export class MarketplaceService {
       weddingPlanId: offer.quoteRequest.weddingPlanId,
       type: NotificationType.QUOTE_REJECTED,
       priority: NotificationPriority.NORMAL,
-      title: 'تم رفض عرض السعر',
-      body: 'تم إغلاق عرض السعر دون إنشاء حجز أو التزام مالي.',
-      entityType: 'quote_request',
+      title: "تم رفض عرض السعر",
+      body: "تم إغلاق عرض السعر دون إنشاء حجز أو التزام مالي.",
+      entityType: "quote_request",
       entityId: offer.quoteRequestId,
       routeTarget: offer.quoteRequest.weddingPlanId
         ? `/wedding-plans/${offer.quoteRequest.weddingPlanId}/plan-center`
@@ -721,39 +746,39 @@ export class MarketplaceService {
     const quotes = await this.prisma.quoteRequest.findMany({
       where: { userId: currentUser.id },
       include: this.quoteInclude(),
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     return quotes.map((quote) => this.toQuoteResponse(quote));
   }
 
   async findMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
-    this.assertUuid(id, 'quoteRequestId');
+    this.assertUuid(id, "quoteRequestId");
     const quote = await this.prisma.quoteRequest.findFirst({
       where: { id, userId: currentUser.id },
       include: this.quoteInclude(),
     });
 
     if (!quote) {
-      throw new NotFoundException('Quote request not found');
+      throw new NotFoundException("Quote request not found");
     }
 
     return this.toQuoteResponse(quote);
   }
 
   async cancelMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
-    this.assertUuid(id, 'quoteRequestId');
+    this.assertUuid(id, "quoteRequestId");
     const existing = await this.prisma.quoteRequest.findFirst({
       where: { id, userId: currentUser.id },
     });
 
     if (!existing) {
-      throw new NotFoundException('Quote request not found');
+      throw new NotFoundException("Quote request not found");
     }
     assertQuoteRequestTransition(
       existing.status,
       QuoteRequestStatus.CANCELLED,
-      'requester',
+      "requester",
     );
 
     const quote = await this.prisma.quoteRequest.update({
@@ -775,7 +800,9 @@ export class MarketplaceService {
   ) {
     const provider = await this.findActiveProviderOrThrow(providerId);
     if (provider.userId === currentUser.id) {
-      throw new BadRequestException('Provider owners cannot review their own profile');
+      throw new BadRequestException(
+        "Provider owners cannot review their own profile",
+      );
     }
 
     const existing = await this.prisma.providerReview.findUnique({
@@ -787,7 +814,7 @@ export class MarketplaceService {
       },
     });
     if (existing) {
-      throw new ConflictException('You already reviewed this provider');
+      throw new ConflictException("You already reviewed this provider");
     }
 
     const review = await this.prisma.providerReview.create({
@@ -809,20 +836,22 @@ export class MarketplaceService {
     id: string,
     dto: UpdateProviderReviewDto,
   ) {
-    this.assertUuid(id, 'reviewId');
+    this.assertUuid(id, "reviewId");
     const existing = await this.prisma.providerReview.findFirst({
       where: { id, userId: currentUser.id },
     });
 
     if (!existing) {
-      throw new NotFoundException('Review not found');
+      throw new NotFoundException("Review not found");
     }
 
     const review = await this.prisma.providerReview.update({
       where: { id },
       data: {
         ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
-        ...(dto.comment !== undefined ? { comment: this.optionalText(dto.comment) } : {}),
+        ...(dto.comment !== undefined
+          ? { comment: this.optionalText(dto.comment) }
+          : {}),
       },
       include: { user: { select: { id: true, name: true, phone: true } } },
     });
@@ -832,13 +861,13 @@ export class MarketplaceService {
   }
 
   async deleteReview(currentUser: AuthenticatedUser, id: string) {
-    this.assertUuid(id, 'reviewId');
+    this.assertUuid(id, "reviewId");
     const existing = await this.prisma.providerReview.findFirst({
       where: { id, userId: currentUser.id },
     });
 
     if (!existing) {
-      throw new NotFoundException('Review not found');
+      throw new NotFoundException("Review not found");
     }
 
     await this.prisma.providerReview.delete({ where: { id } });
@@ -849,13 +878,13 @@ export class MarketplaceService {
   private async findActiveProviderOrThrow(
     providerId: string,
   ): Promise<Provider> {
-    this.assertUuid(providerId, 'providerId');
+    this.assertUuid(providerId, "providerId");
     const provider = await this.prisma.provider.findFirst({
       where: { id: providerId, status: ProviderStatus.ACTIVE },
     });
 
     if (!provider) {
-      throw new NotFoundException('Provider not found');
+      throw new NotFoundException("Provider not found");
     }
 
     return provider;
@@ -865,7 +894,7 @@ export class MarketplaceService {
     serviceId: string,
     providerId: string,
   ): Promise<ProviderService> {
-    this.assertUuid(serviceId, 'serviceId');
+    this.assertUuid(serviceId, "serviceId");
     const service = await this.prisma.providerService.findFirst({
       where: {
         id: serviceId,
@@ -876,20 +905,22 @@ export class MarketplaceService {
     });
 
     if (!service) {
-      throw new BadRequestException('serviceId must reference an active provider service');
+      throw new BadRequestException(
+        "serviceId must reference an active provider service",
+      );
     }
 
     return service;
   }
 
   private async findActiveCityOrThrow(cityId: string): Promise<City> {
-    this.assertUuid(cityId, 'cityId');
+    this.assertUuid(cityId, "cityId");
     const city = await this.prisma.city.findFirst({
       where: { id: cityId, isActive: true },
     });
 
     if (!city) {
-      throw new BadRequestException('cityId must reference an active city');
+      throw new BadRequestException("cityId must reference an active city");
     }
 
     return city;
@@ -902,7 +933,7 @@ export class MarketplaceService {
       _count: { _all: true },
     });
     const ratingCount = aggregate._count._all;
-    const ratingAverage = ratingCount > 0 ? aggregate._avg.rating ?? 0 : 0;
+    const ratingAverage = ratingCount > 0 ? (aggregate._avg.rating ?? 0) : 0;
 
     await this.prisma.provider.update({
       where: { id: providerId },
@@ -926,7 +957,7 @@ export class MarketplaceService {
           weddingDate: true,
         },
       },
-      offers: { orderBy: { createdAt: 'desc' } },
+      offers: { orderBy: { createdAt: "desc" } },
       providerLinks: true,
     } satisfies Prisma.QuoteRequestInclude;
   }
@@ -935,22 +966,25 @@ export class MarketplaceService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<QuoteWithRelations> {
-    this.assertUuid(id, 'quoteRequestId');
+    this.assertUuid(id, "quoteRequestId");
     const quote = await this.prisma.quoteRequest.findUnique({
       where: { id },
       include: this.quoteInclude(),
     });
     if (!quote) {
-      throw new NotFoundException('Quote request not found');
+      throw new NotFoundException("Quote request not found");
     }
 
     if (quote.weddingPlanId) {
-      await this.permissions.assertPlanReadable(quote.weddingPlanId, currentUser);
+      await this.permissions.assertPlanReadable(
+        quote.weddingPlanId,
+        currentUser,
+      );
       return quote;
     }
 
     if (quote.userId !== currentUser.id) {
-      throw new NotFoundException('Quote request not found');
+      throw new NotFoundException("Quote request not found");
     }
 
     return quote;
@@ -960,13 +994,13 @@ export class MarketplaceService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<QuoteOffer & { quoteRequest: QuoteRequest }> {
-    this.assertUuid(id, 'quoteOfferId');
+    this.assertUuid(id, "quoteOfferId");
     const offer = await this.prisma.quoteOffer.findUnique({
       where: { id },
       include: { quoteRequest: true },
     });
     if (!offer) {
-      throw new NotFoundException('Quote offer not found');
+      throw new NotFoundException("Quote offer not found");
     }
 
     if (offer.quoteRequest.weddingPlanId) {
@@ -975,15 +1009,18 @@ export class MarketplaceService {
         currentUser,
       );
     } else if (offer.quoteRequest.userId !== currentUser.id) {
-      throw new NotFoundException('Quote offer not found');
+      throw new NotFoundException("Quote offer not found");
     }
 
     return offer;
   }
 
   private parsePagination(pageValue?: string, limitValue?: string): Pagination {
-    const page = this.parsePositiveInteger(pageValue ?? '1', 'page');
-    const limit = Math.min(this.parsePositiveInteger(limitValue ?? '20', 'limit'), 100);
+    const page = this.parsePositiveInteger(pageValue ?? "1", "page");
+    const limit = Math.min(
+      this.parsePositiveInteger(limitValue ?? "20", "limit"),
+      100,
+    );
     return { page, limit, skip: (page - 1) * limit };
   }
 
@@ -998,11 +1035,14 @@ export class MarketplaceService {
     return parsed;
   }
 
-  private optionalBoolean(value: string | undefined, field: string): boolean | null {
-    if (value === undefined || value.trim() === '') return null;
+  private optionalBoolean(
+    value: string | undefined,
+    field: string,
+  ): boolean | null {
+    if (value === undefined || value.trim() === "") return null;
     const normalized = value.trim().toLowerCase();
-    if (normalized === 'true') return true;
-    if (normalized === 'false') return false;
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
     throw new BadRequestException(`${field} must be true or false`);
   }
 
@@ -1012,7 +1052,10 @@ export class MarketplaceService {
     return trimmed || null;
   }
 
-  private optionalDate(value: string | null | undefined, field: string): Date | null {
+  private optionalDate(
+    value: string | null | undefined,
+    field: string,
+  ): Date | null {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -1124,7 +1167,9 @@ export class MarketplaceService {
               currency: service.currency,
               isFeatured: service.isFeatured,
               category: this.toCategoryResponse(service.category),
-              images: service.images.map((image) => this.toImageResponse(image)),
+              images: service.images.map((image) =>
+                this.toImageResponse(image),
+              ),
             })),
           }
         : {}),
@@ -1256,7 +1301,8 @@ export class MarketplaceService {
       budgetMax: quote.budgetMax?.toString() ?? null,
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
-      offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
+      offers:
+        quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
       acceptedPlanProvider:
         quote.providerLinks?.find(
           (link) => link.status === PlanProviderLinkStatus.ACTIVE,
@@ -1301,10 +1347,13 @@ export class MarketplaceService {
       quotedAmount: acceptedOffer?.amount?.toString() ?? null,
       currency: acceptedOffer?.currency ?? null,
       suggestedAction:
-        isAccepted && acceptedOffer?.amount ? 'ADD_EXPENSE' : 'NONE',
+        isAccepted && acceptedOffer?.amount
+          ? "CREATE_FINANCIAL_COMMITMENT"
+          : "NONE",
       availableActions: isAccepted
-        ? ['ADD_EXPENSE', 'ADD_DEBT']
+        ? ["CREATE_FINANCIAL_COMMITMENT", "RECORD_PAYMENT"]
         : [],
+      sourceType: "PROVIDER_SERVICE",
       automaticFinancialRecordCreated: false,
     };
   }

@@ -16,6 +16,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { assertOwnedMediaUrl } from '../media/media-upload-policy';
 import {
   assertConversationParticipant,
+  conversationParticipantState,
   normalizeMessageBody,
   normalizeMessagePageSize,
 } from './conversation-policy';
@@ -113,7 +114,7 @@ export class ConversationsService {
     const page = messages.slice(0, limit);
     return {
       items: page.reverse(),
-      nextCursor: hasMore ? page[page.length - 1]?.id ?? null : null,
+      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
     };
   }
 
@@ -126,12 +127,16 @@ export class ConversationsService {
     if (conversation.closedAt) {
       throw new ConflictException('Conversation is closed');
     }
-    if (conversation.participants.some((participant) => participant.blockedAt)) {
+    if (
+      conversation.participants.some((participant) => participant.blockedAt)
+    ) {
       throw new ConflictException('Conversation is blocked');
     }
     const attachments = dto.attachments ?? [];
     if (attachments.length > 4) {
-      throw new BadRequestException('A message can contain up to 4 attachments');
+      throw new BadRequestException(
+        'A message can contain up to 4 attachments',
+      );
     }
     const publicBaseUrl = process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.trim();
     if (attachments.length > 0 && !publicBaseUrl) {
@@ -267,7 +272,9 @@ export class ConversationsService {
     await this.assertAccess(currentUser, conversationId);
     const reason = reasonValue.trim();
     if (reason.length < 3 || reason.length > 500) {
-      throw new BadRequestException('Report reason must contain 3 to 500 characters');
+      throw new BadRequestException(
+        'Report reason must contain 3 to 500 characters',
+      );
     }
     return this.prisma.conversationReport.upsert({
       where: {
@@ -326,7 +333,12 @@ export class ConversationsService {
       quoteRequest: {
         include: {
           provider: {
-            select: { id: true, userId: true, businessName: true, logoUrl: true },
+            select: {
+              id: true,
+              userId: true,
+              businessName: true,
+              logoUrl: true,
+            },
           },
           service: { select: { id: true, title: true } },
           weddingPlan: { select: { id: true, title: true } },
@@ -335,7 +347,9 @@ export class ConversationsService {
       },
       participants: {
         include: {
-          user: { select: { id: true, name: true, avatarUrl: true, appRole: true } },
+          user: {
+            select: { id: true, name: true, avatarUrl: true, appRole: true },
+          },
         },
       },
       messages: {
@@ -349,13 +363,19 @@ export class ConversationsService {
 
   private async toConversationResponse(
     currentUserId: string,
-    conversation: Awaited<ReturnType<ConversationsService['conversationRecord']>>,
+    conversation: Awaited<
+      ReturnType<ConversationsService['conversationRecord']>
+    >,
   ) {
     const membership = conversation.participants.find(
       (participant) => participant.userId === currentUserId,
     );
     const counterpart = conversation.participants.find(
       (participant) => participant.userId !== currentUserId,
+    );
+    const participantState = conversationParticipantState(
+      currentUserId,
+      conversation.participants,
     );
     const unreadCount = await this.prisma.chatMessage.count({
       where: {
@@ -375,9 +395,7 @@ export class ConversationsService {
       lastMessage: conversation.messages[0] ?? null,
       unreadCount,
       muted: membership?.mutedAt != null,
-      blocked: conversation.participants.some(
-        (participant) => participant.blockedAt != null,
-      ),
+      ...participantState,
       lastMessageAt: conversation.lastMessageAt,
       closedAt: conversation.closedAt,
       createdAt: conversation.createdAt,

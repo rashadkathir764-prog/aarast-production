@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/offline/offline_status_widgets.dart';
 import '../../../../core/theme/aarast_design_tokens.dart';
 import '../../../../core/theme/aarast_motion.dart';
+import '../../../../core/widgets/aarast_ui.dart';
 import '../../models/wedding_task.dart';
 import '../../utils/task_display.dart';
 
@@ -385,13 +386,9 @@ class _GoldBurstCheck extends StatelessWidget {
         height: 40,
         child: Center(
           child: isBusy
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AarastDesignTokens.burgundy,
-                  ),
+              ? const AarastInlineSpinner(
+                  dimension: 20,
+                  color: AarastDesignTokens.burgundy,
                 )
               : InkWell(
                   onTap: isDone ? null : onTap,

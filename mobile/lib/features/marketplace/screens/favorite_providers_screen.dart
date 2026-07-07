@@ -71,9 +71,11 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
           padding: const EdgeInsets.only(bottom: 28),
           children: [
             if (_isCheckingAccount)
-              const Padding(
-                padding: EdgeInsets.only(top: 120),
-                child: Center(child: CircularProgressIndicator()),
+              AarastSkeleton.list(
+                rows: 4,
+                rowHeight: 120,
+                withHeader: false,
+                inline: true,
               )
             else if (_showLoginGate)
               AarastEmptyState(
@@ -94,9 +96,11 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 onRetry: _load,
               )
             else if (marketplace.isLoading && favorites.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 120),
-                child: Center(child: CircularProgressIndicator()),
+              AarastSkeleton.list(
+                rows: 4,
+                rowHeight: 120,
+                withHeader: false,
+                inline: true,
               )
             else if (favorites.isEmpty)
               AarastEmptyState(

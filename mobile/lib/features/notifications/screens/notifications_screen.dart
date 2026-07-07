@@ -10,6 +10,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
+import '../utils/notification_route_policy.dart';
 import '../utils/notification_copy.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -215,7 +216,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final marked = await provider.markRead(notification);
     if (!mounted || !marked) return;
     final target = notification.routeTarget?.trim();
-    if (target == null || !_isSafeRouteTarget(target)) return;
+    if (target == null || !isSafeNotificationRouteTarget(target)) return;
     if (_isPlanShellRouteTarget(target)) {
       context.go(target);
       return;
@@ -390,15 +391,6 @@ _NotificationTone _tone(String type) {
     color: AppTheme.burgundy,
     background: AppTheme.burgundySoft,
   );
-}
-
-bool _isSafeRouteTarget(String target) {
-  if (!target.startsWith('/') || target.contains('://')) return false;
-  return target == '/providers' ||
-      target.startsWith('/providers/') ||
-      target.startsWith('/invites/') ||
-      target.startsWith('/wedding-plans/') ||
-      target.startsWith('/debts/');
 }
 
 bool _isPlanShellRouteTarget(String target) {

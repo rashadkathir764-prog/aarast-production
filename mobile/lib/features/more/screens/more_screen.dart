@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -56,18 +57,16 @@ class _MoreScreenState extends State<MoreScreen> {
     final notifications = _maybeWatchNotifications(context);
     final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
     final user = auth.user;
+    final hasAccount = auth.status == AuthStatus.authenticated && user != null;
     final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
-    final isGuestExploration =
-        AppFeatureFlags.devBypassLoginGatesForUxExploration &&
-        auth.status != AuthStatus.authenticated;
 
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
-        children: [
+        children: AarastStagger.children(context, [
           _MoreHeader(
             name: name,
             avatarUrl: user?.avatarUrl,
@@ -89,7 +88,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 isUpdatingAvatar: auth.isSubmitting,
                 roleLabel: identity.roleLabel,
                 personaLabel: identity.personaLabel,
-                onEditAvatar: () => _changeAvatar(context),
+                onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
               );
             },
           ),
@@ -187,13 +186,13 @@ class _MoreScreenState extends State<MoreScreen> {
           const SizedBox(height: 8),
           const _MenuGroup(children: [OfflineSyncNowTile()]),
           const SizedBox(height: 16),
-          if (isGuestExploration)
+          if (!hasAccount)
             _OptionalLoginTile(onTap: () => context.push(AppRouter.login))
           else
             _LogoutTile(onTap: () => _logout(context)),
           const SizedBox(height: 22),
           const _VersionFooter(),
-        ],
+        ]),
       ),
     );
   }
@@ -798,35 +797,32 @@ class _ProfileCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Tooltip(
-                message: 'تعديل صورة الحساب',
-                child: InkWell(
-                  onTap: isUpdatingAvatar ? null : onEditAvatar,
-                  customBorder: const CircleBorder(),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppTheme.gold,
-                      shape: BoxShape.circle,
-                      boxShadow: AppTheme.softShadow(opacity: .08),
-                    ),
-                    child: isUpdatingAvatar
-                        ? const Padding(
-                            padding: EdgeInsets.all(10),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
+              if (onEditAvatar != null)
+                Tooltip(
+                  message: 'تعديل صورة الحساب',
+                  child: InkWell(
+                    onTap: isUpdatingAvatar ? null : onEditAvatar,
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppTheme.gold,
+                        shape: BoxShape.circle,
+                        boxShadow: AppTheme.softShadow(opacity: .08),
+                      ),
+                      child: isUpdatingAvatar
+                          ? const Center(
+                              child: AarastInlineSpinner(color: AppTheme.ivory),
+                            )
+                          : const Icon(
+                              LucideIcons.pencil,
                               color: AppTheme.ivory,
+                              size: 19,
                             ),
-                          )
-                        : const Icon(
-                            LucideIcons.pencil,
-                            color: AppTheme.ivory,
-                            size: 19,
-                          ),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           if (_hasText(roleLabel) || _hasText(personaLabel)) ...[
@@ -1044,7 +1040,7 @@ class _OptionalLoginTile extends StatelessWidget {
             SizedBox(width: 12),
             Expanded(
               child: Text(
-                'تسجيل الدخول لاحقًا',
+                'تسجيل الدخول',
                 style: TextStyle(
                   color: AppTheme.ink,
                   fontWeight: FontWeight.w900,

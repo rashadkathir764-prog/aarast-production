@@ -135,6 +135,11 @@ void main() {
         harness.apiClient,
         offline: harness.offline,
       );
+      final category = await financeApi.createBudgetCategory(
+        weddingPlanId: localPlanId,
+        name: 'الصالة',
+        targetAmount: '2500000',
+      );
 
       await guestsApi.createGuest(
         weddingPlanId: localPlanId,
@@ -149,6 +154,7 @@ void main() {
         weddingPlanId: localPlanId,
         title: 'دفعة القاعة',
         amount: '500000',
+        budgetCategoryId: category.id,
       );
       await debtApi.createDebt(
         weddingPlanId: localPlanId,
@@ -178,6 +184,12 @@ void main() {
         harness,
         const BudgetExpenseScreen(weddingPlanId: localPlanId),
       );
+      await tester.scrollUntilVisible(
+        find.text('دفعة القاعة'),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('دفعة القاعة'), findsOneWidget);
       expect(find.text(cloudMessage), findsNothing);
 
@@ -198,6 +210,12 @@ void main() {
     final financeProvider = FinanceProvider(
       BudgetExpenseApi(harness.apiClient, offline: harness.offline),
     );
+    await financeProvider.createBudgetCategory(
+      weddingPlanId: localPlanId,
+      name: 'مصروفات عامة',
+      targetAmount: '500000',
+    );
+    final category = financeProvider.budgetCategories.single;
 
     await tester.pumpWidget(
       MultiProvider(
@@ -207,7 +225,10 @@ void main() {
         ],
         child: MaterialApp.router(
           routerConfig: _router(
-            start: CreateExpenseScreen(weddingPlanId: localPlanId),
+            start: CreateExpenseScreen(
+              weddingPlanId: localPlanId,
+              initialBudgetCategoryId: category.id,
+            ),
             targetPath: '/wedding-plans/:id/finance',
             targetText: 'finance-target',
           ),
@@ -216,10 +237,10 @@ void main() {
     );
 
     await tester.enterText(
-      _textFormFieldWithLabel('عنوان المصروف'),
+      _textFormFieldWithLabel('عنوان المصروف المدفوع'),
       'دفعة القاعة',
     );
-    await tester.enterText(_textFormFieldWithLabel('المبلغ'), '500000');
+    await tester.enterText(_textFormFieldWithLabel('المبلغ المدفوع'), '500000');
     final submit = find.text('حفظ المصروف');
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
@@ -229,13 +250,14 @@ void main() {
     expect(financeProvider.expenses, hasLength(1));
     expect(financeProvider.expenses.single.title, 'دفعة القاعة');
     expect(financeProvider.expenses.single.amount, '500000');
+    expect(financeProvider.expenses.single.budgetCategoryId, category.id);
     expect(financeProvider.noticeMessage, localMessage);
     expect(find.text(cloudMessage), findsNothing);
     expect(find.text('finance-target'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('hall expense saves paid amount and creates remaining reminder', (
+  testWidgets('hall category records paid expense without remaining reminder', (
     tester,
   ) async {
     _setTallView(tester);
@@ -276,18 +298,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('اسم الصالة'), findsOneWidget);
-    expect(find.text('مبلغ هذه الدفعة'), findsOneWidget);
-    expect(find.text('ذكرني بدفع الباقي'), findsOneWidget);
+    expect(find.text('اسم الصالة'), findsNothing);
+    expect(find.text('مبلغ هذه الدفعة'), findsNothing);
+    expect(find.text('ذكرني بدفع الباقي'), findsNothing);
+    expect(
+      find.text('يُحفظ هذا السجل كمصروف مدفوع فعلاً فقط.'),
+      findsOneWidget,
+    );
 
     await tester.enterText(
-      _textFormFieldWithLabel('اسم الصالة'),
-      'قاعة الملكة',
+      _textFormFieldWithLabel('عنوان المصروف المدفوع'),
+      'دفعة صالة الأفراح',
     );
-    await tester.enterText(
-      _textFormFieldWithLabel('مبلغ هذه الدفعة'),
-      '200000',
-    );
+    await tester.enterText(_textFormFieldWithLabel('المبلغ المدفوع'), '200000');
     final submit = find.text('حفظ المصروف');
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
@@ -297,12 +320,9 @@ void main() {
     expect(financeProvider.expenses, hasLength(1));
     expect(financeProvider.expenses.single.title, 'دفعة صالة الأفراح');
     expect(financeProvider.expenses.single.amount, '200000');
-    expect(financeProvider.expenses.single.note, contains('قاعة الملكة'));
-    expect(debtProvider.debts, hasLength(1));
-    expect(debtProvider.debts.single.title, 'باقي قاعة الملكة');
-    expect(debtProvider.debts.single.totalAmount, '600000');
-    expect(debtProvider.installments, hasLength(1));
-    expect(debtProvider.installments.single.amount, '600000');
+    expect(financeProvider.expenses.single.budgetCategoryId, hallCategory.id);
+    expect(debtProvider.debts, isEmpty);
+    expect(debtProvider.installments, isEmpty);
     expect(find.text(cloudMessage), findsNothing);
     expect(find.text('finance-target'), findsOneWidget);
     expect(tester.takeException(), isNull);

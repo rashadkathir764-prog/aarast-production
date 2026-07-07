@@ -3,9 +3,9 @@
 Snapshot date: 2026-07-05
 
 Aarast / اعّرست is a Yemen-first wedding planning product. The product center
-is a Wedding Financial OS: wedding plans, budgets, expenses, debts,
-installments, tasks, timelines, guests, sharing, and privacy-aware family
-coordination.
+is a Wedding Financial OS: wedding plans, budget categories, financial
+commitments, payment records, expenses, manual debts, installments, tasks,
+timelines, guests, sharing, and privacy-aware family coordination.
 
 Provider and marketplace features are support flows only at the current stage:
 provider references, services, packages, favorites, reviews, quote requests,
@@ -18,6 +18,12 @@ The approved conversation scope is deliberately narrow: a conversation exists
 only between the requester and the provider account attached to a real quote
 request. It is not an open social inbox and it does not create a booking or a
 financial record.
+
+Financial planning now uses `FinancialCommitment` as the backbone for agreed
+costs. Every agreed amount must belong to a budget category and may also point
+to a provider, quote, plan-provider link, payment record, installment, manual
+debt, or invoice-like note. A provider offer acceptance may suggest creating a
+financial commitment, but it must not create one silently.
 
 ## Boundaries
 
@@ -34,9 +40,10 @@ Currently excluded unless explicitly approved:
 
 ## Privacy
 
-Financial data is private by default. Expenses, debts, installments,
-attachments, private tasks, and sensitive plan details must not be shown to
-shared members unless explicit permissions allow it.
+Financial data is private by default. Financial commitments, payment records,
+expenses, debts, installments, attachments, private tasks, and sensitive plan
+details must not be shown to shared members unless explicit permissions allow
+it.
 
 ## Growth Order
 

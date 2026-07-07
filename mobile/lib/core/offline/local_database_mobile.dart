@@ -33,7 +33,7 @@ Future<LocalDatabase> createPlatformLocalDatabase(
 
 class SqliteLocalDatabase implements LocalDatabase {
   static const _databaseName = 'aarast_offline.db';
-  static const _databaseVersion = 2;
+  static const _databaseVersion = 3;
 
   Database? _database;
 
@@ -55,6 +55,11 @@ class SqliteLocalDatabase implements LocalDatabase {
             OfflineTables.cachedGuests,
             'planId TEXT, name TEXT, phone TEXT, side TEXT, status TEXT',
           );
+          await batch.commit();
+        }
+        if (oldVersion < 3) {
+          final batch = db.batch();
+          _createFinancialCacheTables(batch);
           await batch.commit();
         }
       },
@@ -416,6 +421,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       OfflineTables.cachedInstallments,
       'debtId TEXT, amount TEXT, dueDate TEXT, status TEXT',
     );
+    _createFinancialCacheTables(batch);
     _cacheTable(
       batch,
       OfflineTables.cachedProviderCategories,
@@ -448,6 +454,24 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       'providerId TEXT',
     );
     await batch.commit();
+  }
+
+  static void _createFinancialCacheTables(Batch batch) {
+    _cacheTable(
+      batch,
+      OfflineTables.cachedFinancialCommitments,
+      'planId TEXT, categoryId TEXT, providerId TEXT, title TEXT, totalAmount TEXT, paidAmount TEXT, status TEXT',
+    );
+    _cacheTable(
+      batch,
+      OfflineTables.cachedFinancialPaymentRecords,
+      'planId TEXT, commitmentId TEXT, categoryId TEXT, amount TEXT, paidAt TEXT',
+    );
+    _cacheTable(
+      batch,
+      OfflineTables.cachedFinancialInstallments,
+      'planId TEXT, commitmentId TEXT, categoryId TEXT, amount TEXT, dueDate TEXT, status TEXT',
+    );
   }
 
   static void _cacheTable(Batch batch, String table, String columns) {

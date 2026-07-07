@@ -19,14 +19,17 @@ IconData categoryIcon(String name) {
   }
   if (name.contains('تصوير')) return LucideIcons.camera;
   if (name.contains('كوشة')) return LucideIcons.flower2;
-  if (name.contains('ضيافة') || name.contains('طعام') ||
-      name.contains('غداء') || name.contains('عشاء')) {
+  if (name.contains('ضيافة') ||
+      name.contains('طعام') ||
+      name.contains('غداء') ||
+      name.contains('عشاء')) {
     return LucideIcons.utensils;
   }
   if (name.contains('فنان') || name.contains('موسيق')) {
     return LucideIcons.music;
   }
-  if (name.contains('لبس') || name.contains('ملابس') ||
+  if (name.contains('لبس') ||
+      name.contains('ملابس') ||
       name.contains('أزياء')) {
     return LucideIcons.shirt;
   }
@@ -53,8 +56,8 @@ class BudgetCategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allocated = _money(row.allocated);
-    final spent = _money(row.spent);
-    final remaining = _money(row.remaining);
+    final spent = _money(row.confirmedCost ?? row.spent);
+    final remaining = _money(row.budgetRemaining ?? row.remaining);
     final hasBudget = allocated > 0;
     final ratio = hasBudget ? (spent / allocated).clamp(0.0, 1.0) : 0.0;
     final isOver = row.overBudget == true || (hasBudget && spent > allocated);
@@ -64,19 +67,19 @@ class BudgetCategoryCard extends StatelessWidget {
     final accent = isOver
         ? AarastDesignTokens.danger
         : nearLimit
-            ? AarastDesignTokens.warning
-            : AarastDesignTokens.gold;
+        ? AarastDesignTokens.warning
+        : AarastDesignTokens.gold;
 
     final stateLabel = !hasBudget
         ? 'حدد ميزانية البند'
         : isOver
-            ? 'تجاوز بـ ${formatCompactYemeniMoney(spent - allocated)}'
-            : 'متبقي ${formatCompactYemeniMoney(remaining)}';
+        ? 'تجاوز بـ ${formatCompactYemeniMoney(spent - allocated)}'
+        : 'متبقي ${formatCompactYemeniMoney(remaining)}';
     final stateColor = !hasBudget
         ? AarastDesignTokens.muted
         : isOver
-            ? AarastDesignTokens.danger
-            : AarastDesignTokens.success;
+        ? AarastDesignTokens.danger
+        : AarastDesignTokens.success;
 
     return Material(
       color: Colors.transparent,
@@ -100,8 +103,7 @@ class BudgetCategoryCard extends StatelessWidget {
                   child: Container(width: 4, color: accent),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsetsDirectional.fromSTEB(18, 14, 12, 14),
+                  padding: const EdgeInsetsDirectional.fromSTEB(18, 14, 12, 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -113,10 +115,14 @@ class BudgetCategoryCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: AarastDesignTokens.goldSoft,
                               borderRadius: BorderRadius.circular(
-                                  AarastDesignTokens.radiusSm),
+                                AarastDesignTokens.radiusSm,
+                              ),
                             ),
-                            child: Icon(categoryIcon(row.name),
-                                color: AarastDesignTokens.gold, size: 20),
+                            child: Icon(
+                              categoryIcon(row.name),
+                              color: AarastDesignTokens.gold,
+                              size: 20,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -180,9 +186,12 @@ class BudgetCategoryCard extends StatelessWidget {
                             const SizedBox(width: 4),
                             IconButton(
                               onPressed: onAddExpense,
-                              tooltip: 'إضافة مصروف لهذا البند',
-                              icon: const Icon(Icons.add_circle_outline_rounded,
-                                  color: AarastDesignTokens.burgundy, size: 22),
+                              tooltip: 'إضافة التزام لهذا التصنيف',
+                              icon: const Icon(
+                                Icons.add_circle_outline_rounded,
+                                color: AarastDesignTokens.burgundy,
+                                size: 22,
+                              ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
                                 minWidth: 40,
@@ -204,12 +213,12 @@ class BudgetCategoryCard extends StatelessWidget {
                             curve: Curves.easeOutCubic,
                             builder: (context, value, _) =>
                                 LinearProgressIndicator(
-                              value: value,
-                              minHeight: 6,
-                              backgroundColor: AarastDesignTokens.border
-                                  .withValues(alpha: 0.6),
-                              valueColor: AlwaysStoppedAnimation(accent),
-                            ),
+                                  value: value,
+                                  minHeight: 6,
+                                  backgroundColor: AarastDesignTokens.border
+                                      .withValues(alpha: 0.6),
+                                  valueColor: AlwaysStoppedAnimation(accent),
+                                ),
                           ),
                         ),
                       ],

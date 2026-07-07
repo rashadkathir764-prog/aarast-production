@@ -81,6 +81,9 @@ class ChatConversation {
     this.lastMessageAt,
     this.serviceTitle,
     this.providerName,
+    this.blockedByMe = false,
+    this.blockedByCounterpart = false,
+    this.counterpartLastReadAt,
   });
 
   factory ChatConversation.fromJson(Map<String, dynamic> json) {
@@ -96,6 +99,9 @@ class ChatConversation {
       unreadCount: _int(json['unreadCount']),
       muted: json['muted'] == true,
       blocked: json['blocked'] == true,
+      blockedByMe: json['blockedByMe'] == true,
+      blockedByCounterpart: json['blockedByCounterpart'] == true,
+      counterpartLastReadAt: _date(json['counterpartLastReadAt']),
       lastMessage: _map(json['lastMessage'], ChatMessage.fromJson),
       lastMessageAt: _date(json['lastMessageAt']),
       serviceTitle: service?['title']?.toString(),
@@ -113,12 +119,45 @@ class ChatConversation {
   final int unreadCount;
   final bool muted;
   final bool blocked;
+  final bool blockedByMe;
+  final bool blockedByCounterpart;
+  final DateTime? counterpartLastReadAt;
   final ChatMessage? lastMessage;
   final DateTime? lastMessageAt;
   final String? serviceTitle;
   final String? providerName;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  ChatConversation copyWith({
+    int? unreadCount,
+    bool? muted,
+    bool? blocked,
+    bool? blockedByMe,
+    bool? blockedByCounterpart,
+    DateTime? counterpartLastReadAt,
+    ChatMessage? lastMessage,
+    DateTime? lastMessageAt,
+  }) {
+    return ChatConversation(
+      id: id,
+      quoteRequestId: quoteRequestId,
+      counterpart: counterpart,
+      unreadCount: unreadCount ?? this.unreadCount,
+      muted: muted ?? this.muted,
+      blocked: blocked ?? this.blocked,
+      blockedByMe: blockedByMe ?? this.blockedByMe,
+      blockedByCounterpart: blockedByCounterpart ?? this.blockedByCounterpart,
+      counterpartLastReadAt:
+          counterpartLastReadAt ?? this.counterpartLastReadAt,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      serviceTitle: serviceTitle,
+      providerName: providerName,
+    );
+  }
 }
 
 class ChatMessagePage {

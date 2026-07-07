@@ -348,3 +348,52 @@ When improving an existing screen:
 4. Match the dashboard visual language.
 5. Verify narrow phone layout.
 6. Run the checks required for the touched area.
+
+## Premium Screen Contract v2
+
+Enforced automatically by
+`mobile/test/core/widgets/aarast_premium_contract_test.dart`. Every routed
+screen must:
+
+1. Render through a premium wrapper: `AarastScreenFrame`,
+   `AarastPageScaffold`/`AarastScaffold` (built on the frame), or
+   `AuthWeddingScaffold` for auth. Raw `Scaffold(`/`Card(` are banned in
+   `lib/features/**/_screen.dart`.
+2. Show body loading as `AarastSkeleton` (`.list`/`.form`/`.page`) — raw
+   `CircularProgressIndicator` is banned in `lib/features` and `lib/shared`.
+   Text-button loading goes through `AarastButton.isLoading`; icon-button
+   loading through `AarastInlineSpinner`.
+3. Show errors as `AarastErrorState` with a retry action, and empties as
+   `AarastEmptyState` with a CTA.
+4. Use staggered entry (`AarastStagger.children`) for main content lists,
+   always honoring `AarastMotion.reduceMotion`.
+5. Use the unified feature header (`AarastFeatureHeader`) or the built-in
+   `AarastPageScaffold` header — no bespoke local headers.
+6. Use tokens only (`AppTheme` re-exports the full `AarastDesignTokens`
+   scale: colors, `space*`, `icon*`, radii, motion, `minTapTarget`).
+
+Golden previews for the shared foundation live in
+`mobile/test/premium_foundation_preview_test.dart`.
+
+## Shipped Feature Flags Matrix
+
+Defaults from `mobile/lib/core/config/app_feature_flags.dart` — what a
+default build actually ships:
+
+| Flag | Default | Meaning for the shipped app |
+| --- | --- | --- |
+| enableGuestFirstOnboarding | ON | Guest-first welcome + local plan drafts |
+| enableOfflineSync | ON | Local database + sync queue |
+| enableProviderMode | OFF | Provider portal shell stays hidden |
+| enableProviderQuotes | OFF | Quote flows gated until launch review |
+| enableGuestContacts | OFF | Contact import stays manual |
+| enableAIHelper | OFF | No AI features in MVP |
+| enablePushNotifications | OFF | In-app notifications only |
+| enableSubscriptions | OFF | No payments in MVP (hard constraint) |
+| enableMaps | OFF | Location stays text-based |
+| enableAnalytics | OFF | No tracking in MVP |
+| devBypassLoginGatesForUxExploration | OFF | Dev-only dart-define escape hatch |
+
+Marketplace browsing and provider detail pages are public routes and ship
+regardless of the provider flags; only provider management and quote
+submission sit behind gates.

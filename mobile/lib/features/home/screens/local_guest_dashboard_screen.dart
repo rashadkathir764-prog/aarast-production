@@ -90,11 +90,12 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
+        onOpenSharing: () => _requireAccountForSync(context),
         onOpenImportantItem: (item) =>
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>
             _openLocalNextStep(context, planId, dashboardSummary),
-        onAddExpense: () => context.push(AppRouter.createExpense(planId)),
+        onRecordPayment: () => context.push(AppRouter.recordPayment(planId)),
       ),
     );
   }

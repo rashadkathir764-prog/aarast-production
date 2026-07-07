@@ -28,6 +28,7 @@
 - `/providers/favorites`
 - `/quotes/:id/conversation`
 - `/register`
+- `/reset-password`
 - `/settings`
 - `/shared-members/:id/edit`
 - `/shared/wedding-plans`
@@ -43,9 +44,11 @@
 - `/wedding-plans/:id/expenses/:expenseId/edit`
 - `/wedding-plans/:id/expenses/create`
 - `/wedding-plans/:id/finance`
+- `/wedding-plans/:id/financial-commitments/create`
 - `/wedding-plans/:id/guests`
 - `/wedding-plans/:id/guests/add`
 - `/wedding-plans/:id/notifications`
+- `/wedding-plans/:id/payments/record`
 - `/wedding-plans/:id/plan-center`
 - `/wedding-plans/:id/providers`
 - `/wedding-plans/:id/sharing`
@@ -57,4 +60,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 56 unique routes
+Total: 59 unique routes

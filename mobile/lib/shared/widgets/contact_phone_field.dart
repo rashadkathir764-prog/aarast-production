@@ -3,6 +3,7 @@
 import '../../core/contacts/contact_picker_service.dart';
 import '../../core/phone/phone_number_utils.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/aarast_ui.dart';
 import '../models/contact_phone_draft.dart';
 
 class ContactPhoneField extends StatefulWidget {
@@ -129,11 +130,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                         ? null
                         : _pickContact,
                     icon: _isPicking
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
+                        ? const AarastInlineSpinner(dimension: 16)
                         : const Icon(Icons.contacts_outlined, size: 18),
                     label: const Text('اختيار من جهات الاتصال'),
                   ),

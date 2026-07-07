@@ -41,32 +41,32 @@ Widget _quickActions() {
               QuickAction(
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'إضافة مصروف',
-                color: AppTheme.dMaroon,
-                bg: AppTheme.dPinkBg,
+                color: AppTheme.burgundy,
+                bg: AppTheme.dangerSoft,
               ),
               QuickAction(
                 icon: Icons.credit_card_rounded,
                 label: 'إضافة دين',
-                color: AppTheme.dMaroon,
-                bg: AppTheme.dPinkBg,
+                color: AppTheme.burgundy,
+                bg: AppTheme.dangerSoft,
               ),
               QuickAction(
                 icon: Icons.check_circle_outline_rounded,
                 label: 'إضافة مهمة',
-                color: AppTheme.dGreen,
-                bg: AppTheme.dGreenBg,
+                color: AppTheme.success,
+                bg: AppTheme.successSoft,
               ),
               QuickAction(
                 icon: Icons.person_add_alt_1_rounded,
                 label: 'إضافة عضو',
-                color: AppTheme.dBlue,
-                bg: AppTheme.dBlueBg,
+                color: AppTheme.info,
+                bg: AppTheme.infoSoft,
               ),
               QuickAction(
                 icon: Icons.post_add_rounded,
                 label: 'خطة جديدة',
-                color: AppTheme.dGoldDeep,
-                bg: AppTheme.dCreamBg,
+                color: AppTheme.gold,
+                bg: AppTheme.pearl,
               ),
             ]
             .map(
@@ -191,7 +191,7 @@ Future<void> _pumpAt(WidgetTester tester, Size size) async {
       home: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
-          backgroundColor: AppTheme.dBg,
+          backgroundColor: AppTheme.ivory,
           body: _scaledCanvas(_content()),
         ),
       ),

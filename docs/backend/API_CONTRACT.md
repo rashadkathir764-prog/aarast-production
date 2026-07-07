@@ -103,6 +103,18 @@ trigger refresh.
 
 Requires JWT. Returns the safe current user object without `passwordHash`.
 
+### Password reset
+
+- `POST /auth/password-reset/request` — body `{ phone }`. Issues a
+  `RESET_PASSWORD` OTP through the same OTP channel policy as
+  `/auth/otp/request`. The response never reveals whether the phone belongs
+  to an account.
+- `POST /auth/password-reset/confirm` — body `{ phone, code, newPassword }`.
+  Consumes the OTP, sets the new password (min 6 chars), and revokes every
+  refresh token for the account so old sessions die with the old password.
+  Unknown phones and wrong codes return the same generic
+  `OTP code is invalid or expired` error.
+
 Additional current auth/profile routes:
 
 - `POST /auth/otp/request`
@@ -307,6 +319,12 @@ Create request:
 
 Expense responses use decimal values as strings.
 
+Expense creation is for actual money-out records only. `budgetCategoryId` is
+required, `amount` must be greater than zero, and new create/update requests may
+only use `status: "PAID"`. Planned provider/service costs, remaining amounts,
+manual debts, and installment schedules belong to `FinancialCommitment` and its
+payment/installment records instead of `Expense`.
+
 Additional current expense routes:
 
 - `GET /expenses/:id`
@@ -368,6 +386,87 @@ Create installment request:
 
 Current `/api/v1` aliases exist for debt list/get/update/delete, installment create/list/pay/update/delete, and due-installment reads.
 
+## Financial Commitments, Payment Records, And Financial Installments
+
+Financial commitments are the phase-2 money backbone. Every commitment must
+belong to a `budgetCategoryId`. Provider/service costs, manual debts, and other
+agreed costs should be represented here before payments or installments are
+recorded.
+
+Commitment routes:
+
+- `POST /wedding-plans/:weddingPlanId/financial-commitments`
+- `GET /wedding-plans/:weddingPlanId/financial-commitments`
+- `GET /financial-commitments/:id`
+- `PATCH /financial-commitments/:id`
+- `DELETE /financial-commitments/:id`
+
+Create commitment request:
+
+```json
+{
+  "budgetCategoryId": "category_id",
+  "sourceType": "PROVIDER_SERVICE",
+  "providerId": "provider_id",
+  "planProviderLinkId": "plan_provider_link_id",
+  "quoteRequestId": "quote_request_id",
+  "quoteOfferId": "quote_offer_id",
+  "title": "Hall agreement",
+  "partyName": "Hall provider",
+  "partyPhone": "+967 777 123 456",
+  "totalAmount": "500000.00",
+  "paidAmount": "100000.00",
+  "dueDate": "2026-12-15T00:00:00.000Z",
+  "agreementDate": "2026-07-06T00:00:00.000Z",
+  "note": "Optional note"
+}
+```
+
+`sourceType` values are `PROVIDER_SERVICE`, `MANUAL_DEBT`,
+`MANUAL_COMMITMENT`, and `OTHER`. The backend derives `status` from
+`totalAmount - paidAmount` except when the commitment is explicitly cancelled.
+`remainingAmount` is returned; clients must not ask users to type the remaining
+amount for provider/service commitments.
+
+Payment record routes:
+
+- `POST /financial-commitments/:id/payment-records`
+- `GET /financial-commitments/:id/payment-records`
+- `GET /wedding-plans/:weddingPlanId/financial-payment-records`
+- `DELETE /financial-payment-records/:id`
+
+Create payment record request:
+
+```json
+{
+  "amount": "100000.00",
+  "title": "Deposit paid",
+  "paidAt": "2026-07-06T00:00:00.000Z",
+  "method": "cash",
+  "note": "Optional note"
+}
+```
+
+A payment record means money actually left the user. Creating or deleting a
+payment record updates the parent commitment `paidAmount`, derived `status`,
+and `remainingAmount`.
+
+Financial installment routes:
+
+- `POST /financial-commitments/:id/installments`
+- `GET /financial-commitments/:id/installments`
+- `GET /wedding-plans/:weddingPlanId/financial-installments/due`
+- `PATCH /financial-installments/:id/pay`
+- `PATCH /financial-installments/:id`
+- `DELETE /financial-installments/:id`
+
+Financial installments always belong to a financial commitment. Paying a
+financial installment creates a payment record and updates the parent
+commitment balance.
+
+Current `/api/v1` aliases exist for all financial commitment, payment-record,
+and financial-installment routes.
+
 ## Money Summary
 
 Protected routes:
@@ -380,8 +479,17 @@ Money summaries must remain permission-aware. Shared users without financial per
 Super Money UI should consume the `/api/v1` route and may use stable aliases in addition to existing fields:
 
 - `totalBudget`, `totalSpent`, `totalDebts`, and `debtRemaining`.
+- `confirmedCostTotal` / `totalConfirmedCost`, `paidTotal`,
+  `outstandingTotal`, and `deficitOrSurplus`.
+- `commitmentTotal`, `commitmentPaidTotal`, `commitmentRemainingTotal`,
+  `providerCommitmentTotal`, and `manualDebtCommitmentTotal`.
 - `paidInstallmentsCount`, `remainingInstallmentsCount`, and `nextInstallment`.
-- `categorySummaries` with allocated/spent/remaining values when category and expense permissions allow them.
+- `financialInstallmentsCount`, `financialDueInstallmentsCount`,
+  `financialOverdueInstallmentsCount`, `financialRemainingInstallmentsCount`,
+  and `nextFinancialInstallment`.
+- `categorySummaries` with allocated, spent, confirmedCost, paid, outstanding,
+  budgetRemaining, remaining, commitmentsCount, and installmentsCount values
+  when permissions allow them.
 - `financialWarnings` for budget exceeded, category exceeded, overdue/due-soon installments, or uncategorized expenses when computable.
 
 Day/week/month financial reports are not a current contract. The backend exposes current aggregate totals only.
@@ -608,9 +716,11 @@ Accepting an offer returns the accepted offer and `planProviderLink`, and explic
 
 - `automaticFinancialRecordCreated: false`
 - `financialSuggestion`
-- `nextActions`, including `recordExpense`, `recordDebt`, `createFollowUpTask`, and `viewAcceptedProvider`
+- `nextActions`, including `createFinancialCommitment`, `recordPayment`,
+  `createFollowUpTask`, and `viewAcceptedProvider`
 
-Accepting an offer must not silently create expenses, debts, installments, tasks, payments, deposits, or confirmed bookings.
+Accepting an offer must not silently create financial commitments, expenses,
+debts, installments, tasks, payments, deposits, or confirmed bookings.
 
 Provider dashboard routes:
 
@@ -661,6 +771,11 @@ requester and provider account. Open or unsolicited messaging is excluded.
 - `PATCH /conversations/:id/read`, `/mute`, and `/block` update participant
   state.
 - `POST /conversations/:id/report` creates a moderation report.
+
+Conversation list responses include the aggregate `blocked` value plus
+`blockedByMe`, `blockedByCounterpart`, and `counterpartLastReadAt` so clients
+can distinguish who owns a block and show read receipts without exposing other
+private participant state. `unreadCount` is derived for the current account.
 
 Authenticated Socket.IO events are `conversation:join`,
 `conversation:message`, and `conversation:read`. Server authorization is
@@ -803,6 +918,8 @@ configuration, and smoke checks.
 | GET | `/auth/me` | `auth.me` | 🔒 |
 | POST | `/auth/otp/request` | `auth.requestOtp` |  |
 | POST | `/auth/otp/verify` | `auth.verifyOtp` |  |
+| POST | `/auth/password-reset/confirm` | `auth.confirmPasswordReset` |  |
+| POST | `/auth/password-reset/request` | `auth.requestPasswordReset` |  |
 | POST | `/auth/refresh` | `auth.refresh` |  |
 | POST | `/auth/register` | `auth.register` |  |
 | DELETE | `/budget-categories/:id` | `budget-categories.remove` |  |
@@ -825,6 +942,17 @@ configuration, and smoke checks.
 | DELETE | `/expenses/:id` | `expenses.remove` |  |
 | GET | `/expenses/:id` | `expenses.findOne` |  |
 | PATCH | `/expenses/:id` | `expenses.update` |  |
+| DELETE | `/financial-commitments/:id` | `financial-commitments.remove` |  |
+| GET | `/financial-commitments/:id` | `financial-commitments.findOne` |  |
+| PATCH | `/financial-commitments/:id` | `financial-commitments.update` |  |
+| GET | `/financial-commitments/:id/installments` | `financial-commitments.listInstallments` |  |
+| POST | `/financial-commitments/:id/installments` | `financial-commitments.createInstallment` |  |
+| GET | `/financial-commitments/:id/payment-records` | `financial-commitments.listPaymentRecords` |  |
+| POST | `/financial-commitments/:id/payment-records` | `financial-commitments.createPaymentRecord` |  |
+| DELETE | `/financial-installments/:id` | `financial-commitments.remove` |  |
+| PATCH | `/financial-installments/:id` | `financial-commitments.update` |  |
+| PATCH | `/financial-installments/:id/pay` | `financial-commitments.pay` |  |
+| DELETE | `/financial-payment-records/:id` | `financial-commitments.remove` |  |
 | DELETE | `/guest-groups/:id` | `guests.removeGroup` |  |
 | PATCH | `/guest-groups/:id` | `guests.updateGroup` |  |
 | DELETE | `/guests/:id` | `guests.remove` |  |
@@ -914,6 +1042,10 @@ configuration, and smoke checks.
 | GET | `/wedding-plans/:weddingPlanId/expenses` | `expenses.findForPlan` |  |
 | POST | `/wedding-plans/:weddingPlanId/expenses` | `expenses.create` |  |
 | GET | `/wedding-plans/:weddingPlanId/expenses/summary` | `expenses.summary` |  |
+| GET | `/wedding-plans/:weddingPlanId/financial-commitments` | `financial-commitments.findForPlan` |  |
+| POST | `/wedding-plans/:weddingPlanId/financial-commitments` | `financial-commitments.create` |  |
+| GET | `/wedding-plans/:weddingPlanId/financial-installments/due` | `financial-commitments.dueForPlan` |  |
+| GET | `/wedding-plans/:weddingPlanId/financial-payment-records` | `financial-commitments.findForPlan` |  |
 | GET | `/wedding-plans/:weddingPlanId/guest-groups` | `guests.findGroups` |  |
 | POST | `/wedding-plans/:weddingPlanId/guest-groups` | `guests.createGroup` |  |
 | GET | `/wedding-plans/:weddingPlanId/guests` | `guests.findForPlan` |  |

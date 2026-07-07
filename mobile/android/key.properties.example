@@ -1,0 +1,13 @@
+# Copy to android/key.properties (git-ignored) and fill with the real
+# upload keystore values. Generate a keystore once with:
+#
+#   keytool -genkey -v -keystore %USERPROFILE%\aarast-upload.jks ^
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias aarast-upload
+#
+# Keep the .jks file and these passwords OUT of the repository and back
+# them up somewhere safe — losing the upload key locks you out of the
+# Play Store listing.
+storeFile=C:/Users/you/aarast-upload.jks
+storePassword=replace-me
+keyAlias=aarast-upload
+keyPassword=replace-me

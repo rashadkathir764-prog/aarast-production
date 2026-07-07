@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed false positives"
+# A git merge-commit hash (40-char hex) in a long-deleted status doc was
+# flagged as a generic API key. Verified 2026-07-07: not a credential.
+commits = ["54ab4477a98f035141cd4bf1fa3ef2d302553c6f"]
+paths = ['''CURRENT_STATUS\.md''']

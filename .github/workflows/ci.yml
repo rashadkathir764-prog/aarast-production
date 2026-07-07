@@ -129,3 +129,26 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/docs-verify.mjs
+
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so leaked-then-deleted secrets are still caught.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --audit-level=high
+        working-directory: backend
+      - run: npm audit --audit-level=high
+        working-directory: admin-web

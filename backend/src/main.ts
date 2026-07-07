@@ -85,7 +85,13 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    // transform is required so @Type() conversions run on query-string
+    // DTOs (pagination take/skip arrive as strings otherwise).
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter());

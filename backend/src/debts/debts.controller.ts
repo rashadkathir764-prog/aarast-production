@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ListQueryDto } from '../common/pagination/list-query.dto';
 import { DebtsService } from './debts.service';
 import { CreateDebtDto } from './dto/create-debt.dto';
 import { UpdateDebtDto } from './dto/update-debt.dto';
@@ -24,8 +25,9 @@ export class WeddingPlanDebtsController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
-    return this.debtsService.findForPlan(currentUser, weddingPlanId);
+    return this.debtsService.findForPlan(currentUser, weddingPlanId, query);
   }
 
   @Get('summary')
@@ -86,8 +88,9 @@ export class ApiV1WeddingPlanDebtsController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
-    return this.debtsService.findForPlan(currentUser, weddingPlanId);
+    return this.debtsService.findForPlan(currentUser, weddingPlanId, query);
   }
 }
 

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Expense, ExpenseStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { ListQueryDto, pageArgs } from '../common/pagination/list-query.dto';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
@@ -65,6 +66,7 @@ export class ExpensesService {
   async findForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
+    query?: ListQueryDto,
   ): Promise<ExpenseResponse[]> {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
@@ -75,6 +77,7 @@ export class ExpensesService {
     const expenses = await this.prisma.expense.findMany({
       where: { weddingPlanId },
       orderBy: { createdAt: 'desc' },
+      ...pageArgs(query),
     });
 
     return expenses.map((expense) => this.toResponse(expense));

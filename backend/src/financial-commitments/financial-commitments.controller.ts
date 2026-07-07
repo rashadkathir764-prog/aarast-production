@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ListQueryDto } from "../common/pagination/list-query.dto";
 import { CreateFinancialCommitmentDto } from "./dto/create-financial-commitment.dto";
 import { CreateFinancialInstallmentDto } from "./dto/create-financial-installment.dto";
 import { CreateFinancialPaymentRecordDto } from "./dto/create-financial-payment-record.dto";
@@ -42,10 +44,12 @@ export class WeddingPlanFinancialCommitmentsController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("weddingPlanId") weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
     return this.financialCommitmentsService.findForPlan(
       currentUser,
       weddingPlanId,
+      query,
     );
   }
 }
@@ -142,10 +146,12 @@ export class WeddingPlanFinancialPaymentRecordsController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("weddingPlanId") weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
     return this.financialCommitmentsService.listPaymentRecordsForPlan(
       currentUser,
       weddingPlanId,
+      query,
     );
   }
 }

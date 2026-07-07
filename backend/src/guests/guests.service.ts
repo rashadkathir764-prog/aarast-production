@@ -14,6 +14,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { ListQueryDto, pageArgs } from '../common/pagination/list-query.dto';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
@@ -95,12 +96,14 @@ export class GuestsService {
   async findForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
+    query?: ListQueryDto,
   ): Promise<GuestResponse[]> {
     await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
 
     const guests = await this.prisma.guest.findMany({
       where: { weddingPlanId },
       orderBy: [{ createdAt: 'desc' }],
+      ...pageArgs(query),
     });
 
     return guests.map((guest) => this.toResponse(guest));

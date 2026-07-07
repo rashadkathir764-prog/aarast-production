@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ListQueryDto } from '../common/pagination/list-query.dto';
 import { BulkGuestsDto } from './dto/bulk-guests.dto';
 import { CreateGuestGroupDto } from './dto/create-guest-group.dto';
 import { CreateGuestDto } from './dto/create-guest.dto';
@@ -18,8 +19,9 @@ export class WeddingPlanGuestsController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
-    return this.guestsService.findForPlan(currentUser, weddingPlanId);
+    return this.guestsService.findForPlan(currentUser, weddingPlanId, query);
   }
 
   @Post()

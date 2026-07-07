@@ -6,6 +6,7 @@ import {
   WeddingTaskStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { ListQueryDto, pageArgs } from '../common/pagination/list-query.dto';
 import {
   endOfRiyadhDay,
   startOfRiyadhDay,
@@ -100,12 +101,14 @@ export class TasksService {
   async findForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
+    query?: ListQueryDto,
   ): Promise<TaskResponse[]> {
     await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
 
     const tasks = await this.prisma.weddingTask.findMany({
       where: { weddingPlanId },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      ...pageArgs(query),
     });
 
     return tasks.map((task) => this.toResponse(task));

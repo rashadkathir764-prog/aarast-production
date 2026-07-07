@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Debt, DebtStatus, Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { applyDebtPaymentDelta } from '../common/money/debt-balance';
+import { ListQueryDto, pageArgs } from '../common/pagination/list-query.dto';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
@@ -75,6 +76,7 @@ export class DebtsService {
   async findForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
+    query?: ListQueryDto,
   ): Promise<DebtResponse[]> {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
@@ -85,6 +87,7 @@ export class DebtsService {
     const debts = await this.prisma.debt.findMany({
       where: { weddingPlanId },
       orderBy: { createdAt: 'desc' },
+      ...pageArgs(query),
     });
 
     return debts.map((debt) => this.toResponse(debt));

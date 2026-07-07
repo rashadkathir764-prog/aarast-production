@@ -13,6 +13,11 @@ import {
   Prisma,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import {
+  DEFAULT_LIST_CAP,
+  ListQueryDto,
+  pageArgs,
+} from "../common/pagination/list-query.dto";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
@@ -155,6 +160,7 @@ export class FinancialCommitmentsService {
   async findForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
+    query?: ListQueryDto,
   ): Promise<FinancialCommitmentResponse[]> {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
@@ -165,6 +171,7 @@ export class FinancialCommitmentsService {
     const commitments = await this.prisma.financialCommitment.findMany({
       where: { weddingPlanId },
       orderBy: [{ createdAt: "desc" }],
+      ...pageArgs(query),
     });
 
     return commitments.map((commitment) =>
@@ -352,6 +359,7 @@ export class FinancialCommitmentsService {
     const records = await this.prisma.financialPaymentRecord.findMany({
       where: { financialCommitmentId },
       orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+      take: DEFAULT_LIST_CAP,
     });
 
     return records.map((record) => this.toPaymentRecordResponse(record));
@@ -360,6 +368,7 @@ export class FinancialCommitmentsService {
   async listPaymentRecordsForPlan(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
+    query?: ListQueryDto,
   ): Promise<FinancialPaymentRecordResponse[]> {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
@@ -370,6 +379,7 @@ export class FinancialCommitmentsService {
     const records = await this.prisma.financialPaymentRecord.findMany({
       where: { weddingPlanId },
       orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
+      ...pageArgs(query),
     });
 
     return records.map((record) => this.toPaymentRecordResponse(record));

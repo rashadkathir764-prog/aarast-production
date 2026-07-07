@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Debt, Installment, InstallmentStatus, Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { applyDebtPaymentDelta } from '../common/money/debt-balance';
+import { DEFAULT_LIST_CAP } from '../common/pagination/list-query.dto';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../sharing/permission.service';
@@ -78,6 +79,7 @@ export class InstallmentsService {
     const installments = await this.prisma.installment.findMany({
       where: { debtId },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      take: DEFAULT_LIST_CAP,
     });
 
     return installments.map((installment) => this.toResponse(installment));
@@ -99,6 +101,7 @@ export class InstallmentsService {
         debt: { weddingPlanId },
       },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      take: DEFAULT_LIST_CAP,
     });
 
     return installments.map((installment) => this.toResponse(installment));

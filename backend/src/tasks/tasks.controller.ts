@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ListQueryDto } from '../common/pagination/list-query.dto';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { CreateChecklistItemDto } from './dto/create-checklist-item.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -27,8 +28,9 @@ export class WeddingPlanTasksController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
-    return this.tasksService.findForPlan(currentUser, weddingPlanId);
+    return this.tasksService.findForPlan(currentUser, weddingPlanId, query);
   }
 
   @Get('summary')
@@ -126,8 +128,9 @@ export class ApiV1WeddingPlanTasksController {
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('weddingPlanId') weddingPlanId: string,
+    @Query() query: ListQueryDto,
   ) {
-    return this.tasksService.findForPlan(currentUser, weddingPlanId);
+    return this.tasksService.findForPlan(currentUser, weddingPlanId, query);
   }
 
   @Get('summary')

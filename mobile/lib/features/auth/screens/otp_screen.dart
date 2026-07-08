@@ -90,7 +90,7 @@ class _OtpScreenState extends State<OtpScreen> {
         widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
     if (phone == null || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اطلبي رمز تحقق جديد للمتابعة.')),
+        const SnackBar(content: Text('اطلب رمز تحقق جديد للمتابعة.')),
       );
       return;
     }
@@ -232,7 +232,7 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           const SizedBox(height: 18),
           AuthFooterLink(
-            prefix: 'لم تستلمي الرمز؟',
+            prefix: 'لم تستلم الرمز؟',
             action: 'إعادة الإرسال',
             onTap: () async {
               final authController = context.read<AuthController>();

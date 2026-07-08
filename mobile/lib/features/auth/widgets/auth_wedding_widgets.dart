@@ -121,16 +121,21 @@ class WeddingRingsBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.gold2.withAlpha(150)),
-        boxShadow: AppTheme.softShadow(opacity: 0.08),
+    // Kept in a Center so a stretch-aligned parent (e.g. the OTP screen's
+    // Column) can't force the badge wider than [size] and distort the rings
+    // into an ellipse.
+    return Center(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppTheme.gold2.withAlpha(150)),
+          boxShadow: AppTheme.softShadow(opacity: 0.08),
+        ),
+        child: CustomPaint(painter: _RingsPainter()),
       ),
-      child: CustomPaint(painter: _RingsPainter()),
     );
   }
 }

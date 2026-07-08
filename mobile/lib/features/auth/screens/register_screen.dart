@@ -92,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 8),
             Text(
               providerMode
-                  ? 'أرسلي بيانات نشاطك وسيتم مراجعة الطلب قبل ظهور لوحة المزود.'
+                  ? 'أرسل بيانات نشاطك وسيتم مراجعة الطلب قبل ظهور لوحة المزود.'
                   : 'ابدأ رحلتك بخطة زفاف واضحة ومرتبة.',
               textAlign: TextAlign.center,
               style: textTheme.bodyMedium?.copyWith(

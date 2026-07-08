@@ -686,7 +686,7 @@ class _TaskHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'نظمي كل تفصيل بخطوة مدروسة',
+                  'نظّم كل تفصيل بخطوة مدروسة',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.burgundyDark,
                     fontWeight: FontWeight.w900,

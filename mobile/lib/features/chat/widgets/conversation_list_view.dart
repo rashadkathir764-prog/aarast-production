@@ -141,14 +141,15 @@ class _ConversationTile extends StatelessWidget {
               Container(
                 constraints: const BoxConstraints(minWidth: 24),
                 height: 24,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                decoration: BoxDecoration(
                   color: AppTheme.burgundy,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   '${conversation.unreadCount}',
+                  textDirection: TextDirection.ltr,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,

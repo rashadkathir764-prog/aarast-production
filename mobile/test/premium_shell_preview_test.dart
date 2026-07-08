@@ -8,34 +8,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/royal_home_chrome.dart';
 
-Future<void> _loadFonts() async {
-  Future<void> load(String family, List<String> assets) async {
-    final loader = FontLoader(family);
-    for (final asset in assets) {
-      loader.addFont(rootBundle.load(asset));
-    }
-    await loader.load();
-  }
-
-  await load('Tajawal', [
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-  ]);
-  await load('IBMPlexSansArabic', [
-    'assets/fonts/IBMPlexSansArabic-Regular.ttf',
-    'assets/fonts/IBMPlexSansArabic-Medium.ttf',
-    'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
-    'assets/fonts/IBMPlexSansArabic-Bold.ttf',
-  ]);
-  await load('packages/lucide_icons/Lucide',
-      ['packages/lucide_icons/assets/lucide.ttf']);
-}
+import 'support/preview_fonts.dart';
 
 Future<void> _pump(WidgetTester tester, {required int activeIndex}) async {
   tester.view.physicalSize = const Size(420, 320);
@@ -73,7 +51,7 @@ Future<void> _pump(WidgetTester tester, {required int activeIndex}) async {
 }
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadPreviewAppFonts);
 
   testWidgets('shell — dock active on home (420)', (tester) async {
     await _pump(tester, activeIndex: 0);

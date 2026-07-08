@@ -8,7 +8,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -17,29 +16,7 @@ import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_path_card
 import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_role_card.dart';
 import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_setup_fields.dart';
 
-Future<void> _loadFonts() async {
-  Future<void> load(String family, List<String> assets) async {
-    final loader = FontLoader(family);
-    for (final asset in assets) {
-      loader.addFont(rootBundle.load(asset));
-    }
-    await loader.load();
-  }
-
-  await load('Tajawal', [
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-  ]);
-  await load('IBMPlexSansArabic', [
-    'assets/fonts/IBMPlexSansArabic-Regular.ttf',
-    'assets/fonts/IBMPlexSansArabic-Medium.ttf',
-    'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
-    'assets/fonts/IBMPlexSansArabic-Bold.ttf',
-  ]);
-  await load('packages/lucide_icons/Lucide', [
-    'packages/lucide_icons/assets/lucide.ttf',
-  ]);
-}
+import 'support/preview_fonts.dart';
 
 Future<void> _pump(
   WidgetTester tester,
@@ -70,7 +47,7 @@ Future<void> _pump(
 }
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadPreviewAppFonts);
 
   testWidgets('welcome — path + role cards (420)', (tester) async {
     await _pump(

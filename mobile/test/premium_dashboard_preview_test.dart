@@ -8,12 +8,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/premium/premium_dashboard_view.dart';
+import 'support/preview_fonts.dart';
 
 const _permissions = DashboardPermissionSummary(
   isOwner: true,
@@ -85,33 +85,6 @@ DashboardSummary _freshPlanSummary() {
   );
 }
 
-Future<void> _loadFonts() async {
-  Future<void> load(String family, List<String> assets) async {
-    final loader = FontLoader(family);
-    for (final asset in assets) {
-      loader.addFont(rootBundle.load(asset));
-    }
-    await loader.load();
-  }
-
-  await load('Tajawal', [
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-  ]);
-  await load('IBMPlexSansArabic', [
-    'assets/fonts/IBMPlexSansArabic-Regular.ttf',
-    'assets/fonts/IBMPlexSansArabic-Medium.ttf',
-    'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
-    'assets/fonts/IBMPlexSansArabic-Bold.ttf',
-  ]);
-  await load('Amiri', ['assets/fonts/Amiri-Bold.ttf']);
-  // خط أيقونات Lucide حتى تُعاين الأيقونات فعليًا في الـ goldens.
-  // الخطوط القادمة من حزمة تُسجَّل بصيغة packages/<pkg>/<family>.
-  await load('packages/lucide_icons/Lucide', [
-    'packages/lucide_icons/assets/lucide.ttf',
-  ]);
-}
-
 Future<void> _pumpDashboard(
   WidgetTester tester,
   DashboardSummary summary, {
@@ -157,7 +130,7 @@ Future<void> _pumpDashboard(
 }
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadPreviewAppFonts);
 
   testWidgets('premium dashboard — active plan (420)', (tester) async {
     await _pumpDashboard(

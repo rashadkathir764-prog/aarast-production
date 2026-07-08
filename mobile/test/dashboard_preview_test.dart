@@ -15,6 +15,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/aarast_dashboard_widgets.dart';
 
+import 'support/preview_fonts.dart';
+
 const double _designWidth = 843;
 
 Widget _padded(Widget child) =>
@@ -204,8 +206,9 @@ Future<void> _pumpAt(WidgetTester tester, Size size) async {
 }
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
     GoogleFonts.config.allowRuntimeFetching = false;
+    await loadPreviewAppFonts();
   });
 
   testWidgets('dashboard — full design width (843)', (tester) async {

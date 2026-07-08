@@ -8,32 +8,12 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 
-Future<void> _loadFonts() async {
-  Future<void> load(String family, List<String> assets) async {
-    final loader = FontLoader(family);
-    for (final asset in assets) {
-      loader.addFont(rootBundle.load(asset));
-    }
-    await loader.load();
-  }
-
-  await load('Tajawal', [
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-  ]);
-  await load('IBMPlexSansArabic', [
-    'assets/fonts/IBMPlexSansArabic-Regular.ttf',
-    'assets/fonts/IBMPlexSansArabic-Medium.ttf',
-    'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
-    'assets/fonts/IBMPlexSansArabic-Bold.ttf',
-  ]);
-}
+import 'support/preview_fonts.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child, Size size) async {
   tester.view.physicalSize = size;
@@ -58,7 +38,7 @@ Future<void> _pump(WidgetTester tester, Widget child, Size size) async {
 }
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadPreviewAppFonts);
 
   testWidgets('foundation — unified skeletons (420)', (tester) async {
     await _pump(

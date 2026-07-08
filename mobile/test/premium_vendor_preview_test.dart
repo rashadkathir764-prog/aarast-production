@@ -7,7 +7,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -15,28 +14,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/theme/aarast_design_tokens.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/premium/premium_vendor_card.dart';
 
-Future<void> _loadFonts() async {
-  Future<void> load(String family, List<String> assets) async {
-    final loader = FontLoader(family);
-    for (final asset in assets) {
-      loader.addFont(rootBundle.load(asset));
-    }
-    await loader.load();
-  }
-
-  await load('Tajawal', [
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-  ]);
-  await load('IBMPlexSansArabic', [
-    'assets/fonts/IBMPlexSansArabic-Regular.ttf',
-    'assets/fonts/IBMPlexSansArabic-Medium.ttf',
-    'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
-    'assets/fonts/IBMPlexSansArabic-Bold.ttf',
-  ]);
-  await load('packages/lucide_icons/Lucide',
-      ['packages/lucide_icons/assets/lucide.ttf']);
-}
+import 'support/preview_fonts.dart';
 
 Future<void> _pump(WidgetTester tester, Widget child,
     {required Size size}) async {
@@ -64,7 +42,7 @@ Future<void> _pump(WidgetTester tester, Widget child,
 }
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadPreviewAppFonts);
 
   testWidgets('vendors — featured + normal (420)', (tester) async {
     await _pump(

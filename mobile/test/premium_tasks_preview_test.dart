@@ -7,7 +7,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -16,29 +15,7 @@ import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/widgets/premium/smart_task_card.dart';
 import 'package:aarast_mobile/features/tasks/widgets/premium/tasks_progress_hero.dart';
 
-Future<void> _loadFonts() async {
-  Future<void> load(String family, List<String> assets) async {
-    final loader = FontLoader(family);
-    for (final asset in assets) {
-      loader.addFont(rootBundle.load(asset));
-    }
-    await loader.load();
-  }
-
-  await load('Tajawal', [
-    'assets/fonts/Tajawal-Regular.ttf',
-    'assets/fonts/Tajawal-Bold.ttf',
-  ]);
-  await load('IBMPlexSansArabic', [
-    'assets/fonts/IBMPlexSansArabic-Regular.ttf',
-    'assets/fonts/IBMPlexSansArabic-Medium.ttf',
-    'assets/fonts/IBMPlexSansArabic-SemiBold.ttf',
-    'assets/fonts/IBMPlexSansArabic-Bold.ttf',
-  ]);
-  await load('packages/lucide_icons/Lucide', [
-    'packages/lucide_icons/assets/lucide.ttf',
-  ]);
-}
+import 'support/preview_fonts.dart';
 
 final _now = DateTime(2026, 7, 4);
 
@@ -93,7 +70,7 @@ Future<void> _pump(
 }
 
 void main() {
-  setUpAll(_loadFonts);
+  setUpAll(loadPreviewAppFonts);
 
   testWidgets('tasks — active list (420)', (tester) async {
     const summary = TaskSummary(

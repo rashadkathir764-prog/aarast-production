@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           children: AarastStagger.children(context, [
             _AccountCard(
-              name: auth.user?.name ?? 'مستخدم اعّرست',
+              name: auth.user?.name ?? 'مستخدم أعرست',
               phone: auth.user?.phone,
               email: auth.user?.email,
             ),
@@ -184,7 +184,7 @@ class _AccountCard extends StatelessWidget {
                       ? phone!.trim()
                       : email?.trim().isNotEmpty == true
                       ? email!.trim()
-                      : 'حساب اعّرست',
+                      : 'حساب أعرست',
                   textDirection: phone?.trim().isNotEmpty == true
                       ? TextDirection.ltr
                       : TextDirection.rtl,
@@ -227,7 +227,7 @@ class _NotificationSettingsCard extends StatelessWidget {
           ),
           _SwitchRow(
             title: 'تنبيهات داخل التطبيق',
-            subtitle: 'إظهار التنبيهات المهمة في اعّرست',
+            subtitle: 'إظهار التنبيهات المهمة في أعرست',
             value: settings.pushEnabled,
             onChanged: (value) =>
                 onChanged(settings.copyWith(pushEnabled: value)),

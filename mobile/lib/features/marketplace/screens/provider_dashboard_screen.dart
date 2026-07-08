@@ -202,7 +202,7 @@ class _ProviderProfileCard extends StatelessWidget {
                       profile.city?.nameAr ??
                           PhoneNumberUtils.display(profile.phone) ??
                           profile.phone ??
-                          'حساب مزود اعّرست',
+                          'حساب مزود أعرست',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -897,7 +897,7 @@ class _QuoteTile extends StatelessWidget {
                   Text(
                     quote.userName?.trim().isNotEmpty == true
                         ? quote.userName!.trim()
-                        : quote.message?.trim() ?? 'عميل اعّرست',
+                        : quote.message?.trim() ?? 'عميل أعرست',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -957,7 +957,7 @@ class _QuoteTile extends StatelessWidget {
                         ),
                   ),
                   const SizedBox(height: 8),
-                  _SheetLine('العميل', quote.userName ?? 'عميل اعّرست'),
+                  _SheetLine('العميل', quote.userName ?? 'عميل أعرست'),
                   if (quote.userPhone?.trim().isNotEmpty == true)
                     _SheetLine(
                       'التواصل',

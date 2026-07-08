@@ -58,7 +58,7 @@ class _MoreScreenState extends State<MoreScreen> {
     final activePlan = _maybeWatchWeddingPlans(context)?.activePlan;
     final user = auth.user;
     final hasAccount = auth.status == AuthStatus.authenticated && user != null;
-    final name = user?.name ?? 'مستخدم اعّرست';
+    final name = user?.name ?? 'مستخدم أعرست';
     final phone = user?.phone;
 
     return AarastScreenFrame(
@@ -782,7 +782,7 @@ class _ProfileCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       phone == null || phone!.trim().isEmpty
-                          ? 'حساب اعّرست'
+                          ? 'حساب أعرست'
                           : phone!,
                       textDirection: phone == null
                           ? TextDirection.rtl

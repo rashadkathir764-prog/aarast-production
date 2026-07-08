@@ -44,7 +44,7 @@ class _AarastAppState extends State<AarastApp> {
     );
 
     return MaterialApp.router(
-      title: 'اعّرست',
+      title: 'أعرست',
       debugShowCheckedModeBanner: false,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar')],

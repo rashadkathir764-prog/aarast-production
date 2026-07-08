@@ -646,7 +646,7 @@ class _ReviewTile extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  review.userName ?? 'مستخدم اعّرست',
+                  review.userName ?? 'مستخدم أعرست',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: AppTheme.muted),

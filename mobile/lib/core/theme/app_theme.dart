@@ -20,10 +20,13 @@ class AppTheme {
   static const burgundy = AarastDesignTokens.burgundy;
   static const burgundyDark = AarastDesignTokens.burgundyDark;
   static const burgundySoft = AarastDesignTokens.burgundySoft;
+  static const burgundyLight = AarastDesignTokens.burgundyLight;
 
   static const gold = AarastDesignTokens.gold;
   static const goldSoft = AarastDesignTokens.goldSoft;
   static const goldDeep = AarastDesignTokens.goldDeep;
+  static const goldLight = AarastDesignTokens.goldLight;
+  static const goldGlow = AarastDesignTokens.goldGlow;
 
   static const ink = AarastDesignTokens.ink;
   static const title = AarastDesignTokens.title;

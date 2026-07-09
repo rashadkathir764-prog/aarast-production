@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 
+/// نغمة بطاقة المسار — تمنح كل مسار لبنة أيقونة متدرّجة فاخرة متناسقة مع
+/// هوية أعرست (بورجندي ملكي + ذهب شمبانيا + وردي هادئ) بدل الحلقات
+/// الفارغة الباهتة السابقة. المسار الأساسي (النغمة الملكية) هو الأبرز.
+enum PremiumPathTone { hero, gold, rose }
+
 class PremiumPathCard extends StatefulWidget {
   const PremiumPathCard({
     super.key,
@@ -9,17 +14,33 @@ class PremiumPathCard extends StatefulWidget {
     required this.subtitle,
     required this.icon,
     required this.onTap,
-    this.isPrimary = false,
+    this.tone = PremiumPathTone.gold,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
-  final bool isPrimary;
+  final PremiumPathTone tone;
 
   @override
   State<PremiumPathCard> createState() => _PremiumPathCardState();
+}
+
+class _PathStyle {
+  const _PathStyle({
+    required this.tileGradient,
+    required this.tileIconColor,
+    required this.tileGlow,
+    required this.chevronBg,
+    required this.chevronColor,
+  });
+
+  final Gradient tileGradient;
+  final Color tileIconColor;
+  final Color tileGlow;
+  final Color chevronBg;
+  final Color chevronColor;
 }
 
 class _PremiumPathCardState extends State<PremiumPathCard>
@@ -27,6 +48,9 @@ class _PremiumPathCardState extends State<PremiumPathCard>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isHovered = false;
+
+  static const _tileGradientBegin = Alignment.topRight;
+  static const _tileGradientEnd = Alignment.bottomLeft;
 
   @override
   void initState() {
@@ -47,20 +71,60 @@ class _PremiumPathCardState extends State<PremiumPathCard>
     super.dispose();
   }
 
+  _PathStyle get _style {
+    switch (widget.tone) {
+      case PremiumPathTone.hero:
+        return const _PathStyle(
+          tileGradient: LinearGradient(
+            begin: _tileGradientBegin,
+            end: _tileGradientEnd,
+            colors: [
+              AppTheme.burgundyLight,
+              AppTheme.burgundy,
+              AppTheme.burgundyDark,
+            ],
+          ),
+          tileIconColor: Colors.white,
+          tileGlow: AppTheme.burgundy,
+          chevronBg: AppTheme.goldSoft,
+          chevronColor: AppTheme.burgundy,
+        );
+      case PremiumPathTone.gold:
+        return const _PathStyle(
+          tileGradient: LinearGradient(
+            begin: _tileGradientBegin,
+            end: _tileGradientEnd,
+            colors: [AppTheme.goldGlow, AppTheme.gold, AppTheme.goldDeep],
+          ),
+          tileIconColor: AppTheme.burgundyDark,
+          tileGlow: AppTheme.gold,
+          chevronBg: AppTheme.goldSoft,
+          chevronColor: AppTheme.burgundy,
+        );
+      case PremiumPathTone.rose:
+        return const _PathStyle(
+          tileGradient: LinearGradient(
+            begin: _tileGradientBegin,
+            end: _tileGradientEnd,
+            colors: [AppTheme.burgundySoft, AppTheme.dangerSoft],
+          ),
+          tileIconColor: AppTheme.burgundy,
+          tileGlow: AppTheme.burgundy,
+          chevronBg: AppTheme.burgundySoft,
+          chevronColor: AppTheme.burgundy,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bgColor = widget.isPrimary ? AppTheme.surface : AppTheme.pearl;
+    final isHero = widget.tone == PremiumPathTone.hero;
+    final style = _style;
+    final emphasised = isHero || _isHovered;
 
-    final borderColor = widget.isPrimary
-        ? AppTheme.gold.withValues(alpha: 0.7)
-        : AppTheme.border;
-
-    const titleColor = AppTheme.title;
-    const subtitleColor = AppTheme.muted;
-
-    final iconBgColor = widget.isPrimary ? AppTheme.goldSoft : AppTheme.empty;
-
-    final iconColor = widget.isPrimary ? AppTheme.burgundy : AppTheme.muted;
+    final borderColor = _isHovered
+        ? AppTheme.gold
+        : (isHero ? AppTheme.gold.withValues(alpha: 0.55) : AppTheme.border);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -76,76 +140,83 @@ class _PremiumPathCardState extends State<PremiumPathCard>
           scale: _scaleAnimation,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(28),
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: _isHovered ? AppTheme.gold : borderColor,
-                width: _isHovered ? 2.0 : 1.5,
+                color: borderColor,
+                width: emphasised ? 1.8 : 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.isPrimary || _isHovered
+                  color: emphasised
                       ? AppTheme.gold.withValues(alpha: 0.16)
                       : AppTheme.ink.withValues(alpha: 0.05),
-                  blurRadius: _isHovered ? 30 : 20,
-                  offset: Offset(0, _isHovered ? 15 : 10),
+                  blurRadius: _isHovered ? 30 : (isHero ? 26 : 18),
+                  offset: Offset(0, _isHovered ? 15 : 12),
                 ),
               ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 56,
+                  height: 56,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: iconBgColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: iconColor.withValues(alpha: 0.2)),
+                    gradient: style.tileGradient,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: style.tileGlow.withValues(alpha: 0.32),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  child: Icon(widget.icon, color: iconColor, size: 30),
+                  child: Icon(widget.icon, color: style.tileIconColor, size: 28),
                 ),
-                const SizedBox(width: 24),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: titleColor,
+                          color: AppTheme.title,
                           fontWeight: FontWeight.w900,
-                          fontSize: 20,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       Text(
                         widget.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: subtitleColor,
-                          height: 1.5,
-                          fontSize: 14,
+                          color: AppTheme.muted,
+                          height: 1.45,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: widget.isPrimary
-                        ? AppTheme.goldSoft
-                        : AppTheme.surface,
+                    color: style.chevronBg,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     LucideIcons.chevronLeft,
                     size: 18,
-                    color: widget.isPrimary
-                        ? AppTheme.burgundy
-                        : AppTheme.muted,
+                    color: style.chevronColor,
                   ),
                 ),
               ],

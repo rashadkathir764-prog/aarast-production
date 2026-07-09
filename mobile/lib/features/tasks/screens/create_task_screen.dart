@@ -276,7 +276,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const _TaskHero(),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     AarastCard(
                       padding: const EdgeInsets.all(18),
                       child: Column(
@@ -317,7 +317,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                                 onTap: _showCalendarPicker,
                               );
 
-                              if (constraints.maxWidth < 330) {
+                              if (constraints.maxWidth < 280) {
                                 return Column(
                                   children: [
                                     categoryField,
@@ -336,7 +336,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               );
                             },
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           const Align(
                             alignment: AlignmentDirectional.centerStart,
                             child: Text(
@@ -381,7 +381,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 14),
                           _ResponsibleSection(
                             participants: participants,
                             selectedAssigneeUserId: _selectedAssigneeUserId,
@@ -663,13 +663,14 @@ class _TaskHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AarastCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       color: AppTheme.burgundySoft.withAlpha(120),
       border: Border.all(color: AppTheme.burgundy.withAlpha(35)),
       child: Row(
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
@@ -677,10 +678,10 @@ class _TaskHero extends StatelessWidget {
             child: const Icon(
               LucideIcons.clipboardCheck,
               color: AppTheme.burgundy,
-              size: 30,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

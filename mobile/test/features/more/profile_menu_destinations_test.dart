@@ -125,7 +125,13 @@ class _MoreHarness {
         ),
         ChangeNotifierProvider<AuthController>.value(value: authController),
       ],
-      child: MaterialApp(theme: AppTheme.light(), home: const MoreScreen()),
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: const MediaQuery(
+          data: MediaQueryData(disableAnimations: true),
+          child: MoreScreen(),
+        ),
+      ),
     );
   }
 }

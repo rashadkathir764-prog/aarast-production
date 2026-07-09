@@ -295,22 +295,24 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           PremiumPathCard(
             title: 'إنشاء خطتك',
             subtitle: 'ابدأ خطة جديدة ثم خصصها حسب دورك.',
-            icon: LucideIcons.heart,
-            isPrimary: true,
+            icon: LucideIcons.clipboardList,
+            tone: PremiumPathTone.hero,
             onTap: () => _goTo(_WelcomeStep.roleSelection),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           PremiumPathCard(
             title: 'وصلتني دعوة لخطة',
             subtitle: 'الدخول إلى خطة تمت دعوتك إليها برقم هاتفك.',
             icon: LucideIcons.mailCheck,
+            tone: PremiumPathTone.gold,
             onTap: () => context.go(AppRouter.inviteAccess),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           PremiumPathCard(
             title: 'أنا مزود خدمة',
             subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
             icon: LucideIcons.store,
+            tone: PremiumPathTone.rose,
             onTap: () => context.go(AppRouter.providerApply),
           ),
           const SizedBox(height: 18),
@@ -570,79 +572,78 @@ class _WelcomeHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final content = _WelcomeHeroContent.forStep(step);
 
-    return AarastCard(
-      padding: const EdgeInsets.all(16),
-      color: AppTheme.pearl,
-      border: Border.all(color: AppTheme.gold.withValues(alpha: 0.28)),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppTheme.goldSoft,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                  border: Border.all(
-                    color: AppTheme.gold.withValues(alpha: 0.32),
-                  ),
-                ),
-                child: Icon(content.icon, color: AppTheme.burgundy, size: 24),
+    return Column(
+      children: [
+        // لبنة الأيقونة تخصّ خطوات المسار الخطّي فقط (الدور ← البيانات)؛
+        // شاشة اختيار المسار تبقى ترويسة نصّية خفيفة بلا شعار.
+        if (step != _WelcomeStep.pathSelection) ...[
+          Container(
+            width: 62,
+            height: 62,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [AppTheme.goldGlow, AppTheme.gold, AppTheme.goldDeep],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      content.eyebrow,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.burgundy,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      content.title,
-                      textAlign: TextAlign.right,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.title,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: AppTheme.displayFontFamily,
-                      ),
-                    ),
-                  ],
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.gold.withValues(alpha: 0.34),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            content.message,
-            textAlign: TextAlign.right,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
-              height: 1.55,
-              fontWeight: FontWeight.w700,
+              ],
             ),
+            child: Icon(content.icon, color: AppTheme.burgundyDark, size: 30),
           ),
-          // مؤشّر خطوات للمسار الخطّي فقط (الدور ← البيانات) — نقطتان.
-          // اختيار المسار تفرّع وليس خطوة، فلا نعرضه فيه.
-          if (step != _WelcomeStep.pathSelection) ...[
-            const SizedBox(height: 14),
-            _WelcomeStepDots(
-              activeIndex: step == _WelcomeStep.roleSelection ? 0 : 1,
-            ),
-          ],
+          const SizedBox(height: 14),
         ],
-      ),
+        Text(
+          content.eyebrow,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            color: AppTheme.burgundy,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          content.title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: AppTheme.title,
+            fontWeight: FontWeight.w900,
+            fontFamily: AppTheme.displayFontFamily,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content.message,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.muted,
+            height: 1.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        // مؤشّر خطوات للمسار الخطّي فقط (الدور ← البيانات) — نقطتان.
+        // اختيار المسار تفرّع وليس خطوة، فلا نعرضه فيه.
+        if (step != _WelcomeStep.pathSelection) ...[
+          const SizedBox(height: 16),
+          _WelcomeStepDots(
+            activeIndex: step == _WelcomeStep.roleSelection ? 0 : 1,
+          ),
+        ],
+      ],
     );
   }
 }
@@ -672,7 +673,7 @@ class _WelcomeStepDots extends StatelessWidget {
                   : null,
               color: i == activeIndex
                   ? null
-                  : AppTheme.gold.withValues(alpha: 0.22),
+                  : AppTheme.gold.withValues(alpha: 0.28),
               borderRadius: BorderRadius.circular(99),
             ),
           ),
@@ -697,7 +698,7 @@ class _WelcomeHeroContent {
         eyebrow: 'مرحبًا بك',
         title: 'أعرست',
         message: 'ابدأ أو تابع من المسار المناسب لك.',
-        icon: LucideIcons.heart,
+        icon: LucideIcons.gem,
       ),
       _WelcomeStep.roleSelection => const _WelcomeHeroContent(
         eyebrow: 'تخصيص التجربة',

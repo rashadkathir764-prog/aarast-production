@@ -128,6 +128,7 @@ async function run() {
 
   const reference = await ensureReferenceData();
   let providerToken = null;
+  let providerUserId = null;
   let customerToken = null;
   let providerId = null;
   let serviceId = null;
@@ -141,6 +142,7 @@ async function run() {
     check('provider register - HTTP 201', res.status === 201);
     check('provider register returns token', typeof res.body?.accessToken === 'string');
     providerToken = res.body?.accessToken;
+    providerUserId = res.body?.user?.id;
   }
 
   {
@@ -217,17 +219,29 @@ async function run() {
   }
 
   {
+    const mediaBaseUrl = process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.replace(/\/$/, '');
+    const canExerciseImageCrud = Boolean(mediaBaseUrl && providerUserId);
+    const imageUrl = canExerciseImageCrud
+      ? `${mediaBaseUrl}/service-image/${providerUserId}/provider-service-smoke.jpg`
+      : 'https://example.test/provider-service.jpg';
     const res = await request('POST', `/provider/me/services/${serviceId}/images`, {
-      imageUrl: 'https://example.test/provider-service.jpg',
+      imageUrl,
       altText: 'صورة خدمة سموك',
       sortOrder: 1,
     }, providerToken);
-    check('POST /provider/me/services/:id/images - HTTP 201', res.status === 201);
-    check('created image has id', typeof res.body?.id === 'string');
-    imageId = res.body?.id;
+    if (canExerciseImageCrud) {
+      check('POST /provider/me/services/:id/images - HTTP 201', res.status === 201);
+      check('created image has id', typeof res.body?.id === 'string');
+      imageId = res.body?.id;
+    } else {
+      check(
+        'service image rejects unmanaged URL when media storage is unavailable',
+        res.status === 400 || res.status === 503,
+      );
+    }
   }
 
-  {
+  if (imageId) {
     const res = await request('PATCH', `/provider/me/services/${serviceId}/images/${imageId}`, {
       altText: 'صورة خدمة سموك محدثة',
       sortOrder: 2,
@@ -236,7 +250,7 @@ async function run() {
     check('image sortOrder updated', res.body?.sortOrder === 2);
   }
 
-  {
+  if (imageId) {
     const res = await request('DELETE', `/provider/me/services/${serviceId}/images/${imageId}`, null, providerToken);
     check('DELETE service image - HTTP 200', res.status === 200);
     check('image delete response', res.body?.deleted === true);

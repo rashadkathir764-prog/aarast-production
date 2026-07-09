@@ -96,9 +96,9 @@ type QuoteWithRelations = QuoteRequest & {
   providerLinks?: PlanProviderLink[];
 };
 
-// Field-level visibility for a quote request. The contact phone and the
-// budget range are only exposed to members with the matching permission; a
-// pure read-only member (e.g. VIEWER) sees the quote without them.
+// Field-level visibility for a quote request. Contact, budget, and offer
+// amounts are only exposed to members with the matching permission; a pure
+// read-only member (e.g. VIEWER) sees the quote context without private money.
 type QuoteVisibility = { budget: boolean; contact: boolean };
 const FULL_QUOTE_VISIBILITY: QuoteVisibility = { budget: true, contact: true };
 
@@ -1349,12 +1349,17 @@ export class MarketplaceService {
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers:
-        quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
+        quote.offers?.map((offer) =>
+          this.toQuoteOfferResponse(offer, visibility.budget),
+        ) ?? [],
       acceptedPlanProvider:
         quote.providerLinks?.find(
           (link) => link.status === PlanProviderLinkStatus.ACTIVE,
         ) ?? null,
-      financialSuggestion: this.quoteFinancialSuggestion(quote),
+      financialSuggestion: this.quoteFinancialSuggestion(
+        quote,
+        visibility.budget,
+      ),
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,
@@ -1363,15 +1368,15 @@ export class MarketplaceService {
     };
   }
 
-  private toQuoteOfferResponse(offer: QuoteOffer) {
+  private toQuoteOfferResponse(offer: QuoteOffer, showFinancials = true) {
     return {
       id: offer.id,
       quoteRequestId: offer.quoteRequestId,
       providerId: offer.providerId,
       title: offer.title,
       message: offer.message,
-      amount: offer.amount?.toString() ?? null,
-      currency: offer.currency,
+      amount: showFinancials ? (offer.amount?.toString() ?? null) : null,
+      currency: showFinancials ? offer.currency : null,
       validUntil: offer.validUntil,
       status: offer.status,
       createdAt: offer.createdAt,
@@ -1379,10 +1384,13 @@ export class MarketplaceService {
     };
   }
 
-  private quoteFinancialSuggestion(quote: QuoteWithRelations) {
-    const acceptedOffer = quote.offers?.find(
-      (offer) => offer.status === QuoteOfferStatus.ACCEPTED,
-    );
+  private quoteFinancialSuggestion(
+    quote: QuoteWithRelations,
+    showFinancials = true,
+  ) {
+    const acceptedOffer = showFinancials
+      ? quote.offers?.find((offer) => offer.status === QuoteOfferStatus.ACCEPTED)
+      : null;
     const isAccepted = quote.status === QuoteRequestStatus.ACCEPTED;
     return {
       providerId: quote.providerId,
@@ -1394,10 +1402,10 @@ export class MarketplaceService {
       quotedAmount: acceptedOffer?.amount?.toString() ?? null,
       currency: acceptedOffer?.currency ?? null,
       suggestedAction:
-        isAccepted && acceptedOffer?.amount
+        showFinancials && isAccepted && acceptedOffer?.amount
           ? "CREATE_FINANCIAL_COMMITMENT"
           : "NONE",
-      availableActions: isAccepted
+      availableActions: showFinancials && isAccepted
         ? ["CREATE_FINANCIAL_COMMITMENT", "RECORD_PAYMENT"]
         : [],
       sourceType: "PROVIDER_SERVICE",

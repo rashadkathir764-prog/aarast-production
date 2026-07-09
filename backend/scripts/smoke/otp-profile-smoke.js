@@ -138,10 +138,17 @@ async function run() {
   }
 
   {
+    const externalAvatar = await request('PATCH', '/users/me', {
+      avatarUrl: 'https://example.test/avatar.png',
+    }, token);
+    check(
+      'profile does not accept external avatar URL',
+      externalAvatar.status === 400 || externalAvatar.status === 503,
+    );
+
     const res = await request('PATCH', '/users/me', {
       name: 'Updated OTP Smoke User',
       email: TEST_EMAIL,
-      avatarUrl: 'https://example.test/avatar.png',
       locale: 'ar',
     }, token);
     check('PATCH /users/me - HTTP 200', res.status === 200);

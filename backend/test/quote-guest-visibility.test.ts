@@ -71,7 +71,24 @@ const provider = () => ({
   primaryCategory: null,
 });
 
-const quoteRow = (userId: string) => ({
+const quoteOffer = () => ({
+  id: "offer1",
+  quoteRequestId: "q1",
+  providerId: "prov1",
+  title: "Offer",
+  message: "Detailed pricing",
+  amount: new Prisma.Decimal("250000"),
+  currency: "YER",
+  validUntil: null,
+  status: "ACCEPTED",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+const quoteRow = (
+  userId: string,
+  options: { status?: string; offers?: ReturnType<typeof quoteOffer>[] } = {},
+) => ({
   id: "q1",
   userId,
   weddingPlanId: "p1",
@@ -91,8 +108,8 @@ const quoteRow = (userId: string) => ({
   message: "msg",
   budgetMin: new Prisma.Decimal("1000"),
   budgetMax: new Prisma.Decimal("5000"),
-  status: "SENT",
-  offers: [],
+  status: options.status ?? "SENT",
+  offers: options.offers ?? [],
   providerLinks: [],
   acceptedAt: null,
   rejectedAt: null,
@@ -124,6 +141,24 @@ test("quote budget and contact phone are hidden from a read-only member", async 
   assert.equal(q.guestCount, 100, "non-sensitive fields stay visible");
 });
 
+test("quote offer amounts and financial suggestion are hidden from a read-only member", async () => {
+  const svc = marketplace(
+    quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer()] }),
+    {
+      canReadFinancial: () => false,
+      canManageProviders: () => false,
+    },
+  );
+  const [q] = await svc.findPlanQuoteRequests(user("viewer"), "p1");
+  assert.equal(q.offers.length, 1, "offer context can remain visible");
+  assert.equal(q.offers[0].amount, null);
+  assert.equal(q.offers[0].currency, null);
+  assert.equal(q.financialSuggestion.quotedAmount, null);
+  assert.equal(q.financialSuggestion.currency, null);
+  assert.equal(q.financialSuggestion.suggestedAction, "NONE");
+  assert.deepEqual(q.financialSuggestion.availableActions, []);
+});
+
 test("quote budget and contact phone are visible to a provider+budget manager", async () => {
   const svc = marketplace(quoteRow("owner"), {
     canReadFinancial: () => true,
@@ -133,6 +168,22 @@ test("quote budget and contact phone are visible to a provider+budget manager", 
   assert.equal(q.contactPhone, "+967733333333");
   assert.equal(q.budgetMin, "1000");
   assert.equal(q.budgetMax, "5000");
+});
+
+test("quote offer amounts and financial suggestion are visible to a budget manager", async () => {
+  const svc = marketplace(
+    quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer()] }),
+    {
+      canReadFinancial: () => true,
+      canManageProviders: () => true,
+    },
+  );
+  const [q] = await svc.findPlanQuoteRequests(user("mgr"), "p1");
+  assert.equal(q.offers[0].amount, "250000");
+  assert.equal(q.offers[0].currency, "YER");
+  assert.equal(q.financialSuggestion.quotedAmount, "250000");
+  assert.equal(q.financialSuggestion.currency, "YER");
+  assert.equal(q.financialSuggestion.suggestedAction, "CREATE_FINANCIAL_COMMITMENT");
 });
 
 test("the member who submitted the request always sees their own contact and budget", async () => {

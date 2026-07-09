@@ -98,7 +98,11 @@ export class GuestsService {
     weddingPlanId: string,
     query?: ListQueryDto,
   ): Promise<GuestResponse[]> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    const includePhone = this.permissions.canManageGuests(context);
 
     const guests = await this.prisma.guest.findMany({
       where: { weddingPlanId },
@@ -106,7 +110,7 @@ export class GuestsService {
       ...pageArgs(query),
     });
 
-    return guests.map((guest) => this.toResponse(guest));
+    return guests.map((guest) => this.toResponse(guest, includePhone));
   }
 
   async findOne(
@@ -114,8 +118,11 @@ export class GuestsService {
     id: string,
   ): Promise<GuestResponse> {
     const guest = await this.findGuestOrThrow(id);
-    await this.permissions.assertPlanReadable(guest.weddingPlanId, currentUser);
-    return this.toResponse(guest);
+    const context = await this.permissions.assertPlanReadable(
+      guest.weddingPlanId,
+      currentUser,
+    );
+    return this.toResponse(guest, this.permissions.canManageGuests(context));
   }
 
   async create(
@@ -544,13 +551,15 @@ export class GuestsService {
     return null;
   }
 
-  private toResponse(guest: Guest): GuestResponse {
+  private toResponse(guest: Guest, includePhone = true): GuestResponse {
     return {
       id: guest.id,
       weddingPlanId: guest.weddingPlanId,
       groupId: guest.groupId,
       name: guest.name,
-      phone: guest.phone,
+      // Phone is PII: only members who can manage guests may read it. Pure
+      // read-only members (e.g. VIEWER) see the guest without the number.
+      phone: includePhone ? guest.phone : null,
       side: guest.side,
       status: guest.status,
       invitationStatus: guest.invitationStatus,

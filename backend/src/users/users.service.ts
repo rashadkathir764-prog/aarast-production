@@ -8,6 +8,7 @@ import { NotificationPreference } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { SafeUser, toSafeUser } from '../auth/safe-user';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
+import { normalizeOwnedMediaUrl } from '../media/media-upload-policy';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
@@ -61,7 +62,13 @@ export class UsersService {
           : {}),
         ...(dto.email !== undefined ? { email } : {}),
         ...(dto.avatarUrl !== undefined
-          ? { avatarUrl: this.optionalText(dto.avatarUrl) }
+          ? {
+              avatarUrl: normalizeOwnedMediaUrl(
+                dto.avatarUrl,
+                'user-avatar',
+                currentUser.id,
+              ),
+            }
           : {}),
         ...(dto.locale !== undefined
           ? { locale: this.requiredText(dto.locale, 'locale') }
@@ -72,6 +79,70 @@ export class UsersService {
     });
 
     return toSafeUser(user);
+  }
+
+  /**
+   * Permanently delete the current account and every piece of data it owns.
+   *
+   * Wedding-plan children are protected by `onDelete: Restrict` (a deliberate
+   * guard against accidental cascade of financial data), so an owned plan
+   * cannot be removed until its children are gone. We therefore delete the
+   * plan's children leaf-to-root, then the plans, then the user — the remaining
+   * user-owned rows are all `Cascade`/`SetNull`. Rows keyed by userId/phone
+   * WITHOUT a foreign key (idempotency keys, OTP codes) never cascade, so they
+   * are removed explicitly. Everything runs in one transaction: any ordering
+   * mistake rolls back rather than leaving the account half-deleted.
+   */
+  async deleteMe(currentUser: AuthenticatedUser): Promise<{ deleted: true }> {
+    const userId = currentUser.id;
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        const ownedPlans = await tx.weddingPlan.findMany({
+          where: { ownerUserId: userId },
+          select: { id: true },
+        });
+        const planIds = ownedPlans.map((plan) => plan.id);
+
+        if (planIds.length > 0) {
+          const inPlans = { weddingPlanId: { in: planIds } };
+          // Leaf-to-root: rows that reference budgetCategory / financialCommitment
+          // with Restrict must go before those parents.
+          await tx.financialPaymentRecord.deleteMany({ where: inPlans });
+          await tx.financialInstallment.deleteMany({ where: inPlans });
+          await tx.expense.deleteMany({ where: inPlans });
+          await tx.financialCommitment.deleteMany({ where: inPlans });
+          await tx.debt.deleteMany({ where: inPlans }); // cascades Installment
+          await tx.weddingTask.deleteMany({ where: inPlans }); // cascades checklist items
+          await tx.guest.deleteMany({ where: inPlans });
+          await tx.guestGroup.deleteMany({ where: inPlans });
+          await tx.planProviderLink.deleteMany({ where: inPlans });
+          await tx.sharedMember.deleteMany({ where: inPlans });
+          await tx.planInvite.deleteMany({ where: inPlans });
+          await tx.budgetCategory.deleteMany({ where: inPlans });
+          await tx.weddingPlan.deleteMany({ where: { id: { in: planIds } } });
+        }
+
+        // A provider profile would otherwise be orphaned (owner SetNull); erase
+        // it — its own children are all Cascade/SetNull.
+        await tx.provider.deleteMany({ where: { userId } });
+
+        // Keyed by userId / phone with no User foreign key: never cascades.
+        await tx.idempotencyKey.deleteMany({ where: { userId } });
+        if (currentUser.phone) {
+          await tx.otpCode.deleteMany({ where: { phone: currentUser.phone } });
+        }
+
+        // Finally the user. Cascades refresh tokens, shared memberships,
+        // notifications, favorites, reviews, quote requests, conversations and
+        // booking leads; SetNulls assigned tasks in others' plans and invitee
+        // links.
+        await tx.user.delete({ where: { id: userId } });
+      },
+      { timeout: 15_000 },
+    );
+
+    return { deleted: true };
   }
 
   async lookupByPhone(phone: string): Promise<UserLookupResponse> {

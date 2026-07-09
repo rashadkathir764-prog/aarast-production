@@ -184,6 +184,14 @@ class AuthRepository {
     }
   }
 
+  /// Permanently deletes the account server-side, then clears the local
+  /// session only after the server confirms — a failed request leaves the
+  /// account and session intact so the user can retry.
+  Future<void> deleteAccount() async {
+    await _apiClient.deleteJson('/users/me');
+    await _authStorage.clear();
+  }
+
   Future<void> logout() async {
     final refreshToken = await _authStorage.readRefreshToken();
     try {

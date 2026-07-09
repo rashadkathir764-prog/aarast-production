@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -18,6 +26,11 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.usersService.updateMe(currentUser, dto);
+  }
+
+  @Delete('me')
+  deleteMe(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.usersService.deleteMe(currentUser);
   }
 
   @Get('lookup')

@@ -191,6 +191,30 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Permanently deletes the account, then tears the local session down the
+  /// same way logout does (cache, queued writes and drafts all go with it).
+  /// Returns false with an error message if the server request fails, leaving
+  /// the session intact so the user can retry.
+  Future<bool> deleteAccount() async {
+    try {
+      await _authRepository.deleteAccount();
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      notifyListeners();
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حذف الحساب. حاول مرة أخرى.';
+      notifyListeners();
+      return false;
+    }
+    await _offlineSyncService?.clearLocalData();
+    await _guestOnboardingStorage?.clearDraft();
+    _user = null;
+    _status = AuthStatus.unauthenticated;
+    notifyListeners();
+    return true;
+  }
+
   /// Called by the API layer when any non-auth request returns 401. Ends
   /// the session cleanly instead of letting every screen degrade into
   /// misleading errors. Local cache is kept: the SAME account will log in

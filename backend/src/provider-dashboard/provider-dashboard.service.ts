@@ -31,6 +31,10 @@ import {
   assertQuoteRequestTransition,
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
+import {
+  normalizeOwnedMediaUrl,
+  requireOwnedMediaUrl,
+} from '../media/media-upload-policy';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { weddingLocationResponse } from '../wedding-plans/wedding-location';
@@ -167,10 +171,22 @@ export class ProviderDashboardService {
           ? { longitude: this.optionalSignedDecimal(dto.longitude, 'longitude') }
           : {}),
         ...(dto.logoUrl !== undefined
-          ? { logoUrl: this.optionalText(dto.logoUrl) }
+          ? {
+              logoUrl: normalizeOwnedMediaUrl(
+                dto.logoUrl,
+                'provider-logo',
+                currentUser.id,
+              ),
+            }
           : {}),
         ...(dto.coverUrl !== undefined
-          ? { coverUrl: this.optionalText(dto.coverUrl) }
+          ? {
+              coverUrl: normalizeOwnedMediaUrl(
+                dto.coverUrl,
+                'provider-cover',
+                currentUser.id,
+              ),
+            }
           : {}),
       },
       include: { city: true, primaryCategory: true },
@@ -313,7 +329,11 @@ export class ProviderDashboardService {
     const image = await this.prisma.providerServiceImage.create({
       data: {
         serviceId,
-        imageUrl: this.requiredText(dto.imageUrl, 'imageUrl'),
+        imageUrl: requireOwnedMediaUrl(
+          dto.imageUrl,
+          'service-image',
+          currentUser.id,
+        ),
         altText: this.optionalText(dto.altText),
         sortOrder: dto.sortOrder ?? 0,
       },
@@ -341,7 +361,13 @@ export class ProviderDashboardService {
       where: { id: imageId },
       data: {
         ...(dto.imageUrl !== undefined
-          ? { imageUrl: this.requiredText(dto.imageUrl, 'imageUrl') }
+          ? {
+              imageUrl: requireOwnedMediaUrl(
+                dto.imageUrl,
+                'service-image',
+                currentUser.id,
+              ),
+            }
           : {}),
         ...(dto.altText !== undefined
           ? { altText: this.optionalText(dto.altText) }

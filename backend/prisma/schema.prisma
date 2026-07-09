@@ -17,13 +17,17 @@ enum UserRole {
 /// request id, so offline-queue replays after a timeout return the original
 /// result instead of duplicating financial records.
 model IdempotencyKey {
-  id        String   @id @default(cuid())
-  userId    String
-  key       String
-  method    String
-  path      String
-  response  Json?
-  createdAt DateTime @default(now())
+  id     String @id @default(cuid())
+  userId String
+  key    String
+  method String
+  path   String
+  // The row is reserved BEFORE the mutation runs. While the work is in
+  // flight both response and completedAt are NULL; once the mutation commits,
+  // completedAt is set and response holds the final body that replays return.
+  response    Json?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
 
   @@unique([userId, key])
   @@index([createdAt])

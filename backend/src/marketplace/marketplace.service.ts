@@ -32,7 +32,10 @@ import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { NotificationsService } from "../notifications/notifications.service";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { PrismaService } from "../prisma/prisma.service";
-import { PermissionService } from "../sharing/permission.service";
+import {
+  PermissionService,
+  type PlanAccessContext,
+} from "../sharing/permission.service";
 import {
   normalizeWeddingLocationInput,
   weddingLocationResponse,
@@ -92,6 +95,12 @@ type QuoteWithRelations = QuoteRequest & {
   offers?: QuoteOffer[];
   providerLinks?: PlanProviderLink[];
 };
+
+// Field-level visibility for a quote request. The contact phone and the
+// budget range are only exposed to members with the matching permission; a
+// pure read-only member (e.g. VIEWER) sees the quote without them.
+type QuoteVisibility = { budget: boolean; contact: boolean };
+const FULL_QUOTE_VISIBILITY: QuoteVisibility = { budget: true, contact: true };
 
 @Injectable()
 export class MarketplaceService {
@@ -516,37 +525,67 @@ export class MarketplaceService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ) {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
     const quotes = await this.prisma.quoteRequest.findMany({
       where: { weddingPlanId },
       include: this.quoteInclude(),
       orderBy: { createdAt: "desc" },
     });
 
-    return quotes.map((quote) => this.toQuoteResponse(quote));
+    return quotes.map((quote) =>
+      this.toQuoteResponse(
+        quote,
+        this.quoteVisibility(context, quote, currentUser),
+      ),
+    );
+  }
+
+  /**
+   * Contact phone and budget are only visible to members with the matching
+   * permission (provider management / budget read). The member who submitted
+   * the request always sees what they entered.
+   */
+  private quoteVisibility(
+    context: PlanAccessContext,
+    quote: Pick<QuoteRequest, "userId">,
+    currentUser: AuthenticatedUser,
+  ): QuoteVisibility {
+    if (quote.userId === currentUser.id) return FULL_QUOTE_VISIBILITY;
+    return {
+      budget: this.permissions.canReadFinancial(context, "budget"),
+      contact: this.permissions.canManageProviders(context),
+    };
   }
 
   async findQuoteRequestForCurrentUser(
     currentUser: AuthenticatedUser,
     id: string,
   ) {
-    const quote = await this.findAccessibleQuoteRequestOrThrow(currentUser, id);
-    return this.toQuoteResponse(quote);
+    const { quote, visibility } = await this.findAccessibleQuoteRequestOrThrow(
+      currentUser,
+      id,
+    );
+    return this.toQuoteResponse(quote, visibility);
   }
 
   async cancelQuoteRequestForCurrentUser(
     currentUser: AuthenticatedUser,
     id: string,
   ) {
-    const existing = await this.findAccessibleQuoteRequestOrThrow(
+    const { quote: existing } = await this.findAccessibleQuoteRequestOrThrow(
       currentUser,
       id,
     );
+    let visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY;
     if (existing.weddingPlanId) {
-      await this.permissions.assertProviderManageable(
+      const context = await this.permissions.assertProviderManageable(
         existing.weddingPlanId,
         currentUser,
       );
+      visibility = this.quoteVisibility(context, existing, currentUser);
     }
     assertQuoteRequestTransition(
       existing.status,
@@ -562,7 +601,7 @@ export class MarketplaceService {
       include: this.quoteInclude(),
     });
 
-    return this.toQuoteResponse(quote);
+    return this.toQuoteResponse(quote, visibility);
   }
 
   async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
@@ -965,7 +1004,7 @@ export class MarketplaceService {
   private async findAccessibleQuoteRequestOrThrow(
     currentUser: AuthenticatedUser,
     id: string,
-  ): Promise<QuoteWithRelations> {
+  ): Promise<{ quote: QuoteWithRelations; visibility: QuoteVisibility }> {
     this.assertUuid(id, "quoteRequestId");
     const quote = await this.prisma.quoteRequest.findUnique({
       where: { id },
@@ -976,18 +1015,21 @@ export class MarketplaceService {
     }
 
     if (quote.weddingPlanId) {
-      await this.permissions.assertPlanReadable(
+      const context = await this.permissions.assertPlanReadable(
         quote.weddingPlanId,
         currentUser,
       );
-      return quote;
+      return {
+        quote,
+        visibility: this.quoteVisibility(context, quote, currentUser),
+      };
     }
 
     if (quote.userId !== currentUser.id) {
       throw new NotFoundException("Quote request not found");
     }
 
-    return quote;
+    return { quote, visibility: FULL_QUOTE_VISIBILITY };
   }
 
   private async findAccessibleQuoteOfferOrThrow(
@@ -1272,7 +1314,10 @@ export class MarketplaceService {
     };
   }
 
-  private toQuoteResponse(quote: QuoteWithRelations) {
+  private toQuoteResponse(
+    quote: QuoteWithRelations,
+    visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY,
+  ) {
     return {
       id: quote.id,
       userId: quote.userId,
@@ -1294,11 +1339,13 @@ export class MarketplaceService {
       city: quote.city ? this.toCityResponse(quote.city) : null,
       guestCount: quote.guestCount,
       contactName: quote.contactName,
-      contactPhone: quote.contactPhone,
-      contactNormalizedPhone: quote.contactNormalizedPhone,
+      contactPhone: visibility.contact ? quote.contactPhone : null,
+      contactNormalizedPhone: visibility.contact
+        ? quote.contactNormalizedPhone
+        : null,
       message: quote.message,
-      budgetMin: quote.budgetMin?.toString() ?? null,
-      budgetMax: quote.budgetMax?.toString() ?? null,
+      budgetMin: visibility.budget ? (quote.budgetMin?.toString() ?? null) : null,
+      budgetMax: visibility.budget ? (quote.budgetMax?.toString() ?? null) : null,
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers:

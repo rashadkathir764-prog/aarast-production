@@ -188,8 +188,11 @@ class _MoreScreenState extends State<MoreScreen> {
           const SizedBox(height: 16),
           if (!hasAccount)
             _OptionalLoginTile(onTap: () => context.push(AppRouter.login))
-          else
+          else ...[
             _LogoutTile(onTap: () => _logout(context)),
+            const SizedBox(height: 12),
+            _DeleteAccountTile(onTap: () => _deleteAccount(context)),
+          ],
           const SizedBox(height: 22),
           const _VersionFooter(),
         ]),
@@ -276,6 +279,103 @@ class _MoreScreenState extends State<MoreScreen> {
     if (confirmed == true && context.mounted) {
       await context.read<AuthController>().logout();
       if (context.mounted) context.go(AppRouter.login);
+    }
+  }
+
+  static Future<void> _deleteAccount(BuildContext context) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const _SheetHandle(),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: AppTheme.dangerSoft,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+                    ),
+                    child: const Icon(
+                      LucideIcons.trash2,
+                      color: AppTheme.danger,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'حذف الحساب نهائياً',
+                    style: Theme.of(sheetContext).textTheme.titleLarge
+                        ?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'سيُحذف حسابك وكل بياناتك — خطط العرس والميزانيات والديون '
+                    'والمهام وقوائم الضيوف — نهائياً ولا يمكن التراجع.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(sheetContext).textTheme.bodyMedium
+                        ?.copyWith(
+                          color: AppTheme.muted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AarastButton(
+                          label: 'إلغاء',
+                          variant: AarastButtonVariant.secondary,
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(false),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AarastButton(
+                          label: 'حذف نهائي',
+                          icon: LucideIcons.trash2,
+                          variant: AarastButtonVariant.danger,
+                          onPressed: () => Navigator.of(sheetContext).pop(true),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final auth = context.read<AuthController>();
+    final messenger = ScaffoldMessenger.of(context);
+    final deleted = await auth.deleteAccount();
+    if (!context.mounted) return;
+    if (deleted) {
+      context.go(AppRouter.login);
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            auth.errorMessage ?? 'تعذر حذف الحساب. حاول مرة أخرى.',
+          ),
+        ),
+      );
     }
   }
 
@@ -1007,6 +1107,70 @@ class _LogoutTile extends StatelessWidget {
                   color: AppTheme.danger,
                   fontWeight: FontWeight.w900,
                 ),
+              ),
+            ),
+            const Icon(
+              LucideIcons.chevronLeft,
+              color: AppTheme.danger,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteAccountTile extends StatelessWidget {
+  const _DeleteAccountTile({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: EdgeInsets.zero,
+      color: AppTheme.surface,
+      border: Border.all(color: AppTheme.dangerSoft),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: AppTheme.dangerSoft,
+                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              ),
+              child: const Icon(
+                LucideIcons.trash2,
+                color: AppTheme.danger,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 13),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'حذف الحساب',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.danger,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'إزالة حسابك وكل بياناتك نهائياً',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
             const Icon(

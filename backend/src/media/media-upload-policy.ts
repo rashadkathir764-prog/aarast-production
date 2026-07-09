@@ -1,4 +1,7 @@
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 export const mediaPurposes = [
   'user-avatar',
@@ -73,4 +76,44 @@ export function assertOwnedMediaUrl(
   ) {
     throw new BadRequestException('Media URL is not owned by this account');
   }
+}
+
+/**
+ * Validate an optional image URL submitted on a write (avatar, provider logo /
+ * cover, service image). Returns the trimmed URL when it points to an object
+ * this user uploaded through the signed-upload flow for `purpose`; returns null
+ * for an empty value (clearing the image). Rejects any external or non-owned
+ * URL, so the server never persists a link it does not control.
+ */
+export function normalizeOwnedMediaUrl(
+  value: string | null | undefined,
+  purpose: MediaPurpose,
+  userId: string,
+): string | null {
+  if (value === null || value === undefined) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const publicBaseUrl = process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.trim();
+  if (!publicBaseUrl) {
+    throw new ServiceUnavailableException('Media storage is not configured');
+  }
+  assertOwnedMediaUrl(trimmed, publicBaseUrl, purpose, userId);
+  return trimmed;
+}
+
+/**
+ * Same ownership guarantee as {@link normalizeOwnedMediaUrl} but the URL is
+ * mandatory (e.g. a service image row must carry one).
+ */
+export function requireOwnedMediaUrl(
+  value: string | null | undefined,
+  purpose: MediaPurpose,
+  userId: string,
+  field = 'imageUrl',
+): string {
+  const normalized = normalizeOwnedMediaUrl(value, purpose, userId);
+  if (!normalized) {
+    throw new BadRequestException(`${field} is required`);
+  }
+  return normalized;
 }

@@ -1307,7 +1307,7 @@ class BudgetExpenseApi {
       id: commitmentId,
     );
     if (commitment == null) {
-      throw const ApiException('تعذر العثور على الالتزام المالي.');
+      throw const ApiException('تعذر العثور على المستحق المالي.');
     }
     final now = DateTime.now();
     final amount = _assertPositiveMoney(payload['amount'], 'amount');
@@ -1361,7 +1361,7 @@ class BudgetExpenseApi {
       id: commitmentId,
     );
     if (commitment == null) {
-      throw const ApiException('تعذر العثور على الالتزام المالي.');
+      throw const ApiException('تعذر العثور على المستحق المالي.');
     }
     final now = DateTime.now();
     final status = payload['status']?.toString() ?? 'PENDING';

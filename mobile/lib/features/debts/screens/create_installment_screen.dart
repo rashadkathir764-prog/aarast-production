@@ -63,7 +63,7 @@ class _CreateInstallmentScreenState extends State<CreateInstallmentScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'قسط جديد',
+                      'قسط لدين قديم',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
@@ -373,7 +373,7 @@ class _InstallmentHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'قسطي الالتزام إلى خطوات',
+                  'قسّط السجل القديم إلى خطوات',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
@@ -381,7 +381,7 @@ class _InstallmentHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'كل قسط بتاريخ واضح يعني متابعة أسهل وهدوء أكثر.',
+                  'استخدمها فقط للديون القديمة؛ المستحقات الجديدة تُدار من تبويب المال.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.muted,
                     fontWeight: FontWeight.w700,

@@ -38,7 +38,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('تفاصيل الدين'), findsOneWidget);
+    expect(find.text('تفاصيل دين قديم'), findsOneWidget);
     expect(find.textContaining('ر.س'), findsWidgets);
     expect(find.textContaining('YER'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -69,7 +69,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('قسط جديد'), findsOneWidget);
+    expect(find.text('قسط لدين قديم'), findsOneWidget);
     expect(find.text('ر.س'), findsWidgets);
     expect(find.text('YER'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -100,6 +100,17 @@ void main() {
       }
     },
   );
+
+  test('legacy debt list routes new additions to financial commitments', () {
+    final root = _findMobileRoot();
+    final source = File(
+      '${root}lib/features/debts/screens/debt_installment_screen.dart',
+    ).readAsStringSync();
+
+    expect(source, contains('سجل الديون القديم'));
+    expect(source, contains('AppRouter.createFinancialCommitment'));
+    expect(source, isNot(contains('AppRouter.createDebt')));
+  });
 }
 
 Debt _debt() {

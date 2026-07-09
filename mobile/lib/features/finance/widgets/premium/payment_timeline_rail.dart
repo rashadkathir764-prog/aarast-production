@@ -132,7 +132,7 @@ class PaymentTimelineRail extends StatelessWidget {
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  'الباقي والدفعات',
+                  'سجل الديون القديم',
                   style: TextStyle(
                     color: AarastDesignTokens.title,
                     fontSize: 16,

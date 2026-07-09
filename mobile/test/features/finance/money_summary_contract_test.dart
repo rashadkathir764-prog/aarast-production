@@ -147,6 +147,21 @@ void main() {
     },
   );
 
+  test(
+    'legacy debt data is detected separately from the new money backbone',
+    () {
+      final empty = MoneySummary.empty('plan-clean-money');
+      expect(empty.hasLegacyDebtData, isFalse);
+
+      const legacyDebt = MoneySummary(
+        weddingPlanId: 'plan-with-legacy-debt',
+        totalDebts: '200000',
+        debtsCount: 1,
+      );
+      expect(legacyDebt.hasLegacyDebtData, isTrue);
+    },
+  );
+
   test('money screen does not expose fake Super 3 task actions', () {
     final source = File(
       'lib/features/finance/screens/budget_expense_screen.dart',
@@ -157,6 +172,24 @@ void main() {
     expect(source, isNot(contains('طلب عرض سعر')));
     expect(source, isNot(contains('انضم كمزود')));
   });
+
+  test(
+    'money screen keeps payables and activity merged without duplicate rails',
+    () {
+      final source = File(
+        'lib/features/finance/screens/budget_expense_screen.dart',
+      ).readAsStringSync();
+
+      expect(source, contains('_FinancialPayablesSection'));
+      expect(source, contains('_RecentMoneyActivitySection'));
+      expect(source, contains('hasLegacyDebtData'));
+      expect(source, contains('عرض سجل الديون القديم'));
+      expect(source, isNot(contains('_FinanceActionStrip')));
+      expect(source, isNot(contains('_FinancialPaymentsSection')));
+      expect(source, isNot(contains('_FinancialInstallmentsSection')));
+      expect(source, isNot(contains('PaymentTimelineRail(')));
+    },
+  );
 
   test(
     'local money summary reflects expenses debts and due installment',

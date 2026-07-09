@@ -291,7 +291,7 @@ class FinanceProvider extends ChangeNotifier {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إنشاء الالتزام المالي.';
+      _errorMessage = 'تعذر إنشاء المستحق المالي.';
       return false;
     } finally {
       _isSubmitting = false;

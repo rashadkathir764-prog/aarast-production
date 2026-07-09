@@ -5,7 +5,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
-import { DebtStatus, ExpenseStatus, Prisma } from "@prisma/client";
+import {
+  DebtStatus,
+  ExpenseStatus,
+  FinancialCommitmentSourceType,
+  Prisma,
+} from "@prisma/client";
 import { applyDebtPaymentDelta } from "../src/common/money/debt-balance";
 import {
   optionalMoneyAmount,
@@ -222,9 +227,57 @@ test("wedding plan financial children cannot cascade-delete private data", () =>
   );
 });
 
-test("debt creation clamps paid to total and derives status", async () => {
+test("legacy debts and installments are linked into the financial backbone", () => {
+  const schema = readFileSync(
+    join(process.cwd(), "prisma/schema.prisma"),
+    "utf8",
+  );
+  assert.match(schema, /legacyDebtId\s+String\?\s+@unique/);
+  assert.match(schema, /legacyInstallmentId\s+String\?\s+@unique/);
+  const migration = readFileSync(
+    join(
+      process.cwd(),
+      "prisma/migrations/20260710090000_bridge_legacy_debts_to_financial_backbone/migration.sql",
+    ),
+    "utf8",
+  );
+  assert.match(migration, /legacy-debt-category-/);
+  assert.match(migration, /ON CONFLICT \("legacyDebtId"\) DO NOTHING/);
+  assert.match(migration, /ON CONFLICT \("legacyInstallmentId"\) DO NOTHING/);
+});
+
+test("debt creation clamps paid to total and mirrors into the financial backbone", async () => {
   const created: any[] = [];
+  const mirroredCommitments: any[] = [];
+  const mirroredPayments: any[] = [];
+  const tx = {
+    budgetCategory: {
+      upsert: async ({ create }: any) => create,
+    },
+    installment: {
+      aggregate: async () => ({ _sum: { amount: new Prisma.Decimal(0) } }),
+    },
+    financialCommitment: {
+      upsert: async ({ create, update, where }: any) => {
+        const data = {
+          id: `commitment-${mirroredCommitments.length + 1}`,
+          ...create,
+        };
+        mirroredCommitments.push({ where, create, update, data });
+        return data;
+      },
+      deleteMany: async () => ({ count: 0 }),
+    },
+    financialPaymentRecord: {
+      upsert: async ({ create, update, where }: any) => {
+        mirroredPayments.push({ where, create, update });
+        return { id: `payment-${mirroredPayments.length}`, ...create };
+      },
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
   const prisma = {
+    $transaction: async (fn: any) => fn(tx),
     debt: {
       create: async ({ data }: any) => {
         created.push(data);
@@ -246,6 +299,7 @@ test("debt creation clamps paid to total and derives status", async () => {
       },
     },
   };
+  (tx as any).debt = prisma.debt;
   const permissions = {
     assertFinancialManageable: async () => undefined,
   };
@@ -261,6 +315,14 @@ test("debt creation clamps paid to total and derives status", async () => {
   } as any);
   assert.equal(overpaid.paidAmount, "100");
   assert.equal(overpaid.status, DebtStatus.PAID);
+  assert.equal(
+    mirroredCommitments[0].create.sourceType,
+    FinancialCommitmentSourceType.MANUAL_DEBT,
+  );
+  assert.equal(mirroredCommitments[0].create.legacyDebtId, "debt-1");
+  assert.equal(mirroredCommitments[0].create.paidAmount.toString(), "100");
+  assert.equal(mirroredPayments[0].create.legacyDebtId, "debt-1");
+  assert.equal(mirroredPayments[0].create.amount.toString(), "100");
 
   const partial = await service.create(user, "plan-1", {
     creditorName: "أحمد",

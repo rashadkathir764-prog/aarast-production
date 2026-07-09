@@ -97,7 +97,7 @@ class _CreateDebtScreenState extends State<CreateDebtScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'مبلغ باقي جديد',
+                      'إضافة سجل دين قديم',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
@@ -505,7 +505,9 @@ class _DebtHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  fromQuote ? 'حوّل العرض إلى التزام واضح' : 'سجل الباقي بوضوح',
+                  fromQuote
+                      ? 'حوّل العرض القديم إلى سجل واضح'
+                      : 'سجل ديناً قديماً فقط عند الحاجة',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.burgundyDeep,
                     fontWeight: FontWeight.w900,
@@ -513,7 +515,7 @@ class _DebtHero extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'اكتب كم بقي، كم دفعت، ومتى موعد الدفعة القادمة.',
+                  'للمستحقات الجديدة استخدم شاشة "إضافة مستحق عليك" من تبويب المال.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppTheme.muted,
                     fontWeight: FontWeight.w700,

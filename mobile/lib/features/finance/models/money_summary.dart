@@ -168,6 +168,10 @@ class MoneySummary {
         (_moneyValue(totalSpent) > 0 || _moneyValue(confirmedCostTotal) > 0);
   }
 
+  bool get hasLegacyDebtData {
+    return (debtsCount ?? 0) > 0 || nextInstallment != null;
+  }
+
   String get budgetStatus {
     if (hasSpendingWithoutBudget) return 'OVER_BUDGET';
     if (commitmentRatio > 1 || spendingRatio > 1) return 'OVER_BUDGET';

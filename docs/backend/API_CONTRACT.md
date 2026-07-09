@@ -334,6 +334,12 @@ Current `/api/v1/wedding-plans/:weddingPlanId/expenses` and `/api/v1/expenses/:i
 
 ## Debts And Installments
 
+These routes are now compatibility adapters for legacy debt clients. New money
+planning uses `FinancialCommitment` as the backbone. Creating or changing a
+legacy debt/installment mirrors it into `FinancialCommitment`,
+`FinancialInstallment`, and payment records with legacy link keys, so money
+summary totals do not double-count the old and new systems.
+
 Debt routes:
 
 - `POST /wedding-plans/:weddingPlanId/debts`
@@ -1024,6 +1030,7 @@ configuration, and smoke checks.
 | DELETE | `/tasks/:id/checklist/:itemId` | `tasks.removeChecklistItem` |  |
 | PATCH | `/tasks/:id/checklist/:itemId` | `tasks.updateChecklistItem` |  |
 | GET | `/users/lookup` | `users.lookupByPhone` |  |
+| DELETE | `/users/me` | `users.deleteMe` |  |
 | PATCH | `/users/me` | `users.updateMe` |  |
 | GET | `/users/me/settings` | `users.getSettings` |  |
 | PATCH | `/users/me/settings` | `users.updateSettings` |  |

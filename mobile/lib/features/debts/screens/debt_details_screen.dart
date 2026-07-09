@@ -67,7 +67,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'تفاصيل الدين',
+                        'تفاصيل دين قديم',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -76,7 +76,7 @@ class _DebtDetailsScreenState extends State<DebtDetailsScreen> {
                         ),
                       ),
                       Text(
-                        'الأقساط والمبالغ المرتبطة بهذا الالتزام',
+                        'الأقساط المرتبطة بهذا السجل القديم',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -155,7 +155,7 @@ class _DebtDetailsContent extends StatelessWidget {
           _DebtOverviewCard(debt: debt, currencyLabel: currencyLabel),
         const SizedBox(height: 20),
         AarastSectionHeader(
-          title: 'الأقساط',
+          title: 'الأقساط القديمة',
           icon: LucideIcons.wallet,
           actionLabel: 'إضافة',
           onAction: () => context.push(AppRouter.createInstallment(debtId)),
@@ -164,7 +164,7 @@ class _DebtDetailsContent extends StatelessWidget {
         if (provider.installments.isEmpty)
           AarastEmptyState(
             title: 'لا توجد أقساط لهذا الدين',
-            message: 'أضف أول قسط لتتضح مواعيد السداد والمتابعة.',
+            message: 'أضف قسطاً فقط إذا كان هذا السجل القديم يحتاج متابعة.',
             icon: LucideIcons.calendarDays,
             action: ElevatedButton.icon(
               onPressed: () =>

@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 import {
   DebtStatus,
   ExpenseStatus,
+  FinancialCommitmentStatus,
   GuestStatus,
   InstallmentStatus,
   NotificationPriority,
@@ -15,23 +16,23 @@ import {
   WeddingPlanStatus,
   WeddingTaskPriority,
   WeddingTaskStatus,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { PrismaService } from "../prisma/prisma.service";
 import {
-  endOfRiyadhDay,
-  startOfRiyadhDay,
-} from '../common/time/business-day';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionService, PlanAccessContext } from '../sharing/permission.service';
+  PermissionService,
+  PlanAccessContext,
+} from "../sharing/permission.service";
 import {
   WeddingLocationResponse,
   weddingLocationResponse,
-} from '../wedding-plans/wedding-location';
-import { selectTopDashboardActions } from './dashboard-priority';
+} from "../wedding-plans/wedding-location";
+import { selectTopDashboardActions } from "./dashboard-priority";
 
 export interface DashboardPermissionSummary {
   isOwner: boolean;
-  role: 'OWNER' | SharedMemberRole | null;
+  role: "OWNER" | SharedMemberRole | null;
   canViewBudget: boolean;
   canViewExpenses: boolean;
   canViewDebts: boolean;
@@ -44,7 +45,7 @@ export interface DashboardPermissionSummary {
 }
 
 export interface WeddingPlanDashboardSummaryResponse {
-  dataScope: 'ACCOUNT_BACKED';
+  dataScope: "ACCOUNT_BACKED";
   accountBacked: true;
   planId: string;
   title: string;
@@ -113,11 +114,8 @@ export interface WeddingPlanDashboardSummaryResponse {
     overBudget: boolean | null;
   };
   financialWarnings: {
-    type:
-      | 'BUDGET_EXCEEDED'
-      | 'INSTALLMENT_OVERDUE'
-      | 'INSTALLMENT_DUE_SOON';
-    severity: 'WARNING' | 'DANGER';
+    type: "BUDGET_EXCEEDED" | "INSTALLMENT_OVERDUE" | "INSTALLMENT_DUE_SOON";
+    severity: "WARNING" | "DANGER";
     message: string;
     count: number | null;
     amount: string | null;
@@ -147,28 +145,28 @@ export interface WeddingPlanDashboardSummaryResponse {
   participantSummary: {
     count: number;
     pendingInvites: number;
-    currentUserRole: 'OWNER' | SharedMemberRole | null;
+    currentUserRole: "OWNER" | SharedMemberRole | null;
   };
   notificationSummary: {
     unread: number;
     highPriority: number;
   };
   generatedAt: Date;
-  currentUserRole: 'OWNER' | SharedMemberRole | null;
+  currentUserRole: "OWNER" | SharedMemberRole | null;
   permissions: DashboardPermissionSummary;
 }
 
 export type DashboardImportantItemType =
-  | 'TASK_OVERDUE'
-  | 'TASK_TODAY'
-  | 'INSTALLMENT_DUE'
-  | 'PLAN_PROVIDER'
-  | 'QUOTE_RECEIVED'
-  | 'INVITE_PENDING'
-  | 'SET_LOCATION'
-  | 'SET_BUDGET'
-  | 'ADD_GUESTS'
-  | 'REQUEST_QUOTE';
+  | "TASK_OVERDUE"
+  | "TASK_TODAY"
+  | "INSTALLMENT_DUE"
+  | "PLAN_PROVIDER"
+  | "QUOTE_RECEIVED"
+  | "INVITE_PENDING"
+  | "SET_LOCATION"
+  | "SET_BUDGET"
+  | "ADD_GUESTS"
+  | "REQUEST_QUOTE";
 
 export interface DashboardImportantItemResponse {
   id: string;
@@ -176,9 +174,9 @@ export interface DashboardImportantItemResponse {
   title: string;
   subtitle: string;
   body: string | null;
-  icon: 'calendar' | 'wallet' | 'provider';
-  tone: 'danger' | 'warning' | 'success' | 'info';
-  priority: 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW';
+  icon: "calendar" | "wallet" | "provider";
+  tone: "danger" | "warning" | "success" | "info";
+  priority: "URGENT" | "HIGH" | "NORMAL" | "LOW";
   actionLabel: string;
   dueDate: Date | null;
   amount: string | null;
@@ -227,6 +225,20 @@ type DashboardInstallmentRecord = Prisma.InstallmentGetPayload<{
     };
   };
 }>;
+type DashboardFinancialCommitmentRecord =
+  Prisma.FinancialCommitmentGetPayload<object>;
+type DashboardFinancialInstallmentRecord =
+  Prisma.FinancialInstallmentGetPayload<object>;
+interface DashboardDueMoneyItem {
+  id: string;
+  source: "legacy-debt" | "financial-commitment";
+  debtId: string | null;
+  financialCommitmentId: string | null;
+  title: string;
+  amount: Prisma.Decimal;
+  dueDate: Date | null;
+  status: InstallmentStatus;
+}
 type DashboardPlanProviderLinkRecord = Prisma.PlanProviderLinkGetPayload<{
   include: {
     provider: {
@@ -255,7 +267,7 @@ export class DashboardService {
         ownerUserId: currentUser.id,
         status: WeddingPlanStatus.PLANNING,
       },
-      orderBy: [{ weddingDate: 'asc' }, { createdAt: 'desc' }],
+      orderBy: [{ weddingDate: "asc" }, { createdAt: "desc" }],
     });
 
     const [
@@ -312,9 +324,12 @@ export class DashboardService {
     );
     const today = this.startOfToday();
     const endOfToday = this.endOfToday(today);
-    const canViewBudget = this.permissions.canReadFinancial(context, 'budget');
-    const canViewExpenses = this.permissions.canReadFinancial(context, 'expenses');
-    const canViewDebts = this.permissions.canReadFinancial(context, 'debts');
+    const canViewBudget = this.permissions.canReadFinancial(context, "budget");
+    const canViewExpenses = this.permissions.canReadFinancial(
+      context,
+      "expenses",
+    );
+    const canViewDebts = this.permissions.canReadFinancial(context, "debts");
 
     const [
       budgetCategories,
@@ -323,6 +338,8 @@ export class DashboardService {
       dueInstallmentsCount,
       dueInstallments,
       nextInstallment,
+      financialCommitments,
+      financialInstallments,
       urgentTasks,
       nextTask,
       totalTasks,
@@ -392,7 +409,7 @@ export class DashboardService {
                 },
               },
             },
-            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
             take: 2,
           })
         : Promise.resolve([]),
@@ -404,9 +421,20 @@ export class DashboardService {
                 in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
               },
             },
-            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
         : Promise.resolve(null),
+      canViewDebts
+        ? this.prisma.financialCommitment.findMany({
+            where: { weddingPlanId },
+          })
+        : Promise.resolve([]),
+      canViewDebts
+        ? this.prisma.financialInstallment.findMany({
+            where: { weddingPlanId },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+          })
+        : Promise.resolve([]),
       this.prisma.weddingTask.findMany({
         where: {
           weddingPlanId,
@@ -415,7 +443,7 @@ export class DashboardService {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
         take: 2,
       }),
       this.prisma.weddingTask.findFirst({
@@ -425,7 +453,7 @@ export class DashboardService {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       }),
       this.prisma.weddingTask.count({ where: { weddingPlanId } }),
       this.prisma.weddingTask.count({
@@ -473,7 +501,7 @@ export class DashboardService {
       this.prisma.guest.count({
         where: {
           weddingPlanId,
-          OR: [{ phone: null }, { phone: '' }, { name: '' }],
+          OR: [{ phone: null }, { phone: "" }, { name: "" }],
         },
       }),
       this.prisma.planProviderLink.count({
@@ -494,11 +522,11 @@ export class DashboardService {
               primaryCategory: true,
               services: {
                 where: { isActive: true },
-                orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+                orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
                 take: 1,
                 include: {
                   images: {
-                    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
                     take: 1,
                   },
                 },
@@ -506,7 +534,7 @@ export class DashboardService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 3,
       }),
       this.prisma.quoteRequest.count({ where: { weddingPlanId } }),
@@ -566,7 +594,7 @@ export class DashboardService {
           weddingPlanId,
           archivedAt: null,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 3,
       }),
       this.prisma.notification.findFirst({
@@ -578,9 +606,70 @@ export class DashboardService {
             in: [NotificationPriority.URGENT, NotificationPriority.HIGH],
           },
         },
-        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
       }),
     ]);
+
+    const mirroredDebtIds = new Set(
+      financialCommitments
+        .map((commitment) => commitment.legacyDebtId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const mirroredInstallmentIds = new Set(
+      financialInstallments
+        .map((installment) => installment.legacyInstallmentId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const legacyDebts = debts.filter((debt) => !mirroredDebtIds.has(debt.id));
+    const activeFinancialCommitments = financialCommitments.filter(
+      (commitment) => commitment.status !== FinancialCommitmentStatus.CANCELLED,
+    );
+    const commitmentById = new Map(
+      financialCommitments.map((commitment) => [commitment.id, commitment]),
+    );
+    const openFinancialInstallments = financialInstallments.filter(
+      (installment) => this.isOpenInstallment(installment.status),
+    );
+    const financialDueInstallmentItems = openFinancialInstallments
+      .filter(
+        (installment) =>
+          installment.dueDate !== null && installment.dueDate <= endOfToday,
+      )
+      .map((installment) =>
+        this.toFinancialDueMoneyItem(installment, commitmentById),
+      );
+    const legacyDueInstallmentItems = dueInstallments
+      .filter((installment) => !mirroredInstallmentIds.has(installment.id))
+      .map((installment) => this.toLegacyDueMoneyItem(installment));
+    const dueMoneyItems = [
+      ...financialDueInstallmentItems,
+      ...legacyDueInstallmentItems,
+    ]
+      .sort((a, b) => this.compareNullableDates(a.dueDate, b.dueDate))
+      .slice(0, 2);
+    const legacyNextInstallment =
+      nextInstallment && !mirroredInstallmentIds.has(nextInstallment.id)
+        ? this.toLegacyDueMoneyItem({
+            ...nextInstallment,
+            debt: {
+              title: "دين قديم",
+            },
+          })
+        : null;
+    const nextFinancialInstallment = openFinancialInstallments[0]
+      ? this.toFinancialDueMoneyItem(
+          openFinancialInstallments[0],
+          commitmentById,
+        )
+      : null;
+    const nextMoneyInstallment =
+      [nextFinancialInstallment, legacyNextInstallment]
+        .filter((item): item is DashboardDueMoneyItem => item !== null)
+        .sort((a, b) => this.compareNullableDates(a.dueDate, b.dueDate))[0] ??
+      null;
+    const effectiveDueInstallmentsCount = canViewDebts
+      ? financialDueInstallmentItems.length + legacyDueInstallmentItems.length
+      : null;
 
     const budgetTotalNumber = canViewBudget
       ? this.resolveBudgetTotal(context.plan, budgetCategories)
@@ -592,13 +681,23 @@ export class DashboardService {
         }, 0)
       : null;
     const debtTotalNumber = canViewDebts
-      ? debts.reduce(
+      ? activeFinancialCommitments.reduce(
+          (sum, commitment) =>
+            sum + this.decimalToNumber(commitment.totalAmount),
+          0,
+        ) +
+        legacyDebts.reduce(
           (sum, debt) => sum + this.decimalToNumber(debt.totalAmount),
           0,
         )
       : null;
     const paidDebtTotalNumber = canViewDebts
-      ? debts.reduce(
+      ? activeFinancialCommitments.reduce(
+          (sum, commitment) =>
+            sum + this.decimalToNumber(commitment.paidAmount),
+          0,
+        ) +
+        legacyDebts.reduce(
           (sum, debt) => sum + this.decimalToNumber(debt.paidAmount),
           0,
         )
@@ -622,19 +721,18 @@ export class DashboardService {
     );
     const financialWarnings = this.buildFinancialWarnings({
       remainingBudget: remainingBudgetNumber,
-      dueInstallmentsCount,
+      dueInstallmentsCount: effectiveDueInstallmentsCount,
     });
     const importantItems = this.buildImportantItems({
       weddingPlanId,
       tasks: urgentTasks,
-      installments: dueInstallments,
+      installments: dueMoneyItems,
       providers: planProviderLinks,
       today,
       receivedQuotes,
       pendingInvites,
       hasLocation: location !== null,
-      hasBudget:
-        budgetTotalNumber !== null && budgetTotalNumber > 0,
+      hasBudget: budgetTotalNumber !== null && budgetTotalNumber > 0,
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
@@ -645,7 +743,7 @@ export class DashboardService {
     );
 
     return {
-      dataScope: 'ACCOUNT_BACKED',
+      dataScope: "ACCOUNT_BACKED",
       accountBacked: true,
       planId: context.plan.id,
       title: context.plan.title,
@@ -661,7 +759,7 @@ export class DashboardService {
       debtTotal: this.moneyOrNull(debtTotalNumber),
       paidDebtTotal: this.moneyOrNull(paidDebtTotalNumber),
       unpaidDebtTotal: this.moneyOrNull(unpaidDebtTotalNumber),
-      dueInstallmentsCount,
+      dueInstallmentsCount: effectiveDueInstallmentsCount,
       totalTasks,
       completedTasks,
       overdueTasks,
@@ -705,13 +803,16 @@ export class DashboardService {
             status: nextTask.status,
           }
         : null,
-      nextInstallmentDue: nextInstallment
+      nextInstallmentDue: nextMoneyInstallment
         ? {
-            id: nextInstallment.id,
-            debtId: nextInstallment.debtId,
-            amount: nextInstallment.amount.toString(),
-            dueAt: nextInstallment.dueDate,
-            status: nextInstallment.status,
+            id: nextMoneyInstallment.id,
+            debtId:
+              nextMoneyInstallment.debtId ??
+              nextMoneyInstallment.financialCommitmentId ??
+              nextMoneyInstallment.id,
+            amount: nextMoneyInstallment.amount.toString(),
+            dueAt: nextMoneyInstallment.dueDate,
+            status: nextMoneyInstallment.status,
           }
         : null,
       moneySummary: {
@@ -760,6 +861,59 @@ export class DashboardService {
     };
   }
 
+  private toLegacyDueMoneyItem(installment: {
+    id: string;
+    debtId: string;
+    amount: Prisma.Decimal;
+    dueDate: Date | null;
+    status: InstallmentStatus;
+    debt: { title: string };
+  }): DashboardDueMoneyItem {
+    return {
+      id: installment.id,
+      source: "legacy-debt",
+      debtId: installment.debtId,
+      financialCommitmentId: null,
+      title: installment.debt.title,
+      amount: installment.amount,
+      dueDate: installment.dueDate,
+      status: installment.status,
+    };
+  }
+
+  private toFinancialDueMoneyItem(
+    installment: DashboardFinancialInstallmentRecord,
+    commitments: Map<string, DashboardFinancialCommitmentRecord>,
+  ): DashboardDueMoneyItem {
+    const commitment = commitments.get(installment.financialCommitmentId);
+    return {
+      id: installment.id,
+      source: "financial-commitment",
+      debtId: commitment?.legacyDebtId ?? null,
+      financialCommitmentId: installment.financialCommitmentId,
+      title: commitment?.title ?? "مستحق مالي",
+      amount: installment.amount,
+      dueDate: installment.dueDate,
+      status: installment.status,
+    };
+  }
+
+  private compareNullableDates(
+    first: Date | null,
+    second: Date | null,
+  ): number {
+    const firstTime = first?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    const secondTime = second?.getTime() ?? Number.MAX_SAFE_INTEGER;
+    return firstTime - secondTime;
+  }
+
+  private isOpenInstallment(status: InstallmentStatus): boolean {
+    return (
+      status === InstallmentStatus.PENDING ||
+      status === InstallmentStatus.OVERDUE
+    );
+  }
+
   private buildImportantItems({
     weddingPlanId,
     tasks,
@@ -776,7 +930,7 @@ export class DashboardService {
   }: {
     weddingPlanId: string;
     tasks: DashboardTaskRecord[];
-    installments: DashboardInstallmentRecord[];
+    installments: DashboardDueMoneyItem[];
     providers: DashboardPlanProviderLinkRecord[];
     today: Date;
     receivedQuotes: number;
@@ -793,18 +947,18 @@ export class DashboardService {
       const isOverdue = task.dueDate !== null && task.dueDate < today;
       items.push({
         id: task.id,
-        type: isOverdue ? 'TASK_OVERDUE' : 'TASK_TODAY',
-        title: isOverdue ? 'مهمة متأخرة' : 'مهمة اليوم',
+        type: isOverdue ? "TASK_OVERDUE" : "TASK_TODAY",
+        title: isOverdue ? "مهمة متأخرة" : "مهمة اليوم",
         subtitle: task.title,
         body: task.dueDate
-          ? `${isOverdue ? 'كان موعدها' : 'موعدها'} ${this.formatDateArabic(
+          ? `${isOverdue ? "كان موعدها" : "موعدها"} ${this.formatDateArabic(
               task.dueDate,
             )}`
           : null,
-        icon: 'calendar',
-        tone: isOverdue ? 'danger' : this.toneForTaskPriority(task.priority),
-        priority: isOverdue ? 'URGENT' : 'HIGH',
-        actionLabel: 'تنفيذ الآن',
+        icon: "calendar",
+        tone: isOverdue ? "danger" : this.toneForTaskPriority(task.priority),
+        priority: isOverdue ? "URGENT" : "HIGH",
+        actionLabel: "تنفيذ الآن",
         dueDate: task.dueDate,
         amount: null,
         route: `/wedding-plans/${weddingPlanId}/tasks`,
@@ -818,14 +972,18 @@ export class DashboardService {
     }
 
     for (const installment of installments) {
+      const routeTarget =
+        installment.source === "financial-commitment"
+          ? `/wedding-plans/${weddingPlanId}/finance`
+          : `/debts/${installment.debtId}`;
       items.push({
         id: installment.id,
-        type: 'INSTALLMENT_DUE',
+        type: "INSTALLMENT_DUE",
         title:
           installment.status === InstallmentStatus.OVERDUE
-            ? 'قسط متأخر'
-            : 'دفعة قادمة',
-        subtitle: installment.debt.title,
+            ? "قسط متأخر"
+            : "دفعة قادمة",
+        subtitle: installment.title,
         body: [
           installment.dueDate
             ? this.formatDateArabic(installment.dueDate)
@@ -833,25 +991,24 @@ export class DashboardService {
           `${this.moneyOrNull(this.decimalToNumber(installment.amount))} ر.ي`,
         ]
           .filter((part): part is string => Boolean(part))
-          .join(' · '),
-        icon: 'wallet',
+          .join(" · "),
+        icon: "wallet",
         tone:
           installment.status === InstallmentStatus.OVERDUE
-            ? 'danger'
-            : 'warning',
+            ? "danger"
+            : "warning",
         priority:
-          installment.status === InstallmentStatus.OVERDUE
-            ? 'URGENT'
-            : 'HIGH',
-        actionLabel: 'عرض التفاصيل',
+          installment.status === InstallmentStatus.OVERDUE ? "URGENT" : "HIGH",
+        actionLabel: "عرض التفاصيل",
         dueDate: installment.dueDate,
         amount: installment.amount.toString(),
-        route: `/debts/${installment.debtId}`,
-        routeTarget: `/debts/${installment.debtId}`,
+        route: routeTarget,
+        routeTarget,
         entityId: installment.id,
         data: {
           weddingPlanId,
           debtId: installment.debtId,
+          financialCommitmentId: installment.financialCommitmentId,
           installmentId: installment.id,
         },
       });
@@ -860,14 +1017,14 @@ export class DashboardService {
     if (receivedQuotes > 0) {
       items.push({
         id: `quote-received:${weddingPlanId}`,
-        type: 'QUOTE_RECEIVED',
-        title: 'وصل عرض سعر',
+        type: "QUOTE_RECEIVED",
+        title: "وصل عرض سعر",
         subtitle: `${receivedQuotes} عرض بانتظار قرارك`,
-        body: 'راجع العرض الحقيقي ثم اقبله أو ارفضه من مركز الخطة.',
-        icon: 'provider',
-        tone: 'warning',
-        priority: 'HIGH',
-        actionLabel: 'مراجعة العروض',
+        body: "راجع العرض الحقيقي ثم اقبله أو ارفضه من مركز الخطة.",
+        icon: "provider",
+        tone: "warning",
+        priority: "HIGH",
+        actionLabel: "مراجعة العروض",
         dueDate: null,
         amount: null,
         route: `/wedding-plans/${weddingPlanId}/plan-center`,
@@ -880,14 +1037,14 @@ export class DashboardService {
     if (pendingInvites > 0) {
       items.push({
         id: `pending-invites:${weddingPlanId}`,
-        type: 'INVITE_PENDING',
-        title: 'دعوات مشاركة معلقة',
+        type: "INVITE_PENDING",
+        title: "دعوات مشاركة معلقة",
         subtitle: `${pendingInvites} دعوة لم تُحسم بعد`,
         body: null,
-        icon: 'calendar',
-        tone: 'info',
-        priority: 'NORMAL',
-        actionLabel: 'إدارة المشاركين',
+        icon: "calendar",
+        tone: "info",
+        priority: "NORMAL",
+        actionLabel: "إدارة المشاركين",
         dueDate: null,
         amount: null,
         route: `/wedding-plans/${weddingPlanId}/sharing`,
@@ -901,9 +1058,9 @@ export class DashboardService {
       items.push(
         this.setupAction(
           weddingPlanId,
-          'SET_LOCATION',
-          'أكمل موقع الزفاف',
-          'الموقع يساعدك في تصفية الموردين وتوضيح طلبات الأسعار.',
+          "SET_LOCATION",
+          "أكمل موقع الزفاف",
+          "الموقع يساعدك في تصفية الموردين وتوضيح طلبات الأسعار.",
           `/wedding-plans/${weddingPlanId}/plan-center`,
         ),
       );
@@ -912,9 +1069,9 @@ export class DashboardService {
       items.push(
         this.setupAction(
           weddingPlanId,
-          'SET_BUDGET',
-          'حدد ميزانية الخطة',
-          'أضف ميزانية حقيقية لعرض المتبقي والمصروف بدقة.',
+          "SET_BUDGET",
+          "حدد ميزانية الخطة",
+          "أضف ميزانية حقيقية لعرض المتبقي والمصروف بدقة.",
           `/wedding-plans/${weddingPlanId}/finance`,
         ),
       );
@@ -923,9 +1080,9 @@ export class DashboardService {
       items.push(
         this.setupAction(
           weddingPlanId,
-          'ADD_GUESTS',
-          'ابدأ قائمة الضيوف',
-          'لم تتم إضافة ضيوف إلى الخطة بعد.',
+          "ADD_GUESTS",
+          "ابدأ قائمة الضيوف",
+          "لم تتم إضافة ضيوف إلى الخطة بعد.",
           `/wedding-plans/${weddingPlanId}/guests`,
         ),
       );
@@ -934,10 +1091,10 @@ export class DashboardService {
       items.push(
         this.setupAction(
           weddingPlanId,
-          'REQUEST_QUOTE',
-          'اطلب أول عرض سعر',
-          'لم يتم إرسال طلب عرض سعر لأي مورد بعد.',
-          '/providers',
+          "REQUEST_QUOTE",
+          "اطلب أول عرض سعر",
+          "لم يتم إرسال طلب عرض سعر لأي مورد بعد.",
+          "/providers",
         ),
       );
     }
@@ -947,8 +1104,8 @@ export class DashboardService {
       const provider = firstProvider.provider;
       items.push({
         id: firstProvider.id,
-        type: 'PLAN_PROVIDER',
-        title: 'مزود قريب منك',
+        type: "PLAN_PROVIDER",
+        title: "مزود قريب منك",
         subtitle: provider.businessName,
         body: [
           provider.primaryCategory?.nameAr ?? null,
@@ -957,11 +1114,11 @@ export class DashboardService {
             : null,
         ]
           .filter((part): part is string => Boolean(part))
-          .join(' · '),
-        icon: 'provider',
-        tone: 'success',
-        priority: 'LOW',
-        actionLabel: 'عرض الملف',
+          .join(" · "),
+        icon: "provider",
+        tone: "success",
+        priority: "LOW",
+        actionLabel: "عرض الملف",
         dueDate: null,
         amount: null,
         route: `/providers/${provider.id}`,
@@ -1001,7 +1158,7 @@ export class DashboardService {
     weddingPlanId: string,
     type: Extract<
       DashboardImportantItemType,
-      'SET_LOCATION' | 'SET_BUDGET' | 'ADD_GUESTS' | 'REQUEST_QUOTE'
+      "SET_LOCATION" | "SET_BUDGET" | "ADD_GUESTS" | "REQUEST_QUOTE"
     >,
     title: string,
     body: string,
@@ -1011,12 +1168,12 @@ export class DashboardService {
       id: `${type.toLowerCase()}:${weddingPlanId}`,
       type,
       title,
-      subtitle: 'إعداد الخطة',
+      subtitle: "إعداد الخطة",
       body,
-      icon: type === 'SET_BUDGET' ? 'wallet' : 'calendar',
-      tone: 'info',
-      priority: 'LOW',
-      actionLabel: 'إكمال الآن',
+      icon: type === "SET_BUDGET" ? "wallet" : "calendar",
+      tone: "info",
+      priority: "LOW",
+      actionLabel: "إكمال الآن",
       dueDate: null,
       amount: null,
       route: routeTarget,
@@ -1037,10 +1194,10 @@ export class DashboardService {
     received: number,
     accepted: number,
   ): string {
-    if (received > 0) return 'REVIEW_RECEIVED_QUOTES';
-    if (pending > 0) return 'WAIT_FOR_PROVIDER_RESPONSE';
-    if (accepted > 0) return 'MANAGE_ACCEPTED_PROVIDERS';
-    return 'REQUEST_FIRST_QUOTE';
+    if (received > 0) return "REVIEW_RECEIVED_QUOTES";
+    if (pending > 0) return "WAIT_FOR_PROVIDER_RESPONSE";
+    if (accepted > 0) return "MANAGE_ACCEPTED_PROVIDERS";
+    return "REQUEST_FIRST_QUOTE";
   }
 
   private buildFinancialWarnings({
@@ -1049,23 +1206,24 @@ export class DashboardService {
   }: {
     remainingBudget: number | null;
     dueInstallmentsCount: number | null;
-  }): WeddingPlanDashboardSummaryResponse['financialWarnings'] {
-    const warnings: WeddingPlanDashboardSummaryResponse['financialWarnings'] = [];
+  }): WeddingPlanDashboardSummaryResponse["financialWarnings"] {
+    const warnings: WeddingPlanDashboardSummaryResponse["financialWarnings"] =
+      [];
 
     if (remainingBudget !== null && remainingBudget < 0) {
       warnings.push({
-        type: 'BUDGET_EXCEEDED',
-        severity: 'DANGER',
-        message: 'Spent total is above the available wedding budget.',
+        type: "BUDGET_EXCEEDED",
+        severity: "DANGER",
+        message: "Spent total is above the available wedding budget.",
         count: null,
         amount: this.moneyOrNull(Math.abs(remainingBudget)),
       });
     }
     if (dueInstallmentsCount !== null && dueInstallmentsCount > 0) {
       warnings.push({
-        type: 'INSTALLMENT_DUE_SOON',
-        severity: 'WARNING',
-        message: 'There are installments due soon.',
+        type: "INSTALLMENT_DUE_SOON",
+        severity: "WARNING",
+        message: "There are installments due soon.",
         count: dueInstallmentsCount,
         amount: null,
       });
@@ -1093,17 +1251,14 @@ export class DashboardService {
   }
 
   private async getMarketplaceSummary(userId: string) {
-    const [
-      featuredProvidersCount,
-      favoriteProvidersCount,
-      quoteRequestsCount,
-    ] = await Promise.all([
-      this.prisma.provider.count({
-        where: { status: 'ACTIVE', isFeatured: true },
-      }),
-      this.prisma.favoriteProvider.count({ where: { userId } }),
-      this.prisma.quoteRequest.count({ where: { userId } }),
-    ]);
+    const [featuredProvidersCount, favoriteProvidersCount, quoteRequestsCount] =
+      await Promise.all([
+        this.prisma.provider.count({
+          where: { status: "ACTIVE", isFeatured: true },
+        }),
+        this.prisma.favoriteProvider.count({ where: { userId } }),
+        this.prisma.quoteRequest.count({ where: { userId } }),
+      ]);
 
     return {
       featuredProvidersCount,
@@ -1117,8 +1272,7 @@ export class DashboardService {
       where: { weddingPlanId },
     });
     const totalTargetAmount = categories.reduce(
-      (sum, category) =>
-        sum + Number(category.targetAmount?.toString() ?? '0'),
+      (sum, category) => sum + Number(category.targetAmount?.toString() ?? "0"),
       0,
     );
 
@@ -1184,7 +1338,8 @@ export class DashboardService {
         summary.totalPaid += Number(debt.paidAmount.toString());
       }
       if (debt.status === DebtStatus.OPEN) summary.countOpen++;
-      if (debt.status === DebtStatus.PARTIALLY_PAID) summary.countPartiallyPaid++;
+      if (debt.status === DebtStatus.PARTIALLY_PAID)
+        summary.countPartiallyPaid++;
       if (debt.status === DebtStatus.PAID) summary.countPaid++;
       if (debt.status === DebtStatus.CANCELLED) summary.countCancelled++;
     }
@@ -1192,7 +1347,9 @@ export class DashboardService {
     return {
       totalDebt: summary.totalDebt.toFixed(2),
       totalPaid: summary.totalPaid.toFixed(2),
-      remainingDebt: Math.max(summary.totalDebt - summary.totalPaid, 0).toFixed(2),
+      remainingDebt: Math.max(summary.totalDebt - summary.totalPaid, 0).toFixed(
+        2,
+      ),
       countOpen: summary.countOpen,
       countPartiallyPaid: summary.countPartiallyPaid,
       countPaid: summary.countPaid,
@@ -1206,7 +1363,7 @@ export class DashboardService {
         debt: { weddingPlanId },
         status: { in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE] },
       },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       take: 5,
     });
 
@@ -1225,9 +1382,11 @@ export class DashboardService {
     const tasks = await this.prisma.weddingTask.findMany({
       where: {
         weddingPlanId,
-        status: { notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED] },
+        status: {
+          notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
+        },
       },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       take: 5,
     });
 
@@ -1248,7 +1407,7 @@ export class DashboardService {
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
       include: { user: { select: { id: true, name: true, phone: true } } },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
     });
 
     return members.map((member) => ({
@@ -1274,16 +1433,16 @@ export class DashboardService {
 
   private toneForTaskPriority(
     priority: WeddingTaskPriority,
-  ): DashboardImportantItemResponse['tone'] {
-    if (priority === WeddingTaskPriority.URGENT) return 'danger';
-    if (priority === WeddingTaskPriority.HIGH) return 'warning';
-    return 'info';
+  ): DashboardImportantItemResponse["tone"] {
+    if (priority === WeddingTaskPriority.URGENT) return "danger";
+    if (priority === WeddingTaskPriority.HIGH) return "warning";
+    return "info";
   }
 
   private formatDateArabic(date: Date): string {
-    const formatter = new Intl.DateTimeFormat('ar-YE', {
-      day: 'numeric',
-      month: 'long',
+    const formatter = new Intl.DateTimeFormat("ar-YE", {
+      day: "numeric",
+      month: "long",
     });
     return formatter.format(date);
   }
@@ -1312,8 +1471,7 @@ export class DashboardService {
     }
 
     return categories.reduce(
-      (sum, category) =>
-        sum + this.decimalToNumber(category.targetAmount),
+      (sum, category) => sum + this.decimalToNumber(category.targetAmount),
       0,
     );
   }
@@ -1344,18 +1502,23 @@ export class DashboardService {
       weddingDate.getDate(),
     );
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
-    return Math.ceil((weddingDay.getTime() - today.getTime()) / millisecondsPerDay);
+    return Math.ceil(
+      (weddingDay.getTime() - today.getTime()) / millisecondsPerDay,
+    );
   }
 
-  private progressPercentage(totalTasks: number, completedTasks: number): number {
+  private progressPercentage(
+    totalTasks: number,
+    completedTasks: number,
+  ): number {
     if (totalTasks < 1) return 0;
     return Math.round((completedTasks / totalTasks) * 100);
   }
 
   private currentUserRole(
     context: PlanAccessContext,
-  ): 'OWNER' | SharedMemberRole | null {
-    if (context.isOwner) return 'OWNER';
+  ): "OWNER" | SharedMemberRole | null {
+    if (context.isOwner) return "OWNER";
     return context.sharedMember?.role ?? null;
   }
 
@@ -1366,9 +1529,9 @@ export class DashboardService {
     return {
       isOwner: context.isOwner,
       role,
-      canViewBudget: this.permissions.canReadFinancial(context, 'budget'),
-      canViewExpenses: this.permissions.canReadFinancial(context, 'expenses'),
-      canViewDebts: this.permissions.canReadFinancial(context, 'debts'),
+      canViewBudget: this.permissions.canReadFinancial(context, "budget"),
+      canViewExpenses: this.permissions.canReadFinancial(context, "expenses"),
+      canViewDebts: this.permissions.canReadFinancial(context, "debts"),
       canManageTasks: this.permissions.canManageTasks(context),
       canManageGuests: this.permissions.canManageGuests(context),
       canManageProviders: this.permissions.canManageProviders(context),

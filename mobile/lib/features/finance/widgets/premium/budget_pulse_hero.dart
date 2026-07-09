@@ -9,6 +9,7 @@ import '../../../../core/theme/aarast_motion.dart';
 import '../../../../core/widgets/aarast_progress_ring.dart';
 import '../../models/money_formatters.dart';
 import '../../models/money_summary.dart';
+import '../yemeni_money_text.dart';
 
 double _money(String? raw) {
   if (raw == null) return 0;
@@ -36,31 +37,6 @@ class BudgetPulseHero extends StatelessWidget {
         ? _money(summary.confirmedCostTotal)
         : _money(summary.totalSpent);
     final hasBudget = summary.hasUsableBudget;
-    final ratio = summary.commitmentRatio > 0
-        ? summary.commitmentRatio
-        : summary.spendingRatio;
-    final status = summary.budgetStatus;
-
-    final isOver = status == 'OVER_BUDGET';
-    final isWarning = status == 'WARNING' || status == 'DANGER';
-
-    final ringColors = isOver
-        ? const [
-            AarastDesignTokens.danger,
-            AarastDesignTokens.dangerLight,
-            AarastDesignTokens.dangerSoft,
-          ]
-        : isWarning
-        ? const [
-            AarastDesignTokens.warning,
-            AarastDesignTokens.warningLight,
-            AarastDesignTokens.warningSoft,
-          ]
-        : const [
-            AarastDesignTokens.goldDeep,
-            AarastDesignTokens.gold,
-            AarastDesignTokens.goldLight,
-          ];
 
     Widget card = Container(
       decoration: BoxDecoration(
@@ -104,7 +80,7 @@ class BudgetPulseHero extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
             child: hasBudget
-                ? _buildBudgetBody(context, total, spent, ratio, ringColors)
+                ? _buildBudgetBody(context, total, spent)
                 : _buildNoBudgetBody(context, spent),
           ),
         ],
@@ -121,15 +97,8 @@ class BudgetPulseHero extends StatelessWidget {
     );
   }
 
-  Widget _buildBudgetBody(
-    BuildContext context,
-    double total,
-    double spent,
-    double ratio,
-    List<Color> ringColors,
-  ) {
+  Widget _buildBudgetBody(BuildContext context, double total, double spent) {
     final remaining = total - spent;
-    final percentage = (ratio * 100).round();
     final status = summary.budgetStatus;
 
     final hint = switch (status) {
@@ -148,72 +117,34 @@ class BudgetPulseHero extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'المتبقي معك',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.78),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: AlignmentDirectional.centerStart,
-                    child: YemeniMoneyHeroText(
-                      value: remaining,
-                      color: remaining < 0
-                          ? AarastDesignTokens.dangerSoft
-                          : AarastDesignTokens.goldSoft,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  _HeroMoneyRow(label: 'الميزانية', value: total),
-                  const SizedBox(height: 6),
-                  _HeroMoneyRow(label: 'التكلفة المؤكدة', value: spent),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            Semantics(
-              label: 'تم صرف $percentage بالمئة من الميزانية',
-              child: AarastProgressRing(
-                progress: ratio.clamp(0.0, 1.0),
-                size: 112,
-                gradientColors: ringColors,
-                tipColor: AarastDesignTokens.goldGlow,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$percentage%',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        height: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'تم صرفه',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'المتبقي معك',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.78),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: YemeniMoneyHeroText(
+            value: remaining,
+            color: remaining < 0
+                ? AarastDesignTokens.dangerSoft
+                : AarastDesignTokens.goldSoft,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _HeroBudgetContextLine(
+          total: total,
+          spent: spent,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.86),
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 14),
         Container(
@@ -348,49 +279,33 @@ class BudgetPulseHero extends StatelessWidget {
   }
 }
 
-class _HeroMoneyRow extends StatelessWidget {
-  const _HeroMoneyRow({required this.label, required this.value});
+class _HeroBudgetContextLine extends StatelessWidget {
+  const _HeroBudgetContextLine({
+    required this.total,
+    required this.spent,
+    required this.style,
+  });
 
-  final String label;
-  final double value;
+  final double total;
+  final double spent;
+  final TextStyle style;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: const BoxDecoration(
-            color: AarastDesignTokens.gold,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 7),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.80),
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            formatCompactYemeniMoney(value),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textDirection: TextDirection.ltr,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-      ],
+    return DefaultTextStyle.merge(
+      style: style,
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 2,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        textDirection: TextDirection.rtl,
+        children: [
+          const Text('من ميزانية'),
+          YemeniMoneyText(total, style: style, overflow: TextOverflow.visible),
+          const Text('- المؤكد'),
+          YemeniMoneyText(spent, style: style, overflow: TextOverflow.visible),
+        ],
+      ),
     );
   }
 }
@@ -416,17 +331,19 @@ class YemeniMoneyHeroText extends StatelessWidget {
           : const Duration(milliseconds: 1400),
       curve: Curves.easeOutExpo,
       builder: (context, animated, _) {
-        return Text(
-          formatCompactYemeniMoney(animated),
+        return Text.rich(
+          yemeniMoneyTextSpan(
+            animated,
+            style: TextStyle(
+              color: color,
+              fontSize: 32,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+              fontFamily: 'IBMPlexSansArabic',
+            ),
+          ),
           maxLines: 1,
           textDirection: TextDirection.ltr,
-          style: TextStyle(
-            color: color,
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
-            height: 1.1,
-            fontFamily: 'IBMPlexSansArabic',
-          ),
         );
       },
     );

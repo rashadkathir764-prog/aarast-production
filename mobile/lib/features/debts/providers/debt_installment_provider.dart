@@ -72,7 +72,7 @@ class DebtInstallmentProvider extends ChangeNotifier {
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
-      _errorMessage = 'تعذر تحميل تفاصيل الدين.';
+      _errorMessage = 'تعذر تحميل تفاصيل الدين القديم.';
     } finally {
       _isLoading = false;
       notifyListeners();

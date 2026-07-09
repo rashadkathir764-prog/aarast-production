@@ -134,20 +134,8 @@ export class MoneySummaryService {
       categories,
       expenses,
       debts,
-      installmentsCount,
-      dueInstallmentsCount,
-      overdueInstallmentsCount,
-      paidInstallmentsCount,
-      remainingInstallmentsCount,
-      dueSoonInstallmentsCount,
-      nextInstallment,
       financialCommitments,
-      financialInstallmentsCount,
-      financialDueInstallmentsCount,
-      financialOverdueInstallmentsCount,
-      financialRemainingInstallmentsCount,
-      financialDueSoonInstallmentsCount,
-      nextFinancialInstallment,
+      financialInstallments,
     ] = await Promise.all([
       canViewBudget
         ? this.prisma.budgetCategory.findMany({ where: { weddingPlanId } })
@@ -159,133 +147,104 @@ export class MoneySummaryService {
         ? this.prisma.debt.findMany({ where: { weddingPlanId } })
         : Promise.resolve([]),
       canViewDebts
-        ? this.prisma.installment.count({ where: { debt: { weddingPlanId } } })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.installment.count({
-            where: {
-              debt: { weddingPlanId },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-              dueDate: { lte: this.endOfToday(today) },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.installment.count({
-            where: {
-              debt: { weddingPlanId },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-              dueDate: { lt: today },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.installment.count({
-            where: {
-              debt: { weddingPlanId },
-              status: InstallmentStatus.PAID,
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.installment.count({
-            where: {
-              debt: { weddingPlanId },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.installment.count({
-            where: {
-              debt: { weddingPlanId },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-              dueDate: { gte: today, lte: this.endOfDayOffset(today, 7) },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.installment.findFirst({
-            where: {
-              debt: { weddingPlanId },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-            },
-            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-          })
-        : Promise.resolve(null),
-      canViewDebts
         ? this.prisma.financialCommitment.findMany({
             where: { weddingPlanId },
           })
         : Promise.resolve([]),
       canViewDebts
-        ? this.prisma.financialInstallment.count({ where: { weddingPlanId } })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.financialInstallment.count({
-            where: {
-              weddingPlanId,
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-              dueDate: { lte: this.endOfToday(today) },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.financialInstallment.count({
-            where: {
-              weddingPlanId,
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-              dueDate: { lt: today },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.financialInstallment.count({
-            where: {
-              weddingPlanId,
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.financialInstallment.count({
-            where: {
-              weddingPlanId,
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-              dueDate: { gte: today, lte: this.endOfDayOffset(today, 7) },
-            },
-          })
-        : Promise.resolve(null),
-      canViewDebts
-        ? this.prisma.financialInstallment.findFirst({
-            where: {
-              weddingPlanId,
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-            },
+        ? this.prisma.financialInstallment.findMany({
+            where: { weddingPlanId },
             orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
-        : Promise.resolve(null),
+        : Promise.resolve([]),
     ]);
+    const mirroredDebtIds = new Set(
+      financialCommitments
+        .map((commitment) => commitment.legacyDebtId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const legacyDebts = debts.filter((debt) => !mirroredDebtIds.has(debt.id));
+    const mirroredInstallmentIds = new Set(
+      financialInstallments
+        .map((installment) => installment.legacyInstallmentId)
+        .filter((id): id is string => Boolean(id)),
+    );
+    const legacyInstallments = canViewDebts
+      ? await this.prisma.installment.findMany({
+          where: {
+            debt: { weddingPlanId },
+            ...(mirroredInstallmentIds.size > 0
+              ? { id: { notIn: [...mirroredInstallmentIds] } }
+              : {}),
+          },
+          orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+        })
+      : [];
+    const openLegacyInstallments = legacyInstallments.filter((installment) =>
+      this.isOpenInstallment(installment.status),
+    );
+    const openFinancialInstallments = financialInstallments.filter(
+      (installment) => this.isOpenInstallment(installment.status),
+    );
+    const installmentsCount = canViewDebts ? legacyInstallments.length : null;
+    const dueInstallmentsCount = canViewDebts
+      ? openLegacyInstallments.filter(
+          (installment) =>
+            installment.dueDate !== null &&
+            installment.dueDate <= this.endOfToday(today),
+        ).length
+      : null;
+    const overdueInstallmentsCount = canViewDebts
+      ? openLegacyInstallments.filter(
+          (installment) =>
+            installment.dueDate !== null && installment.dueDate < today,
+        ).length
+      : null;
+    const paidInstallmentsCount = canViewDebts
+      ? legacyInstallments.filter(
+          (installment) => installment.status === InstallmentStatus.PAID,
+        ).length
+      : null;
+    const remainingInstallmentsCount = canViewDebts
+      ? openLegacyInstallments.length
+      : null;
+    const dueSoonInstallmentsCount = canViewDebts
+      ? openLegacyInstallments.filter(
+          (installment) =>
+            installment.dueDate !== null &&
+            installment.dueDate >= today &&
+            installment.dueDate <= this.endOfDayOffset(today, 7),
+        ).length
+      : null;
+    const nextInstallment = openLegacyInstallments[0] ?? null;
+    const financialInstallmentsCount = canViewDebts
+      ? financialInstallments.length
+      : null;
+    const financialDueInstallmentsCount = canViewDebts
+      ? openFinancialInstallments.filter(
+          (installment) =>
+            installment.dueDate !== null &&
+            installment.dueDate <= this.endOfToday(today),
+        ).length
+      : null;
+    const financialOverdueInstallmentsCount = canViewDebts
+      ? openFinancialInstallments.filter(
+          (installment) =>
+            installment.dueDate !== null && installment.dueDate < today,
+        ).length
+      : null;
+    const financialRemainingInstallmentsCount = canViewDebts
+      ? openFinancialInstallments.length
+      : null;
+    const financialDueSoonInstallmentsCount = canViewDebts
+      ? openFinancialInstallments.filter(
+          (installment) =>
+            installment.dueDate !== null &&
+            installment.dueDate >= today &&
+            installment.dueDate <= this.endOfDayOffset(today, 7),
+        ).length
+      : null;
+    const nextFinancialInstallment = openFinancialInstallments[0] ?? null;
 
     const categoryTargetTotal = canViewBudget
       ? categories.reduce(
@@ -297,32 +256,56 @@ export class MoneySummaryService {
       ? this.resolveBudgetTotal(context.plan, categoryTargetTotal ?? 0)
       : null;
     const expenseTotals = canViewExpenses ? this.expenseTotals(expenses) : null;
-    const debtTotals = canViewDebts ? this.debtTotals(debts) : null;
+    const debtTotals = canViewDebts ? this.debtTotals(legacyDebts) : null;
     const commitmentTotals = canViewDebts
       ? this.commitmentTotals(financialCommitments)
       : null;
+    const combinedDebtTotal =
+      commitmentTotals && debtTotals
+        ? commitmentTotals.commitmentTotal + debtTotals.debtTotal
+        : null;
+    const combinedPaidDebtTotal =
+      commitmentTotals && debtTotals
+        ? commitmentTotals.commitmentPaidTotal + debtTotals.paidDebtTotal
+        : null;
+    const combinedUnpaidDebtTotal =
+      combinedDebtTotal !== null && combinedPaidDebtTotal !== null
+        ? Math.max(combinedDebtTotal - combinedPaidDebtTotal, 0)
+        : null;
+    const combinedPaidInstallmentsCount = this.sumNullableCounts(
+      paidInstallmentsCount,
+      canViewDebts
+        ? financialInstallments.filter(
+            (installment) => installment.status === InstallmentStatus.PAID,
+          ).length
+        : null,
+    );
+    const combinedRemainingInstallmentsCount = this.sumNullableCounts(
+      remainingInstallmentsCount,
+      financialRemainingInstallmentsCount,
+    );
+    const combinedInstallmentsCount = this.sumNullableCounts(
+      installmentsCount,
+      financialInstallmentsCount,
+    );
     const remainingBudget =
       budgetTotal !== null && expenseTotals
         ? budgetTotal - expenseTotals.spentTotal
         : null;
-    const confirmedCostTotal =
-      commitmentTotals && debtTotals
-        ? commitmentTotals.commitmentTotal + debtTotals.debtTotal
-        : null;
+    const confirmedCostTotal = combinedDebtTotal;
     const paidTotal =
-      commitmentTotals && debtTotals && expenseTotals
-        ? commitmentTotals.commitmentPaidTotal +
-          debtTotals.paidDebtTotal +
-          expenseTotals.spentTotal
+      combinedPaidDebtTotal !== null && expenseTotals
+        ? combinedPaidDebtTotal + expenseTotals.spentTotal
         : null;
-    const outstandingTotal =
-      commitmentTotals && debtTotals
-        ? commitmentTotals.commitmentRemainingTotal + debtTotals.unpaidDebtTotal
-        : null;
+    const outstandingTotal = combinedUnpaidDebtTotal;
     const deficitOrSurplus =
       budgetTotal !== null && confirmedCostTotal !== null
         ? budgetTotal - confirmedCostTotal
         : null;
+    const combinedDueInstallmentsCount = this.sumNullableCounts(
+      dueInstallmentsCount,
+      financialDueInstallmentsCount,
+    );
     const combinedOverdueInstallmentsCount = this.sumNullableCounts(
       overdueInstallmentsCount,
       financialOverdueInstallmentsCount,
@@ -338,11 +321,7 @@ export class MoneySummaryService {
       categories,
       expenses,
       commitments: financialCommitments,
-      financialInstallments: canViewDebts
-        ? await this.prisma.financialInstallment.findMany({
-            where: { weddingPlanId },
-          })
-        : [],
+      financialInstallments: canViewDebts ? financialInstallments : [],
     });
     const financialWarnings = this.buildFinancialWarnings({
       remainingBudget,
@@ -367,15 +346,15 @@ export class MoneySummaryService {
         expenseTotals?.cancelledExpensesTotal ?? null,
       ),
       remainingBudget: this.moneyOrNull(remainingBudget),
-      debtTotal: this.moneyOrNull(debtTotals?.debtTotal ?? null),
-      totalDebts: this.moneyOrNull(debtTotals?.debtTotal ?? null),
-      paidDebtTotal: this.moneyOrNull(debtTotals?.paidDebtTotal ?? null),
-      unpaidDebtTotal: this.moneyOrNull(debtTotals?.unpaidDebtTotal ?? null),
-      debtRemaining: this.moneyOrNull(debtTotals?.unpaidDebtTotal ?? null),
-      dueInstallmentsCount,
-      overdueInstallmentsCount,
-      paidInstallmentsCount,
-      remainingInstallmentsCount,
+      debtTotal: this.moneyOrNull(combinedDebtTotal),
+      totalDebts: this.moneyOrNull(combinedDebtTotal),
+      paidDebtTotal: this.moneyOrNull(combinedPaidDebtTotal),
+      unpaidDebtTotal: this.moneyOrNull(combinedUnpaidDebtTotal),
+      debtRemaining: this.moneyOrNull(combinedUnpaidDebtTotal),
+      dueInstallmentsCount: combinedDueInstallmentsCount,
+      overdueInstallmentsCount: combinedOverdueInstallmentsCount,
+      paidInstallmentsCount: combinedPaidInstallmentsCount,
+      remainingInstallmentsCount: combinedRemainingInstallmentsCount,
       confirmedCostTotal: this.moneyOrNull(confirmedCostTotal),
       totalConfirmedCost: this.moneyOrNull(confirmedCostTotal),
       paidTotal: this.moneyOrNull(paidTotal),
@@ -423,9 +402,9 @@ export class MoneySummaryService {
       financialWarnings,
       categoriesCount: canViewBudget ? categories.length : null,
       expensesCount: canViewExpenses ? expenses.length : null,
-      debtsCount: canViewDebts ? debts.length : null,
+      debtsCount: canViewDebts ? legacyDebts.length : null,
       commitmentsCount: canViewDebts ? financialCommitments.length : null,
-      installmentsCount,
+      installmentsCount: combinedInstallmentsCount,
       permissions: {
         canViewBudget,
         canViewExpenses,
@@ -735,6 +714,13 @@ export class MoneySummaryService {
 
   private moneyOrNull(value: number | null): string | null {
     return value === null ? null : value.toFixed(2);
+  }
+
+  private isOpenInstallment(status: InstallmentStatus): boolean {
+    return (
+      status === InstallmentStatus.PENDING ||
+      status === InstallmentStatus.OVERDUE
+    );
   }
 
   private startOfToday(): Date {

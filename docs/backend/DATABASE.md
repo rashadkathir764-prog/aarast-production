@@ -30,8 +30,8 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 | FinancialPaymentRecord | Implemented for actual money-out records under a FinancialCommitment. Creating or deleting a record updates the parent commitment balance. This is manual planning data, not payment processing. |
 | FinancialInstallment | Implemented for scheduled commitment payments. A financial installment belongs to a FinancialCommitment and BudgetCategory; paying it creates a payment record and updates the commitment balance. |
 | Expense | Implemented for owner-scoped WeddingPlan actual money-out records with amount, paid status, optional date, optional note, and required BudgetCategory link for new records. New money flows should use FinancialCommitment + FinancialPaymentRecord for agreed costs, remaining balances, and payments. |
-| Debt | Implemented for owner-scoped WeddingPlan obligations, including creditor, optional manually entered creditor phone, title, total amount, paid amount, optional due date, status, and optional note. Contact picking is not implemented in Phase 2A. |
-| Installment | Implemented for owner-scoped scheduled payments under debts, including amount, optional due date, optional paid date, status, and optional note. |
+| Debt | Implemented as a legacy-compatible projection for owner-scoped manual obligations. Debt writes are bridged into `FinancialCommitment` with legacy link keys so current money totals use the financial backbone without double-counting. Contact picking is not implemented in Phase 2A. |
+| Installment | Implemented as a legacy-compatible scheduled payment under debts. Installment writes are bridged into `FinancialInstallment` and payment records so legacy routes keep working while the current money system remains commitment-first. |
 | Task | Implemented as `WeddingTask` for owner-scoped WeddingPlan planning work, including title, optional description, optional due date, status, priority, checklist/assignment support, and timestamps. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. A shared member links a User to a WeddingPlan with role `VIEWER`, `CONTRIBUTOR`, or `MANAGER`, plus explicit permissions for budget, expenses, debts, task management, and financial-record management. |
@@ -105,7 +105,7 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 
 | Model | Field count | Notable fields |
 | --- | --- | --- |
-| `IdempotencyKey` | 7 | `id`, `userId`, `createdAt` |
+| `IdempotencyKey` | 8 | `id`, `userId`, `completedAt`, `createdAt` |
 | `User` | 36 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `RefreshToken` | 10 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `WeddingPlan` | 33 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
@@ -114,8 +114,8 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `Debt` | 15 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `Installment` | 10 | `id`, `debtId`, `paidAt`, `createdAt`, `updatedAt` |
 | `FinancialCommitment` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `planProviderLinkId`, `quoteRequestId`, `quoteOfferId`, `legacyDebtId` |
-| `FinancialPaymentRecord` | 15 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyExpenseId`, `createdAt`, `updatedAt` |
-| `FinancialInstallment` | 14 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `createdAt`, `updatedAt` |
+| `FinancialPaymentRecord` | 17 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyExpenseId`, `legacyDebtId`, `legacyInstallmentId` |
+| `FinancialInstallment` | 15 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyInstallmentId`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 15 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |

@@ -91,8 +91,8 @@ class _CreateFinancialCommitmentScreenState
                       _sourceType == 'PROVIDER_SERVICE'
                           ? 'حجز مورد / تكلفة خدمة'
                           : _sourceType == 'MANUAL_DEBT'
-                          ? 'دين يدوي'
-                          : 'التزام مالي',
+                          ? 'مستحق عليك'
+                          : 'مستحق مالي',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.burgundyDeep,
                         fontWeight: FontWeight.w900,
@@ -146,7 +146,7 @@ class _CreateFinancialCommitmentScreenState
                               initialValue: _sourceType,
                               isExpanded: true,
                               decoration: const InputDecoration(
-                                labelText: 'نوع الالتزام',
+                                labelText: 'نوع المستحق',
                                 prefixIcon: Icon(LucideIcons.fileText),
                               ),
                               items: const [
@@ -156,11 +156,11 @@ class _CreateFinancialCommitmentScreenState
                                 ),
                                 DropdownMenuItem(
                                   value: 'MANUAL_DEBT',
-                                  child: Text('دين يدوي'),
+                                  child: Text('مستحق عليك'),
                                 ),
                                 DropdownMenuItem(
                                   value: 'MANUAL_COMMITMENT',
-                                  child: Text('التزام يدوي'),
+                                  child: Text('مستحق يدوي'),
                                 ),
                                 DropdownMenuItem(
                                   value: 'OTHER',
@@ -178,11 +178,11 @@ class _CreateFinancialCommitmentScreenState
                               textAlign: TextAlign.right,
                               textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
-                                labelText: 'العنوان',
-                                hintText: 'مثال: قاعة الأفراح',
+                                labelText: 'اسم المستحق',
+                                hintText: 'مثال: باقي القاعة أو دفعة التصوير',
                                 prefixIcon: Icon(LucideIcons.badgeCheck),
                               ),
-                              validator: _required('العنوان مطلوب'),
+                              validator: _required('اسم المستحق مطلوب'),
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
@@ -289,7 +289,7 @@ class _CreateFinancialCommitmentScreenState
                       ),
                     const SizedBox(height: 18),
                     AarastButton(
-                      label: 'حفظ الالتزام',
+                      label: 'حفظ المستحق',
                       icon: LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: categories.isEmpty ? null : _submit,

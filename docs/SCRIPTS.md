@@ -8,6 +8,8 @@
 | `admin-web` | `npm run smoke:admin-runtime` | `node scripts/admin-runtime-smoke.mjs` |
 | `admin-web` | `npm run smoke:honesty` | `node scripts/source-honesty-smoke.mjs` |
 | `admin-web` | `npm run smoke:routes` | `npm run build && node scripts/route-smoke.mjs` |
+| `admin-web` | `npm run test` | `vitest run` |
+| `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |
 | `backend` | `npm run build` | `tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit` |
@@ -16,6 +18,7 @@
 | `backend` | `npm run prod:bootstrap-marketplace` | `node scripts/prod/bootstrap-marketplace.cjs` |
 | `backend` | `npm run seed` | `ts-node prisma/seed.ts` |
 | `backend` | `npm run smoke` | `npm run smoke:health && npm run smoke:auth` |
+| `backend` | `npm run smoke:account-deletion` | `node --env-file=.env -r ts-node/register scripts/smoke/account-deletion-smoke.ts` |
 | `backend` | `npm run smoke:all` | `node --env-file=.env scripts/smoke/all-smoke.js` |
 | `backend` | `npm run smoke:auth` | `node scripts/smoke/auth-smoke.js` |
 | `backend` | `npm run smoke:backend-completion` | `node scripts/smoke/backend-completion-smoke.js` |
@@ -42,4 +45,4 @@
 | `backend` | `npm run smoke:wedding-plan` | `node scripts/smoke/wedding-plan-smoke.js` |
 | `backend` | `npm run start` | `node dist/main.js` |
 | `backend` | `npm run start:dev` | `node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts` |
-| `backend` | `npm run test` | `node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/password-reset-logic.test.ts` |
+| `backend` | `npm run test` | `node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts` |

@@ -17,7 +17,7 @@ void main() {
 
     await _pumpScreen(tester);
 
-    expect(find.text('مبلغ باقي جديد'), findsOneWidget);
+    expect(find.text('إضافة سجل دين قديم'), findsOneWidget);
     expect(find.text('ر.ي'), findsWidgets);
     expect(find.text('YER'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -40,7 +40,7 @@ void main() {
       ),
     );
 
-    expect(find.text('حوّل العرض إلى التزام واضح'), findsOneWidget);
+    expect(find.text('حوّل العرض القديم إلى سجل واضح'), findsOneWidget);
     expect(find.text('ر.س'), findsWidgets);
     expect(find.text('YER'), findsNothing);
     expect(tester.takeException(), isNull);

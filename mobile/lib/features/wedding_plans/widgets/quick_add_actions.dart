@@ -51,7 +51,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   );
   final manualDebt = RoyalHomeAction(
     icon: Icons.account_balance_outlined,
-    label: 'إضافة دين يدوي',
+    label: 'إضافة مستحق عليك',
     onTap: () => openRoute(
       AppRouter.createFinancialCommitment(planId, sourceType: 'MANUAL_DEBT'),
       refreshDashboard: refreshDashboardOnExpense,

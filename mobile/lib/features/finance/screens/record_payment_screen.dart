@@ -111,7 +111,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                               initialValue: _commitmentValue(commitments),
                               isExpanded: true,
                               decoration: const InputDecoration(
-                                labelText: 'الالتزام المالي',
+                                labelText: 'المستحق',
                                 prefixIcon: Icon(Icons.handshake_outlined),
                               ),
                               items: [
@@ -128,7 +128,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 setState(() => _commitmentId = value);
                               },
                               validator: (value) =>
-                                  value == null ? 'اختر الالتزام' : null,
+                                  value == null ? 'اختر المستحق' : null,
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
@@ -302,7 +302,7 @@ class _NoCommitmentCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'أضف التزاماً مالياً أولاً',
+            'أضف مستحقاً أولاً',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: AppTheme.title,
@@ -315,7 +315,7 @@ class _NoCommitmentCard extends StatelessWidget {
               AppRouter.createFinancialCommitment(weddingPlanId),
             ),
             icon: const Icon(LucideIcons.plus),
-            label: const Text('إضافة التزام'),
+            label: const Text('إضافة مستحق'),
           ),
         ],
       ),

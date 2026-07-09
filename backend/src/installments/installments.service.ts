@@ -1,13 +1,22 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Debt, Installment, InstallmentStatus, Prisma } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { applyDebtPaymentDelta } from '../common/money/debt-balance';
-import { DEFAULT_LIST_CAP } from '../common/pagination/list-query.dto';
-import { requiredMoneyAmount } from '../common/validation/money';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionService } from '../sharing/permission.service';
-import { CreateInstallmentDto } from './dto/create-installment.dto';
-import { UpdateInstallmentDto } from './dto/update-installment.dto';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { Debt, Installment, InstallmentStatus, Prisma } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import {
+  removeLegacyInstallmentMirror,
+  syncLegacyDebtCommitment,
+  syncLegacyInstallmentMirror,
+} from "../common/finance/legacy-finance-bridge";
+import { applyDebtPaymentDelta } from "../common/money/debt-balance";
+import { DEFAULT_LIST_CAP } from "../common/pagination/list-query.dto";
+import { requiredMoneyAmount } from "../common/validation/money";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
+import { CreateInstallmentDto } from "./dto/create-installment.dto";
+import { UpdateInstallmentDto } from "./dto/update-installment.dto";
 
 export interface InstallmentResponse {
   id: string;
@@ -44,20 +53,22 @@ export class InstallmentsService {
       const created = await tx.installment.create({
         data: {
           debtId,
-          amount: this.requiredNonNegativeDecimal(dto.amount, 'amount'),
-          dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
+          amount: this.requiredNonNegativeDecimal(dto.amount, "amount"),
+          dueDate: this.optionalDate(dto.dueDate, "dueDate"),
           paidAt:
-            this.optionalDate(dto.paidAt, 'paidAt') ??
+            this.optionalDate(dto.paidAt, "paidAt") ??
             (status === InstallmentStatus.PAID ? new Date() : null),
           status,
           note: this.optionalText(dto.note),
         },
       });
 
+      let syncedDebt = debt;
       // Creating an already-paid installment must count towards the debt.
       if (status === InstallmentStatus.PAID) {
-        await this.applyDebtDelta(tx, debtId, created.amount);
+        syncedDebt = await this.applyDebtDelta(tx, debtId, created.amount);
       }
+      await syncLegacyInstallmentMirror(tx, created, syncedDebt);
 
       return created;
     });
@@ -73,12 +84,12 @@ export class InstallmentsService {
     await this.permissionService.assertFinancialReadable(
       debt.weddingPlanId,
       currentUser,
-      'debts',
+      "debts",
     );
 
     const installments = await this.prisma.installment.findMany({
       where: { debtId },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       take: DEFAULT_LIST_CAP,
     });
 
@@ -92,7 +103,7 @@ export class InstallmentsService {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
       currentUser,
-      'debts',
+      "debts",
     );
 
     const installments = await this.prisma.installment.findMany({
@@ -100,7 +111,7 @@ export class InstallmentsService {
         status: { in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE] },
         debt: { weddingPlanId },
       },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       take: DEFAULT_LIST_CAP,
     });
 
@@ -121,7 +132,7 @@ export class InstallmentsService {
 
     const nextAmount =
       dto.amount !== undefined
-        ? this.requiredNonNegativeDecimal(dto.amount, 'amount')
+        ? this.requiredNonNegativeDecimal(dto.amount, "amount")
         : undefined;
 
     const installment = await this.prisma.$transaction(async (tx) => {
@@ -138,10 +149,10 @@ export class InstallmentsService {
         data: {
           ...(nextAmount !== undefined ? { amount: nextAmount } : {}),
           ...(dto.dueDate !== undefined
-            ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
+            ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
             : {}),
           ...(dto.paidAt !== undefined
-            ? { paidAt: this.optionalDate(dto.paidAt, 'paidAt') }
+            ? { paidAt: this.optionalDate(dto.paidAt, "paidAt") }
             : {}),
           ...(dto.status !== undefined ? { status: dto.status } : {}),
           ...(dto.note !== undefined
@@ -169,9 +180,10 @@ export class InstallmentsService {
       } else if (wasPaid && isPaid && !updated.amount.equals(current.amount)) {
         delta = updated.amount.sub(current.amount);
       }
-      if (!delta.equals(zero)) {
-        await this.applyDebtDelta(tx, current.debtId, delta);
-      }
+      const syncedDebt = !delta.equals(zero)
+        ? await this.applyDebtDelta(tx, current.debtId, delta)
+        : await tx.debt.findUniqueOrThrow({ where: { id: current.debtId } });
+      await syncLegacyInstallmentMirror(tx, updated, syncedDebt);
 
       return updated;
     });
@@ -203,13 +215,23 @@ export class InstallmentsService {
         const paid = await tx.installment.findUniqueOrThrow({
           where: { id },
         });
-        if (!paid.paidAt) {
-          await tx.installment.update({
-            where: { id },
-            data: { paidAt: now },
-          });
-        }
-        await this.applyDebtDelta(tx, paid.debtId, paid.amount);
+        const finalPaid = !paid.paidAt
+          ? await tx.installment.update({
+              where: { id },
+              data: { paidAt: now },
+            })
+          : paid;
+        const syncedDebt = await this.applyDebtDelta(
+          tx,
+          finalPaid.debtId,
+          finalPaid.amount,
+        );
+        await syncLegacyInstallmentMirror(tx, finalPaid, syncedDebt);
+      } else {
+        const current = await tx.installment.findUniqueOrThrow({
+          where: { id },
+        });
+        await syncLegacyInstallmentMirror(tx, current);
       }
 
       return tx.installment.findUniqueOrThrow({ where: { id } });
@@ -234,13 +256,24 @@ export class InstallmentsService {
       const current = await tx.installment.findUnique({ where: { id } });
       if (!current) return; // Already deleted — idempotent.
 
+      await removeLegacyInstallmentMirror(tx, id);
       await tx.installment.delete({ where: { id } });
 
       // Deleting a paid installment gives the amount back to the debt
       // balance; the ledger and its installments must never diverge.
+      let syncedDebt: Debt;
       if (current.status === InstallmentStatus.PAID) {
-        await this.applyDebtDelta(tx, current.debtId, current.amount.negated());
+        syncedDebt = await this.applyDebtDelta(
+          tx,
+          current.debtId,
+          current.amount.negated(),
+        );
+      } else {
+        syncedDebt = await tx.debt.findUniqueOrThrow({
+          where: { id: current.debtId },
+        });
       }
+      await syncLegacyDebtCommitment(tx, syncedDebt);
     });
 
     return { id, deleted: true };
@@ -256,11 +289,15 @@ export class InstallmentsService {
     tx: Prisma.TransactionClient,
     debtId: string,
     delta: Prisma.Decimal,
-  ): Promise<void> {
+  ): Promise<Debt> {
     await tx.$queryRaw`SELECT id FROM "Debt" WHERE id = ${debtId} FOR UPDATE`;
     const debt = await tx.debt.findUniqueOrThrow({ where: { id: debtId } });
-    const next = applyDebtPaymentDelta(debt.totalAmount, debt.paidAmount, delta);
-    await tx.debt.update({
+    const next = applyDebtPaymentDelta(
+      debt.totalAmount,
+      debt.paidAmount,
+      delta,
+    );
+    return tx.debt.update({
       where: { id: debtId },
       data: { paidAmount: next.paidAmount, status: next.status },
     });
@@ -273,25 +310,23 @@ export class InstallmentsService {
     await tx.$queryRaw`SELECT id FROM "Installment" WHERE id = ${id} FOR UPDATE`;
   }
 
-  private async findInstallmentOrThrow(
-    id: string,
-  ): Promise<Installment> {
-    const installment = await this.prisma.installment.findUnique({ where: { id } });
+  private async findInstallmentOrThrow(id: string): Promise<Installment> {
+    const installment = await this.prisma.installment.findUnique({
+      where: { id },
+    });
 
     if (!installment) {
-      throw new NotFoundException('Installment not found');
+      throw new NotFoundException("Installment not found");
     }
 
     return installment;
   }
 
-  private async findDebtOrThrow(
-    id: string,
-  ): Promise<Debt> {
+  private async findDebtOrThrow(id: string): Promise<Debt> {
     const debt = await this.prisma.debt.findUnique({ where: { id } });
 
     if (!debt) {
-      throw new NotFoundException('Debt not found');
+      throw new NotFoundException("Debt not found");
     }
 
     return debt;
@@ -303,7 +338,10 @@ export class InstallmentsService {
     return trimmed || null;
   }
 
-  private optionalDate(value: string | null | undefined, field: string): Date | null {
+  private optionalDate(
+    value: string | null | undefined,
+    field: string,
+  ): Date | null {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -315,7 +353,10 @@ export class InstallmentsService {
     return new Date(timestamp);
   }
 
-  private requiredNonNegativeDecimal(value: string | number, field: string): string {
+  private requiredNonNegativeDecimal(
+    value: string | number,
+    field: string,
+  ): string {
     return requiredMoneyAmount(value, field);
   }
 

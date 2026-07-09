@@ -1,14 +1,23 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Debt, DebtStatus, Prisma } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { applyDebtPaymentDelta } from '../common/money/debt-balance';
-import { ListQueryDto, pageArgs } from '../common/pagination/list-query.dto';
-import { PhoneNormalizer } from '../common/phone/phone-normalizer';
-import { requiredMoneyAmount } from '../common/validation/money';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionService } from '../sharing/permission.service';
-import { CreateDebtDto } from './dto/create-debt.dto';
-import { UpdateDebtDto } from './dto/update-debt.dto';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { Debt, DebtStatus, Prisma } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import {
+  paidLegacyInstallmentsTotal,
+  removeLegacyDebtMirror,
+  syncLegacyDebtCommitment,
+} from "../common/finance/legacy-finance-bridge";
+import { applyDebtPaymentDelta } from "../common/money/debt-balance";
+import { ListQueryDto, pageArgs } from "../common/pagination/list-query.dto";
+import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { requiredMoneyAmount } from "../common/validation/money";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
+import { CreateDebtDto } from "./dto/create-debt.dto";
+import { UpdateDebtDto } from "./dto/update-debt.dto";
 
 export interface DebtResponse {
   id: string;
@@ -48,11 +57,14 @@ export class DebtsService {
     weddingPlanId: string,
     dto: CreateDebtDto,
   ): Promise<DebtResponse> {
-    await this.permissionService.assertFinancialManageable(weddingPlanId, currentUser);
+    await this.permissionService.assertFinancialManageable(
+      weddingPlanId,
+      currentUser,
+    );
     const creditorPhone = this.optionalText(dto.creditorPhone);
     const creditorNormalizedPhone = PhoneNormalizer.normalizeOptional(
       dto.creditorPhone,
-      'creditorPhone',
+      "creditorPhone",
     );
 
     // Same invariant as update(): paidAmount is clamped to
@@ -61,10 +73,10 @@ export class DebtsService {
     // created. An explicit CANCELLED survives because cancellation is
     // orthogonal to the balance.
     const totalAmount = new Prisma.Decimal(
-      this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
+      this.requiredNonNegativeDecimal(dto.totalAmount, "totalAmount"),
     );
     const requestedPaid = new Prisma.Decimal(
-      this.optionalNonNegativeDecimal(dto.paidAmount, 'paidAmount') ?? '0',
+      this.optionalNonNegativeDecimal(dto.paidAmount, "paidAmount") ?? "0",
     );
     const derived = applyDebtPaymentDelta(
       totalAmount,
@@ -72,22 +84,26 @@ export class DebtsService {
       new Prisma.Decimal(0),
     );
 
-    const debt = await this.prisma.debt.create({
-      data: {
-        weddingPlanId,
-        creditorName: this.requiredText(dto.creditorName, 'creditorName'),
-        creditorPhone,
-        creditorNormalizedPhone,
-        title: this.requiredText(dto.title, 'title'),
-        totalAmount,
-        paidAmount: derived.paidAmount,
-        dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
-        status:
-          dto.status === DebtStatus.CANCELLED
-            ? DebtStatus.CANCELLED
-            : derived.status,
-        note: this.optionalText(dto.note),
-      },
+    const debt = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.debt.create({
+        data: {
+          weddingPlanId,
+          creditorName: this.requiredText(dto.creditorName, "creditorName"),
+          creditorPhone,
+          creditorNormalizedPhone,
+          title: this.requiredText(dto.title, "title"),
+          totalAmount,
+          paidAmount: derived.paidAmount,
+          dueDate: this.optionalDate(dto.dueDate, "dueDate"),
+          status:
+            dto.status === DebtStatus.CANCELLED
+              ? DebtStatus.CANCELLED
+              : derived.status,
+          note: this.optionalText(dto.note),
+        },
+      });
+      await syncLegacyDebtCommitment(tx, created);
+      return created;
     });
 
     return this.toResponse(debt);
@@ -101,12 +117,12 @@ export class DebtsService {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
       currentUser,
-      'debts',
+      "debts",
     );
 
     const debts = await this.prisma.debt.findMany({
       where: { weddingPlanId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       ...pageArgs(query),
     });
 
@@ -120,7 +136,7 @@ export class DebtsService {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
       currentUser,
-      'debts',
+      "debts",
     );
 
     const debts = await this.prisma.debt.findMany({
@@ -146,7 +162,8 @@ export class DebtsService {
       }
 
       if (debt.status === DebtStatus.OPEN) summary.countOpen++;
-      if (debt.status === DebtStatus.PARTIALLY_PAID) summary.countPartiallyPaid++;
+      if (debt.status === DebtStatus.PARTIALLY_PAID)
+        summary.countPartiallyPaid++;
       if (debt.status === DebtStatus.PAID) summary.countPaid++;
       if (debt.status === DebtStatus.CANCELLED) summary.countCancelled++;
     }
@@ -154,7 +171,9 @@ export class DebtsService {
     return {
       totalDebt: summary.totalDebt.toFixed(2),
       totalPaid: summary.totalPaid.toFixed(2),
-      remainingDebt: Math.max(summary.totalDebt - summary.totalPaid, 0).toFixed(2),
+      remainingDebt: Math.max(summary.totalDebt - summary.totalPaid, 0).toFixed(
+        2,
+      ),
       countOpen: summary.countOpen,
       countPartiallyPaid: summary.countPartiallyPaid,
       countPaid: summary.countPaid,
@@ -170,7 +189,7 @@ export class DebtsService {
     await this.permissionService.assertFinancialReadable(
       debt.weddingPlanId,
       currentUser,
-      'debts',
+      "debts",
     );
 
     return this.toResponse(debt);
@@ -192,7 +211,7 @@ export class DebtsService {
         : undefined;
     const creditorNormalizedPhone =
       dto.creditorPhone !== undefined
-        ? PhoneNormalizer.normalizeOptional(dto.creditorPhone, 'creditorPhone')
+        ? PhoneNormalizer.normalizeOptional(dto.creditorPhone, "creditorPhone")
         : undefined;
 
     // When any amount changes, paidAmount is clamped to [0, totalAmount]
@@ -203,42 +222,70 @@ export class DebtsService {
     const nextTotal =
       dto.totalAmount !== undefined
         ? new Prisma.Decimal(
-            this.requiredNonNegativeDecimal(dto.totalAmount, 'totalAmount'),
+            this.requiredNonNegativeDecimal(dto.totalAmount, "totalAmount"),
           )
         : existing.totalAmount;
     const nextPaid =
       dto.paidAmount !== undefined
         ? new Prisma.Decimal(
-            this.requiredNonNegativeDecimal(dto.paidAmount, 'paidAmount'),
+            this.requiredNonNegativeDecimal(dto.paidAmount, "paidAmount"),
           )
         : existing.paidAmount;
-    const derived = amountsChanged
+    const shouldDeriveStatus =
+      amountsChanged ||
+      (dto.status !== undefined && dto.status !== DebtStatus.CANCELLED);
+    const derived = shouldDeriveStatus
       ? applyDebtPaymentDelta(nextTotal, nextPaid, new Prisma.Decimal(0))
       : null;
 
-    const debt = await this.prisma.debt.update({
-      where: { id },
-      data: {
-        ...(dto.creditorName !== undefined
-          ? { creditorName: this.requiredText(dto.creditorName, 'creditorName') }
-          : {}),
-        ...(dto.creditorPhone !== undefined
-          ? { creditorPhone, creditorNormalizedPhone }
-          : {}),
-        ...(dto.title !== undefined
-          ? { title: this.requiredText(dto.title, 'title') }
-          : {}),
-        ...(dto.totalAmount !== undefined ? { totalAmount: nextTotal } : {}),
-        ...(derived
-          ? { paidAmount: derived.paidAmount, status: derived.status }
-          : dto.status !== undefined
-            ? { status: dto.status }
+    const debt = await this.prisma.$transaction(async (tx) => {
+      if (amountsChanged) {
+        const paidInstallmentsTotal = await paidLegacyInstallmentsTotal(tx, id);
+        if (nextTotal.lt(paidInstallmentsTotal)) {
+          throw new BadRequestException(
+            "totalAmount cannot be less than paid installments total",
+          );
+        }
+        if (nextPaid.lt(paidInstallmentsTotal)) {
+          throw new BadRequestException(
+            "paidAmount cannot be less than paid installments total",
+          );
+        }
+      }
+
+      const updated = await tx.debt.update({
+        where: { id },
+        data: {
+          ...(dto.creditorName !== undefined
+            ? {
+                creditorName: this.requiredText(
+                  dto.creditorName,
+                  "creditorName",
+                ),
+              }
             : {}),
-        ...(dto.dueDate !== undefined
-          ? { dueDate: this.optionalDate(dto.dueDate, 'dueDate') }
-          : {}),
-        ...(dto.note !== undefined ? { note: this.optionalText(dto.note) } : {}),
-      },
+          ...(dto.creditorPhone !== undefined
+            ? { creditorPhone, creditorNormalizedPhone }
+            : {}),
+          ...(dto.title !== undefined
+            ? { title: this.requiredText(dto.title, "title") }
+            : {}),
+          ...(dto.totalAmount !== undefined ? { totalAmount: nextTotal } : {}),
+          ...(derived
+            ? { paidAmount: derived.paidAmount, status: derived.status }
+            : dto.status !== undefined
+              ? { status: dto.status }
+              : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
+            : {}),
+          ...(dto.note !== undefined
+            ? { note: this.optionalText(dto.note) }
+            : {}),
+        },
+      });
+      await syncLegacyDebtCommitment(tx, updated);
+      return updated;
     });
 
     return this.toResponse(debt);
@@ -253,17 +300,18 @@ export class DebtsService {
       debt.weddingPlanId,
       currentUser,
     );
-    await this.prisma.debt.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      await removeLegacyDebtMirror(tx, id);
+      await tx.debt.delete({ where: { id } });
+    });
     return { id, deleted: true };
   }
 
-  private async findDebtOrThrow(
-    id: string,
-  ): Promise<Debt> {
+  private async findDebtOrThrow(id: string): Promise<Debt> {
     const debt = await this.prisma.debt.findUnique({ where: { id } });
 
     if (!debt) {
-      throw new NotFoundException('Debt not found');
+      throw new NotFoundException("Debt not found");
     }
 
     return debt;
@@ -283,7 +331,10 @@ export class DebtsService {
     return trimmed || null;
   }
 
-  private optionalDate(value: string | null | undefined, field: string): Date | null {
+  private optionalDate(
+    value: string | null | undefined,
+    field: string,
+  ): Date | null {
     if (value === undefined || value === null) return null;
     const trimmed = value.trim();
     if (!trimmed) return null;
@@ -303,7 +354,10 @@ export class DebtsService {
     return this.requiredNonNegativeDecimal(value, field);
   }
 
-  private requiredNonNegativeDecimal(value: string | number, field: string): string {
+  private requiredNonNegativeDecimal(
+    value: string | number,
+    field: string,
+  ): string {
     return requiredMoneyAmount(value, field);
   }
 

@@ -88,7 +88,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'الباقي والدفعات',
+                        'سجل الديون القديم',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -98,7 +98,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'اعرف كم باقي عليك ومتى تدفعه',
+                        'للمبالغ القديمة فقط. المستحقات الجديدة أضفها من تبويب المال.',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -113,11 +113,13 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
                 if (canManageFinancialRecords)
                   IconButton(
                     onPressed: () => context.push(
-                      AppRouter.createDebt(widget.weddingPlanId),
-                      extra: widget.sharedMember,
+                      AppRouter.createFinancialCommitment(
+                        widget.weddingPlanId,
+                        sourceType: 'MANUAL_DEBT',
+                      ),
                     ),
                     icon: const Icon(LucideIcons.plus),
-                    tooltip: 'إضافة مبلغ باقي',
+                    tooltip: 'إضافة مستحق عليك',
                     style: IconButton.styleFrom(
                       backgroundColor: AppTheme.burgundy,
                       foregroundColor: Colors.white,
@@ -159,7 +161,7 @@ class _DebtInstallmentScreenState extends State<DebtInstallmentScreen> {
       context.pop();
       return;
     }
-    context.go(AppRouter.home);
+    context.go(AppRouter.finance(widget.weddingPlanId));
   }
 
   bool get _canReadDebts =>
@@ -222,7 +224,7 @@ class _DebtInstallmentContent extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
         children: [
           AarastEmptyState(
-            title: 'تعذر تحميل الديون',
+            title: 'تعذر تحميل سجل الديون القديم',
             message: provider.errorMessage!,
             icon: LucideIcons.alertCircle,
             action: ElevatedButton.icon(
@@ -267,17 +269,20 @@ class _DebtInstallmentContent extends StatelessWidget {
         const SizedBox(height: 12),
         if (debts.isEmpty)
           AarastEmptyState(
-            title: 'لا يوجد مبلغ باقي بعد',
-            message: 'أضف مبلغاً لم يكتمل دفعه حتى يظهر موعده ومتبقيه هنا',
+            title: 'لا توجد ديون قديمة',
+            message:
+                'هذا السجل مخصص للبيانات القديمة. أضف أي مستحق جديد من مركز المال.',
             icon: LucideIcons.receipt,
             action: canManageFinancialRecords
                 ? ElevatedButton.icon(
                     onPressed: () => context.push(
-                      AppRouter.createDebt(weddingPlanId),
-                      extra: sharedMember,
+                      AppRouter.createFinancialCommitment(
+                        weddingPlanId,
+                        sourceType: 'MANUAL_DEBT',
+                      ),
                     ),
                     icon: const Icon(LucideIcons.plus),
-                    label: const Text('إضافة مبلغ باقي'),
+                    label: const Text('إضافة مستحق عليك'),
                   )
                 : null,
           )
@@ -305,11 +310,13 @@ class _DebtInstallmentContent extends StatelessWidget {
             height: 52,
             child: ElevatedButton.icon(
               onPressed: () => context.push(
-                AppRouter.createDebt(weddingPlanId),
-                extra: sharedMember,
+                AppRouter.createFinancialCommitment(
+                  weddingPlanId,
+                  sourceType: 'MANUAL_DEBT',
+                ),
               ),
               icon: const Icon(LucideIcons.plus),
-              label: const Text('إضافة مبلغ باقي'),
+              label: const Text('إضافة مستحق عليك'),
             ),
           ),
         ],
@@ -641,7 +648,7 @@ class _DebtAccessDeniedState extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
       children: const [
         AarastEmptyState(
-          title: 'الباقي والدفعات خاصة',
+          title: 'سجل الديون القديم خاص',
           message: 'ليست لديك صلاحية عرض التفاصيل المالية.',
           icon: LucideIcons.lock,
         ),

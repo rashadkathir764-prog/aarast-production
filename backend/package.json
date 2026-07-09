@@ -33,6 +33,7 @@
     "smoke:ux-backend-support": "node scripts/smoke/ux-backend-support-smoke.js",
     "smoke:ux-c4-c7": "node scripts/smoke/ux-c4-c7-smoke.js",
     "smoke:backend-completion": "node scripts/smoke/backend-completion-smoke.js",
+    "smoke:account-deletion": "node --env-file=.env -r ts-node/register scripts/smoke/account-deletion-smoke.ts",
     "smoke:all": "node --env-file=.env scripts/smoke/all-smoke.js",
     "dev:create-admin": "node scripts/dev/create-admin.cjs",
     "prod:bootstrap-marketplace": "node scripts/prod/bootstrap-marketplace.cjs",

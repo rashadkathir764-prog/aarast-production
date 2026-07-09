@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import 'package:lucide_icons/lucide_icons.dart';
-
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
@@ -213,12 +211,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                       },
                       onTap: () =>
                           context.push(AppRouter.providerDetails(item.id)),
-                      onRequestQuote: () => context.push(
-                        AppRouter.providerQuote(item.id),
-                        extra: ProviderQuoteInitialContext(
-                          budgetIntent: provider.budgetMatchIntent,
-                        ),
-                      ),
                     ),
                     const SizedBox(height: 12),
                   ],

@@ -391,6 +391,8 @@ class _MarketplaceSearch extends StatelessWidget {
   }
 }
 
+/// شريط فئات أفقي أنيق — "الكل" ثم فئات المزودين على شكل حبوب،
+/// المحددة بلون العنّاب، مع زر تصفية للمدينة على اليسار.
 class _FilterChips extends StatelessWidget {
   const _FilterChips({required this.provider});
 
@@ -398,55 +400,147 @@ class _FilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selectedCity = provider.cityId;
     final selectedCategory = provider.categoryId;
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        _MenuFilterChip(
-          label: _cityLabel(selectedCity),
-          icon: Icons.place_outlined,
-          items: provider.cities
-              .map((city) => _FilterOption(city.id, city.nameAr))
-              .toList(),
-          onSelected: provider.setCity,
-        ),
-        _MenuFilterChip(
-          label: _categoryLabel(selectedCategory),
-          icon: Icons.category_outlined,
-          items: provider.categories
-              .map((category) => _FilterOption(category.id, category.nameAr))
-              .toList(),
-          onSelected: provider.setCategory,
-        ),
-        ActionChip(
-          avatar: const Icon(Icons.close_rounded, size: 18),
-          label: const Text('مسح'),
-          onPressed: provider.clearFilters,
-        ),
-      ],
+    final categories = provider.categories;
+
+    return SizedBox(
+      height: 38,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.zero,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          _CategoryPill(
+            label: 'الكل',
+            selected: selectedCategory == null,
+            onTap: () => provider.setCategory(null),
+          ),
+          for (final category in categories) ...[
+            const SizedBox(width: 8),
+            _CategoryPill(
+              label: category.nameAr,
+              selected: selectedCategory == category.id,
+              onTap: () => provider.setCategory(category.id),
+            ),
+          ],
+          const SizedBox(width: 8),
+          _CityFilterChip(provider: provider),
+        ],
+      ),
     );
   }
+}
 
-  String _cityLabel(String? id) {
-    if (id == null) return 'المدينة';
-    return provider.cities
-        .firstWhere(
-          (city) => city.id == id,
-          orElse: () => const MarketplaceCity(id: '', nameAr: 'المدينة'),
-        )
-        .nameAr;
+class _CategoryPill extends StatelessWidget {
+  const _CategoryPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        child: AnimatedContainer(
+          duration: AppTheme.motionFast,
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.burgundy : AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            border: Border.all(
+              color: selected ? AppTheme.burgundy : AppTheme.border,
+            ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppTheme.burgundy.withValues(alpha: 0.22),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppTheme.ink,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
   }
+}
 
-  String _categoryLabel(String? id) {
-    if (id == null) return 'الفئة';
-    return provider.categories
-        .firstWhere(
-          (category) => category.id == id,
-          orElse: () => const ProviderCategory(id: '', nameAr: 'الفئة'),
-        )
-        .nameAr;
+class _CityFilterChip extends StatelessWidget {
+  const _CityFilterChip({required this.provider});
+
+  final ProviderMarketplaceProvider provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedCity = provider.cityId;
+    final hasCity = selectedCity != null;
+    final cityLabel = hasCity
+        ? provider.cities
+              .firstWhere(
+                (city) => city.id == selectedCity,
+                orElse: () =>
+                    const MarketplaceCity(id: '', nameAr: 'المدينة'),
+              )
+              .nameAr
+        : null;
+
+    return PopupMenuButton<String?>(
+      onSelected: provider.setCity,
+      tooltip: 'تصفية حسب المدينة',
+      position: PopupMenuPosition.under,
+      itemBuilder: (context) => [
+        const PopupMenuItem<String?>(value: null, child: Text('كل المدن')),
+        for (final city in provider.cities)
+          PopupMenuItem<String?>(value: city.id, child: Text(city.nameAr)),
+      ],
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: hasCity ? AppTheme.burgundySoft : AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+          border: Border.all(
+            color: hasCity ? AppTheme.burgundy : AppTheme.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.tune_rounded, size: 16, color: AppTheme.burgundy),
+            if (cityLabel != null) ...[
+              const SizedBox(width: 6),
+              Text(
+                cityLabel,
+                style: const TextStyle(
+                  color: AppTheme.burgundy,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
 

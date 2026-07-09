@@ -5,35 +5,26 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/aarast_design_tokens.dart';
 import '../../../../core/theme/aarast_motion.dart';
 
-/// حقيقة صغيرة تُعرض تحت اسم المورد (موقع، سعر، تطابق ميزانية).
-class VendorFact {
-  const VendorFact({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-  final IconData icon;
-  final String text;
-  final Color color;
-}
-
-/// بطاقة المورد الملكية — مونوغرام ذهبي أنيق، شارة "مميز" ذهبية،
-/// تقييم يظهر فقط عند وجوده، وقلب بنبضة عند الحفظ.
+/// بطاقة المورد الأنيقة — صورة كبيرة على اليمين، ثم الاسم والفئة والتقييم
+/// والموقع والسعر على اليسار، وزر "عرض التفاصيل" بلون العنّاب أسفل البطاقة.
+/// تصميم مطابق لواجهة تبويب الموردين المعتمدة.
 class PremiumVendorCard extends StatelessWidget {
   const PremiumVendorCard({
     required this.businessName,
     required this.isFeatured,
     required this.ratingAverage,
     required this.ratingCount,
-    required this.facts,
     required this.isFavorite,
     required this.onFavorite,
     required this.onDetails,
-    required this.onRequestQuote,
     this.categoryLabel,
-    this.serviceTitle,
-    this.logoUrl,
-    this.quoteButtonKey,
+    this.locationLabel,
+    this.priceLabel,
+    this.budgetStatusLabel,
+    this.budgetStatusColor,
+    this.imageUrl,
+    this.detailsButtonKey,
+    this.favoriteButtonKey,
     super.key,
   });
 
@@ -41,19 +32,28 @@ class PremiumVendorCard extends StatelessWidget {
   final bool isFeatured;
   final double ratingAverage;
   final int ratingCount;
-  final List<VendorFact> facts;
   final bool isFavorite;
-  final VoidCallback onFavorite;
+  final VoidCallback? onFavorite;
   final VoidCallback onDetails;
-  final VoidCallback onRequestQuote;
   final String? categoryLabel;
-  final String? serviceTitle;
-  final String? logoUrl;
-  final Key? quoteButtonKey;
+  final String? locationLabel;
+  final String? priceLabel;
+  final String? budgetStatusLabel;
+  final Color? budgetStatusColor;
+  final String? imageUrl;
+  final Key? detailsButtonKey;
+  final Key? favoriteButtonKey;
 
   @override
   Widget build(BuildContext context) {
     final hasRating = ratingCount > 0;
+    final hasCategory =
+        categoryLabel != null && categoryLabel!.trim().isNotEmpty;
+    final hasLocation =
+        locationLabel != null && locationLabel!.trim().isNotEmpty;
+    final hasPrice = priceLabel != null && priceLabel!.trim().isNotEmpty;
+    final hasBudget =
+        budgetStatusLabel != null && budgetStatusLabel!.trim().isNotEmpty;
 
     return Material(
       color: Colors.transparent,
@@ -79,156 +79,117 @@ class PremiumVendorCard extends StatelessWidget {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _VendorMonogram(
-                    name: businessName,
-                    logoUrl: logoUrl,
-                    isFeatured: isFeatured,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                businessName,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AarastDesignTokens.ink,
-                                  fontSize: 15.5,
-                                  fontWeight: FontWeight.w800,
-                                  height: 1.25,
-                                ),
-                              ),
-                            ),
-                            _FavoriteHeart(
-                              isFavorite: isFavorite,
-                              onTap: onFavorite,
-                            ),
-                          ],
+                        Text(
+                          businessName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AarastDesignTokens.ink,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w800,
+                            height: 1.22,
+                          ),
                         ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            if (categoryLabel != null &&
-                                categoryLabel!.trim().isNotEmpty)
-                              Flexible(
-                                child: Text(
-                                  categoryLabel!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: AarastDesignTokens.burgundy,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ),
-                            if (isFeatured) ...[
-                              if (categoryLabel != null &&
-                                  categoryLabel!.trim().isNotEmpty)
-                                const SizedBox(width: 8),
-                              const _FeaturedBadge(),
-                            ],
-                            if (hasRating) ...[
-                              const SizedBox(width: 8),
-                              _RatingChip(
-                                average: ratingAverage,
-                                count: ratingCount,
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (serviceTitle != null &&
-                            serviceTitle!.trim().isNotEmpty) ...[
-                          const SizedBox(height: 4),
+                        if (hasCategory) ...[
+                          const SizedBox(height: 2),
                           Text(
-                            serviceTitle!,
+                            categoryLabel!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: AarastDesignTokens.muted,
+                              color: AarastDesignTokens.burgundy,
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
+                        if (hasRating || hasLocation) ...[
+                          const SizedBox(height: 7),
+                          Row(
+                            children: [
+                              if (hasRating)
+                                _RatingChip(
+                                  average: ratingAverage,
+                                  count: ratingCount,
+                                ),
+                              if (hasRating && hasLocation)
+                                const SizedBox(width: 12),
+                              if (hasLocation)
+                                Expanded(
+                                  child: _LocationLabel(label: locationLabel!),
+                                ),
+                            ],
+                          ),
+                        ],
+                        if (hasPrice) ...[
+                          const SizedBox(height: 7),
+                          Text(
+                            priceLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AarastDesignTokens.burgundy,
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                        if (hasBudget) ...[
+                          const SizedBox(height: 7),
+                          _BudgetChip(
+                            label: budgetStatusLabel!,
+                            color: budgetStatusColor ?? AarastDesignTokens.gold,
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 40,
+                          child: FilledButton(
+                            key: detailsButtonKey,
+                            onPressed: onDetails,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AarastDesignTokens.burgundy,
+                              padding: EdgeInsets.zero,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AarastDesignTokens.radiusMd,
+                                ),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Tajawal',
+                              ),
+                            ),
+                            child: const Text('عرض التفاصيل'),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              if (facts.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final fact in facts) _FactPill(fact: fact),
-                  ],
+                ),
+                _VendorImage(
+                  imageUrl: imageUrl,
+                  name: businessName,
+                  isFeatured: isFeatured,
+                  isFavorite: isFavorite,
+                  onFavorite: onFavorite,
+                  favoriteButtonKey: favoriteButtonKey,
                 ),
               ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onDetails,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AarastDesignTokens.burgundy,
-                        side: const BorderSide(
-                            color: AarastDesignTokens.border),
-                        minimumSize: const Size(0, 42),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                              AarastDesignTokens.radiusMd),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'Tajawal',
-                        ),
-                      ),
-                      icon: const Icon(LucideIcons.info, size: 16),
-                      label: const Text('التفاصيل'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      key: quoteButtonKey,
-                      onPressed: onRequestQuote,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AarastDesignTokens.burgundy,
-                        minimumSize: const Size(0, 42),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                              AarastDesignTokens.radiusMd),
-                        ),
-                        textStyle: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'Tajawal',
-                        ),
-                      ),
-                      icon: const Icon(LucideIcons.fileText, size: 16),
-                      label: const Text('طلب عرض'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -236,66 +197,111 @@ class PremiumVendorCard extends StatelessWidget {
   }
 }
 
-class _VendorMonogram extends StatelessWidget {
-  const _VendorMonogram({
+class _VendorImage extends StatelessWidget {
+  const _VendorImage({
+    required this.imageUrl,
     required this.name,
     required this.isFeatured,
-    this.logoUrl,
+    required this.isFavorite,
+    required this.onFavorite,
+    required this.favoriteButtonKey,
   });
 
+  final String? imageUrl;
   final String name;
   final bool isFeatured;
-  final String? logoUrl;
+  final bool isFavorite;
+  final VoidCallback? onFavorite;
+  final Key? favoriteButtonKey;
 
   @override
   Widget build(BuildContext context) {
-    final url = logoUrl?.trim();
-    final initial = name.trim().isNotEmpty ? name.trim()[0] : 'م';
-
+    final url = imageUrl?.trim();
     return Container(
-      width: 56,
-      height: 56,
+      width: 112,
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusMd),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadiusDirectional.only(
+          topEnd: Radius.circular(AarastDesignTokens.radiusLg),
+          bottomEnd: Radius.circular(AarastDesignTokens.radiusLg),
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (url == null || url.isEmpty)
+            _VendorImagePlaceholder(name: name)
+          else
+            Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stack) =>
+                  _VendorImagePlaceholder(name: name),
+            ),
+          if (isFeatured)
+            const PositionedDirectional(
+              top: 8,
+              start: 8,
+              child: _FeaturedBadge(),
+            ),
+          PositionedDirectional(
+            top: 6,
+            end: 6,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: AarastDesignTokens.surface.withValues(alpha: 0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AarastDesignTokens.ink.withValues(alpha: 0.15),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: _FavoriteHeart(
+                isFavorite: isFavorite,
+                onTap: onFavorite,
+                buttonKey: favoriteButtonKey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VendorImagePlaceholder extends StatelessWidget {
+  const _VendorImagePlaceholder({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.trim().isNotEmpty ? name.trim()[0] : 'م';
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
           colors: [
             AarastDesignTokens.goldSoft,
             AarastDesignTokens.goldMonogram,
           ],
         ),
-        border: Border.all(
-          color: AarastDesignTokens.gold.withValues(alpha: 0.35),
+      ),
+      child: Center(
+        child: Text(
+          initial,
+          style: const TextStyle(
+            color: AarastDesignTokens.goldDeep,
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'IBMPlexSansArabic',
+          ),
         ),
       ),
-      child: url == null || url.isEmpty
-          ? Center(
-              child: Text(
-                initial,
-                style: const TextStyle(
-                  color: AarastDesignTokens.goldDeep,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'IBMPlexSansArabic',
-                ),
-              ),
-            )
-          : Image.network(
-              url,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stack) => Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    color: AarastDesignTokens.goldDeep,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ),
     );
   }
 }
@@ -312,6 +318,13 @@ class _FeaturedBadge extends StatelessWidget {
           colors: [AarastDesignTokens.goldDeep, AarastDesignTokens.gold],
         ),
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusPill),
+        boxShadow: [
+          BoxShadow(
+            color: AarastDesignTokens.ink.withValues(alpha: 0.18),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: const Row(
         mainAxisSize: MainAxisSize.min,
@@ -343,8 +356,7 @@ class _RatingChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(LucideIcons.star,
-            size: 13, color: AarastDesignTokens.gold),
+        const Icon(LucideIcons.star, size: 13, color: AarastDesignTokens.gold),
         const SizedBox(width: 3),
         Text(
           '${average.toStringAsFixed(1)} ($count)',
@@ -360,30 +372,68 @@ class _RatingChip extends StatelessWidget {
   }
 }
 
-class _FactPill extends StatelessWidget {
-  const _FactPill({required this.fact});
+class _LocationLabel extends StatelessWidget {
+  const _LocationLabel({required this.label});
 
-  final VendorFact fact;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          LucideIcons.mapPin,
+          size: 13,
+          color: AarastDesignTokens.muted,
+        ),
+        const SizedBox(width: 3),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AarastDesignTokens.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BudgetChip extends StatelessWidget {
+  const _BudgetChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: fact.color.withValues(alpha: 0.09),
+        color: color.withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusPill),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(fact.icon, size: 12, color: fact.color),
+          Icon(LucideIcons.target, size: 12, color: color),
           const SizedBox(width: 4),
-          Text(
-            fact.text,
-            style: TextStyle(
-              color: fact.color,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -393,42 +443,51 @@ class _FactPill extends StatelessWidget {
 }
 
 class _FavoriteHeart extends StatelessWidget {
-  const _FavoriteHeart({required this.isFavorite, required this.onTap});
+  const _FavoriteHeart({
+    required this.isFavorite,
+    required this.onTap,
+    required this.buttonKey,
+  });
 
   final bool isFavorite;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
+  final Key? buttonKey;
 
   @override
   Widget build(BuildContext context) {
     final reduceMotion = AarastMotion.reduceMotion(context);
+    final enabled = onTap != null;
 
     Widget heart = Icon(
       isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-      color: isFavorite
-          ? AarastDesignTokens.burgundy
-          : AarastDesignTokens.muted,
+      color:
+          (isFavorite ? AarastDesignTokens.burgundy : AarastDesignTokens.muted)
+              .withValues(alpha: enabled ? 1 : 0.42),
       size: 22,
     );
 
     // نبضة صغيرة لحظة الحفظ.
-    if (isFavorite && !reduceMotion) {
-      heart = heart
-          .animate()
-          .scale(
-            begin: const Offset(0.6, 0.6),
-            end: const Offset(1, 1),
-            duration: 320.ms,
-            curve: Curves.elasticOut,
-          );
+    if (enabled && isFavorite && !reduceMotion) {
+      heart = heart.animate().scale(
+        begin: const Offset(0.6, 0.6),
+        end: const Offset(1, 1),
+        duration: 320.ms,
+        curve: Curves.elasticOut,
+      );
     }
 
     return Semantics(
       button: true,
+      enabled: enabled,
       label: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المورد',
       child: InkWell(
-        onTap: onTap,
+        key: buttonKey,
+        onTap: enabled ? onTap : () {},
         borderRadius: BorderRadius.circular(99),
-        child: SizedBox(width: 40, height: 40, child: Center(child: heart)),
+        splashColor: enabled ? null : Colors.transparent,
+        highlightColor: enabled ? null : Colors.transparent,
+        hoverColor: enabled ? null : Colors.transparent,
+        child: SizedBox(width: 36, height: 36, child: Center(child: heart)),
       ),
     );
   }

@@ -125,7 +125,7 @@ void main() {
       expect(find.textContaining('الأفضل'), findsNothing);
       expect(find.textContaining('لوحة المورد'), findsNothing);
       expect(
-        find.byKey(const Key('super5-provider-quote-provider-1')),
+        find.byKey(const Key('super5-provider-details-provider-1')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
@@ -214,7 +214,7 @@ void main() {
     expect(find.text('450,000 ر.ي'), findsOneWidget);
   });
 
-  testWidgets('request quote action opens the auth gate without a token', (
+  testWidgets('provider card opens the provider details screen', (
     tester,
   ) async {
     final state = _FakeMarketplaceProvider(
@@ -223,18 +223,16 @@ void main() {
 
     await _pumpMarketplace(tester, state, withRouter: true);
     await tester.scrollUntilVisible(
-      find.byKey(const Key('super5-provider-quote-provider-1')),
+      find.byKey(const Key('super5-provider-details-provider-1')),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.byKey(const Key('super5-provider-quote-provider-1')));
+    await tester.tap(
+      find.byKey(const Key('super5-provider-details-provider-1')),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('provider-auth-gate')), findsOneWidget);
-    expect(
-      find.text('سجّل الدخول لإرسال طلب عرض ومتابعة الردود'),
-      findsOneWidget,
-    );
+    expect(find.text('details-opened'), findsOneWidget);
     expect(find.text('quote-opened'), findsNothing);
   });
 

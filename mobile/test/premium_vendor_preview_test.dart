@@ -1,5 +1,7 @@
-// Visual preview for the NEW premium vendor card
-// (phase/mobile-premium-screens-v1): PremiumVendorCard.
+// Visual preview for the redesigned image-forward vendor card
+// (PremiumVendorCard) used across the vendors tab — large cover image, name,
+// category, rating, location, price range, and a burgundy "عرض التفاصيل"
+// button. Matches the approved marketplace mockup.
 //
 // Regenerate with:
 //   flutter test test/premium_vendor_preview_test.dart --update-goldens
@@ -8,10 +10,8 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/theme/aarast_design_tokens.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/premium/premium_vendor_card.dart';
 
 import 'support/preview_fonts.dart';
@@ -50,62 +50,46 @@ void main() {
       Column(
         children: [
           PremiumVendorCard(
-            businessName: 'قاعة أعراس النور الملكية',
+            businessName: 'قصر الماسة للاحتفالات',
             isFeatured: true,
-            ratingAverage: 4.6,
-            ratingCount: 23,
-            categoryLabel: 'الصالات',
-            serviceTitle: 'قاعة كبرى تتسع لـ 500 ضيف',
+            ratingAverage: 4.8,
+            ratingCount: 125,
+            categoryLabel: 'صالات',
+            locationLabel: 'جدة',
+            priceLabel: '15,000 - 35,000 ر.س',
             isFavorite: true,
             onFavorite: () {},
             onDetails: () {},
-            onRequestQuote: () {},
-            facts: const [
-              VendorFact(
-                icon: LucideIcons.mapPin,
-                text: 'صنعاء',
-                color: AarastDesignTokens.muted,
-              ),
-              VendorFact(
-                icon: LucideIcons.wallet,
-                text: '300,000 ر.ي',
-                color: AarastDesignTokens.gold,
-              ),
-              VendorFact(
-                icon: LucideIcons.target,
-                text: 'ضمن ميزانيتك',
-                color: AarastDesignTokens.success,
-              ),
-            ],
           ),
           const SizedBox(height: 12),
           PremiumVendorCard(
-            businessName: 'مصور أعرست التجريبي',
+            businessName: 'الفنان ماجد عبدالله',
             isFeatured: false,
-            ratingAverage: 0,
-            ratingCount: 0,
-            categoryLabel: 'التصوير',
-            serviceTitle: 'باقة تصوير كاملة لليوم',
+            ratingAverage: 4.9,
+            ratingCount: 98,
+            categoryLabel: 'فنانين',
+            locationLabel: 'جدة',
+            priceLabel: '8,000 - 20,000 ر.س',
             isFavorite: false,
             onFavorite: () {},
             onDetails: () {},
-            onRequestQuote: () {},
-            facts: const [
-              VendorFact(
-                icon: LucideIcons.mapPin,
-                text: 'صنعاء',
-                color: AarastDesignTokens.muted,
-              ),
-              VendorFact(
-                icon: LucideIcons.wallet,
-                text: 'السعر غير محدد',
-                color: AarastDesignTokens.muted,
-              ),
-            ],
+          ),
+          const SizedBox(height: 12),
+          PremiumVendorCard(
+            businessName: 'عدسة الريم للتصوير',
+            isFeatured: false,
+            ratingAverage: 4.7,
+            ratingCount: 76,
+            categoryLabel: 'تصوير',
+            locationLabel: 'الرياض',
+            priceLabel: '6,000 - 12,000 ر.س',
+            isFavorite: false,
+            onFavorite: () {},
+            onDetails: () {},
           ),
         ],
       ),
-      size: const Size(420, 700),
+      size: const Size(420, 760),
     );
     await expectLater(
       find.byType(Scaffold),

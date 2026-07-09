@@ -42,7 +42,7 @@ void main() {
       );
 
       expect(quoteSource, contains('_QuoteRequestHero'));
-      expect(detailsSource, contains('_ProviderHeroPill'));
+      expect(detailsSource, contains('_ProviderHero'));
       expect(favoritesSource, contains('_FavoriteProvidersHero'));
     });
   });
@@ -63,10 +63,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('قاعة السلام'), findsOneWidget);
-      expect(find.text('1,200 ر.س'), findsOneWidget);
+      // Price now appears both in the headline price block and the service tile.
+      expect(find.text('1,200 ر.س'), findsWidgets);
       expect(find.text('3,500 ر.ي'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(find.text('مرجع تخطيطي'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-details-conversation')),
+        findsNothing,
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -102,6 +107,40 @@ void main() {
       );
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'favorite provider remove action is disabled while submitting',
+      (tester) async {
+        _setTallView(tester);
+        final authStorage = await _authenticatedStorage();
+        final marketplace = _FakeMarketplaceProvider(isSubmitting: true);
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<AuthStorage>.value(value: authStorage),
+              ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+                value: marketplace,
+              ),
+            ],
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const FavoriteProvidersScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byKey(const Key('favorite-provider-remove-provider-1')),
+          warnIfMissed: false,
+        );
+        await tester.pump();
+
+        expect(marketplace.toggleFavoriteCallCount, 0);
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }
 
@@ -165,8 +204,12 @@ ProviderPackage _package() {
 }
 
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
-  _FakeMarketplaceProvider()
-    : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+  _FakeMarketplaceProvider({bool isSubmitting = false})
+    : _isSubmitting = isSubmitting,
+      super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+
+  final bool _isSubmitting;
+  int toggleFavoriteCallCount = 0;
 
   @override
   bool get isLoading => false;
@@ -175,7 +218,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   String? get errorMessage => null;
 
   @override
-  bool get isSubmitting => false;
+  bool get isSubmitting => _isSubmitting;
 
   @override
   Set<String> get favoriteProviderIds => const {_providerId};
@@ -214,7 +257,9 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   Future<void> loadFavoriteProviders() async {}
 
   @override
-  Future<void> toggleFavorite(String providerId) async {}
+  Future<void> toggleFavorite(String providerId) async {
+    toggleFavoriteCallCount += 1;
+  }
 }
 
 List<String> _materialIconLines(String source) {

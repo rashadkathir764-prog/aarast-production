@@ -127,12 +127,6 @@ double? _moneyValueOrNull(String? value) {
   return double.tryParse(raw);
 }
 
-String _servicePriceLabel(MarketplaceService service) {
-  final price = _moneyValueOrNull(service.basePrice);
-  if (price == null) return 'السعر غير محدد';
-  return '${_formatMoney(price)} ${currencyLabelAr(service.currency)}';
-}
-
 String _formatMoney(num value) {
   final rounded = value.round();
   final negative = rounded < 0;

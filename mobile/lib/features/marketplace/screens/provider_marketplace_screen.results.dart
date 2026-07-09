@@ -413,45 +413,6 @@ class _QuoteCount extends StatelessWidget {
   }
 }
 
-class _FilterOption {
-  const _FilterOption(this.id, this.label);
-
-  final String id;
-  final String label;
-}
-
-class _MenuFilterChip extends StatelessWidget {
-  const _MenuFilterChip({
-    required this.label,
-    required this.icon,
-    required this.items,
-    required this.onSelected,
-  });
-
-  final String label;
-  final IconData icon;
-  final List<_FilterOption> items;
-  final Future<void> Function(String?) onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String?>(
-      onSelected: onSelected,
-      itemBuilder: (context) => [
-        const PopupMenuItem<String?>(value: null, child: Text('الكل')),
-        for (final item in items)
-          PopupMenuItem<String?>(value: item.id, child: Text(item.label)),
-      ],
-      child: Chip(
-        avatar: Icon(icon, size: 18, color: AppTheme.burgundy),
-        label: Text(label),
-        backgroundColor: AppTheme.surface,
-        side: const BorderSide(color: AppTheme.border),
-      ),
-    );
-  }
-}
-
 class _ResultsHeader extends StatelessWidget {
   const _ResultsHeader({required this.count, required this.location});
 
@@ -487,7 +448,6 @@ class _ProviderCard extends StatelessWidget {
     required this.isFavorite,
     required this.onFavorite,
     required this.onTap,
-    required this.onRequestQuote,
   });
 
   final MarketplaceProvider provider;
@@ -495,13 +455,11 @@ class _ProviderCard extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onFavorite;
   final VoidCallback onTap;
-  final VoidCallback onRequestQuote;
 
   @override
   Widget build(BuildContext context) {
     final service = provider.services.isEmpty ? null : provider.services.first;
     final category = service?.category?.nameAr.trim();
-    final serviceTitle = service?.title.trim();
     final location = _providerLocationLabel(provider);
     final price = _moneyValueOrNull(service?.basePrice);
     final budgetStatus = budgetIntent == null
@@ -517,35 +475,52 @@ class _ProviderCard extends StatelessWidget {
       ratingAverage: provider.ratingAverage,
       ratingCount: provider.ratingCount,
       categoryLabel: category,
-      serviceTitle: serviceTitle,
-      logoUrl: provider.logoUrl ?? provider.coverUrl,
+      locationLabel: location,
+      priceLabel: _providerPriceRangeLabel(provider.services),
+      imageUrl: _providerImageUrl(provider),
+      budgetStatusLabel: budgetStatus == null
+          ? null
+          : _serviceBudgetStatusLabel(budgetStatus),
+      budgetStatusColor: budgetStatus == null ? null : budgetColor,
       isFavorite: isFavorite,
       onFavorite: onFavorite,
       onDetails: onTap,
-      onRequestQuote: onRequestQuote,
-      quoteButtonKey: Key('super5-provider-quote-${provider.id}'),
-      facts: [
-        if (location != null)
-          VendorFact(
-            icon: LucideIcons.mapPin,
-            text: location,
-            color: AppTheme.muted,
-          ),
-        if (service != null)
-          VendorFact(
-            icon: LucideIcons.wallet,
-            text: _servicePriceLabel(service),
-            color: budgetColor,
-          ),
-        if (budgetStatus != null)
-          VendorFact(
-            icon: LucideIcons.target,
-            text: _serviceBudgetStatusLabel(budgetStatus),
-            color: budgetColor,
-          ),
-      ],
+      detailsButtonKey: Key('super5-provider-details-${provider.id}'),
     );
   }
+}
+
+/// أفضل صورة تمثّل المورد في القائمة: الغلاف ثم الشعار ثم أول صورة خدمة.
+String? _providerImageUrl(MarketplaceProvider provider) {
+  final cover = provider.coverUrl?.trim();
+  if (cover != null && cover.isNotEmpty) return cover;
+  final logo = provider.logoUrl?.trim();
+  if (logo != null && logo.isNotEmpty) return logo;
+  for (final service in provider.services) {
+    for (final image in service.images) {
+      final url = image.imageUrl.trim();
+      if (url.isNotEmpty) return url;
+    }
+  }
+  return null;
+}
+
+/// نطاق أسعار المورد المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.
+String? _providerPriceRangeLabel(List<MarketplaceService> services) {
+  double? min;
+  double? max;
+  String? currency;
+  for (final service in services) {
+    final price = _moneyValueOrNull(service.basePrice);
+    if (price == null) continue;
+    currency ??= service.currency;
+    min = min == null ? price : (price < min ? price : min);
+    max = max == null ? price : (price > max ? price : max);
+  }
+  if (min == null || max == null) return null;
+  final unit = currencyLabelAr(currency);
+  if (min == max) return '${_formatMoney(min)} $unit';
+  return '${_formatMoney(min)} - ${_formatMoney(max)} $unit';
 }
 
 class _ProviderFactPill extends StatelessWidget {

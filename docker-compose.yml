@@ -49,6 +49,8 @@ services:
       DATABASE_URL: postgresql://aarast:aarast_dev_password@db:5432/aarast?schema=public
       JWT_SECRET: aarast-local-dev-secret-change-me
       REDIS_URL: redis://redis:6379
+      READINESS_REQUIRE_REDIS: "true"
+      READINESS_REQUIRE_MEDIA: "false"
     ports:
       - "3115:3000"
     healthcheck:
@@ -57,7 +59,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://127.0.0.1:3000/ready').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s

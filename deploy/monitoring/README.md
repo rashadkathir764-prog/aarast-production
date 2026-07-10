@@ -8,10 +8,13 @@ Prometheus + Alertmanager + Grafana, pre-wired for the Aarast backend.
   (authenticated with the same `METRICS_TOKEN` the backend requires)
   and keeps 30 days of history.
 - **Alert rules**: backend down, >5% 5xx errors, p95 latency >1s,
-  event-loop saturation, OTP failure spikes (brute-force signal).
+  event-loop saturation, OTP failure spikes (brute-force signal), durable
+  outbox backlog, and outbox dead letters.
 - **Grafana** auto-provisions a dashboard: requests/s, latency
   percentiles, error ratio, memory, event-loop lag, plus business
-  signals (OTP requested/verified/failed, payments recorded).
+  signals (OTP requested/verified/failed, payments recorded). Prometheus also
+  receives `aarast_outbox_dispatch_total` and `aarast_outbox_backlog` for
+  queue operations and alerting.
 
 ## Deploy
 

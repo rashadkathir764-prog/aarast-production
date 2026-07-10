@@ -54,3 +54,21 @@ groups:
         annotations:
           summary: "OTP verification failures spiking"
           description: "Sustained >1 failed OTP verification/sec — possible brute-force attempt or broken delivery channel."
+
+      - alert: OutboxBacklogGrowing
+        expr: max(aarast_outbox_backlog{status="pending"}) > 1000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Durable outbox backlog is growing"
+          description: "More than 1000 events have remained pending for 10 minutes."
+
+      - alert: OutboxDeadLetters
+        expr: max(aarast_outbox_backlog{status="failed"}) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Durable outbox has failed events"
+          description: "At least one event exhausted all retry attempts."

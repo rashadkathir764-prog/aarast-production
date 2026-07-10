@@ -45,13 +45,11 @@ class BudgetCategoryCard extends StatelessWidget {
   const BudgetCategoryCard({
     required this.row,
     required this.onOpenDetails,
-    this.onAddExpense,
     super.key,
   });
 
   final MoneyCategorySummary row;
   final VoidCallback onOpenDetails;
-  final VoidCallback? onAddExpense;
 
   @override
   Widget build(BuildContext context) {
@@ -182,23 +180,12 @@ class BudgetCategoryCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          if (onAddExpense != null) ...[
-                            const SizedBox(width: 4),
-                            IconButton(
-                              onPressed: onAddExpense,
-                              tooltip: 'إضافة التزام لهذا التصنيف',
-                              icon: const Icon(
-                                Icons.add_circle_outline_rounded,
-                                color: AarastDesignTokens.burgundy,
-                                size: 22,
-                              ),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 40,
-                                minHeight: 40,
-                              ),
-                            ),
-                          ],
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.chevron_left_rounded,
+                            color: AarastDesignTokens.muted,
+                            size: 20,
+                          ),
                         ],
                       ),
                       if (hasBudget) ...[

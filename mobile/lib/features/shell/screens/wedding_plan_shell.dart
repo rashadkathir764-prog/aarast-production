@@ -20,7 +20,9 @@ class WeddingPlanShell extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.endsWith('/finance')) return 1;
+    if (location.endsWith('/finance') || location.contains('/finance/')) {
+      return 1;
+    }
     if (location.endsWith('/tasks')) return 2;
     if (location.endsWith('/guests') || location.contains('/guests/')) {
       return 3;
@@ -104,7 +106,7 @@ class WeddingPlanShell extends StatelessWidget {
       }
     }
 
-    final showQuickFab = currentIndex != 1 && currentIndex != 4;
+    final showQuickFab = currentIndex != 4;
 
     return Scaffold(
       backgroundColor: Colors.transparent,

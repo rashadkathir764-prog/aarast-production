@@ -116,11 +116,7 @@ void main() {
           ),
           const SizedBox(height: 14),
           for (final row in s.categorySummaries) ...[
-            BudgetCategoryCard(
-              row: row,
-              onOpenDetails: () {},
-              onAddExpense: () {},
-            ),
+            BudgetCategoryCard(row: row, onOpenDetails: () {}),
             const SizedBox(height: 10),
           ],
         ],

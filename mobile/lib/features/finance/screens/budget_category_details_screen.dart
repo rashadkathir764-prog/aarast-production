@@ -14,7 +14,6 @@ import '../../marketplace/models/provider_budget_match_intent.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
-import '../models/expense_form_intent.dart';
 import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
 
@@ -81,8 +80,8 @@ class _BudgetCategoryDetailsScreenState
                 currencyLabel: currencyLabel,
               ),
               const SizedBox(height: 14),
-              _ActionGrid(
-                onAddExpense: () => _openCreateExpense(category),
+              _CategoryActionsCard(
+                onAddCommitment: () => _openCreateCommitment(category),
                 onEdit: () => _showEditSheet(category),
                 onProviders: () => _openProviders(category),
                 onDelete: expenses.isEmpty
@@ -91,7 +90,7 @@ class _BudgetCategoryDetailsScreenState
               ),
               const SizedBox(height: 20),
               AarastSectionHeader(
-                title: 'مصاريف هذا البند',
+                title: 'حركات هذا البند',
                 icon: LucideIcons.receipt,
                 actionLabel: expenses.length > 3 ? 'عرض الكل' : null,
                 onAction: expenses.length > 3
@@ -104,18 +103,23 @@ class _BudgetCategoryDetailsScreenState
               const SizedBox(height: 12),
               if (expenses.isEmpty)
                 AarastEmptyState(
-                  title: 'لا توجد مصاريف في هذا البند',
-                  message: 'أضف أول مصروف ليظهر أثره على المتبقي من الميزانية.',
+                  title: 'لا توجد حركات في هذا البند',
+                  message:
+                      'أضف مستحقاً لهذا البند، ثم سجل دفعاته من تفاصيل المستحق.',
                   icon: LucideIcons.receipt,
                   action: ElevatedButton.icon(
-                    onPressed: () => _openCreateExpense(category),
+                    onPressed: () => _openCreateCommitment(category),
                     icon: const Icon(LucideIcons.plus),
-                    label: const Text('تسجيل مصروف مدفوع'),
+                    label: const Text('إضافة مستحق لهذا البند'),
                   ),
                 )
               else
                 for (final expense in expenses.take(5)) ...[
-                  _ExpenseTile(expense: expense, currencyLabel: currencyLabel),
+                  _ExpenseTile(
+                    expense: expense,
+                    currencyLabel: currencyLabel,
+                    onTap: () => _openExpense(expense),
+                  ),
                   const SizedBox(height: 10),
                 ],
             ],
@@ -140,10 +144,20 @@ class _BudgetCategoryDetailsScreenState
     context.go(AppRouter.finance(widget.weddingPlanId));
   }
 
-  Future<void> _openCreateExpense(BudgetCategory category) async {
+  Future<void> _openCreateCommitment(BudgetCategory category) async {
     final changed = await context.push<bool>(
-      AppRouter.createExpense(widget.weddingPlanId),
-      extra: ExpenseFormIntent(budgetCategoryId: category.id),
+      AppRouter.createFinancialCommitment(widget.weddingPlanId),
+      extra: category.id,
+    );
+    if (changed == true && mounted) {
+      await context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
+    }
+  }
+
+  Future<void> _openExpense(Expense expense) async {
+    final changed = await context.push<bool>(
+      AppRouter.editExpense(widget.weddingPlanId, expense.id),
+      extra: expense,
     );
     if (changed == true && mounted) {
       await context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
@@ -474,47 +488,79 @@ class _HeroMetric extends StatelessWidget {
   }
 }
 
-class _ActionGrid extends StatelessWidget {
-  const _ActionGrid({
-    required this.onAddExpense,
+class _CategoryActionsCard extends StatelessWidget {
+  const _CategoryActionsCard({
+    required this.onAddCommitment,
     required this.onEdit,
     required this.onProviders,
     required this.onDelete,
   });
 
-  final VoidCallback onAddExpense;
+  final VoidCallback onAddCommitment;
   final VoidCallback onEdit;
   final VoidCallback onProviders;
   final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _ActionButton(
-          label: 'تسجيل مصروف مدفوع',
-          icon: LucideIcons.plus,
-          onTap: onAddExpense,
-        ),
-        _ActionButton(
-          label: 'تعديل البند',
-          icon: LucideIcons.pencil,
-          onTap: onEdit,
-        ),
-        _ActionButton(
-          label: 'موردين مناسبين',
-          icon: LucideIcons.store,
-          onTap: onProviders,
-        ),
-        _ActionButton(
-          label: 'حذف',
-          icon: LucideIcons.trash2,
-          onTap: onDelete,
-          muted: onDelete == null,
-        ),
-      ],
+    return AarastCard(
+      padding: const EdgeInsets.all(16),
+      border: Border.all(color: AppTheme.border),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const AarastSectionHeader(
+            title: 'إجراءات البند',
+            icon: LucideIcons.listPlus,
+          ),
+          const SizedBox(height: 12),
+          AarastButton(
+            label: 'إضافة مستحق لهذا البند',
+            icon: LucideIcons.plus,
+            onPressed: onAddCommitment,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _ActionButton(
+                  label: 'تعديل',
+                  icon: LucideIcons.pencil,
+                  onTap: onEdit,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ActionButton(
+                  label: 'موردين',
+                  icon: LucideIcons.store,
+                  onTap: onProviders,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ActionButton(
+                  label: 'حذف',
+                  icon: LucideIcons.trash2,
+                  onTap: onDelete,
+                  muted: onDelete == null,
+                  danger: true,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'كل شيء يخص هذا البند يبدأ من هنا: أضف مستحقاً، ثم سجل دفعاته من تفاصيل المستحق.',
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -525,86 +571,104 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.muted = false,
+    this.danger = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onTap;
   final bool muted;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 148,
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: muted ? AppTheme.muted : null,
-        ),
-      ),
+    final color = muted
+        ? AppTheme.muted
+        : danger
+        ? AppTheme.danger
+        : AppTheme.burgundy;
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      style: OutlinedButton.styleFrom(foregroundColor: color),
     );
   }
 }
 
 class _ExpenseTile extends StatelessWidget {
-  const _ExpenseTile({required this.expense, required this.currencyLabel});
+  const _ExpenseTile({
+    required this.expense,
+    required this.currencyLabel,
+    required this.onTap,
+  });
 
   final Expense expense;
   final String currencyLabel;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = _expenseStatusColor(expense.status);
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          Icon(LucideIcons.receipt, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  expense.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: AarastCard(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(LucideIcons.receipt, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AarastStatusPill(
-                      label: _expenseStatusLabel(expense.status),
-                      color: color,
-                    ),
-                    if (expense.expenseDate != null)
-                      AarastStatusPill(
-                        label: formatArabicCompactDate(expense.expenseDate!),
-                        color: AppTheme.muted,
-                        icon: LucideIcons.calendarDays,
+                    Text(
+                      expense.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: AppTheme.ink,
+                        fontWeight: FontWeight.w900,
                       ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        AarastStatusPill(
+                          label: _expenseStatusLabel(expense.status),
+                          color: color,
+                        ),
+                        if (expense.expenseDate != null)
+                          AarastStatusPill(
+                            label: formatArabicCompactDate(
+                              expense.expenseDate!,
+                            ),
+                            color: AppTheme.muted,
+                            icon: LucideIcons.calendarDays,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Text(
+                '${_formatMoney(_moneyValue(expense.amount))} $currencyLabel',
+                textDirection: TextDirection.ltr,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppTheme.burgundy,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+            ],
           ),
-          Text(
-            '${_formatMoney(_moneyValue(expense.amount))} $currencyLabel',
-            textDirection: TextDirection.ltr,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: AppTheme.burgundy,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

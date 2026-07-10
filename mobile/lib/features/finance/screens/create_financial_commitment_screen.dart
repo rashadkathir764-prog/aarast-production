@@ -9,17 +9,22 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
+import '../models/financial_commitment.dart';
 import '../providers/finance_provider.dart';
 
 class CreateFinancialCommitmentScreen extends StatefulWidget {
   const CreateFinancialCommitmentScreen({
     required this.weddingPlanId,
+    this.commitmentId,
+    this.initialCommitment,
     this.initialBudgetCategoryId,
     this.initialSourceType = 'MANUAL_COMMITMENT',
     super.key,
   });
 
   final String weddingPlanId;
+  final String? commitmentId;
+  final FinancialCommitment? initialCommitment;
   final String? initialBudgetCategoryId;
   final String initialSourceType;
 
@@ -43,11 +48,24 @@ class _CreateFinancialCommitmentScreenState
   DateTime? _dueDate;
   DateTime? _agreementDate;
 
+  bool get _isEditMode => widget.commitmentId != null;
+
   @override
   void initState() {
     super.initState();
-    _budgetCategoryId = widget.initialBudgetCategoryId;
-    _sourceType = widget.initialSourceType;
+    final initial = widget.initialCommitment;
+    _budgetCategoryId =
+        widget.initialBudgetCategoryId ?? initial?.budgetCategoryId;
+    _sourceType = initial?.sourceType ?? widget.initialSourceType;
+    if (initial != null) {
+      _titleController.text = initial.title;
+      _partyNameController.text = initial.partyName ?? '';
+      _partyPhoneController.text = initial.partyPhone ?? '';
+      _totalAmountController.text = initial.totalAmount;
+      _noteController.text = initial.note ?? '';
+      _dueDate = initial.dueDate;
+      _agreementDate = initial.agreementDate;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
@@ -92,6 +110,8 @@ class _CreateFinancialCommitmentScreenState
                           ? 'حجز مورد / تكلفة خدمة'
                           : _sourceType == 'MANUAL_DEBT'
                           ? 'مستحق عليك'
+                          : _isEditMode
+                          ? 'تعديل مستحق مالي'
                           : 'مستحق مالي',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.burgundyDeep,
@@ -222,22 +242,27 @@ class _CreateFinancialCommitmentScreenState
                               validator: _requiredMoney,
                             ),
                             const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _paidAmountController,
-                              textAlign: TextAlign.right,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              textInputAction: TextInputAction.next,
-                              decoration: InputDecoration(
-                                labelText: 'المدفوع الآن',
-                                suffixText: currencyLabel,
-                                prefixIcon: const Icon(LucideIcons.receipt),
+                            if (!_isEditMode) ...[
+                              TextFormField(
+                                controller: _paidAmountController,
+                                textAlign: TextAlign.right,
+                                keyboardType:
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
+                                textInputAction: TextInputAction.next,
+                                decoration: InputDecoration(
+                                  labelText: 'المدفوع الآن',
+                                  suffixText: currencyLabel,
+                                  prefixIcon: const Icon(LucideIcons.receipt),
+                                ),
+                                validator: _optionalMoney,
                               ),
-                              validator: _optionalMoney,
-                            ),
-                            const SizedBox(height: 14),
+                              const SizedBox(height: 14),
+                            ] else ...[
+                              const _EditPaymentHint(),
+                              const SizedBox(height: 14),
+                            ],
                             Row(
                               children: [
                                 Expanded(
@@ -289,7 +314,7 @@ class _CreateFinancialCommitmentScreenState
                       ),
                     const SizedBox(height: 18),
                     AarastButton(
-                      label: 'حفظ المستحق',
+                      label: _isEditMode ? 'حفظ التعديل' : 'حفظ المستحق',
                       icon: LucideIcons.check,
                       isLoading: provider.isSubmitting,
                       onPressed: categories.isEmpty ? null : _submit,
@@ -343,20 +368,46 @@ class _CreateFinancialCommitmentScreenState
 
     final paid = _paidAmountController.text.trim();
     final provider = context.read<FinanceProvider>();
-    final ok = await provider.createFinancialCommitment(
-      weddingPlanId: widget.weddingPlanId,
-      budgetCategoryId: _budgetCategoryId!,
-      title: _titleController.text.trim(),
-      totalAmount: _totalAmountController.text.trim(),
-      sourceType: _sourceType,
-      partyName: _partyNameController.text.trim(),
-      partyPhone: _partyPhoneController.text.trim(),
-      paidAmount: paid.isEmpty ? null : paid,
-      dueDate: _dueDate,
-      agreementDate: _agreementDate,
-      note: _noteController.text.trim(),
-    );
+    final current = _commitmentFromProvider(provider);
+    final ok = _isEditMode && current != null
+        ? await provider.updateFinancialCommitment(
+            weddingPlanId: widget.weddingPlanId,
+            commitment: current,
+            budgetCategoryId: _budgetCategoryId!,
+            title: _titleController.text.trim(),
+            totalAmount: _totalAmountController.text.trim(),
+            sourceType: _sourceType,
+            partyName: _partyNameController.text.trim(),
+            partyPhone: _partyPhoneController.text.trim(),
+            dueDate: _dueDate,
+            agreementDate: _agreementDate,
+            note: _noteController.text.trim(),
+          )
+        : await provider.createFinancialCommitment(
+            weddingPlanId: widget.weddingPlanId,
+            budgetCategoryId: _budgetCategoryId!,
+            title: _titleController.text.trim(),
+            totalAmount: _totalAmountController.text.trim(),
+            sourceType: _sourceType,
+            partyName: _partyNameController.text.trim(),
+            partyPhone: _partyPhoneController.text.trim(),
+            paidAmount: paid.isEmpty ? null : paid,
+            dueDate: _dueDate,
+            agreementDate: _agreementDate,
+            note: _noteController.text.trim(),
+          );
     if (ok && mounted) _goBack(changed: true);
+  }
+
+  FinancialCommitment? _commitmentFromProvider(FinanceProvider provider) {
+    final initial = widget.initialCommitment;
+    if (initial != null) return initial;
+    final id = widget.commitmentId;
+    if (id == null) return null;
+    for (final commitment in provider.financialCommitments) {
+      if (commitment.id == id) return commitment;
+    }
+    return null;
   }
 
   void _goBack({bool changed = false}) {
@@ -365,6 +416,36 @@ class _CreateFinancialCommitmentScreenState
       return;
     }
     context.go(AppRouter.finance(widget.weddingPlanId));
+  }
+}
+
+class _EditPaymentHint extends StatelessWidget {
+  const _EditPaymentHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.all(12),
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.border),
+      child: Row(
+        children: [
+          const Icon(LucideIcons.receipt, color: AppTheme.gold, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'تعديل المدفوع يتم من سجلات الدفعات: أضف دفعة جديدة أو احذف دفعة خاطئة من تفاصيل المستحق.',
+              textAlign: TextAlign.right,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppTheme.muted,
+                fontWeight: FontWeight.w800,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

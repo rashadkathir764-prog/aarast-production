@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -336,6 +336,129 @@ class FinanceProvider extends ChangeNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تسجيل الدفعة.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> updateFinancialCommitment({
+    required String weddingPlanId,
+    required FinancialCommitment commitment,
+    required String budgetCategoryId,
+    required String title,
+    required String totalAmount,
+    required String sourceType,
+    String? partyName,
+    String? partyPhone,
+    DateTime? dueDate,
+    DateTime? agreementDate,
+    String? note,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      final updated = await _api.updateFinancialCommitment(
+        commitment: commitment,
+        budgetCategoryId: budgetCategoryId,
+        title: title,
+        totalAmount: totalAmount,
+        sourceType: sourceType,
+        partyName: partyName,
+        partyPhone: partyPhone,
+        dueDate: dueDate,
+        agreementDate: agreementDate,
+        note: note,
+      );
+      _financialCommitments = [
+        for (final item in _financialCommitments)
+          item.id == updated.id ? updated : item,
+      ];
+      await _refreshFinancialState(weddingPlanId);
+      if (_isLocalGuestPlanId(weddingPlanId) ||
+          updated.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر تحديث المستحق المالي.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteFinancialCommitment({
+    required String weddingPlanId,
+    required FinancialCommitment commitment,
+  }) async {
+    if (commitment.id.startsWith('local-')) {
+      _errorMessage =
+          'لا يمكن حذف مستحق قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+      notifyListeners();
+      return false;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.deleteFinancialCommitment(commitment.id);
+      _financialCommitments = _financialCommitments
+          .where((item) => item.id != commitment.id)
+          .toList();
+      await _refreshFinancialState(weddingPlanId);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حذف المستحق المالي.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> deleteFinancialPaymentRecord({
+    required String weddingPlanId,
+    required FinancialPaymentRecord payment,
+  }) async {
+    if (payment.id.startsWith('local-')) {
+      _errorMessage =
+          'لا يمكن حذف دفعة قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+      notifyListeners();
+      return false;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.deleteFinancialPaymentRecord(payment.id);
+      _financialPaymentRecords = _financialPaymentRecords
+          .where((item) => item.id != payment.id)
+          .toList();
+      await _refreshFinancialState(weddingPlanId);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حذف سجل الدفعة.';
       return false;
     } finally {
       _isSubmitting = false;

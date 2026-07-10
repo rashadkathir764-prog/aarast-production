@@ -218,7 +218,7 @@ void main() {
 
       await _tapNavIcon(tester, LucideIcons.wallet);
       expect(router.state.uri.path, AppRouter.finance('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.listChecks);

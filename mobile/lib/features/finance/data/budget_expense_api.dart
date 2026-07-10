@@ -529,6 +529,112 @@ class BudgetExpenseApi {
     }
   }
 
+  Future<FinancialCommitment> updateFinancialCommitment({
+    required FinancialCommitment commitment,
+    required String budgetCategoryId,
+    required String title,
+    required String totalAmount,
+    required String sourceType,
+    String? partyName,
+    String? partyPhone,
+    DateTime? dueDate,
+    DateTime? agreementDate,
+    String? note,
+  }) async {
+    _assertPositiveMoney(totalAmount, 'totalAmount');
+    final payload = {
+      'budgetCategoryId': budgetCategoryId.trim(),
+      'sourceType': sourceType,
+      'title': title.trim(),
+      'totalAmount': totalAmount.trim(),
+      'partyName': partyName?.trim(),
+      'partyPhone': partyPhone?.trim(),
+      'dueDate': dueDate?.toIso8601String(),
+      'agreementDate': agreementDate?.toIso8601String(),
+      'note': note?.trim(),
+    };
+    if (commitment.id.startsWith('local-financial-commitment-') ||
+        _isLocalGuestPlanId(commitment.weddingPlanId)) {
+      return _updateLocalFinancialCommitment(
+        commitment: commitment,
+        payload: payload,
+      );
+    }
+    try {
+      final json = await _apiClient.patchJson(
+        '/api/v1/financial-commitments/${commitment.id}',
+        payload,
+      );
+      await _offline?.database.saveCachedItem(
+        table: OfflineTables.cachedFinancialCommitments,
+        json: json,
+      );
+      return FinancialCommitment.fromJson(json);
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      final local = await _updateLocalFinancialCommitment(
+        commitment: commitment,
+        payload: payload,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'financial_commitment',
+        operation: 'update',
+        endpoint: '/api/v1/financial-commitments/${commitment.id}',
+        method: 'PATCH',
+        payload: payload,
+        localEntityId: commitment.id,
+      );
+      await _offline.refreshStatus();
+      return local;
+    }
+  }
+
+  Future<void> deleteFinancialCommitment(String id) async {
+    try {
+      await _apiClient.deleteJson('/api/v1/financial-commitments/$id');
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedFinancialCommitments,
+        json: {'id': id},
+        dirty: true,
+        deletedLocally: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'financial_commitment',
+        operation: 'delete',
+        endpoint: '/api/v1/financial-commitments/$id',
+        method: 'DELETE',
+        payload: const {},
+        localEntityId: id,
+      );
+      await _offline.refreshStatus();
+    }
+  }
+
+  Future<void> deleteFinancialPaymentRecord(String id) async {
+    try {
+      await _apiClient.deleteJson('/api/v1/financial-payment-records/$id');
+    } on Object catch (error) {
+      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
+      await _offline.database.saveCachedItem(
+        table: OfflineTables.cachedFinancialPaymentRecords,
+        json: {'id': id},
+        dirty: true,
+        deletedLocally: true,
+      );
+      await _offline.database.enqueueSync(
+        entityType: 'financial_payment_record',
+        operation: 'delete',
+        endpoint: '/api/v1/financial-payment-records/$id',
+        method: 'DELETE',
+        payload: const {},
+        localEntityId: id,
+      );
+      await _offline.refreshStatus();
+    }
+  }
+
   Future<FinancialInstallment> createFinancialInstallment({
     required String commitmentId,
     required String amount,
@@ -1350,6 +1456,44 @@ class BudgetExpenseApi {
     }
     await _offline?.refreshStatus();
     return FinancialPaymentRecord.fromJson(localJson);
+  }
+
+  Future<FinancialCommitment> _updateLocalFinancialCommitment({
+    required FinancialCommitment commitment,
+    required Map<String, dynamic> payload,
+  }) async {
+    final cached = await _offline?.database.readCachedItem(
+      table: OfflineTables.cachedFinancialCommitments,
+      id: commitment.id,
+    );
+    final now = DateTime.now();
+    final total = _assertPositiveMoney(payload['totalAmount'], 'totalAmount');
+    final paid = _moneyValue(cached?['paidAmount'] ?? commitment.paidAmount);
+    if (paid > total) {
+      throw const ApiException(
+        'المدفوع لا يمكن أن يتجاوز التكلفة المتفق عليها.',
+      );
+    }
+    final remaining = (total - paid).clamp(0, total);
+    final localJson = {
+      ...?cached,
+      ...payload,
+      'id': commitment.id,
+      'weddingPlanId': cached?['weddingPlanId'] ?? commitment.weddingPlanId,
+      'paidAmount': paid.toStringAsFixed(2),
+      'remainingAmount': remaining.toStringAsFixed(2),
+      'status': _deriveCommitmentStatus(total, paid),
+      'createdAt':
+          cached?['createdAt'] ?? commitment.createdAt?.toIso8601String(),
+      'updatedAt': now.toIso8601String(),
+    };
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedFinancialCommitments,
+      json: localJson,
+      dirty: true,
+    );
+    await _offline?.refreshStatus();
+    return FinancialCommitment.fromJson(localJson);
   }
 
   Future<FinancialInstallment> _createLocalFinancialInstallment({

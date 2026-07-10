@@ -300,11 +300,10 @@ class _FinanceContent extends StatelessWidget {
           summary: moneySummary,
           commitments: commitments,
           installments: dueFinancialInstallments,
-          canManageFinancialRecords: canManageFinancialRecords,
           onOpenDebts: () => _openDebts(context),
-          onAddPayable: () => _openFinancialCommitment(context),
-          onRecordPayment: (commitmentId) =>
-              _openRecordPayment(context, commitmentId: commitmentId),
+          onOpenPayables: () => _openPayables(context),
+          onOpenCommitment: (commitmentId) =>
+              _openCommitmentDetails(context, commitmentId),
         ),
         const SizedBox(height: 22),
         if (moneySummary.financialWarnings.isNotEmpty) ...[
@@ -326,6 +325,7 @@ class _FinanceContent extends StatelessWidget {
               ? () => context.push(AppRouter.expenses(weddingPlanId))
               : null,
           onEditExpense: (expense) => _openEditExpense(context, expense),
+          onOpenPayment: (payment) => _openPaymentDetails(context, payment),
           onDeleteExpense: (expense) =>
               _confirmDeleteExpense(context, provider, expense),
         ),
@@ -340,15 +340,10 @@ class _FinanceContent extends StatelessWidget {
     await provider.loadFinance(weddingPlanId);
   }
 
-  Future<void> _openFinancialCommitment(
-    BuildContext context, {
-    String sourceType = 'MANUAL_COMMITMENT',
-  }) async {
+  Future<void> _openPayables(BuildContext context) async {
     final changed = await context.push<bool>(
-      AppRouter.createFinancialCommitment(
-        weddingPlanId,
-        sourceType: sourceType,
-      ),
+      AppRouter.financialPayables(weddingPlanId),
+      extra: sharedMember,
     );
     if (changed == true && context.mounted) {
       onChanged();
@@ -356,13 +351,25 @@ class _FinanceContent extends StatelessWidget {
     }
   }
 
-  Future<void> _openRecordPayment(
-    BuildContext context, {
-    String? commitmentId,
-  }) async {
+  Future<void> _openCommitmentDetails(
+    BuildContext context,
+    String commitmentId,
+  ) async {
     final changed = await context.push<bool>(
-      AppRouter.recordPayment(weddingPlanId),
-      extra: commitmentId,
+      AppRouter.financialCommitmentDetails(weddingPlanId, commitmentId),
+    );
+    if (changed == true && context.mounted) {
+      onChanged();
+      await provider.loadFinance(weddingPlanId);
+    }
+  }
+
+  Future<void> _openPaymentDetails(
+    BuildContext context,
+    FinancialPaymentRecord payment,
+  ) async {
+    final changed = await context.push<bool>(
+      AppRouter.financialPaymentRecordDetails(weddingPlanId, payment.id),
     );
     if (changed == true && context.mounted) {
       onChanged();
@@ -636,19 +643,17 @@ class _FinancialPayablesSection extends StatelessWidget {
     required this.summary,
     required this.commitments,
     required this.installments,
-    required this.canManageFinancialRecords,
     required this.onOpenDebts,
-    required this.onAddPayable,
-    required this.onRecordPayment,
+    required this.onOpenPayables,
+    required this.onOpenCommitment,
   });
 
   final MoneySummary summary;
   final List<FinancialCommitment> commitments;
   final List<FinancialInstallment> installments;
-  final bool canManageFinancialRecords;
   final VoidCallback onOpenDebts;
-  final VoidCallback onAddPayable;
-  final ValueChanged<String> onRecordPayment;
+  final VoidCallback onOpenPayables;
+  final ValueChanged<String> onOpenCommitment;
 
   @override
   Widget build(BuildContext context) {
@@ -675,8 +680,7 @@ class _FinancialPayablesSection extends StatelessWidget {
     return _FinanceSectionCard(
       title: 'الدفعات والمستحقات',
       icon: Icons.account_balance_wallet_outlined,
-      actionLabel: canManageFinancialRecords ? 'إضافة مستحق' : null,
-      onAction: canManageFinancialRecords ? onAddPayable : null,
+      onTap: onOpenPayables,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -697,9 +701,7 @@ class _FinancialPayablesSection extends StatelessWidget {
               for (var index = 0; index < openPayables.length; index++) ...[
                 _CommitmentTile(
                   commitment: openPayables[index],
-                  onRecordPayment: canManageFinancialRecords
-                      ? () => onRecordPayment(openPayables[index].id)
-                      : null,
+                  onTap: () => onOpenCommitment(openPayables[index].id),
                 ),
                 if (index != openPayables.length - 1)
                   Divider(
@@ -717,17 +719,22 @@ class _FinancialPayablesSection extends StatelessWidget {
               const _FinanceSubhead(label: 'أقساط قريبة'),
               const SizedBox(height: 8),
               for (var index = 0; index < dueInstallments.length; index++) ...[
-                _MoneyEventTile(
-                  title:
-                      commitmentTitles[dueInstallments[index]
-                          .financialCommitmentId] ??
-                      'قسط مالي',
-                  subtitle: dueInstallments[index].dueDate == null
-                      ? 'بدون تاريخ'
-                      : _shortDate(dueInstallments[index].dueDate!),
-                  amount: dueInstallments[index].amount,
-                  icon: Icons.event_available_outlined,
-                  color: AppTheme.gold,
+                _TapInlineTile(
+                  onTap: () => onOpenCommitment(
+                    dueInstallments[index].financialCommitmentId,
+                  ),
+                  child: _MoneyEventTile(
+                    title:
+                        commitmentTitles[dueInstallments[index]
+                            .financialCommitmentId] ??
+                        'قسط مالي',
+                    subtitle: dueInstallments[index].dueDate == null
+                        ? 'بدون تاريخ'
+                        : _shortDate(dueInstallments[index].dueDate!),
+                    amount: dueInstallments[index].amount,
+                    icon: Icons.event_available_outlined,
+                    color: AppTheme.gold,
+                  ),
                 ),
                 if (index != dueInstallments.length - 1)
                   Divider(
@@ -884,14 +891,6 @@ class _BudgetCategoriesSectionState extends State<_BudgetCategoriesSection> {
                 staggeredBudgetCard(
                   BudgetCategoryCard(
                     row: visibleRows[index],
-                    onAddExpense: widget.canManageFinancialRecords
-                        ? () => context.push(
-                            AppRouter.createFinancialCommitment(
-                              widget.weddingPlanId,
-                            ),
-                            extra: visibleRows[index].categoryId,
-                          )
-                        : null,
                     onOpenDetails: () => context.push(
                       AppRouter.budgetCategoryDetails(
                         widget.weddingPlanId,
@@ -918,6 +917,7 @@ class _RecentMoneyActivitySection extends StatelessWidget {
     required this.budgetCategories,
     required this.isBusy,
     required this.onEditExpense,
+    required this.onOpenPayment,
     required this.onDeleteExpense,
     this.onViewAllExpenses,
   });
@@ -927,6 +927,7 @@ class _RecentMoneyActivitySection extends StatelessWidget {
   final List<BudgetCategory> budgetCategories;
   final bool isBusy;
   final ValueChanged<Expense> onEditExpense;
+  final ValueChanged<FinancialPaymentRecord> onOpenPayment;
   final ValueChanged<Expense> onDeleteExpense;
   final VoidCallback? onViewAllExpenses;
 
@@ -1002,18 +1003,25 @@ class _RecentMoneyActivitySection extends StatelessWidget {
                       expense.budgetCategoryId,
                     ),
                     isBusy: isBusy,
+                    onTap: () => onEditExpense(expense),
                     onEdit: () => onEditExpense(expense),
                     onDelete: () => onDeleteExpense(expense),
                   );
                 }
-                return Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: _MoneyEventTile(
-                    title: event.title,
-                    subtitle: event.subtitle,
-                    amount: event.amount,
-                    icon: event.icon,
-                    color: event.color,
+                return _TapInlineTile(
+                  onTap: () {
+                    final payment = event.payment;
+                    if (payment != null) onOpenPayment(payment);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: _MoneyEventTile(
+                      title: event.title,
+                      subtitle: event.subtitle,
+                      amount: event.amount,
+                      icon: event.icon,
+                      color: event.color,
+                    ),
                   ),
                 );
               },
@@ -1066,56 +1074,96 @@ class _FinanceSectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.child,
-    this.actionLabel,
-    this.onAction,
+    this.onTap,
   });
 
   final String title;
   final IconData icon;
   final Widget child;
-  final String? actionLabel;
-  final VoidCallback? onAction;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
+    final content = AarastCard(
+      padding: EdgeInsets.zero,
       border: Border.all(color: AppTheme.border),
       color: AppTheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 20, color: AppTheme.burgundy),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 20, color: AppTheme.burgundy),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.right,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-              ),
-              if (actionLabel != null && onAction != null)
-                TextButton(onPressed: onAction, child: Text(actionLabel!)),
+                if (onTap != null)
+                  const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
+              ],
+            ),
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        child: content,
+      ),
+    );
+  }
+}
+
+class _TapInlineTile extends StatelessWidget {
+  const _TapInlineTile({required this.onTap, required this.child});
+
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Expanded(child: child),
+              const SizedBox(width: 6),
+              const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
             ],
           ),
-          const SizedBox(height: 10),
-          child,
-        ],
+        ),
       ),
     );
   }
 }
 
 class _CommitmentTile extends StatelessWidget {
-  const _CommitmentTile({required this.commitment, this.onRecordPayment});
+  const _CommitmentTile({required this.commitment, required this.onTap});
 
   final FinancialCommitment commitment;
-  final VoidCallback? onRecordPayment;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1132,88 +1180,75 @@ class _CommitmentTile extends StatelessWidget {
         : 'مستحق مالي';
     final party = commitment.partyName?.trim();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: .1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              ),
-              child: Icon(Icons.account_balance_outlined, color: statusColor),
+    return _TapInlineTile(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    commitment.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTheme.ink,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      AarastStatusPill(label: sourceLabel, color: statusColor),
-                      if (party != null && party.isNotEmpty)
-                        AarastStatusPill(
-                          label: party,
-                          color: AppTheme.muted,
-                          icon: Icons.person_outline_rounded,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            child: Icon(Icons.account_balance_outlined, color: statusColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _formatMoney(_moneyValue(commitment.totalAmount)),
+                  commitment.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
+                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'باقي ${_formatMoney(remaining)}',
-                  style: TextStyle(
-                    color: remaining <= 0 ? AppTheme.success : AppTheme.danger,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    AarastStatusPill(label: sourceLabel, color: statusColor),
+                    if (party != null && party.isNotEmpty)
+                      AarastStatusPill(
+                        label: party,
+                        color: AppTheme.muted,
+                        icon: Icons.person_outline_rounded,
+                      ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-        if (onRecordPayment != null && remaining > 0) ...[
-          const SizedBox(height: 10),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(
-              onPressed: onRecordPayment,
-              icon: const Icon(Icons.payments_outlined, size: 18),
-              label: const Text('تسجيل دفعة'),
-            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatMoney(_moneyValue(commitment.totalAmount)),
+                style: const TextStyle(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'باقي ${_formatMoney(remaining)}',
+                style: TextStyle(
+                  color: remaining <= 0 ? AppTheme.success : AppTheme.danger,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ],
-      ],
+      ),
     );
   }
 }
@@ -1313,6 +1348,7 @@ class _ExpenseRow extends StatelessWidget {
     required this.expense,
     required this.categoryName,
     required this.isBusy,
+    required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
@@ -1320,6 +1356,7 @@ class _ExpenseRow extends StatelessWidget {
   final Expense expense;
   final String categoryName;
   final bool isBusy;
+  final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -1328,122 +1365,126 @@ class _ExpenseRow extends StatelessWidget {
     final statusColor = _expenseStatusColor(expense.status);
     final isPaid = expense.status == 'PAID';
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: Colors.transparent,
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: statusColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        color: Colors.transparent,
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                isPaid
+                    ? Icons.receipt_long_rounded
+                    : Icons.pending_actions_rounded,
+                color: statusColor,
+              ),
             ),
-            child: Icon(
-              isPaid
-                  ? Icons.receipt_long_rounded
-                  : Icons.pending_actions_rounded,
-              color: statusColor,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  expense.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.ink,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    expense.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTheme.ink,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    AarastStatusPill(
-                      label: _expenseStatusLabel(expense.status),
-                      color: statusColor,
-                    ),
-                    AarastStatusPill(
-                      label: categoryName,
-                      color: AppTheme.gold,
-                      icon: Icons.folder_outlined,
-                    ),
-                    if (expense.expenseDate != null)
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
                       AarastStatusPill(
-                        label: _shortDate(expense.expenseDate!),
-                        color: AppTheme.muted,
-                        icon: Icons.calendar_month_rounded,
+                        label: _expenseStatusLabel(expense.status),
+                        color: statusColor,
                       ),
-                    OfflinePendingBadge(
-                      entityType: 'expense',
-                      entityId: expense.id,
+                      AarastStatusPill(
+                        label: categoryName,
+                        color: AppTheme.gold,
+                        icon: Icons.folder_outlined,
+                      ),
+                      if (expense.expenseDate != null)
+                        AarastStatusPill(
+                          label: _shortDate(expense.expenseDate!),
+                          color: AppTheme.muted,
+                          icon: Icons.calendar_month_rounded,
+                        ),
+                      OfflinePendingBadge(
+                        entityType: 'expense',
+                        entityId: expense.id,
+                      ),
+                    ],
+                  ),
+                  if (expense.hasNote) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      expense.note!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppTheme.ink.withValues(alpha: 0.6),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
-                ),
-                if (expense.hasNote) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    expense.note!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppTheme.ink.withValues(alpha: 0.6),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            _AnimatedMoneyText(
+              value: expense.amount,
+              style: const TextStyle(
+                color: AppTheme.burgundy,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 2),
+            PopupMenuButton<_ExpenseAction>(
+              enabled: !isBusy,
+              tooltip: 'خيارات المصروف',
+              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.muted),
+              onSelected: (action) {
+                if (action == _ExpenseAction.edit) {
+                  onEdit();
+                } else {
+                  onDelete();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: _ExpenseAction.edit,
+                  child: _ExpenseMenuItem(
+                    icon: Icons.edit_outlined,
+                    label: 'تعديل',
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: _ExpenseAction.delete,
+                  child: _ExpenseMenuItem(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'حذف',
+                    color: AppTheme.danger,
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(width: 12),
-          _AnimatedMoneyText(
-            value: expense.amount,
-            style: const TextStyle(
-              color: AppTheme.burgundy,
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(width: 2),
-          PopupMenuButton<_ExpenseAction>(
-            enabled: !isBusy,
-            tooltip: 'خيارات المصروف',
-            icon: const Icon(Icons.more_vert_rounded, color: AppTheme.muted),
-            onSelected: (action) {
-              if (action == _ExpenseAction.edit) {
-                onEdit();
-              } else {
-                onDelete();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: _ExpenseAction.edit,
-                child: _ExpenseMenuItem(
-                  icon: Icons.edit_outlined,
-                  label: 'تعديل',
-                ),
-              ),
-              const PopupMenuItem(
-                value: _ExpenseAction.delete,
-                child: _ExpenseMenuItem(
-                  icon: Icons.delete_outline_rounded,
-                  label: 'حذف',
-                  color: AppTheme.danger,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

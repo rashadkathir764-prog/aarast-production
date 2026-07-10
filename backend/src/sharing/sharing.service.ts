@@ -14,7 +14,7 @@ import {
   User,
   WeddingPlan,
 } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -148,11 +148,15 @@ export class SharingService {
     weddingPlanId: string,
     dto: CreateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
-    const plan = (
-      await this.permissions.assertMemberManageable(weddingPlanId, currentUser)
-    ).plan;
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
+    const plan = access.plan;
     const user = await this.findTargetUser(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
+    const permissionData = this.permissionDataForCreate(role, dto);
+    this.assertPermissionCeiling(access, role, permissionData);
     const userId = user.id;
 
     if (userId === plan.ownerUserId) {
@@ -171,7 +175,7 @@ export class SharingService {
         weddingPlanId,
         userId,
         role,
-        ...this.permissionDataForCreate(role, dto),
+        ...permissionData,
       },
       include: {
         user: { select: { id: true, name: true, phone: true } },
@@ -222,17 +226,24 @@ export class SharingService {
     dto: UpdateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
     const existing = await this.findMemberOrThrow(id);
-    await this.permissions.assertMemberManageable(
+    const access = await this.permissions.assertMemberManageable(
       existing.weddingPlanId,
       currentUser,
     );
+    this.assertPermissionCeiling(
+      access,
+      existing.role,
+      this.permissionFlagsForRecord(existing),
+    );
     const role = this.assignableRole(dto.role ?? existing.role);
+    const permissionData = this.permissionDataForUpdate(existing, dto, role);
+    this.assertPermissionCeiling(access, role, permissionData);
 
     const member = await this.prisma.sharedMember.update({
       where: { id },
       data: {
         ...(dto.role !== undefined ? { role } : {}),
-        ...this.permissionDataForUpdate(existing, dto, role),
+        ...permissionData,
       },
       include: {
         user: { select: { id: true, name: true, phone: true } },
@@ -269,9 +280,14 @@ export class SharingService {
     id: string,
   ): Promise<{ id: string; deleted: true }> {
     const existing = await this.findMemberOrThrow(id);
-    await this.permissions.assertMemberManageable(
+    const access = await this.permissions.assertMemberManageable(
       existing.weddingPlanId,
       currentUser,
+    );
+    this.assertPermissionCeiling(
+      access,
+      existing.role,
+      this.permissionFlagsForRecord(existing),
     );
     await this.prisma.sharedMember.delete({ where: { id } });
     return { id, deleted: true };
@@ -317,11 +333,15 @@ export class SharingService {
     weddingPlanId: string,
     dto: CreatePlanInviteDto,
   ): Promise<PlanInviteResponse> {
-    const plan = (
-      await this.permissions.assertMemberManageable(weddingPlanId, currentUser)
-    ).plan;
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
+    const plan = access.plan;
     const target = await this.findInviteTarget(dto);
     const role = this.assignableRole(dto.role ?? SharedMemberRole.VIEWER);
+    const permissionData = this.permissionDataForCreate(role, dto);
+    this.assertPermissionCeiling(access, role, permissionData);
 
     if (target.user?.id === plan.ownerUserId) {
       throw new BadRequestException('Owner cannot be invited to own wedding plan');
@@ -363,7 +383,7 @@ export class SharingService {
       );
     }
 
-    const invite = await this.createInviteWithUniqueToken({
+    const createdInvite = await this.createInviteWithUniqueToken({
       weddingPlanId,
       inviterUserId: currentUser.id,
       inviteeUserId: target.user?.id ?? null,
@@ -372,9 +392,10 @@ export class SharingService {
       normalizedPhone: target.normalizedPhone,
       email: target.email,
       role,
-      ...this.permissionDataForCreate(role, dto),
+      ...permissionData,
       expiresAt: this.expiresAt(dto.expiresInDays),
     });
+    const invite = createdInvite.invite;
 
     if (target.user) {
       await this.notifications.createNotification({
@@ -386,10 +407,9 @@ export class SharingService {
         body: `تلقيت دعوة للمشاركة في "${plan.title}".`,
         entityType: 'plan_invite',
         entityId: invite.id,
-        routeTarget: `/invites/${invite.token}`,
+        routeTarget: `/invites/${invite.id}`,
         data: {
           inviteId: invite.id,
-          inviteToken: invite.token,
           weddingPlanId,
           role: invite.role,
         },
@@ -397,7 +417,7 @@ export class SharingService {
       });
     }
 
-    return this.toInviteResponse(invite);
+    return this.toInviteResponse(invite, createdInvite.token);
   }
 
   async findInvitesForCurrentUser(
@@ -430,9 +450,15 @@ export class SharingService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<PlanInviteResponse[]> {
-    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
     const invites = await this.prisma.planInvite.findMany({
-      where: { weddingPlanId },
+      where: {
+        weddingPlanId,
+        ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
+      },
       include: this.inviteIncludes(),
       orderBy: { createdAt: 'desc' },
     });
@@ -444,12 +470,23 @@ export class SharingService {
     weddingPlanId: string,
     inviteId: string,
   ): Promise<PlanInviteResponse> {
-    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
     const invite = await this.prisma.planInvite.findFirst({
       where: { id: inviteId, weddingPlanId },
       include: this.inviteIncludes(),
     });
     if (!invite) throw new NotFoundException('Invite not found');
+    if (!access.isOwner && invite.inviterUserId !== currentUser.id) {
+      throw new NotFoundException('Invite not found');
+    }
+    this.assertPermissionCeiling(
+      access,
+      invite.role,
+      this.permissionFlagsForRecord(invite),
+    );
     if (invite.acceptedAt || invite.declinedAt || invite.revokedAt) {
       throw new ConflictException('Invite is no longer pending');
     }
@@ -470,6 +507,23 @@ export class SharingService {
 
     const acceptedAt = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.planInvite.updateMany({
+        where: {
+          id: invite.id,
+          acceptedAt: null,
+          declinedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: acceptedAt },
+        },
+        data: {
+          acceptedAt,
+          inviteeUserId: currentUser.id,
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('Invite is no longer pending');
+      }
+
       const member = await tx.sharedMember.upsert({
         where: {
           weddingPlanId_userId: {
@@ -510,14 +564,13 @@ export class SharingService {
         },
       });
 
-      const acceptedInvite = await tx.planInvite.update({
+      const acceptedInvite = await tx.planInvite.findUnique({
         where: { id: invite.id },
-        data: {
-          acceptedAt,
-          inviteeUserId: currentUser.id,
-        },
         include: this.inviteIncludes(),
       });
+      if (!acceptedInvite) {
+        throw new ConflictException('Invite is no longer pending');
+      }
 
       return { member, acceptedInvite };
     });
@@ -553,13 +606,32 @@ export class SharingService {
     const invite = await this.findInviteByTokenOrThrow(token);
     this.assertInviteCanBeAccepted(invite, currentUser);
 
-    const declined = await this.prisma.planInvite.update({
-      where: { id: invite.id },
-      data: {
-        declinedAt: new Date(),
-        inviteeUserId: currentUser.id,
-      },
-      include: this.inviteIncludes(),
+    const declinedAt = new Date();
+    const declined = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.planInvite.updateMany({
+        where: {
+          id: invite.id,
+          acceptedAt: null,
+          declinedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: declinedAt },
+        },
+        data: {
+          declinedAt,
+          inviteeUserId: currentUser.id,
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('Invite is no longer pending');
+      }
+      const updated = await tx.planInvite.findUnique({
+        where: { id: invite.id },
+        include: this.inviteIncludes(),
+      });
+      if (!updated) {
+        throw new ConflictException('Invite is no longer pending');
+      }
+      return updated;
     });
 
     await this.notifications.createNotification({
@@ -587,16 +659,26 @@ export class SharingService {
     memberId: string,
     dto: UpdateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
-    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
     this.assertNotOwnerMemberId(memberId);
 
     const existing = await this.findMemberForPlanOrThrow(weddingPlanId, memberId);
+    this.assertPermissionCeiling(
+      access,
+      existing.role,
+      this.permissionFlagsForRecord(existing),
+    );
     const role = this.assignableRole(dto.role ?? existing.role);
+    const permissionData = this.permissionDataForUpdate(existing, dto, role);
+    this.assertPermissionCeiling(access, role, permissionData);
     const member = await this.prisma.sharedMember.update({
       where: { id: existing.id },
       data: {
         ...(dto.role !== undefined ? { role } : {}),
-        ...this.permissionDataForUpdate(existing, dto, role),
+        ...permissionData,
       },
       include: { user: { select: { id: true, name: true, phone: true } } },
     });
@@ -609,14 +691,21 @@ export class SharingService {
     weddingPlanId: string,
     memberId: string,
   ): Promise<{ id: string; deleted: true }> {
-    const plan = (
-      await this.permissions.assertMemberManageable(weddingPlanId, currentUser)
-    ).plan;
+    const access = await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
+    const plan = access.plan;
     if (this.isOwnerMemberId(memberId) || memberId === plan.ownerUserId) {
       throw new BadRequestException('Last owner cannot be removed');
     }
 
     const existing = await this.findMemberForPlanOrThrow(weddingPlanId, memberId);
+    this.assertPermissionCeiling(
+      access,
+      existing.role,
+      this.permissionFlagsForRecord(existing),
+    );
     await this.prisma.sharedMember.delete({ where: { id: existing.id } });
     return { id: existing.id, deleted: true };
   }
@@ -727,6 +816,12 @@ export class SharingService {
       throw new BadRequestException('Provide userId, phone, or email');
     }
 
+    if (email) {
+      throw new BadRequestException(
+        'Email invitations require verified email and are not available',
+      );
+    }
+
     if (userId) {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
@@ -737,7 +832,7 @@ export class SharingService {
         user,
         phone: user.phone,
         normalizedPhone,
-        email: user.email?.toLowerCase() ?? null,
+        email: null,
       };
     }
 
@@ -751,21 +846,23 @@ export class SharingService {
       phone: phone ?? user?.phone ?? null,
       normalizedPhone:
         phone ?? PhoneNormalizer.normalizeOptional(user?.phone) ?? null,
-      email: email ?? user?.email?.toLowerCase() ?? null,
+      email: null,
     };
   }
 
   private async createInviteWithUniqueToken(
-    data: Omit<Prisma.PlanInviteUncheckedCreateInput, 'token'>,
-  ): Promise<PlanInvite> {
+    data: Omit<Prisma.PlanInviteUncheckedCreateInput, 'tokenHash'>,
+  ): Promise<{ invite: PlanInvite; token: string }> {
     for (let attempt = 0; attempt < 5; attempt++) {
+      const token = randomBytes(32).toString('base64url');
       try {
-        return await this.prisma.planInvite.create({
+        const invite = await this.prisma.planInvite.create({
           data: {
             ...data,
-            token: randomBytes(32).toString('base64url'),
+            tokenHash: this.hashInviteToken(token),
           },
         });
+        return { invite, token };
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -783,14 +880,24 @@ export class SharingService {
   private async findInviteByTokenOrThrow(
     token: string,
   ): Promise<PlanInviteWithRelations> {
-    const invite = await this.prisma.planInvite.findUnique({
-      where: { token },
+    const inviteByHash = await this.prisma.planInvite.findUnique({
+      where: { tokenHash: this.hashInviteToken(token) },
       include: this.inviteIncludes(),
     });
+    const invite =
+      inviteByHash ??
+      (await this.prisma.planInvite.findUnique({
+        where: { id: token },
+        include: this.inviteIncludes(),
+      }));
     if (!invite) {
       throw new NotFoundException('Invite not found');
     }
     return invite;
+  }
+
+  private hashInviteToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   private inviteIncludes() {
@@ -813,6 +920,12 @@ export class SharingService {
     invite: PlanInvite,
     currentUser: AuthenticatedUser,
   ): void {
+    if (!currentUser.phoneVerifiedAt) {
+      throw new NotFoundException('Invite not found');
+    }
+    if (invite.email && !invite.inviteeUserId && !invite.normalizedPhone) {
+      throw new NotFoundException('Invite not found');
+    }
     if (invite.revokedAt) {
       throw new BadRequestException('Invite has been revoked');
     }
@@ -840,6 +953,12 @@ export class SharingService {
     invite: PlanInvite,
     currentUser: AuthenticatedUser,
   ): void {
+    if (!currentUser.phoneVerifiedAt) {
+      throw new NotFoundException('Invite not found');
+    }
+    if (invite.email && !invite.inviteeUserId && !invite.normalizedPhone) {
+      throw new NotFoundException('Invite not found');
+    }
     if (invite.inviteeUserId && invite.inviteeUserId === currentUser.id) {
       return;
     }
@@ -922,6 +1041,90 @@ export class SharingService {
         (roleChanged
           ? defaults.receiveNotifications
           : existing.receiveNotifications),
+    };
+  }
+
+  private assertPermissionCeiling(
+    inviterContext: PlanAccessContext,
+    targetRole: SharedMemberRole,
+    targetStoredPermissions: PermissionFlags,
+  ): void {
+    if (inviterContext.isOwner) return;
+
+    const ceiling = this.effectivePermissions(inviterContext);
+    const targetContext: PlanAccessContext = {
+      plan: inviterContext.plan,
+      isOwner: false,
+      sharedMember: {
+        role: targetRole,
+        ...targetStoredPermissions,
+      } as SharedMember,
+    };
+    const target = this.effectivePermissions(targetContext);
+    const guarded: Array<keyof PermissionFlags> = [
+      'canViewBudget',
+      'canViewExpenses',
+      'canViewDebts',
+      'canEditPlan',
+      'canManageTasks',
+      'canManageGuests',
+      'canManageProviders',
+      'canInviteMembers',
+      'canManageFinancialRecords',
+    ];
+
+    const exceeded = guarded.find((permission) => {
+      return target[permission] && !ceiling[permission];
+    });
+    if (exceeded) {
+      throw new BadRequestException(
+        `Cannot grant permission above inviter ceiling: ${exceeded}`,
+      );
+    }
+  }
+
+  private permissionFlagsForRecord(
+    record: Pick<
+      SharedMember | PlanInvite,
+      | 'canViewBudget'
+      | 'canViewExpenses'
+      | 'canViewDebts'
+      | 'canEditPlan'
+      | 'canManageTasks'
+      | 'canManageGuests'
+      | 'canManageProviders'
+      | 'canInviteMembers'
+      | 'canManageFinancialRecords'
+      | 'receiveNotifications'
+    >,
+  ): PermissionFlags {
+    return {
+      canViewBudget: record.canViewBudget,
+      canViewExpenses: record.canViewExpenses,
+      canViewDebts: record.canViewDebts,
+      canEditPlan: record.canEditPlan,
+      canManageTasks: record.canManageTasks,
+      canManageGuests: record.canManageGuests,
+      canManageProviders: record.canManageProviders,
+      canInviteMembers: record.canInviteMembers,
+      canManageFinancialRecords: record.canManageFinancialRecords,
+      receiveNotifications: record.receiveNotifications,
+    };
+  }
+
+  private effectivePermissions(context: PlanAccessContext): PermissionFlags {
+    return {
+      canViewBudget: this.permissions.canReadFinancial(context, 'budget'),
+      canViewExpenses: this.permissions.canReadFinancial(context, 'expenses'),
+      canViewDebts: this.permissions.canReadFinancial(context, 'debts'),
+      canEditPlan: this.permissions.canManagePlan(context),
+      canManageTasks: this.permissions.canManageTasks(context),
+      canManageGuests: this.permissions.canManageGuests(context),
+      canManageProviders: this.permissions.canManageProviders(context),
+      canInviteMembers: this.permissions.canManageMembers(context),
+      canManageFinancialRecords:
+        this.permissions.canManageFinancialRecords(context),
+      receiveNotifications: true,
     };
   }
 
@@ -1018,11 +1221,14 @@ export class SharingService {
     };
   }
 
-  private toInviteResponse(invite: PlanInviteWithRelations): PlanInviteResponse {
+  private toInviteResponse(
+    invite: PlanInviteWithRelations,
+    presentedToken?: string,
+  ): PlanInviteResponse {
     return {
       id: invite.id,
       weddingPlanId: invite.weddingPlanId,
-      token: invite.token,
+      token: presentedToken ?? invite.id,
       name: invite.name,
       phone: invite.phone,
       normalizedPhone: invite.normalizedPhone,

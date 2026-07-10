@@ -4,9 +4,12 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import { IdempotencyInterceptor } from "./common/idempotency/idempotency.interceptor";
+import { IdempotencyCleanupScheduler } from "./common/idempotency/idempotency-cleanup.scheduler";
+import { AdminAuditInterceptor } from "./admin/admin-audit.interceptor";
 import { MetricsController } from "./common/observability/metrics.controller";
 import { ResilientThrottlerStorage } from "./common/redis/resilient-throttler-storage";
 import { HealthController } from "./health.controller";
+import { ReadinessService } from "./health/readiness.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { MeModule } from "./me/me.module";
@@ -30,6 +33,7 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { GuestsModule } from "./guests/guests.module";
 import { ConversationsModule } from "./conversations/conversations.module";
 import { MediaModule } from "./media/media.module";
+import { OutboxModule } from "./outbox/outbox.module";
 
 @Module({
   imports: [
@@ -63,6 +67,7 @@ import { MediaModule } from "./media/media.module";
       },
     }),
     PrismaModule,
+    OutboxModule,
     AuthModule,
     MeModule,
     WeddingPlansModule,
@@ -88,6 +93,8 @@ import { MediaModule } from "./media/media.module";
   ],
   controllers: [HealthController, MetricsController],
   providers: [
+    ReadinessService,
+    IdempotencyCleanupScheduler,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
@@ -95,6 +102,10 @@ import { MediaModule } from "./media/media.module";
     {
       provide: APP_INTERCEPTOR,
       useClass: IdempotencyInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AdminAuditInterceptor,
     },
   ],
 })

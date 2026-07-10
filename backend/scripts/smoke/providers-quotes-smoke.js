@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Providers + Quotes APIs Smoke Test
  * Covers /api/v1 provider profile, services, plan quote requests, offers,
@@ -112,7 +114,7 @@ async function ensureReferenceData() {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

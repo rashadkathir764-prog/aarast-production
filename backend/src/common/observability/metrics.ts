@@ -1,4 +1,10 @@
-import { Counter, Histogram, Registry, collectDefaultMetrics } from 'prom-client';
+import {
+  Counter,
+  Gauge,
+  Histogram,
+  Registry,
+  collectDefaultMetrics,
+} from 'prom-client';
 
 /**
  * Single process-wide registry. Default metrics cover event-loop lag,
@@ -41,5 +47,25 @@ export const otpVerificationsTotal = new Counter({
 export const paymentsRecordedTotal = new Counter({
   name: 'aarast_payments_recorded_total',
   help: 'Financial payment records created across all entry points.',
+  registers: [metricsRegistry],
+});
+
+export const outboxDispatchTotal = new Counter({
+  name: 'aarast_outbox_dispatch_total',
+  help: 'Durable outbox dispatch attempts by event type and outcome.',
+  labelNames: ['event_type', 'outcome'] as const,
+  registers: [metricsRegistry],
+});
+
+export const outboxBacklog = new Gauge({
+  name: 'aarast_outbox_backlog',
+  help: 'Current durable outbox rows by pending, processing, or failed state.',
+  labelNames: ['status'] as const,
+  registers: [metricsRegistry],
+});
+
+export const idempotencyAmbiguousTombstones = new Gauge({
+  name: 'aarast_idempotency_ambiguous_tombstones',
+  help: 'Expired in-flight idempotency reservations with an unknown outcome.',
   registers: [metricsRegistry],
 });

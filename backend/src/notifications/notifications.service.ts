@@ -16,6 +16,8 @@ import {
   startOfRiyadhDay,
 } from '../common/time/business-day';
 import { PrismaService } from '../prisma/prisma.service';
+import { OutboxEventTypes } from '../outbox/outbox.constants';
+import { OutboxService } from '../outbox/outbox.service';
 import { PermissionService, PlanAccessContext } from '../sharing/permission.service';
 
 export interface NotificationResponse {
@@ -55,6 +57,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async list(
@@ -181,20 +184,32 @@ export class NotificationsService {
     }
 
     try {
-      const notification = await this.prisma.notification.create({
-        data: {
-          userId: input.userId,
-          weddingPlanId: input.weddingPlanId ?? null,
-          type: input.type,
-          priority: input.priority ?? NotificationPriority.NORMAL,
-          title: input.title,
-          body: input.body,
-          entityType: input.entityType ?? null,
-          entityId: input.entityId ?? null,
-          routeTarget: input.routeTarget ?? null,
-          data: input.data,
-          dedupeKey: input.dedupeKey,
-        },
+      const notification = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.notification.create({
+          data: {
+            userId: input.userId,
+            weddingPlanId: input.weddingPlanId ?? null,
+            type: input.type,
+            priority: input.priority ?? NotificationPriority.NORMAL,
+            title: input.title,
+            body: input.body,
+            entityType: input.entityType ?? null,
+            entityId: input.entityId ?? null,
+            routeTarget: input.routeTarget ?? null,
+            data: input.data,
+            dedupeKey: input.dedupeKey,
+          },
+        });
+        await this.outbox.enqueue(tx, {
+          type: OutboxEventTypes.notificationCreated,
+          aggregateType: 'notification',
+          aggregateId: created.id,
+          payload: {
+            notificationId: created.id,
+            userId: created.userId,
+          },
+        });
+        return created;
       });
       return this.toResponse(notification);
     } catch (error) {

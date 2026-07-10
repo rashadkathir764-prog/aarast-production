@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Money APIs Smoke Test
  * Covers /api/v1 money aliases, item read endpoints, installment pay, summary,
@@ -74,7 +76,7 @@ function dateOffsetIso(days) {
 }
 
 async function registerUser(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

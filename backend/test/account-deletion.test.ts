@@ -50,7 +50,10 @@ function recordingTx(planIds: string[]) {
 }
 
 const serviceFor = (tx: any) =>
-  new UsersService({ $transaction: async (fn: any) => fn(tx) } as any);
+  new UsersService(
+    { $transaction: async (fn: any) => fn(tx) } as any,
+    {} as any,
+  );
 
 test("account deletion clears plan children before plans and deletes the user last", async () => {
   const { tx, calls } = recordingTx(["plan-1", "plan-2"]);
@@ -70,7 +73,10 @@ test("account deletion clears plan children before plans and deletes the user la
   assert.ok(at("financialCommitment") < at("budgetCategory"));
   // Every plan child is removed before the plan row itself.
   for (const child of PLAN_CHILDREN) {
-    assert.ok(at(child) >= 0 && at(child) < at("weddingPlan"), `${child} before plan`);
+    assert.ok(
+      at(child) >= 0 && at(child) < at("weddingPlan"),
+      `${child} before plan`,
+    );
   }
   // Non-cascading rows are cleaned explicitly, and the user is deleted last.
   assert.ok(at("provider") >= 0);

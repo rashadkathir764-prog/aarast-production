@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Backend Completion Smoke Test
  * Runs one end-to-end mobile backend journey across onboarding, active plan,
@@ -121,7 +123,7 @@ async function register(name, phone) {
   let currentPhone = phone;
   let res = null;
   for (let attempt = 0; attempt < 5; attempt++) {
-    res = await request('POST', '/auth/register', {
+    res = await registerVerified(request, {
       name,
       phone: currentPhone,
       password: TEST_PASSWORD,

@@ -6,6 +6,7 @@ import * as Sentry from '@sentry/node';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { getCorsOrigins } from './common/config/cors-origins';
+import { validateRuntimeEnvironment } from './common/config/runtime-environment';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { requestObservability } from './common/observability/request-observability.middleware';
 import { RedisIoAdapter } from './common/redis/redis-io.adapter';
@@ -15,20 +16,7 @@ import { RedisIoAdapter } from './common/redis/redis-io.adapter';
  * deployment at boot, not surface as silent degradation at runtime.
  */
 function validateEnvironment(logger: Logger): void {
-  const missing = ['DATABASE_URL', 'JWT_SECRET'].filter(
-    (name) => !process.env[name]?.trim(),
-  );
-  if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-  }
-
-  const otpMode = process.env.AUTH_OTP_MODE?.trim();
-  if (otpMode && !['dev', 'whatsapp', 'disabled'].includes(otpMode)) {
-    throw new Error(
-      `AUTH_OTP_MODE must be one of dev|whatsapp|disabled, got "${otpMode}"`,
-    );
-  }
-
+  validateRuntimeEnvironment();
   if (process.env.NODE_ENV !== 'production') {
     logger.warn(
       'NODE_ENV is not "production" — dev conveniences (echoed OTP codes, permissive CORS) are ACTIVE.',
@@ -80,6 +68,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: getCorsOrigins(),
+    credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Request-Id'],
   });

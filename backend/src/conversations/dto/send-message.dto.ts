@@ -4,7 +4,6 @@ import {
   IsInt,
   IsOptional,
   IsString,
-  IsUrl,
   Max,
   MaxLength,
   Min,
@@ -12,9 +11,9 @@ import {
 } from 'class-validator';
 
 export class ChatAttachmentDto {
-  @IsUrl({ require_protocol: true })
-  @MaxLength(2048)
-  url!: string;
+  @IsString()
+  @MaxLength(512)
+  attachmentRef!: string;
 
   @IsString()
   @MaxLength(100)

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Guests APIs Smoke Test
  * Covers /api/v1 guests, groups, bulk import, statuses, summary, and guards.
@@ -66,7 +68,7 @@ function hasPasswordHash(value) {
 }
 
 async function registerUser(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

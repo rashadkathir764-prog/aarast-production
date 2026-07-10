@@ -19,6 +19,7 @@ import {
 import { DebtsService } from "../src/debts/debts.service";
 import { ExpensesService } from "../src/expenses/expenses.service";
 import { FinancialCommitmentsService } from "../src/financial-commitments/financial-commitments.service";
+import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
 
 const d = (value: string | number) => new Prisma.Decimal(value);
 
@@ -152,6 +153,200 @@ test("expenses are actual paid money-out records with required category", async 
   assert.equal(created[0].status, ExpenseStatus.PAID);
 });
 
+function createLocalPlanImportHarness() {
+  const now = new Date("2026-07-10T00:00:00.000Z");
+  const categories: any[] = [];
+  const expenses: any[] = [];
+  let transactions = 0;
+  const plan = {
+    id: "plan-1",
+    ownerUserId: "user-1",
+    title: "Local plan",
+    city: null,
+    location: null,
+    weddingDate: null,
+    priorities: [],
+    estimatedBudget: null,
+    currency: "YER",
+    onboardingPath: "USER",
+    persona: null,
+    onboardingCompletedAt: now,
+    importMigrationId: "migration-1",
+    status: "PLANNING",
+    createdAt: now,
+    updatedAt: now,
+  };
+  const user = {
+    id: "user-1",
+    name: "User",
+    phone: "+967777123456",
+    email: null,
+    role: "USER",
+    adminRole: null,
+    appRole: "WEDDING_USER",
+    status: "ACTIVE",
+    phoneVerifiedAt: now,
+    lastLoginAt: now,
+    avatarUrl: null,
+    locale: "ar",
+    activeWeddingPlanId: "plan-1",
+    onboardingPath: "USER",
+    persona: null,
+    onboardingCompletedAt: now,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const prisma: any = {
+    weddingPlan: {
+      findFirst: async () => null,
+      create: async () => plan,
+    },
+    budgetCategory: {
+      createMany: async ({ data }: any) => {
+        for (const [index, category] of data.entries()) {
+          categories.push({
+            id: `category-${index + 1}`,
+            targetAmount: null,
+            createdAt: now,
+            updatedAt: now,
+            ...category,
+          });
+        }
+        return { count: data.length };
+      },
+      findMany: async () => categories,
+    },
+    expense: {
+      createMany: async ({ data }: any) => {
+        expenses.push(...data);
+        return { count: data.length };
+      },
+      count: async () => expenses.length,
+    },
+    weddingTask: {
+      createMany: async () => ({ count: 0 }),
+      count: async () => 0,
+    },
+    guest: {
+      createMany: async () => ({ count: 0 }),
+      count: async () => 0,
+    },
+    user: {
+      update: async () => user,
+      findUniqueOrThrow: async () => user,
+    },
+    $transaction: async (action: any) => {
+      transactions += 1;
+      return action(prisma);
+    },
+  };
+
+  return {
+    service: new WeddingPlansService(prisma, {} as any),
+    categories,
+    expenses,
+    get transactions() {
+      return transactions;
+    },
+  };
+}
+
+test("local-plan import rejects zero and non-paid expenses before writing", async () => {
+  for (const expense of [
+    { title: "Zero", amount: "0" },
+    { title: "Planned", amount: "100", status: ExpenseStatus.PLANNED },
+  ]) {
+    const harness = createLocalPlanImportHarness();
+    await assert.rejects(
+      () =>
+        harness.service.importLocalPlan(
+          { id: "user-1" } as any,
+          {
+            clientMigrationId: "migration-1",
+            title: "Local plan",
+            expenses: [expense],
+          } as any,
+        ),
+      BadRequestException,
+    );
+    assert.equal(
+      harness.transactions,
+      0,
+      "invalid imported expenses must fail before the transaction",
+    );
+  }
+});
+
+test("local-plan import keeps categoryName optional but never writes an uncategorized expense", async () => {
+  const harness = createLocalPlanImportHarness();
+  await harness.service.importLocalPlan(
+    { id: "user-1" } as any,
+    {
+      clientMigrationId: "migration-1",
+      title: "Local plan",
+      selectedCategories: ["التصوير"],
+      expenses: [
+        {
+          title: "Camera",
+          amount: "100.00",
+          categoryName: "التصوير",
+          status: ExpenseStatus.PAID,
+        },
+        { title: "Legacy uncategorized", amount: "50" },
+      ],
+    } as any,
+  );
+
+  const categoryById = new Map(
+    harness.categories.map((category) => [category.id, category.name]),
+  );
+  assert.equal(harness.expenses.length, 2);
+  assert.ok(
+    harness.expenses.every(
+      (expense) =>
+        expense.status === ExpenseStatus.PAID &&
+        typeof expense.budgetCategoryId === "string" &&
+        expense.budgetCategoryId.length > 0,
+    ),
+  );
+  assert.equal(
+    categoryById.get(harness.expenses[0].budgetCategoryId),
+    "التصوير",
+  );
+  assert.equal(
+    categoryById.get(harness.expenses[1].budgetCategoryId),
+    "مصروفات أخرى",
+  );
+});
+
+test("local-plan import does not add a fallback category when every expense maps explicitly", async () => {
+  const harness = createLocalPlanImportHarness();
+  await harness.service.importLocalPlan(
+    { id: "user-1" } as any,
+    {
+      clientMigrationId: "migration-1",
+      selectedCategories: ["التصوير"],
+      expenses: [
+        {
+          title: "Camera",
+          amount: "100",
+          categoryName: "التصوير",
+        },
+      ],
+    } as any,
+  );
+
+  assert.deepEqual(
+    harness.categories.map((category) => category.name),
+    ["التصوير"],
+  );
+  assert.equal(
+    harness.expenses[0].budgetCategoryId,
+    harness.categories[0].id,
+  );
+});
+
 test("financial commitments require a real positive cost and valid paid amount", async () => {
   const prisma = {
     budgetCategory: {
@@ -269,11 +464,24 @@ test("debt creation clamps paid to total and mirrors into the financial backbone
       deleteMany: async () => ({ count: 0 }),
     },
     financialPaymentRecord: {
-      upsert: async ({ create, update, where }: any) => {
-        mirroredPayments.push({ where, create, update });
-        return { id: `payment-${mirroredPayments.length}`, ...create };
+      findMany: async ({ where }: any) =>
+        mirroredPayments
+          .map((entry) => entry.create)
+          .filter((entry) =>
+            where.legacyDebtId
+              ? entry.legacyDebtId === where.legacyDebtId
+              : where.legacyInstallmentId
+                ? entry.legacyInstallmentId === where.legacyInstallmentId
+                : true,
+          )
+          .map((entry) => ({
+            amount: entry.amount,
+            entryType: entry.entryType ?? "PAYMENT",
+          })),
+      create: async ({ data }: any) => {
+        mirroredPayments.push({ create: data });
+        return { id: `payment-${mirroredPayments.length}`, ...data };
       },
-      deleteMany: async () => ({ count: 0 }),
     },
   };
   const prisma = {

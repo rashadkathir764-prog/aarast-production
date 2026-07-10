@@ -25,7 +25,7 @@ const guestRow = () => ({
   attendanceStatus: "PENDING",
   seatsCount: 1,
   companionsCount: 0,
-  notes: null,
+  notes: "private guest note",
   createdAt: new Date(),
   updatedAt: new Date(),
 });
@@ -39,6 +39,7 @@ test("guest phone is hidden from a read-only member, shown to a guest manager", 
   );
   const [redacted] = await viewer.findForPlan(user("u2"), "p1");
   assert.equal(redacted.phone, null, "viewer must not see the phone");
+  assert.equal(redacted.notes, null, "viewer must not see private guest notes");
   assert.equal(redacted.name, "ضيف", "non-PII stays visible");
 
   const manager = new GuestsService(
@@ -47,6 +48,40 @@ test("guest phone is hidden from a read-only member, shown to a guest manager", 
   );
   const [full] = await manager.findForPlan(user("u2"), "p1");
   assert.equal(full.phone, "+967711111111");
+  assert.equal(full.notes, "private guest note");
+});
+
+test("guest-group notes are hidden from a read-only member", async () => {
+  const group = {
+    id: "group-1",
+    weddingPlanId: "p1",
+    name: "Family",
+    notes: "private family note",
+    sortOrder: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  const prisma = { guestGroup: { findMany: async () => [group] } };
+
+  const viewer = new GuestsService(
+    prisma as any,
+    {
+      assertPlanReadable: async () => readerContext,
+      canManageGuests: () => false,
+    } as any,
+  );
+  const [redacted] = await viewer.findGroups(user("u2"), "p1");
+  assert.equal(redacted.notes, null);
+
+  const manager = new GuestsService(
+    prisma as any,
+    {
+      assertPlanReadable: async () => readerContext,
+      canManageGuests: () => true,
+    } as any,
+  );
+  const [full] = await manager.findGroups(user("u2"), "p1");
+  assert.equal(full.notes, "private family note");
 });
 
 // --- Quotes: contact phone + budget gated per permission ------------------

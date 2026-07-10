@@ -365,6 +365,7 @@ export class WeddingPlansService {
     currentUser: AuthenticatedUser,
     dto: ImportLocalPlanDto,
   ): Promise<LocalPlanImportResponse> {
+    const fallbackExpenseCategoryName = 'مصروفات أخرى';
     const migrationId = this.requiredText(
       dto.clientMigrationId,
       'clientMigrationId',
@@ -393,9 +394,15 @@ export class WeddingPlansService {
     // row fails fast as a 400 without partial writes.
     const expenses = (dto.expenses ?? []).map((expense, index) => ({
       title: this.requiredText(expense.title, `expenses[${index}].title`),
-      amount: this.requiredAmount(expense.amount, `expenses[${index}].amount`),
+      amount: this.requiredPositiveAmount(
+        expense.amount,
+        `expenses[${index}].amount`,
+      ),
       categoryName: this.optionalText(expense.categoryName ?? undefined),
-      status: expense.status ?? ExpenseStatus.PAID,
+      status: this.requiredPaidExpenseStatus(
+        expense.status,
+        `expenses[${index}].status`,
+      ),
       expenseDate: this.parseDateField(
         expense.expenseDate ?? undefined,
         `expenses[${index}].expenseDate`,
@@ -440,7 +447,7 @@ export class WeddingPlansService {
     });
 
     // Categories = onboarding selection ∪ names referenced by expenses.
-    const categoryNames = this.normalizeStringList(
+    const categoryNamesWithoutFallback = this.normalizeStringList(
       [
         ...selectedCategories,
         ...expenses
@@ -449,6 +456,24 @@ export class WeddingPlansService {
       ],
       50,
     );
+    const categoryKeysWithoutFallback = new Set(
+      categoryNamesWithoutFallback.map((name) =>
+        name.toLocaleLowerCase('en-US'),
+      ),
+    );
+    const needsFallbackExpenseCategory = expenses.some(
+      (expense) =>
+        !expense.categoryName ||
+        !categoryKeysWithoutFallback.has(
+          expense.categoryName.toLocaleLowerCase('en-US'),
+        ),
+    );
+    const categoryNames = needsFallbackExpenseCategory
+      ? this.normalizeStringList(
+          [fallbackExpenseCategoryName, ...categoryNamesWithoutFallback],
+          50,
+        )
+      : categoryNamesWithoutFallback;
 
     try {
       const plan = await this.prisma.$transaction(async (tx) => {
@@ -493,22 +518,33 @@ export class WeddingPlansService {
             category.id,
           ]),
         );
+        const fallbackExpenseCategoryId = categoryIdByName.get(
+          fallbackExpenseCategoryName.toLocaleLowerCase('en-US'),
+        );
 
         if (expenses.length > 0) {
           await tx.expense.createMany({
-            data: expenses.map((expense) => ({
-              weddingPlanId: createdPlan.id,
-              budgetCategoryId: expense.categoryName
+            data: expenses.map((expense, index) => {
+              const budgetCategoryId = expense.categoryName
                 ? (categoryIdByName.get(
                     expense.categoryName.toLocaleLowerCase('en-US'),
-                  ) ?? null)
-                : null,
-              title: expense.title,
-              amount: expense.amount,
-              status: expense.status,
-              expenseDate: expense.expenseDate,
-              note: expense.note,
-            })),
+                  ) ?? fallbackExpenseCategoryId)
+                : fallbackExpenseCategoryId;
+              if (!budgetCategoryId) {
+                throw new BadRequestException(
+                  `expenses[${index}].categoryName must map to a budget category`,
+                );
+              }
+              return {
+                weddingPlanId: createdPlan.id,
+                budgetCategoryId,
+                title: expense.title,
+                amount: expense.amount,
+                status: expense.status,
+                expenseDate: expense.expenseDate,
+                note: expense.note,
+              };
+            }),
           });
         }
 
@@ -604,6 +640,29 @@ export class WeddingPlansService {
 
   private requiredAmount(value: string | number, field: string): string {
     return requiredMoneyAmount(value, field);
+  }
+
+  private requiredPositiveAmount(
+    value: string | number,
+    field: string,
+  ): string {
+    const normalized = this.requiredAmount(value, field);
+    if (Number(normalized) <= 0) {
+      throw new BadRequestException(`${field} must be greater than zero`);
+    }
+    return normalized;
+  }
+
+  private requiredPaidExpenseStatus(
+    status: ExpenseStatus | undefined,
+    field: string,
+  ): ExpenseStatus {
+    if (status !== undefined && status !== ExpenseStatus.PAID) {
+      throw new BadRequestException(
+        `${field} must be PAID because expenses record money actually paid`,
+      );
+    }
+    return ExpenseStatus.PAID;
   }
 
   private parseDateField(value: string | undefined, field: string): Date | null {

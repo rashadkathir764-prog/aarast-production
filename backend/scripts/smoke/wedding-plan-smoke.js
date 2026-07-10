@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * WeddingPlan Smoke Test
  * Tests protected WeddingPlan endpoints without creating future product modules.
@@ -74,7 +76,7 @@ async function run() {
   let planId = null;
 
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'WeddingPlan Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,

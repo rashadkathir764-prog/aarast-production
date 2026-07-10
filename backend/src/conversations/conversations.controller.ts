@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   Patch,
   Post,
@@ -24,6 +25,7 @@ export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
 
   @Post('quote-requests/:quoteRequestId')
+  @Header('Cache-Control', 'private, no-store')
   ensureForQuote(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('quoteRequestId') quoteRequestId: string,
@@ -32,11 +34,13 @@ export class ConversationsController {
   }
 
   @Get()
+  @Header('Cache-Control', 'private, no-store')
   list(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.conversations.list(currentUser);
   }
 
   @Get(':id/messages')
+  @Header('Cache-Control', 'private, no-store')
   messages(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
@@ -47,12 +51,23 @@ export class ConversationsController {
   }
 
   @Post(':id/messages')
+  @Header('Cache-Control', 'private, no-store')
   send(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: SendMessageDto,
   ) {
     return this.conversations.send(currentUser, id, dto);
+  }
+
+  @Get(':id/attachments/:attachmentId/download')
+  @Header('Cache-Control', 'private, no-store')
+  downloadAttachment(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+  ) {
+    return this.conversations.downloadAttachment(currentUser, id, attachmentId);
   }
 
   @Patch(':id/read')

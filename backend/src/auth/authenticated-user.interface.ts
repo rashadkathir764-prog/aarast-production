@@ -1,5 +1,6 @@
 import {
   AppRole,
+  AdminRole,
   OnboardingPath,
   UserRole,
   UserStatus,
@@ -12,6 +13,7 @@ export interface AuthenticatedUser {
   phone: string | null;
   email: string | null;
   role: UserRole;
+  adminRole: AdminRole | null;
   appRole: AppRole;
   status: UserStatus;
   phoneVerifiedAt: Date | null;
@@ -24,4 +26,6 @@ export interface AuthenticatedUser {
   onboardingCompletedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  /** True only for a JWT minted after the admin password + OTP boundary. */
+  adminMfa?: boolean;
 }

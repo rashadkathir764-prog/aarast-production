@@ -102,7 +102,7 @@ export class GuestsService {
       weddingPlanId,
       currentUser,
     );
-    const includePhone = this.permissions.canManageGuests(context);
+    const includePrivateDetails = this.permissions.canManageGuests(context);
 
     const guests = await this.prisma.guest.findMany({
       where: { weddingPlanId },
@@ -110,7 +110,9 @@ export class GuestsService {
       ...pageArgs(query),
     });
 
-    return guests.map((guest) => this.toResponse(guest, includePhone));
+    return guests.map((guest) =>
+      this.toResponse(guest, includePrivateDetails),
+    );
   }
 
   async findOne(
@@ -274,12 +276,18 @@ export class GuestsService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<GuestGroupResponse[]> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    const includePrivateDetails = this.permissions.canManageGuests(context);
     const groups = await this.prisma.guestGroup.findMany({
       where: { weddingPlanId },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
     });
-    return groups.map((group) => this.toGroupResponse(group));
+    return groups.map((group) =>
+      this.toGroupResponse(group, includePrivateDetails),
+    );
   }
 
   async createGroup(
@@ -551,7 +559,10 @@ export class GuestsService {
     return null;
   }
 
-  private toResponse(guest: Guest, includePhone = true): GuestResponse {
+  private toResponse(
+    guest: Guest,
+    includePrivateDetails = true,
+  ): GuestResponse {
     return {
       id: guest.id,
       weddingPlanId: guest.weddingPlanId,
@@ -559,25 +570,28 @@ export class GuestsService {
       name: guest.name,
       // Phone is PII: only members who can manage guests may read it. Pure
       // read-only members (e.g. VIEWER) see the guest without the number.
-      phone: includePhone ? guest.phone : null,
+      phone: includePrivateDetails ? guest.phone : null,
       side: guest.side,
       status: guest.status,
       invitationStatus: guest.invitationStatus,
       attendanceStatus: guest.attendanceStatus,
       seatsCount: guest.seatsCount,
       companionsCount: guest.companionsCount,
-      notes: guest.notes,
+      notes: includePrivateDetails ? guest.notes : null,
       createdAt: guest.createdAt,
       updatedAt: guest.updatedAt,
     };
   }
 
-  private toGroupResponse(group: GuestGroup): GuestGroupResponse {
+  private toGroupResponse(
+    group: GuestGroup,
+    includePrivateDetails = true,
+  ): GuestGroupResponse {
     return {
       id: group.id,
       weddingPlanId: group.weddingPlanId,
       name: group.name,
-      notes: group.notes,
+      notes: includePrivateDetails ? group.notes : null,
       sortOrder: group.sortOrder,
       createdAt: group.createdAt,
       updatedAt: group.updatedAt,

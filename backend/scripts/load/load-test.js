@@ -23,6 +23,9 @@
 
 const http = require('node:http');
 const { URL } = require('node:url');
+const {
+  registerVerified,
+} = require('../smoke/verified-registration');
 
 const baseUrl = new URL(process.env.LOAD_BASE_URL || 'http://127.0.0.1:3115');
 const connections = Number(process.env.LOAD_CONNECTIONS || 50);
@@ -85,7 +88,7 @@ function percentile(sorted, p) {
 
 async function setup() {
   const phone = `+9677${String(Date.now()).slice(-8)}`;
-  const register = await request('POST', '/auth/register', {
+  const register = await registerVerified(request, {
     name: 'Load Test User',
     phone,
     password: 'LoadTest#12345',

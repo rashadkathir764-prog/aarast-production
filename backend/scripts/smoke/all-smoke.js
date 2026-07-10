@@ -7,16 +7,19 @@ const { spawnSync } = require('child_process');
 const smokeScripts = [
   ['smoke:health', 'health-smoke.js'],
   ['smoke:auth', 'auth-smoke.js'],
+  ['smoke:auth-verification', 'auth-verification-smoke.js'],
   ['smoke:wedding-plan', 'wedding-plan-smoke.js'],
   ['smoke:onboarding-active-plan', 'onboarding-active-plan-smoke.js'],
   ['smoke:dashboard-summary', 'dashboard-summary-smoke.js'],
   ['smoke:money-apis', 'money-apis-smoke.js'],
+  ['smoke:financial-ledger-concurrency', 'financial-ledger-concurrency-smoke.js'],
   ['smoke:budget-expense', 'budget-expense-smoke.js'],
   ['smoke:debt-installment', 'debt-installment-smoke.js'],
   ['smoke:tasks-apis', 'tasks-apis-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],
   ['smoke:sharing', 'sharing-smoke.js'],
   ['smoke:sharing-roles', 'sharing-roles-smoke.js'],
+  ['smoke:sharing-security', 'sharing-security-smoke.js'],
   ['smoke:notifications', 'notifications-smoke.js'],
   ['smoke:notifications-apis', 'notifications-apis-smoke.js'],
   ['smoke:guests', 'guests-smoke.js'],
@@ -36,10 +39,18 @@ const smokeBaseUrl = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 console.log('\nAarast Backend Smoke: All');
 console.log(`Target: ${smokeBaseUrl}\n`);
 
-for (const [script, fileName] of smokeScripts) {
+for (const [index, [script, fileName]] of smokeScripts.entries()) {
   console.log(`===== ${script} =====`);
-  const result = spawnSync(process.execPath, [path.join(__dirname, fileName)], {
-    env: { ...process.env, SMOKE_BASE_URL: smokeBaseUrl },
+  const result = spawnSync(process.execPath, [
+    '-r',
+    path.join(__dirname, 'smoke-client-ip-hook.js'),
+    path.join(__dirname, fileName),
+  ], {
+    env: {
+      ...process.env,
+      SMOKE_BASE_URL: smokeBaseUrl,
+      SMOKE_CLIENT_IP: `198.18.0.${index + 1}`,
+    },
     stdio: 'inherit',
   });
 

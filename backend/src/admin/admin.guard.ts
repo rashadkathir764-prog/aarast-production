@@ -14,7 +14,10 @@ export class AdminGuard implements CanActivate {
       user?: AuthenticatedUser;
     }>();
 
-    if (request.user?.role !== UserRole.ADMIN) {
+    if (
+      request.user?.role !== UserRole.ADMIN ||
+      request.user.adminMfa !== true
+    ) {
       throw new ForbiddenException('Admin access is required');
     }
 

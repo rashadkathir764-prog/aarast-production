@@ -26,16 +26,26 @@ function createService() {
   const prisma = {
     otpCode: {
       updateMany: async ({ where, data }: any) => {
+        let count = 0;
         for (const otp of otps) {
-          if (
-            otp.phone === where.phone &&
-            otp.purpose === where.purpose &&
-            otp.consumedAt === where.consumedAt &&
-            otp.expiresAt > where.expiresAt.gt
-          ) {
-            Object.assign(otp, data);
+          const matches =
+            (where.id === undefined || otp.id === where.id) &&
+            (where.phone === undefined || otp.phone === where.phone) &&
+            (where.purpose === undefined || otp.purpose === where.purpose) &&
+            (where.consumedAt === undefined ||
+              otp.consumedAt === where.consumedAt) &&
+            (where.expiresAt?.gt === undefined ||
+              otp.expiresAt > where.expiresAt.gt) &&
+            (where.attempts?.lt === undefined ||
+              otp.attempts < where.attempts.lt);
+          if (!matches) continue;
+          if (data.attempts?.increment) {
+            otp.attempts += data.attempts.increment;
           }
+          Object.assign(otp, { ...data, attempts: otp.attempts });
+          count += 1;
         }
+        return { count };
       },
       create: async ({ data }: any) => {
         const otp = {
@@ -75,6 +85,7 @@ function createService() {
         throw new Error('user.update should not be called in this test');
       },
     },
+    $transaction: async (action: any) => action(prisma),
   };
   const jwtService = { sign: () => 'test-token' };
   return new AuthService(prisma as any, jwtService as any);

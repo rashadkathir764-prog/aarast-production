@@ -2,6 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { httpRequestDuration } from './metrics';
+import {
+  requestRouteTemplate,
+  safeClientRequestId,
+} from './sanitize-request-target';
 
 const logger = new Logger('HTTP');
 
@@ -17,16 +21,17 @@ export function requestObservability(
   next: NextFunction,
 ): void {
   const started = process.hrtime.bigint();
-  const clientRequestId = req.header('x-client-request-id')?.trim();
-  const requestId = clientRequestId || randomUUID();
+  const clientRequestId = safeClientRequestId(
+    req.header('x-client-request-id'),
+  );
+  const requestId = clientRequestId ?? randomUUID();
+  (req as Request & { requestId?: string }).requestId = requestId;
   res.setHeader('X-Request-Id', requestId);
 
   res.on('finish', () => {
     const durationSeconds =
       Number(process.hrtime.bigint() - started) / 1_000_000_000;
-    const route = req.route?.path
-      ? `${req.baseUrl ?? ''}${req.route.path}`
-      : 'unmatched';
+    const route = requestRouteTemplate(req);
 
     httpRequestDuration.observe(
       { method: req.method, route, status: String(res.statusCode) },
@@ -35,12 +40,17 @@ export function requestObservability(
 
     // /health and /metrics are polled every few seconds by Docker and
     // Prometheus; logging them would drown real traffic.
-    if (req.originalUrl === '/health' || req.originalUrl === '/metrics') {
+    if (
+      req.originalUrl === '/health' ||
+      req.originalUrl === '/live' ||
+      req.originalUrl === '/ready' ||
+      req.originalUrl === '/metrics'
+    ) {
       return;
     }
 
     logger.log(
-      `${req.method} ${req.originalUrl} ${res.statusCode} ${(durationSeconds * 1000).toFixed(1)}ms reqId=${requestId}`,
+      `${req.method} ${route} ${res.statusCode} ${(durationSeconds * 1000).toFixed(1)}ms reqId=${requestId}`,
     );
   });
 

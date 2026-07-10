@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Auth Smoke Test
  * Tests: POST /auth/register, POST /auth/login, GET /auth/me
@@ -70,7 +72,7 @@ async function run() {
   let registerToken = null;
   let registeredUser = null;
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,

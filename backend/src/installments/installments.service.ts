@@ -292,6 +292,11 @@ export class InstallmentsService {
   ): Promise<Debt> {
     await tx.$queryRaw`SELECT id FROM "Debt" WHERE id = ${debtId} FOR UPDATE`;
     const debt = await tx.debt.findUniqueOrThrow({ where: { id: debtId } });
+    if (delta.gt(0) && debt.paidAmount.add(delta).gt(debt.totalAmount)) {
+      throw new BadRequestException(
+        "installment payment cannot exceed the remaining debt balance",
+      );
+    }
     const next = applyDebtPaymentDelta(
       debt.totalAmount,
       debt.paidAmount,

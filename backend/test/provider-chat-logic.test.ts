@@ -134,7 +134,8 @@ test('chat gateway authenticates sockets and emits scoped conversation events', 
     service,
     /routeTarget:\s*`\/conversations\/\$\{conversationId\}`/,
   );
-  assert.match(service, /nextCursor:\s*hasMore/);
+  assert.match(service, /const nextCursor = hasMore/);
+  assert.match(service, /nextCursor,/);
   assert.match(service, /page\[page\.length - 1\]\?\.id/);
 });
 

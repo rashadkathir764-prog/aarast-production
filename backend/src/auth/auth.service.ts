@@ -4,34 +4,40 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { OtpCode, OtpPurpose, User } from '@prisma/client';
-import * as bcryptjs from 'bcryptjs';
-import { randomBytes } from 'crypto';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { OtpCode, OtpPurpose, Prisma, User, UserRole } from "@prisma/client";
+import * as bcryptjs from "bcryptjs";
+import { randomBytes } from "crypto";
 import {
   otpRequestsTotal,
   otpVerificationsTotal,
-} from '../common/observability/metrics';
-import { PhoneNormalizer } from '../common/phone/phone-normalizer';
-import { PrismaService } from '../prisma/prisma.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { RequestOtpDto } from './dto/request-otp.dto';
-import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { LogoutDto } from './dto/logout.dto';
-import { RefreshDto } from './dto/refresh.dto';
-import { PasswordResetRequestDto } from './dto/password-reset-request.dto';
-import { PasswordResetConfirmDto } from './dto/password-reset-confirm.dto';
-import { JwtPayload } from './jwt-payload.interface';
-import { DevEchoOtpChannel, OtpChannel } from './otp-channel';
+} from "../common/observability/metrics";
+import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { PrismaService } from "../prisma/prisma.service";
+import { RegisterDto } from "./dto/register.dto";
+import { CompleteRegistrationDto } from "./dto/complete-registration.dto";
+import { LoginDto } from "./dto/login.dto";
+import { RequestOtpDto } from "./dto/request-otp.dto";
+import { VerifyOtpDto } from "./dto/verify-otp.dto";
+import { LogoutDto } from "./dto/logout.dto";
+import { RefreshDto } from "./dto/refresh.dto";
+import { PasswordResetRequestDto } from "./dto/password-reset-request.dto";
+import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
+import { JwtPayload } from "./jwt-payload.interface";
+import {
+  DevEchoOtpChannel,
+  OtpChannel,
+  WhatsAppOtpChannel,
+} from "./otp-channel";
 import {
   createRefreshTokenValue,
   hashRefreshToken,
   refreshTokenExpiry,
-} from './refresh-token-policy';
-import { SafeUser, toSafeUser } from './safe-user';
+} from "./refresh-token-policy";
+import { SafeUser, toSafeUser } from "./safe-user";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -44,9 +50,13 @@ export interface OtpRequestResponse {
   phone: string;
   purpose: OtpPurpose;
   expiresAt: Date;
-  delivery: 'LOCAL_DEV' | 'PROVIDER_PENDING' | 'WHATSAPP';
+  delivery: "LOCAL_DEV" | "WHATSAPP";
   code?: string;
   message?: string;
+}
+
+export interface RegistrationPendingResponse extends OtpRequestResponse {
+  registrationPending: true;
 }
 
 export interface OtpVerifyResponse {
@@ -59,10 +69,18 @@ export interface OtpVerifyResponse {
   refreshTokenExpiresAt?: Date;
 }
 
+export interface AdminLoginPendingResponse {
+  mfaRequired: true;
+  challengeToken: string;
+  expiresAt: Date;
+  delivery: "LOCAL_DEV" | "WHATSAPP";
+  code?: string;
+}
+
 @Injectable()
 export class AuthService {
   private static readonly otpUnavailableMessage =
-    'خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.';
+    "خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.";
 
   // Per-account lockout: the IP throttle alone allows ~86k guesses/day
   // against one account. In-memory is acceptable for the current
@@ -79,37 +97,222 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
+  async startRegistration(
+    dto: RegisterDto,
+  ): Promise<RegistrationPendingResponse> {
+    const phone = PhoneNormalizer.normalizeRequired(dto.phone);
+    const otp = await this.requestOtp({
+      phone,
+      purpose: OtpPurpose.REGISTER,
+    });
+    return { registrationPending: true, ...otp };
+  }
+
+  async completeRegistration(
+    dto: CompleteRegistrationDto,
+  ): Promise<AuthResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const phoneVariants = PhoneNormalizer.lookupVariants(phone);
-    const existing = await this.prisma.user.findFirst({
-      where: {
-        OR: [
-          { phone: { in: phoneVariants } },
-          ...(dto.email ? [{ email: dto.email }] : []),
-        ],
-      },
-    });
-
-    if (existing) {
-      throw new ConflictException('Phone or email already registered');
-    }
-
+    const now = new Date();
+    const otp = await this.assertOtpCodeMatches(
+      phone,
+      OtpPurpose.REGISTER,
+      dto.otpCode,
+      now,
+    );
     const passwordHash = await bcryptjs.hash(dto.password, 10);
 
-    const user = await this.prisma.user.create({
-      data: {
-        name: dto.name,
-        phone,
-        email: dto.email ?? null,
-        passwordHash,
-      },
-    });
+    let user: User;
+    try {
+      user = await this.prisma.$transaction(
+        async (tx) => {
+          const conflict = await tx.user.findFirst({
+            where: {
+              OR: [
+                { phone: { in: phoneVariants } },
+                ...(dto.email ? [{ email: dto.email }] : []),
+              ],
+            },
+          });
+          if (conflict) {
+            throw new ConflictException("Phone or email already registered");
+          }
+
+          await this.consumeOtpRecord(tx, otp, now);
+          return tx.user.create({
+            data: {
+              name: dto.name,
+              phone,
+              email: dto.email ?? null,
+              passwordHash,
+              phoneVerifiedAt: now,
+              lastLoginAt: now,
+            },
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        otpVerificationsTotal.inc({ outcome: "failure" });
+        throw new BadRequestException("OTP code is invalid or expired");
+      }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException("Phone or email already registered");
+      }
+      throw error;
+    }
+
+    otpVerificationsTotal.inc({ outcome: "success" });
 
     return this.createAuthResponse(user);
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {
+    const user = await this.validatePasswordCredentials(dto);
+    if (user.role === UserRole.ADMIN) {
+      throw new UnauthorizedException(
+        "Admin accounts must use password and OTP login",
+      );
+    }
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return this.createAuthResponse(updatedUser);
+  }
+
+  async startAdminLogin(dto: LoginDto): Promise<AdminLoginPendingResponse> {
+    const user = await this.validatePasswordCredentials(dto, UserRole.ADMIN);
+    const otp = await this.requestOtp({
+      phone: user.phone!,
+      purpose: OtpPurpose.LOGIN,
+    });
+    const challengeToken = createRefreshTokenValue();
+    const now = new Date();
+    const expiresAt = new Date(
+      Math.min(otp.expiresAt.getTime(), now.getTime() + 10 * 60_000),
+    );
+
+    await this.prisma.$transaction([
+      this.prisma.adminLoginChallenge.deleteMany({
+        where: {
+          OR: [
+            { expiresAt: { lt: now } },
+            { userId: user.id, consumedAt: null },
+          ],
+        },
+      }),
+      this.prisma.adminLoginChallenge.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashRefreshToken(challengeToken),
+          expiresAt,
+        },
+      }),
+    ]);
+
+    return {
+      mfaRequired: true,
+      challengeToken,
+      expiresAt,
+      delivery: otp.delivery,
+      ...(otp.code ? { code: otp.code } : {}),
+    };
+  }
+
+  async completeAdminLogin(
+    challengeToken: string,
+    code: string,
+  ): Promise<AuthResponse> {
+    const now = new Date();
+    const challenge = await this.prisma.adminLoginChallenge.findUnique({
+      where: { tokenHash: hashRefreshToken(challengeToken) },
+      include: { user: true },
+    });
+    if (
+      !challenge ||
+      challenge.consumedAt ||
+      challenge.expiresAt <= now ||
+      challenge.user.role !== UserRole.ADMIN ||
+      challenge.user.status === "DISABLED" ||
+      !challenge.user.phone ||
+      !challenge.user.phoneVerifiedAt
+    ) {
+      throw new UnauthorizedException(
+        "Admin login challenge is invalid or expired",
+      );
+    }
+
+    const otp = await this.assertOtpCodeMatches(
+      challenge.user.phone,
+      OtpPurpose.LOGIN,
+      code,
+      now,
+    );
+
+    let updatedUser: User;
+    try {
+      updatedUser = await this.prisma.$transaction(
+        async (tx) => {
+          const consumedChallenge = await tx.adminLoginChallenge.updateMany({
+            where: {
+              id: challenge.id,
+              consumedAt: null,
+              expiresAt: { gt: now },
+            },
+            data: { consumedAt: now },
+          });
+          if (consumedChallenge.count !== 1) {
+            throw new UnauthorizedException(
+              "Admin login challenge is invalid or expired",
+            );
+          }
+
+          await this.consumeOtpRecord(tx, otp, now);
+          const eligible = await tx.user.updateMany({
+            where: {
+              id: challenge.userId,
+              role: UserRole.ADMIN,
+              status: "ACTIVE",
+              phoneVerifiedAt: { not: null },
+            },
+            data: { lastLoginAt: now },
+          });
+          if (eligible.count !== 1) {
+            throw new UnauthorizedException("Admin access is required");
+          }
+          return tx.user.findUniqueOrThrow({ where: { id: challenge.userId } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        throw new UnauthorizedException(
+          "Admin login challenge is invalid or expired",
+        );
+      }
+      throw error;
+    }
+
+    otpVerificationsTotal.inc({ outcome: "success" });
+    return this.createAuthResponse(updatedUser, true);
+  }
+
+  private async validatePasswordCredentials(
+    dto: LoginDto,
+    requiredRole?: UserRole,
+  ): Promise<User> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     this.assertNotLockedOut(phone);
 
@@ -120,45 +323,61 @@ export class AuthService {
     if (!user) {
       // Counted too, so attackers cannot distinguish unknown phones.
       this.recordFailedLogin(phone);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (user.status === 'DISABLED') {
-      throw new UnauthorizedException('Account is disabled');
+    if (user.status === "DISABLED") {
+      throw new UnauthorizedException("Account is disabled");
     }
 
-    const passwordMatch = await bcryptjs.compare(dto.password, user.passwordHash);
+    const passwordMatch = await bcryptjs.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!passwordMatch) {
       this.recordFailedLogin(phone);
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (!user.phoneVerifiedAt) {
+      throw new UnauthorizedException("Phone verification is required");
+    }
+
+    if (requiredRole && user.role !== requiredRole) {
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     this.failedLogins.delete(phone);
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
-
-    return this.createAuthResponse(updatedUser);
+    return user;
   }
 
-  async refresh(dto: RefreshDto): Promise<AuthResponse> {
+  async refresh(
+    dto: RefreshDto,
+    requiredRole?: UserRole,
+  ): Promise<AuthResponse> {
     const tokenHash = hashRefreshToken(dto.refreshToken);
     const now = new Date();
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.refreshToken.findUnique({
         where: { tokenHash },
         include: { user: true },
       });
+      if (existing?.revokedAt || existing?.replacedById) {
+        await tx.refreshToken.updateMany({
+          where: { userId: existing.userId, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        return { compromisedRefreshToken: true as const };
+      }
       if (
         !existing ||
-        existing.revokedAt ||
         existing.expiresAt <= now ||
-        existing.user.status === 'DISABLED'
+        existing.user.status === "DISABLED" ||
+        !existing.user.phoneVerifiedAt ||
+        (requiredRole !== undefined && existing.user.role !== requiredRole)
       ) {
-        throw new UnauthorizedException('Session is invalid or expired');
+        throw new UnauthorizedException("Session is invalid or expired");
       }
 
       const nextToken = createRefreshTokenValue();
@@ -175,20 +394,48 @@ export class AuthService {
         data: { revokedAt: now },
       });
       if (revoked.count !== 1) {
-        throw new UnauthorizedException('Session is invalid or expired');
+        throw new UnauthorizedException("Session is invalid or expired");
       }
       await tx.refreshToken.update({
         where: { id: existing.id },
         data: { replacedById: replacement.id },
       });
 
+      const adminSessionId =
+        requiredRole === UserRole.ADMIN ? replacement.id : undefined;
+
       return {
         user: toSafeUser(existing.user),
-        accessToken: this.signToken(existing.user.id, existing.user.phone),
+        accessToken: this.signToken(
+          existing.user.id,
+          existing.user.phone,
+          requiredRole === UserRole.ADMIN,
+          adminSessionId,
+        ),
         refreshToken: nextToken,
         refreshTokenExpiresAt: nextExpiresAt,
       };
     });
+
+    if ("compromisedRefreshToken" in result) {
+      throw new UnauthorizedException("Session is invalid or expired");
+    }
+    return result;
+  }
+
+  refreshAdmin(refreshToken: string): Promise<AuthResponse> {
+    return this.refresh({ refreshToken }, UserRole.ADMIN);
+  }
+
+  async logoutRefreshToken(refreshToken: string): Promise<{ revoked: number }> {
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        tokenHash: hashRefreshToken(refreshToken),
+        revokedAt: null,
+      },
+      data: { revokedAt: new Date() },
+    });
+    return { revoked: result.count };
   }
 
   async logout(userId: string, dto: LogoutDto) {
@@ -217,7 +464,7 @@ export class AuthService {
     if (!entry) return;
     if (entry.lockedUntil > Date.now()) {
       throw new HttpException(
-        'Too many failed login attempts. Try again later.',
+        "Too many failed login attempts. Try again later.",
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -253,27 +500,24 @@ export class AuthService {
       now.getTime() + this.getOtpExpiryMinutes() * 60 * 1000,
     );
 
-    await this.prisma.otpCode.updateMany({
-      where: {
-        phone,
-        purpose,
-        consumedAt: null,
-        expiresAt: { gt: now },
-      },
-      data: { consumedAt: now },
+    const otp = await this.replaceActiveOtp({
+      phone,
+      purpose,
+      codeHash,
+      expiresAt,
+      maxAttempts: this.getOtpMaxAttempts(),
     });
 
-    await this.prisma.otpCode.create({
-      data: {
-        phone,
-        purpose,
-        codeHash,
-        expiresAt,
-        maxAttempts: this.getOtpMaxAttempts(),
-      },
-    });
-
-    const delivered = await channel.deliver(phone, code, purpose);
+    let delivered;
+    try {
+      delivered = await channel.deliver(phone, code, purpose);
+    } catch {
+      await this.prisma.otpCode.updateMany({
+        where: { id: otp.id, consumedAt: null },
+        data: { consumedAt: new Date() },
+      });
+      throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+    }
     otpRequestsTotal.inc({ delivery: delivered.delivery });
 
     return {
@@ -287,57 +531,44 @@ export class AuthService {
   }
 
   /**
-   * dev -> local echo channel; whatsapp -> pending provider phase;
+   * dev -> local echo channel; whatsapp -> Meta Cloud API;
    * disabled -> null (feature off).
    */
   private resolveOtpChannel(mode: string): OtpChannel | null {
-    if (mode === 'dev') {
+    if (mode === "dev") {
       return new DevEchoOtpChannel(this.getDevOtpCode());
+    }
+    if (mode === "whatsapp") {
+      return new WhatsAppOtpChannel();
     }
     return null;
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<OtpVerifyResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
-    const code = this.requiredText(dto.code, 'code');
+    const code = this.requiredText(dto.code, "code");
     const purpose = dto.purpose;
     const now = new Date();
 
-    if (this.getOtpMode() !== 'dev' && code === this.getDevOtpCode()) {
-      otpVerificationsTotal.inc({ outcome: 'failure' });
-      throw new BadRequestException('OTP code is invalid or expired');
+    if (purpose === OtpPurpose.REGISTER) {
+      throw new BadRequestException(
+        "Complete registration through POST /auth/register/complete",
+      );
     }
 
-    const otp = await this.prisma.otpCode.findFirst({
-      where: { phone, purpose, consumedAt: null },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!otp || otp.expiresAt <= now || otp.attempts >= otp.maxAttempts) {
-      if (otp && !otp.consumedAt) {
-        await this.prisma.otpCode.update({
-          where: { id: otp.id },
-          data: { consumedAt: now },
-        });
-      }
-      otpVerificationsTotal.inc({ outcome: 'failure' });
-      throw new BadRequestException('OTP code is invalid or expired');
-    }
-
-    const matches = await bcryptjs.compare(code, otp.codeHash);
-    if (!matches) {
-      await this.recordFailedOtpAttempt(otp, now);
-      otpVerificationsTotal.inc({ outcome: 'failure' });
-      throw new BadRequestException('OTP code is invalid or expired');
-    }
-
-    await this.prisma.otpCode.update({
-      where: { id: otp.id },
-      data: { consumedAt: now },
-    });
-    otpVerificationsTotal.inc({ outcome: 'success' });
+    const otp = await this.assertOtpCodeMatches(phone, purpose, code, now);
+    await this.consumeOtpRecord(this.prisma, otp, now);
+    otpVerificationsTotal.inc({ outcome: "success" });
 
     const user = await this.handleVerifiedOtp(phone, purpose, now);
+    if (purpose === OtpPurpose.LOGIN && !user) {
+      throw new BadRequestException("OTP code is invalid or expired");
+    }
+    if (purpose === OtpPurpose.LOGIN && user?.role === UserRole.ADMIN) {
+      throw new UnauthorizedException(
+        "Admin accounts must use password and OTP login",
+      );
+    }
     const auth =
       purpose === OtpPurpose.LOGIN && user
         ? await this.createAuthResponse(user)
@@ -393,15 +624,18 @@ export class AuthService {
 
     // Same generic error as a wrong code — a consumed OTP on an unknown
     // phone must not disclose account existence.
-    if (!user || user.status === 'DISABLED') {
-      throw new BadRequestException('OTP code is invalid or expired');
+    if (!user || user.status === "DISABLED") {
+      throw new BadRequestException("OTP code is invalid or expired");
     }
 
     const passwordHash = await bcryptjs.hash(dto.newPassword, 10);
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: user.id },
-        data: { passwordHash },
+        data: {
+          passwordHash,
+          phoneVerifiedAt: user.phoneVerifiedAt ?? new Date(),
+        },
       }),
       this.prisma.refreshToken.updateMany({
         where: { userId: user.id, revokedAt: null },
@@ -414,10 +648,16 @@ export class AuthService {
     return { reset: true, phone: verification.phone };
   }
 
-  private async createAuthResponse(user: User): Promise<AuthResponse> {
+  private async createAuthResponse(
+    user: User,
+    adminMfa = false,
+  ): Promise<AuthResponse> {
+    if (user.status === "DISABLED" || !user.phoneVerifiedAt) {
+      throw new UnauthorizedException("Phone verification is required");
+    }
     const refreshToken = createRefreshTokenValue();
     const refreshTokenExpiresAt = refreshTokenExpiry();
-    await this.prisma.refreshToken.create({
+    const refreshSession = await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
         tokenHash: hashRefreshToken(refreshToken),
@@ -426,14 +666,30 @@ export class AuthService {
     });
     return {
       user: toSafeUser(user),
-      accessToken: this.signToken(user.id, user.phone),
+      accessToken: this.signToken(
+        user.id,
+        user.phone,
+        adminMfa,
+        adminMfa ? refreshSession.id : undefined,
+      ),
       refreshToken,
       refreshTokenExpiresAt,
     };
   }
 
-  private signToken(userId: string, phone: string | null): string {
-    const payload: JwtPayload = { sub: userId, phone };
+  private signToken(
+    userId: string,
+    phone: string | null,
+    adminMfa = false,
+    adminSessionId?: string,
+  ): string {
+    const payload: JwtPayload = {
+      sub: userId,
+      phone,
+      ...(adminMfa && adminSessionId
+        ? { amr: "admin_mfa" as const, sid: adminSessionId }
+        : {}),
+    };
     return this.jwtService.sign(payload);
   }
 
@@ -447,8 +703,8 @@ export class AuthService {
     });
 
     if (purpose === OtpPurpose.LOGIN) {
-      if (user?.status === 'DISABLED') {
-        throw new BadRequestException('OTP code is invalid or expired');
+      if (user?.status === "DISABLED") {
+        throw new BadRequestException("OTP code is invalid or expired");
       }
 
       if (!user) {
@@ -460,12 +716,12 @@ export class AuthService {
         }
 
         const passwordHash = await bcryptjs.hash(
-          randomBytes(24).toString('hex'),
+          randomBytes(24).toString("hex"),
           10,
         );
         return this.prisma.user.create({
           data: {
-            name: 'مشارك أعرست',
+            name: "مشارك أعرست",
             phone,
             passwordHash,
             phoneVerifiedAt: now,
@@ -498,30 +754,123 @@ export class AuthService {
 
   private async recordFailedOtpAttempt(otp: OtpCode, now: Date): Promise<void> {
     const attempts = otp.attempts + 1;
-    await this.prisma.otpCode.update({
-      where: { id: otp.id },
+    await this.prisma.otpCode.updateMany({
+      where: { id: otp.id, consumedAt: null, expiresAt: { gt: now } },
       data: {
-        attempts,
+        attempts: { increment: 1 },
         ...(attempts >= otp.maxAttempts ? { consumedAt: now } : {}),
       },
     });
   }
 
-  private getOtpMode(): 'dev' | 'whatsapp' | 'disabled' {
-    const configured = (process.env.AUTH_OTP_MODE ?? '').trim().toLowerCase();
-    if (configured === 'dev') {
-      return process.env.NODE_ENV === 'production' ? 'disabled' : 'dev';
+  private async replaceActiveOtp(
+    data: Pick<
+      Prisma.OtpCodeUncheckedCreateInput,
+      "phone" | "purpose" | "codeHash" | "expiresAt" | "maxAttempts"
+    >,
+  ): Promise<OtpCode> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const now = new Date();
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            await tx.otpCode.updateMany({
+              where: {
+                phone: data.phone,
+                purpose: data.purpose,
+                consumedAt: null,
+              },
+              data: { consumedAt: now },
+            });
+            return tx.otpCode.create({ data });
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        const retryable =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          (error.code === "P2002" || error.code === "P2034");
+        if (!retryable || attempt === 2) {
+          throw error;
+        }
+      }
     }
-    if (configured === 'whatsapp' || configured === 'disabled') {
+
+    throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+  }
+
+  private async assertOtpCodeMatches(
+    phone: string,
+    purpose: OtpPurpose,
+    code: string,
+    now: Date,
+  ): Promise<OtpCode> {
+    if (this.getOtpMode() !== "dev" && code === this.getDevOtpCode()) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw new BadRequestException("OTP code is invalid or expired");
+    }
+
+    const otp = await this.prisma.otpCode.findFirst({
+      where: { phone, purpose, consumedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!otp || otp.expiresAt <= now || otp.attempts >= otp.maxAttempts) {
+      if (otp && !otp.consumedAt) {
+        await this.prisma.otpCode.updateMany({
+          where: { id: otp.id, consumedAt: null },
+          data: { consumedAt: now },
+        });
+      }
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw new BadRequestException("OTP code is invalid or expired");
+    }
+
+    const matches = await bcryptjs.compare(code, otp.codeHash);
+    if (!matches) {
+      await this.recordFailedOtpAttempt(otp, now);
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw new BadRequestException("OTP code is invalid or expired");
+    }
+
+    return otp;
+  }
+
+  private async consumeOtpRecord(
+    client: Pick<Prisma.TransactionClient, "otpCode">,
+    otp: OtpCode,
+    now: Date,
+  ): Promise<void> {
+    const consumed = await client.otpCode.updateMany({
+      where: {
+        id: otp.id,
+        consumedAt: null,
+        expiresAt: { gt: now },
+        attempts: { lt: otp.maxAttempts },
+      },
+      data: { consumedAt: now },
+    });
+    if (consumed.count !== 1) {
+      otpVerificationsTotal.inc({ outcome: "failure" });
+      throw new BadRequestException("OTP code is invalid or expired");
+    }
+  }
+
+  private getOtpMode(): "dev" | "whatsapp" | "disabled" {
+    const configured = (process.env.AUTH_OTP_MODE ?? "").trim().toLowerCase();
+    if (configured === "dev") {
+      return process.env.NODE_ENV === "production" ? "disabled" : "dev";
+    }
+    if (configured === "whatsapp" || configured === "disabled") {
       return configured;
     }
-    return process.env.NODE_ENV === 'production' ? 'disabled' : 'dev';
+    return process.env.NODE_ENV === "production" ? "disabled" : "dev";
   }
 
   private getDevOtpCode(): string {
-    const configured = (process.env.AUTH_DEV_OTP_CODE ?? '').trim();
+    const configured = (process.env.AUTH_DEV_OTP_CODE ?? "").trim();
     if (/^\d{6}$/.test(configured)) return configured;
-    return '123456';
+    return "123456";
   }
 
   private getOtpExpiryMinutes(): number {

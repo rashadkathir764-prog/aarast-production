@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Marketplace Smoke Test
  * Seeds a local ACTIVE provider fixture through Prisma, then verifies public
@@ -187,7 +189,7 @@ async function run() {
   let reviewId = null;
 
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'Marketplace Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
@@ -301,6 +303,7 @@ async function run() {
     }, token);
     check('POST /providers/:id/reviews - HTTP 201', res.status === 201);
     check('review rating saved', res.body?.rating === 5);
+    check('created review hides reviewer phone', !Object.hasOwn(res.body?.user ?? {}, 'phone'));
     reviewId = res.body?.id;
   }
 
@@ -311,12 +314,14 @@ async function run() {
     }, token);
     check('PATCH /reviews/:id - HTTP 200', res.status === 200);
     check('review rating updated', res.body?.rating === 4);
+    check('updated review hides reviewer phone', !Object.hasOwn(res.body?.user ?? {}, 'phone'));
   }
 
   {
     const res = await request('GET', `/providers/${fixture.provider.id}/reviews`);
     check('GET /providers/:id/reviews - HTTP 200', res.status === 200);
     check('provider reviews include created review', Array.isArray(res.body) && res.body.some((review) => review.id === reviewId));
+    check('public reviews hide every reviewer phone', Array.isArray(res.body) && res.body.every((review) => !Object.hasOwn(review.user ?? {}, 'phone')));
   }
 
   {

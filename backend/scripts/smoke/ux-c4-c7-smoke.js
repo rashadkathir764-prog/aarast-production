@@ -1,14 +1,18 @@
 #!/usr/bin/env node
 'use strict';
 
+const { configureSmokeDatabaseUrl } = require('./smoke-utils');
+
+configureSmokeDatabaseUrl();
+
+const { registerVerified } = require('./verified-registration');
+
 const http = require('http');
 const {
   PrismaClient,
   ProviderStatus,
 } = require('@prisma/client');
-const { configureSmokeDatabaseUrl } = require('./smoke-utils');
 
-configureSmokeDatabaseUrl();
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
@@ -59,7 +63,7 @@ function request(method, path, body, token) {
 }
 
 async function register(name, phone) {
-  const response = await request('POST', '/auth/register', {
+  const response = await registerVerified(request, {
     name,
     phone,
     password: PASSWORD,

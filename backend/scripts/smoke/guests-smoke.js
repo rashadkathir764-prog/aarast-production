@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 const http = require('http');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3124';
@@ -72,7 +74,7 @@ async function run() {
   let secondGuestId = null;
 
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'Guests Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,

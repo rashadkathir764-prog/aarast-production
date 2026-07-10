@@ -33,7 +33,9 @@ export function normalizeMediaUpload(input: MediaUploadInput) {
   const contentType = input.contentType.trim().toLowerCase();
   const extension = extensionByContentType.get(contentType);
   if (!extension) {
-    throw new BadRequestException('Only JPEG, PNG, and WebP images are supported');
+    throw new BadRequestException(
+      'Only JPEG, PNG, and WebP images are supported',
+    );
   }
   if (!Number.isInteger(input.byteSize) || input.byteSize < 1) {
     throw new BadRequestException('Image size is invalid');
@@ -75,6 +77,34 @@ export function assertOwnedMediaUrl(
     !actual.pathname.startsWith(expectedPrefix)
   ) {
     throw new BadRequestException('Media URL is not owned by this account');
+  }
+}
+
+/**
+ * Chat attachments are private objects. The client may submit only the opaque
+ * key returned by the signed-upload endpoint, never a public or external URL.
+ */
+export function assertOwnedMediaKey(
+  value: string,
+  purpose: MediaPurpose,
+  userId: string,
+): void {
+  const normalized = value.trim();
+  const escapedUserId = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const expected = new RegExp(
+    `^${purpose}/${escapedUserId}/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(?:jpg|png|webp)$`,
+    'i',
+  );
+  if (
+    !expected.test(normalized) ||
+    normalized.includes('..') ||
+    normalized.includes('?') ||
+    normalized.includes('#') ||
+    normalized.includes('://')
+  ) {
+    throw new BadRequestException(
+      'Media reference is not owned by this account',
+    );
   }
 }
 

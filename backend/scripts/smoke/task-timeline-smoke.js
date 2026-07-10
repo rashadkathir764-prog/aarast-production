@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Task + Timeline Smoke Test
  * Tests the task/timeline backend slice without creating sharing or future modules.
@@ -8,7 +10,7 @@
 
 const http = require('http');
 
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3127';
+const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
 const suffix = `${timestamp.toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`;
 const TEST_PHONE = `+9675${suffix}`;
@@ -76,7 +78,7 @@ async function run() {
   let installmentId = null;
 
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'Task Timeline Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,

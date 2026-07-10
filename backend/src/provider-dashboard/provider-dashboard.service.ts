@@ -26,6 +26,7 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { toReviewIdentity } from '../common/privacy/review-identity';
 import { PhoneNormalizer } from '../common/phone/phone-normalizer';
 import {
   assertQuoteRequestTransition,
@@ -71,7 +72,7 @@ type ProviderQuoteRecord = QuoteRequest & {
   offers?: QuoteOffer[];
 };
 type ProviderReviewRecord = ProviderReview & {
-  user: Pick<User, 'id' | 'name' | 'phone'>;
+  user: Pick<User, 'id' | 'name'>;
 };
 
 @Injectable()
@@ -647,7 +648,7 @@ export class ProviderDashboardService {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     const reviews = await this.prisma.providerReview.findMany({
       where: { providerId: provider.id },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: { user: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -972,7 +973,7 @@ export class ProviderDashboardService {
     return {
       id: review.id,
       userId: review.userId,
-      user: review.user,
+      user: toReviewIdentity(review.user),
       providerId: review.providerId,
       rating: review.rating,
       comment: review.comment,

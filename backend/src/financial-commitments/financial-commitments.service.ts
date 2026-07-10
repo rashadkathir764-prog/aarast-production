@@ -9,6 +9,7 @@ import {
   FinancialCommitmentStatus,
   FinancialInstallment,
   FinancialPaymentRecord,
+  FinancialPaymentRecordType,
   InstallmentStatus,
   Prisma,
 } from "@prisma/client";
@@ -58,12 +59,21 @@ export interface FinancialPaymentRecordResponse {
   budgetCategoryId: string;
   title: string;
   amount: string;
+  entryType: FinancialPaymentRecordType;
+  financialInstallmentId: string | null;
+  reversalOfId: string | null;
+  reversedById: string | null;
+  reversible: boolean;
   paidAt: Date;
   method: string | null;
   note: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
+
+type FinancialPaymentRecordWithReversal = FinancialPaymentRecord & {
+  reversedBy?: Pick<FinancialPaymentRecord, "id"> | null;
+};
 
 export interface FinancialInstallmentResponse {
   id: string;
@@ -211,46 +221,57 @@ export class FinancialCommitmentsService {
       );
     }
 
-    const refs = await this.normalizeReferences(existing.weddingPlanId, {
-      providerId:
-        dto.providerId !== undefined ? dto.providerId : existing.providerId,
-      planProviderLinkId:
-        dto.planProviderLinkId !== undefined
-          ? dto.planProviderLinkId
-          : existing.planProviderLinkId,
-      quoteRequestId:
-        dto.quoteRequestId !== undefined
-          ? dto.quoteRequestId
-          : existing.quoteRequestId,
-      quoteOfferId:
-        dto.quoteOfferId !== undefined
-          ? dto.quoteOfferId
-          : existing.quoteOfferId,
-    });
-    const nextTotal =
+    const referencesChanged =
+      dto.providerId !== undefined ||
+      dto.planProviderLinkId !== undefined ||
+      dto.quoteRequestId !== undefined ||
+      dto.quoteOfferId !== undefined;
+    const refs = referencesChanged
+      ? await this.normalizeReferences(existing.weddingPlanId, {
+          providerId:
+            dto.providerId !== undefined ? dto.providerId : existing.providerId,
+          planProviderLinkId:
+            dto.planProviderLinkId !== undefined
+              ? dto.planProviderLinkId
+              : existing.planProviderLinkId,
+          quoteRequestId:
+            dto.quoteRequestId !== undefined
+              ? dto.quoteRequestId
+              : existing.quoteRequestId,
+          quoteOfferId:
+            dto.quoteOfferId !== undefined
+              ? dto.quoteOfferId
+              : existing.quoteOfferId,
+        })
+      : null;
+    const requestedTotal =
       dto.totalAmount !== undefined
         ? this.requiredPositiveDecimal(dto.totalAmount, "totalAmount")
-        : existing.totalAmount;
-    this.assertPaidDoesNotExceedTotal(nextTotal, existing.paidAmount);
-    const nextStatus =
-      dto.status === FinancialCommitmentStatus.CANCELLED
-        ? FinancialCommitmentStatus.CANCELLED
-        : dto.status !== undefined || dto.totalAmount !== undefined
-          ? this.deriveCommitmentStatus(nextTotal, existing.paidAmount)
-          : existing.status;
+        : null;
 
-    const nextBudgetCategoryId =
+    const requestedBudgetCategoryId =
       dto.budgetCategoryId !== undefined
         ? dto.budgetCategoryId.trim()
-        : existing.budgetCategoryId;
+        : null;
     const commitment = await this.prisma.$transaction(async (tx) => {
+      const current = await this.lockCommitment(tx, id);
+      const nextTotal = requestedTotal ?? current.totalAmount;
+      this.assertPaidDoesNotExceedTotal(nextTotal, current.paidAmount);
+      const nextStatus =
+        dto.status === FinancialCommitmentStatus.CANCELLED
+          ? FinancialCommitmentStatus.CANCELLED
+          : dto.status !== undefined || dto.totalAmount !== undefined
+            ? this.deriveCommitmentStatus(nextTotal, current.paidAmount)
+            : current.status;
+      const nextBudgetCategoryId =
+        requestedBudgetCategoryId ?? current.budgetCategoryId;
       const updated = await tx.financialCommitment.update({
         where: { id },
         data: {
           ...(dto.budgetCategoryId !== undefined
             ? { budgetCategoryId: nextBudgetCategoryId }
             : {}),
-          ...refs,
+          ...(refs ?? {}),
           ...(dto.sourceType !== undefined
             ? { sourceType: dto.sourceType }
             : {}),
@@ -283,11 +304,9 @@ export class FinancialCommitmentsService {
             : {}),
         },
       });
-      if (nextBudgetCategoryId !== existing.budgetCategoryId) {
-        await tx.financialPaymentRecord.updateMany({
-          where: { financialCommitmentId: id },
-          data: { budgetCategoryId: nextBudgetCategoryId },
-        });
+      if (nextBudgetCategoryId !== current.budgetCategoryId) {
+        // Payment rows are historical ledger entries. A commitment may move
+        // category, but past payments retain the category recorded at entry.
         await tx.financialInstallment.updateMany({
           where: { financialCommitmentId: id },
           data: { budgetCategoryId: nextBudgetCategoryId },
@@ -308,7 +327,19 @@ export class FinancialCommitmentsService {
       commitment.weddingPlanId,
       currentUser,
     );
-    await this.prisma.financialCommitment.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      await this.lockCommitmentInstallments(tx, id);
+      await this.lockCommitment(tx, id);
+      const paymentHistory = await tx.financialPaymentRecord.count({
+        where: { financialCommitmentId: id },
+      });
+      if (paymentHistory > 0) {
+        throw new BadRequestException(
+          "Commitments with payment history cannot be deleted; cancel the commitment instead",
+        );
+      }
+      await tx.financialCommitment.delete({ where: { id } });
+    });
     return { id, deleted: true };
   }
 
@@ -361,6 +392,7 @@ export class FinancialCommitmentsService {
 
     const records = await this.prisma.financialPaymentRecord.findMany({
       where: { financialCommitmentId },
+      include: { reversedBy: { select: { id: true } } },
       orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
       take: DEFAULT_LIST_CAP,
     });
@@ -381,6 +413,7 @@ export class FinancialCommitmentsService {
 
     const records = await this.prisma.financialPaymentRecord.findMany({
       where: { weddingPlanId },
+      include: { reversedBy: { select: { id: true } } },
       orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
       ...pageArgs(query),
     });
@@ -391,23 +424,84 @@ export class FinancialCommitmentsService {
   async removePaymentRecord(
     currentUser: AuthenticatedUser,
     id: string,
-  ): Promise<{ id: string; deleted: true }> {
+  ): Promise<{
+    id: string;
+    deleted: false;
+    reversed: true;
+    reversalRecord: FinancialPaymentRecordResponse;
+  }> {
     const existing = await this.findPaymentRecordOrThrow(id);
     await this.permissionService.assertFinancialManageable(
       existing.weddingPlanId,
       currentUser,
     );
 
-    await this.prisma.$transaction(async (tx) => {
+    const reversal = await this.prisma.$transaction(async (tx) => {
+      await this.lockPaymentRecord(tx, id);
+      const current = await tx.financialPaymentRecord.findUniqueOrThrow({
+        where: { id },
+        include: { reversedBy: true },
+      });
+      if (current.entryType === FinancialPaymentRecordType.REVERSAL) {
+        throw new BadRequestException("Reversal entries cannot be reversed");
+      }
+      if (
+        current.legacyDebtId ||
+        current.legacyInstallmentId ||
+        current.legacyExpenseId
+      ) {
+        throw new BadRequestException(
+          "Legacy payment entries must be adjusted from their original debt or installment",
+        );
+      }
+      if (current.reversedBy) return current.reversedBy;
+
+      if (current.financialInstallmentId) {
+        await this.lockInstallment(tx, current.financialInstallmentId);
+        const installment = await tx.financialInstallment.findUniqueOrThrow({
+          where: { id: current.financialInstallmentId },
+        });
+        if (installment.status === InstallmentStatus.PAID) {
+          await tx.financialInstallment.update({
+            where: { id: installment.id },
+            data: { status: InstallmentStatus.PENDING, paidAt: null },
+          });
+        }
+      }
+
       const locked = await this.lockCommitment(
         tx,
-        existing.financialCommitmentId,
+        current.financialCommitmentId,
       );
-      await tx.financialPaymentRecord.delete({ where: { id } });
-      await this.applyPaymentDelta(tx, locked, existing.amount.negated());
+      if (current.amount.gt(locked.paidAmount)) {
+        throw new BadRequestException(
+          "Payment cannot be reversed because the commitment balance is inconsistent",
+        );
+      }
+      const created = await tx.financialPaymentRecord.create({
+        data: {
+          weddingPlanId: current.weddingPlanId,
+          financialCommitmentId: current.financialCommitmentId,
+          budgetCategoryId: current.budgetCategoryId,
+          title: `عكس: ${current.title}`,
+          amount: current.amount,
+          entryType: FinancialPaymentRecordType.REVERSAL,
+          paidAt: new Date(),
+          method: current.method,
+          note: `قيد عكس للسجل ${current.id}`,
+          reversalOfId: current.id,
+        },
+      });
+      await this.applyPaymentDelta(tx, locked, current.amount.negated());
+      return created;
     });
 
-    return { id, deleted: true };
+    return {
+      id,
+      deleted: false,
+      reversed: true,
+      reversalRecord: this.toPaymentRecordResponse(reversal),
+    };
   }
 
   async createInstallment(
@@ -448,6 +542,7 @@ export class FinancialCommitmentsService {
             budgetCategoryId: locked.budgetCategoryId,
             title: `قسط: ${locked.title}`,
             amount,
+            financialInstallmentId: created.id,
             paidAt: created.paidAt ?? new Date(),
             note: created.note,
           },
@@ -524,20 +619,31 @@ export class FinancialCommitmentsService {
       return this.payInstallment(currentUser, id, dto.paidAt);
     }
 
-    const installment = await this.prisma.financialInstallment.update({
-      where: { id },
-      data: {
-        ...(dto.amount !== undefined
-          ? { amount: this.requiredPositiveDecimal(dto.amount, "amount") }
-          : {}),
-        ...(dto.dueDate !== undefined
-          ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
-          : {}),
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
-        ...(dto.note !== undefined
-          ? { note: this.optionalText(dto.note) }
-          : {}),
-      },
+    const installment = await this.prisma.$transaction(async (tx) => {
+      await this.lockInstallment(tx, id);
+      const current = await tx.financialInstallment.findUniqueOrThrow({
+        where: { id },
+      });
+      if (current.status === InstallmentStatus.PAID) {
+        throw new BadRequestException(
+          "Paid financial installments cannot be edited; reverse the linked payment instead",
+        );
+      }
+      return tx.financialInstallment.update({
+        where: { id },
+        data: {
+          ...(dto.amount !== undefined
+            ? { amount: this.requiredPositiveDecimal(dto.amount, "amount") }
+            : {}),
+          ...(dto.dueDate !== undefined
+            ? { dueDate: this.optionalDate(dto.dueDate, "dueDate") }
+            : {}),
+          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          ...(dto.note !== undefined
+            ? { note: this.optionalText(dto.note) }
+            : {}),
+        },
+      });
     });
 
     return this.toInstallmentResponse(installment);
@@ -558,6 +664,7 @@ export class FinancialCommitmentsService {
     // counter must only tick when a record was actually written.
     let recordedPayment = false;
     const installment = await this.prisma.$transaction(async (tx) => {
+      await this.lockInstallment(tx, id);
       const current = await tx.financialInstallment.findUniqueOrThrow({
         where: { id },
       });
@@ -583,6 +690,7 @@ export class FinancialCommitmentsService {
           budgetCategoryId: locked.budgetCategoryId,
           title: `قسط: ${locked.title}`,
           amount: current.amount,
+          financialInstallmentId: current.id,
           paidAt: paidDate,
           note: current.note,
         },
@@ -605,13 +713,26 @@ export class FinancialCommitmentsService {
       existing.weddingPlanId,
       currentUser,
     );
-    if (existing.status === InstallmentStatus.PAID) {
-      throw new BadRequestException(
-        "Paid financial installments cannot be deleted; adjust the payment record instead",
-      );
-    }
-
-    await this.prisma.financialInstallment.delete({ where: { id } });
+    await this.prisma.$transaction(async (tx) => {
+      await this.lockInstallment(tx, id);
+      const current = await tx.financialInstallment.findUniqueOrThrow({
+        where: { id },
+      });
+      if (current.status === InstallmentStatus.PAID) {
+        throw new BadRequestException(
+          "Paid financial installments cannot be deleted; reverse the linked payment instead",
+        );
+      }
+      const paymentHistory = await tx.financialPaymentRecord.count({
+        where: { financialInstallmentId: id },
+      });
+      if (paymentHistory > 0) {
+        throw new BadRequestException(
+          "Installments with payment history cannot be deleted; keep the audit trail",
+        );
+      }
+      await tx.financialInstallment.delete({ where: { id } });
+    });
     return { id, deleted: true };
   }
 
@@ -761,6 +882,27 @@ export class FinancialCommitmentsService {
   ): Promise<FinancialCommitment> {
     await tx.$queryRaw`SELECT id FROM "FinancialCommitment" WHERE id = ${id} FOR UPDATE`;
     return tx.financialCommitment.findUniqueOrThrow({ where: { id } });
+  }
+
+  private async lockInstallment(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "FinancialInstallment" WHERE id = ${id} FOR UPDATE`;
+  }
+
+  private async lockCommitmentInstallments(
+    tx: Prisma.TransactionClient,
+    financialCommitmentId: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "FinancialInstallment" WHERE "financialCommitmentId" = ${financialCommitmentId} FOR UPDATE`;
+  }
+
+  private async lockPaymentRecord(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "FinancialPaymentRecord" WHERE id = ${id} FOR UPDATE`;
   }
 
   private async applyPaymentDelta(
@@ -924,8 +1066,9 @@ export class FinancialCommitmentsService {
   }
 
   private toPaymentRecordResponse(
-    record: FinancialPaymentRecord,
+    record: FinancialPaymentRecordWithReversal,
   ): FinancialPaymentRecordResponse {
+    const reversedById = record.reversedBy?.id ?? null;
     return {
       id: record.id,
       weddingPlanId: record.weddingPlanId,
@@ -933,6 +1076,16 @@ export class FinancialCommitmentsService {
       budgetCategoryId: record.budgetCategoryId,
       title: record.title,
       amount: record.amount.toString(),
+      entryType: record.entryType,
+      financialInstallmentId: record.financialInstallmentId,
+      reversalOfId: record.reversalOfId,
+      reversedById,
+      reversible:
+        record.entryType === FinancialPaymentRecordType.PAYMENT &&
+        !record.legacyDebtId &&
+        !record.legacyInstallmentId &&
+        !record.legacyExpenseId &&
+        !reversedById,
       paidAt: record.paidAt,
       method: record.method,
       note: record.note,

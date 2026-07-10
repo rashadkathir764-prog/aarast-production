@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Sharing Roles APIs Smoke Test
  * Covers /api/v1 members, invite tokens, role permissions, and revoke flow.
@@ -68,7 +70,7 @@ function hasPasswordHash(value) {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

@@ -219,26 +219,30 @@ export class DebtsService {
     // paidAmount > totalAmount with status OPEN must not be representable.
     const amountsChanged =
       dto.totalAmount !== undefined || dto.paidAmount !== undefined;
-    const nextTotal =
+    const requestedTotal =
       dto.totalAmount !== undefined
         ? new Prisma.Decimal(
             this.requiredNonNegativeDecimal(dto.totalAmount, "totalAmount"),
           )
-        : existing.totalAmount;
-    const nextPaid =
+        : null;
+    const requestedPaid =
       dto.paidAmount !== undefined
         ? new Prisma.Decimal(
             this.requiredNonNegativeDecimal(dto.paidAmount, "paidAmount"),
           )
-        : existing.paidAmount;
+        : null;
     const shouldDeriveStatus =
       amountsChanged ||
       (dto.status !== undefined && dto.status !== DebtStatus.CANCELLED);
-    const derived = shouldDeriveStatus
-      ? applyDebtPaymentDelta(nextTotal, nextPaid, new Prisma.Decimal(0))
-      : null;
 
     const debt = await this.prisma.$transaction(async (tx) => {
+      await this.lockDebt(tx, id);
+      const current = await tx.debt.findUniqueOrThrow({ where: { id } });
+      const nextTotal = requestedTotal ?? current.totalAmount;
+      const nextPaid = requestedPaid ?? current.paidAmount;
+      const derived = shouldDeriveStatus
+        ? applyDebtPaymentDelta(nextTotal, nextPaid, new Prisma.Decimal(0))
+        : null;
       if (amountsChanged) {
         const paidInstallmentsTotal = await paidLegacyInstallmentsTotal(tx, id);
         if (nextTotal.lt(paidInstallmentsTotal)) {
@@ -301,6 +305,8 @@ export class DebtsService {
       currentUser,
     );
     await this.prisma.$transaction(async (tx) => {
+      await this.lockDebtInstallments(tx, id);
+      await this.lockDebt(tx, id);
       await removeLegacyDebtMirror(tx, id);
       await tx.debt.delete({ where: { id } });
     });
@@ -315,6 +321,20 @@ export class DebtsService {
     }
 
     return debt;
+  }
+
+  private async lockDebt(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Debt" WHERE id = ${id} FOR UPDATE`;
+  }
+
+  private async lockDebtInstallments(
+    tx: Prisma.TransactionClient,
+    debtId: string,
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Installment" WHERE "debtId" = ${debtId} FOR UPDATE`;
   }
 
   private requiredText(value: string, field: string): string {

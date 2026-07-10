@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Dashboard Summary Smoke Test
  * Verifies /api/v1/wedding-plans/:planId/dashboard-summary uses real records,
@@ -75,7 +77,7 @@ function dateOffsetIso(days) {
 }
 
 async function registerUser(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

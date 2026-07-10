@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import * as Sentry from '@sentry/node';
+import { requestRouteTemplate } from '../observability/sanitize-request-target';
 
 interface ResponseLike {
   status(code: number): ResponseLike;
@@ -16,9 +17,29 @@ interface ResponseLike {
 }
 
 interface RequestLike {
+  baseUrl?: string;
   method?: string;
   originalUrl?: string;
+  route?: { path?: unknown };
   url?: string;
+}
+
+export function safeExceptionType(exception: unknown): string {
+  if (exception instanceof Error) {
+    return (
+      exception.constructor.name
+        .replace(/[^A-Za-z0-9_.-]/g, '')
+        .slice(0, 80) || 'Error'
+    );
+  }
+  return typeof exception;
+}
+
+export function safeTelemetryException(
+  status: number,
+  exception: unknown,
+): Error {
+  return new Error(`HTTP ${status} ${safeExceptionType(exception)}`);
 }
 
 /**
@@ -35,19 +56,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<ResponseLike>();
     const request = ctx.getRequest<RequestLike>();
-    const route = `${request.method ?? ''} ${request.originalUrl ?? request.url ?? ''}`;
+    const route = `${request.method ?? ''} ${requestRouteTemplate(request)}`;
 
     const mapped = this.mapException(exception);
 
     if (mapped.status >= 500) {
-      this.logger.error(
-        `${route} -> ${mapped.status}: ${this.describe(exception)}`,
-        exception instanceof Error ? exception.stack : undefined,
-      );
+      const exceptionType = safeExceptionType(exception);
+      this.logger.error(`${route} -> ${mapped.status} type=${exceptionType}`);
       // No-op unless Sentry.init ran at bootstrap (SENTRY_DSN set).
-      Sentry.captureException(exception, { tags: { route } });
+      Sentry.captureException(
+        safeTelemetryException(mapped.status, exception),
+        { tags: { route, exceptionType, status: String(mapped.status) } },
+      );
     } else {
-      this.logger.warn(`${route} -> ${mapped.status}: ${mapped.message}`);
+      this.logger.warn(
+        `${route} -> ${mapped.status} type=${safeExceptionType(exception)}`,
+      );
     }
 
     response.status(mapped.status).json(mapped.body);
@@ -108,8 +132,4 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     return { status, message, body: { statusCode: status, message } };
   }
 
-  private describe(exception: unknown): string {
-    if (exception instanceof Error) return exception.message;
-    return String(exception);
-  }
 }

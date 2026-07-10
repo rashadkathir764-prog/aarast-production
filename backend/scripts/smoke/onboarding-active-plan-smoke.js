@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Onboarding + Active Plan Smoke Test
  * Covers authenticated onboarding, /api/v1 compatibility paths, real category
@@ -76,7 +78,7 @@ async function run() {
   let secondPlanId = null;
 
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'Onboarding Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,

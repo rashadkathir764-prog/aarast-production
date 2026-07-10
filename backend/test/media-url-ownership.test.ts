@@ -60,17 +60,24 @@ test("normalizeOwnedMediaUrl accepts owned, clears empty, rejects foreign", asyn
     assert.equal(normalizeOwnedMediaUrl(null, "user-avatar", "u1"), null);
     // external host
     assert.throws(
-      () => normalizeOwnedMediaUrl("https://evil.test/x.webp", "user-avatar", "u1"),
+      () =>
+        normalizeOwnedMediaUrl("https://evil.test/x.webp", "user-avatar", "u1"),
       BadRequestException,
     );
     // owned bucket but a different user's path
     assert.throws(
-      () => normalizeOwnedMediaUrl(owned("user-avatar", "u2"), "user-avatar", "u1"),
+      () =>
+        normalizeOwnedMediaUrl(owned("user-avatar", "u2"), "user-avatar", "u1"),
       BadRequestException,
     );
     // owned bucket but a different purpose
     assert.throws(
-      () => normalizeOwnedMediaUrl(owned("provider-logo", "u1"), "user-avatar", "u1"),
+      () =>
+        normalizeOwnedMediaUrl(
+          owned("provider-logo", "u1"),
+          "user-avatar",
+          "u1",
+        ),
       BadRequestException,
     );
     // http downgrade is rejected even on the owned host
@@ -119,7 +126,8 @@ test("requireOwnedMediaUrl demands a non-empty owned URL", async () => {
       BadRequestException,
     );
     assert.throws(
-      () => requireOwnedMediaUrl("https://evil.test/x.webp", "service-image", "u1"),
+      () =>
+        requireOwnedMediaUrl("https://evil.test/x.webp", "service-image", "u1"),
       BadRequestException,
     );
   });
@@ -135,11 +143,14 @@ test("profile update rejects an external avatar and stores an owned one", async 
         update: async ({ data }: any) => safeUserRow(data.avatarUrl ?? null),
       },
     };
-    const svc = new UsersService(prisma as any);
+    const svc = new UsersService(prisma as any, {} as any);
     const current = { id: "u1" } as any;
 
     await assert.rejects(
-      () => svc.updateMe(current, { avatarUrl: "https://evil.test/pic.webp" } as any),
+      () =>
+        svc.updateMe(current, {
+          avatarUrl: "https://evil.test/pic.webp",
+        } as any),
       BadRequestException,
     );
 
@@ -170,11 +181,9 @@ test("service image creation rejects an external URL before persisting", async (
 
     await assert.rejects(
       () =>
-        svc.createServiceImage(
-          { id: "u1" } as any,
-          serviceId,
-          { imageUrl: "https://evil.test/x.webp" } as any,
-        ),
+        svc.createServiceImage({ id: "u1" } as any, serviceId, {
+          imageUrl: "https://evil.test/x.webp",
+        } as any),
       BadRequestException,
     );
   });

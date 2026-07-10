@@ -32,6 +32,7 @@ import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { NotificationsService } from "../notifications/notifications.service";
 import { requiredMoneyAmount } from "../common/validation/money";
 import { PrismaService } from "../prisma/prisma.service";
+import { toReviewIdentity } from "../common/privacy/review-identity";
 import {
   PermissionService,
   type PlanAccessContext,
@@ -79,7 +80,7 @@ type PackageWithService = ProviderPackage & {
   service?: ProviderService | null;
 };
 type ReviewWithUser = ProviderReview & {
-  user: Pick<User, "id" | "name" | "phone">;
+  user: Pick<User, "id" | "name">;
 };
 type FavoriteWithProvider = FavoriteProvider & {
   provider: ProviderWithCity;
@@ -355,7 +356,7 @@ export class MarketplaceService {
     await this.findActiveProviderOrThrow(providerId);
     const reviews = await this.prisma.providerReview.findMany({
       where: { providerId, status: ReviewStatus.PUBLISHED },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: { user: { select: { id: true, name: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -863,7 +864,7 @@ export class MarketplaceService {
         rating: dto.rating,
         comment: this.optionalText(dto.comment),
       },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: { user: { select: { id: true, name: true } } },
     });
 
     await this.recalculateProviderRating(providerId);
@@ -892,7 +893,7 @@ export class MarketplaceService {
           ? { comment: this.optionalText(dto.comment) }
           : {}),
       },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: { user: { select: { id: true, name: true } } },
     });
 
     await this.recalculateProviderRating(existing.providerId);
@@ -1304,7 +1305,7 @@ export class MarketplaceService {
     return {
       id: review.id,
       userId: review.userId,
-      user: review.user,
+      user: toReviewIdentity(review.user),
       providerId: review.providerId,
       rating: review.rating,
       comment: review.comment,

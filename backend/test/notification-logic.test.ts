@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../src/auth/authenticated-user.interface';
 import { NotificationsService } from '../src/notifications/notifications.service';
+import { OutboxService } from '../src/outbox/outbox.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PermissionService } from '../src/sharing/permission.service';
 
@@ -67,10 +68,17 @@ function createHarness() {
       return item;
     },
   };
-  const prisma = { notification } as unknown as PrismaService;
+  const outboxEvent = { create: async () => ({ id: 'outbox-1' }) };
+  const prisma = {
+    notification,
+    outboxEvent,
+    $transaction: async (
+      operation: (tx: { notification: typeof notification; outboxEvent: typeof outboxEvent }) => unknown,
+    ) => operation({ notification, outboxEvent }),
+  } as unknown as PrismaService;
   const permissions = {} as PermissionService;
   return {
-    service: new NotificationsService(prisma, permissions),
+    service: new NotificationsService(prisma, permissions, new OutboxService()),
     records,
   };
 }

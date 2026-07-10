@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Provider Dashboard Smoke Test
  * Creates a provider application through HTTP, manages provider-owned catalog
@@ -112,7 +114,7 @@ async function ensureReferenceData() {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,
@@ -340,6 +342,7 @@ async function run() {
     const res = await request('GET', '/provider/me/reviews', null, providerToken);
     check('GET /provider/me/reviews - HTTP 200', res.status === 200);
     check('provider reviews include customer review', Array.isArray(res.body) && res.body.some((review) => review.id === reviewId));
+    check('provider reviews hide every customer phone', Array.isArray(res.body) && res.body.every((review) => !Object.hasOwn(review.user ?? {}, 'phone')));
   }
 
   {

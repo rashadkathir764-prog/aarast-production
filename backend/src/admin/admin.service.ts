@@ -24,10 +24,15 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
+import { toReviewIdentity } from '../common/privacy/review-identity';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
+import {
+  maskPhone,
+  toAdminNotificationPrivacyView,
+} from './admin-privacy';
 import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
 import {
@@ -103,7 +108,7 @@ type AdminServiceWithDetails = ProviderService & {
 };
 
 type AdminReviewWithDetails = ProviderReview & {
-  user: SafeAdminUser;
+  user: Pick<User, 'id' | 'name'>;
   provider: Provider & {
     city?: City | null;
     primaryCategory?: ProviderCategory | null;
@@ -111,7 +116,7 @@ type AdminReviewWithDetails = ProviderReview & {
 };
 
 type AdminNotificationWithDetails = Notification & {
-  user: SafeAdminUser;
+  user: Pick<User, 'id' | 'name' | 'phone'>;
   weddingPlan?: { id: string; title: string; city: string | null } | null;
 };
 
@@ -830,7 +835,6 @@ export class AdminService {
         OR: [
           { comment: { contains: search, mode: 'insensitive' } },
           { user: { name: { contains: search, mode: 'insensitive' } } },
-          { user: { phone: { contains: search, mode: 'insensitive' } } },
           { provider: { businessName: { contains: search, mode: 'insensitive' } } },
         ],
       });
@@ -854,10 +858,8 @@ export class AdminService {
       and.push({
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
-          { body: { contains: search, mode: 'insensitive' } },
           { entityType: { contains: search, mode: 'insensitive' } },
           { user: { name: { contains: search, mode: 'insensitive' } } },
-          { user: { phone: { contains: search, mode: 'insensitive' } } },
         ],
       });
     }
@@ -875,14 +877,14 @@ export class AdminService {
 
   private adminReviewInclude() {
     return {
-      user: { select: this.userSelect(false) },
+      user: { select: { id: true, name: true } },
       provider: { include: { city: true, primaryCategory: true } },
     } satisfies Prisma.ProviderReviewInclude;
   }
 
   private adminNotificationInclude() {
     return {
-      user: { select: this.userSelect(false) },
+      user: { select: { id: true, name: true, phone: true } },
       weddingPlan: { select: { id: true, title: true, city: true } },
     } satisfies Prisma.NotificationInclude;
   }
@@ -1417,7 +1419,7 @@ export class AdminService {
     return {
       id: review.id,
       userId: review.userId,
-      user: this.toSafeUser(review.user),
+      user: toReviewIdentity(review.user),
       providerId: review.providerId,
       provider: this.toProviderSummary(review.provider),
       rating: review.rating,
@@ -1429,20 +1431,28 @@ export class AdminService {
   }
 
   private toAdminNotificationResponse(notification: AdminNotificationWithDetails) {
+    const privacy = toAdminNotificationPrivacyView(notification);
     return {
       id: notification.id,
       userId: notification.userId,
-      user: this.toSafeUser(notification.user),
+      user: {
+        id: notification.user.id,
+        name: notification.user.name,
+        phoneMasked: maskPhone(notification.user.phone),
+      },
       weddingPlanId: notification.weddingPlanId,
-      weddingPlan: notification.weddingPlan ?? null,
+      weddingPlan: privacy.financialDetailsRedacted
+        ? null
+        : (notification.weddingPlan ?? null),
       type: notification.type,
       priority: notification.priority,
-      title: notification.title,
-      body: notification.body,
-      entityType: notification.entityType,
-      entityId: notification.entityId,
-      routeTarget: notification.routeTarget,
-      data: notification.data,
+      title: privacy.title,
+      body: privacy.body,
+      entityType: privacy.entityType,
+      entityId: privacy.entityId,
+      routeTarget: privacy.routeTarget,
+      data: privacy.data,
+      financialDetailsRedacted: privacy.financialDetailsRedacted,
       readAt: notification.readAt,
       archivedAt: notification.archivedAt,
       createdAt: notification.createdAt,

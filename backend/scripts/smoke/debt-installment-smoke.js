@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Debt + Installment Smoke Test
  * Tests the debt/installment backend slice without creating future modules.
@@ -8,7 +10,7 @@
 
 const http = require('http');
 
-const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3127';
+const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
 const suffix = `${timestamp.toString().slice(-4)}${Math.floor(Math.random() * 90 + 10)}`;
 const OWNER_PHONE = `+96740${suffix}`;
@@ -68,7 +70,7 @@ function hasPasswordHash(value) {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

@@ -36,6 +36,10 @@ export function conversationRoom(conversationId: string) {
   return `conversation:${conversationId}`;
 }
 
+export function userRoom(userId: string) {
+  return `user:${userId}`;
+}
+
 @WebSocketGateway({
   namespace: '/chat',
   cors: { origin: getCorsOrigins(), credentials: true },
@@ -67,6 +71,7 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
       });
       if (!user || user.status === 'DISABLED') throw new Error('Disabled user');
       socket.data.user = toAuthenticatedUser(user);
+      await socket.join(userRoom(user.id));
       socket.emit('chat:ready', { userId: user.id });
     } catch (error) {
       this.logger.warn(`Rejected chat socket ${socket.id}`);

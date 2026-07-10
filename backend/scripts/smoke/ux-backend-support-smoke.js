@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * UX-B3/C1/C2/C3 backend support smoke test.
  * Covers compact dashboard separation, app role/persona, structured/legacy
@@ -85,7 +87,7 @@ function hasFullDashboardCollections(value) {
 }
 
 async function register(name, phone) {
-  const response = await request('POST', '/auth/register', {
+  const response = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

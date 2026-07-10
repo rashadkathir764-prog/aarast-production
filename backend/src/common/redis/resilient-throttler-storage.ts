@@ -1,18 +1,24 @@
-import { Logger } from '@nestjs/common';
-import type { ThrottlerStorage } from '@nestjs/throttler';
-import type { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface';
+import { Logger } from "@nestjs/common";
+import {
+  ThrottlerStorageService,
+  type ThrottlerStorage,
+} from "@nestjs/throttler";
+import type { ThrottlerStorageRecord } from "@nestjs/throttler/dist/throttler-storage-record.interface";
 
 /**
- * Fail-open wrapper around a Redis-backed throttler storage. Rate limiting
- * is a protection layer, not a dependency: when Redis is unreachable the
- * request must pass (with a log) instead of turning every endpoint —
- * including /health — into a 500 and taking the whole API down.
+ * Keeps rate limiting available when Redis is temporarily unreachable.
+ * The fallback is deliberately per-process: it cannot provide a global
+ * replica-wide count, but it still enforces a bounded limit instead of
+ * silently opening authentication and OTP routes during an outage.
  */
 export class ResilientThrottlerStorage implements ThrottlerStorage {
   private readonly logger = new Logger(ResilientThrottlerStorage.name);
   private lastFailureLogAt = 0;
 
-  constructor(private readonly inner: ThrottlerStorage) {}
+  constructor(
+    private readonly inner: ThrottlerStorage,
+    private readonly fallback: ThrottlerStorage = new ThrottlerStorageService(),
+  ) {}
 
   async increment(
     key: string,
@@ -36,17 +42,22 @@ export class ResilientThrottlerStorage implements ThrottlerStorage {
       if (now - this.lastFailureLogAt > 30_000) {
         this.lastFailureLogAt = now;
         this.logger.error(
-          `Throttler storage unavailable — failing open: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `Throttler storage unavailable; using in-process limits type=${throttlerStorageFailureType(error)}`,
         );
       }
-      return {
-        totalHits: 1,
-        timeToExpire: ttl,
-        isBlocked: false,
-        timeToBlockExpire: 0,
-      };
+      return this.fallback.increment(
+        key,
+        ttl,
+        limit,
+        blockDuration,
+        throttlerName,
+      );
     }
   }
+}
+
+export function throttlerStorageFailureType(error: unknown): string {
+  const name = error instanceof Error ? error.name : "UnknownError";
+  const sanitized = name.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+  return sanitized || "UnknownError";
 }

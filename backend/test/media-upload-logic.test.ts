@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import {
-  assertOwnedMediaUrl,
+  assertOwnedMediaKey,
   normalizeMediaUpload,
 } from '../src/media/media-upload-policy';
 import { MediaStorageService } from '../src/media/media-storage.service';
@@ -64,20 +64,18 @@ test('account avatars use the authenticated user media upload policy', () => {
   );
 });
 
-test('chat attachments must come from the sender owned media path', () => {
+test('chat attachments accept only an opaque sender-owned storage key', () => {
   assert.doesNotThrow(() =>
-    assertOwnedMediaUrl(
-      'https://cdn.example.test/chat-image/user-1/photo.webp',
-      'https://cdn.example.test',
+    assertOwnedMediaKey(
+      'chat-image/user-1/550e8400-e29b-41d4-a716-446655440000.webp',
       'chat-image',
       'user-1',
     ),
   );
   assert.throws(
     () =>
-      assertOwnedMediaUrl(
-        'https://tracking.example/photo.webp',
-        'https://cdn.example.test',
+      assertOwnedMediaKey(
+        'https://cdn.example.test/chat-image/user-1/550e8400-e29b-41d4-a716-446655440000.webp',
         'chat-image',
         'user-1',
       ),
@@ -85,14 +83,67 @@ test('chat attachments must come from the sender owned media path', () => {
   );
   assert.throws(
     () =>
-      assertOwnedMediaUrl(
-        'https://cdn.example.test/chat-image/user-2/photo.webp',
-        'https://cdn.example.test',
+      assertOwnedMediaKey(
+        'chat-image/user-2/550e8400-e29b-41d4-a716-446655440000.webp',
         'chat-image',
         'user-1',
       ),
     BadRequestException,
   );
+  assert.throws(
+    () =>
+      assertOwnedMediaKey(
+        'chat-image/user-1/../550e8400-e29b-41d4-a716-446655440000.webp',
+        'chat-image',
+        'user-1',
+      ),
+    BadRequestException,
+  );
+});
+
+test('private chat uploads never return a public URL and GET links expire quickly', async () => {
+  const previous = {
+    endpoint: process.env.AARAST_MEDIA_ENDPOINT,
+    bucket: process.env.AARAST_MEDIA_BUCKET,
+    publicBase: process.env.AARAST_MEDIA_PUBLIC_BASE_URL,
+    accessKey: process.env.AARAST_MEDIA_ACCESS_KEY_ID,
+    secretKey: process.env.AARAST_MEDIA_SECRET_ACCESS_KEY,
+  };
+  Object.assign(process.env, {
+    AARAST_MEDIA_ENDPOINT: 'https://storage.example.test',
+    AARAST_MEDIA_BUCKET: 'aarast-media',
+    AARAST_MEDIA_ACCESS_KEY_ID: 'test-access-key',
+    AARAST_MEDIA_SECRET_ACCESS_KEY: 'test-secret-key',
+  });
+  delete process.env.AARAST_MEDIA_PUBLIC_BASE_URL;
+  try {
+    const storage = new MediaStorageService();
+    const ticket = await storage.createUpload({ id: 'user-1' } as never, {
+      purpose: 'chat-image',
+      fileName: 'private.webp',
+      contentType: 'image/webp',
+      byteSize: 2048,
+    });
+    assert.equal(ticket.publicUrl, null);
+    assert.equal(ticket.attachmentRef, ticket.key);
+    assert.match(ticket.key, /^chat-image\/user-1\/.+\.webp$/);
+
+    const access = await storage.createDownloadUrl(ticket.key);
+    const signedUrl = new URL(access.downloadUrl);
+    assert.match(signedUrl.hostname, /(^|\.)storage\.example\.test$/);
+    assert.equal(access.expiresInSeconds, 120);
+    assert.equal(signedUrl.searchParams.get('X-Amz-Expires'), '120');
+  } finally {
+    const restore = (name: string, value?: string) => {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    };
+    restore('AARAST_MEDIA_ENDPOINT', previous.endpoint);
+    restore('AARAST_MEDIA_BUCKET', previous.bucket);
+    restore('AARAST_MEDIA_PUBLIC_BASE_URL', previous.publicBase);
+    restore('AARAST_MEDIA_ACCESS_KEY_ID', previous.accessKey);
+    restore('AARAST_MEDIA_SECRET_ACCESS_KEY', previous.secretKey);
+  }
 });
 
 test('media upload route is authenticated and storage is environment configured', () => {
@@ -142,7 +193,9 @@ test('media storage creates a short-lived signed upload without network access',
       new URL(ticket.uploadUrl).hostname,
       /(^|\.)storage\.example\.test$/,
     );
-    assert.match(ticket.publicUrl, /^https:\/\/cdn\.example\.test\/service-image/);
+    const publicUrl = ticket.publicUrl;
+    assert.ok(publicUrl);
+    assert.match(publicUrl, /^https:\/\/cdn\.example\.test\/service-image/);
     assert.equal(ticket.expiresInSeconds, 300);
   } finally {
     const restore = (name: string, value?: string) => {

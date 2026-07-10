@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * OTP + Profile Smoke Test
  * Tests: OTP request/verify, wrong and consumed OTP rejection, profile update,
@@ -78,7 +80,7 @@ async function run() {
   let code = null;
 
   {
-    const res = await request('POST', '/auth/register', {
+    const res = await registerVerified(request, {
       name: 'OTP Smoke User',
       phone: TEST_PHONE,
       password: TEST_PASSWORD,

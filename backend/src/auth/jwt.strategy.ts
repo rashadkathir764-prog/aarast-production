@@ -18,14 +18,35 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-    });
+    const [user, adminSession] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      }),
+      payload.amr === 'admin_mfa' && payload.sid
+        ? this.prisma.refreshToken.findFirst({
+            where: {
+              id: payload.sid,
+              userId: payload.sub,
+              revokedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ]);
 
-    if (!user || user.status === 'DISABLED') {
-      throw new UnauthorizedException('User not found or disabled');
+    if (
+      !user ||
+      user.status === 'DISABLED' ||
+      !user.phoneVerifiedAt ||
+      (payload.amr === 'admin_mfa' && !adminSession)
+    ) {
+      throw new UnauthorizedException('User not found, disabled, or unverified');
     }
 
-    return toAuthenticatedUser(user);
+    return {
+      ...toAuthenticatedUser(user),
+      adminMfa: payload.amr === 'admin_mfa',
+    };
   }
 }

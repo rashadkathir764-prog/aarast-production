@@ -22,16 +22,29 @@ export class InstallmentsOverdueScheduler {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const result = await this.prisma.installment.updateMany({
-      where: {
-        status: InstallmentStatus.PENDING,
-        dueDate: { lt: startOfToday },
-      },
-      data: { status: InstallmentStatus.OVERDUE },
+    const updatedCount = await this.prisma.$transaction(async (tx) => {
+      // Transaction-scoped PostgreSQL advisory lock: exactly one replica runs
+      // this cron body, and the lock is released automatically on commit,
+      // rollback, process crash, or connection loss.
+      const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
+        SELECT pg_try_advisory_xact_lock(20260710, 1) AS locked
+      `;
+      if (!lock?.locked) return null;
+
+      const result = await tx.installment.updateMany({
+        where: {
+          status: InstallmentStatus.PENDING,
+          dueDate: { lt: startOfToday },
+        },
+        data: { status: InstallmentStatus.OVERDUE },
+      });
+      return result.count;
     });
 
-    if (result.count > 0) {
-      this.logger.log(`Marked ${result.count} installment(s) as OVERDUE`);
+    if (updatedCount == null) {
+      this.logger.debug('Skipped overdue scan; another replica owns the lock');
+    } else if (updatedCount > 0) {
+      this.logger.log(`Marked ${updatedCount} installment(s) as OVERDUE`);
     }
   }
 }

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Internal Notifications APIs Smoke Test
  * Covers /api/v1 notifications, get-by-id, read state, ownership,
@@ -113,7 +115,7 @@ async function ensureReferenceData() {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

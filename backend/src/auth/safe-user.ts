@@ -1,4 +1,8 @@
 import { AuthenticatedUser } from './authenticated-user.interface';
+import {
+  AdminPermission,
+  permissionsForAdminRole,
+} from '../common/admin/admin-permissions';
 
 export interface SafeUser {
   id: string;
@@ -6,6 +10,8 @@ export interface SafeUser {
   phone: string | null;
   email: string | null;
   role: string;
+  adminRole: string | null;
+  adminPermissions: AdminPermission[];
   appRole: string;
   status: string;
   phoneVerifiedAt: Date | null;
@@ -21,7 +27,11 @@ export interface SafeUser {
 }
 
 export function toSafeUser(user: AuthenticatedUser): SafeUser {
-  return toAuthenticatedUser(user);
+  const authenticated = toAuthenticatedUser(user);
+  return {
+    ...authenticated,
+    adminPermissions: permissionsForAdminRole(authenticated.adminRole),
+  };
 }
 
 export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser {
@@ -31,6 +41,7 @@ export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser 
     phone: user.phone,
     email: user.email,
     role: user.role,
+    adminRole: user.adminRole ?? null,
     appRole: user.appRole,
     status: user.status,
     phoneVerifiedAt: user.phoneVerifiedAt,

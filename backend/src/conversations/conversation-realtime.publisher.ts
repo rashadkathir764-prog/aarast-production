@@ -20,4 +20,14 @@ export class ConversationRealtimePublisher {
       ?.to(`conversation:${conversationId}`)
       .emit('conversation:read', receipt);
   }
+
+  messageAvailable(conversationId: string, event: unknown) {
+    this.server
+      ?.to(`conversation:${conversationId}`)
+      .emit('conversation:message-available', event);
+  }
+
+  notificationAvailable(userId: string, event: unknown) {
+    this.server?.to(`user:${userId}`).emit('notification:available', event);
+  }
 }

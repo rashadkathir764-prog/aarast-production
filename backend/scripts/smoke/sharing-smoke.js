@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 
+const { registerVerified } = require('./verified-registration');
+
 /**
  * Sharing / Permissions Smoke Test
  * Tests SharedMember APIs and basic shared access without creating future modules.
@@ -74,7 +76,7 @@ function hasOnlySafeSharedUserFields(member) {
 }
 
 async function register(name, phone) {
-  const res = await request('POST', '/auth/register', {
+  const res = await registerVerified(request, {
     name,
     phone,
     password: TEST_PASSWORD,

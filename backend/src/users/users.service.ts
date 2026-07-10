@@ -3,15 +3,16 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { NotificationPreference } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { SafeUser, toSafeUser } from '../auth/safe-user';
-import { PhoneNormalizer } from '../common/phone/phone-normalizer';
-import { normalizeOwnedMediaUrl } from '../media/media-upload-policy';
-import { PrismaService } from '../prisma/prisma.service';
-import { UpdateProfileDto } from './dto/update-profile.dto';
-import { UpdateSettingsDto } from './dto/update-settings.dto';
+} from "@nestjs/common";
+import { NotificationPreference } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { SafeUser, toSafeUser } from "../auth/safe-user";
+import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { normalizeOwnedMediaUrl } from "../media/media-upload-policy";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
 export interface NotificationPreferenceResponse {
   id: string;
@@ -39,7 +40,10 @@ export interface UserLookupResponse {
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissionService: PermissionService,
+  ) {}
 
   async updateMe(
     currentUser: AuthenticatedUser,
@@ -50,7 +54,7 @@ export class UsersService {
     if (email) {
       const existing = await this.prisma.user.findUnique({ where: { email } });
       if (existing && existing.id !== currentUser.id) {
-        throw new ConflictException('Email is already registered');
+        throw new ConflictException("Email is already registered");
       }
     }
 
@@ -58,20 +62,20 @@ export class UsersService {
       where: { id: currentUser.id },
       data: {
         ...(dto.name !== undefined
-          ? { name: this.requiredText(dto.name, 'name') }
+          ? { name: this.requiredText(dto.name, "name") }
           : {}),
         ...(dto.email !== undefined ? { email } : {}),
         ...(dto.avatarUrl !== undefined
           ? {
               avatarUrl: normalizeOwnedMediaUrl(
                 dto.avatarUrl,
-                'user-avatar',
+                "user-avatar",
                 currentUser.id,
               ),
             }
           : {}),
         ...(dto.locale !== undefined
-          ? { locale: this.requiredText(dto.locale, 'locale') }
+          ? { locale: this.requiredText(dto.locale, "locale") }
           : {}),
         ...(dto.appRole !== undefined ? { appRole: dto.appRole } : {}),
         ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
@@ -145,7 +149,15 @@ export class UsersService {
     return { deleted: true };
   }
 
-  async lookupByPhone(phone: string): Promise<UserLookupResponse> {
+  async lookupByPhone(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    phone: string,
+  ): Promise<UserLookupResponse> {
+    await this.permissionService.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
     const normalizedPhone = PhoneNormalizer.normalizeRequired(phone);
     const user = await this.prisma.user.findFirst({
       where: {
@@ -159,7 +171,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found for phone');
+      throw new NotFoundException("User not found for phone");
     }
 
     return user;
@@ -193,8 +205,11 @@ export class UsersService {
     return this.toSettingsResponse(settings);
   }
 
-  private requiredText(value: string | null | undefined, field: string): string {
-    const trimmed = value?.trim() ?? '';
+  private requiredText(
+    value: string | null | undefined,
+    field: string,
+  ): string {
+    const trimmed = value?.trim() ?? "";
     if (!trimmed) {
       throw new BadRequestException(`${field} must not be empty`);
     }

@@ -1,5 +1,12 @@
 import { OtpPurpose } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  Length,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 
 export class VerifyOtpDto {
   @IsString()
@@ -9,6 +16,8 @@ export class VerifyOtpDto {
 
   @IsString()
   @IsNotEmpty()
+  @Length(6, 6)
+  @Matches(/^\d{6}$/)
   code!: string;
 
   @IsEnum(OtpPurpose)

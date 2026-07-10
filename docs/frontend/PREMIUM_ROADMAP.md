@@ -104,7 +104,7 @@ golden preview → `flutter analyze` نظيف + كل الاختبارات خضر
 
 | # | الشاشة | أسطر | حالة |
 |---|--------|:---:|:---:|
-| E1 | `provider_dashboard_screen.dart` | 1378 | ✅ تمّت: Lucide كامل + أسعار مرئية عبر `currencyLabelAr` + بقاء الاعتماد/الطلبات كحالات تنظيمية لا حجز. |
+| E1 | `provider_portal_screen.dart` + `provider_portal_tabs.dart` | حي | ✅ البوابة القانونية الوحيدة للمورد؛ شاشة `provider_dashboard_screen.dart` القديمة حُذفت في 2026-07-10 بعد إثبات عدم وجود imports أو routes لها. الأسعار المرئية تمر عبر `currencyLabelAr`. |
 | E2 | `provider_apply_screen.dart` | 478 | ✅ تمّت: Lucide + بوابة حساب ومراجعة مزود صريحة بلا اعتماد تلقائي. |
 | E3 | `edit_provider_profile_screen.dart` | 382 | ✅ تمّت: Lucide + ملاحظات حالة وفئة مقفلة بدون تغيير مسار المراجعة. |
 | E4 | `add_provider_service_screen.dart` | 299 | ✅ تمّت: Lucide + عملة عربية في السعر + إرسال `defaultCurrencyCode` بدل رمز خام داخل الشاشة. |

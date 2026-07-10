@@ -44,6 +44,10 @@
 - `/wedding-plans/:id/expenses/:expenseId/edit`
 - `/wedding-plans/:id/expenses/create`
 - `/wedding-plans/:id/finance`
+- `/wedding-plans/:id/finance/commitments/:commitmentId`
+- `/wedding-plans/:id/finance/commitments/:commitmentId/edit`
+- `/wedding-plans/:id/finance/payables`
+- `/wedding-plans/:id/finance/payments/:paymentRecordId`
 - `/wedding-plans/:id/financial-commitments/create`
 - `/wedding-plans/:id/guests`
 - `/wedding-plans/:id/guests/add`
@@ -60,4 +64,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 59 unique routes
+Total: 63 unique routes

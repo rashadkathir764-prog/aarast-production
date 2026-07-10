@@ -15,6 +15,9 @@ in code versus what requires real infrastructure.
   killing Redis mid-run).
 - **Shared Socket.IO delivery**: the Redis adapter propagates
   conversation events across replicas.
+- **Cross-replica retry safety**: Postgres atomically reserves idempotency keys,
+  binds each key to one request fingerprint, and elects one hourly expiry
+  cleaner with a transaction-scoped advisory lock.
 - **Graceful shutdown**: SIGTERM drains in-flight requests
   (`enableShutdownHooks`), so rolling deploys drop nothing.
 - **Observability**: every instance exposes `/metrics`; the

@@ -1,8 +1,8 @@
 # Aarast Mobile QA Plan
 
-Date: 2026-06-19
-Stage: Testing & QA Plan
-Status: Planning document only
+Date: 2026-07-10
+Stage: Active mobile QA contract
+Status: Current; local automation does not replace device or environment smoke
 
 Source-of-truth note: this is the current mobile rebuild QA plan. The old root
 `MOBILE_QA_PLAN.md` was archived during the 2026-07 docs consolidation.
@@ -299,6 +299,32 @@ This phase does not authorize visual polish before product/architecture readines
 
 ## 13. Manual QA Report Template
 
+## 13. Release Configuration and Native Identity QA
+
+Automated/local gate:
+
+- Release rejects a missing, HTTP, local/private, credentialed, malformed, or
+  otherwise unsafe API origin.
+- Release rejects `AARAST_DEV_BYPASS_LOGIN_GATES=true`.
+- Android Release rejects missing/placeholder signing values, missing
+  keystore files, and every debug-signing fallback.
+- iOS Release runs the equivalent configuration script from Xcode.
+- Android adaptive/legacy launcher and splash resources compile.
+- Required iOS AppIcon/LaunchImage sizes decode successfully.
+
+External/manual gate:
+
+- Build the AAB with the real upload key and verify its signer.
+- Archive iOS on macOS using the real team and provisioning profile.
+- Test HTTPS and custom-scheme invitations on physical Android and iOS devices.
+- Verify deployed `assetlinks.json` and `apple-app-site-association` use the
+  production identities.
+
+Do not mark the store release gate PASS when artifact signing/certificate
+verification was skipped or intentionally deferred.
+
+## 14. Manual QA Report Template
+
 ```text
 QA Date:
 Tester:
@@ -330,23 +356,24 @@ Overall Verdict:
 PASS / FAIL / BLOCKED
 ```
 
-## 14. Acceptance Criteria
+## 15. Acceptance Criteria
 
 - QA levels are defined.
 - Required commands by change type are defined.
 - Existing test coverage is acknowledged.
 - Guest-first, route, privacy, offline, provider, notification, and visual/accessibility checks are covered.
 - Manual report template is provided.
-- No code is changed.
+- Release configuration evidence distinguishes local automation from external
+  signing, deployment, and physical-device checks.
 
-## 15. Risks
+## 16. Risks
 
 - Static Flutter checks can pass while the post-login or guest dashboard is visibly broken.
 - Route regressions can hide behind unused paths unless every nav item is tapped.
 - Privacy bugs need role-specific manual checks.
 - Offline bugs often appear only after restart or failed sync.
 
-## 16. Next Implementation Notes
+## 17. Next Implementation Notes
 
 - Next stage should be tracked in the active frontend or release plan, not in an
   archived mobile-architecture file.

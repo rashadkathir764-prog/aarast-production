@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-10
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 source includes auth, onboarding, home/dashboard, money, debts, installments,
@@ -18,11 +18,23 @@ conversations, signed image uploads, and rotating refresh sessions.
   remains an account-backed online action.
 - Conversation/media actions remain online-only and never enter the wedding
   planning SQLite sync queue.
-- Access and refresh tokens are stored securely; a failed authenticated API
-  call receives at most one refresh-and-retry attempt.
+- Access and refresh tokens are stored through `flutter_secure_storage` 10.3.1;
+  Android legacy algorithms migrate automatically to RSA-OAEP + AES-GCM. A
+  failed authenticated API call receives at most one refresh-and-retry attempt.
+- Registration keeps the pending draft in navigation memory only. No account
+  or local session exists until `REGISTER` OTP completion succeeds; password
+  and OTP login remain available for verified or legacy accounts.
 - Guest/local planning can exist, but protected cloud/share/provider writes must
   remain account-gated.
 - Premium-screen work is active and tracked in `docs/frontend/PREMIUM_ROADMAP.md`.
+- Product builds require a public HTTPS API origin and cannot enable the
+  development login bypass. Android refuses debug signing for Release.
+- Canonical invitation links are
+  `https://aarast.shadowgardn.com/invites/TOKEN` and
+  `aarast://open/invites/TOKEN`; deployed association files and physical-device
+  validation remain release requirements.
+- Native Android/iOS launcher and splash assets use the current Aarast brand
+  mark rather than Flutter defaults.
 
 ## Plan Management
 

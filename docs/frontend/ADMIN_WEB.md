@@ -23,11 +23,19 @@ npm run smoke:honesty
 Unit tests run on Vitest + Testing Library (jsdom). They cover the auth
 API (ADMIN role gating, error mapping, token storage), the `apiRequest`
 client (bearer header, error extraction), and the `ErrorBoundary`
-recovery UI. `npm test` runs in CI on every push.
+recovery UI. They also enforce the shared accessible pagination control and its
+use by every paginated admin list. `npm test` runs in CI on every push.
 
 A top-level `ErrorBoundary` (`src/components/ErrorBoundary.tsx`) wraps
 the app so a render-time exception shows a recoverable Arabic message
 instead of a blank screen.
+
+Admin authentication is a two-step password + phone OTP flow. The access JWT
+lives only in JavaScript memory; neither `localStorage` nor `sessionStorage`
+contains session material. Reload recovery and one guarded `401` retry use the
+rotating path-scoped HttpOnly refresh cookie. Logout calls the backend before
+clearing memory. Production therefore requires HTTPS, the configured admin/API
+same-site origins, and a working WhatsApp OTP channel.
 
 ## Rules
 
@@ -59,3 +67,13 @@ instead of a blank screen.
 The moderation surface is limited to report lists and status changes. Admins
 cannot read conversation contents, impersonate participants, or see financial
 data through this page.
+
+## List Pagination
+
+Users, provider applications, providers, services, reviews, conversation
+reports, and notifications request 20 rows per page and render the backend
+`page`, `limit`, `total`, and `totalPages` metadata through one RTL control.
+Changing a filter or submitting a new search returns to page 1. If an action
+removes the last row on the current page, the screen clamps to the last valid
+page instead of showing a stranded empty result. Catalog city/category lists
+remain intentionally unpaginated reference sets.

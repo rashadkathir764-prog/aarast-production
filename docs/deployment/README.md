@@ -29,3 +29,45 @@ Public domains documented for the current deployment path:
 - Never write real secrets into Markdown.
 - Production deployment is not complete without post-deploy smoke checks.
 
+## Runtime Health Contract
+
+- `GET /live` (and compatibility alias `/health`) checks only that the API
+  process can serve HTTP.
+- `GET /ready` checks PostgreSQL and every configured Redis/media dependency,
+  returns dependency names/status/latency only, and fails with `503` without
+  exposing connection strings or provider errors.
+- Redis and media default to required when `NODE_ENV=production`; Dokploy sets
+  `READINESS_REQUIRE_REDIS=true` and `READINESS_REQUIRE_MEDIA=true` explicitly.
+- Container health and admin startup dependency use `/ready`, so traffic is not
+  sent to an API whose required dependencies are down.
+
+## OTP Release Gate
+
+Production verified registration uses `AUTH_OTP_MODE=whatsapp`. Dokploy must
+provide the Graph API version, phone-number ID, system-user access token,
+approved authentication-template name, and template language. The API refuses
+to boot when whatsapp mode is selected with an incomplete channel. Secrets
+must remain in Dokploy/environment storage and never be committed.
+
+## Private Chat Media Release Gate
+
+The S3-compatible bucket must deny anonymous reads for every object under
+`chat-image/`. The API signs uploads and membership-authorized GET requests;
+the CDN/public media base is only for public avatar and provider assets. Before
+release, verify an unsigned chat-object GET is denied, a participant-signed URL
+works for 120 seconds, a non-participant cannot mint one, and expired links no
+longer work. Object-storage credentials remain server-side.
+
+## Mobile Store Release Gate
+
+Release builds require an explicit public `https://` API origin and reject the
+development login bypass. Android additionally requires a real non-debug upload
+keystore through private `key.properties` or `AARAST_ANDROID_*` environment
+variables. iOS runs the equivalent configuration check as a Release Xcode build
+phase. Native launcher/splash assets and link declarations are committed, but
+final AAB/IPA signing, store upload, and real-device links remain external
+gates. See `STORE_RELEASE.md`.
+
+The public app domain must serve Android `assetlinks.json` and Apple
+`apple-app-site-association` using the production signing fingerprint and Apple
+Team ID. Do not publish temporary verification identities.

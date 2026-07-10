@@ -377,23 +377,17 @@ Golden previews for the shared foundation live in
 
 ## Shipped Feature Flags Matrix
 
-Defaults from `mobile/lib/core/config/app_feature_flags.dart` — what a
-default build actually ships:
+Only rollout switches consumed by live code remain in
+`mobile/lib/core/config/app_feature_flags.dart`:
 
-| Flag | Default | Meaning for the shipped app |
+| Flag | Default | Live consumer |
 | --- | --- | --- |
-| enableGuestFirstOnboarding | ON | Guest-first welcome + local plan drafts |
-| enableOfflineSync | ON | Local database + sync queue |
-| enableProviderMode | OFF | Provider portal shell stays hidden |
-| enableProviderQuotes | OFF | Quote flows gated until launch review |
-| enableGuestContacts | OFF | Contact import stays manual |
-| enableAIHelper | OFF | No AI features in MVP |
-| enablePushNotifications | OFF | In-app notifications only |
-| enableSubscriptions | OFF | No payments in MVP (hard constraint) |
-| enableMaps | OFF | Location stays text-based |
-| enableAnalytics | OFF | No tracking in MVP |
-| devBypassLoginGatesForUxExploration | OFF | Dev-only dart-define escape hatch |
+| enableGuestFirstOnboarding | ON | Smart welcome/onboarding redirect |
+| enableOfflineSync | ON | Offline release-readiness state |
+| enablePushNotifications | OFF | Notification permission/readiness state |
+| devBypassLoginGatesForUxExploration | OFF | Compile-time development escape hatch |
 
-Marketplace browsing and provider detail pages are public routes and ship
-regardless of the provider flags; only provider management and quote
-submission sit behind gates.
+Provider access, quote ownership, contact selection, and deferred product scope
+are enforced by real auth/route/domain contracts. AI, subscriptions/payments,
+maps, and analytics are absent or explicitly out of scope; inert OFF flags are
+not treated as protection. Release builds reject the development escape hatch.

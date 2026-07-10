@@ -7,7 +7,7 @@
 | Treat Flutter SQLite as a mobile cache/sync layer only. | Accepted | PostgreSQL remains the backend source of truth; SQLite supports offline UX and selected queued writes without storing credentials or replacing server data. |
 | Keep provider marketplace work as planning/reference and quote-lead flows. | Accepted | Provider listings, favorites, reviews, quote requests, provider dashboard, and admin approval exist, but paid booking, deposits, payment status, and financing remain excluded. |
 | Split production domains only after Compose/Dokploy/NPM are aligned. | Accepted | Current Dokploy Compose has backend on `8093` and admin-web on `8094`. A separate Flutter web service on `8095` is not configured in the committed production Compose file. |
-| Meta WhatsApp OTP remains pending. | Accepted | Backend OTP is provider-agnostic/local; production WhatsApp delivery requires official provider setup, business verification, secure secrets, and explicit approval. |
+| Meta WhatsApp OTP has a production channel, while external activation remains pending. | Accepted and implemented in code | The backend sends approved authentication templates through Meta Cloud API, never echoes production codes, and fails boot on incomplete channel configuration. Live activation still requires Meta business/template approval and real secrets outside Git. |
 
 ## Current Decisions Addendum - 2026-07-06
 
@@ -17,6 +17,22 @@
 | Make `FinancialCommitment` the backbone of the money tab. | Accepted and implemented foundation | Every agreed amount must belong to a budget category. Provider/service costs, manual debts, payment records, and financial installments attach to that commitment model. Expenses remain actual money-out records, and accepted provider offers only suggest a commitment instead of creating one silently. |
 | Use short-lived access tokens with rotating refresh tokens. | Accepted and implemented | Access JWTs default to 15 minutes. Opaque 30-day refresh tokens are hashed at rest, rotated transactionally, and revocable per session or per user. |
 | Keep one active documentation source per area. | Accepted | `docs/README.md` owns the source map. Historical plans and reports live as `.md.txt` under `docs/archive/` and must not compete with current docs. |
+
+## Current Decisions Addendum - 2026-07-10
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Require verified phone ownership before account or invite access. | Accepted and implemented | Registration creates no User/session before OTP completion; legacy unverified sessions are revoked and JWT/refresh/password login remain blocked until phone proof. |
+| Persist invite-token fingerprints and enforce delegated permission ceilings. | Accepted and implemented | Raw external tokens exist only in the create response, invite consumption is atomic, and a delegated inviter cannot grant effective authority above their own. Email-only invites remain disabled until verified-email identity exists. |
+| Scope Flutter state by account and selected plan. | Accepted and implemented | Account identity changes dispose the complete data-provider subtree; plan changes replace plan-sensitive providers without rebuilding navigation. Late responses from disposed providers cannot repopulate another session. |
+| Bind offline replay to its originating session. | Accepted and implemented | Replay captures the cache owner, session generation, and access token. Logout or account change stops the old loop, prevents the new token from authorizing an old write, and restarts only the new account queue. |
+| Keep guest budget optional through dashboard entry. | Accepted and implemented | Saving an empty quick-setup budget records an explicit skip; completion accepts a budget or that skip, and legacy saved no-budget plans are upgraded while loading. |
+| Fail mobile Release closed. | Accepted and implemented in source | Product builds require an explicit public HTTPS API origin, reject development login bypass, and Android refuses missing/placeholder/nonexistent signing configuration instead of falling back to debug keys. iOS runs the equivalent API gate before its Flutter build. |
+| Keep native launch identity consistent with the live design system. | Accepted and implemented | Android adaptive/legacy icons and splash plus iOS AppIcon/LaunchImage use the same burgundy, gold, ivory, and celebration-spark mark as the in-app brand. Generated sizes are tested, while final store and device review remains a release gate. |
+| Separate liveness from readiness. | Accepted and implemented | `/live` and `/health` prove only that the process responds; `/ready` verifies PostgreSQL and required Redis/media dependencies with bounded timeouts and redacted failures. Production containers use readiness before receiving dependent traffic. |
+| Use a transactional PostgreSQL outbox before adding an external broker. | Accepted and implemented | Notification and chat availability events commit with their domain rows. Workers use `FOR UPDATE SKIP LOCKED`, stale-lock recovery, bounded retries, failed-event retention, metrics, and alerts. Immediate Socket.IO delivery remains the low-latency path; outbox availability events repair commit-to-publish crashes. |
+| Bind and expire idempotency keys. | Accepted and implemented | A user key is valid only for one method, concrete target, and canonical body. Identical retries replay safely, mismatches return `409`, pending reservations and completed responses have bounded lifetimes, and cleanup uses a cross-replica PostgreSQL advisory lock. |
+| Require password + phone OTP and server-bound browser sessions for administration. | Accepted and implemented | General login paths cannot mint admin assurance. Access tokens stay in memory, refresh tokens stay in rotating HttpOnly/SameSite cookies, each admin JWT references a live server session, and refresh/logout invalidate the prior JWT immediately. |
 
 ## Initial Project Decisions
 

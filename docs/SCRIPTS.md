@@ -21,10 +21,12 @@
 | `backend` | `npm run smoke:account-deletion` | `node --env-file=.env -r ts-node/register scripts/smoke/account-deletion-smoke.ts` |
 | `backend` | `npm run smoke:all` | `node --env-file=.env scripts/smoke/all-smoke.js` |
 | `backend` | `npm run smoke:auth` | `node scripts/smoke/auth-smoke.js` |
+| `backend` | `npm run smoke:auth-verification` | `node scripts/smoke/auth-verification-smoke.js` |
 | `backend` | `npm run smoke:backend-completion` | `node scripts/smoke/backend-completion-smoke.js` |
 | `backend` | `npm run smoke:budget-expense` | `node scripts/smoke/budget-expense-smoke.js` |
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/dashboard-summary-smoke.js` |
 | `backend` | `npm run smoke:debt-installment` | `node scripts/smoke/debt-installment-smoke.js` |
+| `backend` | `npm run smoke:financial-ledger-concurrency` | `node scripts/smoke/financial-ledger-concurrency-smoke.js` |
 | `backend` | `npm run smoke:guests` | `node scripts/smoke/guests-smoke.js` |
 | `backend` | `npm run smoke:guests-apis` | `node scripts/smoke/guests-apis-smoke.js` |
 | `backend` | `npm run smoke:health` | `node scripts/smoke/health-smoke.js` |
@@ -34,10 +36,12 @@
 | `backend` | `npm run smoke:notifications-apis` | `node scripts/smoke/notifications-apis-smoke.js` |
 | `backend` | `npm run smoke:onboarding-active-plan` | `node scripts/smoke/onboarding-active-plan-smoke.js` |
 | `backend` | `npm run smoke:otp-profile` | `node scripts/smoke/otp-profile-smoke.js` |
+| `backend` | `npm run smoke:private-chat-media` | `node scripts/smoke/private-chat-media-smoke.js` |
 | `backend` | `npm run smoke:provider-dashboard` | `node scripts/smoke/provider-dashboard-smoke.js` |
 | `backend` | `npm run smoke:providers-quotes` | `node scripts/smoke/providers-quotes-smoke.js` |
 | `backend` | `npm run smoke:sharing` | `node scripts/smoke/sharing-smoke.js` |
 | `backend` | `npm run smoke:sharing-roles` | `node scripts/smoke/sharing-roles-smoke.js` |
+| `backend` | `npm run smoke:sharing-security` | `node scripts/smoke/sharing-security-smoke.js` |
 | `backend` | `npm run smoke:task-timeline` | `node scripts/smoke/task-timeline-smoke.js` |
 | `backend` | `npm run smoke:tasks-apis` | `node scripts/smoke/tasks-apis-smoke.js` |
 | `backend` | `npm run smoke:ux-backend-support` | `node scripts/smoke/ux-backend-support-smoke.js` |
@@ -45,4 +49,4 @@
 | `backend` | `npm run smoke:wedding-plan` | `node scripts/smoke/wedding-plan-smoke.js` |
 | `backend` | `npm run start` | `node dist/main.js` |
 | `backend` | `npm run start:dev` | `node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts` |
-| `backend` | `npm run test` | `node --test -r ts-node/register test/backend-support.test.ts test/auth-otp-mode.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts` |
+| `backend` | `npm run test` | `node --test -r ts-node/register test/backend-support.test.ts test/health-readiness.test.ts test/scheduler-lock.test.ts test/outbox-logic.test.ts test/admin-auth-session-security.test.ts test/admin-rbac-audit.test.ts test/admin-audit-interceptor.test.ts test/auth-otp-mode.test.ts test/auth-registration-security.test.ts test/whatsapp-otp-channel.test.ts test/request-target-redaction.test.ts test/privacy-contract.test.ts test/sharing-permission-ceiling.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/private-chat-media.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/financial-ledger.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts` |

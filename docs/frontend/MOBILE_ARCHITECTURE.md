@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-10
 
 ## Principles
 
@@ -21,6 +21,8 @@ Snapshot date: 2026-07-05
 - Auth action gating: `mobile/lib/features/auth/utils/auth_action_guard.dart`.
 - Session recovery: `mobile/lib/core/network/api_client.dart` and secure
   refresh storage in `mobile/lib/core/storage/`.
+- Pending registration: `PendingRegistration` exists in navigation memory only
+  between OTP request and `/auth/register/complete`; it is never persisted.
 - Provider conversations: `mobile/lib/features/marketplace/` using REST
   history and authenticated Socket.IO delivery.
 

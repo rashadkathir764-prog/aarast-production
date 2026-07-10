@@ -25,17 +25,18 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 | --- | --- |
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user. |
+| OutboxEvent | Durable PostgreSQL queue for notification-created and conversation-message-available events. Domain rows and events commit together; workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. |
 | BudgetCategory | Implemented for owner-scoped WeddingPlan budget groups, with optional target amounts and links to expenses, financial commitments, payment records, and financial installments. |
 | FinancialCommitment | Implemented as the phase-2 money backbone for agreed costs. Every commitment belongs to a WeddingPlan and BudgetCategory and may link to a provider, accepted quote, or plan-provider link. Remaining amount is derived from total amount minus paid amount. |
-| FinancialPaymentRecord | Implemented for actual money-out records under a FinancialCommitment. Creating or deleting a record updates the parent commitment balance. This is manual planning data, not payment processing. |
-| FinancialInstallment | Implemented for scheduled commitment payments. A financial installment belongs to a FinancialCommitment and BudgetCategory; paying it creates a payment record and updates the commitment balance. |
+| FinancialPaymentRecord | Implemented as an append-only planning ledger under a FinancialCommitment. `PAYMENT` and `REVERSAL` are separate immutable rows; the original payment is retained. A one-to-one `financialInstallmentId` and unique `reversalOfId` prevent duplicate installment payments and duplicate reversals. This is manual planning data, not payment processing. |
+| FinancialInstallment | Implemented for scheduled commitment payments. A financial installment belongs to a FinancialCommitment and BudgetCategory; paying it locks the installment row, creates one uniquely linked payment record, and updates the commitment balance. Reversing that payment reopens the installment without deleting history. |
 | Expense | Implemented for owner-scoped WeddingPlan actual money-out records with amount, paid status, optional date, optional note, and required BudgetCategory link for new records. New money flows should use FinancialCommitment + FinancialPaymentRecord for agreed costs, remaining balances, and payments. |
-| Debt | Implemented as a legacy-compatible projection for owner-scoped manual obligations. Debt writes are bridged into `FinancialCommitment` with legacy link keys so current money totals use the financial backbone without double-counting. Contact picking is not implemented in Phase 2A. |
-| Installment | Implemented as a legacy-compatible scheduled payment under debts. Installment writes are bridged into `FinancialInstallment` and payment records so legacy routes keep working while the current money system remains commitment-first. |
+| Debt | Implemented as a legacy-compatible projection for owner-scoped manual obligations. Debt writes are bridged into `FinancialCommitment` with legacy link keys and append-only balance adjustments so current money totals use the financial backbone without double-counting or rewriting history. Contact picking is not implemented in Phase 2A. |
+| Installment | Implemented as a legacy-compatible scheduled payment under debts. Installment writes are bridged into `FinancialInstallment` and append-only payment/reversal entries so legacy routes keep working while the current money system remains commitment-first. |
 | Task | Implemented as `WeddingTask` for owner-scoped WeddingPlan planning work, including title, optional description, optional due date, status, priority, checklist/assignment support, and timestamps. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. A shared member links a User to a WeddingPlan with role `VIEWER`, `CONTRIBUTOR`, or `MANAGER`, plus explicit permissions for budget, expenses, debts, task management, and financial-record management. |
-| PlanInvite | Implemented for invite-token based sharing and acceptance flows. |
+| PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. |
 | Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
 | QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. |
@@ -48,10 +49,11 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 | Entity | Purpose |
 | --- | --- |
 | RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation and replacement tracking. |
+| AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login. It never stores the raw challenge or OTP. |
 | Conversation | One quote-scoped thread joining the requester, provider, quote request, and WeddingPlan context. |
 | ConversationParticipant | Per-user unread/read, mute, block, and participation state. |
 | ChatMessage | Authored conversation message with delivery/read timestamps and no payment semantics. |
-| ChatAttachment | Signed-media metadata tied to a message and approved upload purpose. |
+| ChatAttachment | Private object `storageKey` plus MIME/size metadata tied to a message; permanent or public download URLs are never stored. |
 | ConversationReport | Participant report with moderation status; admin views do not expose message bodies. |
 
 ## Planning Principles
@@ -83,11 +85,31 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 
 The backend now includes the approved provider-reference and quote-lead foundation:
 
-- `OtpCode` for provider-agnostic local OTP request/verify flows, storing only hashed codes.
+- `OtpCode` for local or Meta WhatsApp OTP request/verify flows, storing only
+  hashed codes. A partial unique index permits one unconsumed code per
+  phone/purpose, and consumption uses a compare-and-set update so concurrent
+  replays cannot both succeed.
+- Existing accounts with null `phoneVerifiedAt` keep their data but all active
+  refresh sessions are revoked; they must prove phone ownership before a new
+  session can be issued.
+- `AdminLoginChallenge` binds a successful admin password check to one LOGIN
+  OTP for at most ten minutes. Deployment revokes legacy admin refresh rows;
+  new admin access JWTs are bound to the live refresh-session row so rotation
+  and logout invalidate access immediately.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
 - `NotificationPreference` for safe default account settings.
 - `Notification` for persisted task, installment, sharing, and quote alerts with deduplication.
-- `IdempotencyKey` for client-generated request idempotency on mutating endpoints (offline-queue replays return the original response instead of duplicating financial records).
+- `IdempotencyKey` for client-generated request idempotency on mutating
+  endpoints (offline-queue replays return the original response instead of
+  duplicating financial records). Each key is bound to a SHA-256 fingerprint of
+  method + concrete target + canonical body, while only the safe route template
+  is stored in readable form. `expiresAt` bounds both pending reservations and
+  completed replay responses; an hourly, advisory-lock-protected job removes
+  expired rows across replicas. Migration
+  `20260710173000_bind_idempotency_requests` expires legacy unbound rows. Stored
+  paths use route templates only;
+  migration `20260710140000_redact_legacy_idempotency_paths` removes legacy
+  invite bearer values and query strings.
 - `Guest` and `GuestGroup` for saved WeddingPlan guest lists and grouping.
 - `City` and `ProviderCategory` for Yemen-first marketplace filters.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
@@ -105,8 +127,10 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 
 | Model | Field count | Notable fields |
 | --- | --- | --- |
-| `IdempotencyKey` | 8 | `id`, `userId`, `completedAt`, `createdAt` |
-| `User` | 36 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
+| `User` | 38 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `AdminLoginChallenge` | 7 | `id`, `userId`, `expiresAt`, `consumedAt`, `createdAt` |
+| `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
 | `RefreshToken` | 10 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `WeddingPlan` | 33 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 11 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
@@ -114,8 +138,8 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `Debt` | 15 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `Installment` | 10 | `id`, `debtId`, `paidAt`, `createdAt`, `updatedAt` |
 | `FinancialCommitment` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `planProviderLinkId`, `quoteRequestId`, `quoteOfferId`, `legacyDebtId` |
-| `FinancialPaymentRecord` | 17 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyExpenseId`, `legacyDebtId`, `legacyInstallmentId` |
-| `FinancialInstallment` | 15 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyInstallmentId`, `createdAt`, `updatedAt` |
+| `FinancialPaymentRecord` | 23 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `financialInstallmentId`, `reversalOfId`, `legacyExpenseId` |
+| `FinancialInstallment` | 16 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyInstallmentId`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 15 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
@@ -123,6 +147,7 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `OtpCode` | 10 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
+| `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
 | `Guest` | 18 | `id`, `weddingPlanId`, `groupId`, `createdAt`, `updatedAt` |
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
@@ -143,5 +168,5 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 37
+Total models: 40
 <!-- DOCS-SYNC:END -->

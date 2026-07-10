@@ -1,16 +1,27 @@
-# Play Store Release Guide
+# Mobile Store Release Guide
 
-Snapshot date: 2026-07-08
+Snapshot date: 2026-07-10
 
-Everything needed to publish the Aarast Android app. The signing pipeline
-is verified working (a release AAB built and signature-verified against a
-real upload key on 2026-07-08); the only step that requires you is
-generating and safeguarding your own production keystore.
+The mobile release path is fail-closed. Source configuration and automated
+tests now prevent a store artifact from using a local/HTTP API, development
+login bypass, missing signing values, a missing keystore, or Android debug
+keys. The production upload key, store accounts, and final signed artifacts are
+external release inputs and are not stored in this repository.
 
-## 1. Generate your upload keystore (once)
+Current evidence from the 2026-07-10 local pass:
 
-Losing this key locks you out of the Play listing forever — generate it
-once, back it up in at least two safe places, and never commit it.
+- Android release configuration fails when `AARAST_API_BASE_URL` is missing.
+- Android release configuration fails when store signing is missing.
+- Android resources, adaptive launcher icon, and native splash compile.
+- iOS Release validates the same API/login-bypass rules through an Xcode build
+  phase; the shell gate passed a public/local/IPv6/malformed-IP test matrix.
+- `flutter analyze` passed and all 418 Flutter tests passed.
+- Final AAB generation and certificate verification are intentionally deferred
+  at the product owner's request. They are not marked PASS.
+
+## 1. Generate and protect the Android upload keystore
+
+Generate this once, keep at least two encrypted backups, and never commit it:
 
 ```powershell
 keytool -genkeypair -v `
@@ -19,14 +30,15 @@ keytool -genkeypair -v `
   -alias aarast-upload
 ```
 
-`keytool` ships with any JDK. If it is not on PATH, use the one bundled
-with Android Studio:
-`"C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe"`.
+`keytool` ships with a JDK. Android Studio also bundles it under
+`C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe`.
 
-## 2. Point the build at it
+## 2. Configure Android signing
 
-Copy `mobile/android/key.properties.example` to
-`mobile/android/key.properties` (git-ignored) and fill in real values:
+Use one of these two private configuration paths.
+
+Local release workstation: copy `mobile/android/key.properties.example` to the
+git-ignored `mobile/android/key.properties` and provide all four values:
 
 ```properties
 storeFile=C:/Users/you/aarast-upload.jks
@@ -35,56 +47,96 @@ keyAlias=aarast-upload
 keyPassword=...
 ```
 
-Without `key.properties`, a release build silently falls back to debug
-keys so `flutter run --release` still works — but such a build is
-**not** uploadable. The Gradle config in
-`mobile/android/app/build.gradle.kts` handles this switch automatically.
+CI/private environment: provide the equivalent variables without writing a
+properties file:
 
-## 3. Build the signed bundle
+```text
+AARAST_ANDROID_STORE_FILE
+AARAST_ANDROID_STORE_PASSWORD
+AARAST_ANDROID_KEY_ALIAS
+AARAST_ANDROID_KEY_PASSWORD
+```
+
+Any missing/placeholder value or nonexistent keystore stops Release during
+Gradle configuration. There is no debug-signing fallback.
+
+## 3. Build Android with the production API origin
 
 ```powershell
 cd mobile
-flutter build appbundle --release
+flutter build appbundle --release `
+  --dart-define=AARAST_API_BASE_URL=https://aarast-api.shadowgardn.com
 ```
 
-Output: `mobile/build/app/outputs/bundle/release/app-release.aab`.
+Release also rejects `AARAST_DEV_BYPASS_LOGIN_GATES=true`. The API URL must be
+an explicit public HTTPS host without credentials, query, fragment, localhost,
+private IPv4, malformed numeric IPv4, or IPv6 literal.
 
-(The build may print "failed to strip debug symbols from native
-libraries" on Windows — this is a cosmetic NDK warning; the AAB is still
-produced and correctly signed.)
+Expected output after a successful build:
+`mobile/build/app/outputs/bundle/release/app-release.aab`.
 
-## 4. Verify the signature before uploading
+Flutter requires Android command-line tools, including `apkanalyzer`, to prove
+that native debug symbols were stripped into `BUNDLE-METADATA`. A stripping
+verification failure is a release blocker even if an AAB file exists; do not
+upload that artifact.
+
+## 4. Verify the Android signer
 
 ```powershell
 keytool -printcert -jarfile build\app\outputs\bundle\release\app-release.aab
 ```
 
-Confirm the Owner is your `CN=...` and NOT `CN=Android Debug`. Record
-the SHA-256 fingerprint; Play App Signing will show the same value.
+Confirm the owner is the production upload certificate and never
+`CN=Android Debug`. Record the production SHA-256 fingerprint for Play Console
+and `assetlinks.json`. Never substitute a temporary verification certificate.
 
-## 5. Upload
+## 5. iOS release gate
 
-- Play Console → create app → upload the AAB to the internal testing
-  track first.
-- Enrol in **Play App Signing** (recommended): Google manages the app
-  signing key; your `aarast-upload.jks` stays as the upload key only.
-- Complete the store listing (`docs/deployment/STORE_LISTING.md`) and
-  the data-safety form (`docs/deployment/PLAY_DATA_SAFETY.md`).
-- Link the privacy policy URL (host `docs/legal/PRIVACY_POLICY.md`).
+Run Archive from a macOS/Xcode host with the real Apple team and provisioning
+profile. The Runner target includes:
 
-## Version bumping
+- `NSContactsUsageDescription` for selected contact import.
+- `Runner.entitlements` with `applinks:aarast.shadowgardn.com`.
+- a Release-only configuration validation phase for the HTTPS API origin and
+  disabled development login bypass.
+- branded AppIcon and LaunchImage assets.
 
-`versionCode`/`versionName` come from `mobile/pubspec.yaml`
-(`version: x.y.z+build`). Increment the `+build` integer for every
-upload — Play rejects a duplicate `versionCode`.
+Windows static checks cannot prove Xcode signing, archive creation, App Store
+validation, or real-device Universal Links. Those remain external release
+gates.
+
+## 6. External link association
+
+Before store submission, publish and verify:
+
+- `https://aarast.shadowgardn.com/.well-known/assetlinks.json` using the real
+  Android package and production signing fingerprint.
+- `https://aarast.shadowgardn.com/.well-known/apple-app-site-association` using
+  the real Apple Team ID and bundle ID.
+
+Test both canonical invite forms on real devices:
+
+- `https://aarast.shadowgardn.com/invites/TOKEN`
+- `aarast://open/invites/TOKEN`
+
+## 7. Upload sequence
+
+- Increment the `+build` integer in `mobile/pubspec.yaml` for every upload.
+- Upload Android to the Play internal-testing track first and enable Play App
+  Signing.
+- Upload iOS through TestFlight first.
+- Complete `STORE_LISTING.md`, `PLAY_DATA_SAFETY.md`, screenshots, privacy
+  policy hosting, and store declarations from observed production behavior.
 
 ## Pre-submission checklist
 
-- [ ] Own keystore generated and backed up (not the verification key)
-- [ ] `key.properties` filled, confirmed git-ignored
-- [ ] `flutter build appbundle --release` succeeds
-- [ ] AAB signer certificate is the upload key, not debug
-- [ ] `versionCode` incremented since the last upload
-- [ ] Privacy policy hosted at a public URL
-- [ ] Data-safety form matches `PLAY_DATA_SAFETY.md`
-- [ ] Store listing text and screenshots ready
+- [ ] Production Android upload key generated and backed up
+- [ ] Signing secrets configured outside Git
+- [ ] Public HTTPS API dart-define supplied; dev bypass disabled
+- [ ] `flutter analyze` and full Flutter tests pass on the release commit
+- [ ] Android AAB builds without symbol-stripping verification failure
+- [ ] AAB signer is the production upload key, not debug/temporary
+- [ ] iOS Archive succeeds on macOS with the real team/profile
+- [ ] Android App Links and iOS Universal Links pass on physical devices
+- [ ] `versionCode`/`CFBundleVersion` incremented
+- [ ] Privacy policy, data-safety form, listing text, and screenshots are ready

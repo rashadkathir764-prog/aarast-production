@@ -23,6 +23,14 @@ http://127.0.0.1:3115
 
 The current backend does not configure a global `/api` prefix. Flutter clients should call routes directly from the base URL, for example `GET /health` and `POST /auth/login`.
 
+Health endpoints have distinct orchestration semantics:
+
+- `GET /live` checks only that the HTTP process responds.
+- `GET /health` is a compatibility alias of `/live`.
+- `GET /ready` checks PostgreSQL and required Redis/media dependencies. It
+  returns `503` with redacted dependency states when the instance must not
+  receive traffic.
+
 ## Common Rules
 
 - JSON request and response bodies are used for API routes.
@@ -40,7 +48,10 @@ The current backend does not configure a global `/api` prefix. Flutter clients s
 
 ### `POST /auth/register`
 
-Request:
+Registration is a two-call verified-phone flow. The first call sends a
+`REGISTER` OTP and does not create a User or issue a session.
+
+Initial request:
 
 ```json
 {
@@ -51,7 +62,35 @@ Request:
 }
 ```
 
-Response:
+Pending response:
+
+```json
+{
+  "registrationPending": true,
+  "phone": "+967700000000",
+  "purpose": "REGISTER",
+  "expiresAt": "2026-07-10T12:00:00.000Z",
+  "delivery": "WHATSAPP"
+}
+```
+
+The mobile client keeps the registration draft in memory and sends it to
+`POST /auth/register/complete` with the six-digit `otpCode`. Production
+responses never echo the code.
+
+Completion request:
+
+```json
+{
+  "name": "Rashad",
+  "phone": "+967700000000",
+  "email": "optional@example.com",
+  "password": "secret123",
+  "otpCode": "123456"
+}
+```
+
+Verified response:
 
 ```json
 {
@@ -69,6 +108,12 @@ Response:
 }
 ```
 
+The OTP is consumed atomically in the same serializable transaction that
+creates the verified User. A wrong, expired, already-consumed, or concurrently
+replayed code creates no account and issues no access or refresh token.
+The initial response is generic; phone/email conflicts are checked only after
+valid phone proof so the start endpoint is not an account-enumeration oracle.
+
 ### `POST /auth/login`
 
 Request:
@@ -81,6 +126,10 @@ Request:
 ```
 
 Response shape matches register.
+
+Password login, refresh, and protected JWT routes reject accounts whose
+`phoneVerifiedAt` is null. Existing unverified accounts must prove phone
+ownership through OTP (or a password-reset OTP) before receiving a session.
 
 ### Refresh Sessions
 
@@ -120,13 +169,20 @@ Additional current auth/profile routes:
 - `POST /auth/otp/request`
 - `POST /auth/otp/verify`
 - `PATCH /users/me`
-- `GET /users/lookup?phone=<phone>`
+- `GET /users/lookup?weddingPlanId=<planId>&phone=<phone>`
+  - requires an authenticated owner/member with permission to invite members
 - `GET /users/me/settings`
 - `PATCH /users/me/settings`
 - `GET /me`
 - `GET /api/v1/me`
 
 OTP/profile routes are account and settings helpers. They do not add payment, booking, financing, AI, or chat behavior.
+
+`REGISTER` codes are completed only through `POST /auth/register/complete`;
+the generic verify endpoint cannot consume a registration code without the
+registration details. In production `AUTH_OTP_MODE=whatsapp` uses an approved Meta
+authentication template and the API refuses to boot when the channel is
+incompletely configured.
 
 ### Profile image upload
 
@@ -453,9 +509,16 @@ Create payment record request:
 }
 ```
 
-A payment record means money actually left the user. Creating or deleting a
-payment record updates the parent commitment `paidAmount`, derived `status`,
-and `remainingAmount`.
+A payment record means money actually left the user. Payment records are an
+append-only ledger: `DELETE /financial-payment-records/:id` is retained as a
+compatibility route but creates one `REVERSAL` row and returns
+`deleted: false, reversed: true`; it never deletes the original row. Repeating
+or concurrently submitting the same reversal returns the same single reversal.
+The response includes `entryType`, `financialInstallmentId`, `reversalOfId`,
+`reversedById`, and `reversible`. Legacy bridge entries are adjusted from their
+original debt/installment routes and return `reversible: false`. Creating or
+reversing a payment updates the parent commitment `paidAmount`, derived
+`status`, and `remainingAmount`.
 
 Financial installment routes:
 
@@ -467,8 +530,12 @@ Financial installment routes:
 - `DELETE /financial-installments/:id`
 
 Financial installments always belong to a financial commitment. Paying a
-financial installment creates a payment record and updates the parent
-commitment balance.
+financial installment locks its PostgreSQL row before reading state, creates a
+payment record uniquely linked by `financialInstallmentId`, and updates the
+parent commitment balance. Concurrent pay requests therefore create exactly
+one payment. Reversing that payment creates one compensating ledger row and
+returns the installment to `PENDING`; installments or commitments with payment
+history cannot be hard-deleted through product APIs.
 
 Current `/api/v1` aliases exist for all financial commitment, payment-record,
 and financial-installment routes.
@@ -571,6 +638,13 @@ Invite token preview is not a public endpoint. The invite detail route requires
 an authenticated user and returns only invitations targeted to that user id or
 an equivalent normalized phone number.
 
+External invite tokens are random bearer values returned only when an invite is
+created. PostgreSQL stores their SHA-256 fingerprints, never the raw value.
+Authenticated invite lists use the invite id as an identity-checked action
+handle. Accept/decline uses a conditional single-row claim, so concurrent
+requests cannot both consume one invite. Access and error logs replace invite
+path tokens and sensitive query values with redacted placeholders.
+
 Create shared member request:
 
 ```json
@@ -612,9 +686,16 @@ Shared member response:
 
 The `user` object is safe display data only. It must not include `passwordHash`, refresh tokens, email, role, status, or a full user object.
 
-Only the owner can add, list, update, or remove shared members for a WeddingPlan. The owner cannot add themselves as a shared member, unknown phone numbers are rejected without auto-creating users, and duplicate members are rejected.
+The owner, or a member explicitly holding `canInviteMembers`, can manage shared
+members. A non-owner cannot grant any effective role or permission above their
+own current ceiling; role-implied permissions are included in that comparison.
+The owner cannot add themselves as a shared member, unknown phone numbers are
+rejected without auto-creating users, and duplicate members are rejected.
 
 Invite routes support explicit acceptance flows. They do not create chat or broad social collaboration features.
+Phone and user-id invitations require the authenticated account's verified
+phone. Email-only invitations are rejected until verified-email ownership is
+implemented; an unverified email string is never treated as identity proof.
 
 ## Guests
 
@@ -709,6 +790,10 @@ Authenticated user routes:
 - `PATCH /reviews/:id`
 - `DELETE /reviews/:id`
 
+Every review response uses a privacy-safe reviewer identity containing only
+`id` and `name`. Reviewer phone and email are never returned by public review,
+review create/update, provider-dashboard review, or admin-review responses.
+
 Plan-scoped `/api/v1` quote routes:
 
 - `POST /api/v1/wedding-plans/:weddingPlanId/quote-requests`
@@ -774,6 +859,8 @@ requester and provider account. Open or unsolicited messaging is excluded.
 - `GET /conversations/:id/messages` returns paginated message history.
 - `POST /conversations/:id/messages` sends text and approved signed-media
   attachments.
+- `GET /conversations/:id/attachments/:attachmentId/download` refreshes a
+  private attachment link after rechecking conversation membership.
 - `PATCH /conversations/:id/read`, `/mute`, and `/block` update participant
   state.
 - `POST /conversations/:id/report` creates a moderation report.
@@ -788,13 +875,33 @@ Authenticated Socket.IO events are `conversation:join`,
 rechecked before room access and message actions.
 
 `POST /media/uploads/presign` issues short-lived S3-compatible upload URLs for
-approved purposes and size/MIME limits. Arbitrary external attachment URLs are
-not accepted. Environment-backed storage and Socket.IO smoke remain release
-gates.
+approved purposes and size/MIME limits. Public avatar/provider purposes return
+`publicUrl`. A `chat-image` upload instead returns an opaque `attachmentRef`
+and `publicUrl: null`; the message write accepts that reference only when its
+path belongs to the authenticated sender. The database stores only the private
+object key. Conversation/message responses replace it with a signed GET URL
+that expires after 120 seconds and include `expiresAt`; they never expose the
+storage key. All responses carrying these links use `Cache-Control: private,
+no-store`. Arbitrary external attachment URLs are rejected. Environment-backed
+private-bucket and Socket.IO smoke remain release gates.
 
 ## Admin APIs
 
 Admin routes are JWT-protected and require admin authorization:
+
+- `POST /auth/admin/login` validates the admin password and returns only a
+  short-lived MFA challenge after sending a `LOGIN` OTP.
+- `POST /auth/admin/login/complete` atomically consumes the challenge + OTP,
+  returns a short-lived access JWT, and sets the rotating refresh token only as
+  a path-scoped `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production).
+- `POST /auth/admin/refresh` rotates that cookie and its server session.
+- `POST /auth/admin/logout` revokes the server session and clears the cookie.
+
+General password login, general OTP login, and general refresh never mint the
+`admin_mfa` assurance required by `AdminGuard`. Each admin access JWT also
+carries a server-side refresh-session id; refresh or logout revokes that row,
+so the prior access JWT stops working immediately. The JSON contract never
+returns the admin refresh token.
 
 - `GET /admin/dashboard/stats`
 - `GET /admin/reports/overview`
@@ -834,11 +941,26 @@ Admin routes are JWT-protected and require admin authorization:
 - `PATCH /admin/users/:id/disable`
 - `GET /admin/users/:id`
 
+The admin user, provider application, provider, service, review, conversation
+report, and notification list routes accept positive `page` and `limit` query
+parameters (`limit` is capped server-side). They return
+`{ items, page, limit, total, totalPages }`; the UI must use this metadata and
+must not silently truncate to its first 50/80/100 results.
+
 Admin services are real `ProviderService` management operations. Deleting a service safely deactivates it (`isActive=false`) instead of hard-deleting data.
 
-Admin reviews are real `ProviderReview` moderation operations. Publishing or hiding a review recalculates the provider public rating from published reviews only.
+Admin reviews are real `ProviderReview` moderation operations. Publishing or hiding a review recalculates the provider public rating from published reviews only. Reviewer contact details are not part of the moderation response or search contract.
 
-Admin notifications expose an operational view of persisted notifications across users. User-owned notification routes remain separate under `/notifications` and `/api/v1/notifications`.
+Admin notifications expose a privacy-minimized operational view of persisted
+notifications across users. The user reference contains `id`, `name`, and a
+masked phone suffix only. Installment/debt notifications, notifications with a
+financial entity, and even misclassified notifications carrying financial data
+keys return a generic Arabic title/body, `financialDetailsRedacted: true`, and
+`null` for `data`, `entityId`, `routeTarget`, and plan details. The general
+admin API has no endpoint that reveals that hidden financial content. Search
+does not query notification bodies, user phones, or reviewer phones. User-owned
+notification routes remain separate under `/notifications` and
+`/api/v1/notifications`.
 
 `GET /admin/reports/overview` is an operational database report for users,
 providers, services, reviews, quote requests, notifications, catalog counts,
@@ -853,6 +975,20 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
 
 - Missing or invalid JWT returns `401`.
 - Validation errors are rejected by the global validation pipe.
+- Authenticated `POST`, `PUT`, `PATCH`, and `DELETE` requests may send
+  `X-Client-Request-Id`. The key is scoped to the user and bound to the HTTP
+  method, concrete path/query, and canonical JSON body. An identical retry
+  replays the stored success; concurrent identical requests execute once. Reuse
+  for different request content returns `409`, while an identical request still
+  in progress returns retryable `503`. Raw paths, query values, and invite
+  tokens are represented only by a SHA-256 fingerprint and are not persisted.
+  Pending reservations expire after 24 hours by default, completed responses
+  after 168 hours; both are environment-bounded and cleaned hourly.
+- Access/error telemetry records the matched route template only. Query
+  strings, concrete resource ids, invite tokens, exception messages, and
+  exception stacks are not sent to application logs or Sentry. Unmatched
+  routes are recorded as `unmatched`, and invalid client request ids are
+  replaced with a server-generated UUID.
 - Access to private resources that the user does not own or cannot access may return a not-found style response.
 - Login with a wrong password returns `401`.
 
@@ -881,6 +1017,7 @@ configuration, and smoke checks.
 
 | Method | Path | Controller.Handler | Auth |
 | --- | --- | --- | --- |
+| GET | `/admin/audit-logs` | `admin-audit.list` |  |
 | GET | `/admin/cities` | `admin.listCities` |  |
 | POST | `/admin/cities` | `admin.createCity` |  |
 | DELETE | `/admin/cities/:id` | `admin.deleteCity` |  |
@@ -918,6 +1055,10 @@ configuration, and smoke checks.
 | GET | `/admin/users/:id` | `admin.getUser` |  |
 | PATCH | `/admin/users/:id/activate` | `admin.activateUser` |  |
 | PATCH | `/admin/users/:id/disable` | `admin.disableUser` |  |
+| POST | `/auth/admin/login` | `auth.startAdminLogin` |  |
+| POST | `/auth/admin/login/complete` | `auth.completeAdminLogin` |  |
+| POST | `/auth/admin/logout` | `auth.logoutAdmin` |  |
+| POST | `/auth/admin/refresh` | `auth.refreshAdmin` |  |
 | POST | `/auth/login` | `auth.login` |  |
 | POST | `/auth/logout` | `auth.logout` | 🔒 |
 | POST | `/auth/logout-all` | `auth.logoutAll` | 🔒 |
@@ -928,10 +1069,12 @@ configuration, and smoke checks.
 | POST | `/auth/password-reset/request` | `auth.requestPasswordReset` |  |
 | POST | `/auth/refresh` | `auth.refresh` |  |
 | POST | `/auth/register` | `auth.register` |  |
+| POST | `/auth/register/complete` | `auth.completeRegistration` |  |
 | DELETE | `/budget-categories/:id` | `budget-categories.remove` |  |
 | PATCH | `/budget-categories/:id` | `budget-categories.update` |  |
 | GET | `/cities` | `marketplace.findCities` |  |
 | GET | `/conversations` | `conversations.list` |  |
+| GET | `/conversations/:id/attachments/:attachmentId/download` | `conversations.downloadAttachment` |  |
 | PATCH | `/conversations/:id/block` | `conversations.block` |  |
 | GET | `/conversations/:id/messages` | `conversations.messages` |  |
 | POST | `/conversations/:id/messages` | `conversations.send` |  |
@@ -964,10 +1107,11 @@ configuration, and smoke checks.
 | DELETE | `/guests/:id` | `guests.remove` |  |
 | GET | `/guests/:id` | `guests.findOne` |  |
 | PATCH | `/guests/:id` | `guests.update` |  |
-| GET | `/health` | `health.getHealth` |  |
+| GET | `/health` | `health.getCompatibilityHealth` |  |
 | DELETE | `/installments/:id` | `installments.remove` |  |
 | PATCH | `/installments/:id` | `installments.update` |  |
 | PATCH | `/installments/:id/pay` | `installments.pay` |  |
+| GET | `/live` | `health.getLiveness` |  |
 | GET | `/me` | `me.me` |  |
 | GET | `/me/favorite-providers` | `marketplace.findMyFavoriteProviders` |  |
 | GET | `/me/quote-requests` | `marketplace.findMyQuoteRequests` |  |
@@ -1015,6 +1159,7 @@ configuration, and smoke checks.
 | GET | `/providers/:id/reviews` | `marketplace.findProviderReviews` |  |
 | POST | `/providers/:id/reviews` | `marketplace.createReview` | 🔒 |
 | GET | `/providers/:id/services` | `marketplace.findProviderServices` |  |
+| GET | `/ready` | `health.getReadiness` |  |
 | DELETE | `/reviews/:id` | `marketplace.deleteReview` |  |
 | PATCH | `/reviews/:id` | `marketplace.updateReview` |  |
 | GET | `/services` | `marketplace.findServices` |  |

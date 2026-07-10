@@ -21,11 +21,14 @@ import { FormCard } from '../components/FormCard';
 import { FormField } from '../components/FormField';
 import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { TableToolbar } from '../components/TableToolbar';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 const statuses = [
   { value: '', label: 'كل الحالات' },
@@ -43,6 +46,13 @@ export function ServicesPage() {
   const [status, setStatus] = useState('');
   const [cityId, setCityId] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [form, setForm] = useState({
     providerId: '',
     categoryId: '',
@@ -58,12 +68,22 @@ export function ServicesPage() {
     setError(null);
     try {
       const [services, providerPage, cityList, categoryList] = await Promise.all([
-        getServices({ search, status, cityId, categoryId, limit: 80 }),
+        getServices({ search, status, cityId, categoryId, page, limit: 20 }),
         getProviders({ limit: 100 }),
         getCities(),
         getCategories(),
       ]);
+      if (page > services.totalPages) {
+        setPage(services.totalPages);
+        return;
+      }
       setItems(services.items);
+      setPagination({
+        page: services.page,
+        limit: services.limit,
+        total: services.total,
+        totalPages: services.totalPages,
+      });
       setProviders(providerPage.items);
       setCities(cityList);
       setCategories(categoryList);
@@ -76,7 +96,12 @@ export function ServicesPage() {
 
   useEffect(() => {
     load();
-  }, [status, cityId, categoryId]);
+  }, [status, cityId, categoryId, page]);
+
+  function submitSearch() {
+    if (page === 1) void load();
+    else setPage(1);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -122,7 +147,7 @@ export function ServicesPage() {
         icon="⌁"
         title="خدمات الموردين"
         description="إدارة حقيقية من Admin API: إنشاء خدمة، تفعيلها، إيقافها، وتمييزها بدون بيانات وهمية."
-        meta={<span>{items.length} خدمة معروضة</span>}
+        meta={<span>{pagination.total} خدمة مطابقة</span>}
       />
 
       <div className="stats-grid">
@@ -133,8 +158,9 @@ export function ServicesPage() {
         <StatCard title="لها سعر" value={pricedCount} tone="info" />
       </div>
 
-      <FormCard title="إضافة خدمة لمورد" subtitle="تُحفظ مباشرة في /admin/services.">
-        <form className="form-grid" onSubmit={submit}>
+      <Can permission={AdminPermission.SERVICES_WRITE}>
+        <FormCard title="إضافة خدمة لمورد" subtitle="تُحفظ مباشرة في /admin/services.">
+          <form className="form-grid" onSubmit={submit}>
           <label className="form-field">
             <span>المورد</span>
             <select
@@ -189,22 +215,34 @@ export function ServicesPage() {
           <ActionButton type="submit" disabled={isSaving}>
             {isSaving ? 'جاري الحفظ...' : 'إضافة الخدمة'}
           </ActionButton>
-        </form>
-      </FormCard>
+          </form>
+        </FormCard>
+      </Can>
 
       <SectionCard className="filters-card">
         <TableToolbar>
           <SearchInput
             value={search}
             onChange={setSearch}
-            onSubmit={load}
+            onSubmit={submitSearch}
             placeholder="بحث بالخدمة أو المورد"
           />
-          <FilterSelect label="الحالة" value={status} onChange={setStatus} options={statuses} />
+          <FilterSelect
+            label="الحالة"
+            value={status}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
+            options={statuses}
+          />
           <FilterSelect
             label="المدينة"
             value={cityId}
-            onChange={setCityId}
+            onChange={(value) => {
+              setCityId(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل المدن' },
               ...cities.map((city) => ({ value: city.id, label: city.nameAr })),
@@ -213,7 +251,10 @@ export function ServicesPage() {
           <FilterSelect
             label="الفئة"
             value={categoryId}
-            onChange={setCategoryId}
+            onChange={(value) => {
+              setCategoryId(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل الفئات' },
               ...categories.map((category) => ({
@@ -261,17 +302,26 @@ export function ServicesPage() {
                   {service.isFeatured ? <StatusBadge status="FEATURED" /> : null}
                 </td>
                 <td className="actions-cell">
-                  <ActionButton tone="ghost" size="small" onClick={() => toggleActive(service)}>
-                    {service.isActive ? 'إيقاف' : 'تفعيل'}
-                  </ActionButton>
-                  <ActionButton tone="ghost" size="small" onClick={() => toggleFeatured(service)}>
-                    {service.isFeatured ? 'إلغاء التمييز' : 'تمييز'}
-                  </ActionButton>
+                  <Can permission={AdminPermission.SERVICES_WRITE}>
+                    <ActionButton tone="ghost" size="small" onClick={() => toggleActive(service)}>
+                      {service.isActive ? 'إيقاف' : 'تفعيل'}
+                    </ActionButton>
+                    <ActionButton tone="ghost" size="small" onClick={() => toggleFeatured(service)}>
+                      {service.isFeatured ? 'إلغاء التمييز' : 'تمييز'}
+                    </ActionButton>
+                  </Can>
                 </td>
               </tr>
             ))}
           </DataTable>
         )}
+        <Pagination
+          page={pagination.page}
+          limit={pagination.limit}
+          total={pagination.total}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       </SectionCard>
     </section>
   );

@@ -52,6 +52,8 @@ const appRoutes = read(join(srcRoot, 'App.tsx'));
 const sidebar = read(join(srcRoot, 'layout', 'Sidebar.tsx'));
 const dashboard = read(join(srcRoot, 'pages', 'DashboardPage.tsx'));
 const adminApi = read(join(srcRoot, 'api', 'admin.ts'));
+const authApi = read(join(srcRoot, 'api', 'auth.ts'));
+const apiClient = read(join(srcRoot, 'api', 'client.ts'));
 const adminRuntimeSmoke = read(join(process.cwd(), 'scripts', 'admin-runtime-smoke.mjs'));
 const conversationReportsPagePath = join(
   srcRoot,
@@ -66,7 +68,7 @@ addCheck(
 
 addCheck(
   'Unsupported admin pages are not in sidebar',
-  !/\/(bookings|payments|settings|audit-log)/.test(sidebar),
+  !/\/(bookings|payments|settings|audit-log)(?:[/'"`]|$)/.test(sidebar),
 );
 
 addCheck(
@@ -90,6 +92,16 @@ addCheck(
   !adminRuntimeSmoke.includes('ADMIN_SMOKE_ALLOW_DEV_CREDENTIALS') &&
     !adminRuntimeSmoke.includes('Aarast@') &&
     !adminRuntimeSmoke.includes("|| '770"),
+);
+
+addCheck(
+  'Admin session tokens are not persisted in browser storage',
+  !authApi.includes('localStorage') &&
+    !authApi.includes('sessionStorage') &&
+    !apiClient.includes('localStorage') &&
+    !apiClient.includes('sessionStorage') &&
+    authApi.includes('/auth/admin/login/complete') &&
+    apiClient.includes("credentials: 'include'"),
 );
 
 for (const check of checks) {

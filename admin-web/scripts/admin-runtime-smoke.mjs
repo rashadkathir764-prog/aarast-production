@@ -14,6 +14,7 @@ const localComposeDatabaseUrl =
 
 const checks = [];
 let token = "";
+let adminRefreshCookie = "";
 let smokeCredentials = null;
 let cleanupSmokeAdmin = async () => {};
 
@@ -37,9 +38,24 @@ async function request(path, options = {}) {
       ...(options.auth === false || !token
         ? {}
         : { Authorization: `Bearer ${token}` }),
+      ...(path.startsWith("/auth/admin") && adminRefreshCookie
+        ? { Cookie: adminRefreshCookie }
+        : {}),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
   });
+
+  const setCookieValues =
+    typeof response.headers.getSetCookie === "function"
+      ? response.headers.getSetCookie()
+      : [response.headers.get("set-cookie")].filter(Boolean);
+  for (const value of setCookieValues) {
+    if (!value.startsWith("aarast_admin_refresh=")) continue;
+    adminRefreshCookie =
+      /(?:Max-Age=0|Expires=Thu, 01 Jan 1970)/i.test(value)
+        ? ""
+        : value.split(";", 1)[0];
+  }
 
   const text = await response.text();
   let body = null;
@@ -157,14 +173,18 @@ async function createLocalSmokeAdmin() {
         phone,
         name: "Admin Runtime Smoke",
         role: "ADMIN",
+        adminRole: "SUPER_ADMIN",
         appRole: "WEDDING_USER",
         status: "ACTIVE",
+        phoneVerifiedAt: new Date(),
         passwordHash,
       },
     });
 
     cleanupSmokeAdmin = async () => {
+      await prisma.adminLoginChallenge.deleteMany({ where: { userId: user.id } });
       await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+      await prisma.otpCode.deleteMany({ where: { phone } });
       await prisma.user.deleteMany({ where: { id: user.id, phone } });
       await prisma.$disconnect();
     };
@@ -207,7 +227,7 @@ async function run() {
     String(res.status),
   );
 
-  res = await request("/auth/login", {
+  res = await request("/auth/admin/login", {
     method: "POST",
     auth: false,
     body: {
@@ -216,19 +236,56 @@ async function run() {
     },
   });
   check(
-    "admin login returns 200 or 201",
-    res.status === 200 || res.status === 201,
+    "admin password step returns MFA challenge",
+    res.status === 200 &&
+      res.body?.mfaRequired === true &&
+      typeof res.body?.challengeToken === "string",
     String(res.status),
   );
-  check("admin login returns ADMIN user", res.body?.user?.role === "ADMIN");
   check(
-    "admin login returns access token",
+    "admin password step does not return an access token",
+    !Object.hasOwn(res.body ?? {}, "accessToken"),
+  );
+  check(
+    "admin password step does not set a refresh cookie",
+    adminRefreshCookie === "",
+  );
+  check("admin password step does not expose passwordHash", !hasPasswordHash(res.body));
+
+  const challengeToken = res.body?.challengeToken;
+  const otpCode = process.env.ADMIN_SMOKE_OTP_CODE || res.body?.code;
+  if (typeof challengeToken !== "string" || typeof otpCode !== "string") {
+    throw new Error(
+      "Admin MFA challenge or OTP is unavailable. Set ADMIN_SMOKE_OTP_CODE outside local dev mode.",
+    );
+  }
+
+  res = await request("/auth/admin/login/complete", {
+    method: "POST",
+    auth: false,
+    body: { challengeToken, code: otpCode },
+  });
+  check("admin MFA completion returns 200", res.status === 200, String(res.status));
+  check(
+    "admin MFA completion returns SUPER_ADMIN permissions",
+    res.body?.user?.role === "ADMIN" &&
+      res.body?.user?.adminRole === "SUPER_ADMIN" &&
+      Array.isArray(res.body?.user?.adminPermissions) &&
+      res.body.user.adminPermissions.includes("AUDIT_READ"),
+  );
+  check(
+    "admin MFA completion returns access token",
     typeof res.body?.accessToken === "string",
   );
-  check("admin login does not expose passwordHash", !hasPasswordHash(res.body));
+  check(
+    "admin refresh token exists only in HttpOnly cookie",
+    adminRefreshCookie.startsWith("aarast_admin_refresh=") &&
+      !Object.hasOwn(res.body ?? {}, "refreshToken"),
+  );
+  check("admin MFA completion does not expose passwordHash", !hasPasswordHash(res.body));
 
   if (typeof res.body?.accessToken !== "string") {
-    throw new Error("Admin login did not return an access token.");
+    throw new Error("Admin MFA completion did not return an access token.");
   }
   token = res.body.accessToken;
 
@@ -257,6 +314,33 @@ async function run() {
   check(
     "admin notifications does not expose passwordHash",
     !hasPasswordHash(res.body),
+  );
+  check(
+    "admin notifications never expose full user phones",
+    Array.isArray(res.body?.items) &&
+      res.body.items.every(
+        (item) =>
+          !item.user ||
+          (!Object.hasOwn(item.user, "phone") &&
+            !Object.hasOwn(item.user, "email")),
+      ),
+  );
+  check(
+    "admin financial notifications are redacted",
+    Array.isArray(res.body?.items) &&
+      res.body.items
+        .filter((item) =>
+          ["INSTALLMENT_DUE_SOON", "INSTALLMENT_OVERDUE", "DEBT_DUE_SOON"].includes(
+            item.type,
+          ),
+        )
+        .every(
+          (item) =>
+            item.financialDetailsRedacted === true &&
+            item.data === null &&
+            item.entityId === null &&
+            item.routeTarget === null,
+        ),
   );
 
   res = await request("/admin/notifications/unread-count");
@@ -387,6 +471,51 @@ async function run() {
   check(
     "admin reviews list does not expose passwordHash",
     !hasPasswordHash(res.body),
+  );
+  check(
+    "admin reviews never expose reviewer contact details",
+    Array.isArray(res.body?.items) &&
+      res.body.items.every(
+        (item) =>
+          !item.user ||
+          (!Object.hasOwn(item.user, "phone") &&
+            !Object.hasOwn(item.user, "email")),
+      ),
+  );
+
+  res = await request("/admin/audit-logs?limit=5");
+  check(
+    "admin audit log returns append-only paginated entries",
+    res.status === 200 && Array.isArray(res.body?.items),
+    String(res.status),
+  );
+  check("admin audit log does not expose passwordHash", !hasPasswordHash(res.body));
+
+  res = await request("/auth/admin/refresh", {
+    method: "POST",
+    auth: false,
+  });
+  check(
+    "admin refresh rotates the cookie session",
+    res.status === 200 &&
+      typeof res.body?.accessToken === "string" &&
+      adminRefreshCookie.startsWith("aarast_admin_refresh="),
+    String(res.status),
+  );
+  if (typeof res.body?.accessToken === "string") token = res.body.accessToken;
+
+  res = await request("/auth/admin/logout", { method: "POST", auth: false });
+  check(
+    "admin logout revokes the cookie session",
+    res.status === 200 && adminRefreshCookie === "",
+    String(res.status),
+  );
+
+  res = await request("/admin/dashboard/stats");
+  check(
+    "admin logout immediately invalidates the access token",
+    res.status === 401,
+    String(res.status),
   );
 
   const failed = checks.filter((item) => !item.passed);

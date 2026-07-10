@@ -9,6 +9,24 @@ export type Paginated<T> = {
   totalPages: number;
 };
 
+export type AdminAuditPhase = 'ATTEMPT' | 'SUCCEEDED' | 'FAILED';
+
+export type AdminAuditLog = {
+  id: string;
+  eventId: string;
+  actorUserId: string;
+  actorAdminRole: 'SUPER_ADMIN' | 'OPERATIONS' | 'MODERATOR' | 'SUPPORT';
+  action: string;
+  method: string;
+  route: string;
+  targetId: string | null;
+  phase: AdminAuditPhase;
+  statusCode: number | null;
+  errorType: string | null;
+  requestId: string | null;
+  createdAt: string;
+};
+
 export type City = {
   id: string;
   nameAr: string;
@@ -89,7 +107,6 @@ export type ProviderReview = {
   user: {
     id: string;
     name: string;
-    phone: string | null;
   };
   providerId: string;
   provider?: ProviderReference;
@@ -103,7 +120,11 @@ export type ProviderReview = {
 export type AdminNotification = {
   id: string;
   userId: string;
-  user?: AdminUser;
+  user?: {
+    id: string;
+    name: string;
+    phoneMasked: string | null;
+  };
   weddingPlanId: string | null;
   weddingPlan?: { id: string; title: string; city: string | null } | null;
   type: string;
@@ -114,6 +135,7 @@ export type AdminNotification = {
   entityId: string | null;
   routeTarget: string | null;
   data: unknown;
+  financialDetailsRedacted: boolean;
   readAt: string | null;
   archivedAt: string | null;
   createdAt: string;
@@ -268,6 +290,9 @@ export type QueryParams = {
   unreadOnly?: boolean;
   from?: string;
   to?: string;
+  action?: string;
+  actorUserId?: string;
+  phase?: AdminAuditPhase;
 };
 
 export type ServicePayload = {
@@ -299,6 +324,12 @@ export function getStats() {
 
 export function getReportOverview(params: QueryParams = {}) {
   return apiRequest<AdminReport>(`/admin/reports/overview${toQuery(params)}`);
+}
+
+export function getAdminAuditLogs(params: QueryParams = {}) {
+  return apiRequest<Paginated<AdminAuditLog>>(
+    `/admin/audit-logs${toQuery(params)}`,
+  );
 }
 
 export function getProviderApplications(params: QueryParams = {}) {

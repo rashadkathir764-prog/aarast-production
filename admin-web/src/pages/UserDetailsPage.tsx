@@ -12,6 +12,8 @@ import { RoleBadge } from '../components/RoleBadge';
 import { SectionCard } from '../components/SectionCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatDate } from './providerHelpers';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 type UserDetails = AdminUser & {
   provider?: ProviderApplication | null;
@@ -70,12 +72,14 @@ export function UserDetailsPage() {
         description="عرض آمن لبيانات الحساب المتاحة من Admin API فقط، بدون كلمات مرور أو رموز جلسات أو OTP."
         actions={
           <>
-            <ActionButton
-              tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
-              onClick={toggleUserStatus}
-            >
-              {user.status === 'ACTIVE' ? 'تعطيل الحساب' : 'تفعيل الحساب'}
-            </ActionButton>
+            <Can permission={AdminPermission.USERS_WRITE}>
+              <ActionButton
+                tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
+                onClick={toggleUserStatus}
+              >
+                {user.status === 'ACTIVE' ? 'تعطيل الحساب' : 'تفعيل الحساب'}
+              </ActionButton>
+            </Can>
             <ActionLink tone="ghost" to="/users">
               العودة للمستخدمين
             </ActionLink>

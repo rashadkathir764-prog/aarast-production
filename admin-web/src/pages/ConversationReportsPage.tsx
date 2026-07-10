@@ -12,10 +12,13 @@ import { ErrorState } from '../components/ErrorState';
 import { FilterSelect } from '../components/FilterSelect';
 import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { TableToolbar } from '../components/TableToolbar';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 const statuses = [
   { value: '', label: 'كل الحالات' },
@@ -27,6 +30,13 @@ const statuses = [
 export function ConversationReportsPage() {
   const [reports, setReports] = useState<ConversationReport[]>([]);
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +45,18 @@ export function ConversationReportsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const page = await getConversationReports({ status, limit: 100 });
-      setReports(page.items);
+      const result = await getConversationReports({ status, page, limit: 20 });
+      if (page > result.totalPages) {
+        setPage(result.totalPages);
+        return;
+      }
+      setReports(result.items);
+      setPagination({
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+      });
     } catch (value) {
       setError(value instanceof Error ? value.message : 'تعذر تحميل البلاغات.');
     } finally {
@@ -46,7 +66,7 @@ export function ConversationReportsPage() {
 
   useEffect(() => {
     void load();
-  }, [status]);
+  }, [status, page]);
 
   async function update(
     report: ConversationReport,
@@ -84,7 +104,7 @@ export function ConversationReportsPage() {
         icon="!"
         title="بلاغات المحادثات"
         description="مراجعة البلاغات المرتبطة بطلبات الأسعار دون إظهار محتوى الرسائل أو البيانات المالية."
-        meta={<span>{reports.length} بلاغ معروض</span>}
+        meta={<span>{pagination.total} بلاغ مطابق</span>}
       />
 
       <div className="stats-grid">
@@ -99,7 +119,10 @@ export function ConversationReportsPage() {
           <FilterSelect
             label="الحالة"
             value={status}
-            onChange={setStatus}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
             options={statuses}
           />
         </TableToolbar>
@@ -147,7 +170,8 @@ export function ConversationReportsPage() {
                 <td><StatusBadge status={report.status} /></td>
                 <td>{formatDate(report.createdAt)}</td>
                 <td className="actions-cell">
-                  {report.status !== 'REVIEWED' ? (
+                  <Can permission={AdminPermission.CONVERSATION_REPORTS_WRITE}>
+                    {report.status !== 'REVIEWED' ? (
                     <ActionButton
                       icon={<CheckCircle2 size={16} />}
                       tone="ghost"
@@ -157,8 +181,8 @@ export function ConversationReportsPage() {
                     >
                       تمت المراجعة
                     </ActionButton>
-                  ) : null}
-                  {report.status !== 'DISMISSED' ? (
+                    ) : null}
+                    {report.status !== 'DISMISSED' ? (
                     <ActionButton
                       icon={<XCircle size={16} />}
                       tone="danger"
@@ -168,12 +192,20 @@ export function ConversationReportsPage() {
                     >
                       رفض البلاغ
                     </ActionButton>
-                  ) : null}
+                    ) : null}
+                  </Can>
                 </td>
               </tr>
             ))}
           </DataTable>
         )}
+        <Pagination
+          page={pagination.page}
+          limit={pagination.limit}
+          total={pagination.total}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       </SectionCard>
     </section>
   );

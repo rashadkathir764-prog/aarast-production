@@ -1,4 +1,12 @@
-import { adminTokenKey, ApiError, apiRequest } from './client';
+import {
+  AdminBrowserSession,
+  ApiError,
+  apiRequest,
+  clearAdminAccessToken,
+  refreshAdminAccessToken,
+  setAdminAccessToken,
+} from './client';
+import { AdminPermission } from '../auth/adminPermissions';
 
 export type AdminUser = {
   id: string;
@@ -6,38 +14,82 @@ export type AdminUser = {
   phone: string | null;
   email: string | null;
   role: string;
+  adminRole: 'SUPER_ADMIN' | 'OPERATIONS' | 'MODERATOR' | 'SUPPORT' | null;
+  adminPermissions: AdminPermission[];
   status: string;
   avatarUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
 
-type LoginResponse = {
-  user: AdminUser;
-  accessToken: string;
+export type AdminLoginChallenge = {
+  mfaRequired: true;
+  challengeToken: string;
+  expiresAt: string;
+  delivery: 'LOCAL_DEV' | 'WHATSAPP';
+  /** Present only when the backend itself is in local development OTP mode. */
+  code?: string;
 };
 
-export async function loginAdmin(phone: string, password: string) {
-  let response: LoginResponse;
+type AdminSession = AdminBrowserSession<AdminUser>;
+
+export async function startAdminLogin(phone: string, password: string) {
   try {
-    response = await apiRequest<LoginResponse>('/auth/login', {
+    const response = await apiRequest<AdminLoginChallenge>('/auth/admin/login', {
       method: 'POST',
       auth: false,
       body: { phone, password },
     });
+    if (
+      response.mfaRequired !== true ||
+      !/^[a-f0-9]{64}$/.test(response.challengeToken)
+    ) {
+      throw new Error('تعذر بدء التحقق بخطوتين');
+    }
+    return response;
   } catch (error) {
     throw mapLoginError(error);
   }
+}
 
-  if (response.user.role !== 'ADMIN') {
+export async function completeAdminLogin(challengeToken: string, code: string) {
+  let response: AdminSession;
+  try {
+    response = await apiRequest<AdminSession>('/auth/admin/login/complete', {
+      method: 'POST',
+      auth: false,
+      body: { challengeToken, code },
+    });
+  } catch (error) {
+    throw mapMfaError(error);
+  }
+
+  return acceptAdminSession(response);
+}
+
+export async function restoreAdminSession(): Promise<AdminUser> {
+  const response = await refreshAdminAccessToken<AdminUser>();
+  return acceptAdminSession(response);
+}
+
+export async function logoutAdmin(): Promise<void> {
+  try {
+    await apiRequest('/auth/admin/logout', { method: 'POST', auth: false });
+  } finally {
+    clearAdminAccessToken();
+  }
+}
+
+function acceptAdminSession(response: AdminSession): AdminUser {
+  if (response.user?.role !== 'ADMIN') {
+    clearAdminAccessToken();
     throw new Error('ليس لديك صلاحية الدخول إلى لوحة الإدارة');
   }
-
   if (!response.accessToken) {
+    clearAdminAccessToken();
     throw new Error('تعذر الاتصال بالخادم');
   }
-
-  localStorage.setItem(adminTokenKey, response.accessToken);
+  setAdminAccessToken(response.accessToken);
   return response.user;
 }
 
@@ -46,21 +98,17 @@ function mapLoginError(error: unknown): Error {
     if (error.status === 401 || error.status === 400) {
       return new Error('بيانات الدخول غير صحيحة');
     }
-
     return new Error('تعذر الاتصال بالخادم');
   }
-
+  if (error instanceof Error && error.message === 'تعذر بدء التحقق بخطوتين') {
+    return error;
+  }
   return new Error('تعذر الاتصال بالخادم');
 }
 
-export async function fetchMe() {
-  return apiRequest<AdminUser>('/auth/me');
-}
-
-export function getAdminToken() {
-  return localStorage.getItem(adminTokenKey);
-}
-
-export function clearAdminToken() {
-  localStorage.removeItem(adminTokenKey);
+function mapMfaError(error: unknown): Error {
+  if (error instanceof ApiError && [400, 401, 409].includes(error.status ?? 0)) {
+    return new Error('رمز التحقق غير صحيح أو انتهت صلاحيته');
+  }
+  return new Error('تعذر إكمال التحقق. حاول مرة أخرى.');
 }

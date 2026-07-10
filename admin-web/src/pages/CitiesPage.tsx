@@ -18,6 +18,8 @@ import { PageHeader } from '../components/PageHeader';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 export function CitiesPage() {
   const [items, setItems] = useState<City[]>([]);
@@ -149,7 +151,8 @@ export function CitiesPage() {
                   <td>{city.providersCount ?? 0}</td>
                   <td>{city.servicesCount ?? 0}</td>
                   <td className="actions-cell">
-                    <div className="actions">
+                    <Can permission={AdminPermission.CATALOG_WRITE}>
+                      <div className="actions">
                       <ActionButton
                         tone="ghost"
                         size="small"
@@ -170,7 +173,8 @@ export function CitiesPage() {
                         }
                         onConfirm={() => deleteCity(city.id).then(load)}
                       />
-                    </div>
+                      </div>
+                    </Can>
                   </td>
                 </tr>
               ))}
@@ -178,11 +182,12 @@ export function CitiesPage() {
           )}
         </SectionCard>
 
-        <FormCard
-          title={editing ? 'تعديل مدينة' : 'إضافة مدينة'}
-          subtitle="الأسماء العربية تظهر للمستخدمين في الواجهة."
-        >
-          <form className="side-form" onSubmit={submit}>
+        <Can permission={AdminPermission.CATALOG_WRITE}>
+          <FormCard
+            title={editing ? 'تعديل مدينة' : 'إضافة مدينة'}
+            subtitle="الأسماء العربية تظهر للمستخدمين في الواجهة."
+          >
+            <form className="side-form" onSubmit={submit}>
             <FormField
               label="الاسم العربي"
               value={nameAr}
@@ -215,8 +220,9 @@ export function CitiesPage() {
                 </ActionButton>
               ) : null}
             </div>
-          </form>
-        </FormCard>
+            </form>
+          </FormCard>
+        </Can>
       </div>
     </section>
   );

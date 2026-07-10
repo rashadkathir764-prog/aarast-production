@@ -8,12 +8,15 @@ import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { RoleBadge } from '../components/RoleBadge';
 import { SearchInput } from '../components/SearchInput';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { formatDate } from './providerHelpers';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 type UserRow = AdminUser & {
   provider?: {
@@ -26,6 +29,13 @@ type UserRow = AdminUser & {
 export function UsersPage() {
   const [items, setItems] = useState<UserRow[]>([]);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -33,8 +43,18 @@ export function UsersPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getUsers({ search, limit: 50 });
+      const result = await getUsers({ search, page, limit: 20 });
+      if (page > result.totalPages) {
+        setPage(result.totalPages);
+        return;
+      }
       setItems(result.items as UserRow[]);
+      setPagination({
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تحميل المستخدمين.');
     } finally {
@@ -44,7 +64,12 @@ export function UsersPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [page]);
+
+  function submitSearch() {
+    if (page === 1) void load();
+    else setPage(1);
+  }
 
   async function toggleUser(user: UserRow) {
     if (user.status === 'ACTIVE') {
@@ -75,7 +100,7 @@ export function UsersPage() {
         icon="♙"
         title="حسابات المستخدمين دون بيانات حساسة"
         description="عرض الحسابات والأدوار والحالة العامة فقط. لا يتم عرض كلمات مرور أو OTP أو رموز جلسات."
-        meta={<span>{items.length} حساب معروض</span>}
+        meta={<span>{pagination.total} حساب مطابق</span>}
       />
 
       <div className="stats-grid">
@@ -89,7 +114,7 @@ export function UsersPage() {
         <SearchInput
           value={search}
           onChange={setSearch}
-          onSubmit={load}
+          onSubmit={submitSearch}
           placeholder="بحث بالاسم أو الهاتف"
         />
       </SectionCard>
@@ -149,18 +174,27 @@ export function UsersPage() {
                     <Link className="readonly-pill" to={`/users/${user.id}`}>
                       عرض التفاصيل
                     </Link>
-                    <ActionButton
-                      tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
-                      size="small"
-                      onClick={() => toggleUser(user)}
-                    >
-                      {user.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'}
-                    </ActionButton>
+                    <Can permission={AdminPermission.USERS_WRITE}>
+                      <ActionButton
+                        tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
+                        size="small"
+                        onClick={() => toggleUser(user)}
+                      >
+                        {user.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'}
+                      </ActionButton>
+                    </Can>
                   </td>
                 </tr>
               ))}
             </DataTable>
           )}
+          <Pagination
+            page={pagination.page}
+            limit={pagination.limit}
+            total={pagination.total}
+            totalPages={pagination.totalPages}
+            onPageChange={setPage}
+          />
         </SectionCard>
 
         <SectionCard

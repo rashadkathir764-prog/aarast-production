@@ -10,6 +10,8 @@ import { ActionButton, ActionLink } from '../components/ActionButton';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { DetailField } from '../components/DetailField';
 import { StatusBadge } from '../components/StatusBadge';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 export function formatDate(value?: string | null) {
   if (!value) return 'غير محدد';
@@ -47,7 +49,8 @@ export function ProviderActions({
           عرض
         </ActionLink>
       ) : null}
-      {provider.status !== 'ACTIVE' ? (
+      <Can permission={AdminPermission.PROVIDERS_WRITE}>
+        {provider.status !== 'ACTIVE' ? (
         <ConfirmDialog
           title="اعتماد المورد"
           message="سيصبح المورد ظاهرا للعملاء في سوق الموردين بعد الاعتماد."
@@ -59,8 +62,8 @@ export function ProviderActions({
           }
           onConfirm={() => run(() => approveProvider(provider.id))}
         />
-      ) : null}
-      {provider.status === 'SUSPENDED' ? (
+        ) : null}
+        {provider.status === 'SUSPENDED' ? (
         <ConfirmDialog
           title="تفعيل المورد"
           message="سيعود المورد إلى الحالة النشطة والمتاحة في السوق العام."
@@ -72,8 +75,8 @@ export function ProviderActions({
           }
           onConfirm={() => run(() => activateProvider(provider.id))}
         />
-      ) : null}
-      {provider.status !== 'NEEDS_CHANGES' ? (
+        ) : null}
+        {provider.status !== 'NEEDS_CHANGES' ? (
         <ConfirmDialog
           title="طلب تعديل"
           message="سيبقى المورد مخفيا حتى يراجع بياناته ويعالج ملاحظات الإدارة."
@@ -89,8 +92,8 @@ export function ProviderActions({
             run(() => requestProviderChanges(provider.id, note))
           }
         />
-      ) : null}
-      {provider.status !== 'REJECTED' ? (
+        ) : null}
+        {provider.status !== 'REJECTED' ? (
         <ConfirmDialog
           title="رفض الطلب"
           message="سيبقى المورد مخفيا عن العملاء ولن يظهر في السوق العام."
@@ -105,8 +108,8 @@ export function ProviderActions({
           }
           onConfirm={(reason) => run(() => rejectProvider(provider.id, reason))}
         />
-      ) : null}
-      {provider.status !== 'SUSPENDED' ? (
+        ) : null}
+        {provider.status !== 'SUSPENDED' ? (
         <ConfirmDialog
           title="إيقاف المورد"
           message="سيتم إخفاء المورد من السوق العام مؤقتا حتى تتم مراجعته."
@@ -121,7 +124,8 @@ export function ProviderActions({
           }
           onConfirm={(reason) => run(() => suspendProvider(provider.id, reason))}
         />
-      ) : null}
+        ) : null}
+      </Can>
     </div>
   );
 }

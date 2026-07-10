@@ -14,6 +14,7 @@ import { ErrorState } from '../components/ErrorState';
 import { FilterSelect } from '../components/FilterSelect';
 import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
@@ -38,6 +39,13 @@ export function ProvidersPage() {
   const [cityId, setCityId] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,11 +54,21 @@ export function ProvidersPage() {
     setError(null);
     try {
       const [providers, cityList, categoryList] = await Promise.all([
-        getProviders({ status, cityId, categoryId, search, limit: 50 }),
+        getProviders({ status, cityId, categoryId, search, page, limit: 20 }),
         getCities(),
         getCategories(),
       ]);
+      if (page > providers.totalPages) {
+        setPage(providers.totalPages);
+        return;
+      }
       setItems(providers.items);
+      setPagination({
+        page: providers.page,
+        limit: providers.limit,
+        total: providers.total,
+        totalPages: providers.totalPages,
+      });
       setCities(cityList);
       setCategories(categoryList);
     } catch (err) {
@@ -62,7 +80,12 @@ export function ProvidersPage() {
 
   useEffect(() => {
     load();
-  }, [status, cityId, categoryId]);
+  }, [status, cityId, categoryId, page]);
+
+  function submitSearch() {
+    if (page === 1) void load();
+    else setPage(1);
+  }
 
   if (isLoading) return <LoadingState title="جاري تحميل الموردين" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
@@ -87,7 +110,7 @@ export function ProvidersPage() {
         icon="◉"
         title="ملفات الموردين داخل المنصة"
         description="هذه الصفحة مختلفة عن طلبات الانضمام، وتعرض الموردين المسجلين وحالة ظهورهم."
-        meta={<span>{items.length} مورد معروض</span>}
+        meta={<span>{pagination.total} مورد مطابق</span>}
       />
 
       <div className="stats-grid">
@@ -103,19 +126,25 @@ export function ProvidersPage() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            onSubmit={load}
+            onSubmit={submitSearch}
             placeholder="بحث باسم المورد أو الهاتف"
           />
           <FilterSelect
             label="الحالة"
             value={status}
-            onChange={setStatus}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
             options={statuses}
           />
           <FilterSelect
             label="المدينة"
             value={cityId}
-            onChange={setCityId}
+            onChange={(value) => {
+              setCityId(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل المدن' },
               ...cities.map((city) => ({ value: city.id, label: city.nameAr })),
@@ -124,7 +153,10 @@ export function ProvidersPage() {
           <FilterSelect
             label="الفئة"
             value={categoryId}
-            onChange={setCategoryId}
+            onChange={(value) => {
+              setCategoryId(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل الفئات' },
               ...categories.map((category) => ({
@@ -193,6 +225,13 @@ export function ProvidersPage() {
               ))}
             </DataTable>
           )}
+          <Pagination
+            page={pagination.page}
+            limit={pagination.limit}
+            total={pagination.total}
+            totalPages={pagination.totalPages}
+            onPageChange={setPage}
+          />
         </SectionCard>
 
         <SectionCard

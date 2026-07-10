@@ -1,13 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { adminTokenKey, ApiError } from './client';
-import { clearAdminToken, getAdminToken, loginAdmin } from './auth';
+import {
+  completeAdminLogin,
+  logoutAdmin,
+  restoreAdminSession,
+  startAdminLogin,
+} from './auth';
+import {
+  clearAdminAccessToken,
+  getAdminAccessToken,
+  setAdminAccessToken,
+} from './client';
 
 const fetchMock = vi.fn();
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
+  clearAdminAccessToken();
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -22,85 +33,87 @@ function jsonResponse(status: number, body: unknown): Response {
   } as Response;
 }
 
-describe('loginAdmin', () => {
-  it('stores the token and returns the user for an ADMIN account', async () => {
+describe('secure admin browser session', () => {
+  it('starts with password but returns only an MFA challenge', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(200, {
-        user: { id: 'u1', name: 'مشرف', role: 'ADMIN', status: 'ACTIVE' },
-        accessToken: 'token-123',
+        mfaRequired: true,
+        challengeToken: 'a'.repeat(64),
+        expiresAt: '2026-07-10T12:00:00.000Z',
+        delivery: 'WHATSAPP',
       }),
     );
 
-    const user = await loginAdmin('+967700000000', 'secret');
+    const challenge = await startAdminLogin('+967700000000', 'secret');
 
-    expect(user.id).toBe('u1');
-    expect(localStorage.getItem(adminTokenKey)).toBe('token-123');
+    expect(challenge.challengeToken).toHaveLength(64);
+    expect(getAdminAccessToken()).toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toContain('/auth/admin/login');
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
   });
 
-  it('rejects a valid login that is not an ADMIN and stores no token', async () => {
+  it('stores the MFA-completed access token in memory only', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        user: { id: 'u1', name: 'مشرف', role: 'ADMIN', status: 'ACTIVE' },
+        accessToken: 'memory-token',
+      }),
+    );
+
+    const user = await completeAdminLogin('a'.repeat(64), '123456');
+
+    expect(user.id).toBe('u1');
+    expect(getAdminAccessToken()).toBe('memory-token');
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it('rejects a completed session that is not ADMIN', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(200, {
         user: { id: 'u2', name: 'مستخدم', role: 'USER', status: 'ACTIVE' },
-        accessToken: 'token-xyz',
+        accessToken: 'wrong-role-token',
       }),
     );
 
-    await expect(loginAdmin('+967700000001', 'secret')).rejects.toThrow(
-      'ليس لديك صلاحية الدخول إلى لوحة الإدارة',
-    );
-    expect(localStorage.getItem(adminTokenKey)).toBeNull();
+    await expect(
+      completeAdminLogin('b'.repeat(64), '123456'),
+    ).rejects.toThrow('ليس لديك صلاحية الدخول إلى لوحة الإدارة');
+    expect(getAdminAccessToken()).toBeNull();
   });
 
-  it('maps 401 to a credentials message', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(401, { message: 'Unauthorized' }),
-    );
-
-    await expect(loginAdmin('+967700000002', 'wrong')).rejects.toThrow(
-      'بيانات الدخول غير صحيحة',
-    );
-    expect(localStorage.getItem(adminTokenKey)).toBeNull();
-  });
-
-  it('maps a server error to a connection message', async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse(500, { message: 'boom' }));
-
-    await expect(loginAdmin('+967700000003', 'secret')).rejects.toThrow(
-      'تعذر الاتصال بالخادم',
-    );
-  });
-
-  it('sends the login request without an Authorization header', async () => {
+  it('restores a reload only through the HttpOnly cookie refresh endpoint', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(200, {
         user: { id: 'u1', name: 'مشرف', role: 'ADMIN', status: 'ACTIVE' },
-        accessToken: 'token-123',
+        accessToken: 'rotated-token',
       }),
     );
-    localStorage.setItem(adminTokenKey, 'stale-token');
 
-    await loginAdmin('+967700000000', 'secret');
+    const user = await restoreAdminSession();
 
-    const [, init] = fetchMock.mock.calls[0];
-    expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
-    expect(init.method).toBe('POST');
+    expect(user.role).toBe('ADMIN');
+    expect(getAdminAccessToken()).toBe('rotated-token');
+    expect(fetchMock.mock.calls[0][0]).toContain('/auth/admin/refresh');
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
   });
-});
 
-describe('token helpers', () => {
-  it('round-trips and clears the admin token', () => {
-    expect(getAdminToken()).toBeNull();
-    localStorage.setItem(adminTokenKey, 'abc');
-    expect(getAdminToken()).toBe('abc');
-    clearAdminToken();
-    expect(getAdminToken()).toBeNull();
+  it('revokes the cookie session and clears memory on logout', async () => {
+    setAdminAccessToken('active-token');
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { revoked: 1 }));
+
+    await logoutAdmin();
+
+    expect(getAdminAccessToken()).toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toContain('/auth/admin/logout');
+    expect(fetchMock.mock.calls[0][1].method).toBe('POST');
   });
-});
 
-describe('ApiError', () => {
-  it('carries the HTTP status', () => {
-    const err = new ApiError('nope', 404);
-    expect(err.status).toBe(404);
-    expect(err.name).toBe('ApiError');
+  it('maps rejected password login to a generic credentials message', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(401, { message: 'Unauthorized' }));
+
+    await expect(startAdminLogin('+967700000002', 'wrong')).rejects.toThrow(
+      'بيانات الدخول غير صحيحة',
+    );
   });
 });

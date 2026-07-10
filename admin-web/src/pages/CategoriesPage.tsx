@@ -18,6 +18,8 @@ import { PageHeader } from '../components/PageHeader';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 export function CategoriesPage() {
   const [items, setItems] = useState<ProviderCategory[]>([]);
@@ -157,28 +159,30 @@ export function CategoriesPage() {
                   <td>{category.providersCount ?? 0}</td>
                   <td>{category.servicesCount ?? 0}</td>
                   <td className="actions-cell">
-                    <div className="actions">
-                      <ActionButton
-                        tone="ghost"
-                        size="small"
-                        type="button"
-                        onClick={() => startEdit(category)}
-                      >
-                        تعديل
-                      </ActionButton>
-                      <ConfirmDialog
-                        title="تعطيل الفئة"
-                        message="سيتم تعطيل هذه الفئة من إدارة السوق دون حذفها نهائيا."
-                        confirmLabel="تعطيل"
-                        tone="danger"
-                        trigger={
-                          <ActionButton tone="danger" size="small" type="button">
-                            تعطيل
-                          </ActionButton>
-                        }
-                        onConfirm={() => deleteCategory(category.id).then(load)}
-                      />
-                    </div>
+                    <Can permission={AdminPermission.CATALOG_WRITE}>
+                      <div className="actions">
+                        <ActionButton
+                          tone="ghost"
+                          size="small"
+                          type="button"
+                          onClick={() => startEdit(category)}
+                        >
+                          تعديل
+                        </ActionButton>
+                        <ConfirmDialog
+                          title="تعطيل الفئة"
+                          message="سيتم تعطيل هذه الفئة من إدارة السوق دون حذفها نهائيا."
+                          confirmLabel="تعطيل"
+                          tone="danger"
+                          trigger={
+                            <ActionButton tone="danger" size="small" type="button">
+                              تعطيل
+                            </ActionButton>
+                          }
+                          onConfirm={() => deleteCategory(category.id).then(load)}
+                        />
+                      </div>
+                    </Can>
                   </td>
                 </tr>
               ))}
@@ -186,11 +190,12 @@ export function CategoriesPage() {
           )}
         </SectionCard>
 
-        <FormCard
-          title={editing ? 'تعديل فئة' : 'إضافة فئة'}
-          subtitle="استخدم أسماء عربية واضحة ومختصرة."
-        >
-          <form className="side-form" onSubmit={submit}>
+        <Can permission={AdminPermission.CATALOG_WRITE}>
+          <FormCard
+            title={editing ? 'تعديل فئة' : 'إضافة فئة'}
+            subtitle="استخدم أسماء عربية واضحة ومختصرة."
+          >
+            <form className="side-form" onSubmit={submit}>
             <FormField
               label="الاسم العربي"
               value={nameAr}
@@ -230,8 +235,9 @@ export function CategoriesPage() {
                 </ActionButton>
               ) : null}
             </div>
-          </form>
-        </FormCard>
+            </form>
+          </FormCard>
+        </Can>
       </div>
     </section>
   );

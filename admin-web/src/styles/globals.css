@@ -879,6 +879,61 @@ tbody tr:hover {
   background: rgba(199, 155, 63, 0.07);
 }
 
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  direction: rtl;
+}
+
+.pagination__summary {
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.pagination__controls button {
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xs);
+  background: rgba(255, 253, 248, 0.94);
+  color: var(--color-burgundy-900);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pagination__controls button:hover:not(:disabled),
+.pagination__controls button:focus-visible {
+  border-color: var(--color-gold-500);
+  box-shadow: 0 0 0 3px rgba(199, 155, 63, 0.14);
+  outline: none;
+}
+
+.pagination__controls button[aria-current='page'] {
+  border-color: var(--color-burgundy-800);
+  background: var(--color-burgundy-800);
+  color: white;
+}
+
+.pagination__ellipsis {
+  min-width: 22px;
+  color: var(--color-muted);
+  text-align: center;
+  font-weight: 900;
+}
+
 .table-wrap--dense th,
 .table-wrap--dense td {
   padding: 10px 11px;
@@ -1843,6 +1898,21 @@ tbody tr:hover {
   .dialog-actions .button,
   .search-input .button {
     width: 100%;
+  }
+
+  .pagination {
+    display: grid;
+    justify-items: stretch;
+  }
+
+  .pagination__summary {
+    text-align: center;
+  }
+
+  .pagination__controls {
+    justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
   .page-header {

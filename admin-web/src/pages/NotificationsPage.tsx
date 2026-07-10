@@ -14,11 +14,14 @@ import { ErrorState } from '../components/ErrorState';
 import { FilterSelect } from '../components/FilterSelect';
 import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge, statusLabel } from '../components/StatusBadge';
 import { TableToolbar } from '../components/TableToolbar';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 const notificationTypeOptions = [
   { value: '', label: 'كل الأنواع' },
@@ -42,6 +45,13 @@ export function NotificationsPage() {
   const [priority, setPriority] = useState('');
   const [readFilter, setReadFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,10 +61,27 @@ export function NotificationsPage() {
     try {
       const unreadOnly = readFilter === 'unread' ? true : undefined;
       const [notifications, unread] = await Promise.all([
-        getAdminNotifications({ type, priority, unreadOnly, search, limit: 100 }),
+        getAdminNotifications({
+          type,
+          priority,
+          unreadOnly,
+          search,
+          page,
+          limit: 20,
+        }),
         getAdminUnreadNotificationCount(),
       ]);
+      if (page > notifications.totalPages) {
+        setPage(notifications.totalPages);
+        return;
+      }
       setItems(notifications.items);
+      setPagination({
+        page: notifications.page,
+        limit: notifications.limit,
+        total: notifications.total,
+        totalPages: notifications.totalPages,
+      });
       setUnreadCount(unread.count);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تحميل سجل الإشعارات.');
@@ -65,7 +92,12 @@ export function NotificationsPage() {
 
   useEffect(() => {
     load();
-  }, [type, priority, readFilter]);
+  }, [type, priority, readFilter, page]);
+
+  function submitSearch() {
+    if (page === 1) void load();
+    else setPage(1);
+  }
 
   async function markRead(notification: AdminNotification) {
     await markAdminNotificationRead(notification.id);
@@ -98,7 +130,7 @@ export function NotificationsPage() {
         icon="!"
         title="سجل إشعارات النظام"
         description="عرض إداري حقيقي من /admin/notifications لكل المستخدمين مع القراءة والأرشفة والحذف الإداري."
-        meta={<span>{items.length} إشعار معروض</span>}
+        meta={<span>{pagination.total} إشعار مطابق</span>}
       />
 
       <div className="stats-grid">
@@ -114,14 +146,25 @@ export function NotificationsPage() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            onSubmit={load}
+            onSubmit={submitSearch}
             placeholder="بحث بعنوان الإشعار أو المستخدم"
           />
-          <FilterSelect label="النوع" value={type} onChange={setType} options={notificationTypeOptions} />
+          <FilterSelect
+            label="النوع"
+            value={type}
+            onChange={(value) => {
+              setType(value);
+              setPage(1);
+            }}
+            options={notificationTypeOptions}
+          />
           <FilterSelect
             label="الأولوية"
             value={priority}
-            onChange={setPriority}
+            onChange={(value) => {
+              setPriority(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل الأولويات' },
               { value: 'LOW', label: 'منخفضة' },
@@ -133,7 +176,10 @@ export function NotificationsPage() {
           <FilterSelect
             label="القراءة"
             value={readFilter}
-            onChange={setReadFilter}
+            onChange={(value) => {
+              setReadFilter(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل الإشعارات' },
               { value: 'unread', label: 'غير المقروءة فقط' },
@@ -159,7 +205,7 @@ export function NotificationsPage() {
                 <td>
                   <strong>{notification.user?.name ?? notification.userId}</strong>
                   <span className="table-subtle" dir="ltr">
-                    {notification.user?.phone ?? ''}
+                    {notification.user?.phoneMasked ?? ''}
                   </span>
                 </td>
                 <td>{typeLabel(notification.type)}</td>
@@ -177,24 +223,33 @@ export function NotificationsPage() {
                 </td>
                 <td>{formatDate(notification.createdAt)}</td>
                 <td className="actions-cell">
-                  {!notification.readAt ? (
+                  <Can permission={AdminPermission.NOTIFICATIONS_WRITE}>
+                    {!notification.readAt ? (
                     <ActionButton tone="ghost" size="small" onClick={() => markRead(notification)}>
                       قراءة
                     </ActionButton>
-                  ) : null}
-                  {!notification.archivedAt ? (
+                    ) : null}
+                    {!notification.archivedAt ? (
                     <ActionButton tone="ghost" size="small" onClick={() => archive(notification)}>
                       أرشفة
                     </ActionButton>
-                  ) : null}
-                  <ActionButton tone="danger" size="small" onClick={() => remove(notification)}>
-                    حذف
-                  </ActionButton>
+                    ) : null}
+                    <ActionButton tone="danger" size="small" onClick={() => remove(notification)}>
+                      حذف
+                    </ActionButton>
+                  </Can>
                 </td>
               </tr>
             ))}
           </DataTable>
         )}
+        <Pagination
+          page={pagination.page}
+          limit={pagination.limit}
+          total={pagination.total}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       </SectionCard>
     </section>
   );

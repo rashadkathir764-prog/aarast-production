@@ -8,25 +8,32 @@ import {
   MapPin,
   MessageSquareText,
   ShieldAlert,
+  ShieldCheck,
   PackageSearch,
   Star,
   Tag,
   UserCircle,
   Users,
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthProvider';
+import {
+  AdminPermission,
+  hasAdminPermission,
+} from '../auth/adminPermissions';
 
 const links = [
-  { to: '/', label: 'لوحة التحكم', icon: <LayoutGrid size={20} strokeWidth={1.5} />, end: true },
-  { to: '/users', label: 'المستخدمون', icon: <UserCircle size={20} strokeWidth={1.5} /> },
-  { to: '/providers', label: 'الموردون', icon: <Users size={20} strokeWidth={1.5} /> },
-  { to: '/providers/applications', label: 'طلبات الموردين', icon: <Inbox size={20} strokeWidth={1.5} /> },
-  { to: '/services', label: 'الخدمات', icon: <PackageSearch size={20} strokeWidth={1.5} /> },
-  { to: '/reviews', label: 'التقييمات', icon: <Star size={20} strokeWidth={1.5} /> },
-  { to: '/conversation-reports', label: 'بلاغات المحادثات', icon: <ShieldAlert size={20} strokeWidth={1.5} /> },
-  { to: '/notifications', label: 'الإشعارات', icon: <MessageSquareText size={20} strokeWidth={1.5} /> },
-  { to: '/reports', label: 'التقارير', icon: <BarChart3 size={20} strokeWidth={1.5} /> },
-  { to: '/categories', label: 'فئات الموردين', icon: <Tag size={20} strokeWidth={1.5} /> },
-  { to: '/cities', label: 'المدن والمناطق', icon: <MapPin size={20} strokeWidth={1.5} /> },
+  { to: '/', label: 'لوحة التحكم', permission: AdminPermission.DASHBOARD_READ, icon: <LayoutGrid size={20} strokeWidth={1.5} />, end: true },
+  { to: '/users', label: 'المستخدمون', permission: AdminPermission.USERS_READ, icon: <UserCircle size={20} strokeWidth={1.5} /> },
+  { to: '/providers', label: 'الموردون', permission: AdminPermission.PROVIDERS_READ, icon: <Users size={20} strokeWidth={1.5} /> },
+  { to: '/providers/applications', label: 'طلبات الموردين', permission: AdminPermission.PROVIDERS_READ, icon: <Inbox size={20} strokeWidth={1.5} /> },
+  { to: '/services', label: 'الخدمات', permission: AdminPermission.SERVICES_READ, icon: <PackageSearch size={20} strokeWidth={1.5} /> },
+  { to: '/reviews', label: 'التقييمات', permission: AdminPermission.REVIEWS_READ, icon: <Star size={20} strokeWidth={1.5} /> },
+  { to: '/conversation-reports', label: 'بلاغات المحادثات', permission: AdminPermission.CONVERSATION_REPORTS_READ, icon: <ShieldAlert size={20} strokeWidth={1.5} /> },
+  { to: '/notifications', label: 'الإشعارات', permission: AdminPermission.NOTIFICATIONS_READ, icon: <MessageSquareText size={20} strokeWidth={1.5} /> },
+  { to: '/reports', label: 'التقارير', permission: AdminPermission.REPORTS_READ, icon: <BarChart3 size={20} strokeWidth={1.5} /> },
+  { to: '/categories', label: 'فئات الموردين', permission: AdminPermission.CATALOG_READ, icon: <Tag size={20} strokeWidth={1.5} /> },
+  { to: '/cities', label: 'المدن والمناطق', permission: AdminPermission.CATALOG_READ, icon: <MapPin size={20} strokeWidth={1.5} /> },
+  { to: '/audit-logs', label: 'سجل التدقيق', permission: AdminPermission.AUDIT_READ, icon: <ShieldCheck size={20} strokeWidth={1.5} /> },
 ];
 
 type SidebarProps = {
@@ -36,6 +43,7 @@ type SidebarProps = {
 };
 
 export function Sidebar({ isOpen, onNavigate, onLogout }: SidebarProps) {
+  const { user } = useAuth();
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="brand" style={{ flexDirection: 'column', padding: '20px 0', gap: '8px' }}>
@@ -46,7 +54,7 @@ export function Sidebar({ isOpen, onNavigate, onLogout }: SidebarProps) {
         </div>
       </div>
       <nav aria-label="التنقل الرئيسي" style={{ marginTop: '10px' }}>
-        {links.map((link, index) => (
+        {links.filter((link) => hasAdminPermission(user, link.permission)).map((link, index) => (
           <NavLink
             key={`${link.to}-${index}`}
             to={link.to}

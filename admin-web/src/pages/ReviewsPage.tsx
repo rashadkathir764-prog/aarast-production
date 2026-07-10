@@ -15,11 +15,14 @@ import { ErrorState } from '../components/ErrorState';
 import { FilterSelect } from '../components/FilterSelect';
 import { LoadingState } from '../components/LoadingState';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { SearchInput } from '../components/SearchInput';
 import { SectionCard } from '../components/SectionCard';
 import { StatCard } from '../components/StatCard';
 import { StatusBadge, statusLabel } from '../components/StatusBadge';
 import { TableToolbar } from '../components/TableToolbar';
+import { Can } from '../auth/Can';
+import { AdminPermission } from '../auth/adminPermissions';
 
 const statuses = [
   { value: '', label: 'كل الحالات' },
@@ -34,6 +37,13 @@ export function ReviewsPage() {
   const [providerId, setProviderId] = useState('');
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -42,10 +52,20 @@ export function ReviewsPage() {
     setError(null);
     try {
       const [reviewPage, providerPage] = await Promise.all([
-        getReviews({ search, providerId, status, limit: 100 }),
+        getReviews({ search, providerId, status, page, limit: 20 }),
         getProviders({ limit: 100 }),
       ]);
+      if (page > reviewPage.totalPages) {
+        setPage(reviewPage.totalPages);
+        return;
+      }
       setReviews(reviewPage.items);
+      setPagination({
+        page: reviewPage.page,
+        limit: reviewPage.limit,
+        total: reviewPage.total,
+        totalPages: reviewPage.totalPages,
+      });
       setProviders(providerPage.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تحميل التقييمات.');
@@ -56,7 +76,12 @@ export function ReviewsPage() {
 
   useEffect(() => {
     load();
-  }, [providerId, status]);
+  }, [providerId, status, page]);
+
+  function submitSearch() {
+    if (page === 1) void load();
+    else setPage(1);
+  }
 
   async function setReviewStatus(review: ProviderReview, nextStatus: string) {
     await updateReviewStatus(review.id, nextStatus);
@@ -86,7 +111,7 @@ export function ReviewsPage() {
         icon="☆"
         title="رقابة تقييمات الموردين"
         description="إدارة حقيقية من /admin/reviews: عرض كل الحالات، نشر، إخفاء، وإعادة احتساب تقييم المورد."
-        meta={<span>{reviews.length} تقييم معروض</span>}
+        meta={<span>{pagination.total} تقييم مطابق</span>}
       />
 
       <div className="stats-grid">
@@ -102,14 +127,25 @@ export function ReviewsPage() {
           <SearchInput
             value={search}
             onChange={setSearch}
-            onSubmit={load}
+            onSubmit={submitSearch}
             placeholder="بحث بالعميل أو المورد أو التعليق"
           />
-          <FilterSelect label="الحالة" value={status} onChange={setStatus} options={statuses} />
+          <FilterSelect
+            label="الحالة"
+            value={status}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
+            options={statuses}
+          />
           <FilterSelect
             label="المورد"
             value={providerId}
-            onChange={setProviderId}
+            onChange={(value) => {
+              setProviderId(value);
+              setPage(1);
+            }}
             options={[
               { value: '', label: 'كل الموردين' },
               ...providers.map((provider) => ({
@@ -133,9 +169,7 @@ export function ReviewsPage() {
               <tr key={review.id}>
                 <td>
                   <strong>{review.user.name}</strong>
-                  <span className="table-subtle" dir="ltr">
-                    {review.user.phone ?? 'لا يوجد رقم'}
-                  </span>
+                  <span className="table-subtle">بيانات الاتصال خاصة</span>
                 </td>
                 <td>
                   {review.provider ? (
@@ -154,7 +188,8 @@ export function ReviewsPage() {
                 </td>
                 <td>{formatDate(review.createdAt)}</td>
                 <td className="actions-cell">
-                  {review.status !== 'PUBLISHED' ? (
+                  <Can permission={AdminPermission.REVIEWS_WRITE}>
+                    {review.status !== 'PUBLISHED' ? (
                     <ActionButton
                       tone="ghost"
                       size="small"
@@ -162,8 +197,8 @@ export function ReviewsPage() {
                     >
                       نشر
                     </ActionButton>
-                  ) : null}
-                  {review.status !== 'PENDING' ? (
+                    ) : null}
+                    {review.status !== 'PENDING' ? (
                     <ActionButton
                       tone="ghost"
                       size="small"
@@ -171,17 +206,25 @@ export function ReviewsPage() {
                     >
                       مراجعة
                     </ActionButton>
-                  ) : null}
-                  {review.status !== 'HIDDEN' ? (
+                    ) : null}
+                    {review.status !== 'HIDDEN' ? (
                     <ActionButton tone="danger" size="small" onClick={() => hide(review)}>
                       إخفاء
                     </ActionButton>
-                  ) : null}
+                    ) : null}
+                  </Can>
                 </td>
               </tr>
             ))}
           </DataTable>
         )}
+        <Pagination
+          page={pagination.page}
+          limit={pagination.limit}
+          total={pagination.total}
+          totalPages={pagination.totalPages}
+          onPageChange={setPage}
+        />
       </SectionCard>
     </section>
   );

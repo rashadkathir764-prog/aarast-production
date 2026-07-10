@@ -19,6 +19,9 @@ const statusMap: Record<string, { label: string; bg: string; color: string }> = 
   NORMAL: { label: 'عادية', bg: '#EBF3F9', color: '#1565C0' },
   HIGH: { label: 'عالية', bg: '#FFF8E1', color: '#B78103' },
   URGENT: { label: 'عاجلة', bg: '#FFEBEE', color: '#C62828' },
+  ATTEMPT: { label: 'بدأت', bg: '#FFF8E1', color: '#B78103' },
+  SUCCEEDED: { label: 'نجحت', bg: '#EBF7EE', color: '#2D8A5D' },
+  FAILED: { label: 'فشلت', bg: '#FFEBEE', color: '#C62828' },
 };
 
 export function StatusBadge({ status }: { status: string }) {

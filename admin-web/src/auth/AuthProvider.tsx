@@ -8,19 +8,23 @@ import {
   useState,
 } from 'react';
 import {
+  AdminLoginChallenge,
   AdminUser,
-  clearAdminToken,
-  fetchMe,
-  getAdminToken,
-  loginAdmin,
+  completeAdminLogin,
+  logoutAdmin,
+  restoreAdminSession,
+  startAdminLogin,
 } from '../api/auth';
 
 type AuthContextValue = {
   user: AdminUser | null;
   isLoading: boolean;
   error: string | null;
+  challenge: AdminLoginChallenge | null;
   login: (phone: string, password: string) => Promise<void>;
-  logout: () => void;
+  verifyMfa: (code: string) => Promise<void>;
+  cancelMfa: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -29,25 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [challenge, setChallenge] = useState<AdminLoginChallenge | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     async function loadCurrentUser() {
-      if (!getAdminToken()) {
-        if (isMounted) setIsLoading(false);
-        return;
-      }
-
       try {
-        const currentUser = await fetchMe();
-        if (currentUser.role !== 'ADMIN') {
-          clearAdminToken();
-          if (isMounted) setUser(null);
-          return;
-        }
+        const currentUser = await restoreAdminSession();
         if (isMounted) setUser(currentUser);
       } catch {
-        clearAdminToken();
         if (isMounted) setUser(null);
       } finally {
         if (isMounted) setIsLoading(false);
@@ -64,8 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const loggedInUser = await loginAdmin(phone, password);
-      setUser(loggedInUser);
+      const nextChallenge = await startAdminLogin(phone, password);
+      setChallenge(nextChallenge);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تسجيل الدخول.');
       throw err;
@@ -74,14 +68,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const logout = useCallback(() => {
-    clearAdminToken();
-    setUser(null);
+  const verifyMfa = useCallback(async (code: string) => {
+    if (!challenge) throw new Error('ابدأ تسجيل الدخول أولًا.');
+    setIsLoading(true);
+    setError(null);
+    try {
+      const loggedInUser = await completeAdminLogin(
+        challenge.challengeToken,
+        code,
+      );
+      setUser(loggedInUser);
+      setChallenge(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'تعذر التحقق بخطوتين.');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [challenge]);
+
+  const cancelMfa = useCallback(() => {
+    setChallenge(null);
+    setError(null);
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutAdmin();
+    } finally {
+      setUser(null);
+      setChallenge(null);
+      setError(null);
+    }
   }, []);
 
   const value = useMemo(
-    () => ({ user, isLoading, error, login, logout }),
-    [user, isLoading, error, login, logout],
+    () => ({
+      user,
+      isLoading,
+      error,
+      challenge,
+      login,
+      verifyMfa,
+      cancelMfa,
+      logout,
+    }),
+    [
+      user,
+      isLoading,
+      error,
+      challenge,
+      login,
+      verifyMfa,
+      cancelMfa,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

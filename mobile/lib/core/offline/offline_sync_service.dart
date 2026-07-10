@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
@@ -25,6 +25,8 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   DateTime? _lastSyncedAt;
   String? _lastError;
   Set<String> _pendingEntityKeys = const {};
+  int _sessionGeneration = 0;
+  String? _cacheOwnerUserId;
 
   SyncState get state => _state;
   int get pendingCount => _pendingCount;
@@ -83,6 +85,11 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// device can never see the previous account's financial data, and so
   /// stale queued writes never replay under a new user's token.
   Future<void> clearLocalData() async {
+    _bindCacheOwner(null);
+    await _wipeLocalState();
+  }
+
+  Future<void> _wipeLocalState() async {
     await database.wipeAll();
     _state = SyncState.synced;
     _lastError = null;
@@ -95,11 +102,18 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// happens. Must be called right after a session is established.
   Future<void> ensureCacheOwner(String userId) async {
     if (userId.isEmpty || userId == 'null') return;
+    _bindCacheOwner(userId);
     final currentOwner = await database.getMeta(_cacheOwnerUserIdKey);
     if (currentOwner != null && currentOwner != userId) {
-      await clearLocalData();
+      await _wipeLocalState();
     }
     await database.setMeta(_cacheOwnerUserIdKey, userId);
+  }
+
+  void _bindCacheOwner(String? userId) {
+    if (_cacheOwnerUserId == userId) return;
+    _sessionGeneration += 1;
+    _cacheOwnerUserId = userId;
   }
 
   Future<void> noteNetworkFailure([String? message]) async {
@@ -116,8 +130,18 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> syncPendingChanges() async {
     if (_syncInFlight) return;
     _syncInFlight = true;
+    final sessionGeneration = _sessionGeneration;
+    final cacheOwnerUserId = _cacheOwnerUserId;
     try {
+      if (cacheOwnerUserId == null) return;
+      final accessToken = await apiClient.readCurrentAccessToken();
+      if (accessToken == null ||
+          accessToken.isEmpty ||
+          !_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
+        return;
+      }
       final items = await database.pendingSyncItems();
+      if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) return;
       if (items.isEmpty) {
         _state = SyncState.synced;
         _lastError = null;
@@ -131,7 +155,12 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       notifyListeners();
 
       var blockedAny = false;
+      var sessionChanged = false;
       for (final item in items) {
+        if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
+          sessionChanged = true;
+          break;
+        }
         try {
           final response = await apiClient.dio.request<Object?>(
             item.endpoint,
@@ -139,21 +168,39 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
             options: Options(
               method: item.method,
               headers: {
+                'Authorization': 'Bearer $accessToken',
                 // Server-side replay protection: a retry after a lost
                 // response returns the original result, never a duplicate.
                 'X-Client-Request-Id': item.id,
               },
             ),
           );
+          if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
+            sessionChanged = true;
+            break;
+          }
           await _cacheSyncedResponse(item, response.data);
           await database.markSyncItemSynced(item.id);
         } on DioException catch (error) {
+          if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
+            sessionChanged = true;
+            break;
+          }
           final apiError = ApiException.fromDio(error);
           blockedAny = await _handleSyncError(item, apiError) || blockedAny;
           if (apiError.isNetworkFailure) break;
         } on Object catch (error) {
+          if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
+            sessionChanged = true;
+            break;
+          }
           blockedAny = await _handleSyncError(item, error) || blockedAny;
         }
+      }
+
+      if (sessionChanged ||
+          !_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
+        return;
       }
 
       final remaining = await database.pendingSyncCount();
@@ -173,7 +220,15 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       await refreshStatus();
     } finally {
       _syncInFlight = false;
+      if (sessionGeneration != _sessionGeneration &&
+          _cacheOwnerUserId != null) {
+        unawaited(syncPendingChanges());
+      }
     }
+  }
+
+  bool _isCurrentSession(int generation, String ownerUserId) {
+    return generation == _sessionGeneration && ownerUserId == _cacheOwnerUserId;
   }
 
   @override

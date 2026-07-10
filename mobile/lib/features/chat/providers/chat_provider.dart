@@ -4,19 +4,21 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../data/chat_api.dart';
 import '../data/chat_realtime_client.dart';
 import '../models/chat_models.dart';
 
-class ChatProvider extends ChangeNotifier {
+class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   ChatProvider({
     required ChatApi api,
     required ChatRealtimeClient realtime,
     required AuthStorage authStorage,
+    String? sessionUserId,
   }) : _api = api,
        _realtime = realtime,
-       _sessionUserId = authStorage.readUser()?.id;
+       _sessionUserId = sessionUserId ?? authStorage.readUser()?.id;
 
   final ChatApi _api;
   final ChatRealtimeClient _realtime;
@@ -87,7 +89,11 @@ class ChatProvider extends ChangeNotifier {
 
   Future<void> _connectRealtime() async {
     try {
-      await _realtime.connect(onMessage: _receive, onRead: _receiveRead);
+      await _realtime.connect(
+        onMessage: _receive,
+        onMessageAvailable: _recoverAvailableMessage,
+        onRead: _receiveRead,
+      );
       for (final conversation in _conversations) {
         _realtime.join(conversation.id);
       }
@@ -312,6 +318,26 @@ class ChatProvider extends ChangeNotifier {
       unawaited(_markReadAfterReceive(message.conversationId));
     }
     notifyListeners();
+  }
+
+  Future<void> _recoverAvailableMessage(
+    String conversationId,
+    String messageId,
+  ) async {
+    if (conversationId.isEmpty || messageId.isEmpty) return;
+    if (messagesFor(conversationId).any((item) => item.id == messageId)) return;
+    try {
+      final page = await _api.messages(conversationId);
+      if (isSessionDisposed) return;
+      for (final message in page.items) {
+        if (message.id == messageId) {
+          _receive(message);
+          return;
+        }
+      }
+    } on Object {
+      // The durable event remains idempotent. Normal open/refresh retries REST.
+    }
   }
 
   Future<void> _markReadAfterReceive(String conversationId) async {

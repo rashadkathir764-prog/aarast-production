@@ -1,10 +1,11 @@
 ﻿import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/notifications_api.dart';
 import '../models/aarast_notification.dart';
 
-class NotificationsProvider extends ChangeNotifier {
+class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
   NotificationsProvider(this._api);
 
   final NotificationsApi _api;

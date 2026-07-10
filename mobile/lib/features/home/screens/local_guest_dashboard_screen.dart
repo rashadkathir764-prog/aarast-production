@@ -286,8 +286,9 @@ class _LocalSyncNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: GestureDetector(
+      child: AarastPressable(
         key: const Key('royal-local-sync-action'),
+        semanticLabel: needsSync ? 'مزامنة المسودة المحفوظة' : 'مزامنة المسودة',
         onTap: onSync,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

@@ -88,7 +88,20 @@ class AppRouter {
   static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
   static const inviteAccess = '/invites';
-  static String inviteDecision(String token) => '/invites/$token';
+  static const inviteAppLinkHost = 'aarast.shadowgardn.com';
+  static const inviteCustomSchemeHost = 'open';
+  static String inviteDecision(String token) =>
+      '/invites/${Uri.encodeComponent(token)}';
+  static Uri inviteCustomLink(String token) => Uri(
+    scheme: 'aarast',
+    host: inviteCustomSchemeHost,
+    pathSegments: ['invites', token],
+  );
+  static Uri inviteHttpsLink(String token) => Uri(
+    scheme: 'https',
+    host: inviteAppLinkHost,
+    pathSegments: ['invites', token],
+  );
   static const more = '/more';
   static const settings = '/settings';
   static const support = '/support';
@@ -301,6 +314,8 @@ class AppRouter {
               phone: args?.phone,
               purpose: args?.purpose,
               devOtpMessage: args?.devOtpMessage,
+              registration: args?.registration,
+              successLocation: args?.successLocation,
             );
           },
         ),

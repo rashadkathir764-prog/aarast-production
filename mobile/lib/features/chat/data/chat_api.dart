@@ -52,7 +52,7 @@ class ChatApi {
           'attachments': attachments
               .map(
                 (item) => {
-                  'url': item.publicUrl,
+                  'attachmentRef': item.attachmentRef,
                   'contentType': item.contentType,
                   'byteSize': item.byteSize,
                 },
@@ -61,6 +61,16 @@ class ChatApi {
       },
     );
     return ChatMessage.fromJson(json);
+  }
+
+  Future<ChatAttachmentAccess> refreshAttachment(
+    String conversationId,
+    String attachmentId,
+  ) async {
+    final json = await _apiClient.getJson(
+      '/conversations/$conversationId/attachments/$attachmentId/download',
+    );
+    return ChatAttachmentAccess.fromJson(json);
   }
 
   Future<void> markRead(String conversationId) async {

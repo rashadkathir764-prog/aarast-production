@@ -6,6 +6,7 @@ import '../network/api_client.dart';
 class MediaUploadTicket {
   const MediaUploadTicket({
     required this.key,
+    required this.attachmentRef,
     required this.uploadUrl,
     required this.publicUrl,
     required this.contentType,
@@ -15,6 +16,7 @@ class MediaUploadTicket {
   factory MediaUploadTicket.fromJson(Map<String, dynamic> json) {
     return MediaUploadTicket(
       key: json['key']?.toString() ?? '',
+      attachmentRef: json['attachmentRef']?.toString() ?? '',
       uploadUrl: json['uploadUrl']?.toString() ?? '',
       publicUrl: json['publicUrl']?.toString() ?? '',
       contentType: json['contentType']?.toString() ?? '',
@@ -25,6 +27,7 @@ class MediaUploadTicket {
   }
 
   final String key;
+  final String attachmentRef;
   final String uploadUrl;
   final String publicUrl;
   final String contentType;

@@ -556,12 +556,10 @@ class _FinancialWarningsCard extends StatelessWidget {
 class _BudgetStarterCard extends StatelessWidget {
   const _BudgetStarterCard({
     required this.canManageFinancialRecords,
-    required this.onSetupBudget,
     required this.onCreateCategory,
   });
 
   final bool canManageFinancialRecords;
-  final VoidCallback onSetupBudget;
   final ValueChanged<String> onCreateCategory;
 
   static const _suggestions = [
@@ -613,12 +611,6 @@ class _BudgetStarterCard extends StatelessWidget {
           ),
           if (canManageFinancialRecords) ...[
             const SizedBox(height: 14),
-            AarastButton(
-              label: 'إعداد الميزانية',
-              icon: Icons.tune_rounded,
-              onPressed: onSetupBudget,
-            ),
-            const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -660,14 +652,14 @@ class _FinancialPayablesSection extends StatelessWidget {
     final active = commitments
         .where((commitment) => !commitment.isCancelled)
         .toList();
-    final openPayables = active
-        .where((commitment) => _moneyValue(commitment.remainingAmount) > 0)
-        .take(3)
-        .toList();
-    final dueInstallments = installments
-        .where((installment) => !installment.isPaid)
-        .take(3)
-        .toList();
+    final openPayables =
+        active
+            .where((commitment) => _moneyValue(commitment.remainingAmount) > 0)
+            .toList()
+          ..sort(_compareCommitmentDueDate);
+    final dueInstallments =
+        installments.where((installment) => !installment.isPaid).toList()
+          ..sort(_compareInstallmentDueDate);
     final totalRemaining = active.fold<num>(
       0,
       (sum, commitment) => sum + _moneyValue(commitment.remainingAmount),
@@ -676,6 +668,13 @@ class _FinancialPayablesSection extends StatelessWidget {
       for (final commitment in active) commitment.id: commitment.title,
     };
     final hasContent = openPayables.isNotEmpty || dueInstallments.isNotEmpty;
+    final nextPayable = openPayables.firstOrNull;
+    final nextInstallment = dueInstallments.firstOrNull;
+    final showInstallment = _installmentComesFirst(
+      nextInstallment,
+      nextPayable,
+    );
+    final previewInstallment = showInstallment ? nextInstallment : null;
 
     return _FinanceSectionCard(
       title: 'الدفعات والمستحقات',
@@ -695,54 +694,30 @@ class _FinancialPayablesSection extends StatelessWidget {
               message: 'لا توجد مستحقات أو أقساط قريبة الآن.',
             )
           else ...[
-            if (openPayables.isNotEmpty) ...[
-              const _FinanceSubhead(label: 'مستحقات عليك'),
-              const SizedBox(height: 8),
-              for (var index = 0; index < openPayables.length; index++) ...[
-                _CommitmentTile(
-                  commitment: openPayables[index],
-                  onTap: () => onOpenCommitment(openPayables[index].id),
+            const _FinanceSubhead(label: 'القادم'),
+            const SizedBox(height: 8),
+            if (previewInstallment != null)
+              _TapInlineTile(
+                onTap: () =>
+                    onOpenCommitment(previewInstallment.financialCommitmentId),
+                child: _MoneyEventTile(
+                  title:
+                      commitmentTitles[previewInstallment
+                          .financialCommitmentId] ??
+                      'قسط مالي',
+                  subtitle: previewInstallment.dueDate == null
+                      ? 'بدون تاريخ'
+                      : _shortDate(previewInstallment.dueDate!),
+                  amount: previewInstallment.amount,
+                  icon: Icons.event_available_outlined,
+                  color: AppTheme.gold,
                 ),
-                if (index != openPayables.length - 1)
-                  Divider(
-                    height: 18,
-                    color: AppTheme.border.withValues(alpha: .65),
-                  ),
-              ],
-            ],
-            if (openPayables.isNotEmpty && dueInstallments.isNotEmpty)
-              Divider(
-                height: 22,
-                color: AppTheme.border.withValues(alpha: .65),
+              )
+            else if (nextPayable != null)
+              _CommitmentTile(
+                commitment: nextPayable,
+                onTap: () => onOpenCommitment(nextPayable.id),
               ),
-            if (dueInstallments.isNotEmpty) ...[
-              const _FinanceSubhead(label: 'أقساط قريبة'),
-              const SizedBox(height: 8),
-              for (var index = 0; index < dueInstallments.length; index++) ...[
-                _TapInlineTile(
-                  onTap: () => onOpenCommitment(
-                    dueInstallments[index].financialCommitmentId,
-                  ),
-                  child: _MoneyEventTile(
-                    title:
-                        commitmentTitles[dueInstallments[index]
-                            .financialCommitmentId] ??
-                        'قسط مالي',
-                    subtitle: dueInstallments[index].dueDate == null
-                        ? 'بدون تاريخ'
-                        : _shortDate(dueInstallments[index].dueDate!),
-                    amount: dueInstallments[index].amount,
-                    icon: Icons.event_available_outlined,
-                    color: AppTheme.gold,
-                  ),
-                ),
-                if (index != dueInstallments.length - 1)
-                  Divider(
-                    height: 18,
-                    color: AppTheme.border.withValues(alpha: .65),
-                  ),
-              ],
-            ],
           ],
           if (summary.hasLegacyDebtData) ...[
             const SizedBox(height: 8),
@@ -877,8 +852,6 @@ class _BudgetCategoriesSectionState extends State<_BudgetCategoriesSection> {
         if (rows.isEmpty)
           _BudgetStarterCard(
             canManageFinancialRecords: widget.canManageFinancialRecords,
-            onSetupBudget: () =>
-                context.push(AppRouter.budgetSetup(widget.weddingPlanId)),
             onCreateCategory: (name) => context.push(
               AppRouter.createBudgetCategory(widget.weddingPlanId),
               extra: name,
@@ -908,6 +881,36 @@ class _BudgetCategoriesSectionState extends State<_BudgetCategoriesSection> {
       ],
     );
   }
+}
+
+int _compareCommitmentDueDate(
+  FinancialCommitment left,
+  FinancialCommitment right,
+) {
+  return _compareOptionalDates(left.dueDate, right.dueDate);
+}
+
+int _compareInstallmentDueDate(
+  FinancialInstallment left,
+  FinancialInstallment right,
+) {
+  return _compareOptionalDates(left.dueDate, right.dueDate);
+}
+
+int _compareOptionalDates(DateTime? left, DateTime? right) {
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  return left.compareTo(right);
+}
+
+bool _installmentComesFirst(
+  FinancialInstallment? installment,
+  FinancialCommitment? commitment,
+) {
+  if (installment == null) return false;
+  if (commitment == null) return true;
+  return _compareOptionalDates(installment.dueDate, commitment.dueDate) < 0;
 }
 
 class _RecentMoneyActivitySection extends StatelessWidget {
@@ -1050,11 +1053,13 @@ class _RecentMoneyEvent {
   String get title => expense?.title ?? payment!.title;
   String get subtitle =>
       expense == null ? _shortDate(payment!.paidAt) : _shortDate(occurredAt);
-  String get amount => expense?.amount ?? payment!.amount;
-  IconData get icon =>
-      expense == null ? Icons.payments_outlined : Icons.receipt_long_outlined;
-  Color get color =>
-      expense == null ? AppTheme.success : _expenseStatusColor(expense!.status);
+  String get amount => expense?.amount ?? payment!.signedAmount;
+  IconData get icon => expense == null
+      ? (payment!.isReversal ? Icons.undo_rounded : Icons.payments_outlined)
+      : Icons.receipt_long_outlined;
+  Color get color => expense == null
+      ? (payment!.isReversal ? AppTheme.danger : AppTheme.success)
+      : _expenseStatusColor(expense!.status);
 }
 
 List<_RecentMoneyEvent> _buildRecentMoneyEvents({
@@ -1365,8 +1370,9 @@ class _ExpenseRow extends StatelessWidget {
     final statusColor = _expenseStatusColor(expense.status);
     final isPaid = expense.status == 'PAID';
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return AarastPressable(
+      clip: false,
+      semanticLabel: 'فتح المصروف ${expense.title}',
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),

@@ -124,6 +124,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
           : 'إلى ${provider.businessName}',
       actions: [
         IconButton(
+          tooltip: 'رجوع',
           onPressed: () {
             if (context.canPop()) context.pop();
           },

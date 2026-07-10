@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('Phase E provider B2B screens contract', () {
     final screenPaths = <String>[
-      'lib/features/marketplace/screens/provider_dashboard_screen.dart',
       'lib/features/marketplace/screens/provider_apply_screen.dart',
       'lib/features/marketplace/screens/edit_provider_profile_screen.dart',
       'lib/features/marketplace/screens/add_provider_service_screen.dart',
@@ -43,12 +42,13 @@ void main() {
       expect(currencyLabelAr(defaultCurrencyCode), 'ر.ي');
     });
 
-    test('provider dashboard formats visible prices through Arabic labels', () {
+    test('provider portal formats visible prices through Arabic labels', () {
       final source = File(
-        'lib/features/marketplace/screens/provider_dashboard_screen.dart',
+        'lib/features/marketplace/screens/provider_portal_tabs.dart',
       ).readAsStringSync();
 
-      expect(source, contains('currencyLabelAr(currency)'));
+      expect(source, contains('currencyLabelAr(service.currency)'));
+      expect(source, contains('currencyLabelAr(item.currency)'));
       expect(source, isNot(contains('250000 YER')));
     });
   });

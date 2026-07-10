@@ -90,6 +90,7 @@ class WeddingPlanShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _calculateSelectedIndex(context);
+    final location = GoRouterState.of(context).uri.path;
 
     IconData getFabIcon() {
       switch (currentIndex) {
@@ -106,7 +107,9 @@ class WeddingPlanShell extends StatelessWidget {
       }
     }
 
-    final showQuickFab = currentIndex != 4;
+    final isMoneyRoot = location.endsWith('/finance');
+    final showQuickFab =
+        currentIndex != 4 && (currentIndex != 1 || isMoneyRoot);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

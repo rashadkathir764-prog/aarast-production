@@ -44,10 +44,13 @@ class AuthController extends ChangeNotifier {
   Future<void> restoreSession() async {
     _status = AuthStatus.checking;
     _user = _authRepository.readCachedUser();
+    _authRepository.bindClientSession(_user?.id);
     notifyListeners();
 
     final token = await _authRepository.readAccessToken();
     if (token == null || token.isEmpty) {
+      _user = null;
+      _authRepository.bindClientSession(null);
       _status = AuthStatus.unauthenticated;
       notifyListeners();
       return;
@@ -56,6 +59,7 @@ class AuthController extends ChangeNotifier {
     try {
       _user = await _authRepository.me();
       if (_user != null) {
+        _authRepository.bindClientSession(_user!.id);
         await _offlineSyncService?.ensureCacheOwner(_user!.id);
         await _offlineSyncService?.cacheCurrentUser(_user!);
       }
@@ -66,9 +70,15 @@ class AuthController extends ChangeNotifier {
         _status = AuthStatus.authenticated;
         await _offlineSyncService?.noteNetworkFailure(error.message);
       } else {
-        await _authRepository.logout();
+        // Drop the in-memory identity before any network or storage cleanup.
+        // A slow logout request must never keep the previous account's
+        // provider subtree mounted during failed session restoration.
         _user = null;
+        _authRepository.bindClientSession(null);
         _status = AuthStatus.unauthenticated;
+        notifyListeners();
+        await _authRepository.logout();
+        return;
       }
     }
     notifyListeners();
@@ -81,6 +91,7 @@ class AuthController extends ChangeNotifier {
         password: password,
       );
       _user = response.user;
+      _authRepository.bindClientSession(response.user.id);
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
@@ -92,6 +103,7 @@ class AuthController extends ChangeNotifier {
     required String name,
     required String phone,
     required String password,
+    required String otpCode,
     String? email,
   }) async {
     return _submit(() async {
@@ -100,13 +112,34 @@ class AuthController extends ChangeNotifier {
         phone: phone.trim(),
         email: email,
         password: password,
+        otpCode: otpCode,
       );
       _user = response.user;
+      _authRepository.bindClientSession(response.user.id);
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
       unawaited(_offlineSyncService?.syncPendingChanges());
     });
+  }
+
+  Future<OtpRequestResult?> startRegistration({
+    required String name,
+    required String phone,
+    required String password,
+    String? email,
+  }) async {
+    OtpRequestResult? result;
+    final success = await _submit(() async {
+      result = await _authRepository.startRegistration(
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email,
+        password: password,
+      );
+      _otpRequest = result;
+    });
+    return success ? result : null;
   }
 
   Future<OtpRequestResult?> requestOtp({
@@ -137,6 +170,7 @@ class AuthController extends ChangeNotifier {
       );
       if (response.user != null) {
         _user = response.user;
+        _authRepository.bindClientSession(response.user!.id);
         await _offlineSyncService?.ensureCacheOwner(response.user!.id);
         await _offlineSyncService?.cacheCurrentUser(response.user!);
       }
@@ -159,6 +193,7 @@ class AuthController extends ChangeNotifier {
         contentType: contentType,
       );
       if (_user != null) {
+        _authRepository.bindClientSession(_user!.id);
         await _offlineSyncService?.cacheCurrentUser(_user!);
       }
     });
@@ -169,6 +204,7 @@ class AuthController extends ChangeNotifier {
     try {
       _user = await _authRepository.me();
       if (_user != null) {
+        _authRepository.bindClientSession(_user!.id);
         await _offlineSyncService?.cacheCurrentUser(_user!);
       }
       notifyListeners();
@@ -180,15 +216,16 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _authRepository.logout();
+    _authRepository.bindClientSession(null);
+    _user = null;
+    _status = AuthStatus.unauthenticated;
+    notifyListeners();
     // Privacy hard-rule: shared devices are common in Yemen. Everything
     // financial that this account cached locally must go with the session —
     // cache, queued writes and any onboarding draft tied to this session.
     await _offlineSyncService?.clearLocalData();
     await _guestOnboardingStorage?.clearDraft();
-    _user = null;
-    _status = AuthStatus.unauthenticated;
-    notifyListeners();
+    await _authRepository.logout();
   }
 
   /// Permanently deletes the account, then tears the local session down the
@@ -207,11 +244,12 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    await _offlineSyncService?.clearLocalData();
-    await _guestOnboardingStorage?.clearDraft();
+    _authRepository.bindClientSession(null);
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
+    await _offlineSyncService?.clearLocalData();
+    await _guestOnboardingStorage?.clearDraft();
     return true;
   }
 
@@ -221,12 +259,13 @@ class AuthController extends ChangeNotifier {
   /// again and `ensureCacheOwner` protects against a different one.
   Future<void> handleSessionExpired() async {
     if (_status != AuthStatus.authenticated) return;
-    await _authRepository.logout();
+    _authRepository.bindClientSession(null);
     _user = null;
     _status = AuthStatus.unauthenticated;
     _sessionExpired = true;
     _errorMessage = 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.';
     notifyListeners();
+    await _authRepository.logout();
   }
 
   void acknowledgeSessionExpiry() {

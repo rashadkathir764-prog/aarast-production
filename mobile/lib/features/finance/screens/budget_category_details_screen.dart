@@ -14,6 +14,7 @@ import '../../marketplace/models/provider_budget_match_intent.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
+import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
 
@@ -51,6 +52,19 @@ class _BudgetCategoryDetailsScreenState
     final expenses = provider.expenses
         .where((expense) => expense.budgetCategoryId == widget.budgetCategoryId)
         .toList();
+    final commitments =
+        provider.financialCommitments
+            .where(
+              (commitment) =>
+                  commitment.budgetCategoryId == widget.budgetCategoryId &&
+                  !commitment.isCancelled,
+            )
+            .toList()
+          ..sort(_compareCommitmentDueDate);
+    final payments = provider.financialPaymentRecords
+        .where((payment) => payment.budgetCategoryId == widget.budgetCategoryId)
+        .toList();
+    final movements = _categoryMovements(expenses, payments);
     final summary = category == null
         ? null
         : _categorySummary(provider.moneySummary, category, expenses);
@@ -79,49 +93,65 @@ class _BudgetCategoryDetailsScreenState
                 summary: summary!,
                 currencyLabel: currencyLabel,
               ),
-              const SizedBox(height: 14),
-              _CategoryActionsCard(
-                onAddCommitment: () => _openCreateCommitment(category),
-                onEdit: () => _showEditSheet(category),
-                onProviders: () => _openProviders(category),
-                onDelete: expenses.isEmpty
-                    ? () => _confirmDeleteCategory(category)
-                    : null,
-              ),
               const SizedBox(height: 20),
               AarastSectionHeader(
-                title: 'حركات هذا البند',
-                icon: LucideIcons.receipt,
-                actionLabel: expenses.length > 3 ? 'عرض الكل' : null,
-                onAction: expenses.length > 3
-                    ? () => context.push(
-                        AppRouter.expenses(widget.weddingPlanId),
-                        extra: category.id,
-                      )
-                    : null,
+                title: 'المستحقات المرتبطة',
+                icon: LucideIcons.wallet,
+                actionLabel: 'إضافة مستحق',
+                onAction: () => _openCreateCommitment(category),
               ),
               const SizedBox(height: 12),
-              if (expenses.isEmpty)
-                AarastEmptyState(
-                  title: 'لا توجد حركات في هذا البند',
-                  message:
-                      'أضف مستحقاً لهذا البند، ثم سجل دفعاته من تفاصيل المستحق.',
-                  icon: LucideIcons.receipt,
-                  action: ElevatedButton.icon(
-                    onPressed: () => _openCreateCommitment(category),
-                    icon: const Icon(LucideIcons.plus),
-                    label: const Text('إضافة مستحق لهذا البند'),
-                  ),
+              if (commitments.isEmpty)
+                const _QuietEmpty(
+                  message: 'لا توجد مستحقات مرتبطة بهذا البند بعد.',
                 )
               else
-                for (final expense in expenses.take(5)) ...[
-                  _ExpenseTile(
-                    expense: expense,
+                for (final commitment in commitments) ...[
+                  _FinanceRecordTile(
+                    icon: LucideIcons.wallet,
+                    color: _commitmentColor(commitment),
+                    title: commitment.title,
+                    subtitle: _commitmentSubtitle(commitment),
+                    amount: commitment.remainingAmount,
                     currencyLabel: currencyLabel,
-                    onTap: () => _openExpense(expense),
+                    amountLabel: 'المتبقي',
+                    onTap: () => _openCommitment(commitment),
                   ),
                   const SizedBox(height: 10),
                 ],
+              const SizedBox(height: 20),
+              const AarastSectionHeader(
+                title: 'حركات البند',
+                icon: LucideIcons.receipt,
+              ),
+              const SizedBox(height: 12),
+              if (movements.isEmpty)
+                const _QuietEmpty(
+                  message: 'لا توجد دفعات أو مصاريف مسجلة لهذا البند.',
+                )
+              else
+                for (final movement in movements) ...[
+                  _FinanceRecordTile(
+                    icon: movement.icon,
+                    color: movement.color,
+                    title: movement.title,
+                    subtitle: movement.subtitle,
+                    amount: movement.amount,
+                    currencyLabel: currencyLabel,
+                    amountLabel: movement.amountLabel,
+                    onTap: () => _openMovement(movement),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              const SizedBox(height: 10),
+              _CategoryActionsCard(
+                onEdit: () => _showEditSheet(category),
+                onProviders: () => _openProviders(category),
+                onDelete:
+                    expenses.isEmpty && commitments.isEmpty && payments.isEmpty
+                    ? () => _confirmDeleteCategory(category)
+                    : null,
+              ),
             ],
           ],
         ),
@@ -162,6 +192,34 @@ class _BudgetCategoryDetailsScreenState
     if (changed == true && mounted) {
       await context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
     }
+  }
+
+  Future<void> _openCommitment(FinancialCommitment commitment) async {
+    final changed = await context.push<bool>(
+      AppRouter.financialCommitmentDetails(widget.weddingPlanId, commitment.id),
+    );
+    if (changed == true && mounted) {
+      await context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
+    }
+  }
+
+  Future<void> _openPayment(FinancialPaymentRecord payment) async {
+    final changed = await context.push<bool>(
+      AppRouter.financialPaymentRecordDetails(widget.weddingPlanId, payment.id),
+    );
+    if (changed == true && mounted) {
+      await context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
+    }
+  }
+
+  void _openMovement(_CategoryMovement movement) {
+    final expense = movement.expense;
+    if (expense != null) {
+      _openExpense(expense);
+      return;
+    }
+    final payment = movement.payment;
+    if (payment != null) _openPayment(payment);
   }
 
   void _openProviders(BudgetCategory category) {
@@ -283,7 +341,9 @@ class _BudgetCategoryDetailsScreenState
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('حذف بند الميزانية؟'),
-        content: Text('سيتم حذف بند ${category.name} لأنه لا يحتوي مصاريف.'),
+        content: Text(
+          'سيتم حذف بند ${category.name} لأنه لا يحتوي سجلات مالية.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -490,13 +550,11 @@ class _HeroMetric extends StatelessWidget {
 
 class _CategoryActionsCard extends StatelessWidget {
   const _CategoryActionsCard({
-    required this.onAddCommitment,
     required this.onEdit,
     required this.onProviders,
     required this.onDelete,
   });
 
-  final VoidCallback onAddCommitment;
   final VoidCallback onEdit;
   final VoidCallback onProviders;
   final VoidCallback? onDelete;
@@ -510,16 +568,10 @@ class _CategoryActionsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const AarastSectionHeader(
-            title: 'إجراءات البند',
-            icon: LucideIcons.listPlus,
+            title: 'إدارة البند',
+            icon: LucideIcons.settings,
           ),
           const SizedBox(height: 12),
-          AarastButton(
-            label: 'إضافة مستحق لهذا البند',
-            icon: LucideIcons.plus,
-            onPressed: onAddCommitment,
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -548,16 +600,6 @@ class _CategoryActionsCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'كل شيء يخص هذا البند يبدأ من هنا: أضف مستحقاً، ثم سجل دفعاته من تفاصيل المستحق.',
-            textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-            ),
           ),
         ],
       ),
@@ -596,20 +638,29 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _ExpenseTile extends StatelessWidget {
-  const _ExpenseTile({
-    required this.expense,
+class _FinanceRecordTile extends StatelessWidget {
+  const _FinanceRecordTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
     required this.currencyLabel,
+    required this.amountLabel,
     required this.onTap,
   });
 
-  final Expense expense;
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final String amount;
   final String currencyLabel;
+  final String amountLabel;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = _expenseStatusColor(expense.status);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -617,57 +668,102 @@ class _ExpenseTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         child: AarastCard(
           padding: const EdgeInsets.all(14),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(LucideIcons.receipt, color: color),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      expense.title,
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: AppTheme.ink,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.muted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    amountLabel,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
+                      '${_formatMoney(_moneyValue(amount))} $currencyLabel',
+                      textDirection: TextDirection.ltr,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.ink,
+                        color: color,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        AarastStatusPill(
-                          label: _expenseStatusLabel(expense.status),
-                          color: color,
-                        ),
-                        if (expense.expenseDate != null)
-                          AarastStatusPill(
-                            label: formatArabicCompactDate(
-                              expense.expenseDate!,
-                            ),
-                            color: AppTheme.muted,
-                            icon: LucideIcons.calendarDays,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Text(
-                '${_formatMoney(_moneyValue(expense.amount))} $currencyLabel',
-                textDirection: TextDirection.ltr,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppTheme.burgundy,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuietEmpty extends StatelessWidget {
+  const _QuietEmpty({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastCard(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      border: Border.all(color: AppTheme.border),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppTheme.muted,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -741,6 +837,94 @@ MoneyCategorySummary _categorySummary(
     expensesCount: expenses.length,
     overBudget: allocated > 0 && spent > allocated,
   );
+}
+
+class _CategoryMovement {
+  const _CategoryMovement._({this.expense, this.payment});
+
+  factory _CategoryMovement.expense(Expense expense) {
+    return _CategoryMovement._(expense: expense);
+  }
+
+  factory _CategoryMovement.payment(FinancialPaymentRecord payment) {
+    return _CategoryMovement._(payment: payment);
+  }
+
+  final Expense? expense;
+  final FinancialPaymentRecord? payment;
+
+  DateTime get occurredAt =>
+      expense?.expenseDate ?? expense?.createdAt ?? payment!.paidAt;
+  String get title {
+    if (expense != null) return expense!.title;
+    final paymentTitle = payment!.title.trim();
+    return paymentTitle.isEmpty ? 'دفعة مالية' : paymentTitle;
+  }
+
+  String get amount => expense?.amount ?? payment!.signedAmount;
+  String get amountLabel =>
+      expense == null ? (payment!.isReversal ? 'قيد عكس' : 'دفعة') : 'مصروف';
+  IconData get icon => expense == null
+      ? (payment!.isReversal ? LucideIcons.undo2 : LucideIcons.wallet)
+      : LucideIcons.receipt;
+  Color get color => expense == null
+      ? (payment!.isReversal ? AppTheme.danger : AppTheme.success)
+      : _expenseStatusColor(expense!.status);
+  String get subtitle {
+    if (expense != null) {
+      final date = expense!.expenseDate;
+      final status = _expenseStatusLabel(expense!.status);
+      return date == null
+          ? status
+          : '$status · ${formatArabicCompactDate(date)}';
+    }
+    return formatArabicCompactDate(payment!.paidAt);
+  }
+}
+
+List<_CategoryMovement> _categoryMovements(
+  List<Expense> expenses,
+  List<FinancialPaymentRecord> payments,
+) {
+  final movements = <_CategoryMovement>[
+    ...expenses.map(_CategoryMovement.expense),
+    ...payments.map(_CategoryMovement.payment),
+  ];
+  movements.sort((left, right) => right.occurredAt.compareTo(left.occurredAt));
+  return movements;
+}
+
+int _compareCommitmentDueDate(
+  FinancialCommitment left,
+  FinancialCommitment right,
+) {
+  final leftDate = left.dueDate;
+  final rightDate = right.dueDate;
+  if (leftDate == null && rightDate == null) return 0;
+  if (leftDate == null) return 1;
+  if (rightDate == null) return -1;
+  return leftDate.compareTo(rightDate);
+}
+
+Color _commitmentColor(FinancialCommitment commitment) {
+  if (_moneyValue(commitment.remainingAmount) <= 0) return AppTheme.success;
+  if (commitment.dueDate != null &&
+      commitment.dueDate!.isBefore(DateTime.now())) {
+    return AppTheme.danger;
+  }
+  return AppTheme.gold;
+}
+
+String _commitmentSubtitle(FinancialCommitment commitment) {
+  final source = commitment.isProviderLinked
+      ? 'تكلفة مورد أو خدمة'
+      : commitment.isManualDebt
+      ? 'مستحق عليك'
+      : 'مستحق مالي';
+  final dueDate = commitment.dueDate;
+  return dueDate == null
+      ? source
+      : '$source · ${formatArabicCompactDate(dueDate)}';
 }
 
 IconData _categoryIcon(String name) {

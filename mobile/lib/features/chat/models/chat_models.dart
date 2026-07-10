@@ -18,6 +18,7 @@ class ChatAttachment {
     required this.url,
     required this.contentType,
     required this.byteSize,
+    this.expiresAt,
   });
 
   factory ChatAttachment.fromJson(Map<String, dynamic> json) => ChatAttachment(
@@ -25,12 +26,27 @@ class ChatAttachment {
     url: json['url']?.toString() ?? '',
     contentType: json['contentType']?.toString() ?? '',
     byteSize: _int(json['byteSize']),
+    expiresAt: _date(json['expiresAt']),
   );
 
   final String id;
   final String url;
   final String contentType;
   final int byteSize;
+  final DateTime? expiresAt;
+}
+
+class ChatAttachmentAccess {
+  const ChatAttachmentAccess({required this.url, required this.expiresAt});
+
+  factory ChatAttachmentAccess.fromJson(Map<String, dynamic> json) =>
+      ChatAttachmentAccess(
+        url: json['url']?.toString() ?? '',
+        expiresAt: _date(json['expiresAt']),
+      );
+
+  final String url;
+  final DateTime? expiresAt;
 }
 
 class ChatMessage {

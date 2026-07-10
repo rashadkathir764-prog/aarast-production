@@ -78,6 +78,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
+          tooltip: 'رجوع',
           onPressed: () {
             if (context.canPop()) context.pop();
           },
@@ -176,7 +177,10 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       setState(() => _localPhoneError = duplicateMessage);
       return;
     }
-    await provider.lookupUserByPhone(_phoneController.text);
+    await provider.lookupUserByPhone(
+      widget.weddingPlanId,
+      _phoneController.text,
+    );
     if (!mounted) return;
     final foundUserId = provider.lookupUser?.id;
     if (foundUserId != null &&

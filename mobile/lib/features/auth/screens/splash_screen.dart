@@ -27,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 900),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.92, end: 1).animate(
@@ -83,7 +83,7 @@ class _SplashScreenState extends State<SplashScreen>
           ),
 
           Align(
-            alignment: const Alignment(0, -0.15),
+            alignment: Alignment.center,
             child: FadeTransition(
               opacity: _opacityAnimation,
               child: ScaleTransition(
@@ -94,10 +94,10 @@ class _SplashScreenState extends State<SplashScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const AarastPremiumBrandMark(),
-                      const SizedBox(height: 16), // Moved closer to the mark
+                      const SizedBox(height: 16),
                       const AarastInlineSpinner(
                         dimension: 48,
-                        color: AppTheme.gold, // Premium gold loader
+                        color: AppTheme.gold,
                       ),
                     ],
                   ),

@@ -82,6 +82,7 @@ void main() {
     );
     final adapter = _ScriptedAdapter([(_) => _ok('{"id":"remote-1"}')]);
     final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
 
     await service.syncPendingChanges();
 
@@ -101,13 +102,11 @@ void main() {
     );
     final adapter = _ScriptedAdapter([(_) => _ok('{"id":"remote-1"}')]);
     final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
 
     await service.syncPendingChanges();
 
-    expect(
-      adapter.received.single.headers['X-Client-Request-Id'],
-      item.id,
-    );
+    expect(adapter.received.single.headers['X-Client-Request-Id'], item.id);
   });
 
   test('a 400 rejection blocks the item immediately (no retry spin)', () async {
@@ -123,6 +122,7 @@ void main() {
       (_) => _status(400, '{"message":"title should not be empty"}'),
     ]);
     final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
 
     await service.syncPendingChanges();
 
@@ -133,42 +133,44 @@ void main() {
     expect(service.state, SyncState.syncError);
   });
 
-  test('a network failure keeps the item retryable and stops the loop',
-      () async {
-    final database = await _freshDb();
-    await database.enqueueSync(
-      entityType: 'task',
-      operation: 'create',
-      endpoint: '/wedding-plans/plan-1/tasks-a',
-      method: 'POST',
-      payload: {'title': 'أ'},
-    );
-    await database.enqueueSync(
-      entityType: 'task',
-      operation: 'create',
-      endpoint: '/wedding-plans/plan-1/tasks-b',
-      method: 'POST',
-      payload: {'title': 'ب'},
-    );
-    // First item hits a connection error; loop must break before item two.
-    final adapter = _ScriptedAdapter([
-      (options) => throw DioException.connectionError(
-            requestOptions: options,
-            reason: 'no network',
-          ),
-    ]);
-    final service = _service(database, adapter);
+  test(
+    'a network failure keeps the item retryable and stops the loop',
+    () async {
+      final database = await _freshDb();
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/tasks-a',
+        method: 'POST',
+        payload: {'title': 'أ'},
+      );
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/wedding-plans/plan-1/tasks-b',
+        method: 'POST',
+        payload: {'title': 'ب'},
+      );
+      // First item hits a connection error; loop must break before item two.
+      final adapter = _ScriptedAdapter([
+        (options) => throw DioException.connectionError(
+          requestOptions: options,
+          reason: 'no network',
+        ),
+      ]);
+      final service = _service(database, adapter);
+      await service.ensureCacheOwner('user-A');
 
-    await service.syncPendingChanges();
+      await service.syncPendingChanges();
 
-    // Only one request attempted; both items still pending (retryable).
-    expect(adapter.received.length, 1);
-    expect(await database.pendingSyncCount(), 2);
-    expect(service.state, SyncState.offline);
-  });
+      // Only one request attempted; both items still pending (retryable).
+      expect(adapter.received.length, 1);
+      expect(await database.pendingSyncCount(), 2);
+      expect(service.state, SyncState.offline);
+    },
+  );
 
-  test('an item blocks after exhausting its automatic retry budget',
-      () async {
+  test('an item blocks after exhausting its automatic retry budget', () async {
     final database = await _freshDb();
     final item = await database.enqueueSync(
       entityType: 'task',
@@ -186,54 +188,61 @@ void main() {
       (_) => _status(500, '{"message":"server error"}'),
     ]);
     final service = _service(database, adapter);
+    await service.ensureCacheOwner('user-A');
 
     await service.syncPendingChanges();
 
-    expect(await database.pendingSyncCount(), 0, reason: 'blocked, not pending');
+    expect(
+      await database.pendingSyncCount(),
+      0,
+      reason: 'blocked, not pending',
+    );
   });
 
-  test('ensureCacheOwner wipes the cache when a different user logs in',
-      () async {
-    final database = await _freshDb();
-    await database.saveCachedItem(
-      table: OfflineTables.cachedTasks,
-      json: {'id': 't1', 'title': 'سر المستخدم الأول'},
-    );
-    await database.enqueueSync(
-      entityType: 'task',
-      operation: 'create',
-      endpoint: '/x',
-      method: 'POST',
-      payload: {'title': 'قيد الانتظار'},
-    );
-    final adapter = _ScriptedAdapter([(_) => _ok('{}')]);
-    final service = _service(database, adapter);
-
-    await service.ensureCacheOwner('user-A');
-    // Same user again: nothing is wiped.
-    await service.ensureCacheOwner('user-A');
-    expect(
-      await database.readCachedItem(
+  test(
+    'ensureCacheOwner wipes the cache when a different user logs in',
+    () async {
+      final database = await _freshDb();
+      await database.saveCachedItem(
         table: OfflineTables.cachedTasks,
-        id: 't1',
-      ),
-      isNotNull,
-    );
-    expect(await database.pendingSyncCount(), 1);
+        json: {'id': 't1', 'title': 'سر المستخدم الأول'},
+      );
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/x',
+        method: 'POST',
+        payload: {'title': 'قيد الانتظار'},
+      );
+      final adapter = _ScriptedAdapter([(_) => _ok('{}')]);
+      final service = _service(database, adapter);
 
-    // A different account takes over the device.
-    await service.ensureCacheOwner('user-B');
+      await service.ensureCacheOwner('user-A');
+      // Same user again: nothing is wiped.
+      await service.ensureCacheOwner('user-A');
+      expect(
+        await database.readCachedItem(
+          table: OfflineTables.cachedTasks,
+          id: 't1',
+        ),
+        isNotNull,
+      );
+      expect(await database.pendingSyncCount(), 1);
 
-    expect(
-      await database.readCachedItem(
-        table: OfflineTables.cachedTasks,
-        id: 't1',
-      ),
-      isNull,
-      reason: 'previous account data must never leak to the next user',
-    );
-    expect(await database.pendingSyncCount(), 0);
-  });
+      // A different account takes over the device.
+      await service.ensureCacheOwner('user-B');
+
+      expect(
+        await database.readCachedItem(
+          table: OfflineTables.cachedTasks,
+          id: 't1',
+        ),
+        isNull,
+        reason: 'previous account data must never leak to the next user',
+      );
+      expect(await database.pendingSyncCount(), 0);
+    },
+  );
 
   test('ensureCacheOwner ignores empty and "null" user ids', () async {
     final database = await _freshDb();
@@ -250,10 +259,7 @@ void main() {
 
     // Garbage ids never triggered a wipe.
     expect(
-      await database.readCachedItem(
-        table: OfflineTables.cachedTasks,
-        id: 't1',
-      ),
+      await database.readCachedItem(table: OfflineTables.cachedTasks, id: 't1'),
       isNotNull,
     );
   });

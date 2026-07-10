@@ -2,12 +2,13 @@
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/wedding_plans_api.dart';
 import '../models/active_wedding_plan.dart';
 import '../models/onboarding_complete.dart';
 import '../models/wedding_plan.dart';
 
-class WeddingPlansProvider extends ChangeNotifier {
+class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
   WeddingPlansProvider(this._api);
 
   final WeddingPlansApi _api;

@@ -612,27 +612,11 @@ class BudgetExpenseApi {
     }
   }
 
-  Future<void> deleteFinancialPaymentRecord(String id) async {
-    try {
-      await _apiClient.deleteJson('/api/v1/financial-payment-records/$id');
-    } on Object catch (error) {
-      if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      await _offline.database.saveCachedItem(
-        table: OfflineTables.cachedFinancialPaymentRecords,
-        json: {'id': id},
-        dirty: true,
-        deletedLocally: true,
-      );
-      await _offline.database.enqueueSync(
-        entityType: 'financial_payment_record',
-        operation: 'delete',
-        endpoint: '/api/v1/financial-payment-records/$id',
-        method: 'DELETE',
-        payload: const {},
-        localEntityId: id,
-      );
-      await _offline.refreshStatus();
-    }
+  Future<void> reverseFinancialPaymentRecord(String id) async {
+    // Reversals are deliberate ledger actions. Never report them as complete
+    // while offline or leave them queued invisibly; the user retries online
+    // and receives the server-confirmed compensating entry.
+    await _apiClient.deleteJson('/api/v1/financial-payment-records/$id');
   }
 
   Future<FinancialInstallment> createFinancialInstallment({

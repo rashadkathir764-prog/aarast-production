@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 
-class ProviderMarketplaceProvider extends ChangeNotifier {
+class ProviderMarketplaceProvider extends ChangeNotifier
+    with SessionScopedNotifier {
   ProviderMarketplaceProvider(this._api);
 
   final MarketplaceApi _api;
@@ -465,7 +467,8 @@ class ProviderMarketplaceProvider extends ChangeNotifier {
   }
 }
 
-class ProviderDashboardProvider extends ChangeNotifier {
+class ProviderDashboardProvider extends ChangeNotifier
+    with SessionScopedNotifier {
   ProviderDashboardProvider(this._api);
 
   final ProviderDashboardApi _api;

@@ -12,7 +12,6 @@ import '../../sharing/models/shared_member.dart';
 import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
 import '../providers/finance_provider.dart';
-import '../widgets/premium/budget_pulse_hero.dart';
 import '../widgets/yemeni_money_text.dart';
 
 class FinancialPayablesScreen extends StatefulWidget {
@@ -60,8 +59,6 @@ class _FinancialPayablesScreenState extends State<FinancialPayablesScreen> {
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 132),
           children: [
             _Header(title: 'الدفعات والمستحقات', onBack: _goBack),
-            const SizedBox(height: 14),
-            BudgetPulseHero(summary: provider.moneySummary),
             const SizedBox(height: 14),
             _PayablesHero(summary: provider.moneySummary),
             const SizedBox(height: 18),
@@ -308,16 +305,17 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = payment.isReversal ? AppTheme.danger : AppTheme.success;
     return _TapCard(
       onTap: onTap,
-      icon: Icons.payments_outlined,
-      color: AppTheme.success,
+      icon: payment.isReversal ? Icons.undo_rounded : Icons.payments_outlined,
+      color: color,
       title: payment.title.trim().isEmpty ? 'دفعة مالية' : payment.title,
       subtitle: '$commitmentTitle · ${formatArabicCompactDate(payment.paidAt)}',
       trailing: YemeniMoneyText(
-        _moneyValue(payment.amount),
+        _moneyValue(payment.signedAmount),
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-          color: AppTheme.success,
+          color: color,
           fontWeight: FontWeight.w900,
         ),
       ),

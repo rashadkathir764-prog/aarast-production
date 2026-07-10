@@ -58,6 +58,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
+          tooltip: 'رجوع',
           onPressed: () {
             if (context.canPop()) context.pop();
           },

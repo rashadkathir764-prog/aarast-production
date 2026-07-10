@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/budget_expense_api.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
@@ -9,7 +10,7 @@ import '../models/expense_summary.dart';
 import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
 
-class FinanceProvider extends ChangeNotifier {
+class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   FinanceProvider(this._api);
 
   final BudgetExpenseApi _api;
@@ -431,13 +432,22 @@ class FinanceProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> deleteFinancialPaymentRecord({
+  Future<bool> reverseFinancialPaymentRecord({
     required String weddingPlanId,
     required FinancialPaymentRecord payment,
   }) async {
     if (payment.id.startsWith('local-')) {
       _errorMessage =
-          'لا يمكن حذف دفعة قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+          'لا يمكن عكس دفعة قيد المزامنة قبل عودة الاتصال واكتمال الحفظ.';
+      notifyListeners();
+      return false;
+    }
+    if (!payment.reversible) {
+      _errorMessage = payment.isReversal
+          ? 'قيد العكس لا يمكن عكسه مرة أخرى.'
+          : payment.isReversed
+          ? 'تم عكس هذه الدفعة سابقًا.'
+          : 'هذا القيد يُدار من المستحق أو القسط الأصلي.';
       notifyListeners();
       return false;
     }
@@ -448,17 +458,15 @@ class FinanceProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _api.deleteFinancialPaymentRecord(payment.id);
-      _financialPaymentRecords = _financialPaymentRecords
-          .where((item) => item.id != payment.id)
-          .toList();
+      await _api.reverseFinancialPaymentRecord(payment.id);
       await _refreshFinancialState(weddingPlanId);
+      _noticeMessage = 'تم تسجيل قيد عكس مع الاحتفاظ بالدفعة الأصلية.';
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر حذف سجل الدفعة.';
+      _errorMessage = 'تعذر عكس سجل الدفعة.';
       return false;
     } finally {
       _isSubmitting = false;

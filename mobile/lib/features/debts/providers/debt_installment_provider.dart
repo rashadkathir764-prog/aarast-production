@@ -2,12 +2,14 @@
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/debt_installment_api.dart';
 import '../models/debt.dart';
 import '../models/debt_summary.dart';
 import '../models/installment.dart';
 
-class DebtInstallmentProvider extends ChangeNotifier {
+class DebtInstallmentProvider extends ChangeNotifier
+    with SessionScopedNotifier {
   DebtInstallmentProvider(this._api);
 
   final DebtInstallmentApi _api;

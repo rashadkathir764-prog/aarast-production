@@ -24,10 +24,9 @@ void main() {
     expect(source, contains('Provider<MediaUploadApi>'));
     expect(source, contains('Provider<ChatApi>'));
     expect(source, contains('Provider<ChatRealtimeClient>'));
-    expect(
-      source,
-      contains('ChangeNotifierProxyProvider<AuthController, ChatProvider>'),
-    );
+    expect(source, contains('AarastSessionBoundary('));
+    expect(source, contains('ChangeNotifierProvider('));
+    expect(source, contains('sessionUserId: sessionUserId'));
     expect(source, contains('ChatProvider('));
   });
 
@@ -342,6 +341,8 @@ class _CountingRealtimeClient extends ChatRealtimeClient {
   @override
   Future<void> connect({
     required void Function(ChatMessage message) onMessage,
+    required void Function(String conversationId, String messageId)
+    onMessageAvailable,
     required void Function(
       String conversationId,
       String userId,

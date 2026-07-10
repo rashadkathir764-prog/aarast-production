@@ -13,6 +13,10 @@ class AuthRepository {
   final ApiClient _apiClient;
   final AuthStorage _authStorage;
 
+  void bindClientSession(String? userId) {
+    _apiClient.bindSessionIdentity(userId);
+  }
+
   Future<AuthResponse> login({
     required String phone,
     required String password,
@@ -31,7 +35,7 @@ class AuthRepository {
     return response;
   }
 
-  Future<AuthResponse> register({
+  Future<OtpRequestResult> startRegistration({
     required String name,
     required String phone,
     required String password,
@@ -43,6 +47,24 @@ class AuthRepository {
       'phone': normalizedPhone,
       if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'password': password,
+    });
+    return OtpRequestResult.fromJson(json);
+  }
+
+  Future<AuthResponse> register({
+    required String name,
+    required String phone,
+    required String password,
+    required String otpCode,
+    String? email,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    final json = await _apiClient.postJson('/auth/register/complete', {
+      'name': name,
+      'phone': normalizedPhone,
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      'password': password,
+      'otpCode': otpCode,
     });
     final response = _parseAuthResponse(json, operation: 'register');
     await _authStorage.saveSession(
@@ -99,9 +121,7 @@ class AuthRepository {
   }
 
   /// يطلب رمز استعادة كلمة المرور. الخادم لا يكشف وجود الحساب من عدمه.
-  Future<OtpRequestResult> requestPasswordReset({
-    required String phone,
-  }) async {
+  Future<OtpRequestResult> requestPasswordReset({required String phone}) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
     final json = await _apiClient.postJson('/auth/password-reset/request', {
       'phone': normalizedPhone,

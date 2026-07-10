@@ -269,6 +269,7 @@ class _DashboardHeader extends StatelessWidget {
                     AarastDesignTokens.radiusPill,
                   ),
                   child: Container(
+                    constraints: const BoxConstraints(maxWidth: 220),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
@@ -288,12 +289,17 @@ class _DashboardHeader extends StatelessWidget {
                           color: AarastDesignTokens.warning,
                         ),
                         SizedBox(width: 5),
-                        Text(
-                          'محفوظ محليًا · فعّل المزامنة',
-                          style: TextStyle(
-                            color: AarastDesignTokens.ink,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Text(
+                            // Keep the local-sync pill compact at large text scales.
+                            'محفوظ محليًا · فعّل المزامنة',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AarastDesignTokens.ink,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                       ],

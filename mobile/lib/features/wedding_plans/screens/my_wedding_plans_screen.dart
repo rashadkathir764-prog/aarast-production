@@ -11,7 +11,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/aarast_dashboard_widgets.dart';
+import '../widgets/account_sheet.dart';
 
 class MyWeddingPlansScreen extends StatefulWidget {
   const MyWeddingPlansScreen({this.onSelectPlan, super.key});
@@ -79,37 +79,47 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'أعرسِت',
-                              style: textTheme.headlineSmall?.copyWith(
-                                color: AppTheme.burgundyDeep,
-                                fontWeight: FontWeight.w900,
-                                fontFamily: 'Amiri', // Classic touch
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  'أعرسِت',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.headlineSmall?.copyWith(
+                                    color: AppTheme.burgundyDeep,
+                                    fontWeight: FontWeight.w900,
+                                    fontFamily: 'Amiri', // Classic touch
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.favorite,
-                              color: AppTheme.burgundySoft,
-                              size: 14,
-                            ),
-                          ],
-                        ),
-                        Text(
-                          'مساء الخير، ${auth.user?.name.split(' ').first ?? 'ضيف'}',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: AppTheme.muted,
-                            fontWeight: FontWeight.w700,
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.favorite,
+                                color: AppTheme.burgundySoft,
+                                size: 14,
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          Text(
+                            'مساء الخير، ${auth.user?.name.split(' ').first ?? 'ضيف'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppTheme.muted,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    GestureDetector(
+                    const SizedBox(width: 12),
+                    AarastPressable(
+                      semanticLabel: 'فتح الحساب',
                       onTap: () => _openAccountSheet(auth),
                       child: Container(
                         width: 44,
@@ -151,11 +161,15 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                           size: 16,
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          'خطط زفافك وشاركها مع من تحب',
-                          style: textTheme.bodySmall?.copyWith(
-                            color: AppTheme.muted,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            'خطط زفافك وشاركها مع من تحب',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: AppTheme.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -295,7 +309,10 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
+            child: AarastPressable(
+              clip: false,
+              haptic: false,
+              semanticLabel: 'عرض خططي',
               onTap: () => setState(() => _selectedTab = 0),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
@@ -317,13 +334,17 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'خططي',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: _selectedTab == 0
-                              ? Colors.white
-                              : AppTheme.muted,
-                          fontWeight: FontWeight.w800,
+                      Flexible(
+                        child: Text(
+                          'خططي',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelLarge?.copyWith(
+                            color: _selectedTab == 0
+                                ? Colors.white
+                                : AppTheme.muted,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
@@ -333,7 +354,10 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
             ),
           ),
           Expanded(
-            child: GestureDetector(
+            child: AarastPressable(
+              clip: false,
+              haptic: false,
+              semanticLabel: 'عرض الخطط المشتركة',
               onTap: () => setState(() => _selectedTab = 1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 250),
@@ -355,13 +379,17 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'المشتركة',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: _selectedTab == 1
-                              ? Colors.white
-                              : AppTheme.muted,
-                          fontWeight: FontWeight.w800,
+                      Flexible(
+                        child: Text(
+                          'المشتركة',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.labelLarge?.copyWith(
+                            color: _selectedTab == 1
+                                ? Colors.white
+                                : AppTheme.muted,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                     ],
@@ -596,15 +624,19 @@ class _PlanCard extends StatelessWidget {
                                 size: 16,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                daysLeft == null
-                                    ? 'تاريخ الزفاف غير محدد'
-                                    : daysLeft <= 0
-                                    ? 'اليوم المنتظر وصل'
-                                    : '$daysLeft يوم متبقية',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: subtitleColor,
-                                  fontWeight: FontWeight.w700,
+                              Flexible(
+                                child: Text(
+                                  daysLeft == null
+                                      ? 'تاريخ الزفاف غير محدد'
+                                      : daysLeft <= 0
+                                      ? 'اليوم المنتظر وصل'
+                                      : '$daysLeft يوم متبقية',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: subtitleColor,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 14),

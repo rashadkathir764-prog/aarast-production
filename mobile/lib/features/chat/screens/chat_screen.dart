@@ -7,6 +7,7 @@ import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../data/chat_api.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 
@@ -375,18 +376,9 @@ class _MessageBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             for (final attachment in message.attachments) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                child: Image.network(
-                  attachment.url,
-                  width: 250,
-                  height: 180,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const SizedBox(
-                    height: 80,
-                    child: Center(child: Icon(LucideIcons.imageOff)),
-                  ),
-                ),
+              _PrivateChatImage(
+                conversationId: message.conversationId,
+                attachment: attachment,
               ),
               const SizedBox(height: 8),
             ],
@@ -420,6 +412,133 @@ class _MessageBubble extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _PrivateChatImage extends StatefulWidget {
+  const _PrivateChatImage({
+    required this.conversationId,
+    required this.attachment,
+  });
+
+  final String conversationId;
+  final ChatAttachment attachment;
+
+  @override
+  State<_PrivateChatImage> createState() => _PrivateChatImageState();
+}
+
+class _PrivateChatImageState extends State<_PrivateChatImage> {
+  late String _url;
+  DateTime? _expiresAt;
+  bool _refreshing = false;
+  bool _refreshAttempted = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _useAttachment(widget.attachment);
+  }
+
+  @override
+  void didUpdateWidget(covariant _PrivateChatImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.attachment.id != widget.attachment.id ||
+        oldWidget.attachment.url != widget.attachment.url) {
+      _useAttachment(widget.attachment);
+    }
+  }
+
+  void _useAttachment(ChatAttachment attachment) {
+    _url = attachment.url;
+    _expiresAt = attachment.expiresAt;
+    _refreshing = false;
+    _refreshAttempted = false;
+    _failed = false;
+  }
+
+  bool get _isExpired =>
+      _expiresAt != null &&
+      !_expiresAt!.isAfter(DateTime.now().add(const Duration(seconds: 10)));
+
+  void _scheduleRefresh() {
+    if (_refreshing || _refreshAttempted) return;
+    _refreshAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  Future<void> _refresh() async {
+    if (!mounted) return;
+    setState(() {
+      _refreshing = true;
+      _failed = false;
+    });
+    try {
+      final access = await context.read<ChatApi>().refreshAttachment(
+        widget.conversationId,
+        widget.attachment.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _url = access.url;
+        _expiresAt = access.expiresAt;
+        _refreshing = false;
+        _failed = access.url.isEmpty;
+      });
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _refreshing = false;
+        _failed = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if ((_url.isEmpty || _isExpired) && !_failed) _scheduleRefresh();
+    if (_refreshing || ((_url.isEmpty || _isExpired) && !_failed)) {
+      return const SizedBox(
+        width: 250,
+        height: 180,
+        child: Center(child: AarastInlineSpinner()),
+      );
+    }
+    if (_failed || _url.isEmpty) return const _PrivateImageFailure();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      child: Image.network(
+        _url,
+        key: ValueKey(_url),
+        width: 250,
+        height: 180,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) {
+          _scheduleRefresh();
+          return _refreshAttempted
+              ? const _PrivateImageFailure()
+              : const SizedBox(
+                  width: 250,
+                  height: 180,
+                  child: Center(child: AarastInlineSpinner()),
+                );
+        },
+      ),
+    );
+  }
+}
+
+class _PrivateImageFailure extends StatelessWidget {
+  const _PrivateImageFailure();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SizedBox(
+      width: 250,
+      height: 80,
+      child: Center(child: Icon(LucideIcons.imageOff)),
     );
   }
 }

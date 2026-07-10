@@ -1,22 +1,154 @@
 import java.io.FileInputStream
+import java.net.URI
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Android plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Store signing: android/key.properties stays out of Git (see .gitignore)
-// and points at the local upload keystore. Without it the release build
-// falls back to debug keys so `flutter run --release` keeps working, but
-// such a build must never be uploaded to a store.
+fun decodedDartDefines(): Map<String, String> {
+    val encodedDefines = project.findProperty("dart-defines")
+        ?.toString()
+        ?.takeIf { it.isNotBlank() }
+        ?: return emptyMap()
+
+    return encodedDefines.split(',').associate { encoded ->
+        val decoded = try {
+            String(
+                Base64.getDecoder().decode(encoded),
+                StandardCharsets.UTF_8,
+            )
+        } catch (error: IllegalArgumentException) {
+            throw GradleException("Release dart-defines contain invalid Base64.", error)
+        }
+        val parts = decoded.split('=', limit = 2)
+        if (parts.size != 2 || parts[0].isBlank()) {
+            throw GradleException("Release dart-defines contain an invalid entry.")
+        }
+        parts[0] to parts[1]
+    }
+}
+
+fun isLocalOrPrivateHost(value: String): Boolean {
+    val host = value.trim().lowercase()
+    if (
+        host == "localhost" ||
+        host.endsWith(".localhost") ||
+        host == "::1" ||
+        host == "[::1]" ||
+        host.contains(':') ||
+        host == "0.0.0.0"
+    ) {
+        return true
+    }
+
+    val octets = host.split('.').map { it.toIntOrNull() }
+    val looksNumeric = host.matches(Regex("^[0-9.]+$"))
+    if (octets.size != 4 || octets.any { it == null }) return looksNumeric
+    if (octets.any { it !in 0..255 }) return true
+    val first = octets[0]!!
+    val second = octets[1]!!
+    return first == 10 ||
+        first == 127 ||
+        (first == 169 && second == 254) ||
+        (first == 172 && second in 16..31) ||
+        (first == 192 && second == 168)
+}
+
+fun validateReleaseDartDefines() {
+    val defines = decodedDartDefines()
+    val apiBaseUrl = defines["AARAST_API_BASE_URL"]?.trim().orEmpty()
+    if (apiBaseUrl.isEmpty()) {
+        throw GradleException(
+            "Release builds require --dart-define=" +
+                "AARAST_API_BASE_URL=https://your-production-api.",
+        )
+    }
+
+    val uri = try {
+        URI(apiBaseUrl)
+    } catch (error: Exception) {
+        throw GradleException("AARAST_API_BASE_URL is not a valid URI.", error)
+    }
+    if (
+        !uri.scheme.equals("https", ignoreCase = true) ||
+        uri.host.isNullOrBlank() ||
+        uri.userInfo != null ||
+        uri.query != null ||
+        uri.fragment != null ||
+        isLocalOrPrivateHost(uri.host)
+    ) {
+        throw GradleException(
+            "AARAST_API_BASE_URL must be a public HTTPS origin without " +
+                "credentials, query parameters, or fragments.",
+        )
+    }
+
+    val bypassLoginGates = defines["AARAST_DEV_BYPASS_LOGIN_GATES"]?.trim()
+    if (
+        bypassLoginGates.equals("true", ignoreCase = true) ||
+        bypassLoginGates == "1"
+    ) {
+        throw GradleException(
+            "AARAST_DEV_BYPASS_LOGIN_GATES must stay disabled in release builds.",
+        )
+    }
+}
+
+// Store signing: android/key.properties stays out of Git and points at the
+// upload keystore. Release tasks fail closed when the file or any required
+// value is missing; a store artifact can never fall back to Android debug keys.
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
-val hasReleaseKeystore = keystorePropertiesFile.exists()
-if (hasReleaseKeystore) {
+if (keystorePropertiesFile.isFile) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+val signingEnvironmentKeys = mapOf(
+    "storeFile" to "AARAST_ANDROID_STORE_FILE",
+    "storePassword" to "AARAST_ANDROID_STORE_PASSWORD",
+    "keyAlias" to "AARAST_ANDROID_KEY_ALIAS",
+    "keyPassword" to "AARAST_ANDROID_KEY_PASSWORD",
+)
+fun releaseSigningValue(key: String): String =
+    keystoreProperties.getProperty(key)?.trim().takeUnless { it.isNullOrEmpty() }
+        ?: System.getenv(signingEnvironmentKeys.getValue(key))?.trim().orEmpty()
+
+val releaseSigningValues = signingEnvironmentKeys.keys.associateWith(::releaseSigningValue)
+val invalidSigningKeys = signingEnvironmentKeys.keys.filter { key ->
+    val value = releaseSigningValues.getValue(key)
+    value.isEmpty() || value.equals("replace-me", ignoreCase = true)
+}
+val releaseStoreFile = releaseSigningValues["storeFile"]
+    ?.takeIf(String::isNotEmpty)
+    ?.let(rootProject::file)
+val hasUsableReleaseKeystore = invalidSigningKeys.isEmpty() &&
+    releaseStoreFile?.isFile == true
+val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("release", ignoreCase = true)
+}
+
+if (releaseTaskRequested) {
+    validateReleaseDartDefines()
+    if (!hasUsableReleaseKeystore) {
+        val reason = when {
+            invalidSigningKeys.isNotEmpty() ->
+                "required non-placeholder values are missing: " +
+                    invalidSigningKeys.joinToString()
+            else -> "the configured storeFile does not exist"
+        }
+        throw GradleException(
+            "Release signing is not configured: $reason. " +
+                "Use android/key.properties or AARAST_ANDROID_* environment variables. " +
+                "Debug signing is forbidden for release artifacts.",
+        )
+    }
 }
 
 android {
@@ -29,10 +161,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
-
     defaultConfig {
         applicationId = "com.aarast.aarast_mobile"
         // flutter_secure_storage requires API 23+ (Android Keystore).
@@ -43,22 +171,20 @@ android {
     }
 
     signingConfigs {
-        if (hasReleaseKeystore) {
+        if (hasUsableReleaseKeystore) {
             create("release") {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
+                keyAlias = releaseSigningValues.getValue("keyAlias")
+                keyPassword = releaseSigningValues.getValue("keyPassword")
+                storeFile = releaseStoreFile
+                storePassword = releaseSigningValues.getValue("storePassword")
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = if (hasReleaseKeystore) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            if (hasUsableReleaseKeystore) {
+                signingConfig = signingConfigs.getByName("release")
             }
             isMinifyEnabled = true
             isShrinkResources = true
@@ -67,6 +193,12 @@ android {
                 "proguard-rules.pro",
             )
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

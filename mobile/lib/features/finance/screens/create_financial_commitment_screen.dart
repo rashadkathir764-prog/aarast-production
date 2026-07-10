@@ -434,7 +434,7 @@ class _EditPaymentHint extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'تعديل المدفوع يتم من سجلات الدفعات: أضف دفعة جديدة أو احذف دفعة خاطئة من تفاصيل المستحق.',
+              'تعديل المدفوع يتم من سجل الحركات: أضف دفعة جديدة أو أنشئ قيد عكس للدفعة الخاطئة من تفاصيل المستحق.',
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppTheme.muted,

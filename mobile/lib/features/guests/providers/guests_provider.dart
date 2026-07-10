@@ -2,10 +2,11 @@
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/guests_api.dart';
 import '../models/guest.dart';
 
-class GuestsProvider extends ChangeNotifier {
+class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   GuestsProvider(this._api);
 
   final GuestsApi _api;

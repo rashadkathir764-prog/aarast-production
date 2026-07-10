@@ -1,7 +1,7 @@
 // Visual preview for the provider dashboard hero (business profile card +
 // KPI stats grid) — the top of the provider-facing home. Reconstructs the
-// private widgets from provider_dashboard_screen.dart with static data so the
-// provider side of the app gets golden coverage without a backend.
+// canonical provider portal home with static data so the provider side of the
+// app gets golden coverage without a backend.
 //
 // Regenerate with:
 //   flutter test test/provider_dashboard_preview_test.dart --update-goldens

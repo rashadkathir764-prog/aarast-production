@@ -41,6 +41,7 @@ class ChatRealtimeClient {
   Timer? _reconnectTimer;
   Future<void>? _connectFuture;
   void Function(ChatMessage message)? _onMessage;
+  void Function(String conversationId, String messageId)? _onMessageAvailable;
   void Function(String conversationId, String userId, DateTime? lastReadAt)?
   _onRead;
   bool _stopped = true;
@@ -50,6 +51,8 @@ class ChatRealtimeClient {
 
   Future<void> connect({
     required void Function(ChatMessage message) onMessage,
+    required void Function(String conversationId, String messageId)
+    onMessageAvailable,
     required void Function(
       String conversationId,
       String userId,
@@ -58,6 +61,7 @@ class ChatRealtimeClient {
     onRead,
   }) {
     _onMessage = onMessage;
+    _onMessageAvailable = onMessageAvailable;
     _onRead = onRead;
     _stopped = false;
     if (_socket?.connected == true) return Future.value();
@@ -119,6 +123,14 @@ class ChatRealtimeClient {
       final json = _json(value);
       if (json != null) _onMessage?.call(ChatMessage.fromJson(json));
     });
+    socket.on('conversation:message-available', (value) {
+      final json = _json(value);
+      if (json == null) return;
+      _onMessageAvailable?.call(
+        json['conversationId']?.toString() ?? '',
+        json['messageId']?.toString() ?? '',
+      );
+    });
     socket.on('conversation:read', (value) {
       final json = _json(value);
       if (json == null) return;
@@ -159,10 +171,19 @@ class ChatRealtimeClient {
   void _scheduleReconnect() {
     if (_stopped || _reconnectTimer?.isActive == true) return;
     _reconnectTimer = Timer(reconnectDelay, () {
-      if (_stopped || _onMessage == null || _onRead == null) return;
+      if (_stopped ||
+          _onMessage == null ||
+          _onMessageAvailable == null ||
+          _onRead == null) {
+        return;
+      }
       _connectFuture = null;
       unawaited(
-        connect(onMessage: _onMessage!, onRead: _onRead!).catchError((_) {}),
+        connect(
+          onMessage: _onMessage!,
+          onMessageAvailable: _onMessageAvailable!,
+          onRead: _onRead!,
+        ).catchError((_) {}),
       );
     });
   }

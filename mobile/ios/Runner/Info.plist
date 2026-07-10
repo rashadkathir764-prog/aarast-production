@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Aarast Mobile</string>
+	<string>اعّرست</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>يحتاج أعرست إلى الكاميرا لتحديث صورة حسابك عند اختيار التقاط صورة جديدة.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>يستخدم أعرست جهات الاتصال فقط عندما تختار إضافة ضيف أو مشارك منها، ولا يرفع دفتر العناوين كاملًا.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>يحتاج أعرست إلى معرض الصور لاختيار صورة حسابك.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

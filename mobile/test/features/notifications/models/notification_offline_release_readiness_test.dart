@@ -85,18 +85,8 @@ void main() {
 
 const _pushNotificationsEnabled = AppFeatureFlags(
   enableGuestFirstOnboarding: false,
-  enableProviderMode: false,
-  enableProviderQuotes: false,
-  enableGuestContacts: false,
   enableOfflineSync: true,
-  enableAIHelper: false,
   enablePushNotifications: true,
-  enableSubscriptions: false,
-  enableMaps: false,
-  enableAnalytics: false,
-  enableNewUserBottomNavigation: false,
-  enableProviderShell: false,
-  enableSingleDashboardSummary: false,
 );
 
 AarastNotification _notification({required bool read}) {

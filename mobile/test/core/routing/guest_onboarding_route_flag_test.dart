@@ -17,18 +17,8 @@ void main() {
     test('redirects to current onboarding when feature flag is disabled', () {
       const flags = AppFeatureFlags(
         enableGuestFirstOnboarding: false,
-        enableProviderMode: false,
-        enableProviderQuotes: false,
-        enableGuestContacts: false,
         enableOfflineSync: true,
-        enableAIHelper: false,
         enablePushNotifications: false,
-        enableSubscriptions: false,
-        enableMaps: false,
-        enableAnalytics: false,
-        enableNewUserBottomNavigation: false,
-        enableProviderShell: false,
-        enableSingleDashboardSummary: false,
       );
 
       expect(AppRouter.guestOnboardingRedirect(flags), AppRouter.onboarding);

@@ -307,9 +307,9 @@ class _GuestsHeader extends StatelessWidget {
             'الضيوف',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: AppTheme.title,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
           ),
         ),
         const SizedBox(width: 10),
@@ -967,10 +967,12 @@ class _StepperRow extends StatelessWidget {
           IconButton(
             onPressed: onMinus,
             icon: const Icon(Icons.remove_circle_outline),
+            tooltip: 'تقليل العدد',
           ),
           IconButton(
             onPressed: onPlus,
             icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'زيادة العدد',
           ),
         ],
       ),

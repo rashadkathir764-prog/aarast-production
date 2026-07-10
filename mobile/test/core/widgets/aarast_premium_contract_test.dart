@@ -2,6 +2,45 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+Iterable<File> _productionScreenFiles() sync* {
+  final root = Directory('lib/features');
+  for (final entity in root.listSync(recursive: true)) {
+    if (entity is! File || !entity.path.endsWith('_screen.dart')) continue;
+    final text = entity.readAsStringSync().trimLeft();
+    if (text.startsWith('export ')) continue;
+    yield entity;
+  }
+}
+
+List<String> _iconButtonsWithoutTooltips(File file) {
+  final text = file.readAsStringSync();
+  final matches = RegExp(
+    r'(^|[^\w])IconButton\s*\(',
+    multiLine: true,
+  ).allMatches(text);
+  final offenders = <String>[];
+
+  for (final match in matches) {
+    final open = text.indexOf('(', match.start);
+    var depth = 0;
+    var end = open;
+    for (; end < text.length; end += 1) {
+      final char = text[end];
+      if (char == '(') depth += 1;
+      if (char == ')') {
+        depth -= 1;
+        if (depth == 0) break;
+      }
+    }
+    final call = text.substring(open, end + 1);
+    if (!call.contains('tooltip:')) {
+      final line = '\n'.allMatches(text.substring(0, match.start)).length + 1;
+      offenders.add('${file.path}:$line');
+    }
+  }
+  return offenders;
+}
+
 void main() {
   group('Aarast mobile visual production contract', () {
     test('keeps the official design system files in place', () {
@@ -88,7 +127,6 @@ void main() {
       // كل شاشة موجهة في التطبيق — لا شاشة خارج المستوى الفاخر الموحّد.
       // ملفات export الخالصة وقشرة الـ ShellRoute خارج القائمة عمداً.
       const screenFiles = [
-        'lib/core/widgets/coming_soon_screen.dart',
         'lib/features/auth/screens/splash_screen.dart',
         'lib/features/auth/screens/login_screen.dart',
         'lib/features/auth/screens/register_screen.dart',
@@ -111,6 +149,9 @@ void main() {
         'lib/features/finance/screens/create_budget_category_screen.dart',
         'lib/features/finance/screens/create_expense_screen.dart',
         'lib/features/finance/screens/create_financial_commitment_screen.dart',
+        'lib/features/finance/screens/financial_commitment_details_screen.dart',
+        'lib/features/finance/screens/financial_payables_screen.dart',
+        'lib/features/finance/screens/financial_payment_record_details_screen.dart',
         'lib/features/finance/screens/expenses_screen.dart',
         'lib/features/finance/screens/record_payment_screen.dart',
         'lib/features/debts/screens/debt_installment_screen.dart',
@@ -129,7 +170,6 @@ void main() {
         'lib/features/marketplace/screens/provider_details_screen.dart',
         'lib/features/marketplace/screens/quote_request_screen.dart',
         'lib/features/marketplace/screens/provider_apply_screen.dart',
-        'lib/features/marketplace/screens/provider_dashboard_screen.dart',
         'lib/features/marketplace/screens/provider_portal_screen.dart',
         'lib/features/marketplace/screens/add_provider_service_screen.dart',
         'lib/features/marketplace/screens/add_provider_package_screen.dart',
@@ -146,6 +186,18 @@ void main() {
         r'AuthWeddingScaffold|GuestOnboardingStepScaffold',
       );
 
+      final discovered =
+          _productionScreenFiles()
+              .map((file) => file.path.replaceAll('\\', '/'))
+              .toList()
+            ..sort();
+      final declared = [...screenFiles]..sort();
+      expect(
+        declared,
+        discovered,
+        reason: 'The production-screen contract must cover every screen file.',
+      );
+
       for (final path in screenFiles) {
         final file = File(path);
         expect(file.existsSync(), isTrue, reason: path);
@@ -157,6 +209,70 @@ void main() {
         );
       }
     });
+
+    test('gives every production IconButton an accessible tooltip', () {
+      final offenders = _productionScreenFiles()
+          .expand(_iconButtonsWithoutTooltips)
+          .toList();
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('uses accessible pressable primitives instead of raw gestures', () {
+      final offenders = <String>[];
+      for (final file in _productionScreenFiles()) {
+        final lines = file.readAsLinesSync();
+        for (var index = 0; index < lines.length; index += 1) {
+          if (lines[index].contains('GestureDetector(')) {
+            offenders.add('${file.path}:${index + 1}');
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('does not expose implementation placeholders to users', () {
+      final placeholderCopy = RegExp(
+        r'عند ربط نظام الملفات|رفع الصور سيظهر لاحق',
+      );
+      final offenders = <String>[];
+      for (final file in _productionScreenFiles()) {
+        final lines = file.readAsLinesSync();
+        for (var index = 0; index < lines.length; index += 1) {
+          if (placeholderCopy.hasMatch(lines[index])) {
+            offenders.add('${file.path}:${index + 1}');
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test(
+      'keeps every production screen covered by an explicit widget test',
+      () {
+        final testSource = Directory('test')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((file) => file.path.endsWith('.dart'))
+            .map((file) => file.readAsStringSync())
+            .join('\n');
+        final classPattern = RegExp(r'class\s+(\w+Screen)\s+extends');
+        final offenders = <String>[];
+
+        for (final file in _productionScreenFiles()) {
+          final match = classPattern.firstMatch(file.readAsStringSync());
+          if (match == null) continue;
+          final className = match.group(1)!;
+          if (!testSource.contains(className)) {
+            offenders.add('${file.path}: $className');
+          }
+        }
+
+        expect(offenders, isEmpty, reason: offenders.join('\n'));
+      },
+    );
 
     test('bans raw CircularProgressIndicator outside the design system', () {
       // حالة التحميل الفاخرة إلزامية: AarastSkeleton للجسم،

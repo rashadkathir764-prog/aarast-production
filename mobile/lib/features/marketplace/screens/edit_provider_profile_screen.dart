@@ -66,6 +66,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
+          tooltip: 'رجوع',
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -84,6 +85,12 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
         children: [
           if (dashboard.isLoading && profile == null)
             AarastSkeleton.form(fields: 4, inline: true)
+          else if (profile == null && dashboard.errorMessage != null)
+            AarastErrorState(
+              title: 'تعذر تحميل ملف المزود',
+              message: dashboard.errorMessage!,
+              onRetry: dashboard.loadDashboard,
+            )
           else if (profile == null)
             AarastEmptyState(
               icon: LucideIcons.store,

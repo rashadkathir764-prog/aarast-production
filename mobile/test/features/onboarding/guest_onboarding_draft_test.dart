@@ -224,6 +224,50 @@ void main() {
       expect(draft.isCompleteGuestPlan, isTrue);
     });
 
+    test('an explicitly skipped budget still opens the local dashboard', () {
+      final draft =
+          GuestOnboardingDraft.quickLocalPlanSetup(
+            planName: 'My Wedding',
+            persona: GuestPersona.groom,
+            location: 'Sanaa',
+            weddingDate: DateTime(2026, 12, 1),
+            currency: 'YER',
+          ).copyWith(
+            guestPlanId: 'local-guest-no-budget',
+            createdAt: DateTime.utc(2026, 7, 10),
+            isGuestPlan: true,
+            needsSync: true,
+          );
+
+      expect(draft.budgetSkipped, isTrue);
+      expect(draft.hasRequiredBudget, isFalse);
+      expect(draft.canOpenLocalDashboard, isTrue);
+      expect(draft.isCompleteGuestPlan, isTrue);
+    });
+
+    test('legacy saved local plan without budget is migrated to skipped', () {
+      final saved = GuestOnboardingDraft.quickLocalPlanSetup(
+        planName: 'Legacy Wedding',
+        persona: GuestPersona.bride,
+        location: 'Aden',
+        weddingDate: DateTime(2026, 12, 20),
+        currency: 'YER',
+      ).copyWith(
+        guestPlanId: 'local-guest-legacy',
+        createdAt: DateTime.utc(2026, 7, 1),
+        isGuestPlan: true,
+        needsSync: true,
+        budgetSkipped: false,
+      ).toJson();
+      saved['budgetSkipped'] = false;
+
+      final restored = GuestOnboardingDraft.fromJson(saved);
+
+      expect(restored.estimatedBudget, isNull);
+      expect(restored.budgetSkipped, isTrue);
+      expect(restored.isCompleteGuestPlan, isTrue);
+    });
+
     test('serializes to and from JSON without losing data', () {
       final draft = GuestOnboardingDraft(
         guestPlanId: 'guest-plan-1',

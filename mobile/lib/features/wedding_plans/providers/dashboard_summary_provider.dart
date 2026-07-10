@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../debts/data/debt_installment_api.dart';
 import '../../debts/models/debt_summary.dart';
 import '../../debts/models/installment.dart';
@@ -14,7 +15,8 @@ import '../data/wedding_plans_api.dart';
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 
-class DashboardSummaryProvider extends ChangeNotifier {
+class DashboardSummaryProvider extends ChangeNotifier
+    with SessionScopedNotifier {
   DashboardSummaryProvider({
     required this.weddingPlansApi,
     required this.budgetExpenseApi,

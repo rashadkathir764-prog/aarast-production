@@ -1,14 +1,17 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'core/config/api_config.dart';
 import 'core/media/media_upload_api.dart';
 import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
+import 'core/session/session_boundary.dart';
+import 'core/session/session_scoped_change_notifier.dart';
 import 'core/storage/auth_storage.dart';
 import 'core/storage/token_vault.dart';
 import 'features/auth/data/auth_repository.dart';
@@ -39,6 +42,7 @@ import 'features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'features/wedding_plans/providers/wedding_plans_provider.dart';
 
 Future<void> main() async {
+  ApiConfig.validateForStartup();
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferences = await SharedPreferences.getInstance();
@@ -123,68 +127,247 @@ Future<void> main() async {
             return controller;
           },
         ),
-        ChangeNotifierProvider(
-          create: (_) => WeddingPlansProvider(weddingPlansApi),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => DashboardSummaryProvider(
-            weddingPlansApi: weddingPlansApi,
-            budgetExpenseApi: budgetExpenseApi,
-            debtInstallmentApi: debtInstallmentApi,
-            taskTimelineApi: taskTimelineApi,
-            sharingApi: sharingApi,
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => HomeDashboardProvider(
-            weddingPlansApi: weddingPlansApi,
-            budgetExpenseApi: budgetExpenseApi,
-            debtInstallmentApi: debtInstallmentApi,
-            taskTimelineApi: taskTimelineApi,
-            sharingApi: sharingApi,
-          ),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => FinanceProvider(budgetExpenseApi),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => DebtInstallmentProvider(debtInstallmentApi),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => TaskTimelineProvider(taskTimelineApi),
-        ),
-        ChangeNotifierProvider(create: (_) => SharingProvider(sharingApi)),
-        ChangeNotifierProvider(
-          create: (_) => NotificationsProvider(notificationsApi),
-        ),
-        ChangeNotifierProvider(create: (_) => GuestsProvider(guestsApi)),
-        ChangeNotifierProvider(create: (_) => SettingsProvider(settingsApi)),
-        ChangeNotifierProvider(
-          create: (_) => ProviderMarketplaceProvider(marketplaceApi),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => ProviderDashboardProvider(providerDashboardApi),
-        ),
-        ChangeNotifierProxyProvider<AuthController, ChatProvider>(
-          create: (_) => ChatProvider(
-            api: chatApi,
-            realtime: chatRealtimeClient,
-            authStorage: authStorage,
-          ),
-          update: (_, auth, chat) {
-            final provider =
-                chat ??
-                ChatProvider(
-                  api: chatApi,
-                  realtime: chatRealtimeClient,
-                  authStorage: authStorage,
-                );
-            provider.syncSessionUser(auth.user?.id);
-            return provider;
-          },
-        ),
       ],
-      child: const AarastApp(),
+      child: _AarastSessionProviders(
+        authStorage: authStorage,
+        weddingPlansApi: weddingPlansApi,
+        budgetExpenseApi: budgetExpenseApi,
+        debtInstallmentApi: debtInstallmentApi,
+        taskTimelineApi: taskTimelineApi,
+        sharingApi: sharingApi,
+        marketplaceApi: marketplaceApi,
+        providerDashboardApi: providerDashboardApi,
+        chatApi: chatApi,
+        chatRealtimeClient: chatRealtimeClient,
+        notificationsApi: notificationsApi,
+        guestsApi: guestsApi,
+        settingsApi: settingsApi,
+      ),
     ),
   );
+}
+
+class _AarastSessionProviders extends StatelessWidget {
+  const _AarastSessionProviders({
+    required this.authStorage,
+    required this.weddingPlansApi,
+    required this.budgetExpenseApi,
+    required this.debtInstallmentApi,
+    required this.taskTimelineApi,
+    required this.sharingApi,
+    required this.marketplaceApi,
+    required this.providerDashboardApi,
+    required this.chatApi,
+    required this.chatRealtimeClient,
+    required this.notificationsApi,
+    required this.guestsApi,
+    required this.settingsApi,
+  });
+
+  final AuthStorage authStorage;
+  final WeddingPlansApi weddingPlansApi;
+  final BudgetExpenseApi budgetExpenseApi;
+  final DebtInstallmentApi debtInstallmentApi;
+  final TaskTimelineApi taskTimelineApi;
+  final SharingApi sharingApi;
+  final MarketplaceApi marketplaceApi;
+  final ProviderDashboardApi providerDashboardApi;
+  final ChatApi chatApi;
+  final ChatRealtimeClient chatRealtimeClient;
+  final NotificationsApi notificationsApi;
+  final GuestsApi guestsApi;
+  final SettingsApi settingsApi;
+
+  @override
+  Widget build(BuildContext context) {
+    final sessionUserId = context.select<AuthController, String?>(
+      (auth) => auth.user?.id,
+    );
+    return AarastSessionBoundary(
+      identity: 'account:${sessionUserId ?? 'guest'}',
+      builder: (_) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) => WeddingPlansProvider(weddingPlansApi),
+          ),
+          ChangeNotifierProvider(create: (_) => SettingsProvider(settingsApi)),
+          ChangeNotifierProvider(
+            create: (_) => ProviderDashboardProvider(providerDashboardApi),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => ChatProvider(
+              api: chatApi,
+              realtime: chatRealtimeClient,
+              authStorage: authStorage,
+              sessionUserId: sessionUserId,
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            DashboardSummaryProvider
+          >(
+            create: (_) => _bindPlanScope(
+              DashboardSummaryProvider(
+                weddingPlansApi: weddingPlansApi,
+                budgetExpenseApi: budgetExpenseApi,
+                debtInstallmentApi: debtInstallmentApi,
+                taskTimelineApi: taskTimelineApi,
+                sharingApi: sharingApi,
+              ),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => DashboardSummaryProvider(
+                weddingPlansApi: weddingPlansApi,
+                budgetExpenseApi: budgetExpenseApi,
+                debtInstallmentApi: debtInstallmentApi,
+                taskTimelineApi: taskTimelineApi,
+                sharingApi: sharingApi,
+              ),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            HomeDashboardProvider
+          >(
+            create: (_) => _bindPlanScope(
+              HomeDashboardProvider(
+                weddingPlansApi: weddingPlansApi,
+                budgetExpenseApi: budgetExpenseApi,
+                debtInstallmentApi: debtInstallmentApi,
+                taskTimelineApi: taskTimelineApi,
+                sharingApi: sharingApi,
+              ),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => HomeDashboardProvider(
+                weddingPlansApi: weddingPlansApi,
+                budgetExpenseApi: budgetExpenseApi,
+                debtInstallmentApi: debtInstallmentApi,
+                taskTimelineApi: taskTimelineApi,
+                sharingApi: sharingApi,
+              ),
+            ),
+          ),
+          ChangeNotifierProxyProvider<WeddingPlansProvider, FinanceProvider>(
+            create: (_) => _bindPlanScope(
+              FinanceProvider(budgetExpenseApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => FinanceProvider(budgetExpenseApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            DebtInstallmentProvider
+          >(
+            create: (_) => _bindPlanScope(
+              DebtInstallmentProvider(debtInstallmentApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => DebtInstallmentProvider(debtInstallmentApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            TaskTimelineProvider
+          >(
+            create: (_) => _bindPlanScope(
+              TaskTimelineProvider(taskTimelineApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => TaskTimelineProvider(taskTimelineApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<WeddingPlansProvider, SharingProvider>(
+            create: (_) => _bindPlanScope(
+              SharingProvider(sharingApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => SharingProvider(sharingApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            NotificationsProvider
+          >(
+            create: (_) => _bindPlanScope(
+              NotificationsProvider(notificationsApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => NotificationsProvider(notificationsApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<WeddingPlansProvider, GuestsProvider>(
+            create: (_) =>
+                _bindPlanScope(GuestsProvider(guestsApi), _unselectedPlanScope),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => GuestsProvider(guestsApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            WeddingPlansProvider,
+            ProviderMarketplaceProvider
+          >(
+            create: (_) => _bindPlanScope(
+              ProviderMarketplaceProvider(marketplaceApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, plans, current) => _forPlanScope(
+              current,
+              _planScope(plans),
+              () => ProviderMarketplaceProvider(marketplaceApi),
+            ),
+          ),
+        ],
+        child: const AarastApp(),
+      ),
+    );
+  }
+}
+
+const _unselectedPlanScope = 'plan:unselected';
+
+String _planScope(WeddingPlansProvider plans) {
+  final planId = plans.selectedPlan?.id ?? plans.activePlan?.id;
+  return planId == null ? _unselectedPlanScope : 'plan:$planId';
+}
+
+T _bindPlanScope<T extends ChangeNotifier>(T provider, Object identity) {
+  (provider as SessionScopedState).bindSessionIdentity(identity);
+  return provider;
+}
+
+T _forPlanScope<T extends ChangeNotifier>(
+  T? current,
+  Object identity,
+  T Function() create,
+) {
+  if (current != null &&
+      (current as SessionScopedState).belongsToSession(identity)) {
+    return current;
+  }
+  return _bindPlanScope(create(), identity);
 }

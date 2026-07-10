@@ -297,6 +297,7 @@ class _DetailsFrame extends StatelessWidget {
         Align(
           alignment: AlignmentDirectional.centerStart,
           child: IconButton(
+            tooltip: 'رجوع',
             onPressed: () {
               if (context.canPop()) context.pop();
             },
@@ -785,6 +786,7 @@ void _openPhoto(BuildContext context, String url) {
               color: AppTheme.surface,
               shape: const CircleBorder(),
               child: IconButton(
+                tooltip: 'إغلاق الصورة',
                 onPressed: () => Navigator.of(dialogContext).pop(),
                 icon: const Icon(LucideIcons.x, color: AppTheme.burgundy),
               ),
@@ -973,6 +975,7 @@ class _ServiceTile extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: 'طلب عرض لهذه الخدمة',
             onPressed: () => context.push(
               AppRouter.providerQuote(providerId),
               extra: service.id,

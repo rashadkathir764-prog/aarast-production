@@ -21,6 +21,18 @@ void main() {
   const accountPlanId = 'plan-account-1';
   const rawAuthError = 'بيانات الدخول غير صحيحة أو انتهت الجلسة.';
 
+  test('member lookup always scopes the request to its wedding plan', () async {
+    final client = _RecordingLookupApiClient();
+    final api = SharingApi(client);
+
+    await api.lookupUserByPhone(accountPlanId, '777123456');
+
+    final uri = Uri.parse(client.path!);
+    expect(uri.path, '/users/lookup');
+    expect(uri.queryParameters['weddingPlanId'], accountPlanId);
+    expect(uri.queryParameters['phone'], '+967777123456');
+  });
+
   testWidgets(
     'local/no-login opening sharing shows login gate without protected API retry',
     (tester) async {
@@ -266,7 +278,10 @@ class _FakeSharingApi extends SharingApi {
   }
 
   @override
-  Future<SharedUserLookup> lookupUserByPhone(String phone) async {
+  Future<SharedUserLookup> lookupUserByPhone(
+    String weddingPlanId,
+    String phone,
+  ) async {
     lookupUserByPhoneCalls += 1;
     _throwIfUnauthorized();
     return const SharedUserLookup(id: 'lookup-user', name: 'عضو');
@@ -326,5 +341,21 @@ class _FakeSharingApi extends SharingApi {
         statusCode: 401,
       );
     }
+  }
+}
+
+class _RecordingLookupApiClient extends ApiClient {
+  _RecordingLookupApiClient() : super(tokenProvider: () async => 'token');
+
+  String? path;
+
+  @override
+  Future<Map<String, dynamic>> getJson(String path) async {
+    this.path = path;
+    return const {
+      'id': 'lookup-user',
+      'name': 'Member',
+      'phone': '+967777123456',
+    };
   }
 }

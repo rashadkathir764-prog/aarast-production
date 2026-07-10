@@ -7,7 +7,9 @@ import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/storage/token_vault.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 
 class _FakeTokenVault implements TokenVault {
   String? stored;
@@ -91,29 +93,26 @@ void main() {
       },
     );
 
-    test(
-      'access-only sessions clear any stale refresh token',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final preferences = await SharedPreferences.getInstance();
-        final vault = _FakeTokenVault();
-        final storage = AuthStorage(preferences, tokenVault: vault);
+    test('access-only sessions clear any stale refresh token', () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final vault = _FakeTokenVault();
+      final storage = AuthStorage(preferences, tokenVault: vault);
 
-        await storage.saveSession(
-          accessToken: 'old-access',
-          refreshToken: 'old-refresh',
-          user: _user('u1'),
-        );
-        await storage.saveSession(
-          accessToken: 'legacy-access',
-          user: _user('u1'),
-        );
+      await storage.saveSession(
+        accessToken: 'old-access',
+        refreshToken: 'old-refresh',
+        user: _user('u1'),
+      );
+      await storage.saveSession(
+        accessToken: 'legacy-access',
+        user: _user('u1'),
+      );
 
-        expect(await storage.readAccessToken(), 'legacy-access');
-        expect(await storage.readRefreshToken(), isNull);
-        expect(preferences.getString('aarast_refresh_token'), isNull);
-      },
-    );
+      expect(await storage.readAccessToken(), 'legacy-access');
+      expect(await storage.readRefreshToken(), isNull);
+      expect(preferences.getString('aarast_refresh_token'), isNull);
+    });
 
     test('legacy plaintext token migrates into vault on first read', () async {
       SharedPreferences.setMockInitialValues({
@@ -221,4 +220,107 @@ void main() {
       expect(rows, hasLength(1));
     });
   });
+
+  test(
+    'logout invalidates in-memory identity before network logout finishes',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      final user = SafeUser.fromJson({
+        'id': 'user-a',
+        'name': 'User A',
+        'role': 'USER',
+        'status': 'ACTIVE',
+      });
+      final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+      final repository = _DelayedLogoutRepository(apiClient, storage, user);
+      final controller = AuthController(repository);
+
+      await controller.restoreSession();
+      expect(controller.status, AuthStatus.authenticated);
+      expect(controller.user?.id, 'user-a');
+
+      final logout = controller.logout();
+      expect(controller.status, AuthStatus.unauthenticated);
+      expect(controller.user, isNull);
+      expect(repository.boundSessions.last, isNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(repository.logoutCalled, isTrue);
+      expect(controller.user, isNull);
+      await logout;
+    },
+  );
+
+  test(
+    'failed restore invalidates cached identity before logout finishes',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      final user = SafeUser.fromJson({
+        'id': 'stale-user',
+        'name': 'Stale User',
+        'role': 'USER',
+        'status': 'ACTIVE',
+      });
+      final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
+      final repository = _FailedRestoreRepository(apiClient, storage, user);
+      final controller = AuthController(repository);
+
+      final restore = controller.restoreSession();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(controller.status, AuthStatus.unauthenticated);
+      expect(controller.user, isNull);
+      expect(repository.boundSessions.last, isNull);
+      expect(repository.logoutCalled, isTrue);
+
+      await restore;
+      expect(controller.user, isNull);
+    },
+  );
+}
+
+class _DelayedLogoutRepository extends AuthRepository {
+  _DelayedLogoutRepository(super.apiClient, super.authStorage, this.cachedUser);
+
+  final SafeUser cachedUser;
+  bool logoutCalled = false;
+  final List<String?> boundSessions = [];
+
+  @override
+  SafeUser? readCachedUser() => cachedUser;
+
+  @override
+  Future<String?> readAccessToken() async => 'token-user-a';
+
+  @override
+  Future<SafeUser> me() async => cachedUser;
+
+  @override
+  void bindClientSession(String? userId) {
+    boundSessions.add(userId);
+    super.bindClientSession(userId);
+  }
+
+  @override
+  Future<void> logout() async {
+    logoutCalled = true;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+}
+
+class _FailedRestoreRepository extends _DelayedLogoutRepository {
+  _FailedRestoreRepository(
+    super.apiClient,
+    super.authStorage,
+    super.cachedUser,
+  );
+
+  @override
+  Future<SafeUser> me() async {
+    throw const ApiException('expired', statusCode: 401);
+  }
 }

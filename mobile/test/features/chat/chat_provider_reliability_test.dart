@@ -489,6 +489,8 @@ class _FakeRealtimeClient extends ChatRealtimeClient {
   @override
   Future<void> connect({
     required void Function(ChatMessage message) onMessage,
+    required void Function(String conversationId, String messageId)
+    onMessageAvailable,
     required void Function(
       String conversationId,
       String userId,

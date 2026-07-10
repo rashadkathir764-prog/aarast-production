@@ -2,12 +2,13 @@
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/task_timeline_api.dart';
 import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
 
-class TaskTimelineProvider extends ChangeNotifier {
+class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   TaskTimelineProvider(this._api);
 
   final TaskTimelineApi _api;

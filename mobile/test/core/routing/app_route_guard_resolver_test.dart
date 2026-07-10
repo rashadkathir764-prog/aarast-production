@@ -39,7 +39,7 @@ void main() {
       expect(
         AppRouteGuardResolver.featureFlagRedirect(
           flags: AppFeatureFlags.defaults,
-          flagName: 'enableNewUserBottomNavigation',
+          flagName: 'enablePushNotifications',
           disabledRedirect: '/home',
         ),
         '/home',
@@ -49,18 +49,8 @@ void main() {
     test('feature flag guard allows when feature is enabled', () {
       const flags = AppFeatureFlags(
         enableGuestFirstOnboarding: true,
-        enableProviderMode: false,
-        enableProviderQuotes: false,
-        enableGuestContacts: false,
         enableOfflineSync: true,
-        enableAIHelper: false,
         enablePushNotifications: false,
-        enableSubscriptions: false,
-        enableMaps: false,
-        enableAnalytics: false,
-        enableNewUserBottomNavigation: false,
-        enableProviderShell: false,
-        enableSingleDashboardSummary: false,
       );
 
       expect(

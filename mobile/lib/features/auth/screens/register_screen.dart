@@ -9,6 +9,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
+import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import 'otp_screen.dart';
 import '../widgets/auth_wedding_widgets.dart';
@@ -62,7 +63,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final dashboard = context.watch<ProviderDashboardProvider>();
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final textTheme = Theme.of(context).textTheme;
     final providerMode = _accountType == _AccountType.provider;
@@ -111,7 +111,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     value: _accountType,
                     onChanged: (value) {
                       auth.clearError();
-                      dashboard.clearError();
                       setState(() => _accountType = value);
                     },
                   ),
@@ -247,17 +246,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 14),
                     AuthInlineError(message: auth.errorMessage!),
                   ],
-                  if (providerMode && dashboard.errorMessage != null) ...[
-                    const SizedBox(height: 14),
-                    AuthInlineError(message: dashboard.errorMessage!),
-                  ],
                   const SizedBox(height: 20),
                   AarastButton(
                     label: providerMode ? 'إرسال طلب الانضمام' : 'إنشاء حساب',
                     icon: providerMode
                         ? LucideIcons.contact
                         : LucideIcons.userPlus,
-                    isLoading: auth.isSubmitting || dashboard.isSubmitting,
+                    isLoading: auth.isSubmitting,
                     onPressed: _submit,
                   ),
                 ],
@@ -302,46 +297,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.read<AuthController>();
     final email = _emailController.text.trim();
     final normalizedPhone = normalizeYemeniPhone(_phoneController.text);
-    final success = await auth.register(
+    final otp = await auth.startRegistration(
       name: _nameController.text.trim(),
       phone: normalizedPhone,
       email: email.isEmpty ? null : email,
       password: _passwordController.text,
     );
 
-    if (!success || !mounted) return;
+    if (otp == null || !mounted) return;
 
-    if (_accountType == _AccountType.provider) {
-      if (_cityId == null || _categoryId == null) return;
-      final applied = await context
-          .read<ProviderDashboardProvider>()
-          .applyProvider(
+    final providerApplication = _accountType == _AccountType.provider
+        ? PendingProviderApplication(
             businessName: _nameController.text.trim(),
             phone: normalizedPhone,
             cityId: _cityId!,
-            categoryIds: [_categoryId!],
-            description: _descriptionController.text,
-          );
-      if (applied && mounted) {
-        await auth.refreshCurrentUser();
-        if (!mounted) return;
-        context.go(AppRouter.providerApplyStatus);
-      }
-      return;
-    }
-
-    final otp = await auth.requestOtp(
-      phone: normalizedPhone,
-      purpose: 'VERIFY_PHONE',
-    );
-    if (otp == null || !mounted) return;
+            categoryId: _categoryId!,
+            description: _descriptionController.text.trim(),
+          )
+        : null;
 
     context.go(
       AppRouter.otp,
       extra: OtpScreenArgs(
         phone: normalizedPhone,
-        purpose: 'VERIFY_PHONE',
+        purpose: 'REGISTER',
         devOtpMessage: otp.localDevMessage,
+        registration: PendingRegistration(
+          name: _nameController.text.trim(),
+          phone: normalizedPhone,
+          email: email.isEmpty ? null : email,
+          password: _passwordController.text,
+          providerApplication: providerApplication,
+        ),
       ),
     );
   }

@@ -11,7 +11,12 @@ import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/budget_category_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/budget_setup_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/create_budget_category_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/create_financial_commitment_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/expenses_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/financial_commitment_details_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/financial_payables_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/financial_payment_record_details_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/record_payment_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
@@ -128,6 +133,36 @@ void main() {
       expect(find.textContaining('ر.ي'), findsNothing);
     });
   });
+
+  group('Current finance surfaces at narrow RTL width', () {
+    final screens = <Widget>[
+      const CreateFinancialCommitmentScreen(weddingPlanId: _planId),
+      const FinancialPayablesScreen(weddingPlanId: _planId),
+      const FinancialCommitmentDetailsScreen(
+        weddingPlanId: _planId,
+        commitmentId: 'missing-commitment',
+      ),
+      const FinancialPaymentRecordDetailsScreen(
+        weddingPlanId: _planId,
+        paymentRecordId: 'missing-payment',
+      ),
+      const RecordPaymentScreen(weddingPlanId: _planId),
+    ];
+
+    for (final screen in screens) {
+      testWidgets('${screen.runtimeType} is overflow-free at 320px RTL', (
+        tester,
+      ) async {
+        _setPhoneView(tester);
+
+        await tester.pumpWidget(_wrap(screen));
+        await tester.pumpAndSettle();
+
+        expect(find.byWidget(screen), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
 }
 
 const _planId = 'plan-sar';
@@ -152,6 +187,12 @@ Widget _wrap(Widget child) {
       ),
     ],
     child: MaterialApp(
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: const TextScaler.linear(1.3)),
+        child: child!,
+      ),
       home: Directionality(textDirection: TextDirection.rtl, child: child),
     ),
   );
@@ -295,6 +336,12 @@ String _readSource(String relativePath) {
 void _setTallView(WidgetTester tester) {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(1000, 1800);
+  addTearDown(tester.view.reset);
+}
+
+void _setPhoneView(WidgetTester tester) {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = const Size(320, 800);
   addTearDown(tester.view.reset);
 }
 

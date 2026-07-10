@@ -28,7 +28,9 @@ class SecureTokenVault implements TokenVault {
   static const _refreshTokenKey = 'aarast_refresh_token';
 
   static const _defaultStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    // v10 migrates legacy encrypted SharedPreferences data to its modern
+    // RSA-OAEP + AES-GCM storage automatically when algorithms change.
+    aOptions: AndroidOptions(),
   );
 
   final FlutterSecureStorage _storage;

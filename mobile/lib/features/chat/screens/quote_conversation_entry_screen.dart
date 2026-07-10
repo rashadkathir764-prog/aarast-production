@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/network/api_client.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
@@ -28,15 +29,23 @@ class _QuoteConversationEntryScreenState
   }
 
   Future<void> _open() async {
-    final chat = context.read<ChatProvider>();
-    await chat.initialize();
-    if (!mounted) return;
-    final conversation = await chat.openQuote(widget.quoteRequestId);
-    if (!mounted) return;
-    setState(() {
-      _conversation = conversation;
-      _error = conversation == null ? chat.errorMessage : null;
-    });
+    if (mounted) setState(() => _error = null);
+    try {
+      final chat = context.read<ChatProvider>();
+      await chat.initialize();
+      if (!mounted) return;
+      final conversation = await chat.openQuote(widget.quoteRequestId);
+      if (!mounted) return;
+      setState(() {
+        _conversation = conversation;
+        _error = conversation == null
+            ? (chat.errorMessage ?? aarastBackendConnectionErrorMessage)
+            : null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = aarastBackendConnectionErrorMessage);
+    }
   }
 
   @override

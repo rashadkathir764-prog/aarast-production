@@ -40,12 +40,18 @@ class SharingApi {
     }
   }
 
-  Future<SharedUserLookup> lookupUserByPhone(String phone) async {
+  Future<SharedUserLookup> lookupUserByPhone(
+    String weddingPlanId,
+    String phone,
+  ) async {
     final normalizedPhone = _normalizePhone(phone);
     final json = await _apiClient.getJson(
       Uri(
         path: '/users/lookup',
-        queryParameters: {'phone': normalizedPhone},
+        queryParameters: {
+          'weddingPlanId': weddingPlanId,
+          'phone': normalizedPhone,
+        },
       ).toString(),
     );
     return SharedUserLookup.fromJson(json);

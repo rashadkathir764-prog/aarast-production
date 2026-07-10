@@ -1,13 +1,14 @@
 ﻿import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/sharing_api.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 
 enum SharingAuthGateKind { sessionExpired }
 
-class SharingProvider extends ChangeNotifier {
+class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   SharingProvider(this._api);
 
   final SharingApi _api;
@@ -95,7 +96,7 @@ class SharingProvider extends ChangeNotifier {
     return _findMember(id);
   }
 
-  Future<bool> lookupUserByPhone(String phone) async {
+  Future<bool> lookupUserByPhone(String weddingPlanId, String phone) async {
     _isLookingUp = true;
     _lookupErrorMessage = null;
     _lookupUser = null;
@@ -103,7 +104,7 @@ class SharingProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _lookupUser = await _api.lookupUserByPhone(phone);
+      _lookupUser = await _api.lookupUserByPhone(weddingPlanId, phone);
       return true;
     } on ApiException catch (error) {
       if (error.isUnauthorized) {
@@ -282,17 +283,15 @@ class SharingProvider extends ChangeNotifier {
     _acceptedInviteMember = null;
     notifyListeners();
     try {
-      final invites = await _api.getMyInvites();
       final cleanToken = token?.trim();
-      _myInvites = cleanToken == null || cleanToken.isEmpty
-          ? invites
-          : invites.where((invite) => invite.token == cleanToken).toList();
+      if (cleanToken != null && cleanToken.isNotEmpty) {
+        final invite = await _api.getInvite(cleanToken);
+        _myInvites = [invite];
+      } else {
+        _myInvites = await _api.getMyInvites();
+      }
       if (_myInvites.length == 1) {
         _selectedInvite = _myInvites.single;
-      }
-      if (cleanToken != null && cleanToken.isNotEmpty && _myInvites.isEmpty) {
-        _errorMessage =
-            'هذه الدعوة مرتبطة برقم آخر. أدخل الرقم الذي وصلت إليه الدعوة.';
       }
     } on ApiException catch (error) {
       _errorMessage = _sharingErrorMessage(error.message);

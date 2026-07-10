@@ -1,10 +1,11 @@
 ﻿import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/settings_api.dart';
 import '../models/user_settings.dart';
 
-class SettingsProvider extends ChangeNotifier {
+class SettingsProvider extends ChangeNotifier with SessionScopedNotifier {
   SettingsProvider(this._api);
 
   final SettingsApi _api;

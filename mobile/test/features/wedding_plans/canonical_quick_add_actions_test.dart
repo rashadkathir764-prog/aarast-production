@@ -89,9 +89,8 @@ void main() {
 
       expect(actions.map((a) => a.label).toList(), <String>[
         'إضافة بند ميزانية',
-        'حجز مورد / تكلفة خدمة',
+        'إضافة مستحق',
         'تسجيل دفعة',
-        'إضافة مستحق عليك',
       ]);
 
       for (final action in actions) {
@@ -100,15 +99,8 @@ void main() {
 
       expect(calls, <String>[
         AppRouter.createBudgetCategory('plan-money'),
-        AppRouter.createFinancialCommitment(
-          'plan-money',
-          sourceType: 'PROVIDER_SERVICE',
-        ),
+        AppRouter.createFinancialCommitment('plan-money'),
         AppRouter.recordPayment('plan-money'),
-        AppRouter.createFinancialCommitment(
-          'plan-money',
-          sourceType: 'MANUAL_DEBT',
-        ),
       ]);
     });
 
@@ -181,6 +173,20 @@ void main() {
   });
 
   group('WeddingPlanShell routing', () {
+    testWidgets('finance subpages hide the root money smart FAB', (
+      tester,
+    ) async {
+      final router = _buildPlanShellRouter(
+        initialLocation: AppRouter.financialPayables('plan-7'),
+      );
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pump();
+
+      expect(find.text('payables'), findsOneWidget);
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
+    });
+
     testWidgets('guest smart FAB opens the add route without page key reuse', (
       tester,
     ) async {
@@ -339,6 +345,10 @@ GoRouter _buildPlanShellRouter({
           GoRoute(
             path: '/wedding-plans/:id/finance',
             builder: (context, state) => const Scaffold(body: Text('finance')),
+          ),
+          GoRoute(
+            path: '/wedding-plans/:id/finance/payables',
+            builder: (context, state) => const Scaffold(body: Text('payables')),
           ),
           GoRoute(
             path: '/wedding-plans/:id/tasks',

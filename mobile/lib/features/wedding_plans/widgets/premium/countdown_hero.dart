@@ -38,6 +38,7 @@ class AarastCountUpText extends StatelessWidget {
     );
   }
 }
+
 /// البطاقة الملكية: عدّاد الأيام + حلقة تقدم ذهبية تُرسم أمام العين.
 ///
 /// حلقة واحدة تحمل رسالتين: القوس الذهبي = كم أنجزت،
@@ -174,14 +175,12 @@ class AarastCountdownHero extends StatelessWidget {
     if (reduceMotion) return card;
 
     // لمعة ذهبية تعبر البطاقة مرة واحدة عند الدخول — لحظة "الافتتاح".
-    return card
-        .animate()
-        .shimmer(
-          delay: 650.ms,
-          duration: 1200.ms,
-          color: AarastDesignTokens.gold.withValues(alpha: 0.35),
-          angle: math.pi / 8,
-        );
+    return card.animate().shimmer(
+      delay: 650.ms,
+      duration: 1200.ms,
+      color: AarastDesignTokens.gold.withValues(alpha: 0.35),
+      angle: math.pi / 8,
+    );
   }
 }
 
@@ -261,7 +260,11 @@ class _CountdownRing extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
+            // Ring labels must stay on one line at accessibility text scales.
             '% اكتمال',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.75),
               fontSize: 11.5,
@@ -276,11 +279,17 @@ class _CountdownRing extends StatelessWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.partyPopper,
-              color: AarastDesignTokens.gold, size: 26),
+          const Icon(
+            LucideIcons.partyPopper,
+            color: AarastDesignTokens.gold,
+            size: 26,
+          ),
           const SizedBox(height: 4),
           Text(
             'اليوم الكبير',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.95),
               fontSize: 12.5,
@@ -291,45 +300,58 @@ class _CountdownRing extends StatelessWidget {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AarastCountUpText(
-          value: days,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 34,
-            fontWeight: FontWeight.w800,
-            height: 1,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'يوم متبقي',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.78),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 5),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: AarastDesignTokens.gold.withValues(alpha: 0.18),
-            borderRadius:
-                BorderRadius.circular(AarastDesignTokens.radiusPill),
-          ),
-          child: Text(
-            '$progressPercentage% إنجاز',
-            style: const TextStyle(
-              color: AarastDesignTokens.goldSoft,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: SizedBox(
+        width: 104,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AarastCountUpText(
+              value: days,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            Text(
+              'يوم متبقي',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.78),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AarastDesignTokens.gold.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(
+                  AarastDesignTokens.radiusPill,
+                ),
+              ),
+              child: Text(
+                '$progressPercentage% إنجاز',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AarastDesignTokens.goldSoft,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

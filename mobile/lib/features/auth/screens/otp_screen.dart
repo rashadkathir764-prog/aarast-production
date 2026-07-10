@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../marketplace/providers/marketplace_provider.dart';
+import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
@@ -14,19 +16,32 @@ class OtpScreenArgs {
     required this.phone,
     this.purpose = 'VERIFY_PHONE',
     this.devOtpMessage,
+    this.registration,
+    this.successLocation,
   });
 
   final String phone;
   final String purpose;
   final String? devOtpMessage;
+  final PendingRegistration? registration;
+  final String? successLocation;
 }
 
 class OtpScreen extends StatefulWidget {
-  const OtpScreen({this.phone, this.purpose, this.devOtpMessage, super.key});
+  const OtpScreen({
+    this.phone,
+    this.purpose,
+    this.devOtpMessage,
+    this.registration,
+    this.successLocation,
+    super.key,
+  });
 
   final String? phone;
   final String? purpose;
   final String? devOtpMessage;
+  final PendingRegistration? registration;
+  final String? successLocation;
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -96,17 +111,54 @@ class _OtpScreenState extends State<OtpScreen> {
     }
 
     setState(() => _isVerifying = true);
-    final success = await auth.verifyOtp(
-      phone: phone,
-      purpose: purpose,
-      code: code,
-    );
+    final registration = widget.registration;
+    final success = registration == null
+        ? await auth.verifyOtp(phone: phone, purpose: purpose, code: code)
+        : await auth.register(
+            name: registration.name,
+            phone: registration.phone,
+            email: registration.email,
+            password: registration.password,
+            otpCode: code,
+          );
 
     if (!mounted) return;
-    setState(() => _isVerifying = false);
-    if (success) {
-      context.go(AppRouter.home);
+    if (!success) {
+      setState(() => _isVerifying = false);
+      return;
     }
+
+    final providerApplication = registration?.providerApplication;
+    if (providerApplication != null) {
+      final provider = context.read<ProviderDashboardProvider>();
+      final applied = await provider.applyProvider(
+        businessName: providerApplication.businessName,
+        phone: providerApplication.phone,
+        cityId: providerApplication.cityId,
+        categoryIds: [providerApplication.categoryId],
+        description: providerApplication.description,
+      );
+      if (!mounted) return;
+      if (applied) {
+        await auth.refreshCurrentUser();
+        if (!mounted) return;
+        context.go(AppRouter.providerApplyStatus);
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'تم إنشاء الحساب وتوثيق الرقم، لكن تعذر إرسال طلب المزود. يمكنك إعادة الطلب من حسابك.',
+          ),
+        ),
+      );
+    }
+
+    final defaultLocation = auth.user?.isProviderAccount == true
+        ? AppRouter.providerDashboard
+        : AppRouter.home;
+    context.go(widget.successLocation ?? defaultLocation);
   }
 
   void _goBack() {

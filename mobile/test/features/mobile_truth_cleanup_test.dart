@@ -44,6 +44,30 @@ void main() {
             'PremiumDashboardView (premium/) and royal_home_chrome.dart.',
       );
 
+      final legacyDashboardBundle = File(
+        '${mobileRoot}lib/features/wedding_plans/widgets/'
+        'aarast_dashboard_widgets.dart',
+      );
+      expect(
+        legacyDashboardBundle.existsSync(),
+        isFalse,
+        reason:
+            'The 3,611-line legacy dashboard bundle must stay deleted. '
+            'My Plans imports the extracted account_sheet.dart directly.',
+      );
+
+      final legacyProviderDashboard = File(
+        '${mobileRoot}lib/features/marketplace/screens/'
+        'provider_dashboard_screen.dart',
+      );
+      expect(
+        legacyProviderDashboard.existsSync(),
+        isFalse,
+        reason:
+            'ProviderPortalScreen is the only routed provider dashboard. '
+            'The unreachable legacy implementation must stay deleted.',
+      );
+
       final planCenter = File(
         '${mobileRoot}lib/features/wedding_plans/screens/plan_center_screen.dart',
       ).readAsStringSync();

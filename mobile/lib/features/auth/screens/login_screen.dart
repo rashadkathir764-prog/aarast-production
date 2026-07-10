@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
+import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -120,22 +121,35 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerLeft,
-                    child: InkWell(
-                      onTap: _openResetPassword,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 6,
-                          horizontal: 4,
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: auth.isSubmitting
+                              ? null
+                              : _requestLoginOtp,
+                          child: const Text('الدخول برمز تحقق'),
                         ),
-                        child: Text(
-                          'نسيت كلمة المرور؟',
-                          style: textTheme.labelMedium?.copyWith(
-                            color: AppTheme.gold,
-                            fontWeight: FontWeight.w800,
+                        InkWell(
+                          onTap: _openResetPassword,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 4,
+                            ),
+                            child: Text(
+                              'نسيت كلمة المرور؟',
+                              style: textTheme.labelMedium?.copyWith(
+                                color: AppTheme.gold,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   if (auth.errorMessage != null) ...[
@@ -206,6 +220,31 @@ class _LoginScreenState extends State<LoginScreen> {
           : AppRouter.home;
       context.go(_safeResumeLocation(context) ?? defaultLocation);
     }
+  }
+
+  Future<void> _requestLoginOtp() async {
+    final phoneInput = _phoneController.text.trim();
+    if (!isValidYemeniPhoneInput(phoneInput)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('أدخل رقم هاتف صحيح أولًا.')),
+      );
+      return;
+    }
+
+    final auth = context.read<AuthController>();
+    final phone = normalizeYemeniPhone(phoneInput);
+    final otp = await auth.requestOtp(phone: phone, purpose: 'LOGIN');
+    if (otp == null || !mounted) return;
+
+    context.go(
+      AppRouter.otp,
+      extra: OtpScreenArgs(
+        phone: phone,
+        purpose: 'LOGIN',
+        devOtpMessage: otp.localDevMessage,
+        successLocation: _safeResumeLocation(context),
+      ),
+    );
   }
 
   String? _safeResumeLocation(BuildContext context) {

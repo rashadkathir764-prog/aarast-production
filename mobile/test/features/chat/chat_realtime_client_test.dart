@@ -28,6 +28,7 @@ void main() {
       );
       final connecting = client.connect(
         onMessage: (_) {},
+        onMessageAvailable: (_, _) {},
         onRead: (_, _, _) {},
       );
       client.join('conversation-1');
@@ -64,7 +65,11 @@ void main() {
       socketFactory: factory.call,
       reconnectDelay: Duration.zero,
     );
-    final connecting = client.connect(onMessage: (_) {}, onRead: (_, _, _) {});
+    final connecting = client.connect(
+      onMessage: (_) {},
+      onMessageAvailable: (_, _) {},
+      onRead: (_, _, _) {},
+    );
     await Future<void>.delayed(Duration.zero);
     expect(await factory.sockets.single.resolveAuth(), {'token': 'token-1'});
     factory.sockets.single.serverEvent('chat:ready', {'userId': 'user-1'});
@@ -88,6 +93,7 @@ void main() {
       );
       final connecting = client.connect(
         onMessage: (_) {},
+        onMessageAvailable: (_, _) {},
         onRead: (_, _, _) {},
       );
       await Future<void>.delayed(Duration.zero);
@@ -110,7 +116,11 @@ void main() {
       socketFactory: factory.call,
       reconnectDelay: Duration.zero,
     );
-    final connecting = client.connect(onMessage: (_) {}, onRead: (_, _, _) {});
+    final connecting = client.connect(
+      onMessage: (_) {},
+      onMessageAvailable: (_, _) {},
+      onRead: (_, _, _) {},
+    );
     client.join('conversation-1');
     await Future<void>.delayed(Duration.zero);
     factory.sockets.single.serverEvent('chat:ready', {'userId': 'user-1'});
@@ -123,6 +133,35 @@ void main() {
     expect(factory.sockets, hasLength(1));
     expect(client.desiredConversationIds, isEmpty);
   });
+
+  test(
+    'durable message availability event exposes recovery identifiers',
+    () async {
+      String? conversationId;
+      String? messageId;
+      final client = ChatRealtimeClient(storage, socketFactory: factory.call);
+      final connecting = client.connect(
+        onMessage: (_) {},
+        onMessageAvailable: (conversation, message) {
+          conversationId = conversation;
+          messageId = message;
+        },
+        onRead: (_, _, _) {},
+      );
+      await Future<void>.delayed(Duration.zero);
+      final socket = factory.sockets.single;
+      socket.serverEvent('chat:ready', {'userId': 'user-1'});
+      await connecting;
+      socket.serverEvent('conversation:message-available', {
+        'conversationId': 'conversation-1',
+        'messageId': 'message-1',
+      });
+
+      expect(conversationId, 'conversation-1');
+      expect(messageId, 'message-1');
+      client.dispose();
+    },
+  );
 }
 
 Future<void> _saveSession(

@@ -85,16 +85,33 @@ class _FinancialPaymentRecordDetailsScreenState
                   label: const Text('فتح المستحق المرتبط'),
                 ),
               const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: provider.isSubmitting
-                    ? null
-                    : () => _confirmDelete(provider, payment),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.danger,
+              if (payment.reversible)
+                ElevatedButton.icon(
+                  onPressed: provider.isSubmitting
+                      ? null
+                      : () => _confirmReversal(provider, payment),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.danger,
+                  ),
+                  icon: const Icon(Icons.undo_rounded),
+                  label: const Text('عكس الدفعة'),
+                )
+              else
+                AarastCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Text(
+                    payment.isReversal
+                        ? 'هذا قيد عكس محفوظ ضمن السجل المالي.'
+                        : payment.isReversed
+                            ? 'تم عكس هذه الدفعة مع الاحتفاظ بسجلها الأصلي.'
+                            : 'هذا القيد مرتبط بسجل مالي قديم ويُعدّل من مصدره.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
-                icon: const Icon(Icons.delete_outline_rounded),
-                label: const Text('حذف الدفعة'),
-              ),
             ],
           ],
         ),
@@ -119,7 +136,7 @@ class _FinancialPaymentRecordDetailsScreenState
     return null;
   }
 
-  Future<void> _confirmDelete(
+  Future<void> _confirmReversal(
     FinanceProvider provider,
     FinancialPaymentRecord payment,
   ) async {
@@ -145,13 +162,13 @@ class _FinancialPaymentRecordDetailsScreenState
                   const _SheetHandle(),
                   const SizedBox(height: 18),
                   const Icon(
-                    Icons.delete_outline_rounded,
+                    Icons.undo_rounded,
                     color: AppTheme.danger,
                     size: 42,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'حذف الدفعة؟',
+                    'عكس الدفعة؟',
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(
                           color: AppTheme.ink,
@@ -160,7 +177,7 @@ class _FinancialPaymentRecordDetailsScreenState
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'سيتم إنقاص هذه الدفعة من المدفوع في المستحق المرتبط.',
+                    'سيُنشأ قيد عكس مستقل ويظل سجل الدفعة الأصلية محفوظًا للمراجعة.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppTheme.muted,
@@ -184,8 +201,8 @@ class _FinancialPaymentRecordDetailsScreenState
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.danger,
                           ),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('حذف'),
+                          icon: const Icon(Icons.undo_rounded),
+                          label: const Text('تسجيل العكس'),
                         ),
                       ),
                     ],
@@ -199,18 +216,18 @@ class _FinancialPaymentRecordDetailsScreenState
     );
     if (confirmed != true || !mounted) return;
 
-    final ok = await provider.deleteFinancialPaymentRecord(
+    final ok = await provider.reverseFinancialPaymentRecord(
       weddingPlanId: widget.weddingPlanId,
       payment: payment,
     );
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'تم حذف الدفعة');
+      AarastToast.showSuccess(context, 'تم تسجيل عكس الدفعة');
       _goBack(changed: true);
     } else {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'تعذر حذف الدفعة.',
+        provider.errorMessage ?? 'تعذر عكس الدفعة.',
       );
     }
   }
@@ -283,7 +300,7 @@ class _PaymentHero extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           YemeniMoneyText(
-            _moneyValue(payment.amount),
+            _moneyValue(payment.signedAmount),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -308,6 +325,10 @@ class _ContextCard extends StatelessWidget {
       child: Column(
         children: [
           _InfoRow(label: 'المستحق', value: commitment?.title),
+          _InfoRow(
+            label: 'نوع الحركة',
+            value: payment.isReversal ? 'قيد عكس' : 'دفعة',
+          ),
           _InfoRow(label: 'طريقة الدفع', value: payment.method),
           _InfoRow(label: 'ملاحظة', value: payment.note, last: true),
         ],

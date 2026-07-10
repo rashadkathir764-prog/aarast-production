@@ -41,19 +41,19 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
       refreshDashboard: refreshDashboardOnExpense,
     ),
   );
+  final payable = RoyalHomeAction(
+    icon: Icons.account_balance_wallet_outlined,
+    label: 'إضافة مستحق',
+    onTap: () => openRoute(
+      AppRouter.createFinancialCommitment(planId),
+      refreshDashboard: refreshDashboardOnExpense,
+    ),
+  );
   final payment = RoyalHomeAction(
     icon: Icons.payments_outlined,
     label: 'تسجيل دفعة',
     onTap: () => openRoute(
       AppRouter.recordPayment(planId),
-      refreshDashboard: refreshDashboardOnExpense,
-    ),
-  );
-  final manualDebt = RoyalHomeAction(
-    icon: Icons.account_balance_outlined,
-    label: 'إضافة مستحق عليك',
-    onTap: () => openRoute(
-      AppRouter.createFinancialCommitment(planId, sourceType: 'MANUAL_DEBT'),
       refreshDashboard: refreshDashboardOnExpense,
     ),
   );
@@ -74,7 +74,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   );
 
   return switch (contextOrder) {
-    QuickAddContext.money => [category, commitment, payment, manualDebt],
+    QuickAddContext.money => [category, payable, payment],
     QuickAddContext.tasks => [task, payment, guest, commitment, quote],
     QuickAddContext.guests => [guest, task, payment, commitment, quote],
     QuickAddContext.providers => [quote, commitment, payment, task, guest],

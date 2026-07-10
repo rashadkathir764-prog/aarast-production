@@ -86,6 +86,11 @@ class FinancialPaymentRecord {
     required this.title,
     required this.amount,
     required this.paidAt,
+    this.entryType = 'PAYMENT',
+    this.financialInstallmentId,
+    this.reversalOfId,
+    this.reversedById,
+    this.reversible = false,
     this.method,
     this.note,
     this.createdAt,
@@ -101,6 +106,11 @@ class FinancialPaymentRecord {
       title: json['title']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
       paidAt: _dateTimeOrNull(json['paidAt']) ?? DateTime.now(),
+      entryType: json['entryType']?.toString() ?? 'PAYMENT',
+      financialInstallmentId: _stringOrNull(json['financialInstallmentId']),
+      reversalOfId: _stringOrNull(json['reversalOfId']),
+      reversedById: _stringOrNull(json['reversedById']),
+      reversible: json['reversible'] == true,
       method: _stringOrNull(json['method']),
       note: _stringOrNull(json['note']),
       createdAt: _dateTimeOrNull(json['createdAt']),
@@ -115,10 +125,21 @@ class FinancialPaymentRecord {
   final String title;
   final String amount;
   final DateTime paidAt;
+  final String entryType;
+  final String? financialInstallmentId;
+  final String? reversalOfId;
+  final String? reversedById;
+  final bool reversible;
   final String? method;
   final String? note;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  bool get isReversal => entryType == 'REVERSAL';
+  bool get isReversed => reversedById != null;
+  String get signedAmount => isReversal && !amount.startsWith('-')
+      ? '-$amount'
+      : amount;
 }
 
 class FinancialInstallment {

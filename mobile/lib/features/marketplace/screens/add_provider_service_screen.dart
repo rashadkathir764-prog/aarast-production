@@ -59,6 +59,7 @@ class _AddProviderServiceScreenState extends State<AddProviderServiceScreen> {
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
+          tooltip: 'رجوع',
           onPressed: () {
             if (context.canPop()) context.pop();
           },
@@ -254,7 +255,7 @@ class _ServiceIntro extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'اكتب خدمة حقيقية وواضحة. رفع الصور سيظهر لاحقًا عند ربط نظام الملفات.',
+              'اكتب خدمة حقيقية وواضحة. بعد الحفظ ارفع صورها ورتب معرضها من تبويب الخدمات في لوحة المزود.',
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: AppTheme.ink,

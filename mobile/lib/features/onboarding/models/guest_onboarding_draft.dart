@@ -50,6 +50,36 @@ class GuestOnboardingDraft {
       estimatedBudget = null,
       selectedCategoryKeys = const [];
 
+  factory GuestOnboardingDraft.quickLocalPlanSetup({
+    required String planName,
+    required GuestPersona persona,
+    required String location,
+    required DateTime weddingDate,
+    required String currency,
+    String? estimatedBudget,
+  }) {
+    final budget = estimatedBudget?.replaceAll(',', '').trim();
+    final skipped = budget == null || budget.isEmpty;
+    return GuestOnboardingDraft(
+      planName: planName.trim(),
+      selectedPath: GuestOnboardingPath.weddingUser,
+      persona: persona,
+      governorate: location.trim(),
+      city: location.trim(),
+      district: null,
+      neighborhood: null,
+      street: null,
+      addressNote: null,
+      weddingDate: weddingDate,
+      weddingDateUnknown: false,
+      priorities: const [],
+      currency: currency.trim(),
+      estimatedBudget: skipped ? null : budget,
+      budgetSkipped: skipped,
+      selectedCategoryKeys: const [],
+    );
+  }
+
   final String? guestPlanId;
   final String? planName;
   final DateTime? createdAt;
@@ -119,7 +149,7 @@ class GuestOnboardingDraft {
         hasPlanName &&
         hasLocationSeed &&
         hasRequiredWeddingDate &&
-        hasRequiredBudget;
+        (hasRequiredBudget || budgetSkipped);
   }
 
   bool get canOpenLocalDashboard {
@@ -235,13 +265,26 @@ class GuestOnboardingDraft {
 
   static GuestOnboardingDraft fromJson(Map<String, dynamic> json) {
     final weddingDateUnknown = json['weddingDateUnknown'] == true;
+    final guestPlanId = _stringOrNull(json['guestPlanId']);
+    final createdAt = _dateTimeOrNull(json['createdAt']);
+    final isGuestPlan = json['isGuestPlan'] == true;
+    final needsSync = json['needsSync'] == true;
+    final estimatedBudget = _stringOrNull(json['estimatedBudget']);
+    final isPersistedLocalPlan =
+        isGuestPlan &&
+        needsSync &&
+        createdAt != null &&
+        (guestPlanId?.startsWith('guest-plan-') == true ||
+            guestPlanId?.startsWith('local-guest-') == true);
     return GuestOnboardingDraft(
-      guestPlanId: _stringOrNull(json['guestPlanId']),
+      guestPlanId: guestPlanId,
       planName: _stringOrNull(json['planName']),
-      createdAt: _dateTimeOrNull(json['createdAt']),
-      isGuestPlan: json['isGuestPlan'] == true,
-      needsSync: json['needsSync'] == true,
-      budgetSkipped: json['budgetSkipped'] == true,
+      createdAt: createdAt,
+      isGuestPlan: isGuestPlan,
+      needsSync: needsSync,
+      budgetSkipped:
+          json['budgetSkipped'] == true ||
+          (isPersistedLocalPlan && estimatedBudget == null),
       selectedPath: _enumByName(
         GuestOnboardingPath.values,
         json['selectedPath'],
@@ -259,7 +302,7 @@ class GuestOnboardingDraft {
       weddingDateUnknown: weddingDateUnknown,
       priorities: List.unmodifiable(_stringList(json['priorities'])),
       currency: _stringOrNull(json['currency']),
-      estimatedBudget: _stringOrNull(json['estimatedBudget']),
+      estimatedBudget: estimatedBudget,
       selectedCategoryKeys: List.unmodifiable(
         _stringList(json['selectedCategoryKeys']),
       ),

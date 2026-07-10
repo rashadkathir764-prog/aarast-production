@@ -92,22 +92,13 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     final guestStorage = context.read<GuestOnboardingStorage>();
     final now = DateTime.now();
 
-    final draft = GuestOnboardingDraft(
+    final draft = GuestOnboardingDraft.quickLocalPlanSetup(
       planName: planName,
-      selectedPath: GuestOnboardingPath.weddingUser,
-      persona: _selectedPersona,
-      governorate: locationText,
-      city: locationText,
-      district: null,
-      neighborhood: null,
-      street: null,
-      addressNote: null,
-      weddingDate: _selectedDate,
-      weddingDateUnknown: false,
-      priorities: const [],
+      persona: _selectedPersona!,
+      location: locationText,
+      weddingDate: _selectedDate!,
       currency: _currency,
-      estimatedBudget: budgetText.isEmpty ? null : budgetText,
-      selectedCategoryKeys: const [],
+      estimatedBudget: budgetText,
     );
 
     await guestStorage.saveDraft(

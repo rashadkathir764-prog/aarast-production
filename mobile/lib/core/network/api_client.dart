@@ -34,8 +34,21 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final requestSessionGeneration = _sessionGeneration;
           final token = await _tokenProvider();
-          if (token != null && token.isNotEmpty) {
+          if (requestSessionGeneration != _sessionGeneration) {
+            handler.reject(
+              DioException(
+                requestOptions: options,
+                type: DioExceptionType.cancel,
+                error: 'The account session changed before the request started',
+              ),
+            );
+            return;
+          }
+          if (token != null &&
+              token.isNotEmpty &&
+              options.headers['Authorization'] == null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           _debugAuthLoginRequest(options);
@@ -53,6 +66,10 @@ class ApiClient {
             error.requestOptions.path,
             error.response?.statusCode,
           );
+          if (await _requestUsesAStaleSessionToken(error.requestOptions)) {
+            handler.next(error);
+            return;
+          }
           // A 401 outside the auth endpoints means the session token is no
           // longer valid — every screen would otherwise keep failing with
           // misleading errors until app restart.
@@ -88,12 +105,32 @@ class ApiClient {
   final TokenProvider _tokenProvider;
   static const _refreshRetryKey = 'aarast_refresh_retried';
   Future<bool>? _refreshInFlight;
+  int _sessionGeneration = 0;
+  String? _sessionIdentity;
 
   SessionRefresher? refreshSession;
 
   /// Wired by the auth layer after construction; invoked when any
   /// non-auth request returns 401 so the app can force a clean re-login.
   void Function()? onSessionExpired;
+
+  void bindSessionIdentity(String? sessionIdentity) {
+    if (_sessionIdentity == sessionIdentity) return;
+    _sessionIdentity = sessionIdentity;
+    _sessionGeneration += 1;
+  }
+
+  Future<String?> readCurrentAccessToken() => _tokenProvider();
+
+  Future<bool> _requestUsesAStaleSessionToken(RequestOptions options) async {
+    final requestAuthorization = options.headers['Authorization']?.toString();
+    if (requestAuthorization == null || requestAuthorization.isEmpty) {
+      return false;
+    }
+    final currentToken = await _tokenProvider();
+    if (currentToken == null || currentToken.isEmpty) return true;
+    return requestAuthorization != 'Bearer $currentToken';
+  }
 
   bool _canRefresh(DioException error) {
     return error.response?.statusCode == 401 &&

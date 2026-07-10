@@ -51,7 +51,22 @@ class AarastButton extends StatelessWidget {
       ),
     };
 
-    return expand ? SizedBox(width: double.infinity, child: button) : button;
+    final accessibleButton = isLoading
+        ? Semantics(
+            container: true,
+            excludeSemantics: true,
+            button: true,
+            enabled: false,
+            label: label,
+            value: 'جارٍ التنفيذ',
+            liveRegion: true,
+            child: button,
+          )
+        : button;
+
+    return expand
+        ? SizedBox(width: double.infinity, child: accessibleButton)
+        : accessibleButton;
   }
 }
 

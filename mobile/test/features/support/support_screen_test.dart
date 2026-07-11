@@ -45,6 +45,9 @@ void main() {
       expect(find.textContaining('تجهيز هادئ قبل الإطلاق'), findsNothing);
       expect(find.text('فتح الإعدادات'), findsOneWidget);
       expect(find.text('فتح التنبيهات'), findsOneWidget);
+      expect(find.text('حلول سريعة'), findsOneWidget);
+      expect(find.text('لماذا لا تصلني التنبيهات؟'), findsOneWidget);
+      expect(find.text('كيف أحمي بياناتي المالية؟'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('الخطط المشتركة'),
         280,

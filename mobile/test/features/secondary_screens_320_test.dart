@@ -18,6 +18,7 @@ import 'package:aarast_mobile/features/onboarding/data/local_plan_migration.dart
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/onboarding/screens/local_plan_migration_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_role_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/edit_shared_member_screen.dart';
@@ -247,8 +248,8 @@ void main() {
           child: const EditSharedMemberScreen(sharedMemberId: 'member-1'),
         );
 
-        expect(find.textContaining('العضو: اسم عضو طويل'), findsOneWidget);
-        expect(find.text('يمكنه إدارة السجلات المالية'), findsOneWidget);
+        expect(find.textContaining('اسم عضو طويل'), findsOneWidget);
+        expect(find.text('إدارة السجلات المالية'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         await tester.scrollUntilVisible(
@@ -519,11 +520,7 @@ class _FakeSharingProvider extends SharingProvider {
   Future<bool> updateMember({
     required String id,
     required String role,
-    required bool canViewBudget,
-    required bool canViewExpenses,
-    required bool canViewDebts,
-    required bool canManageTasks,
-    required bool canManageFinancialRecords,
+    required PlanRolePermissions permissions,
   }) async {
     updateCalls += 1;
     _submitting = true;

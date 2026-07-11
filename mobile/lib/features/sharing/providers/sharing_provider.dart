@@ -3,6 +3,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/sharing_api.dart';
+import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
 
@@ -341,11 +342,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<bool> updateMember({
     required String id,
     required String role,
-    required bool canViewBudget,
-    required bool canViewExpenses,
-    required bool canViewDebts,
-    required bool canManageTasks,
-    required bool canManageFinancialRecords,
+    required PlanRolePermissions permissions,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -353,13 +350,20 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
 
     try {
+      // الباك إند يقبل الصلاحيات العشر كاملة — نرسلها كلها حتى لا تضيع
+      // تخصيصات المحرر (كانت الشاشة القديمة ترسل 5 فقط).
       final member = await _api.updateSharedMember(id, {
         'role': role,
-        'canViewBudget': canViewBudget,
-        'canViewExpenses': canViewExpenses,
-        'canViewDebts': canViewDebts,
-        'canManageTasks': canManageTasks,
-        'canManageFinancialRecords': canManageFinancialRecords,
+        'canViewBudget': permissions.canViewBudget,
+        'canViewExpenses': permissions.canViewExpenses,
+        'canViewDebts': permissions.canViewDebts,
+        'canEditPlan': permissions.canEditPlan,
+        'canManageTasks': permissions.canManageTasks,
+        'canManageGuests': permissions.canManageGuests,
+        'canManageProviders': permissions.canManageProviders,
+        'canInviteMembers': permissions.canInviteMembers,
+        'canManageFinancialRecords': permissions.canManageFinancialRecords,
+        'receiveNotifications': permissions.receiveNotifications,
       });
       _members = [
         for (final item in _members) item.id == member.id ? member : item,

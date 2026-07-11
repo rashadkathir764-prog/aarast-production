@@ -47,7 +47,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   String? _cityId;
   DateTime? _eventDate;
   WeddingLocationDraft? _eventLocation;
-  bool _sent = false;
   bool _didApplyInitialPlanContext = false;
 
   @override
@@ -132,12 +131,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         ),
       ],
       resizeToAvoidBottomInset: true,
-      child: _sent
-          ? _QuoteSentState(
-              onMarketplace: () => context.go(AppRouter.providerMarketplace),
-            )
-          : auth.status == AuthStatus.unauthenticated &&
-                !AppFeatureFlags.devBypassLoginGatesForUxExploration
+      child:
+          auth.status == AuthStatus.unauthenticated &&
+              !AppFeatureFlags.devBypassLoginGatesForUxExploration
           ? _QuoteAuthRequired(onLogin: () => context.go(AppRouter.login))
           : Form(
               key: _formKey,
@@ -472,13 +468,16 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
     if (!mounted) return;
     if (success) {
-      final notice = context.read<ProviderMarketplaceProvider>().noticeMessage;
-      if (notice != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(notice)));
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('تم إرسال طلب عرض السعر بنجاح')),
+      );
+      if (context.canPop()) {
+        context.pop(true);
+      } else {
+        context.go(AppRouter.providerDetails(widget.providerId));
       }
-      setState(() => _sent = true);
     }
   }
 
@@ -645,43 +644,6 @@ class _QuoteContactContext extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _QuoteSentState extends StatelessWidget {
-  const _QuoteSentState({required this.onMarketplace});
-
-  final VoidCallback onMarketplace;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 48),
-        AarastEmptyState(
-          icon: LucideIcons.mailCheck,
-          title: 'تم إرسال طلبك للمزود',
-          message: 'سيظهر الطلب لدى المزود ضمن طلبات عروض الأسعار.',
-          action: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FilledButton.icon(
-                onPressed: onMarketplace,
-                icon: const Icon(LucideIcons.store),
-                label: const Text('العودة للموردين'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => context.go(AppRouter.home),
-                icon: const Icon(LucideIcons.home),
-                label: const Text('الرئيسية'),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

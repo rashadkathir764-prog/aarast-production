@@ -5,13 +5,12 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/plan_status_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/providers/auth_controller.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/account_sheet.dart';
 
 class MyWeddingPlansScreen extends StatefulWidget {
   const MyWeddingPlansScreen({this.onSelectPlan, super.key});
@@ -21,432 +20,177 @@ class MyWeddingPlansScreen extends StatefulWidget {
   State<MyWeddingPlansScreen> createState() => _MyWeddingPlansScreenState();
 }
 
-class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
-    with SingleTickerProviderStateMixin {
-  int _selectedTab = 0; // 0 = Private (خططي), 1 = Shared (المشتركة)
-  late AnimationController _animationController;
-
+class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<WeddingPlansProvider>().loadMyWeddingPlans();
+      _loadPlans();
     });
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  void _openAccountSheet(AuthController auth) {
-    showAccountSheet(
-      context,
-      name: auth.user?.name ?? 'مستخدم أعرسِت',
-      phone: auth.user?.phone,
-      onLogout: () async {
-        await context.read<AuthController>().logout();
-        if (mounted) context.go(AppRouter.login);
-      },
-    );
+  Future<void> _loadPlans() async {
+    final provider = context.read<WeddingPlansProvider>();
+    await provider.loadActiveWeddingPlan();
+    if (!mounted) return;
+    await provider.loadMyWeddingPlans();
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<WeddingPlansProvider>();
-    final auth = context.watch<AuthController>();
-    final textTheme = Theme.of(context).textTheme;
 
-    return AarastScreenFrame(
-      maxWidth: 560,
+    return AarastPageScaffold(
+      title: 'خططي',
+      subtitle: 'كل خطط زفافك في مكان واحد',
+      showBack: true,
       safeAreaBottom: false,
       child: RefreshIndicator(
         color: AppTheme.burgundy,
-        onRefresh: provider.loadMyWeddingPlans,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  'أعرسِت',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: textTheme.headlineSmall?.copyWith(
-                                    color: AppTheme.burgundyDeep,
-                                    fontWeight: FontWeight.w900,
-                                    fontFamily: 'Amiri', // Classic touch
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.favorite,
-                                color: AppTheme.burgundySoft,
-                                size: 14,
-                              ),
-                            ],
-                          ),
-                          Text(
-                            'مساء الخير، ${auth.user?.name.split(' ').first ?? 'ضيف'}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: AppTheme.muted,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    AarastPressable(
-                      semanticLabel: 'فتح الحساب',
-                      onTap: () => _openAccountSheet(auth),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.gold, width: 1.5),
-                          color: AppTheme.surface,
-                        ),
-                        child: const Icon(
-                          LucideIcons.user,
-                          color: AppTheme.burgundy,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'خططي',
-                      style: textTheme.headlineMedium?.copyWith(
-                        color: AppTheme.burgundyDeep,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        const Icon(
-                          LucideIcons.sparkles,
-                          color: AppTheme.gold,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'خطط زفافك وشاركها مع من تحب',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: textTheme.bodySmall?.copyWith(
-                              color: AppTheme.muted,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSegmentedControl(textTheme),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-            if (provider.isLoading && provider.plans.isEmpty)
-              SliverToBoxAdapter(
-                child: AarastSkeleton.list(
-                  rows: 3,
-                  rowHeight: 150,
-                  withHeader: false,
-                  inline: true,
-                ),
-              )
-            else if (provider.errorMessage != null && provider.plans.isEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                  child: AarastErrorState(
-                    title: 'تعذر تحميل خططك',
-                    message: provider.errorMessage!,
-                    onRetry: () => context
-                        .read<WeddingPlansProvider>()
-                        .loadMyWeddingPlans(),
-                  ),
-                ),
-              )
-            else if (provider.plans.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    'لا توجد خطط زفاف بعد',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final plan = provider.plans[index];
-                    final isFeatured =
-                        index == 0 &&
-                        _selectedTab == 0; // Highlight the first personal plan
-
-                    return AnimatedBuilder(
-                      animation: _animationController,
-                      builder: (context, child) {
-                        final delay = index * 0.1;
-                        final value = (_animationController.value - delay)
-                            .clamp(0.0, 1.0);
-                        final curve = Curves.easeOutCubic.transform(value);
-                        return Transform.translate(
-                          offset: Offset(0, 30 * (1 - curve)),
-                          child: Opacity(
-                            opacity: curve,
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: _PlanCard(
-                                plan: plan,
-                                isFeatured: isFeatured,
-                                onTap: () async {
-                                  final active = await context
-                                      .read<WeddingPlansProvider>()
-                                      .setActiveWeddingPlan(plan.id);
-                                  if (!context.mounted) return;
-                                  if (active == null) {
-                                    ScaffoldMessenger.of(context)
-                                      ..hideCurrentSnackBar()
-                                      ..showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            context
-                                                    .read<
-                                                      WeddingPlansProvider
-                                                    >()
-                                                    .errorMessage ??
-                                                'تعذر فتح الخطة المختارة.',
-                                          ),
-                                        ),
-                                      );
-                                    return;
-                                  }
-                                  if (widget.onSelectPlan != null) {
-                                    widget.onSelectPlan!(plan.id);
-                                  } else {
-                                    context.go(
-                                      AppRouter.weddingPlanDashboard(plan.id),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }, childCount: provider.plans.length),
-                ),
-              ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  8,
-                  20,
-                  120,
-                ), // Padding for bottom nav
-                child: _buildCreateNewPlanButton(textTheme),
-              ),
-            ),
-          ],
+        onRefresh: _loadPlans,
+        child: _PlansContent(
+          provider: provider,
+          activePlanId: provider.activePlan?.id,
+          onOpenPlan: _openPlan,
         ),
       ),
     );
   }
 
-  Widget _buildSegmentedControl(TextTheme textTheme) {
-    return Container(
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.border),
-        boxShadow: AppTheme.softShadow(opacity: 0.03),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: AarastPressable(
-              clip: false,
-              haptic: false,
-              semanticLabel: 'عرض خططي',
-              onTap: () => setState(() => _selectedTab = 0),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 0
-                      ? AppTheme.burgundy
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        LucideIcons.user,
-                        color: _selectedTab == 0
-                            ? Colors.white
-                            : AppTheme.muted,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'خططي',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.labelLarge?.copyWith(
-                            color: _selectedTab == 0
-                                ? Colors.white
-                                : AppTheme.muted,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+  Future<void> _openPlan(WeddingPlan plan) async {
+    final active = await context
+        .read<WeddingPlansProvider>()
+        .setActiveWeddingPlan(plan.id);
+    if (!mounted) return;
+    if (active == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              context.read<WeddingPlansProvider>().errorMessage ??
+                  'تعذر فتح الخطة المختارة.',
             ),
           ),
-          Expanded(
-            child: AarastPressable(
-              clip: false,
-              haptic: false,
-              semanticLabel: 'عرض الخطط المشتركة',
-              onTap: () => setState(() => _selectedTab = 1),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                decoration: BoxDecoration(
-                  color: _selectedTab == 1
-                      ? AppTheme.burgundy
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        LucideIcons.users,
-                        color: _selectedTab == 1
-                            ? Colors.white
-                            : AppTheme.muted,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          'المشتركة',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textTheme.labelLarge?.copyWith(
-                            color: _selectedTab == 1
-                                ? Colors.white
-                                : AppTheme.muted,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+        );
+      return;
+    }
+    if (widget.onSelectPlan != null) {
+      widget.onSelectPlan!(plan.id);
+    } else {
+      context.go(AppRouter.weddingPlanDashboard(plan.id));
+    }
+  }
+}
+
+class _PlansContent extends StatelessWidget {
+  const _PlansContent({
+    required this.provider,
+    required this.activePlanId,
+    required this.onOpenPlan,
+  });
+
+  final WeddingPlansProvider provider;
+  final String? activePlanId;
+  final ValueChanged<WeddingPlan> onOpenPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    if (provider.isLoading && provider.plans.isEmpty) {
+      return AarastSkeleton.list(rows: 3, rowHeight: 120, withHeader: false);
+    }
+
+    if (provider.errorMessage != null && provider.plans.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 40),
+          AarastErrorState(
+            title: 'تعذر تحميل خططك',
+            message: provider.errorMessage!,
+            onRetry: provider.loadMyWeddingPlans,
           ),
         ],
-      ),
+      );
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 120),
+      children: AarastStagger.children(context, [
+        if (provider.plans.isEmpty)
+          const AarastEmptyState(
+            title: 'لا توجد خطط زفاف بعد',
+            message: 'أنشئ خطتك الأولى وابدأ الترتيب بهدوء.',
+            icon: LucideIcons.calendarHeart,
+          )
+        else
+          for (var i = 0; i < provider.plans.length; i++)
+            _PlanCard(
+              key: Key('wedding-plan-card-${provider.plans[i].id}'),
+              plan: provider.plans[i],
+              isFeatured: provider.plans[i].id == activePlanId,
+              onTap: () => onOpenPlan(provider.plans[i]),
+            ),
+        const SizedBox(height: 10),
+        AarastButton(
+          label: 'إنشاء خطة جديدة',
+          icon: LucideIcons.plus,
+          onPressed: () => context.push(AppRouter.createWeddingPlan),
+        ),
+        const SizedBox(height: 10),
+        _SharedPlansLink(
+          onTap: () => context.push(AppRouter.sharedWeddingPlans),
+        ),
+      ]),
     );
   }
+}
 
-  Widget _buildCreateNewPlanButton(TextTheme textTheme) {
+/// بديل صادق لتبويب «المشتركة» القديم الذي لم يكن يعمل أصلًا —
+/// رابط هادئ يفتح شاشة الخطط المشتركة الحقيقية.
+class _SharedPlansLink extends StatelessWidget {
+  const _SharedPlansLink({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return AarastCard(
-      onTap: () => context.push(AppRouter.createWeddingPlan),
-      padding: const EdgeInsets.all(20),
-      color: AppTheme.burgundySoft.withAlpha(150),
-      border: Border.all(color: AppTheme.burgundy.withAlpha(30)),
+      onTap: onTap,
+      color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'إنشاء خطة جديدة',
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.burgundyDeep,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'ابدأ خطة زفاف جديدة وشاركها مع من تحب',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
           Container(
-            width: 54,
-            height: 54,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: AppTheme.surfaceElevated,
-              shape: BoxShape.circle,
-              boxShadow: AppTheme.softShadow(),
+              color: AppTheme.burgundySoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: const Icon(
-              LucideIcons.plus,
+              LucideIcons.users,
               color: AppTheme.burgundy,
-              size: 28,
+              size: 18,
             ),
           ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'الخطط المشتركة معي',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.ink,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(LucideIcons.chevronLeft, color: AppTheme.muted, size: 18),
         ],
       ),
     );
@@ -455,6 +199,7 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen>
 
 class _PlanCard extends StatelessWidget {
   const _PlanCard({
+    super.key,
     required this.plan,
     required this.isFeatured,
     required this.onTap,
@@ -468,13 +213,11 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
 
-    final bgColor = isFeatured ? AppTheme.burgundy : AppTheme.surface;
     final titleColor = isFeatured ? Colors.white : AppTheme.burgundyDeep;
     final subtitleColor = isFeatured ? Colors.white70 : AppTheme.muted;
     final iconColor = isFeatured ? AppTheme.gold2 : AppTheme.gold;
     final progressBgColor = isFeatured ? AppTheme.burgundyDeep : AppTheme.ivory;
     final progressFillColor = isFeatured ? AppTheme.gold : AppTheme.burgundy;
-    final dividerColor = isFeatured ? Colors.white12 : AppTheme.border;
     final daysLeft = plan.daysRemaining;
     final totalPlanningDays = plan.weddingDate
         ?.difference(plan.createdAt)
@@ -489,243 +232,129 @@ class _PlanCard extends StatelessWidget {
 
     return AarastCard(
       onTap: onTap,
+      margin: const EdgeInsets.only(bottom: 10),
       padding: EdgeInsets.zero,
-      color: bgColor,
-      radius: AppTheme.radiusXl,
+      color: isFeatured ? AppTheme.burgundy : AppTheme.surface,
+      radius: AppTheme.radiusLg,
       border: isFeatured ? null : Border.all(color: AppTheme.border),
       child: Container(
         decoration: BoxDecoration(
           gradient: isFeatured ? AppTheme.heroGradient : null,
-          borderRadius: BorderRadius.circular(AppTheme.radiusXl),
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         ),
-        child: Row(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-                child: Stack(
-                  children: [
-                    // Decorative background shape
-                    if (isFeatured)
-                      Positioned(
-                        right: -40,
-                        top: -40,
-                        child: Container(
-                          width: 140,
-                          height: 140,
-                          decoration: BoxDecoration(
-                            color: AppTheme.burgundySoft.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plan.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.titleMedium?.copyWith(
+                          color: titleColor,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-
-                    Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      const SizedBox(height: 3),
+                      Row(
                         children: [
-                          // Header
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!isFeatured)
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.burgundySoft.withAlpha(100),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    LucideIcons.heart,
-                                    color: AppTheme.burgundy,
-                                    size: 20,
-                                  ),
-                                ),
-                              if (!isFeatured) const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      plan.title,
-                                      style: textTheme.titleLarge?.copyWith(
-                                        color: titleColor,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          isFeatured
-                                              ? LucideIcons.gem
-                                              : LucideIcons.mapPin,
-                                          color: iconColor,
-                                          size: 14,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          plan.city ?? 'غير محدد',
-                                          style: textTheme.bodySmall?.copyWith(
-                                            color: subtitleColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                          Icon(LucideIcons.mapPin, color: iconColor, size: 13),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              plan.city ?? 'بدون مدينة',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textTheme.labelSmall?.copyWith(
+                                color: subtitleColor,
+                                fontWeight: FontWeight.w600,
                               ),
-                              // Status Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isFeatured
-                                      ? Colors.white24
-                                      : AppTheme.ivory,
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusSm,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      planStatusLabelAr(plan.status),
-                                      style: textTheme.labelSmall?.copyWith(
-                                        color: isFeatured
-                                            ? Colors.white
-                                            : AppTheme.ink,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              OfflinePendingBadge(
-                                entityType: 'wedding_plan',
-                                entityId: plan.id,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Progress Bar
-                          Row(
-                            children: [
-                              Icon(
-                                LucideIcons.calendarDays,
-                                color: iconColor,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 6),
-                              Flexible(
-                                child: Text(
-                                  daysLeft == null
-                                      ? 'تاريخ الزفاف غير محدد'
-                                      : daysLeft <= 0
-                                      ? 'اليوم المنتظر وصل'
-                                      : '$daysLeft يوم متبقية',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: textTheme.bodySmall?.copyWith(
-                                    color: subtitleColor,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Container(
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: progressBgColor,
-                                    borderRadius: BorderRadius.circular(3),
-                                  ),
-                                  child: LayoutBuilder(
-                                    builder: (context, constraints) {
-                                      return Stack(
-                                        children: [
-                                          TweenAnimationBuilder<double>(
-                                            tween: Tween(
-                                              begin: 0,
-                                              end: percent / 100.0,
-                                            ),
-                                            duration: const Duration(
-                                              milliseconds: 1000,
-                                            ),
-                                            curve: Curves.easeOutQuart,
-                                            builder: (context, value, child) {
-                                              return Container(
-                                                width:
-                                                    constraints.maxWidth *
-                                                    value,
-                                                decoration: BoxDecoration(
-                                                  color: progressFillColor,
-                                                  borderRadius:
-                                                      BorderRadius.circular(3),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                '$percent%',
-                                style: textTheme.titleSmall?.copyWith(
-                                  color: titleColor,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 2,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(color: dividerColor),
-                              ),
-                              color: Colors.transparent,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'إدارة الخطة',
-                                  style: textTheme.labelLarge?.copyWith(
-                                    color: titleColor,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.arrow_back_rounded,
-                                  color: titleColor,
-                                  size: 20,
-                                ),
-                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isFeatured ? Colors.white24 : AppTheme.ivory,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    isFeatured
+                        ? 'الخطة الحالية'
+                        : planStatusLabelAr(plan.status),
+                    maxLines: 1,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: isFeatured ? Colors.white : AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                OfflinePendingBadge(
+                  entityType: 'wedding_plan',
+                  entityId: plan.id,
+                ),
+                const SizedBox(width: 2),
+                Icon(LucideIcons.chevronLeft, color: subtitleColor, size: 16),
+              ],
             ),
+            if (daysLeft != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(LucideIcons.calendarDays, color: iconColor, size: 14),
+                  const SizedBox(width: 5),
+                  Text(
+                    daysLeft <= 0 ? 'اليوم المنتظر وصل' : '$daysLeft يوم متبقي',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: subtitleColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(99),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: percent / 100.0),
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.easeOutQuart,
+                        builder: (context, value, _) => LinearProgressIndicator(
+                          value: value,
+                          minHeight: 5,
+                          backgroundColor: progressBgColor,
+                          valueColor: AlwaysStoppedAnimation(progressFillColor),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$percent%',
+                    style: textTheme.labelSmall?.copyWith(
+                      color: titleColor,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

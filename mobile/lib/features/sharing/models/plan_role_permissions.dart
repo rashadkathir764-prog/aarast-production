@@ -80,4 +80,60 @@
   final bool canInviteMembers;
   final bool canManageFinancialRecords;
   final bool receiveNotifications;
+
+  bool get hasFinancialAccess =>
+      canViewBudget ||
+      canViewExpenses ||
+      canViewDebts ||
+      canManageFinancialRecords;
+
+  PlanRolePermissions copyWith({
+    bool? canViewBudget,
+    bool? canViewExpenses,
+    bool? canViewDebts,
+    bool? canEditPlan,
+    bool? canManageTasks,
+    bool? canManageGuests,
+    bool? canManageProviders,
+    bool? canInviteMembers,
+    bool? canManageFinancialRecords,
+    bool? receiveNotifications,
+  }) {
+    return PlanRolePermissions(
+      canViewBudget: canViewBudget ?? this.canViewBudget,
+      canViewExpenses: canViewExpenses ?? this.canViewExpenses,
+      canViewDebts: canViewDebts ?? this.canViewDebts,
+      canEditPlan: canEditPlan ?? this.canEditPlan,
+      canManageTasks: canManageTasks ?? this.canManageTasks,
+      canManageGuests: canManageGuests ?? this.canManageGuests,
+      canManageProviders: canManageProviders ?? this.canManageProviders,
+      canInviteMembers: canInviteMembers ?? this.canInviteMembers,
+      canManageFinancialRecords:
+          canManageFinancialRecords ?? this.canManageFinancialRecords,
+      receiveNotifications: receiveNotifications ?? this.receiveNotifications,
+    );
+  }
+
+  /// ملخص من سطر واحد: أهم صلاحيتي إدارة ثم حالة الوصول المالي.
+  /// يظهر في صف العضو المدمج وفي محرر الصلاحيات المطوي.
+  String get summaryLabel {
+    final manage = <String>[
+      if (canManageTasks) 'المهام',
+      if (canManageGuests) 'الضيوف',
+      if (canManageProviders) 'الموردون',
+      if (canEditPlan) 'تعديل الخطة',
+      if (canInviteMembers) 'الدعوات',
+    ];
+    final managePart = manage.isEmpty
+        ? 'عرض فقط'
+        : manage.length <= 2
+        ? manage.join(' و')
+        : '${manage.take(2).join(' و')} +${manage.length - 2}';
+    final moneyPart = canManageFinancialRecords
+        ? 'يدير المال'
+        : canViewBudget || canViewExpenses || canViewDebts
+        ? 'اطلاع مالي محدود'
+        : 'بلا وصول مالي';
+    return '$managePart · $moneyPart';
+  }
 }

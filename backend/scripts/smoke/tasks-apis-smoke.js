@@ -128,12 +128,18 @@ async function run() {
       title: 'Book hall',
       description: 'Choose a hall',
       dueDate: dateOffsetIso(-1),
+      responsibleName: 'Hall coordinator',
+      responsiblePhone: '+967777123456',
+      responsibleSource: 'manual',
       status: 'TODO',
       priority: 'URGENT',
     }, owner.token);
     check('POST /api/v1 tasks - HTTP 201', res.status === 201);
     check('created task has id', typeof res.body?.id === 'string');
     check('created task priority supports URGENT', res.body?.priority === 'URGENT');
+    check('created task keeps manual responsible name', res.body?.responsibleName === 'Hall coordinator');
+    check('created task keeps optional responsible phone', res.body?.responsiblePhone === '+967777123456');
+    check('created task keeps responsible source', res.body?.responsibleSource === 'manual');
     taskId = res.body?.id;
   }
 
@@ -178,6 +184,9 @@ async function run() {
     }, owner.token);
     check('PATCH task assign - HTTP 200', res.status === 200);
     check('task assignee is member', res.body?.assigneeUserId === member.userId);
+    check('participant assignment clears manual responsible name', res.body?.responsibleName === null);
+    check('participant assignment clears manual responsible phone', res.body?.responsiblePhone === null);
+    check('participant assignment clears manual responsible source', res.body?.responsibleSource === null);
   }
 
   {

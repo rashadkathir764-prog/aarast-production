@@ -56,7 +56,7 @@ class _SharedWeddingPlansScreenState extends State<SharedWeddingPlansScreen> {
     final provider = context.watch<SharingProvider>();
 
     return AarastPageScaffold(
-      title: 'الخطط المشتركة معي',
+      title: 'الخطط المشتركة',
       subtitle: 'الخطط التي منحك أصحابها صلاحية الوصول إليها',
       showBack: true,
       child: RefreshIndicator(
@@ -92,7 +92,7 @@ class _SharedPlansContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isCheckingAccount) {
-      return AarastSkeleton.list(rows: 4, rowHeight: 108, withHeader: true);
+      return AarastSkeleton.list(rows: 5, rowHeight: 64, withHeader: true);
     }
 
     if (showLoginGate) {
@@ -112,7 +112,7 @@ class _SharedPlansContent extends StatelessWidget {
     }
 
     if (provider.isLoading && provider.sharedPlans.isEmpty) {
-      return AarastSkeleton.list(rows: 4, rowHeight: 108, withHeader: true);
+      return AarastSkeleton.list(rows: 5, rowHeight: 64, withHeader: true);
     }
 
     if (provider.errorMessage != null && provider.sharedPlans.isEmpty) {
@@ -143,33 +143,15 @@ class _SharedPlansContent extends StatelessWidget {
 
     return ListView(
       children: AarastStagger.children(context, [
-        AarastCard(
-          color: AppTheme.ivory,
-          child: Row(
-            children: [
-              const Icon(LucideIcons.users, color: AppTheme.burgundy),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  '${provider.sharedPlans.length} خطة مشتركة معك',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.deepBurgundy,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
+        Text(
+          '${provider.sharedPlans.length} خطة مشتركة معك',
+          textAlign: TextAlign.right,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: AppTheme.deepBurgundy,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          'هذه الخطط ظهرت لك بصلاحيات محددة من مالك الخطة.',
-          style: Theme.of(
-            context,
-          ).textTheme.bodyMedium?.copyWith(color: AppTheme.mediumGray),
-          textAlign: TextAlign.right,
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         for (final plan in provider.sharedPlans)
           SharedPlanCard(
             plan: plan,

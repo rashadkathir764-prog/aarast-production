@@ -87,6 +87,13 @@ void main() {
       expect(find.text('إنشاء خطة زفاف'), findsOneWidget);
       expect(find.textContaining('ر.ي'), findsWidgets);
       expect(find.textContaining('YER'), findsNothing);
+      expect(find.text('تفاصيل العنوان الاختيارية'), findsOneWidget);
+      expect(find.text('اكتب الحي أو المنطقة'), findsNothing);
+
+      await tester.tap(find.text('تفاصيل العنوان الاختيارية'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('اكتب الحي أو المنطقة'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

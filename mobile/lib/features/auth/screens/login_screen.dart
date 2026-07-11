@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -74,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _phoneController,
                     label: 'رقم الهاتف',
                     hint: 'مثال: 77xxxxxxx',
-                    icon: Icons.phone_rounded,
+                    icon: LucideIcons.phone,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
                     suffixIcon: ContactPhoneFieldSuffix(
@@ -94,7 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   AuthTextField(
                     controller: _passwordController,
                     label: 'كلمة المرور',
-                    icon: Icons.lock_rounded,
+                    icon: LucideIcons.lock,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
@@ -107,8 +108,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       },
                       icon: Icon(
                         _obscurePassword
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded,
+                            ? LucideIcons.eye
+                            : LucideIcons.eyeOff,
                       ),
                     ),
                     validator: (value) {
@@ -159,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   AarastButton(
                     label: 'تسجيل الدخول',
-                    icon: Icons.login_rounded,
+                    icon: LucideIcons.logIn,
                     isLoading: auth.isSubmitting,
                     onPressed: _submit,
                   ),

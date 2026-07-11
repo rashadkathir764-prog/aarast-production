@@ -5,6 +5,7 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/active_wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import 'package:flutter/material.dart';
@@ -50,9 +51,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MyWeddingPlansScreen), findsOneWidget);
-    expect(find.bySemanticsLabel('فتح الحساب'), findsOneWidget);
-    expect(find.bySemanticsLabel('عرض خططي'), findsOneWidget);
-    expect(find.bySemanticsLabel('عرض الخطط المشتركة'), findsOneWidget);
+    expect(find.text('خططي'), findsOneWidget);
+    expect(find.text('لا توجد خطط زفاف بعد'), findsOneWidget);
+    expect(find.text('إنشاء خطة جديدة'), findsOneWidget);
+    expect(find.text('الخطط المشتركة معي'), findsOneWidget);
     final exception = tester.takeException();
     expect(
       exception,
@@ -62,6 +64,52 @@ void main() {
           : exception?.toString(),
     );
   });
+
+  testWidgets('the highlighted plan is the real active plan, not the newest', (
+    tester,
+  ) async {
+    final newest = _plan('newest', 'الخطة الأحدث');
+    final active = _plan('active', 'الخطة الحالية');
+    final apiClient = ApiClient(tokenProvider: () async => null);
+    final plans = _PlansWithActiveProvider(apiClient, [newest, active], active);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<WeddingPlansProvider>.value(
+        value: plans,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MyWeddingPlansScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('wedding-plan-card-active')),
+        matching: find.text('الخطة الحالية'),
+      ),
+      findsWidgets,
+    );
+    expect(find.byKey(const Key('wedding-plan-card-newest')), findsOneWidget);
+  });
+}
+
+WeddingPlan _plan(String id, String title) {
+  final now = DateTime(2026, 7, 11);
+  return WeddingPlan(
+    id: id,
+    ownerUserId: 'user-1',
+    title: title,
+    city: 'صنعاء',
+    currency: 'YER',
+    status: 'PLANNING',
+    createdAt: now,
+    updatedAt: now,
+  );
 }
 
 String _overflowingFlexes(WidgetTester tester) {
@@ -127,4 +175,34 @@ class _EmptyWeddingPlansProvider extends WeddingPlansProvider {
 
   @override
   Future<void> loadMyWeddingPlans() async {}
+
+  @override
+  Future<void> loadActiveWeddingPlan() async {}
+}
+
+class _PlansWithActiveProvider extends WeddingPlansProvider {
+  _PlansWithActiveProvider(ApiClient apiClient, this._plans, WeddingPlan active)
+    : _active = ActiveWeddingPlan.fromWeddingPlan(active),
+      super(WeddingPlansApi(apiClient));
+
+  final List<WeddingPlan> _plans;
+  final ActiveWeddingPlan _active;
+
+  @override
+  List<WeddingPlan> get plans => _plans;
+
+  @override
+  ActiveWeddingPlan? get activePlan => _active;
+
+  @override
+  bool get isLoading => false;
+
+  @override
+  String? get errorMessage => null;
+
+  @override
+  Future<void> loadMyWeddingPlans() async {}
+
+  @override
+  Future<void> loadActiveWeddingPlan() async {}
 }

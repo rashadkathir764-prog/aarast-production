@@ -35,7 +35,6 @@ void main() {
               onOpenSharing: () => sharingOpens += 1,
               onOpenNextStep: () {},
               onOpenImportantItem: (_) {},
-              onRecordPayment: () {},
             ),
           ),
         ),

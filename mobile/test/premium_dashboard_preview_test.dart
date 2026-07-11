@@ -118,7 +118,6 @@ Future<void> _pumpDashboard(
             onOpenSharing: () {},
             onOpenNextStep: () {},
             onOpenImportantItem: (_) {},
-            onRecordPayment: () {},
           ),
         ),
       ),

@@ -23,13 +23,10 @@ void main() {
     expect(find.text('خطط الزفاف'), findsOneWidget);
     expect(find.text('خططي'), findsOneWidget);
     expect(find.text('الخطط المشتركة معي'), findsOneWidget);
-
-    await tester.scrollUntilVisible(
-      find.text('المزامنة'),
-      220,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('المزامنة'), findsOneWidget);
+    // «تصفح الموردين» له تبويب خاص في الشريط السفلي — ليس ضمن المزيد.
+    expect(find.text('تصفح الموردين'), findsNothing);
+    // بدون خدمة مزامنة متاحة يختفي قسم المزامنة كاملًا بعنوانه.
+    expect(find.text('المزامنة'), findsNothing);
 
     await tester.scrollUntilVisible(
       find.text('تسجيل الدخول'),

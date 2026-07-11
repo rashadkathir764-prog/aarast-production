@@ -218,8 +218,6 @@ class _WeddingPlanDashboardScreenState
                   : context.push(AppRouter.sharing(summary.planId)),
               onOpenImportantItem: _openDashboardItem,
               onOpenNextStep: () => _openNextStep(summary),
-              onRecordPayment: () =>
-                  context.push(AppRouter.recordPayment(summary.planId)),
             );
           },
         ),

@@ -95,7 +95,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>
             _openLocalNextStep(context, planId, dashboardSummary),
-        onRecordPayment: () => context.push(AppRouter.recordPayment(planId)),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
@@ -62,7 +63,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return AarastPageScaffold(
       title: 'التنبيهات',
-      subtitle: widget.weddingPlanId == null
+      // العنوان الفرعي حي: عدد غير المقروء أهم من وصف ثابت.
+      subtitle: unreadInList > 0
+          ? '$unreadInList غير مقروء'
+          : widget.weddingPlanId == null
           ? 'كل تنبيهات الحساب المحفوظة'
           : 'تنبيهات الخطة المحفوظة',
       actions: [
@@ -72,7 +76,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ? null
                 : () =>
                       provider.markAllRead(weddingPlanId: widget.weddingPlanId),
-            icon: const Icon(Icons.done_all_rounded),
+            icon: const Icon(LucideIcons.checkCheck, size: 18),
             label: const Text('قراءة الكل'),
           ),
       ],
@@ -92,8 +96,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     if (!_isLocalPlanNotifications && _isCheckingAccount) {
       return AarastSkeleton.list(
-        rows: 5,
-        rowHeight: 108,
+        rows: 6,
+        rowHeight: 84,
         withHeader: false,
         padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
       );
@@ -104,14 +108,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: 'سجّل الدخول لعرض التنبيهات',
         body:
             'التنبيهات مرتبطة بحسابك وخططك المحفوظة، لذلك نعرضها بعد تسجيل الدخول.',
-        icon: Icons.notifications_none_rounded,
+        icon: LucideIcons.bell,
       );
     }
 
     if (!suppressData && provider.isLoading && notifications.isEmpty) {
       return AarastSkeleton.list(
-        rows: 5,
-        rowHeight: 108,
+        rows: 6,
+        rowHeight: 84,
         withHeader: false,
         padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
       );
@@ -137,7 +141,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         children: const [
           SizedBox(height: 90),
           AarastEmptyState(
-            icon: Icons.notifications_none_rounded,
+            icon: LucideIcons.bellOff,
             title: 'لا توجد تنبيهات مهمة الآن.',
             message: 'عند وصول عرض سعر أو اقتراب مهمة ستظهر هنا.',
           ),
@@ -147,7 +151,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return ListView.separated(
       itemCount: notifications.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final notification = notifications[index];
         return AarastStagger.item(
@@ -244,6 +248,10 @@ class _NotificationCard extends StatelessWidget {
       title: notification.title,
       body: notification.body,
     );
+    final textTheme = Theme.of(context).textTheme;
+    final isUrgent = notification.priority == 'URGENT';
+    final hasPriority = isUrgent || notification.priority == 'HIGH';
+
     return AarastCard(
       color: notification.isUnread ? tone.background : AppTheme.ivory,
       border: Border.all(
@@ -252,19 +260,20 @@ class _NotificationCard extends StatelessWidget {
             : AppTheme.goldSoft.withAlpha(80),
       ),
       onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(15),
+              shape: BoxShape.circle,
             ),
-            child: Icon(tone.icon, color: tone.color),
+            child: Icon(tone.icon, color: tone.color, size: 17),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,70 +283,80 @@ class _NotificationCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         copy.title,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: tone.color,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        style: textTheme.titleSmall?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                    if (notification.isUnread)
+                    if (hasPriority) ...[
+                      const SizedBox(width: 6),
                       Container(
-                        width: 9,
-                        height: 9,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isUrgent
+                              ? AppTheme.dangerSoft
+                              : AppTheme.goldSoft,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          isUrgent ? 'عاجل' : 'مهم',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: isUrgent
+                                ? AppTheme.danger
+                                : AppTheme.warning,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (notification.isUnread) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        width: 8,
+                        height: 8,
                         decoration: const BoxDecoration(
                           color: AppTheme.burgundy,
                           shape: BoxShape.circle,
                         ),
                       ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 3),
                 Text(
                   copy.body,
                   textAlign: TextAlign.right,
-                  style: const TextStyle(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelMedium?.copyWith(
                     color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
-                    height: 1.45,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Text(
-                      _dateLabel(notification.createdAt),
-                      style: const TextStyle(
-                        color: AppTheme.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (notification.priority == 'HIGH' ||
-                        notification.priority == 'URGENT') ...[
-                      const SizedBox(width: 8),
-                      Text(
-                        notification.priority == 'URGENT' ? 'عاجل' : 'مهم',
-                        style: const TextStyle(
-                          color: AppTheme.burgundy,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  _dateLabel(notification.createdAt),
+                  style: textTheme.labelSmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 6),
           IconButton(
             onPressed: onArchive,
-            icon: const Icon(Icons.archive_outlined),
+            icon: const Icon(LucideIcons.archive, size: 17),
             tooltip: 'أرشفة التنبيه',
             color: AppTheme.muted,
+            visualDensity: VisualDensity.compact,
           ),
         ],
       ),
@@ -360,34 +379,35 @@ class _NotificationTone {
 _NotificationTone _tone(String type) {
   if (type.contains('QUOTE')) {
     return const _NotificationTone(
-      icon: Icons.request_quote_outlined,
+      icon: LucideIcons.mailOpen,
       color: AppTheme.burgundy,
+      background: AppTheme.burgundySoft,
+    );
+  }
+  // المتأخر يُفحص قبل القسط: INSTALLMENT_OVERDUE نبرة خطر لا نبرة قسط عادي.
+  if (type.contains('OVERDUE')) {
+    return const _NotificationTone(
+      icon: LucideIcons.alertTriangle,
+      color: AppTheme.danger,
       background: AppTheme.burgundySoft,
     );
   }
   if (type.contains('INSTALLMENT')) {
     return const _NotificationTone(
-      icon: Icons.credit_card_rounded,
+      icon: LucideIcons.creditCard,
       color: AppTheme.gold,
       background: AppTheme.ivory,
     );
   }
   if (type.contains('SHARING')) {
     return const _NotificationTone(
-      icon: Icons.group_add_outlined,
+      icon: LucideIcons.userPlus,
       color: AppTheme.success,
       background: AppTheme.successSoft,
     );
   }
-  if (type.contains('OVERDUE')) {
-    return const _NotificationTone(
-      icon: Icons.warning_amber_rounded,
-      color: AppTheme.danger,
-      background: AppTheme.burgundySoft,
-    );
-  }
   return const _NotificationTone(
-    icon: Icons.assignment_turned_in_outlined,
+    icon: LucideIcons.listChecks,
     color: AppTheme.burgundy,
     background: AppTheme.burgundySoft,
   );

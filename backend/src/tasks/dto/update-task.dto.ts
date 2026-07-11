@@ -1,5 +1,5 @@
 import { WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTaskDto {
   @IsString()
@@ -17,6 +17,19 @@ export class UpdateTaskDto {
   @IsString()
   @IsOptional()
   taskCategory?: string | null;
+
+  @IsString()
+  @IsOptional()
+  responsibleName?: string | null;
+
+  @IsString()
+  @IsOptional()
+  responsiblePhone?: string | null;
+
+  @IsString()
+  @IsIn(['manual', 'deviceContact', 'planContact'])
+  @IsOptional()
+  responsibleSource?: string | null;
 
   @IsString()
   @IsOptional()

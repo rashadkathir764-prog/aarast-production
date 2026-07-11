@@ -11,6 +11,7 @@ class LocationPickerSection extends StatelessWidget {
     required this.detailedAddressController,
     this.onChanged,
     this.showRequiredHint = true,
+    this.showOptionalDetails = true,
     super.key,
   });
 
@@ -21,6 +22,7 @@ class LocationPickerSection extends StatelessWidget {
   final TextEditingController detailedAddressController;
   final VoidCallback? onChanged;
   final bool showRequiredHint;
+  final bool showOptionalDetails;
 
   @override
   Widget build(BuildContext context) {
@@ -81,42 +83,44 @@ class LocationPickerSection extends StatelessWidget {
             },
           ),
         ],
-        const SizedBox(height: 12),
-        _LocationField(
-          controller: areaOrNeighborhoodController,
-          label: 'اكتب الحي أو المنطقة',
-          hintText: 'مثال: حي الأنصار',
-          icon: Icons.apartment_outlined,
-          onChanged: (_) => onChanged?.call(),
-        ),
-        if (areaSuggestions.isNotEmpty) ...[
+        if (showOptionalDetails) ...[
+          const SizedBox(height: 12),
+          _LocationField(
+            controller: areaOrNeighborhoodController,
+            label: 'اكتب الحي أو المنطقة',
+            hintText: 'مثال: حي الأنصار',
+            icon: Icons.apartment_outlined,
+            onChanged: (_) => onChanged?.call(),
+          ),
+          if (areaSuggestions.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _SuggestionWrap(
+              suggestions: areaSuggestions,
+              selectedValue: areaOrNeighborhoodController.text.trim(),
+              onSelected: (value) {
+                areaOrNeighborhoodController.text = value;
+                onChanged?.call();
+              },
+            ),
+          ],
           const SizedBox(height: 10),
-          _SuggestionWrap(
-            suggestions: areaSuggestions,
-            selectedValue: areaOrNeighborhoodController.text.trim(),
-            onSelected: (value) {
-              areaOrNeighborhoodController.text = value;
-              onChanged?.call();
-            },
+          _LocationField(
+            controller: streetController,
+            label: 'أضف الشارع أو أقرب معلم',
+            hintText: 'مثال: شارع تعز',
+            icon: Icons.signpost_outlined,
+            onChanged: (_) => onChanged?.call(),
+          ),
+          const SizedBox(height: 12),
+          _LocationField(
+            controller: detailedAddressController,
+            label: 'العنوان التفصيلي أو المعلم القريب',
+            hintText: 'مثال: بجوار القاعة الكبرى',
+            icon: Icons.notes_outlined,
+            maxLines: 2,
+            onChanged: (_) => onChanged?.call(),
           ),
         ],
-        const SizedBox(height: 12),
-        _LocationField(
-          controller: streetController,
-          label: 'أضف الشارع أو أقرب معلم',
-          hintText: 'مثال: شارع تعز',
-          icon: Icons.signpost_outlined,
-          onChanged: (_) => onChanged?.call(),
-        ),
-        const SizedBox(height: 12),
-        _LocationField(
-          controller: detailedAddressController,
-          label: 'العنوان التفصيلي أو المعلم القريب',
-          hintText: 'مثال: بجوار القاعة الكبرى',
-          icon: Icons.notes_outlined,
-          maxLines: 2,
-          onChanged: (_) => onChanged?.call(),
-        ),
       ],
     );
   }

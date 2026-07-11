@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:provider/provider.dart';
 
@@ -86,14 +87,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
               onPressed: planIdReady && !provider.isSubmitting
                   ? () => _showGuestSheet(provider: provider)
                   : null,
-              child: const Icon(Icons.add_rounded),
+              child: const Icon(LucideIcons.plus),
             )
           : null,
       child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-            child: const _GuestsHeader(),
+            child: _GuestsHeader(guestCount: provider.guests.length),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -227,9 +228,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
-                      Icons.delete_outline_rounded,
+                      LucideIcons.trash2,
                       color: AppTheme.danger,
-                      size: 30,
+                      size: 28,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -257,21 +258,20 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
+                        child: AarastButton(
+                          label: 'إلغاء',
+                          variant: AarastButtonVariant.secondary,
                           onPressed: () =>
                               Navigator.of(sheetContext).pop(false),
-                          child: const Text('إلغاء'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: ElevatedButton.icon(
+                        child: AarastButton(
+                          label: 'حذف',
+                          icon: LucideIcons.trash2,
+                          variant: AarastButtonVariant.danger,
                           onPressed: () => Navigator.of(sheetContext).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.danger,
-                          ),
-                          icon: const Icon(Icons.delete_outline_rounded),
-                          label: const Text('حذف'),
                         ),
                       ),
                     ],
@@ -294,11 +294,13 @@ class _GuestListScreenState extends State<GuestListScreen> {
 }
 
 class _GuestsHeader extends StatelessWidget {
-  const _GuestsHeader();
+  const _GuestsHeader({required this.guestCount});
+
+  final int guestCount;
 
   @override
   Widget build(BuildContext context) {
-    // ترويسة مضغوطة: عنوان + شارة في سطر واحد. لا فقرة تطمين مكررة.
+    // ترويسة مضغوطة: عنوان + عداد حي — لا شارة زخرفية ثابتة.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -309,16 +311,17 @@ class _GuestsHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
-            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
+            ).textTheme.titleLarge?.copyWith(color: AppTheme.title),
           ),
         ),
         const SizedBox(width: 10),
-        const AarastStatusPill(
-          label: 'قائمة الحضور',
-          color: AppTheme.burgundy,
-          backgroundColor: AppTheme.burgundySoft,
-          icon: Icons.groups_2_rounded,
-        ),
+        if (guestCount > 0)
+          AarastStatusPill(
+            label: '$guestCount ضيف',
+            color: AppTheme.burgundy,
+            backgroundColor: AppTheme.burgundySoft,
+            icon: LucideIcons.users,
+          ),
       ],
     );
   }
@@ -357,7 +360,7 @@ class _GuestsContent extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 70, 16, 120),
         children: const [
           AarastEmptyState(
-            icon: Icons.event_busy_outlined,
+            icon: LucideIcons.calendarX,
             title: 'اختر خطة أولاً',
             message: 'لا يمكن إدارة الضيوف بدون خطة زفاف محددة.',
           ),
@@ -375,12 +378,12 @@ class _GuestsContent extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 70, 16, 120),
         children: [
           AarastEmptyState(
-            icon: Icons.error_outline_rounded,
+            icon: LucideIcons.alertCircle,
             title: 'تعذر تحميل الضيوف',
             message: provider.errorMessage!,
             action: OutlinedButton.icon(
               onPressed: () => provider.loadGuests(weddingPlanId),
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(LucideIcons.refreshCw, size: 18),
               label: const Text('إعادة المحاولة'),
             ),
           ),
@@ -419,7 +422,7 @@ class _GuestsContent extends StatelessWidget {
         const SizedBox(height: 20),
         AarastSectionHeader(
           title: _listTitle(filter),
-          icon: Icons.groups_2_rounded,
+          icon: LucideIcons.users,
         ),
         const SizedBox(height: 12),
         if (visibleGuests.isEmpty)
@@ -433,10 +436,9 @@ class _GuestsContent extends StatelessWidget {
             ),
             child: Text(
               _emptyGuestsMessage(filter),
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: AppTheme.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 height: 1.35,
               ),
               textAlign: TextAlign.center,
@@ -475,47 +477,64 @@ class _ImportantGuestsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // كل شيء مكتمل؟ شريط نجاح هادئ بسطر واحد — لا كرت عنوانه أكبر من خبره.
+    if (issues.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.successBg,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              LucideIcons.badgeCheck,
+              color: AppTheme.success,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'كل بيانات الضيوف مكتملة',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: AppTheme.ink,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return AarastCard(
-      padding: const EdgeInsets.all(14),
-      color: issues.isEmpty ? AppTheme.surface : AppTheme.surface,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                issues.isEmpty
-                    ? Icons.verified_outlined
-                    : Icons.priority_high_rounded,
-                color: issues.isEmpty ? AppTheme.success : AppTheme.burgundy,
-                size: 20,
+              const Icon(
+                LucideIcons.alertTriangle,
+                color: AppTheme.burgundy,
+                size: 17,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'أهم ما يحتاج متابعة في الضيوف',
+                  'يحتاج متابعة',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          if (issues.isEmpty)
-            Text(
-              'كل بيانات الضيوف مكتملة',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.muted,
-                fontWeight: FontWeight.w800,
-              ),
-            )
-          else
-            for (final issue in issues) ...[
-              _IssueRow(issue: issue, onTap: () => onOpenFilter(issue.filter)),
-              if (issue != issues.last) const SizedBox(height: 8),
-            ],
+          const SizedBox(height: 10),
+          for (final issue in issues) ...[
+            _IssueRow(issue: issue, onTap: () => onOpenFilter(issue.filter)),
+            if (issue != issues.last) const SizedBox(height: 6),
+          ],
         ],
       ),
     );
@@ -535,24 +554,22 @@ class _IssueRow extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppTheme.radiusMd),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: issue.color.withAlpha(11),
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(color: issue.color.withAlpha(35)),
         ),
         child: Row(
           children: [
-            Icon(issue.icon, color: issue.color, size: 18),
+            Icon(issue.icon, color: issue.color, size: 15),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 issue.label,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: AppTheme.ink,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -561,8 +578,14 @@ class _IssueRow extends StatelessWidget {
               '${issue.count}',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 color: issue.color,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
               ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              LucideIcons.chevronLeft,
+              size: 14,
+              color: AppTheme.muted.withAlpha(180),
             ),
           ],
         ),
@@ -777,7 +800,7 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
                   controller: _nameController,
                   decoration: const InputDecoration(
                     labelText: 'اسم الضيف',
-                    prefixIcon: Icon(Icons.person_outline_rounded),
+                    prefixIcon: Icon(LucideIcons.user),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -804,23 +827,16 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
                   ),
                 ],
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _side,
-                  items: _sideValues
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item,
-                          child: Text(_sideLabel(item)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _side = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'الطرف',
-                    prefixIcon: Icon(Icons.people_outline_rounded),
-                  ),
+                // رقائق بدل القوائم المنسدلة — نفس نمط أدوار المشاركة:
+                // كل الخيارات مرئية بنقرة واحدة.
+                _ChipPickerRow(
+                  label: 'الطرف',
+                  options: [
+                    for (final item in _sideValues)
+                      _ChipOption(value: item, label: _sideLabel(item)),
+                  ],
+                  selected: _side,
+                  onSelected: (value) => setState(() => _side = value),
                 ),
                 const SizedBox(height: 12),
                 if (widget.groups.isNotEmpty) ...[
@@ -844,28 +860,19 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
                     },
                     decoration: const InputDecoration(
                       labelText: 'المجموعة',
-                      prefixIcon: Icon(Icons.folder_open_rounded),
+                      prefixIcon: Icon(LucideIcons.folderOpen),
                     ),
                   ),
                   const SizedBox(height: 12),
                 ],
-                DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  items: _statusValues
-                      .map(
-                        (item) => DropdownMenuItem(
-                          value: item,
-                          child: Text(_statusLabel(item)),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _status = value);
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'حالة الرد',
-                    prefixIcon: Icon(Icons.mark_email_read_outlined),
-                  ),
+                _ChipPickerRow(
+                  label: 'حالة الرد',
+                  options: [
+                    for (final item in _statusValues)
+                      _ChipOption(value: item, label: _statusLabel(item)),
+                  ],
+                  selected: _status,
+                  onSelected: (value) => setState(() => _status = value),
                 ),
                 const SizedBox(height: 12),
                 _StepperRow(
@@ -904,13 +911,13 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
                   maxLines: 4,
                   decoration: const InputDecoration(
                     labelText: 'ملاحظات (اختياري)',
-                    prefixIcon: Icon(Icons.notes_outlined),
+                    prefixIcon: Icon(LucideIcons.stickyNote),
                   ),
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: _submit,
-                  icon: const Icon(Icons.check_rounded),
+                  icon: const Icon(LucideIcons.check, size: 18),
                   label: Text(guest == null ? 'إضافة ضيف' : 'حفظ التعديل'),
                 ),
                 if (_sheetError != null) ...[
@@ -929,6 +936,82 @@ class _GuestFormSheetState extends State<_GuestFormSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ChipOption {
+  const _ChipOption({required this.value, required this.label});
+
+  final String value;
+  final String label;
+}
+
+class _ChipPickerRow extends StatelessWidget {
+  const _ChipPickerRow({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final List<_ChipOption> options;
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: textTheme.labelMedium?.copyWith(color: AppTheme.muted),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final option in options)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => onSelected(option.value),
+                  borderRadius: BorderRadius.circular(999),
+                  child: Ink(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: option.value == selected
+                          ? AppTheme.burgundy
+                          : AppTheme.surface,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: option.value == selected
+                            ? AppTheme.burgundy
+                            : AppTheme.border,
+                      ),
+                    ),
+                    child: Text(
+                      option.label,
+                      style: textTheme.labelMedium?.copyWith(
+                        color: option.value == selected
+                            ? Colors.white
+                            : AppTheme.ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -966,12 +1049,12 @@ class _StepperRow extends StatelessWidget {
           ),
           IconButton(
             onPressed: onMinus,
-            icon: const Icon(Icons.remove_circle_outline),
+            icon: const Icon(LucideIcons.minusCircle),
             tooltip: 'تقليل العدد',
           ),
           IconButton(
             onPressed: onPlus,
-            icon: const Icon(Icons.add_circle_outline),
+            icon: const Icon(LucideIcons.plusCircle),
             tooltip: 'زيادة العدد',
           ),
         ],
@@ -1057,7 +1140,7 @@ class _InlineError extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger),
+          const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1111,21 +1194,13 @@ class _FilterItem {
 }
 
 const _filterItems = [
-  _FilterItem(_GuestFilter.all, 'الكل', Icons.grid_view_rounded),
-  _FilterItem(_GuestFilter.confirmed, 'مؤكد', Icons.check_circle_rounded),
-  _FilterItem(
-    _GuestFilter.pending,
-    'بانتظار الرد',
-    Icons.hourglass_bottom_rounded,
-  ),
-  _FilterItem(_GuestFilter.declined, 'لن يحضر', Icons.cancel_rounded),
-  _FilterItem(
-    _GuestFilter.incomplete,
-    'ناقص بيانات',
-    Icons.info_outline_rounded,
-  ),
-  _FilterItem(_GuestFilter.groom, 'طرف العريس', Icons.person_outline_rounded),
-  _FilterItem(_GuestFilter.bride, 'طرف العروسة', Icons.person_2_outlined),
+  _FilterItem(_GuestFilter.all, 'الكل', LucideIcons.layoutGrid),
+  _FilterItem(_GuestFilter.confirmed, 'مؤكد', LucideIcons.checkCircle),
+  _FilterItem(_GuestFilter.pending, 'بانتظار الرد', LucideIcons.hourglass),
+  _FilterItem(_GuestFilter.declined, 'لن يحضر', LucideIcons.xCircle),
+  _FilterItem(_GuestFilter.incomplete, 'ناقص بيانات', LucideIcons.info),
+  _FilterItem(_GuestFilter.groom, 'طرف العريس', LucideIcons.user),
+  _FilterItem(_GuestFilter.bride, 'طرف العروسة', LucideIcons.user),
 ];
 
 const _sideValues = ['GROOM', 'BRIDE', 'OTHER'];
@@ -1158,7 +1233,7 @@ List<_GuestIssue> _importantIssues(
         label: 'ضيوف يحتاجون إكمال بيانات',
         count: summary.incompleteGuestsCount,
         filter: _GuestFilter.incomplete,
-        icon: Icons.info_outline_rounded,
+        icon: LucideIcons.info,
         color: AppTheme.warning,
       ),
     );
@@ -1169,7 +1244,7 @@ List<_GuestIssue> _importantIssues(
         label: 'ضيوف بدون رقم جوال',
         count: summary.missingPhoneCount,
         filter: _GuestFilter.incomplete,
-        icon: Icons.phone_disabled_outlined,
+        icon: LucideIcons.phoneOff,
         color: AppTheme.gold,
       ),
     );
@@ -1180,7 +1255,7 @@ List<_GuestIssue> _importantIssues(
         label: 'تكرار محتمل في أرقام الضيوف',
         count: duplicates.length,
         filter: _GuestFilter.all,
-        icon: Icons.content_copy_rounded,
+        icon: LucideIcons.copy,
         color: AppTheme.danger,
       ),
     );
@@ -1191,7 +1266,7 @@ List<_GuestIssue> _importantIssues(
         label: 'ضيوف بانتظار الرد',
         count: summary.pending,
         filter: _GuestFilter.pending,
-        icon: Icons.hourglass_bottom_rounded,
+        icon: LucideIcons.hourglass,
         color: AppTheme.burgundy,
       ),
     );
@@ -1202,7 +1277,7 @@ List<_GuestIssue> _importantIssues(
         label: 'لا يوجد ضيوف من طرف العريس',
         count: 0,
         filter: _GuestFilter.groom,
-        icon: Icons.person_outline_rounded,
+        icon: LucideIcons.user,
         color: AppTheme.ink,
       ),
     );
@@ -1213,7 +1288,7 @@ List<_GuestIssue> _importantIssues(
         label: 'لا يوجد ضيوف من طرف العروسة',
         count: 0,
         filter: _GuestFilter.bride,
-        icon: Icons.person_2_outlined,
+        icon: LucideIcons.user,
         color: AppTheme.ink,
       ),
     );

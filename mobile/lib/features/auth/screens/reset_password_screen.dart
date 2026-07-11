@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -119,7 +120,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               controller: _phoneController,
               label: 'رقم الهاتف',
               hint: 'مثال: 77xxxxxxx',
-              icon: Icons.phone_rounded,
+              icon: LucideIcons.phone,
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _requestCode(),
@@ -143,7 +144,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: 20),
             AarastButton(
               label: 'إرسال رمز الاستعادة',
-              icon: Icons.sms_rounded,
+              icon: LucideIcons.messageSquare,
               isLoading: _isSubmitting,
               onPressed: _isSubmitting ? null : _requestCode,
             ),
@@ -168,7 +169,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               controller: _codeController,
               label: 'رمز التحقق',
               hint: 'الرمز المكوّن من 6 أرقام',
-              icon: Icons.pin_rounded,
+              icon: LucideIcons.key,
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
               validator: (value) {
@@ -182,7 +183,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             AuthTextField(
               controller: _passwordController,
               label: 'كلمة المرور الجديدة',
-              icon: Icons.lock_rounded,
+              icon: LucideIcons.lock,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.next,
               suffixIcon: IconButton(
@@ -194,8 +195,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 },
                 icon: Icon(
                   _obscurePassword
-                      ? Icons.visibility_rounded
-                      : Icons.visibility_off_rounded,
+                      ? LucideIcons.eye
+                      : LucideIcons.eyeOff,
                 ),
               ),
               validator: (value) {
@@ -212,7 +213,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             AuthTextField(
               controller: _confirmPasswordController,
               label: 'تأكيد كلمة المرور',
-              icon: Icons.lock_outline_rounded,
+              icon: LucideIcons.lock,
               obscureText: _obscurePassword,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _confirmReset(),
@@ -230,14 +231,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             const SizedBox(height: 20),
             AarastButton(
               label: 'تغيير كلمة المرور',
-              icon: Icons.lock_reset_rounded,
+              icon: LucideIcons.rotateCcw,
               isLoading: _isSubmitting,
               onPressed: _isSubmitting ? null : _confirmReset,
             ),
             const SizedBox(height: 10),
             TextButton.icon(
               onPressed: _isSubmitting ? null : _requestCodeAgain,
-              icon: const Icon(Icons.refresh_rounded, size: 18),
+              icon: const Icon(LucideIcons.refreshCw, size: 18),
               label: const Text('إعادة إرسال الرمز'),
             ),
           ],
@@ -260,7 +261,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.check_circle_rounded,
+              LucideIcons.checkCircle,
               color: AppTheme.success,
               size: 32,
             ),
@@ -287,7 +288,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 20),
           AarastButton(
             label: 'تسجيل الدخول',
-            icon: Icons.login_rounded,
+            icon: LucideIcons.logIn,
             onPressed: () => context.go(AppRouter.login),
           ),
         ],

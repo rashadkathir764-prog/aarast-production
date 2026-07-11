@@ -24,7 +24,6 @@ class PremiumDashboardView extends StatelessWidget {
     required this.onOpenSharing,
     required this.onOpenNextStep,
     required this.onOpenImportantItem,
-    required this.onRecordPayment,
     this.personaHeadline,
     this.notice,
     this.now,
@@ -51,12 +50,17 @@ class PremiumDashboardView extends StatelessWidget {
   final VoidCallback onOpenSharing;
   final VoidCallback onOpenNextStep;
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
-  final VoidCallback onRecordPayment;
 
   bool get _hasBudget => (parseAmount(summary.totalBudgetForDisplay) ?? 0) > 0;
   bool get _hasTasks => summary.totalTasks > 0;
   bool get _hasGuests => summary.guestCount > 0;
   bool get _isFreshPlan => !_hasBudget || !_hasTasks || !_hasGuests;
+
+  /// نبض بلا أي إشارة حية هو أصفار ميتة — يختفي حتى تولد أول قيمة.
+  bool get _hasPulseSignal =>
+      summary.totalTasks > 0 ||
+      summary.guestCount > 0 ||
+      summary.providerCount > 0;
 
   @override
   Widget build(BuildContext context) {
@@ -126,54 +130,57 @@ class PremiumDashboardView extends StatelessWidget {
         ),
         const SizedBox(height: 14),
       ],
-      AarastPulseRow(
-        tiles: [
-          PulseTileData(
-            label: 'المهام',
-            value: '${summary.completedTasks}/${summary.totalTasks}',
-            caption: summary.totalTasks == 0
-                ? 'ابدأ بأول مهمة'
-                : summary.overdueTasks > 0
-                ? '${summary.overdueTasks} متأخرة'
-                : summary.todayTasks > 0
-                ? '${summary.todayTasks} اليوم'
-                : 'تحت السيطرة',
-            icon: LucideIcons.listChecks,
-            onTap: onOpenTasks,
-          ),
-          PulseTileData(
-            label: 'الضيوف',
-            value: '${summary.guestCount}',
-            caption: summary.guestCount == 0
-                ? 'أضف أول ضيف'
-                : '${summary.confirmedGuests} مؤكد',
-            icon: LucideIcons.users,
-            onTap: onOpenGuests,
-          ),
-          PulseTileData(
-            label: 'الموردون',
-            value: '${summary.providerCount}',
-            caption: summary.receivedQuotes > 0
-                ? '${summary.receivedQuotes} عرض وصل'
-                : summary.pendingQuoteRequests > 0
-                ? '${summary.pendingQuoteRequests} بانتظار رد'
-                : 'استكشف',
-            icon: LucideIcons.store,
-            onTap: onOpenProviders,
-          ),
-        ],
-      ),
-      const SizedBox(height: 14),
-      AarastParticipantsGlanceCard(
-        summary: summary,
-        onOpenSharing: onOpenSharing,
-      ),
-      const SizedBox(height: 14),
-      if (summary.canViewMoney)
-        AarastMoneyGlanceCard(
+      // في الخطة الجديدة تتصدر رحلة الإعداد وحدها؛ الكروت الفارغة
+      // (نبض بلا أرقام، ميزانية ومشاركة بلا محتوى) تكرارٌ يطيل التمرير.
+      if (!_isFreshPlan || _hasPulseSignal) ...[
+        AarastPulseRow(
+          tiles: [
+            PulseTileData(
+              label: 'المهام',
+              value: '${summary.completedTasks}/${summary.totalTasks}',
+              caption: summary.totalTasks == 0
+                  ? 'ابدأ بأول مهمة'
+                  : summary.overdueTasks > 0
+                  ? '${summary.overdueTasks} متأخرة'
+                  : summary.todayTasks > 0
+                  ? '${summary.todayTasks} اليوم'
+                  : 'تحت السيطرة',
+              icon: LucideIcons.listChecks,
+              onTap: onOpenTasks,
+            ),
+            PulseTileData(
+              label: 'الضيوف',
+              value: '${summary.guestCount}',
+              caption: summary.guestCount == 0
+                  ? 'أضف أول ضيف'
+                  : '${summary.confirmedGuests} مؤكد',
+              icon: LucideIcons.users,
+              onTap: onOpenGuests,
+            ),
+            PulseTileData(
+              label: 'الموردون',
+              value: '${summary.providerCount}',
+              caption: summary.receivedQuotes > 0
+                  ? '${summary.receivedQuotes} عرض وصل'
+                  : summary.pendingQuoteRequests > 0
+                  ? '${summary.pendingQuoteRequests} بانتظار رد'
+                  : 'استكشف',
+              icon: LucideIcons.store,
+              onTap: onOpenProviders,
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+      ],
+      // المال أهم كرت تشغيلي — يسبق المشاركة ليبقى فوق خط أول شاشة.
+      if (!_isFreshPlan && summary.canViewMoney) ...[
+        AarastMoneyGlanceCard(summary: summary, onOpenMoney: onOpenMoney),
+        const SizedBox(height: 14),
+      ],
+      if (!_isFreshPlan)
+        AarastParticipantsGlanceCard(
           summary: summary,
-          onOpenMoney: onOpenMoney,
-          onRecordPayment: onRecordPayment,
+          onOpenSharing: onOpenSharing,
         ),
       if (!_isFreshPlan && smartAction == null) ...[
         const SizedBox(height: 14),
@@ -238,26 +245,18 @@ class _DashboardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // التحية الشخصية هي بطل الهيدر — العلامة معروفة داخل تطبيقها.
               Text(
                 '$_greeting، $userName',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AarastDesignTokens.muted,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'أعرست',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: AarastDesignTokens.title,
                 ),
               ),
@@ -280,26 +279,26 @@ class _DashboardHeader extends StatelessWidget {
                         AarastDesignTokens.radiusPill,
                       ),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
+                        const Icon(
                           LucideIcons.smartphone,
                           size: 12,
                           color: AarastDesignTokens.warning,
                         ),
-                        SizedBox(width: 5),
+                        const SizedBox(width: 5),
                         Flexible(
                           child: Text(
                             // Keep the local-sync pill compact at large text scales.
                             'محفوظ محليًا · فعّل المزامنة',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AarastDesignTokens.ink,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: AarastDesignTokens.ink,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                         ),
                       ],
@@ -396,20 +395,19 @@ class _AllClearCard extends StatelessWidget {
         color: AarastDesignTokens.successSoft,
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(
+          const Icon(
             LucideIcons.badgeCheck,
             color: AarastDesignTokens.success,
             size: 24,
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'كل شيء تحت السيطرة — لا يوجد ما يستعجلك اليوم. خذ نفسًا واستمتع بالتحضير.',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AarastDesignTokens.ink,
-                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 height: 1.5,
               ),
@@ -451,16 +449,8 @@ class PremiumDashboardSkeleton extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  block(width: 130, height: 13, radius: 6),
-                  const SizedBox(height: 8),
-                  block(width: 90, height: 24, radius: 8),
-                ],
-              ),
-            ),
+            Expanded(child: block(width: 190, height: 20, radius: 8)),
+            const SizedBox(width: 40),
             block(width: 44, height: 44, radius: 22),
             const SizedBox(width: 8),
             block(width: 44, height: 44, radius: 22),
@@ -481,7 +471,9 @@ class PremiumDashboardSkeleton extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        block(height: 140, radius: AarastDesignTokens.radiusLg),
+        block(height: 150, radius: AarastDesignTokens.radiusLg),
+        const SizedBox(height: 14),
+        block(height: 56, radius: AarastDesignTokens.radiusLg),
       ],
     );
 

@@ -33,7 +33,7 @@ Current documentation snapshot: 2026-07-05. Route-level behavior belongs in
 | Expense | Implemented for owner-scoped WeddingPlan actual money-out records with amount, paid status, optional date, optional note, and required BudgetCategory link for new records. New money flows should use FinancialCommitment + FinancialPaymentRecord for agreed costs, remaining balances, and payments. |
 | Debt | Implemented as a legacy-compatible projection for owner-scoped manual obligations. Debt writes are bridged into `FinancialCommitment` with legacy link keys and append-only balance adjustments so current money totals use the financial backbone without double-counting or rewriting history. Contact picking is not implemented in Phase 2A. |
 | Installment | Implemented as a legacy-compatible scheduled payment under debts. Installment writes are bridged into `FinancialInstallment` and append-only payment/reversal entries so legacy routes keep working while the current money system remains commitment-first. |
-| Task | Implemented as `WeddingTask` for owner-scoped WeddingPlan planning work, including title, optional description, optional due date, status, priority, checklist/assignment support, and timestamps. |
+| Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. A shared member links a User to a WeddingPlan with role `VIEWER`, `CONTRIBUTOR`, or `MANAGER`, plus explicit permissions for budget, expenses, debts, task management, and financial-record management. |
 | PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. |
@@ -140,7 +140,7 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `FinancialCommitment` | 28 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `planProviderLinkId`, `quoteRequestId`, `quoteOfferId`, `legacyDebtId` |
 | `FinancialPaymentRecord` | 23 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `financialInstallmentId`, `reversalOfId`, `legacyExpenseId` |
 | `FinancialInstallment` | 16 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `legacyInstallmentId`, `createdAt`, `updatedAt` |
-| `WeddingTask` | 15 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
+| `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
 | `PlanInvite` | 29 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |

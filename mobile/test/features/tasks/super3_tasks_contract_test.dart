@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
@@ -8,10 +11,14 @@ import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
 import 'package:aarast_mobile/features/tasks/screens/task_timeline_screen.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -49,6 +56,26 @@ void main() {
     expect(summary.highPriority, 2);
     expect(summary.assigneeSummary.assignedCount, 3);
     expect(summary.byPriority['URGENT'], 1);
+  });
+
+  test('account task API sends manual responsibility to the backend', () async {
+    final harness = await _createHarness();
+    final adapter = _TaskCreateAdapter();
+    harness.apiClient.dio.httpClientAdapter = adapter;
+
+    await harness.api.createTask(
+      weddingPlanId: 'account-plan',
+      title: 'تأكيد القاعة',
+      responsibleName: 'محمد',
+      responsibleSource: 'manual',
+    );
+
+    final payload = Map<String, dynamic>.from(
+      adapter.requests.single.data as Map,
+    );
+    expect(payload['responsibleName'], 'محمد');
+    expect(payload['responsiblePhone'], isNull);
+    expect(payload['responsibleSource'], 'manual');
   });
 
   test('local task summary updates total completed overdue and progress', () {
@@ -320,6 +347,93 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('account task saves a manual responsible without a phone', (
+    tester,
+  ) async {
+    _setPhoneView(tester, width: 390);
+    final harness = await _createHarness();
+    await _saveAccountSession(harness);
+    final provider = _CapturingTaskProvider(harness.api);
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        MaterialApp.router(
+          routerConfig: _router(
+            start: const CreateTaskScreen(weddingPlanId: 'account-plan'),
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      _textFormFieldWithLabel('عنوان المهمة'),
+      'تأكيد القاعة',
+    );
+    await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'محمد');
+    final submit = find.text('حفظ المهمة');
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(provider.createCalls, 1);
+    expect(provider.responsibleName, 'محمد');
+    expect(provider.responsiblePhone, isNull);
+    expect(provider.assigneeUserId, isNull);
+  });
+
+  testWidgets('account task maps انا to the authenticated plan member', (
+    tester,
+  ) async {
+    _setPhoneView(tester, width: 390);
+    final harness = await _createHarness();
+    final user = await _saveAccountSession(harness);
+    final provider = _CapturingTaskProvider(harness.api);
+    final auth = _FakeAuthController(
+      AuthRepository(harness.apiClient, harness.authStorage),
+      user,
+    );
+    final sharing = _FakeSharingProvider(harness, [
+      _member(
+        weddingPlanId: 'account-plan',
+        userId: user.id,
+        name: user.name,
+        role: 'OWNER',
+        isOwner: true,
+      ),
+    ]);
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        MaterialApp.router(
+          routerConfig: _router(
+            start: const CreateTaskScreen(weddingPlanId: 'account-plan'),
+          ),
+        ),
+        sharingProvider: sharing,
+        authController: auth,
+      ),
+    );
+
+    await tester.enterText(
+      _textFormFieldWithLabel('عنوان المهمة'),
+      'تأكيد القاعة',
+    );
+    await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'انا');
+    final submit = find.text('حفظ المهمة');
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(provider.createCalls, 1);
+    expect(provider.assigneeUserId, user.id);
+    expect(provider.responsibleName, isNull);
+    expect(provider.responsiblePhone, isNull);
+  });
+
   testWidgets('invite responsible action is gated and not automatic', (
     tester,
   ) async {
@@ -462,12 +576,15 @@ Widget _providers(
   TaskTimelineProvider provider,
   Widget child, {
   SharingProvider? sharingProvider,
+  AuthController? authController,
 }) {
   return MultiProvider(
     providers: [
       Provider<AuthStorage>.value(value: harness.authStorage),
       ChangeNotifierProvider<OfflineSyncService>.value(value: harness.offline),
       ChangeNotifierProvider<TaskTimelineProvider>.value(value: provider),
+      if (authController != null)
+        ChangeNotifierProvider<AuthController>.value(value: authController),
       ChangeNotifierProvider<SharingProvider>(
         create: (_) =>
             sharingProvider ?? _FakeSharingProvider(harness, const []),
@@ -507,6 +624,7 @@ SharedMember _member({
   required String userId,
   required String name,
   String role = 'HELPER',
+  bool isOwner = false,
 }) {
   return SharedMember(
     id: 'member-$userId',
@@ -519,9 +637,106 @@ SharedMember _member({
     canViewDebts: false,
     canManageTasks: true,
     canManageFinancialRecords: false,
+    isOwner: isOwner,
     createdAt: DateTime(2026, 6, 28),
     updatedAt: DateTime(2026, 6, 28),
   );
+}
+
+Future<SafeUser> _saveAccountSession(_Harness harness) async {
+  const user = SafeUser(
+    id: 'user-1',
+    name: 'رشاد',
+    phone: '+967777123456',
+    role: 'USER',
+    status: 'ACTIVE',
+  );
+  await harness.authStorage.saveSession(
+    accessToken: 'account-token',
+    user: user,
+  );
+  return user;
+}
+
+class _FakeAuthController extends AuthController {
+  _FakeAuthController(super.repository, this.fakeUser);
+
+  final SafeUser fakeUser;
+
+  @override
+  SafeUser? get user => fakeUser;
+}
+
+class _CapturingTaskProvider extends TaskTimelineProvider {
+  _CapturingTaskProvider(super.api);
+
+  int createCalls = 0;
+  String? assigneeUserId;
+  String? responsibleName;
+  String? responsiblePhone;
+
+  @override
+  Future<bool> createTask({
+    required String weddingPlanId,
+    required String title,
+    String? description,
+    DateTime? dueDate,
+    String? taskCategory,
+    String? assigneeUserId,
+    String? assigneeName,
+    String? assigneePhone,
+    String? assigneeRole,
+    String? responsibleName,
+    String? responsiblePhone,
+    String? responsibleSource,
+    String status = 'TODO',
+    String priority = 'MEDIUM',
+  }) async {
+    createCalls += 1;
+    this.assigneeUserId = assigneeUserId;
+    this.responsibleName = responsibleName;
+    this.responsiblePhone = responsiblePhone;
+    return true;
+  }
+}
+
+class _TaskCreateAdapter implements HttpClientAdapter {
+  final List<RequestOptions> requests = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options);
+    return ResponseBody.fromString(
+      jsonEncode({
+        'id': 'task-1',
+        'weddingPlanId': 'account-plan',
+        'title': 'تأكيد القاعة',
+        'description': null,
+        'dueDate': null,
+        'taskCategory': null,
+        'reminderAt': null,
+        'status': 'TODO',
+        'priority': 'MEDIUM',
+        'assigneeUserId': null,
+        'responsibleName': 'محمد',
+        'responsiblePhone': null,
+        'responsibleSource': 'manual',
+        'createdAt': '2026-07-11T00:00:00.000Z',
+        'updatedAt': '2026-07-11T00:00:00.000Z',
+      }),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class _FakeSharingProvider extends SharingProvider {

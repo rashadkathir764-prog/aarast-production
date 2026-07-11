@@ -115,7 +115,7 @@ class TaskTimelineApi {
     String status = 'TODO',
     String priority = 'MEDIUM',
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       'title': title.trim(),
       'status': status,
       'priority': priority,
@@ -134,6 +134,9 @@ class TaskTimelineApi {
       responsiblePhone: responsiblePhone,
       responsibleSource: responsibleSource,
     );
+    if (!_hasValue(assigneeUserId)) {
+      payload.addAll(localResponsibility);
+    }
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return _createLocalTask(
         weddingPlanId: weddingPlanId,
@@ -170,6 +173,7 @@ class TaskTimelineApi {
         'id': localId,
         'weddingPlanId': weddingPlanId,
         ...payload,
+        ...localResponsibility,
         'createdAt': now.toIso8601String(),
         'updatedAt': now.toIso8601String(),
       };

@@ -18,33 +18,38 @@ class SupportScreen extends StatelessWidget {
       showBack: true,
       child: ListView(
         children: AarastStagger.children(context, [
-          const _SupportIntroCard(),
-          const SizedBox(height: 14),
-          _SupportActionCard(
-            title: 'أحتاج مساعدة في الحساب أو التنبيهات',
-            body:
-                'راجع إعدادات الحساب والتنبيهات، ثم احفظ التغييرات إذا كانت متاحة لحسابك.',
-            icon: LucideIcons.settings,
-            buttonLabel: 'فتح الإعدادات',
-            onPressed: () => context.push(AppRouter.settings),
-          ),
+          const _SafetyStrip(),
           const SizedBox(height: 12),
-          _SupportActionCard(
-            title: 'أبحث عن تنبيه أو دعوة',
-            body:
-                'افتح التنبيهات المحفوظة لمراجعة دعوات المشاركة، عروض الأسعار، والمهام المهمة.',
-            icon: LucideIcons.bell,
-            buttonLabel: 'فتح التنبيهات',
-            onPressed: () => context.push(AppRouter.notifications),
-          ),
+          const _QuickHelpCard(),
           const SizedBox(height: 12),
-          _SupportActionCard(
-            title: 'مشكلة في خطة مشتركة',
-            body:
-                'تحقق من الخطط المشتركة معك وصلاحيات كل خطة قبل طلب تعديل من مالك الخطة.',
-            icon: LucideIcons.users,
-            buttonLabel: 'الخطط المشتركة',
-            onPressed: () => context.push(AppRouter.sharedWeddingPlans),
+          AarastCard(
+            padding: EdgeInsets.zero,
+            color: AppTheme.ivory,
+            border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+            child: Column(
+              children: [
+                _SupportLinkRow(
+                  title: 'فتح الإعدادات',
+                  subtitle: 'مساعدة في الحساب والتنبيهات',
+                  icon: LucideIcons.settings,
+                  onTap: () => context.push(AppRouter.settings),
+                ),
+                Divider(height: 1, color: AppTheme.burgundySoft.withAlpha(150)),
+                _SupportLinkRow(
+                  title: 'فتح التنبيهات',
+                  subtitle: 'الدعوات وعروض الأسعار والمهام المهمة',
+                  icon: LucideIcons.bell,
+                  onTap: () => context.push(AppRouter.notifications),
+                ),
+                Divider(height: 1, color: AppTheme.burgundySoft.withAlpha(150)),
+                _SupportLinkRow(
+                  title: 'الخطط المشتركة',
+                  subtitle: 'صلاحياتك في الخطط المشتركة معك',
+                  icon: LucideIcons.users,
+                  onTap: () => context.push(AppRouter.sharedWeddingPlans),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 14),
           const _SupportBoundaryCard(),
@@ -55,26 +60,113 @@ class SupportScreen extends StatelessWidget {
   }
 }
 
-class _SupportIntroCard extends StatelessWidget {
-  const _SupportIntroCard();
+class _QuickHelpCard extends StatelessWidget {
+  const _QuickHelpCard();
 
   @override
   Widget build(BuildContext context) {
-    return const AarastCard(
+    return AarastCard(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 6),
       color: AppTheme.ivory,
+      border: Border.all(color: AppTheme.goldSoft.withAlpha(80)),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: EdgeInsetsDirectional.only(start: 8, bottom: 4),
+              child: Text(
+                'حلول سريعة',
+                style: TextStyle(
+                  color: AppTheme.burgundyDeep,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            _HelpTile(
+              question: 'لماذا لا تصلني التنبيهات؟',
+              answer:
+                  'افتح الإعدادات وتأكد من تفعيل التنبيهات المهمة ونوع التذكير المطلوب. بعض القنوات الخارجية تعمل فقط عند توفرها.',
+            ),
+            _HelpTile(
+              question: 'لماذا لا تظهر الخطة المشتركة؟',
+              answer:
+                  'تأكد أنك سجلت الدخول بنفس الرقم الذي استلم الدعوة، ثم افتح الخطط المشتركة وحدّث القائمة بعد قبول الدعوة.',
+            ),
+            _HelpTile(
+              question: 'كيف أحمي بياناتي المالية؟',
+              answer:
+                  'لا تمنح صلاحيات الميزانية أو المصاريف أو إدارة المال إلا لشخص تثق به. يمكنك تعديل صلاحيات أي عضو من شاشة المشاركة.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HelpTile extends StatelessWidget {
+  const _HelpTile({required this.question, required this.answer});
+
+  final String question;
+  final String answer;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+      childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+      dense: true,
+      title: Text(
+        question,
+        textAlign: TextAlign.right,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: AppTheme.ink,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      children: [
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            answer,
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: AppTheme.muted,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// سطر الأمان الوحيد الذي يستحق مكانًا قبل الروابط — بدل كرت تمهيد كامل.
+class _SafetyStrip extends StatelessWidget {
+  const _SafetyStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.gold.withAlpha(26),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SupportIcon(icon: LucideIcons.headphones),
-          SizedBox(width: 12),
+          const Icon(LucideIcons.shieldAlert, size: 15, color: AppTheme.gold),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'هذه الصفحة تساعدك على الوصول للمكان الصحيح داخل التطبيق. لا تشارك كلمة المرور أو رمز التحقق أو تفاصيل مالية حساسة عند طلب المساعدة.',
-              textAlign: TextAlign.right,
-              style: TextStyle(
+              'لا تشارك كلمة المرور أو رمز التحقق أو تفاصيل مالية حساسة '
+              'عند طلب المساعدة.',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: AppTheme.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.5,
+                height: 1.4,
               ),
             ),
           ),
@@ -84,69 +176,72 @@ class _SupportIntroCard extends StatelessWidget {
   }
 }
 
-class _SupportActionCard extends StatelessWidget {
-  const _SupportActionCard({
+class _SupportLinkRow extends StatelessWidget {
+  const _SupportLinkRow({
     required this.title,
-    required this.body,
+    required this.subtitle,
     required this.icon,
-    required this.buttonLabel,
-    required this.onPressed,
+    required this.onTap,
   });
 
   final String title;
-  final String body;
+  final String subtitle;
   final IconData icon;
-  final String buttonLabel;
-  final VoidCallback onPressed;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.surface,
-      border: Border.all(color: AppTheme.border),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _SupportIcon(icon: icon),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      textAlign: TextAlign.right,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppTheme.burgundyDeep,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      body,
-                      textAlign: TextAlign.right,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.muted,
-                        fontWeight: FontWeight.w700,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
+    final textTheme = Theme.of(context).textTheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppTheme.burgundySoft,
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          AarastButton(
-            label: buttonLabel,
-            icon: LucideIcons.chevronLeft,
-            variant: AarastButtonVariant.secondary,
-            onPressed: onPressed,
-          ),
-        ],
+              child: Icon(icon, color: AppTheme.burgundy, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              LucideIcons.chevronLeft,
+              color: AppTheme.muted,
+              size: 18,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -157,24 +252,40 @@ class _SupportBoundaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const AarastCard(
+    return AarastCard(
       color: AppTheme.ivory,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AarastSectionHeader(
-            title: 'حدود الدعم في هذه النسخة',
-            icon: LucideIcons.shieldCheck,
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.shieldCheck,
+                size: 17,
+                color: AppTheme.gold,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'حدود الدعم في هذه النسخة',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: AppTheme.burgundyDeep,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 10),
-          _BoundaryLine(
+          const SizedBox(height: 8),
+          const _BoundaryLine(
             text: 'أعرست لا يدير مدفوعات أو عربون أو حجز مؤكد داخل هذه النسخة.',
           ),
-          _BoundaryLine(
+          const _BoundaryLine(
             text:
                 'مشاكل الموردين وعروض الأسعار تُعامل كمتابعة تنظيمية، وليست ضماناً قانونياً أو مالياً.',
           ),
-          _BoundaryLine(
+          const _BoundaryLine(
             text:
                 'صلاحيات المشاركة والبيانات المالية تبقى خاصة ولا تظهر إلا حسب إذن واضح من مالك الخطة.',
           ),
@@ -196,40 +307,21 @@ class _BoundaryLine extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(LucideIcons.checkCircle, color: AppTheme.gold, size: 18),
+          const Icon(LucideIcons.checkCircle, color: AppTheme.gold, size: 15),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: AppTheme.muted,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 height: 1.45,
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SupportIcon extends StatelessWidget {
-  const _SupportIcon({required this.icon});
-
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: AppTheme.burgundySoft,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Icon(icon, color: AppTheme.burgundy),
     );
   }
 }

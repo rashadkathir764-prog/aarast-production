@@ -589,6 +589,9 @@ Create request:
   "title": "Confirm hall",
   "description": "Call the hall manager",
   "dueDate": "2026-12-05T00:00:00.000Z",
+  "responsibleName": "Mohammed",
+  "responsiblePhone": "+967777123456",
+  "responsibleSource": "manual",
   "status": "TODO",
   "priority": "HIGH"
 }
@@ -600,7 +603,19 @@ Current `/api/v1/wedding-plans/:weddingPlanId/tasks` and `/api/v1/tasks/:id` ali
 
 Task summary also exposes Super UI aliases: `total`, `completed`, `pendingInProgress`, `overdue`, `dueToday`, `highPriority`, and `assigneeSummary`.
 
-Task records currently support `assigneeUserId` and assignment counts. Money/guest/provider entity links are not part of the current task model and must not be faked by clients.
+Task responsibility has two mutually exclusive modes. A registered plan owner or
+member uses `assigneeUserId`. A person who is not a registered plan member uses
+optional `responsibleName`, `responsiblePhone`, and `responsibleSource`
+(`manual`, `deviceContact`, or `planContact`). Assigning a registered participant
+clears the manual-responsibility fields, while writing non-empty manual fields
+clears `assigneeUserId`. `responsiblePhone` may be omitted or `null`.
+
+Task summary assignment counts include registered `assigneeUserId` assignments
+only. Money/guest/provider entity links are not part of the current task model
+and must not be faked by clients.
+
+`responsiblePhone` is returned only to the plan owner or a member who can
+manage tasks. Read-only plan members receive `null` for that field.
 
 ## Timeline
 

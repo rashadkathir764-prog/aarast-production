@@ -9,9 +9,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
-import '../models/shared_member.dart';
 import '../models/plan_role_permissions.dart';
+import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
+import '../widgets/permission_editor.dart';
+
+/// أدوار الدعوة المعروضة — اختيار الدور يضبط الصلاحيات الافتراضية تلقائيًا.
+const _addMemberRoles = ['VIEWER', 'GROOM', 'BRIDE', 'FAMILY', 'HELPER'];
 
 class AddSharedMemberScreen extends StatefulWidget {
   const AddSharedMemberScreen({required this.weddingPlanId, super.key});
@@ -26,16 +30,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   String _role = 'VIEWER';
-  bool _canViewBudget = false;
-  bool _canViewExpenses = false;
-  bool _canViewDebts = false;
-  bool _canEditPlan = false;
-  bool _canManageTasks = false;
-  bool _canManageGuests = false;
-  bool _canManageProviders = false;
-  bool _canInviteMembers = false;
-  bool _canManageFinancialRecords = false;
-  bool _receiveNotifications = true;
+  PlanRolePermissions _permissions = PlanRolePermissions.forRole('VIEWER');
   String? _localPhoneError;
   bool _isCheckingSharingAccess = true;
   bool _showLoginGate = false;
@@ -71,10 +66,13 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     final provider = context.watch<SharingProvider>();
     final foundUser = provider.lookupUser;
     final gate = _authGateFor(provider);
+    final duplicateMessage =
+        _localPhoneError ??
+        _duplicateMemberMessage(provider.members, provider.invites);
 
     return AarastPageScaffold(
       title: 'إضافة عضو',
-      subtitle: 'ابحث برقم الهاتف ثم حدد الصلاحيات قبل المشاركة.',
+      subtitle: 'ابحث بالرقم ثم اختر الدور — الصلاحيات تُضبط تلقائيًا.',
       resizeToAvoidBottomInset: true,
       actions: [
         IconButton(
@@ -92,59 +90,49 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
             child: ListView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
-                const _PrivacyHint(),
-                const SizedBox(height: 14),
-                _PhoneLookupCard(
-                  controller: _phoneController,
-                  isLookingUp: provider.isLookingUp,
-                  errorMessage: provider.lookupErrorMessage,
-                  duplicateMessage:
-                      _localPhoneError ??
-                      _duplicateMemberMessage(
-                        provider.members,
-                        provider.invites,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ContactPhoneField(
+                        phoneController: _phoneController,
+                        label: 'رقم جوال العضو',
+                        optional: false,
+                        requireYemeni: true,
+                        enabled: !provider.isLookingUp,
+                        duplicateMessage: duplicateMessage,
+                        onDraftChanged: (_) {
+                          provider.clearLookup();
+                          setState(() => _localPhoneError = null);
+                        },
                       ),
-                  foundUser: foundUser,
-                  onChanged: (_) {
-                    provider.clearLookup();
-                    setState(() => _localPhoneError = null);
-                  },
-                  onLookup: _lookupUser,
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: _LookupButton(
+                        isLookingUp: provider.isLookingUp,
+                        onTap: _lookupUser,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 14),
-                _RoleDropdown(value: _role, onChanged: _applyRole),
-                const SizedBox(height: 14),
-                _PermissionSwitches(
-                  canViewBudget: _canViewBudget,
-                  canViewExpenses: _canViewExpenses,
-                  canViewDebts: _canViewDebts,
-                  canEditPlan: _canEditPlan,
-                  canManageTasks: _canManageTasks,
-                  canManageGuests: _canManageGuests,
-                  canManageProviders: _canManageProviders,
-                  canInviteMembers: _canInviteMembers,
-                  canManageFinancialRecords: _canManageFinancialRecords,
-                  receiveNotifications: _receiveNotifications,
-                  onViewBudgetChanged: (value) =>
-                      setState(() => _canViewBudget = value),
-                  onViewExpensesChanged: (value) =>
-                      setState(() => _canViewExpenses = value),
-                  onViewDebtsChanged: (value) =>
-                      setState(() => _canViewDebts = value),
-                  onEditPlanChanged: (value) =>
-                      setState(() => _canEditPlan = value),
-                  onManageTasksChanged: (value) =>
-                      setState(() => _canManageTasks = value),
-                  onManageGuestsChanged: (value) =>
-                      setState(() => _canManageGuests = value),
-                  onManageProvidersChanged: (value) =>
-                      setState(() => _canManageProviders = value),
-                  onInviteMembersChanged: (value) =>
-                      setState(() => _canInviteMembers = value),
-                  onManageFinancialRecordsChanged: (value) =>
-                      setState(() => _canManageFinancialRecords = value),
-                  onReceiveNotificationsChanged: (value) =>
-                      setState(() => _receiveNotifications = value),
+                if (foundUser != null) ...[
+                  const SizedBox(height: 4),
+                  _FoundUserStrip(user: foundUser),
+                ] else if (provider.lookupErrorMessage != null) ...[
+                  const SizedBox(height: 4),
+                  _LookupEmpty(message: provider.lookupErrorMessage!),
+                ],
+                const SizedBox(height: 16),
+                SharedPermissionEditor(
+                  role: _role,
+                  roles: _addMemberRoles,
+                  permissions: _permissions,
+                  onRoleSelected: _applyRole,
+                  onPermissionsChanged: (value) =>
+                      setState(() => _permissions = value),
+                  enabled: !provider.isSubmitting,
                 ),
                 if (provider.errorMessage != null) ...[
                   const SizedBox(height: 12),
@@ -209,16 +197,16 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       phone: _phoneController.text,
       name: provider.lookupUser?.name,
       role: _role,
-      canViewBudget: _canViewBudget,
-      canViewExpenses: _canViewExpenses,
-      canViewDebts: _canViewDebts,
-      canEditPlan: _canEditPlan,
-      canManageTasks: _canManageTasks,
-      canManageGuests: _canManageGuests,
-      canManageProviders: _canManageProviders,
-      canInviteMembers: _canInviteMembers,
-      canManageFinancialRecords: _canManageFinancialRecords,
-      receiveNotifications: _receiveNotifications,
+      canViewBudget: _permissions.canViewBudget,
+      canViewExpenses: _permissions.canViewExpenses,
+      canViewDebts: _permissions.canViewDebts,
+      canEditPlan: _permissions.canEditPlan,
+      canManageTasks: _permissions.canManageTasks,
+      canManageGuests: _permissions.canManageGuests,
+      canManageProviders: _permissions.canManageProviders,
+      canInviteMembers: _permissions.canInviteMembers,
+      canManageFinancialRecords: _permissions.canManageFinancialRecords,
+      receiveNotifications: _permissions.receiveNotifications,
     );
 
     if (!mounted) return;
@@ -233,19 +221,9 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   }
 
   void _applyRole(String role) {
-    final defaults = PlanRolePermissions.forRole(role);
     setState(() {
       _role = role;
-      _canViewBudget = defaults.canViewBudget;
-      _canViewExpenses = defaults.canViewExpenses;
-      _canViewDebts = defaults.canViewDebts;
-      _canEditPlan = defaults.canEditPlan;
-      _canManageTasks = defaults.canManageTasks;
-      _canManageGuests = defaults.canManageGuests;
-      _canManageProviders = defaults.canManageProviders;
-      _canInviteMembers = defaults.canInviteMembers;
-      _canManageFinancialRecords = defaults.canManageFinancialRecords;
-      _receiveNotifications = defaults.receiveNotifications;
+      _permissions = PlanRolePermissions.forRole(role);
     });
   }
 
@@ -311,76 +289,57 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   }
 }
 
-class _PhoneLookupCard extends StatelessWidget {
-  const _PhoneLookupCard({
-    required this.controller,
-    required this.isLookingUp,
-    required this.onChanged,
-    required this.onLookup,
-    this.errorMessage,
-    this.duplicateMessage,
-    this.foundUser,
-  });
+/// زر البحث الملاصق لحقل الرقم — بديل الزر العريض المستقل.
+class _LookupButton extends StatelessWidget {
+  const _LookupButton({required this.isLookingUp, required this.onTap});
 
-  final TextEditingController controller;
   final bool isLookingUp;
-  final String? errorMessage;
-  final String? duplicateMessage;
-  final SharedUserLookup? foundUser;
-  final ValueChanged<String> onChanged;
-  final VoidCallback onLookup;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AarastSectionHeader(
-            title: 'البحث عن العضو',
-            icon: LucideIcons.smartphone,
+    return Semantics(
+      button: true,
+      label: 'بحث عن المستخدم',
+      child: Material(
+        color: AppTheme.burgundy,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: InkWell(
+          onTap: isLookingUp ? null : onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: Center(
+              child: isLookingUp
+                  ? const AarastInlineSpinner(
+                      dimension: 18,
+                      color: Colors.white,
+                    )
+                  : const Icon(
+                      LucideIcons.search,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+            ),
           ),
-          const SizedBox(height: 14),
-          ContactPhoneField(
-            phoneController: controller,
-            label: 'رقم جوال العضو',
-            optional: false,
-            requireYemeni: true,
-            enabled: !isLookingUp,
-            duplicateMessage: duplicateMessage,
-            onDraftChanged: (draft) =>
-                onChanged(draft.normalizedPhone ?? draft.rawPhone),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: isLookingUp ? null : onLookup,
-            icon: const Icon(LucideIcons.search),
-            label: const Text('بحث عن المستخدم'),
-          ),
-          if (foundUser != null) ...[
-            const SizedBox(height: 14),
-            _FoundUserCard(user: foundUser!),
-          ] else if (errorMessage != null) ...[
-            const SizedBox(height: 14),
-            _LookupEmpty(message: errorMessage!),
-          ],
-        ],
+        ),
       ),
     );
   }
 }
 
-class _FoundUserCard extends StatelessWidget {
-  const _FoundUserCard({required this.user});
+class _FoundUserStrip extends StatelessWidget {
+  const _FoundUserStrip({required this.user});
 
   final SharedUserLookup user;
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     final phone = user.phone?.trim();
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppTheme.successBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusMd),
@@ -389,40 +348,41 @@ class _FoundUserCard extends StatelessWidget {
       child: Row(
         children: [
           _LookupAvatar(user: user),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AarastStatusPill(
-                  label: 'مستخدم مسجل',
-                  icon: LucideIcons.badgeCheck,
-                  color: AppTheme.success,
-                  backgroundColor: AppTheme.ivory,
-                ),
-                const SizedBox(height: 8),
                 Text(
                   user.name.trim().isEmpty ? 'عضو أعرست' : user.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  style: textTheme.titleSmall?.copyWith(
                     color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 if (phone != null && phone.isNotEmpty)
                   Text(
                     phone,
                     textDirection: TextDirection.ltr,
+                    textAlign: TextAlign.right,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    style: textTheme.labelSmall?.copyWith(
                       color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          const AarastStatusPill(
+            label: 'مستخدم مسجل',
+            icon: LucideIcons.badgeCheck,
+            color: AppTheme.success,
+            backgroundColor: AppTheme.ivory,
           ),
         ],
       ),
@@ -440,35 +400,27 @@ class _LookupAvatar extends StatelessWidget {
     final imageUrl = user.avatarUrl?.trim();
     final initial = user.name.trim().isEmpty ? 'ع' : user.name.trim()[0];
 
+    Widget fallback = Center(
+      child: Text(
+        initial,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: AppTheme.burgundy,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+
     return ClipOval(
       child: Container(
-        width: 54,
-        height: 54,
+        width: 40,
+        height: 40,
         color: AppTheme.surface,
         child: imageUrl == null || imageUrl.isEmpty
-            ? Center(
-                child: Text(
-                  initial,
-                  style: const TextStyle(
-                    color: AppTheme.burgundy,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              )
+            ? fallback
             : Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Center(
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      color: AppTheme.burgundy,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
+                errorBuilder: (context, error, stackTrace) => fallback,
               ),
       ),
     );
@@ -499,252 +451,6 @@ class _LookupEmpty extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.ink,
                 fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RoleDropdown extends StatelessWidget {
-  const _RoleDropdown({required this.value, required this.onChanged});
-
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.surface,
-      child: DropdownButtonFormField<String>(
-        initialValue: value,
-        decoration: const InputDecoration(
-          labelText: 'الدور',
-          prefixIcon: Icon(LucideIcons.shieldCheck),
-        ),
-        items: const [
-          DropdownMenuItem(value: 'VIEWER', child: Text('مشاهد')),
-          DropdownMenuItem(value: 'GROOM', child: Text('العريس')),
-          DropdownMenuItem(value: 'BRIDE', child: Text('العروس')),
-          DropdownMenuItem(value: 'FAMILY', child: Text('العائلة')),
-          DropdownMenuItem(value: 'HELPER', child: Text('مساعد')),
-        ],
-        onChanged: (value) {
-          if (value != null) onChanged(value);
-        },
-      ),
-    );
-  }
-}
-
-class _PermissionSwitches extends StatelessWidget {
-  const _PermissionSwitches({
-    required this.canViewBudget,
-    required this.canViewExpenses,
-    required this.canViewDebts,
-    required this.canEditPlan,
-    required this.canManageTasks,
-    required this.canManageGuests,
-    required this.canManageProviders,
-    required this.canInviteMembers,
-    required this.canManageFinancialRecords,
-    required this.receiveNotifications,
-    required this.onViewBudgetChanged,
-    required this.onViewExpensesChanged,
-    required this.onViewDebtsChanged,
-    required this.onEditPlanChanged,
-    required this.onManageTasksChanged,
-    required this.onManageGuestsChanged,
-    required this.onManageProvidersChanged,
-    required this.onInviteMembersChanged,
-    required this.onManageFinancialRecordsChanged,
-    required this.onReceiveNotificationsChanged,
-  });
-
-  final bool canViewBudget;
-  final bool canViewExpenses;
-  final bool canViewDebts;
-  final bool canEditPlan;
-  final bool canManageTasks;
-  final bool canManageGuests;
-  final bool canManageProviders;
-  final bool canInviteMembers;
-  final bool canManageFinancialRecords;
-  final bool receiveNotifications;
-  final ValueChanged<bool> onViewBudgetChanged;
-  final ValueChanged<bool> onViewExpensesChanged;
-  final ValueChanged<bool> onViewDebtsChanged;
-  final ValueChanged<bool> onEditPlanChanged;
-  final ValueChanged<bool> onManageTasksChanged;
-  final ValueChanged<bool> onManageGuestsChanged;
-  final ValueChanged<bool> onManageProvidersChanged;
-  final ValueChanged<bool> onInviteMembersChanged;
-  final ValueChanged<bool> onManageFinancialRecordsChanged;
-  final ValueChanged<bool> onReceiveNotificationsChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.surface,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const AarastSectionHeader(
-            title: 'الصلاحيات',
-            icon: LucideIcons.shieldCheck,
-          ),
-          const SizedBox(height: 8),
-          _PermissionTile(
-            value: canManageTasks,
-            onChanged: onManageTasksChanged,
-            title: 'إدارة المهام',
-            subtitle: 'إضافة وتعديل مهام الخطة.',
-            icon: LucideIcons.listChecks,
-          ),
-          _PermissionTile(
-            value: canManageGuests,
-            onChanged: onManageGuestsChanged,
-            title: 'إدارة الضيوف',
-            subtitle: 'إضافة الضيوف وتحديث حضورهم.',
-            icon: LucideIcons.users,
-          ),
-          _PermissionTile(
-            value: canManageProviders,
-            onChanged: onManageProvidersChanged,
-            title: 'إدارة الموردين والعروض',
-            subtitle: 'طلب عروض الأسعار وقبولها أو رفضها.',
-            icon: LucideIcons.store,
-          ),
-          _PermissionTile(
-            value: canEditPlan,
-            onChanged: onEditPlanChanged,
-            title: 'تعديل الخطة',
-            subtitle: 'تعديل بيانات الخطة الأساسية.',
-            icon: LucideIcons.calendarDays,
-          ),
-          _PermissionTile(
-            value: canInviteMembers,
-            onChanged: onInviteMembersChanged,
-            title: 'دعوة مشاركين',
-            subtitle: 'إرسال الدعوات وإدارة المشاركين.',
-            icon: LucideIcons.userPlus,
-          ),
-          _PermissionTile(
-            value: canViewBudget,
-            onChanged: onViewBudgetChanged,
-            title: 'عرض الميزانية',
-            subtitle: 'إظهار ملخص الميزانية فقط.',
-            icon: LucideIcons.wallet,
-          ),
-          _PermissionTile(
-            value: canViewExpenses,
-            onChanged: onViewExpensesChanged,
-            title: 'عرض المصاريف',
-            subtitle: 'السماح بقراءة المصاريف المسجلة.',
-            icon: LucideIcons.receipt,
-          ),
-          _PermissionTile(
-            value: canViewDebts,
-            onChanged: onViewDebtsChanged,
-            title: 'عرض الديون والأقساط',
-            subtitle: 'بيانات مالية خاصة، فعليها عند الحاجة فقط.',
-            icon: LucideIcons.creditCard,
-          ),
-          _PermissionTile(
-            value: canManageFinancialRecords,
-            onChanged: onManageFinancialRecordsChanged,
-            title: 'إدارة السجلات المالية',
-            subtitle: 'إضافة وتعديل المصاريف والديون.',
-            icon: LucideIcons.fileText,
-          ),
-          _PermissionTile(
-            value: receiveNotifications,
-            onChanged: onReceiveNotificationsChanged,
-            title: 'استلام تنبيهات الخطة',
-            subtitle: 'إظهار الأحداث المهمة المرتبطة بالخطة.',
-            icon: LucideIcons.bellRing,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PermissionTile extends StatelessWidget {
-  const _PermissionTile({
-    required this.value,
-    required this.onChanged,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final bool value;
-  final ValueChanged<bool> onChanged;
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      value: value,
-      onChanged: onChanged,
-      secondary: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: value ? AppTheme.burgundySoft : AppTheme.surface,
-          borderRadius: BorderRadius.circular(13),
-        ),
-        child: Icon(
-          icon,
-          color: value ? AppTheme.burgundy : AppTheme.muted,
-          size: 21,
-        ),
-      ),
-      title: Text(
-        title,
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          color: AppTheme.ink,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-      subtitle: Text(
-        subtitle,
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          color: AppTheme.muted,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivacyHint extends StatelessWidget {
-  const _PrivacyHint();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AarastCard(
-      color: AppTheme.ivory,
-      child: Row(
-        children: [
-          Icon(LucideIcons.lock, color: AppTheme.gold),
-          SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'الخصوصية المالية مغلقة افتراضياً. فعلي صلاحيات الميزانية والمصاريف والديون فقط للعضو المناسب.',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                color: AppTheme.ink,
-                fontWeight: FontWeight.w800,
-                height: 1.45,
               ),
             ),
           ),

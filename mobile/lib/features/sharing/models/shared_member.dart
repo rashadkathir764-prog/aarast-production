@@ -1,4 +1,5 @@
 import '../../../core/phone/phone_number_utils.dart';
+import 'plan_role_permissions.dart';
 
 class SharedMember {
   const SharedMember({
@@ -111,6 +112,26 @@ class SharedMember {
     if (canManageFinancialRecords) labels.add('يمكنه إدارة السجلات المالية');
     return labels;
   }
+
+  /// لقطة الصلاحيات الحالية كقيمة قابلة للتعديل في محرر الصلاحيات.
+  PlanRolePermissions toPermissions() {
+    return PlanRolePermissions(
+      canViewBudget: canViewBudget,
+      canViewExpenses: canViewExpenses,
+      canViewDebts: canViewDebts,
+      canEditPlan: canEditPlan,
+      canManageTasks: canManageTasks,
+      canManageGuests: canManageGuests,
+      canManageProviders: canManageProviders,
+      canInviteMembers: canInviteMembers,
+      canManageFinancialRecords: canManageFinancialRecords,
+      receiveNotifications: receiveNotifications,
+    );
+  }
+
+  /// سطر واحد يلخص ما يستطيعه العضو — لصف العضو المدمج.
+  String get permissionSummary =>
+      isOwner ? 'كل الصلاحيات' : toPermissions().summaryLabel;
 }
 
 class SharedMemberUser {

@@ -61,11 +61,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('مشاركة آمنة للخطة'), findsOneWidget);
-      expect(find.text('1 عضو'), findsOneWidget);
-      expect(find.text('1 دعوة معلقة'), findsOneWidget);
-      expect(find.text('1 وصول مالي'), findsOneWidget);
-      expect(find.text('لديه صلاحية مالية محددة'), findsOneWidget);
+      expect(
+        find.text('المال خاص افتراضيًا — لا يظهر لأي عضو إلا بصلاحية تمنحها.'),
+        findsOneWidget,
+      );
+      expect(find.text('المشاركون (1)'), findsOneWidget);
+      expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
+      expect(find.text('أمينة'), findsOneWidget);
+      // ملخص صلاحيات صادق: مشاهدة فقط مع اطلاع مالي (canViewBudget).
+      expect(find.text('عرض فقط · اطلاع مالي محدود'), findsOneWidget);
+      expect(find.text('مساعد · بانتظار القبول'), findsOneWidget);
       expect(api.getSharedMembersCalls, 1);
       expect(api.getPlanInvitesCalls, 1);
       expect(tester.takeException(), isNull);
@@ -80,6 +85,8 @@ void main() {
         provider: SharingProvider(api),
         child: const SharedWeddingPlansScreen(),
       );
+      expect(find.text('الخطط المشتركة'), findsOneWidget);
+      expect(find.text('الخطط المشتركة معي'), findsNothing);
       await tester.pumpAndSettle();
 
       expect(find.text('1 خطة مشتركة معك'), findsOneWidget);
@@ -100,7 +107,7 @@ const _phaseCPaths = [
   'lib/features/sharing/screens/shared_wedding_plans_screen.dart',
   'lib/features/sharing/widgets/shared_member_card.dart',
   'lib/features/sharing/widgets/shared_plan_card.dart',
-  'lib/features/sharing/widgets/permission_chip.dart',
+  'lib/features/sharing/widgets/permission_editor.dart',
 ];
 
 Future<void> _pumpWithAuth(

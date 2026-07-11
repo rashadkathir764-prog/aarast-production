@@ -167,6 +167,7 @@ class AarastNextActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = AarastMotion.reduceMotion(context);
+    final textTheme = Theme.of(context).textTheme;
 
     Widget iconBadge = Container(
       width: 46,
@@ -228,9 +229,8 @@ class AarastNextActionCard extends StatelessWidget {
                           children: [
                             Text(
                               'الخطوة الذكية',
-                              style: TextStyle(
+                              style: textTheme.labelSmall?.copyWith(
                                 color: _accent,
-                                fontSize: 11.5,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.2,
                               ),
@@ -240,9 +240,8 @@ class AarastNextActionCard extends StatelessWidget {
                               action.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: textTheme.titleMedium?.copyWith(
                                 color: AarastDesignTokens.ink,
-                                fontSize: 16,
                                 fontWeight: FontWeight.w800,
                                 height: 1.3,
                               ),
@@ -252,9 +251,8 @@ class AarastNextActionCard extends StatelessWidget {
                               action.reason,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: textTheme.labelMedium?.copyWith(
                                 color: AarastDesignTokens.muted,
-                                fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
                                 height: 1.45,
                               ),
@@ -309,6 +307,7 @@ class AarastSetupJourneyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final doneCount = steps.where((s) => s.done).length;
     final reduceMotion = AarastMotion.reduceMotion(context);
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       decoration: BoxDecoration(
@@ -337,32 +336,28 @@ class AarastSetupJourneyCard extends StatelessWidget {
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'لنجهّز خطتك في ٣ خطوات',
-                  style: TextStyle(
+                  style: textTheme.titleMedium?.copyWith(
                     color: AarastDesignTokens.title,
-                    fontSize: 16.5,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
               Text(
                 '$doneCount/${steps.length}',
-                style: const TextStyle(
+                style: textTheme.labelLarge?.copyWith(
                   color: AarastDesignTokens.gold,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'كل خطوة تفتح لك صورة أوضح ليومك الكبير.',
-            style: TextStyle(
+            style: textTheme.labelMedium?.copyWith(
               color: AarastDesignTokens.muted,
-              fontSize: 12.5,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -464,11 +459,10 @@ class _SetupStepRow extends StatelessWidget {
                   children: [
                     Text(
                       step.label,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: step.done
                             ? AarastDesignTokens.muted
                             : AarastDesignTokens.ink,
-                        fontSize: 14.5,
                         fontWeight: FontWeight.w800,
                         decoration: step.done
                             ? TextDecoration.lineThrough
@@ -480,11 +474,11 @@ class _SetupStepRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         step.hint,
-                        style: const TextStyle(
-                          color: AarastDesignTokens.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: AarastDesignTokens.muted,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                     ],
                   ],
@@ -552,6 +546,7 @@ class _PulseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -576,9 +571,8 @@ class _PulseTile extends StatelessWidget {
                       data.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: textTheme.labelSmall?.copyWith(
                         color: AarastDesignTokens.muted,
-                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -590,10 +584,8 @@ class _PulseTile extends StatelessWidget {
                 data.value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: textTheme.titleLarge?.copyWith(
                   color: AarastDesignTokens.ink,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
                   height: 1.1,
                 ),
               ),
@@ -602,10 +594,8 @@ class _PulseTile extends StatelessWidget {
                 data.caption,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: textTheme.labelSmall?.copyWith(
                   color: AarastDesignTokens.muted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -662,8 +652,84 @@ class AarastParticipantsGlanceCard extends StatelessWidget {
     return _canManageSharing ? 'إدارة المشاركين' : 'عرض المشاركة';
   }
 
+  /// الكرت الكامل يستحق مساحته فقط عندما يوجد ما يتصرف المستخدم حياله؛
+  /// خلاف ذلك يكفي صف هادئ لا ينافس الميزانية والمهام بصريًا.
+  bool get _needsAttention => summary.pendingInvites > 0 || summary.isLocalOnly;
+
   @override
   Widget build(BuildContext context) {
+    return _needsAttention ? _buildFull(context) : _buildCompact(context);
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final count = summary.participantCount;
+    final caption = count <= 1 ? 'أنت فقط حتى الآن' : '$count مشاركين';
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpenSharing,
+        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: AarastDesignTokens.infoSoft.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AarastDesignTokens.surface,
+                  borderRadius: BorderRadius.circular(
+                    AarastDesignTokens.radiusSm,
+                  ),
+                ),
+                child: const Icon(
+                  LucideIcons.users,
+                  color: AarastDesignTokens.info,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: 'المشاركون في الخطة',
+                    style: textTheme.labelLarge?.copyWith(
+                      color: AarastDesignTokens.ink,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: ' · $caption',
+                        style: textTheme.labelMedium?.copyWith(
+                          color: AarastDesignTokens.muted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                LucideIcons.chevronLeft,
+                size: 18,
+                color: AarastDesignTokens.muted.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFull(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -704,14 +770,13 @@ class AarastParticipantsGlanceCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'المشاركون في الخطة',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: textTheme.titleMedium?.copyWith(
                         color: AarastDesignTokens.title,
-                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -763,10 +828,8 @@ class AarastParticipantsGlanceCard extends StatelessWidget {
                         _body,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: textTheme.labelMedium?.copyWith(
                           color: AarastDesignTokens.ink,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w700,
                           height: 1.4,
                         ),
                       ),
@@ -779,9 +842,8 @@ class AarastParticipantsGlanceCard extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
                   _actionLabel,
-                  style: const TextStyle(
+                  style: textTheme.labelMedium?.copyWith(
                     color: AarastDesignTokens.burgundy,
-                    fontSize: 12.5,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -802,6 +864,7 @@ class _ParticipantMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -810,9 +873,8 @@ class _ParticipantMetric extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: textTheme.labelSmall?.copyWith(
               color: AarastDesignTokens.muted,
-              fontSize: 11.5,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -823,9 +885,8 @@ class _ParticipantMetric extends StatelessWidget {
             child: Text(
               value,
               maxLines: 1,
-              style: const TextStyle(
+              style: textTheme.titleMedium?.copyWith(
                 color: AarastDesignTokens.ink,
-                fontSize: 18,
                 fontWeight: FontWeight.w800,
                 height: 1.1,
               ),
@@ -841,13 +902,11 @@ class AarastMoneyGlanceCard extends StatelessWidget {
   const AarastMoneyGlanceCard({
     required this.summary,
     required this.onOpenMoney,
-    required this.onRecordPayment,
     super.key,
   });
 
   final DashboardSummary summary;
   final VoidCallback onOpenMoney;
-  final VoidCallback onRecordPayment;
 
   @override
   Widget build(BuildContext context) {
@@ -857,6 +916,7 @@ class AarastMoneyGlanceCard extends StatelessWidget {
     final usedRatio = hasBudget ? (spent / total).clamp(0.0, 1.0) : 0.0;
     final nearLimit = usedRatio >= 0.85;
     final reduceMotion = AarastMotion.reduceMotion(context);
+    final textTheme = Theme.of(context).textTheme;
 
     return Material(
       color: Colors.transparent,
@@ -867,10 +927,13 @@ class AarastMoneyGlanceCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AarastDesignTokens.surface,
             borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
-            border: Border.all(color: AarastDesignTokens.border),
+            // لمسة ذهبية تميز أهم كرت تشغيلي عن بقية الأسطح.
+            border: Border.all(
+              color: AarastDesignTokens.gold.withValues(alpha: 0.4),
+            ),
             boxShadow: [
               BoxShadow(
-                color: AarastDesignTokens.ink.withValues(alpha: 0.04),
+                color: AarastDesignTokens.gold.withValues(alpha: 0.1),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -898,29 +961,19 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'الميزانية',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AarastDesignTokens.title,
-                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                  IconButton(
-                    onPressed: onRecordPayment,
-                    tooltip: 'تسجيل دفعة',
-                    icon: const Icon(
-                      Icons.add_circle_rounded,
-                      color: AarastDesignTokens.burgundy,
-                      size: 26,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: AarastDesignTokens.minTapTarget,
-                      minHeight: AarastDesignTokens.minTapTarget,
-                    ),
+                  Icon(
+                    LucideIcons.chevronLeft,
+                    size: 20,
+                    color: AarastDesignTokens.muted.withValues(alpha: 0.7),
                   ),
                 ],
               ),
@@ -938,21 +991,19 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                       AarastDesignTokens.radiusSm,
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         LucideIcons.flag,
                         size: 16,
                         color: AarastDesignTokens.warning,
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'حدد ميزانيتك العامة حتى نتابع معك كل ريال بهدوء.',
-                          style: TextStyle(
+                          style: textTheme.labelMedium?.copyWith(
                             color: AarastDesignTokens.ink,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
                             height: 1.4,
                           ),
                         ),
@@ -1008,11 +1059,10 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                   nearLimit
                       ? 'اقتربت من حد الميزانية — راجع البنود قبل أي دفعة جديدة.'
                       : 'مستخدم ${(usedRatio * 100).round()}% من الميزانية',
-                  style: TextStyle(
+                  style: textTheme.labelSmall?.copyWith(
                     color: nearLimit
                         ? AarastDesignTokens.warning
                         : AarastDesignTokens.muted,
-                    fontSize: 11.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1038,15 +1088,15 @@ class _MoneyFigure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: textTheme.labelSmall?.copyWith(
               color: AarastDesignTokens.muted,
-              fontSize: 11.5,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1057,16 +1107,15 @@ class _MoneyFigure extends StatelessWidget {
             child: Text.rich(
               TextSpan(
                 text: value,
-                style: TextStyle(
+                style: textTheme.titleMedium?.copyWith(
                   color: color,
-                  fontSize: 16.5,
                   fontWeight: FontWeight.w800,
                 ),
-                children: const [
+                children: [
                   TextSpan(
                     text: ' ر.ي',
-                    style: TextStyle(
-                      fontSize: 10.5,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: color,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

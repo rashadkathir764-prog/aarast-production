@@ -111,7 +111,7 @@ class _SharingContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isCheckingSharingAccess) {
-      return AarastSkeleton.list(rows: 4, rowHeight: 96, withHeader: true);
+      return AarastSkeleton.list(rows: 6, rowHeight: 60, withHeader: true);
     }
 
     if (showLoginGate) {
@@ -131,7 +131,7 @@ class _SharingContent extends StatelessWidget {
     }
 
     if (provider.isLoading && provider.members.isEmpty) {
-      return AarastSkeleton.list(rows: 4, rowHeight: 96, withHeader: true);
+      return AarastSkeleton.list(rows: 6, rowHeight: 60, withHeader: true);
     }
 
     if (provider.errorMessage != null && provider.members.isEmpty) {
@@ -147,19 +147,13 @@ class _SharingContent extends StatelessWidget {
       );
     }
 
+    final pendingInvites = provider.invites
+        .where((invite) => invite.isPending)
+        .toList();
+
     return ListView(
       children: AarastStagger.children(context, [
-        _SharingHero(
-          memberCount: provider.members.length,
-          pendingInviteCount: provider.invites
-              .where((invite) => invite.isPending)
-              .length,
-          financialAccessCount: provider.members
-              .where((member) => member.hasFinancialAccess)
-              .length,
-        ),
-        const SizedBox(height: 12),
-        const _PrivacyNotice(),
+        const _PrivacyStrip(),
         const SizedBox(height: 12),
         AarastButton(
           label: 'إضافة عضو',
@@ -168,7 +162,6 @@ class _SharingContent extends StatelessWidget {
               ? null
               : () => context.push(AppRouter.addSharedMember(weddingPlanId)),
         ),
-
         if (provider.errorMessage != null) ...[
           const SizedBox(height: 12),
           Text(
@@ -177,38 +170,22 @@ class _SharingContent extends StatelessWidget {
             style: const TextStyle(color: AppTheme.danger),
           ),
         ],
-        const SizedBox(height: 18),
-        if (provider.invites.any((invite) => invite.isPending)) ...[
-          Text(
-            'الدعوات المعلقة',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.deepBurgundy,
-              fontWeight: FontWeight.w800,
-            ),
-            textAlign: TextAlign.right,
-          ),
+        if (pendingInvites.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          _SectionTitle('الدعوات المعلقة (${pendingInvites.length})'),
           const SizedBox(height: 8),
-          for (final invite in provider.invites.where(
-            (invite) => invite.isPending,
-          ))
+          for (final invite in pendingInvites)
             _PendingInviteCard(
               invite: invite,
               onCancel: provider.isSubmitting
                   ? null
                   : () => provider.cancelInvite(invite),
             ),
-          const SizedBox(height: 14),
         ],
-        Text(
-          'المشاركون المقبولون',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.deepBurgundy,
-            fontWeight: FontWeight.w800,
-          ),
-          textAlign: TextAlign.right,
-        ),
-        if (provider.members.isEmpty) ...[
-          const SizedBox(height: 10),
+        const SizedBox(height: 18),
+        _SectionTitle('المشاركون (${provider.members.length})'),
+        const SizedBox(height: 8),
+        if (provider.members.isEmpty)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             alignment: Alignment.center,
@@ -217,18 +194,14 @@ class _SharingContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: AppTheme.border),
             ),
-            child: const Text(
+            child: Text(
               'الخطة خاصة بك الآن. استخدم زر إضافة عضو لإضافة شخص موثوق.',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: AppTheme.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
               ),
               textAlign: TextAlign.center,
             ),
           ),
-        ],
-        const SizedBox(height: 8),
         for (final member in provider.members)
           SharedMemberCard(
             member: member,
@@ -244,60 +217,49 @@ class _SharingContent extends StatelessWidget {
   }
 }
 
-class _SharingHero extends StatelessWidget {
-  const _SharingHero({
-    required this.memberCount,
-    required this.pendingInviteCount,
-    required this.financialAccessCount,
-  });
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
 
-  final int memberCount;
-  final int pendingInviteCount;
-  final int financialAccessCount;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
-      color: AppTheme.ivory,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Text(
+      text,
+      textAlign: TextAlign.right,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        color: AppTheme.deepBurgundy,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+/// سطر خصوصية واحد يغني عن كرتَي الشرح السابقين — العنوان في ترويسة
+/// الصفحة أصلًا، والمهم الوحيد هنا: المال لا يُشارك إلا بصلاحية.
+class _PrivacyStrip extends StatelessWidget {
+  const _PrivacyStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.gold.withAlpha(26),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      ),
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(LucideIcons.shieldCheck, color: AppTheme.burgundy),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'مشاركة آمنة للخطة',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.deepBurgundy,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+          const Icon(LucideIcons.lock, size: 15, color: AppTheme.gold),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'المال خاص افتراضيًا — لا يظهر لأي عضو إلا بصلاحية تمنحها.',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppTheme.ink,
+                height: 1.4,
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              AarastStatusPill(
-                label: '$memberCount عضو',
-                icon: LucideIcons.users,
-                color: AppTheme.burgundy,
-              ),
-              AarastStatusPill(
-                label: '$pendingInviteCount دعوة معلقة',
-                icon: LucideIcons.mail,
-                color: AppTheme.gold,
-              ),
-              AarastStatusPill(
-                label: '$financialAccessCount وصول مالي',
-                icon: LucideIcons.walletCards,
-                color: AppTheme.success,
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -313,72 +275,52 @@ class _PendingInviteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: AarastCard(
-        color: AppTheme.surface,
-        border: Border.all(color: AppTheme.border),
-        child: Row(
-          children: [
-            const Icon(LucideIcons.send, color: AppTheme.gold),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    invite.displayName,
-                    style: const TextStyle(
-                      color: AppTheme.ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    '${sharedMemberRoleLabel(invite.role)} • بانتظار القبول',
-                    style: const TextStyle(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AarastButton(
-              label: 'إلغاء الدعوة',
-              variant: AarastButtonVariant.ghost,
-              expand: false,
-              onPressed: onCancel,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivacyNotice extends StatelessWidget {
-  const _PrivacyNotice();
-
-  @override
-  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return AarastCard(
-      color: AppTheme.surface,
-      border: Border.all(color: AppTheme.border),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
         children: [
-          Text(
-            'إدارة الخصوصية',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: AppTheme.deepBurgundy,
-              fontWeight: FontWeight.w800,
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppTheme.gold.withAlpha(26),
+              shape: BoxShape.circle,
             ),
-            textAlign: TextAlign.right,
+            child: const Icon(LucideIcons.send, size: 15, color: AppTheme.gold),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'هذه الشاشة مخصصة لمالك الخطة. البيانات المالية مثل الميزانية والمصاريف والديون لا تظهر للأعضاء إلا بصلاحية واضحة.',
-            textAlign: TextAlign.right,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  invite.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.titleSmall?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${sharedMemberRoleLabel(invite.role)} · بانتظار القبول',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.labelSmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'إلغاء الدعوة',
+            onPressed: onCancel,
+            icon: const Icon(LucideIcons.x, size: 18, color: AppTheme.muted),
           ),
         ],
       ),

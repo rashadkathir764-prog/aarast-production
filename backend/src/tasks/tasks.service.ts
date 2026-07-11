@@ -23,6 +23,9 @@ export interface TaskResponse {
   id: string;
   weddingPlanId: string;
   assigneeUserId: string | null;
+  responsibleName: string | null;
+  responsiblePhone: string | null;
+  responsibleSource: string | null;
   title: string;
   description: string | null;
   dueDate: Date | null;
@@ -85,6 +88,9 @@ export class TasksService {
       data: {
         weddingPlanId,
         assigneeUserId: null,
+        responsibleName: this.optionalText(dto.responsibleName),
+        responsiblePhone: this.optionalText(dto.responsiblePhone),
+        responsibleSource: this.optionalText(dto.responsibleSource),
         title: this.requiredText(dto.title, 'title'),
         description: this.optionalText(dto.description),
         dueDate: this.optionalDate(dto.dueDate, 'dueDate'),
@@ -103,7 +109,11 @@ export class TasksService {
     weddingPlanId: string,
     query?: ListQueryDto,
   ): Promise<TaskResponse[]> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
+    const canManageTasks = this.permissions.canManageTasks(context);
 
     const tasks = await this.prisma.weddingTask.findMany({
       where: { weddingPlanId },
@@ -111,7 +121,7 @@ export class TasksService {
       ...pageArgs(query),
     });
 
-    return tasks.map((task) => this.toResponse(task));
+    return tasks.map((task) => this.toResponse(task, canManageTasks));
   }
 
   async findOne(
@@ -119,8 +129,11 @@ export class TasksService {
     id: string,
   ): Promise<TaskResponse> {
     const task = await this.findTaskOrThrow(id);
-    await this.permissions.assertPlanReadable(task.weddingPlanId, currentUser);
-    return this.toResponse(task);
+    const context = await this.permissions.assertPlanReadable(
+      task.weddingPlanId,
+      currentUser,
+    );
+    return this.toResponse(task, this.permissions.canManageTasks(context));
   }
 
   async update(
@@ -131,6 +144,7 @@ export class TasksService {
     const existing = await this.findTaskOrThrow(id);
     await this.permissions.assertTaskManageable(existing.weddingPlanId, currentUser);
 
+    const manualResponsibility = this.manualResponsibilityUpdate(dto);
     const task = await this.prisma.weddingTask.update({
       where: { id },
       data: {
@@ -146,6 +160,7 @@ export class TasksService {
         ...(dto.taskCategory !== undefined
           ? { taskCategory: this.optionalText(dto.taskCategory) }
           : {}),
+        ...manualResponsibility,
         ...(dto.reminderAt !== undefined
           ? { reminderAt: this.optionalDate(dto.reminderAt, 'reminderAt') }
           : {}),
@@ -172,7 +187,16 @@ export class TasksService {
 
     const task = await this.prisma.weddingTask.update({
       where: { id },
-      data: { assigneeUserId },
+      data: {
+        assigneeUserId,
+        ...(assigneeUserId
+          ? {
+              responsibleName: null,
+              responsiblePhone: null,
+              responsibleSource: null,
+            }
+          : {}),
+      },
     });
 
     return this.toResponse(task);
@@ -404,11 +428,42 @@ export class TasksService {
     return new Date(timestamp);
   }
 
-  private toResponse(task: WeddingTask): TaskResponse {
+  private manualResponsibilityUpdate(dto: UpdateTaskDto) {
+    const hasUpdate =
+      dto.responsibleName !== undefined ||
+      dto.responsiblePhone !== undefined ||
+      dto.responsibleSource !== undefined;
+    if (!hasUpdate) return {};
+
+    const responsibleName = this.optionalText(dto.responsibleName);
+    const responsiblePhone = this.optionalText(dto.responsiblePhone);
+    const responsibleSource = this.optionalText(dto.responsibleSource);
+    const hasManualResponsible =
+      responsibleName !== null ||
+      responsiblePhone !== null ||
+      responsibleSource !== null;
+
+    return {
+      responsibleName,
+      responsiblePhone,
+      responsibleSource,
+      ...(hasManualResponsible ? { assigneeUserId: null } : {}),
+    };
+  }
+
+  private toResponse(
+    task: WeddingTask,
+    includeResponsiblePhone = true,
+  ): TaskResponse {
     return {
       id: task.id,
       weddingPlanId: task.weddingPlanId,
       assigneeUserId: task.assigneeUserId,
+      responsibleName: task.responsibleName,
+      responsiblePhone: includeResponsiblePhone
+        ? task.responsiblePhone
+        : null,
+      responsibleSource: task.responsibleSource,
       title: task.title,
       description: task.description,
       dueDate: task.dueDate,

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/offline/offline_status_widgets.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
@@ -68,12 +69,10 @@ class _MoreScreenState extends State<MoreScreen> {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 124),
         children: AarastStagger.children(context, [
           _MoreHeader(
-            name: name,
-            avatarUrl: user?.avatarUrl,
             notificationCount: notifications?.unreadCount ?? 0,
             onNotifications: () => context.push(AppRouter.notifications),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           FutureBuilder<GuestOnboardingDraft?>(
             future: _identityDraftFuture,
             builder: (context, snapshot) {
@@ -92,17 +91,13 @@ class _MoreScreenState extends State<MoreScreen> {
               );
             },
           ),
-          const SizedBox(height: 20),
-          const _MenuSectionTitle(
-            title: 'خطط الزفاف',
-            subtitle: 'إدارة خططك أو فتح ما تمت مشاركته معك',
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 18),
+          const _MenuSectionTitle(title: 'خطط الزفاف'),
+          const SizedBox(height: 6),
           _MenuGroup(
             children: [
               _MoreActionTile(
                 title: 'الخطط المشتركة معي',
-                subtitle: 'الخطط التي تمت مشاركتها معك للوصول إليها',
                 icon: LucideIcons.users,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
@@ -110,7 +105,6 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _MoreActionTile(
                 title: 'خططي',
-                subtitle: 'إدارة كل خطط الزفاف الخاصة بك',
                 icon: LucideIcons.calendarDays,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
@@ -118,7 +112,6 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _MoreActionTile(
                 title: 'إنشاء خطة زفاف',
-                subtitle: 'ابدأ خطة جديدة لتنظيم يومك المميز',
                 icon: LucideIcons.plusCircle,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
@@ -126,43 +119,28 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const _MenuSectionTitle(
-            title: 'الموردون',
-            subtitle: 'الموردون المحفوظون وطلبات المقارنة',
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          const _MenuSectionTitle(title: 'الموردون'),
+          const SizedBox(height: 6),
+          // «تصفح الموردين» ليس هنا عمدًا — له تبويب خاص في الشريط السفلي.
           _MenuGroup(
             children: [
               _MoreActionTile(
                 title: 'الموردون المحفوظون',
-                subtitle: 'افتح الصالات والمصورين والخدمات التي حفظتها',
                 icon: LucideIcons.heart,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
                 onTap: () => context.push(AppRouter.favoriteProviders),
               ),
-              _MoreActionTile(
-                title: 'تصفح الموردين',
-                subtitle: 'ابحث عن موردين واطلب عروض أسعار بدون حجز أو دفع',
-                icon: LucideIcons.store,
-                iconColor: AppTheme.gold,
-                iconBackground: AppTheme.goldSoft,
-                onTap: () => context.push(AppRouter.providerMarketplace),
-              ),
             ],
           ),
-          const SizedBox(height: 16),
-          const _MenuSectionTitle(
-            title: 'الحساب والمساعدة',
-            subtitle: 'إعدادات هادئة، دعم، وتنبيهات عند الحاجة',
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          const _MenuSectionTitle(title: 'الحساب والمساعدة'),
+          const SizedBox(height: 6),
           _MenuGroup(
             children: [
               _MoreActionTile(
                 title: 'الإعدادات',
-                subtitle: 'تخصيص التطبيق والتفضيلات',
                 icon: LucideIcons.settings,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
@@ -170,7 +148,6 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               _MoreActionTile(
                 title: 'الدعم والمساعدة',
-                subtitle: 'تواصل معنا أو استعرض الأسئلة الشائعة',
                 icon: LucideIcons.headphones,
                 iconColor: AppTheme.burgundy,
                 iconBackground: AppTheme.burgundySoft,
@@ -178,20 +155,21 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const _MenuSectionTitle(
-            title: 'المزامنة',
-            subtitle: 'حالة البيانات المحلية والحسابية',
-          ),
-          const SizedBox(height: 8),
-          const _MenuGroup(children: [OfflineSyncNowTile()]),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (!hasAccount)
             _OptionalLoginTile(onTap: () => context.push(AppRouter.login))
-          else ...[
-            _LogoutTile(onTap: () => _logout(context)),
-            const SizedBox(height: 12),
-            _DeleteAccountTile(onTap: () => _deleteAccount(context)),
+          else
+            _DangerGroup(
+              onLogout: () => _logout(context),
+              onDeleteAccount: () => _deleteAccount(context),
+            ),
+          // كرت المزامنة في ذيل القائمة، ويختفي مع عنوانه عندما لا تتوفر
+          // خدمة المزامنة أصلًا — لا عنوان معلقًا فوق كرت فارغ.
+          if (_hasSyncService(context)) ...[
+            const SizedBox(height: 14),
+            const _MenuSectionTitle(title: 'المزامنة'),
+            const SizedBox(height: 6),
+            const _MenuGroup(children: [OfflineSyncNowTile()]),
           ],
           const SizedBox(height: 22),
           const _VersionFooter(),
@@ -238,7 +216,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'هل ترغبين في الخروج من حسابك الآن؟',
+                    'هل ترغب في الخروج من حسابك الآن؟',
                     textAlign: TextAlign.center,
                     style: Theme.of(sheetContext).textTheme.bodyMedium
                         ?.copyWith(
@@ -514,6 +492,15 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 }
 
+bool _hasSyncService(BuildContext context) {
+  try {
+    context.watch<OfflineSyncService>();
+    return true;
+  } on ProviderNotFoundException {
+    return false;
+  }
+}
+
 NotificationsProvider? _maybeReadNotifications(BuildContext context) {
   try {
     return context.read<NotificationsProvider>();
@@ -576,52 +563,34 @@ class _IdentitySummary {
 }
 
 class _MenuSectionTitle extends StatelessWidget {
-  const _MenuSectionTitle({required this.title, required this.subtitle});
+  const _MenuSectionTitle({required this.title});
 
   final String title;
-  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 8,
-            height: 34,
+            width: 4,
+            height: 16,
             decoration: BoxDecoration(
               color: AppTheme.gold,
               borderRadius: BorderRadius.circular(999),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.title,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppTheme.title,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],
@@ -632,53 +601,27 @@ class _MenuSectionTitle extends StatelessWidget {
 
 class _MoreHeader extends StatelessWidget {
   const _MoreHeader({
-    required this.name,
     required this.notificationCount,
     required this.onNotifications,
-    this.avatarUrl,
   });
 
-  final String name;
-  final String? avatarUrl;
   final int notificationCount;
   final VoidCallback onNotifications;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'المزيد',
-                style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: AppTheme.burgundyDeep,
-                  fontWeight: FontWeight.w900,
-                  fontFamily: AppTheme.displayFontFamily,
-                  height: 1,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'كل أدواتك في مكان واحد',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.muted,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+          child: Text(
+            'المزيد',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: AppTheme.burgundyDeep,
+              fontFamily: AppTheme.displayFontFamily,
+            ),
           ),
         ),
         const SizedBox(width: 14),
-        _RoundIconButton(
-          icon: LucideIcons.user,
-          avatarUrl: avatarUrl,
-          onTap: () => _showAccountSnack(context, name),
-        ),
-        const SizedBox(width: 10),
         _RoundIconButton(
           icon: LucideIcons.bell,
           badge: notificationCount > 0 ? '$notificationCount' : null,
@@ -687,36 +630,23 @@ class _MoreHeader extends StatelessWidget {
       ],
     );
   }
-
-  void _showAccountSnack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
 }
 
 class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({
-    required this.icon,
-    this.onTap,
-    this.badge,
-    this.avatarUrl,
-  });
+  const _RoundIconButton({required this.icon, this.onTap, this.badge});
 
   final IconData icon;
   final VoidCallback? onTap;
   final String? badge;
-  final String? avatarUrl;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = avatarUrl?.trim();
     return InkWell(
       onTap: onTap,
       customBorder: const CircleBorder(),
       child: Container(
-        width: 46,
-        height: 46,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: AppTheme.surface,
           shape: BoxShape.circle,
@@ -726,19 +656,7 @@ class _RoundIconButton extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (imageUrl == null || imageUrl.isEmpty)
-              Icon(icon, color: AppTheme.burgundy)
-            else
-              ClipOval(
-                child: Image.network(
-                  imageUrl,
-                  width: 46,
-                  height: 46,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      Icon(icon, color: AppTheme.burgundy),
-                ),
-              ),
+            Icon(icon, color: AppTheme.burgundy, size: 20),
             if (badge != null)
               PositionedDirectional(
                 top: 1,
@@ -839,7 +757,7 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final imageUrl = avatarUrl?.trim();
     return AarastCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       color: AppTheme.surface,
       child: Column(
         children: [
@@ -851,7 +769,7 @@ class _ProfileCard extends StatelessWidget {
                   border: Border.all(color: AppTheme.gold.withAlpha(95)),
                 ),
                 child: CircleAvatar(
-                  radius: 38,
+                  radius: 28,
                   backgroundColor: AppTheme.ivory,
                   backgroundImage: imageUrl == null || imageUrl.isEmpty
                       ? null
@@ -860,12 +778,12 @@ class _ProfileCard extends StatelessWidget {
                       ? const Icon(
                           LucideIcons.user,
                           color: AppTheme.gold,
-                          size: 38,
+                          size: 26,
                         )
                       : null,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -874,12 +792,12 @@ class _ProfileCard extends StatelessWidget {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppTheme.burgundyDeep,
-                        fontWeight: FontWeight.w900,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       phone == null || phone!.trim().isEmpty
                           ? 'حساب أعرست'
@@ -889,9 +807,8 @@ class _ProfileCard extends StatelessWidget {
                           : TextDirection.ltr,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: AppTheme.muted,
-                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
@@ -998,7 +915,6 @@ class _MenuGroup extends StatelessWidget {
 class _MoreActionTile extends StatelessWidget {
   const _MoreActionTile({
     required this.title,
-    required this.subtitle,
     required this.icon,
     required this.iconColor,
     required this.iconBackground,
@@ -1006,7 +922,6 @@ class _MoreActionTile extends StatelessWidget {
   });
 
   final String title;
-  final String subtitle;
   final IconData icon;
   final Color iconColor;
   final Color iconBackground;
@@ -1017,51 +932,35 @@ class _MoreActionTile extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: iconBackground,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
-              child: Icon(icon, color: iconColor, size: 24),
+              child: Icon(icon, color: iconColor, size: 18),
             ),
-            const SizedBox(width: 13),
+            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppTheme.ink,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(width: 8),
             const Icon(
               LucideIcons.chevronLeft,
               color: AppTheme.muted,
-              size: 24,
+              size: 18,
             ),
           ],
         ),
@@ -1070,10 +969,12 @@ class _MoreActionTile extends StatelessWidget {
   }
 }
 
-class _LogoutTile extends StatelessWidget {
-  const _LogoutTile({required this.onTap});
+/// إجراءات الحساب الحساسة في مجموعة واحدة هادئة — لا كرتان منفوخان.
+class _DangerGroup extends StatelessWidget {
+  const _DangerGroup({required this.onLogout, required this.onDeleteAccount});
 
-  final VoidCallback onTap;
+  final VoidCallback onLogout;
+  final VoidCallback onDeleteAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -1081,102 +982,69 @@ class _LogoutTile extends StatelessWidget {
       padding: EdgeInsets.zero,
       color: AppTheme.surface,
       border: Border.all(color: AppTheme.dangerSoft),
+      child: Column(
+        children: [
+          _DangerTile(
+            title: 'تسجيل الخروج',
+            icon: LucideIcons.logOut,
+            onTap: onLogout,
+          ),
+          Divider(height: 1, color: AppTheme.dangerSoft.withAlpha(150)),
+          _DangerTile(
+            title: 'حذف الحساب نهائيًا',
+            icon: LucideIcons.trash2,
+            onTap: onDeleteAccount,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DangerTile extends StatelessWidget {
+  const _DangerTile({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           children: [
             Container(
-              width: 50,
-              height: 50,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: AppTheme.dangerSoft,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                borderRadius: BorderRadius.circular(AppTheme.radiusSm),
               ),
-              child: const Icon(
-                LucideIcons.logOut,
-                color: AppTheme.danger,
-                size: 24,
-              ),
+              child: Icon(icon, color: AppTheme.danger, size: 18),
             ),
-            const SizedBox(width: 13),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'تسجيل الخروج',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: AppTheme.danger,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
             const Icon(
               LucideIcons.chevronLeft,
               color: AppTheme.danger,
-              size: 24,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DeleteAccountTile extends StatelessWidget {
-  const _DeleteAccountTile({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      padding: EdgeInsets.zero,
-      color: AppTheme.surface,
-      border: Border.all(color: AppTheme.dangerSoft),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: AppTheme.dangerSoft,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              ),
-              child: const Icon(
-                LucideIcons.trash2,
-                color: AppTheme.danger,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'حذف الحساب',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.danger,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'إزالة حسابك وكل بياناتك نهائياً',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.muted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              LucideIcons.chevronLeft,
-              color: AppTheme.danger,
-              size: 24,
+              size: 18,
             ),
           ],
         ),

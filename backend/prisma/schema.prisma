@@ -552,21 +552,24 @@ model FinancialInstallment {
 }
 
 model WeddingTask {
-  id             String                     @id @default(cuid())
-  weddingPlanId  String
-  assigneeUserId String?
-  title          String
-  description    String?
-  dueDate        DateTime?
-  taskCategory   String?
-  reminderAt     DateTime?
-  status         WeddingTaskStatus          @default(TODO)
-  priority       WeddingTaskPriority        @default(MEDIUM)
-  createdAt      DateTime                   @default(now())
-  updatedAt      DateTime                   @updatedAt
-  weddingPlan    WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  assignee       User?                      @relation("AssignedWeddingTasks", fields: [assigneeUserId], references: [id], onDelete: SetNull)
-  checklistItems WeddingTaskChecklistItem[]
+  id                String                     @id @default(cuid())
+  weddingPlanId     String
+  assigneeUserId    String?
+  responsibleName   String?
+  responsiblePhone  String?
+  responsibleSource String?
+  title             String
+  description       String?
+  dueDate           DateTime?
+  taskCategory      String?
+  reminderAt        DateTime?
+  status            WeddingTaskStatus          @default(TODO)
+  priority          WeddingTaskPriority        @default(MEDIUM)
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  weddingPlan       WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  assignee          User?                      @relation("AssignedWeddingTasks", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  checklistItems    WeddingTaskChecklistItem[]
 
   @@index([weddingPlanId, status])
   @@index([assigneeUserId])
@@ -704,20 +707,20 @@ model Notification {
 }
 
 model OutboxEvent {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   type          String
   aggregateType String?
   aggregateId   String?
   payload       Json
-  status        String   @default("PENDING")
-  attemptCount  Int      @default(0)
-  nextAttemptAt DateTime @default(now())
+  status        String    @default("PENDING")
+  attemptCount  Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
   lockedAt      DateTime?
   lockedBy      String?
   processedAt   DateTime?
   lastError     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([status, nextAttemptAt, createdAt])
   @@index([aggregateType, aggregateId, createdAt])

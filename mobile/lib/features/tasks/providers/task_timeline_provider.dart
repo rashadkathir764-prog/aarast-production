@@ -283,6 +283,12 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           responsibleSource: responsibleSource,
         ),
       );
+    } else {
+      payload.addAll({
+        'responsibleName': assigneeUserId == null ? responsibleName : null,
+        'responsiblePhone': assigneeUserId == null ? responsiblePhone : null,
+        'responsibleSource': assigneeUserId == null ? responsibleSource : null,
+      });
     }
 
     _isSubmitting = true;

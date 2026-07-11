@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/network/api_client.dart';
@@ -177,7 +178,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                           ),
                         ),
                         child: const Icon(
-                          Icons.cloud_upload_rounded,
+                          LucideIcons.uploadCloud,
                           color: AppTheme.burgundy,
                           size: 28,
                         ),
@@ -225,17 +226,17 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                         runSpacing: 8,
                         children: [
                           _CountChip(
-                            icon: Icons.payments_rounded,
+                            icon: LucideIcons.wallet,
                             label: 'المصاريف',
                             count: widget.snapshot.expenses.length,
                           ),
                           _CountChip(
-                            icon: Icons.checklist_rounded,
+                            icon: LucideIcons.listChecks,
                             label: 'المهام',
                             count: widget.snapshot.tasks.length,
                           ),
                           _CountChip(
-                            icon: Icons.groups_rounded,
+                            icon: LucideIcons.users,
                             label: 'الضيوف',
                             count: widget.snapshot.guests.length,
                           ),
@@ -272,7 +273,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                 const SizedBox(height: 20),
                 AarastButton(
                   label: 'رفع الخطة إلى حسابي',
-                  icon: Icons.cloud_upload_rounded,
+                  icon: LucideIcons.uploadCloud,
                   isLoading: _isUploading,
                   onPressed: _isUploading ? null : _migrate,
                 ),
@@ -293,7 +294,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.lock_outline_rounded,
+                      LucideIcons.lock,
                       size: 16,
                       color: AppTheme.muted,
                     ),

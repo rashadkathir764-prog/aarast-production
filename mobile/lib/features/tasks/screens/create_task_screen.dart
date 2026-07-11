@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +12,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../auth/providers/auth_controller.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../sharing/providers/sharing_provider.dart';
 import '../models/wedding_task.dart';
@@ -233,11 +234,17 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
     final sharingProvider = context.watch<SharingProvider?>();
+    final currentUserId = context.watch<AuthController?>()?.user?.id;
     final category = _categories.firstWhere((item) => item.id == _category);
     final participants = _membersForPlan(
       sharingProvider?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
     );
+    final selfMember =
+        _selectedAssigneeUserId == null &&
+            _isSelfLabel(_responsibleNameController.text)
+        ? _findCurrentParticipant(participants, currentUserId)
+        : null;
 
     return AarastScreenFrame(
       maxWidth: 480,
@@ -384,8 +391,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                           const SizedBox(height: 14),
                           _ResponsibleSection(
                             participants: participants,
-                            selectedAssigneeUserId: _selectedAssigneeUserId,
-                            selectedAssigneeRole: _selectedAssigneeRole,
+                            selectedAssigneeUserId:
+                                _selectedAssigneeUserId ?? selfMember?.userId,
+                            selectedAssigneeRole:
+                                _selectedAssigneeRole ?? selfMember?.role,
                             responsibleNameController:
                                 _responsibleNameController,
                             responsiblePhoneController:
@@ -460,20 +469,38 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     final description = _descriptionController.text.trim();
     final normalizedDescription = description.isEmpty ? null : description;
     final normalizedResponsiblePhone = _normalizedResponsiblePhone();
-    final hasParticipant = _selectedAssigneeUserId?.trim().isNotEmpty == true;
+    var assigneeUserId = _selectedAssigneeUserId;
+    var assigneeName = _selectedAssigneeName;
+    var assigneePhone = _selectedAssigneePhone;
+    var assigneeRole = _selectedAssigneeRole;
+    var hasParticipant = assigneeUserId?.trim().isNotEmpty == true;
+    if (!hasParticipant &&
+        !AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
+        _isSelfLabel(_responsibleNameController.text)) {
+      final sharingProvider = context.read<SharingProvider?>();
+      final currentUserId = context.read<AuthController?>()?.user?.id;
+      final participants = _membersForPlan(
+        sharingProvider?.members ?? const <SharedMember>[],
+        widget.weddingPlanId,
+      );
+      final selfMember = _findCurrentParticipant(participants, currentUserId);
+      if (selfMember == null) {
+        AarastToast.showError(
+          context,
+          'تعذر تحديد حسابك ضمن الخطة. انتظر تحميل المشاركين ثم حاول مجدداً.',
+        );
+        return;
+      }
+      assigneeUserId = selfMember.userId;
+      assigneeName = selfMember.displayName;
+      assigneePhone = selfMember.user?.phone;
+      assigneeRole = selfMember.role;
+      hasParticipant = true;
+    }
     final responsibleName = hasParticipant
         ? null
         : _responsibleNameForPayload();
     final responsibleSource = hasParticipant ? null : _responsibleSource.name;
-    if (!AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
-        !hasParticipant &&
-        (responsibleName != null || normalizedResponsiblePhone != null)) {
-      AarastToast.showError(
-        context,
-        'حفظ مسؤول يدوي للحسابات يحتاج دعماً من الخادم؛ اختر مشاركاً من الخطة أو احفظ المهمة بدون رقم.',
-      );
-      return;
-    }
     final task = _editingTask(provider);
     final saved = _isEditMode
         ? task != null &&
@@ -484,10 +511,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 description: normalizedDescription,
                 dueDate: _dueDate,
                 taskCategory: _category,
-                assigneeUserId: _selectedAssigneeUserId,
-                assigneeName: _selectedAssigneeName,
-                assigneePhone: _selectedAssigneePhone,
-                assigneeRole: _selectedAssigneeRole,
+                assigneeUserId: assigneeUserId,
+                assigneeName: assigneeName,
+                assigneePhone: assigneePhone,
+                assigneeRole: assigneeRole,
                 responsibleName: responsibleName,
                 responsiblePhone: hasParticipant
                     ? null
@@ -502,10 +529,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             description: normalizedDescription,
             dueDate: _dueDate,
             taskCategory: _category,
-            assigneeUserId: _selectedAssigneeUserId,
-            assigneeName: _selectedAssigneeName,
-            assigneePhone: _selectedAssigneePhone,
-            assigneeRole: _selectedAssigneeRole,
+            assigneeUserId: assigneeUserId,
+            assigneeName: assigneeName,
+            assigneePhone: assigneePhone,
+            assigneeRole: assigneeRole,
             responsibleName: responsibleName,
             responsiblePhone: hasParticipant
                 ? null
@@ -620,7 +647,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   String? _responsibleNameForPayload() {
     final value = _responsibleNameController.text.trim();
-    if (value.isEmpty || value == 'أنا') return null;
+    if (value.isEmpty || _isSelfLabel(value)) return null;
     return value;
   }
 
@@ -857,9 +884,7 @@ class _ParticipantRow extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                selected
-                    ? LucideIcons.checkCircle
-                    : LucideIcons.user,
+                selected ? LucideIcons.checkCircle : LucideIcons.user,
                 color: selected ? AppTheme.burgundy : AppTheme.gold,
               ),
               const SizedBox(width: 12),
@@ -981,10 +1006,7 @@ class _SelectorField extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              LucideIcons.chevronDown,
-              color: AppTheme.muted,
-            ),
+            const Icon(LucideIcons.chevronDown, color: AppTheme.muted),
           ],
         ),
       ),
@@ -1062,7 +1084,9 @@ class _CategoryRow extends StatelessWidget {
       child: AarastCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         color: selected ? AppTheme.burgundySoft : AppTheme.surface,
-        border: Border.all(color: selected ? AppTheme.burgundy : AppTheme.border),
+        border: Border.all(
+          color: selected ? AppTheme.burgundy : AppTheme.border,
+        ),
         onTap: onTap,
         child: Row(
           children: [
@@ -1145,4 +1169,21 @@ SharedMember? _findSelectedParticipant(
     if (member.userId == id) return member;
   }
   return null;
+}
+
+SharedMember? _findCurrentParticipant(
+  List<SharedMember> members,
+  String? currentUserId,
+) {
+  final id = currentUserId?.trim();
+  if (id == null || id.isEmpty) return null;
+  for (final member in members) {
+    if (member.userId == id) return member;
+  }
+  return null;
+}
+
+bool _isSelfLabel(String value) {
+  final normalized = value.trim().replaceAll('أ', 'ا').replaceAll('إ', 'ا');
+  return normalized == 'انا';
 }

@@ -5,8 +5,16 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
+import '../widgets/permission_editor.dart';
+import '../widgets/shared_member_card.dart';
+
+/// الأدوار الأساسية المعروضة — نفس قائمة شاشة الإضافة. دور العضو الحالي
+/// يُدرج دائمًا حتى لو كان من الأدوار الخلفية القديمة (MANAGER/CONTRIBUTOR)
+/// فلا تنكسر القائمة عند فتح عضو أضيف بها.
+const _baseEditRoles = ['VIEWER', 'GROOM', 'BRIDE', 'FAMILY', 'HELPER'];
 
 class EditSharedMemberScreen extends StatefulWidget {
   const EditSharedMemberScreen({required this.sharedMemberId, super.key});
@@ -19,12 +27,13 @@ class EditSharedMemberScreen extends StatefulWidget {
 
 class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   String _role = 'VIEWER';
-  bool _canViewBudget = false;
-  bool _canViewExpenses = false;
-  bool _canViewDebts = false;
-  bool _canManageTasks = false;
-  bool _canManageFinancialRecords = false;
+  PlanRolePermissions _permissions = PlanRolePermissions.forRole('VIEWER');
   bool _initialized = false;
+
+  List<String> _rolesFor(SharedMember member) {
+    if (_baseEditRoles.contains(member.role)) return _baseEditRoles;
+    return [..._baseEditRoles, member.role];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +42,9 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
         provider.selectedMember ?? provider.findMember(widget.sharedMemberId);
 
     if (member == null) {
-      return const AarastScaffold(
+      return const AarastPageScaffold(
         title: 'تعديل عضو المشاركة',
+        showBack: true,
         child: Center(
           child: AarastEmptyState(
             title: 'لا يمكن تعديل العضو الآن',
@@ -48,99 +58,28 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     if (!_initialized) {
       _syncFromMember(member);
     }
-    final subtitle = member.displaySubtitle;
 
-    return AarastScaffold(
+    return AarastPageScaffold(
       title: 'تعديل عضو المشاركة',
+      subtitle: 'عدّل الدور أو خصص الصلاحيات ثم احفظ.',
+      showBack: true,
       child: ListView(
         children: [
-          AarastCard(
-            padding: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'العضو: ${member.displayName}',
-                    textAlign: TextAlign.right,
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      textAlign: TextAlign.right,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _role,
-            decoration: const InputDecoration(labelText: 'الدور'),
-            items: const [
-              DropdownMenuItem(value: 'VIEWER', child: Text('مشاهد')),
-              DropdownMenuItem(value: 'CONTRIBUTOR', child: Text('مساهم')),
-              DropdownMenuItem(value: 'MANAGER', child: Text('مدير')),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _role = value);
-              }
-            },
-          ),
-          const SizedBox(height: 12),
-          AarastCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                SwitchListTile(
-                  value: _canViewBudget,
-                  onChanged: (value) => setState(() => _canViewBudget = value),
-                  title: const Text(
-                    'يمكنه رؤية الميزانية',
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                SwitchListTile(
-                  value: _canViewExpenses,
-                  onChanged: (value) =>
-                      setState(() => _canViewExpenses = value),
-                  title: const Text(
-                    'يمكنه رؤية المصاريف',
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                SwitchListTile(
-                  value: _canViewDebts,
-                  onChanged: (value) => setState(() => _canViewDebts = value),
-                  title: const Text(
-                    'يمكنه رؤية الديون والأقساط',
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                SwitchListTile(
-                  value: _canManageTasks,
-                  onChanged: (value) => setState(() => _canManageTasks = value),
-                  title: const Text(
-                    'يمكنه إدارة المهام',
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-                SwitchListTile(
-                  value: _canManageFinancialRecords,
-                  onChanged: (value) =>
-                      setState(() => _canManageFinancialRecords = value),
-                  title: const Text(
-                    'يمكنه إدارة السجلات المالية',
-                    textAlign: TextAlign.right,
-                  ),
-                ),
-              ],
-            ),
+          SharedMemberCard(member: member, onTap: null),
+          const SizedBox(height: 6),
+          SharedPermissionEditor(
+            role: _role,
+            roles: _rolesFor(member),
+            permissions: _permissions,
+            onRoleSelected: (role) => setState(() {
+              _role = role;
+              _permissions = PlanRolePermissions.forRole(role);
+            }),
+            onPermissionsChanged: (value) =>
+                setState(() => _permissions = value),
+            enabled: !provider.isSubmitting,
+            // في التعديل الهدف غالبًا ضبط الصلاحيات — تُفتح جاهزة.
+            initiallyExpanded: true,
           ),
           if (provider.errorMessage != null) ...[
             const SizedBox(height: 12),
@@ -158,13 +97,14 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
           ),
           const SizedBox(height: 10),
           AarastButton(
-            label: 'إزالة العضو',
+            label: 'إزالة العضو من الخطة',
             icon: LucideIcons.trash2,
             variant: AarastButtonVariant.danger,
             onPressed: provider.isSubmitting
                 ? null
                 : () => _confirmRemove(member),
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -172,11 +112,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
 
   void _syncFromMember(SharedMember member) {
     _role = member.role;
-    _canViewBudget = member.canViewBudget;
-    _canViewExpenses = member.canViewExpenses;
-    _canViewDebts = member.canViewDebts;
-    _canManageTasks = member.canManageTasks;
-    _canManageFinancialRecords = member.canManageFinancialRecords;
+    _permissions = member.toPermissions();
     _initialized = true;
   }
 
@@ -185,11 +121,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     final updated = await provider.updateMember(
       id: member.id,
       role: _role,
-      canViewBudget: _canViewBudget,
-      canViewExpenses: _canViewExpenses,
-      canViewDebts: _canViewDebts,
-      canManageTasks: _canManageTasks,
-      canManageFinancialRecords: _canManageFinancialRecords,
+      permissions: _permissions,
     );
 
     if (!mounted) {
@@ -208,19 +140,22 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   Future<void> _confirmRemove(SharedMember member) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('إزالة العضو'),
-        content: const Text('هل تريد إزالة هذا العضو من الخطة؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('إزالة'),
-          ),
-        ],
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('إزالة العضو؟'),
+          content: Text('سيفقد "${member.displayName}" الوصول للخطة فورًا.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('إزالة'),
+            ),
+          ],
+        ),
       ),
     );
 

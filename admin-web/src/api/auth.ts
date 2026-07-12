@@ -35,7 +35,7 @@ type AdminSession = AdminBrowserSession<AdminUser>;
 
 export async function startAdminLogin(phone: string, password: string) {
   try {
-    const response = await apiRequest<AdminLoginChallenge>('/auth/admin/login', {
+    const response = await apiRequest<AdminLoginChallenge>('/api/v1/auth/admin/login', {
       method: 'POST',
       auth: false,
       body: { phone, password },
@@ -55,7 +55,7 @@ export async function startAdminLogin(phone: string, password: string) {
 export async function completeAdminLogin(challengeToken: string, code: string) {
   let response: AdminSession;
   try {
-    response = await apiRequest<AdminSession>('/auth/admin/login/complete', {
+    response = await apiRequest<AdminSession>('/api/v1/auth/admin/login/complete', {
       method: 'POST',
       auth: false,
       body: { challengeToken, code },
@@ -74,7 +74,7 @@ export async function restoreAdminSession(): Promise<AdminUser> {
 
 export async function logoutAdmin(): Promise<void> {
   try {
-    await apiRequest('/auth/admin/logout', { method: 'POST', auth: false });
+    await apiRequest('/api/v1/auth/admin/logout', { method: 'POST', auth: false });
   } finally {
     clearAdminAccessToken();
   }

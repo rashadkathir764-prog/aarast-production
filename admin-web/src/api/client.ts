@@ -69,7 +69,7 @@ export async function refreshAdminAccessToken<TUser = unknown>(): Promise<
 > {
   if (!refreshPromise) {
     refreshPromise = (async () => {
-      const response = await fetch(`${apiBaseUrl}/auth/admin/refresh`, {
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/admin/refresh`, {
         method: 'POST',
         headers: {
           Accept: 'application/json',

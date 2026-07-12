@@ -48,7 +48,7 @@ describe('secure admin browser session', () => {
 
     expect(challenge.challengeToken).toHaveLength(64);
     expect(getAdminAccessToken()).toBeNull();
-    expect(fetchMock.mock.calls[0][0]).toContain('/auth/admin/login');
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/auth/admin/login');
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
   });
 
@@ -94,7 +94,7 @@ describe('secure admin browser session', () => {
 
     expect(user.role).toBe('ADMIN');
     expect(getAdminAccessToken()).toBe('rotated-token');
-    expect(fetchMock.mock.calls[0][0]).toContain('/auth/admin/refresh');
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/auth/admin/refresh');
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
   });
 
@@ -105,7 +105,7 @@ describe('secure admin browser session', () => {
     await logoutAdmin();
 
     expect(getAdminAccessToken()).toBeNull();
-    expect(fetchMock.mock.calls[0][0]).toContain('/auth/admin/logout');
+    expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/auth/admin/logout');
     expect(fetchMock.mock.calls[0][1].method).toBe('POST');
   });
 

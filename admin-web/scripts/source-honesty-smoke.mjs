@@ -95,6 +95,12 @@ addCheck(
 );
 
 addCheck(
+  'Admin runtime smoke uses only the canonical versioned auth API',
+  adminRuntimeSmoke.includes('/api/v1/auth/admin/login') &&
+    !adminRuntimeSmoke.includes('request("/auth/'),
+);
+
+addCheck(
   'Admin session tokens are not persisted in browser storage',
   !authApi.includes('localStorage') &&
     !authApi.includes('sessionStorage') &&

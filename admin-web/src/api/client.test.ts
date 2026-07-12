@@ -33,7 +33,7 @@ describe('apiRequest', () => {
     setAdminAccessToken('tok');
     fetchMock.mockResolvedValueOnce(response(200, '{"ok":true}'));
 
-    await apiRequest('/auth/me');
+    await apiRequest('/api/v1/auth/me');
 
     const [, init] = fetchMock.mock.calls[0];
     expect((init.headers as Record<string, string>).Authorization).toBe(
@@ -46,7 +46,11 @@ describe('apiRequest', () => {
     setAdminAccessToken('tok');
     fetchMock.mockResolvedValueOnce(response(200, '{}'));
 
-    await apiRequest('/auth/login', { auth: false, method: 'POST', body: {} });
+    await apiRequest('/api/v1/auth/login', {
+      auth: false,
+      method: 'POST',
+      body: {},
+    });
 
     const [, init] = fetchMock.mock.calls[0];
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
@@ -91,7 +95,7 @@ describe('apiRequest', () => {
       apiRequest('/admin/users/u1/disable', { method: 'PATCH', body: {} }),
     ).resolves.toEqual({ ok: true });
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toContain('/auth/admin/refresh');
+    expect(fetchMock.mock.calls[1][0]).toContain('/api/v1/auth/admin/refresh');
     expect(fetchMock.mock.calls[1][1].credentials).toBe('include');
     expect(
       (fetchMock.mock.calls[0][1].headers as Record<string, string>)[

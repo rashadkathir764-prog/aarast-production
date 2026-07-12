@@ -38,7 +38,7 @@ async function request(path, options = {}) {
       ...(options.auth === false || !token
         ? {}
         : { Authorization: `Bearer ${token}` }),
-      ...(path.startsWith("/auth/admin") && adminRefreshCookie
+      ...(path.startsWith("/api/v1/auth/admin") && adminRefreshCookie
         ? { Cookie: adminRefreshCookie }
         : {}),
     },
@@ -227,7 +227,7 @@ async function run() {
     String(res.status),
   );
 
-  res = await request("/auth/admin/login", {
+  res = await request("/api/v1/auth/admin/login", {
     method: "POST",
     auth: false,
     body: {
@@ -260,7 +260,7 @@ async function run() {
     );
   }
 
-  res = await request("/auth/admin/login/complete", {
+  res = await request("/api/v1/auth/admin/login/complete", {
     method: "POST",
     auth: false,
     body: { challengeToken, code: otpCode },
@@ -289,7 +289,7 @@ async function run() {
   }
   token = res.body.accessToken;
 
-  res = await request("/auth/me");
+  res = await request("/api/v1/auth/me");
   check(
     "auth me returns admin user",
     res.status === 200 && res.body?.role === "ADMIN",
@@ -491,7 +491,7 @@ async function run() {
   );
   check("admin audit log does not expose passwordHash", !hasPasswordHash(res.body));
 
-  res = await request("/auth/admin/refresh", {
+  res = await request("/api/v1/auth/admin/refresh", {
     method: "POST",
     auth: false,
   });
@@ -504,7 +504,10 @@ async function run() {
   );
   if (typeof res.body?.accessToken === "string") token = res.body.accessToken;
 
-  res = await request("/auth/admin/logout", { method: "POST", auth: false });
+  res = await request("/api/v1/auth/admin/logout", {
+    method: "POST",
+    auth: false,
+  });
   check(
     "admin logout revokes the cookie session",
     res.status === 200 && adminRefreshCookie === "",

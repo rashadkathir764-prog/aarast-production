@@ -35,6 +35,12 @@
 | Bind and expire idempotency keys. | Accepted and implemented | A user key is valid only for one method, concrete target, and canonical body. Identical retries replay safely, mismatches return `409`, pending reservations and completed responses have bounded lifetimes, and cleanup uses a cross-replica PostgreSQL advisory lock. |
 | Require password + phone OTP and server-bound browser sessions for administration. | Accepted and implemented | General login paths cannot mint admin assurance. Access tokens stay in memory, refresh tokens stay in rotating HttpOnly/SameSite cookies, each admin JWT references a live server session, and refresh/logout invalidate the prior JWT immediately. |
 
+## Current Decisions Addendum - 2026-07-12
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Allow a temporary hardened OpenWA OTP transport for the risk-accepted MVP, while retaining Meta as the target channel. | Accepted and locally verified; limited rollout gates remain | Aarast never calls stock `send-text`, applies durable HMAC-keyed phone/IP/global quotas, and fails readiness unless a connected session exposes the transient contract. The pinned fork, QR link, no-persistence proof, protected restart, and live self-recipient request/verify flow pass. An independently owned second recipient and 24-hour stability observation remain mandatory before widening the MVP rollout. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

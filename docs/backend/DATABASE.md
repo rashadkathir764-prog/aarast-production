@@ -49,6 +49,7 @@ Current documentation snapshot: 2026-07-11. Route-level behavior belongs in
 | RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation and replacement tracking. |
 | AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login. It never stores the raw challenge or OTP. |
 | LoginThrottle | Durable cross-replica password-attempt window keyed only by an HMAC-SHA-256 account-identifier digest using a deployment-only pepper. Five failures lock the identifier for fifteen minutes; successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
+| OtpDispatchQuota | Atomic cross-replica OTP delivery windows for phone, IP, and global scopes. Subjects are HMAC-SHA-256 digests; no raw phone or IP is persisted. Failed deliveries still consume quota and an hourly advisory-lock cleanup removes expired rows. |
 | MediaUploadTicket | Durable owner, purpose, declared/verified byte size, expiry, verification state, and consumption state for every signed upload. It enforces a rolling per-account quota and allows bounded cleanup of abandoned objects without trusting a client-supplied URL. |
 | Conversation | One quote-scoped thread joining the requester, provider, quote request, and WeddingPlan context, with a composite inbox-order index for cursor pagination. |
 | ConversationParticipant | Per-user unread/read, mute, block, and participation state. |
@@ -89,7 +90,8 @@ Current documentation snapshot: 2026-07-11. Route-level behavior belongs in
 
 The backend now includes the approved provider-reference and quote-lead foundation:
 
-- `OtpCode` for local or Meta WhatsApp OTP request/verify flows, storing only
+- `OtpCode` for local, Meta WhatsApp, or temporary hardened OpenWA OTP
+  request/verify flows, storing only
   hashed codes. A partial unique index permits one unconsumed code per
   phone/purpose, and consumption uses a compare-and-set update so concurrent
   replays cannot both succeed.
@@ -100,6 +102,10 @@ The backend now includes the approved provider-reference and quote-lead foundati
   closed without the pepper. An hourly transaction-level advisory lock ensures
   one replica removes expired locks and inactive windows, supported by the
   `updatedAt` index added in `20260711223000_harden_login_throttle`.
+- `OtpDispatchQuota` adds a durable sending safety ceiling independent from
+  code verification. The composite scope/hash key makes each fixed window
+  atomic across replicas; migration `20260712120000_add_otp_dispatch_quotas`
+  adds its table and cleanup index.
 - Existing accounts with null `phoneVerifiedAt` keep their data but all active
   refresh sessions are revoked; they must prove phone ownership before a new
   session can be issued.
@@ -145,6 +151,7 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
 | `RefreshToken` | 10 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
+| `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `WeddingPlan` | 32 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 11 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `Expense` | 12 | `id`, `weddingPlanId`, `budgetCategoryId`, `createdAt`, `updatedAt` |
@@ -179,5 +186,5 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 40
+Total models: 41
 <!-- DOCS-SYNC:END -->

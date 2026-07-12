@@ -9,6 +9,11 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { getJwtSecret } from './jwt-secret';
 import { LoginThrottleService } from './login-throttle.service';
 import { LoginThrottleCleanupScheduler } from './login-throttle-cleanup.scheduler';
+import {
+  OTP_DISPATCH_NOW,
+  OtpDispatchQuotaService,
+} from './otp-dispatch-quota.service';
+import { OtpDispatchQuotaCleanupScheduler } from './otp-dispatch-quota-cleanup.scheduler';
 
 @Module({
   imports: [
@@ -30,6 +35,9 @@ import { LoginThrottleCleanupScheduler } from './login-throttle-cleanup.schedule
     OwnershipContextService,
     LoginThrottleService,
     LoginThrottleCleanupScheduler,
+    { provide: OTP_DISPATCH_NOW, useValue: () => new Date() },
+    OtpDispatchQuotaService,
+    OtpDispatchQuotaCleanupScheduler,
   ],
   exports: [OwnershipContextService, JwtModule],
 })

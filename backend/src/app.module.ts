@@ -9,7 +9,10 @@ import { AdminAuditInterceptor } from "./admin/admin-audit.interceptor";
 import { MetricsController } from "./common/observability/metrics.controller";
 import { ResilientThrottlerStorage } from "./common/redis/resilient-throttler-storage";
 import { HealthController } from "./health.controller";
-import { ReadinessService } from "./health/readiness.service";
+import {
+  READINESS_FETCH,
+  ReadinessService,
+} from "./health/readiness.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { MeModule } from "./me/me.module";
@@ -89,6 +92,7 @@ import { OutboxModule } from "./outbox/outbox.module";
   ],
   controllers: [HealthController, MetricsController],
   providers: [
+    { provide: READINESS_FETCH, useValue: fetch },
     ReadinessService,
     IdempotencyCleanupScheduler,
     {

@@ -29,7 +29,9 @@ Health endpoints have distinct orchestration semantics:
 
 - `GET /live` checks only that the HTTP process responds.
 - `GET /health` is a compatibility alias of `/live`.
-- `GET /ready` checks PostgreSQL and required Redis/media dependencies. It
+- `GET /ready` checks PostgreSQL and required Redis/media dependencies. When
+  `AUTH_OTP_MODE=openwa`, it also requires the selected WhatsApp session and
+  Aarast transient-delivery extension to be ready. It
   returns `503` with redacted dependency states when the instance must not
   receive traffic.
 
@@ -192,9 +194,18 @@ OTP/profile routes are account and settings helpers. They do not add payment, bo
 
 `REGISTER` codes are completed only through `POST /api/v1/auth/register/complete`;
 the generic verify endpoint cannot consume a registration code without the
-registration details. In production `AUTH_OTP_MODE=whatsapp` uses an approved Meta
-authentication template and the API refuses to boot when the channel is
-incompletely configured.
+registration details. In production `AUTH_OTP_MODE=whatsapp` uses an approved
+Meta authentication template. The temporary `AUTH_OTP_MODE=openwa` option calls
+only the Aarast-hardened `send-transient-text` contract; it never falls back to
+upstream `send-text`. Both modes refuse to boot when their selected channel is
+incompletely configured, and production responses never echo the code.
+
+Every non-development OTP request consumes atomic PostgreSQL quotas before
+delivery: 60-second phone cooldown, bounded phone/IP windows, and an
+`OTP_GLOBAL_DAILY_LIMIT` ceiling. Quota keys are HMAC digests made with
+`AUTH_LOGIN_THROTTLE_PEPPER`; raw phone numbers and IP addresses are not stored.
+Provider delivery failures also consume quota so a failing transport cannot be
+used to bypass the safety ceiling.
 
 ### Profile image upload
 

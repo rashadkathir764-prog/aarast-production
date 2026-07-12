@@ -34,6 +34,20 @@ npm run smoke:financial-ledger-concurrency
 npm run smoke:all
 ```
 
+For temporary OpenWA OTP work, additionally run the OpenWA channel, durable
+quota, readiness, registration, admin MFA, and password-reset source tests.
+The release gate is not complete until the pinned hardened fork itself passes
+its tests and a real QR-linked session proves the sent OTP marker is absent
+from message history, database rows, logs, hooks, and webhooks. A mocked Aarast
+adapter test is necessary but not sufficient.
+
+After QR linking, run `npm run smoke:openwa-otp` only with a dedicated test
+recipient and the explicit `OPENWA_SMOKE_CONFIRM=I_ACCEPT_REAL_WHATSAPP_SEND`
+guard. The smoke performs one real send and fails if its unique marker appears
+in the OpenWA message-history API. Database/log/hook/webhook inspection remains
+a separate manual gate because the public history response cannot prove those
+stores are empty.
+
 For private chat media, additionally verify that a non-participant receives no
 attachment metadata or signed URL, message/list responses contain no
 `storageKey`, links expire after 120 seconds, and the object-store
@@ -65,6 +79,9 @@ flutter test
 
 Run targeted tests for touched flows and check Arabic/RTL layout at narrow phone
 widths for UI work.
+
+OTP UI changes must prove the resend action remains actually disabled for the
+full 60-second server cooldown and becomes enabled at the same boundary.
 
 Session/privacy changes must include a two-account same-device regression:
 logout must dispose the first account's providers before network logout

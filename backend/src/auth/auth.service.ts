@@ -27,6 +27,7 @@ import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
 import { JwtPayload } from "./jwt-payload.interface";
 import {
   DevEchoOtpChannel,
+  OpenWaOtpChannel,
   OtpChannel,
   WhatsAppOtpChannel,
 } from "./otp-channel";
@@ -37,6 +38,10 @@ import {
 } from "./refresh-token-policy";
 import { SafeUser, toSafeUser } from "./safe-user";
 import { LoginThrottleService } from "./login-throttle.service";
+import {
+  OtpDispatchContext,
+  OtpDispatchQuotaService,
+} from "./otp-dispatch-quota.service";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -87,16 +92,19 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly loginThrottle: LoginThrottleService,
+    private readonly otpDispatchQuota: OtpDispatchQuotaService =
+      new OtpDispatchQuotaService(prisma),
   ) {}
 
   async startRegistration(
     dto: RegisterDto,
+    context: OtpDispatchContext = {},
   ): Promise<RegistrationPendingResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const otp = await this.requestOtp({
       phone,
       purpose: OtpPurpose.REGISTER,
-    });
+    }, context);
     return { registrationPending: true, ...otp };
   }
 
@@ -181,12 +189,15 @@ export class AuthService {
     return this.createAuthResponse(updatedUser);
   }
 
-  async startAdminLogin(dto: LoginDto): Promise<AdminLoginPendingResponse> {
+  async startAdminLogin(
+    dto: LoginDto,
+    context: OtpDispatchContext = {},
+  ): Promise<AdminLoginPendingResponse> {
     const user = await this.validatePasswordCredentials(dto, UserRole.ADMIN);
     const otp = await this.requestOtp({
       phone: user.phone!,
       purpose: OtpPurpose.LOGIN,
-    });
+    }, context);
     const challengeToken = createRefreshTokenValue();
     const now = new Date();
     const expiresAt = new Date(
@@ -442,13 +453,20 @@ export class AuthService {
     return { revoked: result.count };
   }
 
-  async requestOtp(dto: RequestOtpDto): Promise<OtpRequestResponse> {
+  async requestOtp(
+    dto: RequestOtpDto,
+    context: OtpDispatchContext = {},
+  ): Promise<OtpRequestResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const purpose = dto.purpose;
-    const channel = this.resolveOtpChannel(this.getOtpMode());
+    const mode = this.getOtpMode();
+    const channel = this.resolveOtpChannel(mode);
 
     if (!channel) {
       throw new BadRequestException(AuthService.otpUnavailableMessage);
+    }
+    if (mode !== "dev") {
+      await this.otpDispatchQuota.consume(phone, context);
     }
 
     const code = channel.generateCode();
@@ -490,6 +508,7 @@ export class AuthService {
 
   /**
    * dev -> local echo channel; whatsapp -> Meta Cloud API;
+   * openwa -> temporary hardened OpenWA transport;
    * disabled -> null (feature off).
    */
   private resolveOtpChannel(mode: string): OtpChannel | null {
@@ -498,6 +517,9 @@ export class AuthService {
     }
     if (mode === "whatsapp") {
       return new WhatsAppOtpChannel();
+    }
+    if (mode === "openwa") {
+      return new OpenWaOtpChannel();
     }
     return null;
   }
@@ -554,11 +576,12 @@ export class AuthService {
    */
   async requestPasswordReset(
     dto: PasswordResetRequestDto,
+    context: OtpDispatchContext = {},
   ): Promise<OtpRequestResponse> {
     return this.requestOtp({
       phone: dto.phone,
       purpose: OtpPurpose.RESET_PASSWORD,
-    });
+    }, context);
   }
 
   /**
@@ -814,12 +837,16 @@ export class AuthService {
     }
   }
 
-  private getOtpMode(): "dev" | "whatsapp" | "disabled" {
+  private getOtpMode(): "dev" | "whatsapp" | "openwa" | "disabled" {
     const configured = (process.env.AUTH_OTP_MODE ?? "").trim().toLowerCase();
     if (configured === "dev") {
       return process.env.NODE_ENV === "production" ? "disabled" : "dev";
     }
-    if (configured === "whatsapp" || configured === "disabled") {
+    if (
+      configured === "whatsapp" ||
+      configured === "openwa" ||
+      configured === "disabled"
+    ) {
       return configured;
     }
     return process.env.NODE_ENV === "production" ? "disabled" : "dev";

@@ -334,7 +334,7 @@ class AuthFooterLink extends StatelessWidget {
 
   final String prefix;
   final String action;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

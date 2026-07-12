@@ -33,7 +33,8 @@ Public domains documented for the current deployment path:
 
 - `GET /live` (and compatibility alias `/health`) checks only that the API
   process can serve HTTP.
-- `GET /ready` checks PostgreSQL and every configured Redis/media dependency,
+- `GET /ready` checks PostgreSQL and every configured Redis/media dependency;
+  OpenWA mode also checks its selected session and transient endpoint,
   returns dependency names/status/latency only, and fails with `503` without
   exposing connection strings or provider errors.
 - Redis and media default to required when `NODE_ENV=production`; Dokploy sets
@@ -43,11 +44,20 @@ Public domains documented for the current deployment path:
 
 ## OTP Release Gate
 
-Production verified registration uses `AUTH_OTP_MODE=whatsapp`. Dokploy must
+The approved production path uses `AUTH_OTP_MODE=whatsapp`. Dokploy must
 provide the Graph API version, phone-number ID, system-user access token,
 approved authentication-template name, and template language. The API refuses
 to boot when whatsapp mode is selected with an incomplete channel. Secrets
 must remain in Dokploy/environment storage and never be committed.
+
+For the explicitly risk-accepted MVP only, `AUTH_OTP_MODE=openwa` is available
+behind a hardened private contract and PostgreSQL delivery quotas. Stock OpenWA
+`send-text` is forbidden because it stores OTP content. Do not add the service
+to production Compose until the pinned fork, transient-persistence test, QR
+link, protected volume, and stop rules in `OPENWA_OTP_MVP.md` all pass.
+The isolated `deploy/openwa-otp-lab/` stack is the reproducible local acceptance
+environment; it is intentionally separate from Dokploy and is not a production
+manifest.
 
 ## Private Chat Media Release Gate
 

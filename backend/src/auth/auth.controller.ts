@@ -6,12 +6,13 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
   Res,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { isProductionEnvironment } from "../common/config/runtime-environment";
 import { AuthService } from "./auth.service";
 import { RegisterDto } from "./dto/register.dto";
@@ -37,8 +38,8 @@ export class AuthController {
 
   @Post("register")
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.startRegistration(dto);
+  register(@Body() dto: RegisterDto, @Req() request: Request) {
+    return this.authService.startRegistration(dto, { ip: request.ip });
   }
 
   @Post("register/complete")
@@ -57,8 +58,8 @@ export class AuthController {
   @Post("admin/login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  startAdminLogin(@Body() dto: LoginDto) {
-    return this.authService.startAdminLogin(dto);
+  startAdminLogin(@Body() dto: LoginDto, @Req() request: Request) {
+    return this.authService.startAdminLogin(dto, { ip: request.ip });
   }
 
   @Post("admin/login/complete")
@@ -151,8 +152,8 @@ export class AuthController {
   @Post("otp/request")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  requestOtp(@Body() dto: RequestOtpDto) {
-    return this.authService.requestOtp(dto);
+  requestOtp(@Body() dto: RequestOtpDto, @Req() request: Request) {
+    return this.authService.requestOtp(dto, { ip: request.ip });
   }
 
   @Post("otp/verify")
@@ -165,8 +166,11 @@ export class AuthController {
   @Post("password-reset/request")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  requestPasswordReset(@Body() dto: PasswordResetRequestDto) {
-    return this.authService.requestPasswordReset(dto);
+  requestPasswordReset(
+    @Body() dto: PasswordResetRequestDto,
+    @Req() request: Request,
+  ) {
+    return this.authService.requestPasswordReset(dto, { ip: request.ip });
   }
 
   @Post("password-reset/confirm")

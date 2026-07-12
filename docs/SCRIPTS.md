@@ -11,9 +11,10 @@
 | `admin-web` | `npm run test` | `vitest run` |
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |
-| `backend` | `npm run build` | `tsc -p tsconfig.build.json` |
+| `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |
+| `backend` | `npm run pretest` | `node --test -r ts-node/register test/legacy-finance-removal.test.ts test/canonical-api-routes.test.ts` |
 | `backend` | `npm run prisma:generate` | `prisma generate` |
 | `backend` | `npm run prod:bootstrap-marketplace` | `node scripts/prod/bootstrap-marketplace.cjs` |
 | `backend` | `npm run seed` | `ts-node prisma/seed.ts` |
@@ -25,7 +26,6 @@
 | `backend` | `npm run smoke:backend-completion` | `node scripts/smoke/backend-completion-smoke.js` |
 | `backend` | `npm run smoke:budget-expense` | `node scripts/smoke/budget-expense-smoke.js` |
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/dashboard-summary-smoke.js` |
-| `backend` | `npm run smoke:debt-installment` | `node scripts/smoke/debt-installment-smoke.js` |
 | `backend` | `npm run smoke:financial-ledger-concurrency` | `node scripts/smoke/financial-ledger-concurrency-smoke.js` |
 | `backend` | `npm run smoke:guests` | `node scripts/smoke/guests-smoke.js` |
 | `backend` | `npm run smoke:guests-apis` | `node scripts/smoke/guests-apis-smoke.js` |
@@ -49,4 +49,4 @@
 | `backend` | `npm run smoke:wedding-plan` | `node scripts/smoke/wedding-plan-smoke.js` |
 | `backend` | `npm run start` | `node dist/main.js` |
 | `backend` | `npm run start:dev` | `node --env-file=.env -r ts-node/register -r tsconfig-paths/register src/main.ts` |
-| `backend` | `npm run test` | `node --test -r ts-node/register test/task-responsibility.test.ts test/backend-support.test.ts test/health-readiness.test.ts test/scheduler-lock.test.ts test/outbox-logic.test.ts test/admin-auth-session-security.test.ts test/admin-rbac-audit.test.ts test/admin-audit-interceptor.test.ts test/auth-otp-mode.test.ts test/auth-registration-security.test.ts test/whatsapp-otp-channel.test.ts test/request-target-redaction.test.ts test/privacy-contract.test.ts test/sharing-permission-ceiling.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/private-chat-media.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/financial-ledger.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts` |
+| `backend` | `npm run test` | `node --test -r ts-node/register test/task-responsibility.test.ts test/backend-support.test.ts test/health-readiness.test.ts test/scheduler-lock.test.ts test/outbox-logic.test.ts test/admin-auth-session-security.test.ts test/admin-rbac-audit.test.ts test/admin-audit-interceptor.test.ts test/admin-presenter.test.ts test/auth-otp-mode.test.ts test/auth-registration-security.test.ts test/login-throttle.test.ts test/whatsapp-otp-channel.test.ts test/request-target-redaction.test.ts test/privacy-contract.test.ts test/sharing-permission-ceiling.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/marketplace-presenter.test.ts test/provider-chat-logic.test.ts test/conversation-pagination.test.ts test/media-upload-logic.test.ts test/media-upload-ticket.test.ts test/private-chat-media.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/notification-reminders-scheduler.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/dashboard-summary-presenter.test.ts test/financial-integrity.test.ts test/financial-ledger.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts` |

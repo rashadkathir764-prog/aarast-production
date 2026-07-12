@@ -1,18 +1,20 @@
 # Aarast Documentation Map
 
-Snapshot date: 2026-07-06
+Snapshot date: 2026-07-11
 
 This is the documentation entry point for Aarast. The repository previously had
 more than 100 Markdown files. The active set is now intentionally small, and
 old files are preserved as `.md.txt` archive references.
 
-## Current Count
+## Inventory Policy
 
-- Active project `.md` files: 33.
-- Curated human-written docs: 30.
-- Generated reference tables: 3.
-- Archived historical files: 103 under
-  `docs/archive/2026-07-docs-consolidation/`.
+The explicit lists below are the authoritative source-of-truth inventory. A
+numeric file total is intentionally not maintained because short-lived
+implementation plans and specifications under `docs/superpowers/` may be added
+or removed during active work; those working notes are not project truth.
+Historical references remain under
+`docs/archive/2026-07-docs-consolidation/` and are also not part of the active
+source of truth.
 
 ## Read Order
 

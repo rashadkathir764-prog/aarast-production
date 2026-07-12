@@ -1,6 +1,6 @@
 # Backend Status And Risks
 
-Snapshot date: 2026-07-10
+Snapshot date: 2026-07-11
 
 ## Implemented Areas
 
@@ -26,15 +26,33 @@ Snapshot date: 2026-07-10
   active access immediately.
 - Quote-scoped conversations, Socket.IO delivery, message attachments,
   reporting/blocking/muting/read state, and signed media uploads.
+- Media verification fully decodes and sanitizes JPEG/PNG/WebP objects before
+  conditional replacement; signed creation cannot overwrite an existing key.
+- Every presign has a durable account-owned upload ticket, rolling daily
+  count/byte quota, explicit verification/consumption state, and bounded
+  advisory-lock cleanup for abandoned objects. Account deletion takes the same
+  account lock and atomically marks every owned ticket `DELETE_PENDING`; the
+  deletion commits only when this durable scheduling succeeds. Tickets survive
+  the User row and the media worker deletes objects with retries before marking
+  them `DELETED`.
+- Password login throttling uses a pepper-keyed HMAC identifier in PostgreSQL,
+  fails closed without the production pepper, and cleans expired/inactive rows
+  hourly under one transaction-level advisory lock.
+- Transactional outbox workers retain exhausted `FAILED` dead letters. A
+  separate cross-replica cleanup deletes only `PROCESSED` receipts older than
+  seven days every six hours, while account deletion removes its related
+  notification/conversation events atomically.
 - Admin conversation-report list and status moderation without message-body
   exposure.
 
-## Integrated, Pending Runtime Smoke
+## Integrated Runtime Contract
 
 Conversation/media, refresh sessions, and admin report moderation are wired
-through the active schema, modules, routes, clients, and source tests. They are
-not production-ready until migrations, PostgreSQL, S3-compatible storage,
-Socket.IO, and reconnect/logout behavior pass environment-backed smoke.
+through the active schema, modules, routes, clients, and source tests. The local
+Compose runtime includes PostgreSQL, Redis, and MinIO-compatible storage so
+real upload/verify/private-chat and Socket.IO paths are covered by HTTP smoke.
+Production still requires the matching migrations and configuration plus a
+signed physical-device reconnect/logout pass against the deployed environment.
 
 The verified registration slice also requires the current OTP migration and
 `smoke:auth-verification` against the matching backend image. Live WhatsApp
@@ -43,8 +61,8 @@ template are approved and a real device receives a code.
 
 ## Current Risks
 
-- Rebuild/restart local Docker runtime and rerun smoke before claiming runtime
-  readiness.
+- Rebuild/restart the exact Docker image and rerun all smoke groups after any
+  backend, migration, or media-policy change before claiming runtime readiness.
 - Production admin login remains unavailable until the Meta WhatsApp OTP
   channel is approved and configured; development echo codes are forbidden in
   production.

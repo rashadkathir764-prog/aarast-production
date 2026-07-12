@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-11
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -38,7 +38,22 @@ For private chat media, additionally verify that a non-participant receives no
 attachment metadata or signed URL, message/list responses contain no
 `storageKey`, links expire after 120 seconds, and the object-store
 `chat-image/` prefix rejects an unsigned GET. A member must be able to refresh
-an expired link through the authenticated conversation attachment route.
+an expired link through the authenticated conversation attachment route. The
+media smoke must perform a real signed upload with the returned
+`If-None-Match: *` header, call `/api/v1/media/uploads/verify`, and persist only the
+verified reference. Source tests must exercise full decode/re-encode,
+appended-payload removal, invalid image rejection, dimension/pixel bounds, and
+conditional replacement behavior.
+The HTTP smoke must also prove that presigning creates a durable account-owned
+upload ticket, verification leaves it unconsumed, and persisting the provider
+image or chat attachment marks it consumed. Source tests must cover the rolling
+per-account count/byte quota, cross-replica advisory lock, expired/stalled
+ticket cleanup, and retry retention when object storage is unavailable.
+
+The root Docker Compose environment includes MinIO-compatible object storage
+and bucket initialization for local media smoke. `/ready` must report media as
+`up`; a run where media is `disabled` is not evidence for the media release
+gate.
 
 ## Mobile Changes
 
@@ -58,6 +73,9 @@ plan-sensitive providers without rebuilding navigation, and an in-flight
 offline item must retain user A's token rather than replay with user B's token.
 Guest onboarding must also prove that an explicitly empty budget opens the
 local dashboard and that a legacy saved no-budget plan is recovered.
+Secure-storage tests must prove that production wiring never leaves the cached
+safe-user profile or guest-onboarding draft in SharedPreferences and that a
+legacy plaintext value migrates once and is removed.
 
 ## Admin Web Changes
 

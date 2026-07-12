@@ -88,16 +88,14 @@ function extractBackendRoutes(backendSrc) {
     let pendingMethod = null;
     let pendingPath = null;
     let pendingAuthed = false;
-    let skipSection = false;
+    let controllerAuthed = false;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
       const ctrl = line.match(/@Controller\(['"]([^'"]+)['"]\)/);
       if (ctrl) {
         currentBase = ctrl[1];
-        // Skip /api/v1 alias sections — they duplicate the legacy surface
-        // and would double every row in the table.
-        skipSection = currentBase.startsWith('api/v1') || currentBase.startsWith('/api/v1');
+        controllerAuthed = false;
         continue;
       }
 
@@ -105,15 +103,18 @@ function extractBackendRoutes(backendSrc) {
       if (dec) {
         pendingMethod = dec[1].toUpperCase();
         pendingPath = dec[2] || '';
-        pendingAuthed = false;
+        pendingAuthed = controllerAuthed;
       }
 
-      if (/@UseGuards\(/.test(line)) pendingAuthed = true;
+      if (/@UseGuards\(/.test(line)) {
+        if (pendingMethod) pendingAuthed = true;
+        else controllerAuthed = true;
+      }
 
       const sig = line.match(/^\s*(?:async\s+)?(\w+)\s*\(/);
       if (sig && pendingMethod) {
         const fnName = sig[1];
-        if (!skipSection && !['constructor', 'onModuleInit', 'onModuleDestroy', 'onApplicationShutdown'].includes(fnName)) {
+        if (!['constructor', 'onModuleInit', 'onModuleDestroy', 'onApplicationShutdown'].includes(fnName)) {
           const fullPath = joinPath(currentBase, pendingPath);
           table.push({
             controller: className,

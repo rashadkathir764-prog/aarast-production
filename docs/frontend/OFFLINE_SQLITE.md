@@ -6,7 +6,9 @@ SQLite is used only by the Flutter mobile app as a local cache and write queue. 
 
 ## Package Choice
 
-- `sqflite`: mobile SQLite implementation for Android, iOS, and macOS.
+- `sqflite_sqlcipher` 3.4: SQLCipher-backed SQLite for Android, iOS, and
+  macOS. The 256-bit database password is generated with `Random.secure()` and
+  stored only in the OS keystore/keychain through `flutter_secure_storage`.
 - `path`: safe local database path joining.
 - Existing `shared_preferences`: web, Windows, Linux, and test fallback so `flutter build web --debug` remains supported.
 
@@ -14,13 +16,33 @@ Drift was not used because this project does not need generated query code yet, 
 
 ## Local Database Location
 
-On supported mobile platforms the database is created through `sqflite.getDatabasesPath()` as:
+On supported mobile platforms the encrypted database is created through the
+platform database directory as:
 
 ```text
-aarast_offline.db
+aarast_offline_secure_v1.db
 ```
 
-Unsupported desktop platforms and Flutter web use a JSON fallback in `shared_preferences` with the same `LocalDatabase` contract. Full offline database behavior is mobile-first.
+Android, iOS, and macOS never fall back to plaintext storage when SQLCipher or
+the OS keystore fails. Startup fails closed with a clear Arabic recovery screen
+instead. Unsupported desktop platforms and Flutter web retain the JSON
+development fallback with the same `LocalDatabase` contract; it is not the
+mobile release storage path.
+
+The pre-release plaintext `aarast_offline.db` and any legacy
+`aarast_offline*` SharedPreferences cache keys are deleted before the secure
+database is opened. This is an intentional destructive development migration;
+there are no real user installations to preserve.
+
+## Sensitive State Outside The Database
+
+Production startup also injects a dedicated `flutter_secure_storage` namespace
+for small PII values that do not belong in SQLite. The cached safe-user profile
+and guest-onboarding draft are stored there, while SharedPreferences retains
+only non-sensitive selectors and development/test fallbacks. If a legacy
+profile or draft exists in SharedPreferences, it is copied into secure storage
+once and the plaintext value is removed. Access and refresh tokens remain in
+their separate secure token vault.
 
 ## Tables
 
@@ -32,8 +54,6 @@ Unsupported desktop platforms and Flutter web use a JSON fallback in `shared_pre
 - `cached_tasks`: task/timeline task cache with dirty and deleted flags.
 - `cached_budget_categories`: local budget category cache.
 - `cached_budget_items`: expense cache.
-- `cached_debts`: debt cache.
-- `cached_installments`: installment cache.
 - `cached_financial_commitments`: category-first agreed-cost cache.
 - `cached_financial_payment_records`: actual money-out record cache.
 - `cached_financial_installments`: commitment installment cache.
@@ -50,8 +70,8 @@ Unsupported desktop platforms and Flutter web use a JSON fallback in `shared_pre
 Feature API classes remain the boundary used by UI providers. On successful remote reads, API classes update the local cache. On network failure, they return cached rows when available and mark sync state as offline. If no cache exists, the existing Arabic error flow is preserved.
 
 Financial commitments, payment records, and financial installments use their
-own cache tables. They must not be folded into the old expense/debt cache,
-because expenses mean actual money paid while commitments represent agreed
+own cache tables. They remain separate from the expense cache because expenses
+mean actual money paid while commitments represent agreed
 costs and remaining obligations.
 
 ## Offline Write Queue
@@ -61,8 +81,9 @@ Network-failed safe writes create a local dirty row and add a `sync_queue` item:
 - create/update wedding plan
 - create budget category
 - create expense
-- create debt
-- create installment
+- create/update/delete financial commitment
+- create financial payment record
+- create financial installment
 - create/update/delete task
 - favorite/unfavorite provider
 - create quote request
@@ -87,12 +108,16 @@ Pending plan/task/expense cards show `بانتظار المزامنة`. Offline 
 
 ## Development Reset
 
-For mobile emulator/device testing, uninstall the app or clear app data to delete `aarast_offline.db`. For web/test fallback, clear browser site data or reset `shared_preferences`.
+For mobile emulator/device testing, uninstall the app or clear app data to
+delete `aarast_offline_secure_v1.db` and its keystore/keychain password. For
+web/test fallback, clear browser site data or reset `shared_preferences`.
 
 ## Limitations
 
 - First login still requires internet.
 - Web uses a lightweight JSON fallback, not SQLite.
+- A mobile keystore/SQLCipher failure disables startup rather than silently
+  writing financial or contact data without encryption.
 - Conflict handling is MVP-safe and simple: local dirty data is preserved until sync succeeds.
 - Shared-member permission writes and provider dashboard writes are not queued.
 - Images loaded from remote URLs may not be available offline even when provider text data is cached.

@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-10
+Snapshot date: 2026-07-12
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -29,9 +29,12 @@ and runtime checks override historical completion reports.
   the application layer.
 - Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
-- Mobile: Flutter, Provider, go_router, dio, sqflite, and secure token storage.
+- Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS
+  keystore/keychain storage for tokens, the random offline-database key, and
+  sensitive profile/onboarding state.
 - Admin web: React 18, Vite, and TypeScript strict mode.
-- Local runtime: Docker Compose backend/database.
+- Local runtime: Docker Compose backend, PostgreSQL, Redis, and MinIO-compatible
+  object storage with an initialized private chat prefix.
 - Production path: Dokploy Compose under `deploy/dokploy/`.
 
 ## Active Implemented Scope
@@ -46,16 +49,37 @@ and runtime checks override historical completion reports.
 - Quote-scoped conversations, authenticated Socket.IO delivery, unread/read,
   mute, block, report, private chat objects with membership-gated 120-second
   signed downloads, and admin report moderation.
+- Image writes verify and sanitize the complete uploaded object server-side
+  before persistence. JPEG/PNG/WebP uploads must match their ownership metadata,
+  stored size/MIME, fully decode within the pixel/dimension/single-frame bounds,
+  and survive metadata-stripping re-encoding. Signed creation uses
+  `If-None-Match: *`; the sanitized replacement is conditional on the original
+  ETag, preventing silent overwrite races. The same verification is repeated by
+  avatar, provider, service, and private-chat persistence paths even when a
+  custom client skips the verify call.
 - Privacy-safe review identities, route-template-only telemetry, log-safe
   request ids, and server-side redaction of financial admin notifications.
 - Append-only financial payment/reversal entries, unique installment-payment
   links, and row-locked installment payment transitions.
 - Rotating refresh sessions with single-session logout, logout-all, secure
   mobile storage, and one guarded retry after `401`.
+- Password brute-force protection is durable across restarts and backend
+  replicas: PostgreSQL stores only an HMAC-SHA-256 account-identifier digest
+  keyed by a deployment-only pepper. Five failures enforce a fifteen-minute
+  lock that a successful login/reset clears; an hourly advisory-lock-protected
+  job removes expired and inactive throttle rows on one replica.
 - Flutter account providers are recreated at a user-keyed boundary; plan data
   providers are replaced when the selected plan changes. Disposed providers
   ignore late responses, and offline replay is pinned to its original cache
   owner and access-token snapshot.
+- Android/iOS/macOS offline caches are encrypted with SQLCipher. The 256-bit key
+  lives only in secure OS storage, supported mobile startup fails closed if the
+  key/database cannot be opened, and the old plaintext development cache is
+  removed before the secure database is created.
+- The cached safe-user profile and guest-onboarding draft also live in a
+  dedicated OS secure-storage namespace in production wiring. Existing
+  SharedPreferences values migrate once and are deleted; non-sensitive plan
+  selectors may remain in preferences.
 - A guest may explicitly defer the budget and still open the local dashboard;
   previously saved no-budget local plans are migrated on read.
 - Mobile Release fails closed without a public HTTPS API origin and real
@@ -80,6 +104,10 @@ and runtime checks override historical completion reports.
   `SKIP LOCKED`, retries safely, retains dead letters, and publishes recovery
   events through Redis-backed Socket.IO. Flutter refetches a missing message by
   ID when it receives the recovery event. Queue metrics and alerts are wired.
+- User notification reads are side-effect free and paginated end to end. Task
+  writes create immediate due reminders, while an hourly PostgreSQL-locked
+  repair scan idempotently creates task/installment reminders and preserves
+  financial visibility permissions for shared members.
 - Authenticated mutations now bind each idempotency key to a SHA-256 request
   fingerprint without storing raw tokens or query values. Identical retries
   execute once and replay, mismatched reuse returns `409`, response retention is
@@ -97,30 +125,35 @@ and runtime checks override historical completion reports.
 
 ## Approved Work In Flight
 
-The five-tab provider portal, conversation screens, media integration, and
-refresh lifecycle are integrated in source. Release readiness still requires
-environment-backed smoke coverage for PostgreSQL, object storage, Socket.IO,
-and real mobile reconnect/session behavior.
+The five-tab provider portal, paginated conversation/notification inboxes,
+verified media integration, refresh lifecycle, durable login lockout, and
+encrypted mobile offline store are integrated in source. Release readiness
+still requires a signed physical-device acceptance pass; the local
+object-storage and Socket.IO media paths are now covered by Docker-backed
+runtime smoke.
 
 ## Verification Status
 
-For the current working tree on 2026-07-10, Flutter Analyze passed with no
-issues and all 418 Flutter tests passed. Android resource compilation and the
-iOS Release configuration shell matrix also passed. These local results do not
-prove store signing, physical-device behavior, deployed association files, or
-the target backend/object-storage environment. Final AAB/certificate
-verification is intentionally deferred at the product owner's request.
+For the current working tree on 2026-07-12, Flutter Analyze passes with no
+issues and all 524 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
+included. These local results do not prove store signing, signed
+physical-device behavior, deployed association files, or the target
+object-storage environment. Final AAB/certificate verification is intentionally
+deferred at the product owner's request.
 
-Backend TypeScript build and all 141 source tests pass. The local container is
-healthy with PostgreSQL and Redis ready, all 39 migrations are applied, and an
-authenticated HTTP smoke sent eight concurrent writes with one idempotency key:
-all replayed the same response, PostgreSQL contained exactly one domain row,
-and reuse with different content returned `409`. This proves the local runtime
-contract, not a multi-host production deployment.
+Backend TypeScript check/build, all 5 canonical/legacy pretests, and all 216
+source tests pass. The rebuilt local Docker backend, PostgreSQL, Redis, and
+MinIO-compatible media service are healthy; all 51 migrations are applied and
+dependency audit reports zero known vulnerabilities. `/ready` reports database,
+Redis, and media as `up`. The auth smoke also proves the durable fifth-failure
+account lock through HTTP. All 27 Docker-backed smoke groups pass, including
+real signed upload, full image sanitization, durable upload-ticket transition,
+private chat media, and provider media persistence. This proves the local
+runtime contract, not a multi-host production deployment.
 
-Admin Web production build, all 25 Vitest checks, honesty checks, and all 16
-route smokes pass. An authenticated local HTTP smoke fetched admin user pages 1
-and 2 with distinct rows and verified the returned total/page metadata.
+Admin Web production build, all 30 Vitest checks, honesty checks, and all 16
+route smokes pass. Production dependency audit reports zero known
+vulnerabilities.
 
 The secure-admin HTTP smoke also proves that legacy password/OTP/access/refresh
 paths cannot reach `/admin`, one concurrent MFA challenge creates one session,
@@ -130,24 +163,21 @@ depends on the external Meta-approved channel.
 
 ## Known Risks
 
-- Refresh and conversation behavior must be smoke-tested against the same
-  deployed backend build before release.
 - Signed media requires valid S3-compatible configuration; the `chat-image/`
   prefix must deny anonymous/public reads, and credentials remain server-side.
-- Provider quote permissions require explicit ownership checks before broader
-  shared-plan decisions.
+- Conversation/media reconnect behavior still needs a signed physical-device
+  acceptance pass against the release environment.
 - Final Android AAB signing/signer verification and iOS Archive/TestFlight
   validation are still required; they are not covered by the local code gate.
 - Android App Links and iOS Universal Links require deployed association files
   populated with real production identities and physical-device tests.
 - Financial data remains private by default, including financial commitments,
-  payment records, expenses, debts, and installments.
+  payment records, expenses, and financial installments.
 - Existing unrelated working-tree changes must be preserved.
 
 ## Documentation State
 
-- Active Markdown files: 28, listed in `docs/README.md`.
-- Historical archive files: 103 under
-  `docs/archive/2026-07-docs-consolidation/`.
+- The explicit active-document inventory and archive policy live in
+  `docs/README.md`; no brittle numeric file total is maintained.
 - `scripts/docs-sync.mjs` generates route, model, and package-script tables.
 - `scripts/docs-verify.mjs` checks active documentation against source.

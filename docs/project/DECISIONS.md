@@ -14,7 +14,8 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Allow conversations only when attached to a real quote request. | Accepted | Messaging is limited to the requester and the provider account on that quote. Open or unsolicited messaging remains excluded. |
-| Make `FinancialCommitment` the backbone of the money tab. | Accepted and implemented foundation | Every agreed amount must belong to a budget category. Provider/service costs, manual debts, payment records, and financial installments attach to that commitment model. Expenses remain actual money-out records, and accepted provider offers only suggest a commitment instead of creating one silently. |
+| Make `FinancialCommitment` the only obligation backbone of the money tab. | Accepted and implemented | Every agreed amount must belong to a budget category. Provider/service costs, manual payables, payment records, and financial installments attach to that commitment model. The former `Debt`/`Installment` models, routes, bridge fields, Flutter feature, and caches were removed before launch because there are no production users. |
+| Calculate confirmed financial exposure without dropping or duplicating money-out records. | Accepted and implemented | Confirmed cost is the sum of standalone paid `Expense` rows and active commitment totals. Payments under a commitment update its paid balance but do not add its cost again. Remaining budget and category risk use this same exposure definition. |
 | Use short-lived access tokens with rotating refresh tokens. | Accepted and implemented | Access JWTs default to 15 minutes. Opaque 30-day refresh tokens are hashed at rest, rotated transactionally, and revocable per session or per user. |
 | Keep one active documentation source per area. | Accepted | `docs/README.md` owns the source map. Historical plans and reports live as `.md.txt` under `docs/archive/` and must not compete with current docs. |
 
@@ -45,7 +46,7 @@
 | Run smoke tests before expanding core features. | Accepted | Smoke checks help confirm foundations are stable before more work is added. |
 | MVP starts with Wedding Financial OS, not marketplace-first. | Accepted | The primary user problem is planning, money, obligations, and coordination. |
 | Do not implement confirmed bookings, deposits, payment status, payment processing, loans, credit, financing flows, or FinTech features in MVP. | Accepted | These flows require later validation, privacy review, legal review, operational readiness, and explicit approval before implementation. |
-| Financial data is private by default. | Accepted | Financial commitments, payment records, expenses, debts, installments, attachments, and private tasks must not be visible to shared members unless permissions explicitly allow it. |
+| Financial data is private by default. | Accepted | Financial commitments, payment records, expenses, installments, attachments, and private tasks must not be visible to shared members unless permissions explicitly allow it. |
 | Early provider/service features are planning references and quote/lead flows only. | Accepted | The MVP must not become marketplace-first, paid booking, confirmed reservation, or deposit-driven. |
 | Phase 3 readiness order is Prisma + PostgreSQL, User, Auth, ownership context, then WeddingPlan. | Accepted | WeddingPlan ownership must be backed by persistence and real authenticated user context before domain implementation begins. |
 | Do not use mock-auth shortcuts for WeddingPlan ownership. | Accepted | Ownership and privacy behavior must not be validated against fake or temporary identity assumptions. |

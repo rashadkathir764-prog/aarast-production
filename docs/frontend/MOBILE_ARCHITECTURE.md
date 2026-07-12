@@ -1,6 +1,6 @@
 # Mobile Architecture
 
-Snapshot date: 2026-07-10
+Snapshot date: 2026-07-11
 
 ## Principles
 
@@ -21,8 +21,12 @@ Snapshot date: 2026-07-10
 - Auth action gating: `mobile/lib/features/auth/utils/auth_action_guard.dart`.
 - Session recovery: `mobile/lib/core/network/api_client.dart` and secure
   refresh storage in `mobile/lib/core/storage/`.
+- Sensitive local values: SQLCipher owns structured offline/cache data, while
+  dedicated OS secure-storage namespaces own tokens/database keys and the small
+  cached safe-user/guest-onboarding payloads. Production wiring does not store
+  those PII payloads in SharedPreferences.
 - Pending registration: `PendingRegistration` exists in navigation memory only
-  between OTP request and `/auth/register/complete`; it is never persisted.
+  between OTP request and `/api/v1/auth/register/complete`; it is never persisted.
 - Provider conversations: `mobile/lib/features/marketplace/` using REST
   history and authenticated Socket.IO delivery.
 

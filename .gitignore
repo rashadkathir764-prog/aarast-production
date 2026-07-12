@@ -13,6 +13,7 @@ deploy/monitoring/secrets/*
 dist/
 build/
 coverage/
+mobile/test/failures/
 
 # Flutter and Dart generated files
 .dart_tool/

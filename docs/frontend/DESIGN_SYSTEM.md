@@ -250,10 +250,10 @@ Use only when permissions allow money visibility.
 Shows:
 
 - Allocated budget.
-- Spent.
+- Confirmed cost (paid standalone expenses plus active commitments).
 - Remaining.
 - Usage progress.
-- Add expense action.
+- The whole card opens the Money surface.
 
 Rules:
 
@@ -281,19 +281,21 @@ Rules:
 
 Use `RoyalSmartFloatingActionButton`.
 
-Canonical quick actions:
+Canonical quick actions are context-specific:
 
-- Add expense.
-- Add task.
-- Add guest.
-- Add debt/installment.
-- Request quote.
-- Add budget category in money context.
+- Dashboard: provider/service cost, payment, task, guest, and quote request.
+- Money root: budget category, payable, and payment. Do not restore a duplicate
+  expense action to the shell; expense entry remains inside the finance flow.
+- Tasks: task first, followed by the shared planning actions.
+- Guests: guest first, followed by the shared planning actions.
+- Providers: no shell FAB; its primary actions live inside the marketplace.
 
 Rules:
 
 - Use the canonical quick action builder.
 - Avoid duplicate create affordances on the same surface.
+- Money quick-add visibility requires financial-management permission and is
+  hidden on finance subroutes.
 - Protected submit actions must remain account-gated for local guest plans.
 
 ## States

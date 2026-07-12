@@ -157,6 +157,77 @@ function extractAdminRouteMentions(mdText) {
   return out;
 }
 
+function findUnversionedProductApiMentions() {
+  const files = walk(join(root, 'docs'), '.md');
+  const allProductApiPrefixes = [
+    'auth',
+    'budget-categories',
+    'cities',
+    'conversations',
+    'dashboard',
+    'expenses',
+    'financial-commitments',
+    'financial-installments',
+    'financial-payment-records',
+    'guest-groups',
+    'guests',
+    'invites',
+    'me',
+    'media',
+    'notifications',
+    'onboarding',
+    'provider',
+    'provider-categories',
+    'providers',
+    'quote-offers',
+    'quote-requests',
+    'reviews',
+    'services',
+    'shared',
+    'tasks',
+    'users',
+    'wedding-plans',
+  ];
+
+  for (const f of files) {
+    const normalizedFile = relative(root, f).replace(/\\/g, '/');
+    if (
+      normalizedFile.includes('/archive/') ||
+      normalizedFile.startsWith('docs/superpowers/')
+    ) {
+      continue;
+    }
+
+    const src = read(f);
+    // Backend/QA/deployment docs describe HTTP APIs, so every product
+    // namespace there must be versioned even when prose omits the HTTP method.
+    // Other docs may legitimately mention Flutter routes such as
+    // `/notifications`; auth and media remain API-only everywhere.
+    const isApiContractDoc = [
+      'docs/backend/',
+      'docs/qa/',
+      'docs/deployment/',
+    ].some((prefix) => normalizedFile.startsWith(prefix));
+    const prefixes = isApiContractDoc
+      ? allProductApiPrefixes
+      : ['auth', 'media'];
+    const re = new RegExp(
+      `([\u0060'])(\\/(?:${prefixes.join('|')})(?:\\/[a-zA-Z0-9_\\-/:{}.?=&<>]+)?)\\1`,
+      'g',
+    );
+    let match;
+    while ((match = re.exec(src)) !== null) {
+      const line = src.slice(0, match.index).split('\n').length;
+      report(
+        'error',
+        normalizedFile,
+        line,
+        `Mentions unversioned product API ${match[2]}; use /api/v1.`,
+      );
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 3) Stale snapshot detection.
 // ---------------------------------------------------------------------------
@@ -222,33 +293,44 @@ function findBrokenLinks() {
 // ---------------------------------------------------------------------------
 function endpointDriftCheck() {
   const registered = getRegisteredEndpoints();
-  // The backend has dual legacy and /api/v1 surfaces. Normalize by
-  // collapsing the /api/v1 prefix on both sides so cross-prefix mentions
-  // (e.g. doc says /api/v1/notifications but only /notifications is
-  // declared in a non-aliased controller) do not produce false positives.
+  // Product APIs are canonical only under /api/v1. Normalize parameter names
+  // ({id} versus :id), but never normalize away the version prefix.
   const normalizedRegistered = new Set();
   for (const ep of registered) {
     const [method, path] = ep.split(' ');
-    normalizedRegistered.add(`${method} ${path.replace(/^\/api\/v1/, '')}`);
-    normalizedRegistered.add(`${method} ${path}`);
+    normalizedRegistered.add(`${method} ${normalizeEndpointPath(path)}`);
   }
   const files = walk(join(root, 'docs'), '.md');
   for (const f of files) {
-    if (f.includes('/archive/')) continue;
+    const normalizedFile = f.replace(/\\/g, '/');
+    if (
+      normalizedFile.includes('/archive/') ||
+      normalizedFile.includes('/docs/superpowers/')
+    ) {
+      continue;
+    }
     const src = read(f);
     const mentions = extractEndpointMentions(src);
     for (const ep of mentions) {
       const [method, path] = ep.split(' ');
-      const normalized = `${method} ${path.replace(/^\/api\/v1/, '')}`;
+      const normalized = `${method} ${normalizeEndpointPath(path)}`;
       if (!normalizedRegistered.has(normalized)) {
-        report('warn', relative(root, f), null, `Mentions ${ep} but no controller declares it.`);
+        report('error', relative(root, f), null, `Mentions ${ep} but no controller declares it.`);
       }
     }
   }
 }
 
+function normalizeEndpointPath(path) {
+  return path
+    .replace(/\{[^}]+\}/g, ':param')
+    .replace(/:[a-zA-Z0-9_]+/g, ':param')
+    .replace(/\/$/, '') || '/';
+}
+
 function main() {
   endpointDriftCheck();
+  findUnversionedProductApiMentions();
   findStaleSnapshots();
   findBrokenMigrationReferences();
   findBrokenLinks();

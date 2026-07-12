@@ -1,6 +1,6 @@
 # Scope And Phases
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-11
 
 This is the compact phase source. Older phase files were archived during the
 2026-07 documentation consolidation.
@@ -12,8 +12,8 @@ Current implemented scope includes:
 - Auth, profile, OTP helpers, and settings.
 - WeddingPlan ownership and active-plan flows.
 - Dashboard summary.
-- Budget categories, financial commitments, payment records, expenses, debts,
-  installments, and money summary.
+- Budget categories, financial commitments, payment records, expenses,
+  financial installments, and money summary.
 - Tasks, checklists, assignments, and timeline.
 - Guests and guest groups.
 - Sharing, invites, roles, and permissions.
@@ -27,13 +27,17 @@ Current implemented scope includes:
 - Five-tab provider portal and quote-scoped conversation UI.
 - Quote-scoped conversations, real-time delivery, unread/read state, mute,
   block, reporting, and admin moderation.
-- Signed provider, avatar, and chat media upload.
+- Signed provider, avatar, and chat media upload with full server-side image
+  decode/sanitize/re-encode before persistence, durable ownership tickets,
+  account quota, and abandoned-upload cleanup.
 - Rotating refresh sessions and mobile single-retry behavior.
 
 ## Release Validation In Flight
 
 The integrated provider portal, conversation/media, and refresh-session slices
-still require environment-backed smoke and device QA before a release claim.
+have local Compose/MinIO-backed smoke coverage. A release claim still requires
+the matching deployed environment plus signed physical-device reconnect,
+secure-storage, and session QA.
 
 ## Current Phase Discipline
 

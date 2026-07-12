@@ -59,7 +59,7 @@ Current test areas include:
 - Offline sync service tests.
 - JSON local database tests.
 - Offline local mapper tests.
-- Debt data tests.
+- Financial commitment and installment data tests.
 - Yemeni phone normalizer tests.
 
 New implementation work should extend these areas instead of replacing them blindly.
@@ -160,7 +160,7 @@ Repeated numbers must match across screens:
 - Total budget.
 - Spent amount.
 - Remaining amount.
-- Debts total.
+- Commitments total.
 - Due installments.
 - Open tasks.
 - Overdue tasks.
@@ -172,8 +172,8 @@ Test cases:
 
 - Create plan with date.
 - Add expense.
-- Add debt.
-- Add installment.
+- Add financial commitment.
+- Add financial installment.
 - Add task due today.
 - Add overdue task.
 - Add guest.
@@ -191,7 +191,7 @@ Fail if:
 Sensitive areas:
 
 - Expenses.
-- Debts.
+- Financial commitments and payment records.
 - Installments.
 - Attachments.
 - Guest contacts.
@@ -204,13 +204,21 @@ Required shared-member cases:
 - Viewer with no finance permission.
 - Member with task permission only.
 - Member with expense read permission.
-- Member with debt read permission.
+- Member with financial-record read permission.
 - Owner.
+- Financial-record-only member can read commitments/payment history without budget or
+  expense requests failing the whole screen.
+- View-only members never see add, edit, delete, reverse-payment, or money FAB
+  actions, including through direct write routes.
+- Switching to a plan whose finance load fails leaves no rows from the previous
+  plan.
+- Money heroes, category cards, commitments, payments, and installments render
+  `SAR` as `ر.س` and never as `ر.ي`.
 
 Fail if:
 
 - Viewer sees private finance details.
-- Task-only member can open money/debt screens.
+- Task-only member can open money screens.
 - Guest contacts are uploaded without explicit selection.
 - Provider sees private plan data not needed for quote.
 

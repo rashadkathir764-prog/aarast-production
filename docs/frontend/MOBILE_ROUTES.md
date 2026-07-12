@@ -2,8 +2,6 @@
 
 - `/conversations`
 - `/conversations/:id`
-- `/debts/:debtId`
-- `/debts/:debtId/installments/create`
 - `/dev/guest-onboarding`
 - `/dev/user-navigation-shell`
 - `/home`
@@ -14,7 +12,6 @@
 - `/notifications`
 - `/onboarding`
 - `/otp`
-- `/provider-dashboard`
 - `/provider/apply`
 - `/provider/apply/status`
 - `/provider/dashboard`
@@ -38,8 +35,6 @@
 - `/wedding-plans/:id/budget-categories/create`
 - `/wedding-plans/:id/budget/setup`
 - `/wedding-plans/:id/dashboard`
-- `/wedding-plans/:id/debts`
-- `/wedding-plans/:id/debts/create`
 - `/wedding-plans/:id/expenses`
 - `/wedding-plans/:id/expenses/:expenseId/edit`
 - `/wedding-plans/:id/expenses/create`
@@ -64,4 +59,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 63 unique routes
+Total: 58 unique routes

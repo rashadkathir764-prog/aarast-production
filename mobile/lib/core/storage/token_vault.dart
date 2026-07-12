@@ -19,7 +19,7 @@ abstract class TokenVault {
 /// Production vault backed by the platform keystore/keychain via
 /// flutter_secure_storage.
 ///
-/// Aarast is a financial app: the JWT unlocks budgets, debts and
+/// Aarast is a financial app: the JWT unlocks budgets, commitments and
 /// installments, so it must never live in plaintext SharedPreferences.
 class SecureTokenVault implements TokenVault {
   const SecureTokenVault([this._storage = _defaultStorage]);

@@ -4,10 +4,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../features/auth/models/safe_user.dart';
 import 'token_vault.dart';
+import 'sensitive_value_vault.dart';
 
 class AuthStorage {
-  const AuthStorage(this._preferences, {TokenVault? tokenVault})
-    : _tokenVault = tokenVault;
+  AuthStorage(
+    this._preferences, {
+    TokenVault? tokenVault,
+    SensitiveValueVault? sensitiveValueVault,
+  }) : _tokenVault = tokenVault,
+       _sensitiveValueVault = sensitiveValueVault;
 
   static const _accessTokenKey = 'aarast_access_token';
   static const _refreshTokenKey = 'aarast_refresh_token';
@@ -20,6 +25,27 @@ class AuthStorage {
   /// in the OS keystore. Without it (widget tests), the legacy
   /// SharedPreferences location is used so tests need no platform channels.
   final TokenVault? _tokenVault;
+  final SensitiveValueVault? _sensitiveValueVault;
+  SafeUser? _cachedUser;
+
+  Future<void> initialize() async {
+    final vault = _sensitiveValueVault;
+    if (vault == null) return;
+    final secureRaw = await vault.read(_safeUserKey);
+    final secureUser = _decodeUser(secureRaw);
+    if (secureUser != null) {
+      _cachedUser = secureUser;
+      await _preferences.remove(_safeUserKey);
+      return;
+    }
+
+    final legacyRaw = _preferences.getString(_safeUserKey);
+    final legacyUser = _decodeUser(legacyRaw);
+    if (legacyUser == null || legacyRaw == null) return;
+    await vault.write(_safeUserKey, legacyRaw);
+    await _preferences.remove(_safeUserKey);
+    _cachedUser = legacyUser;
+  }
 
   Future<String?> readAccessToken() async {
     final vault = _tokenVault;
@@ -45,16 +71,9 @@ class AuthStorage {
   }
 
   SafeUser? readUser() {
+    if (_sensitiveValueVault != null) return _cachedUser;
     final rawUser = _preferences.getString(_safeUserKey);
-    if (rawUser == null || rawUser.isEmpty) {
-      return null;
-    }
-
-    try {
-      return SafeUser.fromJson(jsonDecode(rawUser) as Map<String, dynamic>);
-    } catch (_) {
-      return null;
-    }
+    return _decodeUser(rawUser);
   }
 
   Future<String?> readRefreshToken() async {
@@ -89,11 +108,11 @@ class AuthStorage {
       await vault?.deleteRefresh();
       await _preferences.remove(_refreshTokenKey);
     }
-    await _preferences.setString(_safeUserKey, jsonEncode(user.toJson()));
+    await _saveUser(user);
   }
 
   Future<void> saveUser(SafeUser user) async {
-    await _preferences.setString(_safeUserKey, jsonEncode(user.toJson()));
+    await _saveUser(user);
   }
 
   String? readActivePlanId() {
@@ -110,6 +129,29 @@ class AuthStorage {
     await _preferences.remove(_accessTokenKey);
     await _preferences.remove(_refreshTokenKey);
     await _preferences.remove(_safeUserKey);
+    await _sensitiveValueVault?.delete(_safeUserKey);
+    _cachedUser = null;
     await _preferences.remove(_activePlanIdKey);
+  }
+
+  Future<void> _saveUser(SafeUser user) async {
+    final encoded = jsonEncode(user.toJson());
+    final vault = _sensitiveValueVault;
+    if (vault == null) {
+      await _preferences.setString(_safeUserKey, encoded);
+    } else {
+      await vault.write(_safeUserKey, encoded);
+      await _preferences.remove(_safeUserKey);
+      _cachedUser = user;
+    }
+  }
+
+  SafeUser? _decodeUser(String? rawUser) {
+    if (rawUser == null || rawUser.isEmpty) return null;
+    try {
+      return SafeUser.fromJson(jsonDecode(rawUser) as Map<String, dynamic>);
+    } on Object {
+      return null;
+    }
   }
 }

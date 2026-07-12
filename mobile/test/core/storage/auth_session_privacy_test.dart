@@ -6,6 +6,7 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/storage/token_vault.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
@@ -42,6 +43,23 @@ class _FakeTokenVault implements TokenVault {
   }
 }
 
+class _FakeSensitiveValueVault implements SensitiveValueVault {
+  final values = <String, String>{};
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
+}
+
 SafeUser _user(String id) {
   return SafeUser.fromJson({
     'id': id,
@@ -54,6 +72,49 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('AuthStorage with TokenVault', () {
+    test(
+      'production wiring never stores the safe user profile in prefs',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final preferences = await SharedPreferences.getInstance();
+        final sensitive = _FakeSensitiveValueVault();
+        final storage = AuthStorage(
+          preferences,
+          tokenVault: _FakeTokenVault(),
+          sensitiveValueVault: sensitive,
+        );
+        await storage.initialize();
+
+        await storage.saveSession(accessToken: 'jwt', user: _user('u1'));
+
+        expect(preferences.getString('aarast_safe_user'), isNull);
+        expect(sensitive.values['aarast_safe_user'], contains('+967700000000'));
+        expect(storage.readUser()?.id, 'u1');
+        await storage.clear();
+        expect(sensitive.values, isEmpty);
+      },
+    );
+
+    test('legacy plaintext safe user migrates into secure storage', () async {
+      SharedPreferences.setMockInitialValues({
+        'aarast_safe_user':
+            '{"id":"legacy","name":"Legacy","phone":"+967700000001"}',
+      });
+      final preferences = await SharedPreferences.getInstance();
+      final sensitive = _FakeSensitiveValueVault();
+      final storage = AuthStorage(
+        preferences,
+        tokenVault: _FakeTokenVault(),
+        sensitiveValueVault: sensitive,
+      );
+
+      await storage.initialize();
+
+      expect(storage.readUser()?.id, 'legacy');
+      expect(preferences.getString('aarast_safe_user'), isNull);
+      expect(sensitive.values['aarast_safe_user'], isNotNull);
+    });
+
     test(
       'saveSession stores token in vault, never in plaintext prefs',
       () async {
@@ -187,14 +248,14 @@ void main() {
         final service = await buildService();
         await service.ensureCacheOwner('user-a');
         await service.database.saveCachedItem(
-          table: OfflineTables.cachedDebts,
-          json: {'id': 'debt-1', 'amount': '200000'},
+          table: OfflineTables.cachedFinancialCommitments,
+          json: {'id': 'commitment-1', 'totalAmount': '200000'},
         );
 
         await service.ensureCacheOwner('user-b');
 
         final rows = await service.database.readCachedList(
-          table: OfflineTables.cachedDebts,
+          table: OfflineTables.cachedFinancialCommitments,
         );
         expect(
           rows,
@@ -208,14 +269,14 @@ void main() {
       final service = await buildService();
       await service.ensureCacheOwner('user-a');
       await service.database.saveCachedItem(
-        table: OfflineTables.cachedDebts,
-        json: {'id': 'debt-1', 'amount': '200000'},
+        table: OfflineTables.cachedFinancialCommitments,
+        json: {'id': 'commitment-1', 'totalAmount': '200000'},
       );
 
       await service.ensureCacheOwner('user-a');
 
       final rows = await service.database.readCachedList(
-        table: OfflineTables.cachedDebts,
+        table: OfflineTables.cachedFinancialCommitments,
       );
       expect(rows, hasLength(1));
     });

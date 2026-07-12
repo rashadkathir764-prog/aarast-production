@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,6 +27,31 @@ void main() {
 
       expect(await storage.hasDraft(), isTrue);
       expect(await storage.loadDraft(), draft);
+    });
+
+    test('production vault keeps guest plan PII out of preferences', () async {
+      final preferences = await SharedPreferences.getInstance();
+      final vault = _MemorySensitiveVault();
+      final storage = GuestOnboardingStorage(
+        preferences,
+        sensitiveValueVault: vault,
+      );
+      final draft = const GuestOnboardingDraft.empty().copyWith(
+        selectedPath: GuestOnboardingPath.weddingUser,
+        city: 'صنعاء',
+        estimatedBudget: '2500000',
+      );
+
+      await storage.saveDraft(draft);
+
+      expect(preferences.getString(GuestOnboardingStorage.draftKey), isNull);
+      expect(
+        vault.values[GuestOnboardingStorage.draftKey],
+        contains('2500000'),
+      );
+      expect((await storage.loadDraft())?.city, 'صنعاء');
+      await storage.clearDraft();
+      expect(vault.values, isEmpty);
     });
 
     test('clears saved draft', () async {
@@ -74,4 +100,21 @@ void main() {
       expect((await storage.loadGuestPlan())?.guestPlanId, 'guest-plan-1');
     });
   });
+}
+
+class _MemorySensitiveVault implements SensitiveValueVault {
+  final values = <String, String>{};
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async {
+    values[key] = value;
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    values.remove(key);
+  }
 }

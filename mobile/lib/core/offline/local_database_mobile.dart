@@ -3,12 +3,13 @@ import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_sqlcipher/sqflite.dart';
 
 import 'local_database_contract.dart';
 import 'local_database_json.dart';
 import 'local_mappers.dart';
 import 'offline_tables.dart';
+import 'offline_database_key_vault.dart';
 import 'sync_queue.dart';
 
 Future<LocalDatabase> createPlatformLocalDatabase(
@@ -20,29 +21,35 @@ Future<LocalDatabase> createPlatformLocalDatabase(
     return fallback;
   }
 
-  try {
-    final database = SqliteLocalDatabase();
-    await database.initialize();
-    return database;
-  } catch (_) {
-    final fallback = JsonLocalDatabase(preferences);
-    await fallback.initialize();
-    return fallback;
-  }
+  final database = SqliteLocalDatabase(preferences: preferences);
+  await database.initialize();
+  return database;
 }
 
 class SqliteLocalDatabase implements LocalDatabase {
-  static const _databaseName = 'aarast_offline.db';
-  static const _databaseVersion = 3;
+  SqliteLocalDatabase({
+    required SharedPreferences preferences,
+    OfflineDatabaseKeyVault? keyVault,
+  }) : _preferences = preferences,
+       _keyVault = keyVault ?? OfflineDatabaseKeyVault();
 
+  static const _legacyDatabaseName = 'aarast_offline.db';
+  static const _databaseName = 'aarast_offline_secure_v1.db';
+  static const _databaseVersion = 4;
+
+  final SharedPreferences _preferences;
+  final OfflineDatabaseKeyVault _keyVault;
   Database? _database;
 
   @override
   Future<void> initialize() async {
     final dbPath = await getDatabasesPath();
+    await _removeLegacyPlaintextStores(dbPath);
     final fullPath = path.join(dbPath, _databaseName);
+    final password = await _keyVault.readOrCreate();
     _database = await openDatabase(
       fullPath,
+      password: password,
       version: _databaseVersion,
       onCreate: (db, version) async {
         await _createSchema(db);
@@ -62,8 +69,24 @@ class SqliteLocalDatabase implements LocalDatabase {
           _createFinancialCacheTables(batch);
           await batch.commit();
         }
+        if (oldVersion < 4) {
+          await db.execute('DROP TABLE IF EXISTS cached_installments');
+          await db.execute('DROP TABLE IF EXISTS cached_debts');
+        }
       },
     );
+  }
+
+  Future<void> _removeLegacyPlaintextStores(String dbPath) async {
+    final legacyPath = path.join(dbPath, _legacyDatabaseName);
+    if (await File(legacyPath).exists()) {
+      await deleteDatabase(legacyPath);
+    }
+    for (final key in _preferences.getKeys().where(
+      (key) => key.startsWith('aarast_offline'),
+    )) {
+      await _preferences.remove(key);
+    }
   }
 
   @override
@@ -410,16 +433,6 @@ CREATE TABLE ${OfflineTables.syncQueue} (
       batch,
       OfflineTables.cachedBudgetItems,
       'planId TEXT, category TEXT, amount TEXT, paidAmount TEXT, status TEXT',
-    );
-    _cacheTable(
-      batch,
-      OfflineTables.cachedDebts,
-      'planId TEXT, title TEXT, creditorName TEXT, amount TEXT, paidAmount TEXT, status TEXT',
-    );
-    _cacheTable(
-      batch,
-      OfflineTables.cachedInstallments,
-      'debtId TEXT, amount TEXT, dueDate TEXT, status TEXT',
     );
     _createFinancialCacheTables(batch);
     _cacheTable(

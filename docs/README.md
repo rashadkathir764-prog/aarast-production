@@ -75,6 +75,7 @@ changing behavior.
 
 - `docs/deployment/README.md`
 - `docs/deployment/DOKPLOY_RUNBOOK.md`
+- `docs/deployment/OPENWA_OTP_MVP.md`
 - `docs/deployment/SCALING.md`
 - `docs/deployment/STORE_RELEASE.md`
 - `docs/deployment/STORE_LISTING.md`
@@ -112,6 +113,7 @@ changing behavior.
 | Mobile QA | `docs/qa/MOBILE_QA.md` |
 | Deployment | `docs/deployment/README.md` |
 | Dokploy runbook | `docs/deployment/DOKPLOY_RUNBOOK.md` |
+| Temporary OpenWA OTP gate | `docs/deployment/OPENWA_OTP_MVP.md` |
 | Scaling and capacity | `docs/deployment/SCALING.md` |
 | Play Store release | `docs/deployment/STORE_RELEASE.md` |
 | Store listing copy | `docs/deployment/STORE_LISTING.md` |

@@ -1,4 +1,5 @@
 import { loadWhatsAppOtpConfig } from '../../auth/whatsapp-otp-config';
+import { loadOpenWaOtpConfig } from '../../auth/openwa-otp-config';
 
 export function isProductionEnvironment(
   environment: NodeJS.ProcessEnv = process.env,
@@ -17,9 +18,9 @@ export function validateRuntimeEnvironment(
   }
 
   const otpMode = environment.AUTH_OTP_MODE?.trim().toLowerCase();
-  if (otpMode && !['dev', 'whatsapp', 'disabled'].includes(otpMode)) {
+  if (otpMode && !['dev', 'whatsapp', 'openwa', 'disabled'].includes(otpMode)) {
     throw new Error(
-      `AUTH_OTP_MODE must be one of dev|whatsapp|disabled, got "${otpMode}"`,
+      `AUTH_OTP_MODE must be one of dev|whatsapp|openwa|disabled, got "${otpMode}"`,
     );
   }
 
@@ -38,10 +39,22 @@ export function validateRuntimeEnvironment(
     throw new Error('AUTH_LOGIN_THROTTLE_PEPPER is required in production');
   }
 
+  const globalOtpLimit = Number(environment.OTP_GLOBAL_DAILY_LIMIT ?? 150);
+  if (
+    !Number.isInteger(globalOtpLimit) ||
+    globalOtpLimit < 1 ||
+    globalOtpLimit > 10_000
+  ) {
+    throw new Error('OTP_GLOBAL_DAILY_LIMIT must be an integer from 1 to 10000');
+  }
+
   validateProductionMediaEndpoints(environment);
 
   if (otpMode === 'whatsapp') {
     loadWhatsAppOtpConfig(environment);
+  }
+  if (otpMode === 'openwa') {
+    loadOpenWaOtpConfig(environment);
   }
 }
 

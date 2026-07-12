@@ -391,6 +391,17 @@ model LoginThrottle {
   @@index([updatedAt])
 }
 
+model OtpDispatchQuota {
+  scope           String   @db.VarChar(32)
+  subjectHash     String   @db.Char(64)
+  count           Int      @default(0)
+  windowStartedAt DateTime
+  updatedAt       DateTime @updatedAt
+
+  @@id([scope, subjectHash])
+  @@index([updatedAt])
+}
+
 model WeddingPlan {
   id                      String                   @id @default(cuid())
   ownerUserId             String

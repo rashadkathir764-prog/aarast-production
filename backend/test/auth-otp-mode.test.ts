@@ -20,7 +20,7 @@ type StoredOtp = {
   createdAt: Date;
 };
 
-function createService() {
+function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise<void> }) {
   const otps: StoredOtp[] = [];
   let sequence = 0;
   const prisma = {
@@ -88,7 +88,12 @@ function createService() {
     $transaction: async (action: any) => action(prisma),
   };
   const jwtService = { sign: () => 'test-token' };
-  return new AuthService(prisma as any, jwtService as any, {} as any);
+  return new AuthService(
+    prisma as any,
+    jwtService as any,
+    {} as any,
+    otpDispatchQuota as any,
+  );
 }
 
 async function withEnv(
@@ -235,6 +240,69 @@ test('production does not enable dev OTP even if AUTH_OTP_MODE is dev', async ()
           }),
         (error: any) => error.message === safeOtpUnavailableMessage,
       );
+    },
+  );
+});
+
+test('OpenWA mode consumes the durable quota before delivering a code', async () => {
+  const originalFetch = globalThis.fetch;
+  const consumed: Array<{ phone: string; ip?: string | null }> = [];
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'openwa',
+      OPENWA_BASE_URL: 'http://openwa:3000',
+      OPENWA_SESSION_ID: 'aarast-otp',
+      OPENWA_API_KEY: 'a-secure-openwa-api-key-for-tests-only',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      globalThis.fetch = async () =>
+        new Response(JSON.stringify({ messageId: 'wa-message-id' }), {
+          status: 201,
+          headers: { 'content-type': 'application/json' },
+        });
+      const service = createService({
+        consume: async (phone: string, context: { ip?: string | null }) => {
+          consumed.push({ phone, ip: context.ip });
+        },
+      });
+
+      try {
+        const response = await service.requestOtp(
+          { phone: '777123456', purpose: OtpPurpose.VERIFY_PHONE },
+          { ip: '203.0.113.10' },
+        );
+        assert.equal(response.delivery, 'WHATSAPP');
+        assert.equal(response.code, undefined);
+        assert.deepEqual(consumed, [
+          { phone: '+967777123456', ip: '203.0.113.10' },
+        ]);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    },
+  );
+});
+
+test('dev OTP mode never consumes the production delivery quota', async () => {
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'dev',
+      AUTH_DEV_OTP_CODE: '123456',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      let consumed = false;
+      const service = createService({
+        consume: async () => {
+          consumed = true;
+        },
+      });
+      await service.requestOtp({
+        phone: '777123456',
+        purpose: OtpPurpose.VERIFY_PHONE,
+      });
+      assert.equal(consumed, false);
     },
   );
 });

@@ -132,24 +132,45 @@ still requires a signed physical-device acceptance pass; the local
 object-storage and Socket.IO media paths are now covered by Docker-backed
 runtime smoke.
 
+The temporary OpenWA MVP adapter is integrated on the Aarast side behind
+`AUTH_OTP_MODE=openwa`: runtime configuration fails closed, delivery uses only
+the private transient endpoint, PostgreSQL enforces HMAC-keyed phone/IP/global
+quotas, `/ready` verifies both the selected session and transient capability,
+and Flutter matches the 60-second resend boundary. The pinned OpenWA `v0.8.16`
+fork now builds and runs in the isolated loopback lab: the dedicated session is
+QR-linked, transient-role boundaries pass, one live self-recipient OTP returns
+`200`, immediate resend returns `429`, verification returns `200`, private
+OpenWA persistence tables remain empty, and disconnect/reconnect plus container
+restart fail closed and recover without another QR scan. An independently owned
+second-recipient acceptance and the required 24-hour stability observation
+remain operational gates before a wider MVP rollout.
+
 ## Verification Status
 
-For the current working tree on 2026-07-12, Flutter Analyze passes with no
-issues and all 524 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
+For the current working tree on 2026-07-13, Flutter Analyze passes with no
+issues and all 525 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
 included. These local results do not prove store signing, signed
 physical-device behavior, deployed association files, or the target
 object-storage environment. Final AAB/certificate verification is intentionally
 deferred at the product owner's request.
 
-Backend TypeScript check/build, all 5 canonical/legacy pretests, and all 216
-source tests pass. The rebuilt local Docker backend, PostgreSQL, Redis, and
+Backend TypeScript check, all 5 canonical/legacy pretests, and all 235 source
+tests pass for the OpenWA integration branch. The previously rebuilt local
+Docker backend, PostgreSQL, Redis, and
 MinIO-compatible media service are healthy; all 51 migrations are applied and
 dependency audit reports zero known vulnerabilities. `/ready` reports database,
-Redis, and media as `up`. The auth smoke also proves the durable fifth-failure
+Redis, and media as `up`; an OpenWA-enabled runtime additionally requires its
+transport check to be `up`. The auth smoke also proves the durable fifth-failure
 account lock through HTTP. All 27 Docker-backed smoke groups pass, including
 real signed upload, full image sanitization, durable upload-ticket transition,
 private chat media, and provider media persistence. This proves the local
 runtime contract, not a multi-host production deployment.
+
+The hardened OpenWA fork has 2,296 passing tests (5 intentionally skipped), a
+passing production build, zero lint errors, and zero production dependency
+vulnerabilities. Its live lab image returns Aarast `/health=200` and
+`/ready=200`; transient sends create no OpenWA message, LID mapping, webhook, or
+plugin rows and expose neither recipient nor OTP in runtime logs.
 
 Admin Web production build, all 30 Vitest checks, honesty checks, and all 16
 route smokes pass. Production dependency audit reports zero known

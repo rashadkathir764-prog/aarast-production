@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter/services.dart';
@@ -51,6 +53,7 @@ class OtpScreen extends StatefulWidget {
 
 class _OtpScreenState extends State<OtpScreen> {
   static const _codeLength = 6;
+  static const _resendCooldown = 60;
 
   final List<TextEditingController> _controllers = List.generate(
     _codeLength,
@@ -63,15 +66,19 @@ class _OtpScreenState extends State<OtpScreen> {
 
   bool _isVerifying = false;
   String? _devOtpMessage;
+  Timer? _resendTimer;
+  int _resendSeconds = _resendCooldown;
 
   @override
   void initState() {
     super.initState();
     _devOtpMessage = widget.devOtpMessage;
+    _startResendCooldown();
   }
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     for (final controller in _controllers) {
       controller.dispose();
     }
@@ -79,6 +86,47 @@ class _OtpScreenState extends State<OtpScreen> {
       node.dispose();
     }
     super.dispose();
+  }
+
+  void _startResendCooldown({bool notify = false}) {
+    _resendTimer?.cancel();
+    if (notify && mounted) {
+      setState(() => _resendSeconds = _resendCooldown);
+    } else {
+      _resendSeconds = _resendCooldown;
+    }
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendSeconds <= 1) {
+        timer.cancel();
+        setState(() => _resendSeconds = 0);
+        return;
+      }
+      setState(() => _resendSeconds -= 1);
+    });
+  }
+
+  Future<void> _resendOtp() async {
+    if (_resendSeconds > 0) return;
+    final authController = context.read<AuthController>();
+    if (authController.isSubmitting) return;
+    final phone = widget.phone ?? authController.otpRequest?.phone;
+    final purpose =
+        widget.purpose ?? authController.otpRequest?.purpose ?? 'VERIFY_PHONE';
+    if (phone == null || phone.isEmpty) return;
+    final result = await authController.requestOtp(
+      phone: phone,
+      purpose: purpose,
+    );
+    if (!mounted || result == null) return;
+    if (result.localDevMessage != null) {
+      setState(() => _devOtpMessage = result.localDevMessage);
+    }
+    _startResendCooldown(notify: true);
+    AarastToast.showSuccess(context, 'تم إعادة إرسال الرمز');
   }
 
   void _onChanged(String value, int index) {
@@ -281,25 +329,12 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           const SizedBox(height: 18),
           AuthFooterLink(
+            key: const ValueKey('otp-resend-button'),
             prefix: 'لم تستلم الرمز؟',
-            action: 'إعادة الإرسال',
-            onTap: () async {
-              final authController = context.read<AuthController>();
-              final phone = widget.phone ?? auth.otpRequest?.phone;
-              final purpose =
-                  widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
-              if (phone == null || phone.isEmpty) return;
-              final result = await authController.requestOtp(
-                phone: phone,
-                purpose: purpose,
-              );
-              if (result == null) return;
-              if (result.localDevMessage != null && mounted) {
-                setState(() => _devOtpMessage = result.localDevMessage);
-              }
-              if (!context.mounted) return;
-              AarastToast.showSuccess(context, 'تم إعادة إرسال الرمز');
-            },
+            action: _resendSeconds > 0
+                ? 'إعادة الإرسال خلال $_resendSeconds ث'
+                : 'إعادة الإرسال',
+            onTap: _resendSeconds > 0 || auth.isSubmitting ? null : _resendOtp,
           ),
         ],
       ),

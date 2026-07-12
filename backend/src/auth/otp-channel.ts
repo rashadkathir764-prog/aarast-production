@@ -3,6 +3,8 @@ import {
   loadWhatsAppOtpConfig,
   WhatsAppOtpConfig,
 } from './whatsapp-otp-config';
+import { loadOpenWaOtpConfig, OpenWaOtpConfig } from './openwa-otp-config';
+import { readBoundedJson } from '../common/http/bounded-json-response';
 
 export interface OtpDeliveryResult {
   delivery: 'LOCAL_DEV' | 'WHATSAPP';
@@ -73,6 +75,7 @@ export class WhatsAppOtpChannel implements OtpChannel {
             Authorization: `Bearer ${this.config.accessToken}`,
             'Content-Type': 'application/json',
           },
+          redirect: 'error',
           signal: controller.signal,
           body: JSON.stringify({
             messaging_product: 'whatsapp',
@@ -108,6 +111,64 @@ export class WhatsAppOtpChannel implements OtpChannel {
       };
       if (typeof payload.messages?.[0]?.id !== 'string') {
         throw new Error('WhatsApp OTP delivery returned no message id');
+      }
+
+      return { delivery: 'WHATSAPP' };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+}
+
+/**
+ * Temporary MVP channel backed by the Aarast-hardened OpenWA fork.
+ *
+ * This intentionally calls only `send-transient-text`. The upstream
+ * `send-text` route persists message bodies and must never receive OTPs.
+ */
+export class OpenWaOtpChannel implements OtpChannel {
+  constructor(
+    private readonly config: OpenWaOtpConfig = loadOpenWaOtpConfig(),
+    private readonly fetchImplementation: typeof fetch = fetch,
+  ) {}
+
+  generateCode(): string {
+    return randomInt(0, 1_000_000).toString().padStart(6, '0');
+  }
+
+  async deliver(
+    phone: string,
+    code: string,
+    _purpose: string,
+  ): Promise<OtpDeliveryResult> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
+    const sessionId = encodeURIComponent(this.config.sessionId);
+
+    try {
+      const response = await this.fetchImplementation(
+        `${this.config.baseUrl}/api/sessions/${sessionId}/messages/send-transient-text`,
+        {
+          method: 'POST',
+          headers: {
+            'X-API-Key': this.config.apiKey,
+            'Content-Type': 'application/json',
+          },
+          redirect: 'error',
+          signal: controller.signal,
+          body: JSON.stringify({
+            chatId: `${phone.replace(/\D/g, '')}@c.us`,
+            text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`OpenWA OTP delivery failed with HTTP ${response.status}`);
+      }
+      const payload = await readBoundedJson<{ messageId?: unknown }>(response);
+      if (typeof payload.messageId !== 'string' || !payload.messageId.trim()) {
+        throw new Error('OpenWA OTP delivery returned no message id');
       }
 
       return { delivery: 'WHATSAPP' };

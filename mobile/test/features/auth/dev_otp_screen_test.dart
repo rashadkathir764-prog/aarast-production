@@ -52,6 +52,60 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('OTP resend remains disabled for the server cooldown window', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 760);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final authController = await _authController();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthController>.value(
+        value: authController,
+        child: MaterialApp(
+          locale: const Locale('ar'),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.3)),
+            child: child!,
+          ),
+          home: const OtpScreen(
+            phone: '+967777123456',
+            purpose: 'VERIFY_PHONE',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('إعادة الإرسال خلال 60 ث'), findsOneWidget);
+    final footer = find.byKey(const ValueKey('otp-resend-button'));
+    await tester.ensureVisible(footer);
+    expect(
+      tester
+          .widget<TextButton>(
+            find.descendant(of: footer, matching: find.byType(TextButton)),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    await tester.pump(const Duration(seconds: 59));
+    expect(find.textContaining('إعادة الإرسال خلال 1 ث'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('لم تستلم الرمز؟ إعادة الإرسال'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextButton>(
+            find.descendant(of: footer, matching: find.byType(TextButton)),
+          )
+          .onPressed,
+      isNotNull,
+    );
+  });
 }
 
 Future<AuthController> _authController() async {

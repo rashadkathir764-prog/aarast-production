@@ -22,7 +22,7 @@ class AuthRepository {
     required String password,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/auth/login', {
+    final json = await _apiClient.postJson('/api/v1/auth/login', {
       'phone': normalizedPhone,
       'password': password,
     });
@@ -42,7 +42,7 @@ class AuthRepository {
     String? email,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/auth/register', {
+    final json = await _apiClient.postJson('/api/v1/auth/register', {
       'name': name,
       'phone': normalizedPhone,
       if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
@@ -59,7 +59,7 @@ class AuthRepository {
     String? email,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/auth/register/complete', {
+    final json = await _apiClient.postJson('/api/v1/auth/register/complete', {
       'name': name,
       'phone': normalizedPhone,
       if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
@@ -76,7 +76,7 @@ class AuthRepository {
   }
 
   Future<SafeUser> me() async {
-    final json = await _apiClient.getJson('/auth/me');
+    final json = await _apiClient.getJson('/api/v1/auth/me');
     final user = SafeUser.fromJson(json);
     await _authStorage.saveUser(user);
     return user;
@@ -87,7 +87,7 @@ class AuthRepository {
     required String purpose,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/auth/otp/request', {
+    final json = await _apiClient.postJson('/api/v1/auth/otp/request', {
       'phone': normalizedPhone,
       'purpose': purpose,
     });
@@ -100,7 +100,7 @@ class AuthRepository {
     required String code,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/auth/otp/verify', {
+    final json = await _apiClient.postJson('/api/v1/auth/otp/verify', {
       'phone': normalizedPhone,
       'purpose': purpose,
       'code': code,
@@ -123,9 +123,10 @@ class AuthRepository {
   /// يطلب رمز استعادة كلمة المرور. الخادم لا يكشف وجود الحساب من عدمه.
   Future<OtpRequestResult> requestPasswordReset({required String phone}) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/auth/password-reset/request', {
-      'phone': normalizedPhone,
-    });
+    final json = await _apiClient.postJson(
+      '/api/v1/auth/password-reset/request',
+      {'phone': normalizedPhone},
+    );
     return OtpRequestResult.fromJson(json);
   }
 
@@ -137,7 +138,7 @@ class AuthRepository {
     required String newPassword,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    await _apiClient.postJson('/auth/password-reset/confirm', {
+    await _apiClient.postJson('/api/v1/auth/password-reset/confirm', {
       'phone': normalizedPhone,
       'code': code,
       'newPassword': newPassword,
@@ -150,7 +151,7 @@ class AuthRepository {
     final refreshToken = await _authStorage.readRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) return false;
     try {
-      final json = await _apiClient.postJson('/auth/refresh', {
+      final json = await _apiClient.postJson('/api/v1/auth/refresh', {
         'refreshToken': refreshToken,
       });
       final response = _parseAuthResponse(json, operation: 'refresh');
@@ -175,20 +176,31 @@ class AuthRepository {
     required String contentType,
   }) async {
     try {
-      final ticket = await _apiClient.postJson('/media/uploads/presign', {
-        'purpose': 'user-avatar',
-        'fileName': fileName,
-        'contentType': contentType,
-        'byteSize': bytes.length,
-      });
+      final ticket = await _apiClient
+          .postJson('/api/v1/media/uploads/presign', {
+            'purpose': 'user-avatar',
+            'fileName': fileName,
+            'contentType': contentType,
+            'byteSize': bytes.length,
+          });
       final uploadUrl = ticket['uploadUrl']?.toString() ?? '';
-      final publicUrl = ticket['publicUrl']?.toString() ?? '';
-      if (uploadUrl.isEmpty || publicUrl.isEmpty) {
+      final key = ticket['key']?.toString() ?? '';
+      if (uploadUrl.isEmpty || key.isEmpty) {
         throw const ApiException('تعذر تجهيز رفع الصورة.');
       }
       await _apiClient.putBytes(uploadUrl, bytes, contentType: contentType);
+      final verified = await _apiClient.postJson(
+        '/api/v1/media/uploads/verify',
+        {'key': key, 'purpose': 'user-avatar'},
+      );
+      final publicUrl = verified['publicUrl']?.toString() ?? '';
+      if (publicUrl.isEmpty) {
+        throw const ApiException('تعذر التحقق من الصورة المرفوعة.');
+      }
       final user = SafeUser.fromJson(
-        await _apiClient.patchJson('/users/me', {'avatarUrl': publicUrl}),
+        await _apiClient.patchJson('/api/v1/users/me', {
+          'avatarUrl': publicUrl,
+        }),
       );
       await _authStorage.saveUser(user);
       return user;
@@ -208,14 +220,14 @@ class AuthRepository {
   /// session only after the server confirms — a failed request leaves the
   /// account and session intact so the user can retry.
   Future<void> deleteAccount() async {
-    await _apiClient.deleteJson('/users/me');
+    await _apiClient.deleteJson('/api/v1/users/me');
     await _authStorage.clear();
   }
 
   Future<void> logout() async {
     final refreshToken = await _authStorage.readRefreshToken();
     try {
-      await _apiClient.postJson('/auth/logout', {
+      await _apiClient.postJson('/api/v1/auth/logout', {
         if (refreshToken != null && refreshToken.isNotEmpty)
           'refreshToken': refreshToken,
       });

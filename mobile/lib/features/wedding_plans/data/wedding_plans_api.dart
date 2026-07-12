@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -79,7 +79,7 @@ class WeddingPlansApi {
 
   Future<List<WeddingPlan>> getMyWeddingPlans() async {
     try {
-      final items = await _getJsonMapList('/wedding-plans/my');
+      final items = await _getJsonMapList('/api/v1/wedding-plans/my');
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedWeddingPlans,
         items: items,
@@ -98,7 +98,7 @@ class WeddingPlansApi {
 
   Future<WeddingPlan> getWeddingPlan(String id) async {
     try {
-      final json = await _apiClient.getJson('/wedding-plans/$id');
+      final json = await _apiClient.getJson('/api/v1/wedding-plans/$id');
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedWeddingPlans,
         json: json,
@@ -135,7 +135,7 @@ class WeddingPlansApi {
     };
 
     try {
-      final json = await _apiClient.postJson('/wedding-plans', payload);
+      final json = await _apiClient.postJson('/api/v1/wedding-plans', payload);
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedWeddingPlans,
         json: json,
@@ -168,7 +168,7 @@ class WeddingPlansApi {
       await _offline.database.enqueueSync(
         entityType: 'wedding_plan',
         operation: 'create',
-        endpoint: '/wedding-plans',
+        endpoint: '/api/v1/wedding-plans',
         method: 'POST',
         payload: payload,
         localEntityId: localId,
@@ -197,7 +197,10 @@ class WeddingPlansApi {
     Map<String, dynamic> data,
   ) async {
     try {
-      final json = await _apiClient.patchJson('/wedding-plans/$id', data);
+      final json = await _apiClient.patchJson(
+        '/api/v1/wedding-plans/$id',
+        data,
+      );
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedWeddingPlans,
         json: json,
@@ -224,7 +227,7 @@ class WeddingPlansApi {
       await _offline.database.enqueueSync(
         entityType: 'wedding_plan',
         operation: 'update',
-        endpoint: '/wedding-plans/$id',
+        endpoint: '/api/v1/wedding-plans/$id',
         method: 'PATCH',
         payload: data,
         localEntityId: id,
@@ -235,7 +238,10 @@ class WeddingPlansApi {
   }
 
   Future<WeddingPlan> archiveWeddingPlan(String id) async {
-    final json = await _apiClient.patchJson('/wedding-plans/$id/archive', {});
+    final json = await _apiClient.patchJson(
+      '/api/v1/wedding-plans/$id/archive',
+      {},
+    );
     await _offline?.database.saveCachedItem(
       table: OfflineTables.cachedWeddingPlans,
       json: json,

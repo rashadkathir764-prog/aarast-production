@@ -16,7 +16,7 @@ class MarketplaceApi {
 
   Future<List<MarketplaceCity>> getCities() async {
     try {
-      final items = await _getJsonMapList('/cities');
+      final items = await _getJsonMapList('/api/v1/cities');
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedCities,
         items: items,
@@ -34,7 +34,7 @@ class MarketplaceApi {
 
   Future<List<ProviderCategory>> getCategories() async {
     try {
-      final items = await _getJsonMapList('/provider-categories');
+      final items = await _getJsonMapList('/api/v1/provider-categories');
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedProviderCategories,
         items: items,
@@ -60,7 +60,7 @@ class MarketplaceApi {
   }) async {
     try {
       final json = await _apiClient.getJson(
-        _path('/providers', {
+        _path('/api/v1/providers', {
           'page': '$page',
           'limit': '$limit',
           if (search != null && search.trim().isNotEmpty)
@@ -101,7 +101,7 @@ class MarketplaceApi {
 
   Future<MarketplaceProvider> getProvider(String id) async {
     try {
-      final json = await _apiClient.getJson('/providers/$id');
+      final json = await _apiClient.getJson('/api/v1/providers/$id');
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedProviders,
         json: json,
@@ -122,7 +122,9 @@ class MarketplaceApi {
     String providerId,
   ) async {
     try {
-      final items = await _getJsonMapList('/providers/$providerId/services');
+      final items = await _getJsonMapList(
+        '/api/v1/providers/$providerId/services',
+      );
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedProviderServices,
         items: items,
@@ -154,7 +156,7 @@ class MarketplaceApi {
     int limit = 12,
   }) async {
     final json = await _apiClient.getJson(
-      _path('/services', {
+      _path('/api/v1/services', {
         'page': '$page',
         'limit': '$limit',
         if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
@@ -173,7 +175,9 @@ class MarketplaceApi {
 
   Future<List<ProviderPackage>> getProviderPackages(String providerId) async {
     try {
-      final items = await _getJsonMapList('/providers/$providerId/packages');
+      final items = await _getJsonMapList(
+        '/api/v1/providers/$providerId/packages',
+      );
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedProviderPackages,
         items: items,
@@ -196,7 +200,9 @@ class MarketplaceApi {
   Future<List<ProviderReview>> getProviderReviews(String providerId) async {
     final key = 'provider_reviews:$providerId';
     try {
-      final items = await _getJsonMapList('/providers/$providerId/reviews');
+      final items = await _getJsonMapList(
+        '/api/v1/providers/$providerId/reviews',
+      );
       await _offline?.database.setMeta(key, jsonEncode(items));
       return items.map(ProviderReview.fromJson).toList();
     } on Object catch (error) {
@@ -217,7 +223,7 @@ class MarketplaceApi {
 
   Future<List<FavoriteProvider>> getFavoriteProviders() async {
     try {
-      final items = await _getJsonMapList('/me/favorite-providers');
+      final items = await _getJsonMapList('/api/v1/me/favorite-providers');
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedFavoriteProviders,
         items: items,
@@ -235,7 +241,7 @@ class MarketplaceApi {
 
   Future<void> favoriteProvider(String providerId) async {
     try {
-      await _apiClient.postJson('/providers/$providerId/favorite', {});
+      await _apiClient.postJson('/api/v1/providers/$providerId/favorite', {});
       await _offline?.syncPendingChanges();
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
@@ -247,7 +253,7 @@ class MarketplaceApi {
       await _offline.database.enqueueSync(
         entityType: 'favorite_provider',
         operation: 'create',
-        endpoint: '/providers/$providerId/favorite',
+        endpoint: '/api/v1/providers/$providerId/favorite',
         method: 'POST',
         payload: const {},
         localEntityId: providerId,
@@ -258,7 +264,7 @@ class MarketplaceApi {
 
   Future<void> unfavoriteProvider(String providerId) async {
     try {
-      await _apiClient.deleteJson('/providers/$providerId/favorite');
+      await _apiClient.deleteJson('/api/v1/providers/$providerId/favorite');
       await _offline?.syncPendingChanges();
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
@@ -271,7 +277,7 @@ class MarketplaceApi {
       await _offline.database.enqueueSync(
         entityType: 'favorite_provider',
         operation: 'delete',
-        endpoint: '/providers/$providerId/favorite',
+        endpoint: '/api/v1/providers/$providerId/favorite',
         method: 'DELETE',
         payload: const {},
         localEntityId: providerId,
@@ -318,7 +324,7 @@ class MarketplaceApi {
     }
     try {
       final json = await _apiClient.postJson(
-        '/providers/$providerId/quote-requests',
+        '/api/v1/providers/$providerId/quote-requests',
         payload,
       );
       await _offline?.database.saveCachedItem(
@@ -334,7 +340,7 @@ class MarketplaceApi {
 
   Future<List<QuoteRequest>> getMyQuoteRequests() async {
     try {
-      final items = await _getJsonMapList('/me/quote-requests');
+      final items = await _getJsonMapList('/api/v1/me/quote-requests');
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedBookings,
         items: items,
@@ -489,17 +495,17 @@ class ProviderDashboardApi {
   final ApiClient _apiClient;
 
   Future<ProviderDashboardProfile> getProfile() async {
-    final json = await _apiClient.getJson('/provider/me/profile');
+    final json = await _apiClient.getJson('/api/v1/provider/me/profile');
     return ProviderDashboardProfile.fromJson(json);
   }
 
   Future<ProviderDashboardSummary> getSummary() async {
-    final json = await _apiClient.getJson('/provider/me/summary');
+    final json = await _apiClient.getJson('/api/v1/provider/me/summary');
     return ProviderDashboardSummary.fromJson(json);
   }
 
   Future<List<MarketplaceService>> getServices() async {
-    final list = await _apiClient.getJsonList('/provider/me/services');
+    final list = await _apiClient.getJsonList('/api/v1/provider/me/services');
     return list
         .whereType<Map>()
         .map(
@@ -510,7 +516,9 @@ class ProviderDashboardApi {
   }
 
   Future<List<QuoteRequest>> getQuoteRequests() async {
-    final list = await _apiClient.getJsonList('/provider/me/quote-requests');
+    final list = await _apiClient.getJsonList(
+      '/api/v1/provider/me/quote-requests',
+    );
     return list
         .whereType<Map>()
         .map((item) => QuoteRequest.fromJson(Map<String, dynamic>.from(item)))
@@ -518,7 +526,7 @@ class ProviderDashboardApi {
   }
 
   Future<List<ProviderPackage>> getPackages() async {
-    final list = await _apiClient.getJsonList('/provider/me/packages');
+    final list = await _apiClient.getJsonList('/api/v1/provider/me/packages');
     return list
         .whereType<Map>()
         .map(
@@ -535,7 +543,7 @@ class ProviderDashboardApi {
     String? description,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
-    final json = await _apiClient.postJson('/provider/apply', {
+    final json = await _apiClient.postJson('/api/v1/provider/apply', {
       'businessName': businessName.trim(),
       'phone': normalizedPhone,
       'cityId': cityId.trim(),
@@ -555,7 +563,7 @@ class ProviderDashboardApi {
     String? coverUrl,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
-    final json = await _apiClient.patchJson('/provider/me/profile', {
+    final json = await _apiClient.patchJson('/api/v1/provider/me/profile', {
       'businessName': businessName.trim(),
       'phone': normalizedPhone,
       'cityId': cityId.trim(),
@@ -572,7 +580,7 @@ class ProviderDashboardApi {
     String? altText,
   }) async {
     final json = await _apiClient
-        .postJson('/provider/me/services/$serviceId/images', {
+        .postJson('/api/v1/provider/me/services/$serviceId/images', {
           'imageUrl': imageUrl.trim(),
           if (altText != null && altText.trim().isNotEmpty)
             'altText': altText.trim(),
@@ -585,7 +593,7 @@ class ProviderDashboardApi {
     required String imageId,
   }) async {
     await _apiClient.deleteJson(
-      '/provider/me/services/$serviceId/images/$imageId',
+      '/api/v1/provider/me/services/$serviceId/images/$imageId',
     );
   }
 
@@ -598,7 +606,7 @@ class ProviderDashboardApi {
     String? currency,
     String? cityId,
   }) async {
-    final json = await _apiClient.postJson('/provider/me/services', {
+    final json = await _apiClient.postJson('/api/v1/provider/me/services', {
       'title': title.trim(),
       'categoryId': categoryId.trim(),
       if (description != null && description.trim().isNotEmpty)
@@ -622,7 +630,7 @@ class ProviderDashboardApi {
     String? currency,
     List<String> items = const [],
   }) async {
-    final json = await _apiClient.postJson('/provider/me/packages', {
+    final json = await _apiClient.postJson('/api/v1/provider/me/packages', {
       'title': title.trim(),
       if (serviceId != null && serviceId.trim().isNotEmpty)
         'serviceId': serviceId.trim(),
@@ -641,7 +649,7 @@ class ProviderDashboardApi {
     required String status,
   }) async {
     final json = await _apiClient.patchJson(
-      '/provider/me/quote-requests/$quoteRequestId/status',
+      '/api/v1/provider/me/quote-requests/$quoteRequestId/status',
       {'status': status},
     );
     return QuoteRequest.fromJson(json);
@@ -656,7 +664,7 @@ class ProviderDashboardApi {
     DateTime? validUntil,
   }) async {
     final json = await _apiClient.postJson(
-      '/provider/me/quote-requests/$quoteRequestId/offers',
+      '/api/v1/provider/me/quote-requests/$quoteRequestId/offers',
       {
         'message': message.trim(),
         if (title != null && title.trim().isNotEmpty) 'title': title.trim(),

@@ -26,9 +26,10 @@ void main() {
       );
 
       expect(api.calls, [
-        'POST /media/uploads/presign user-avatar',
+        'POST /api/v1/media/uploads/presign user-avatar',
         'PUT https://uploads.example.com/signed image/jpeg 3',
-        'PATCH /users/me https://media.example.com/user-avatar/u1/avatar.jpg',
+        'POST /api/v1/media/uploads/verify user-avatar',
+        'PATCH /api/v1/users/me https://media.example.com/user-avatar/u1/avatar.jpg',
       ]);
       expect(
         user.avatarUrl,
@@ -164,9 +165,23 @@ class _AvatarApiClient extends ApiClient {
     Map<String, dynamic> data,
   ) async {
     calls.add('POST $path ${data['purpose']}');
+    if (path.endsWith('/verify')) {
+      return {
+        'key': data['key'],
+        'attachmentRef': data['key'],
+        'publicUrl': 'https://media.example.com/user-avatar/u1/avatar.jpg',
+        'contentType': 'image/jpeg',
+        'byteSize': 3,
+        'verified': true,
+      };
+    }
     return {
+      'key': 'user-avatar/u1/avatar.jpg',
+      'attachmentRef': 'user-avatar/u1/avatar.jpg',
       'uploadUrl': 'https://uploads.example.com/signed',
       'publicUrl': 'https://media.example.com/user-avatar/u1/avatar.jpg',
+      'contentType': 'image/jpeg',
+      'byteSize': 3,
     };
   }
 

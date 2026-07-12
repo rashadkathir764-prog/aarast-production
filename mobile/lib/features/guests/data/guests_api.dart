@@ -16,7 +16,7 @@ class GuestsApi {
       return _cachedGuests(weddingPlanId);
     }
     final list = await _apiClient.getJsonList(
-      '/wedding-plans/$weddingPlanId/guests',
+      '/api/v1/wedding-plans/$weddingPlanId/guests',
     );
     return list
         .whereType<Map>()
@@ -37,7 +37,7 @@ class GuestsApi {
       );
     }
     final json = await _apiClient.getJson(
-      '/wedding-plans/$weddingPlanId/guests/summary',
+      '/api/v1/wedding-plans/$weddingPlanId/guests/summary',
     );
     return GuestSummary.fromJson(json);
   }
@@ -45,7 +45,7 @@ class GuestsApi {
   Future<List<GuestGroup>> getGroups(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) return const [];
     final list = await _apiClient.getJsonList(
-      '/wedding-plans/$weddingPlanId/guest-groups',
+      '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
     );
     return list
         .whereType<Map>()
@@ -95,7 +95,7 @@ class GuestsApi {
       return _createLocalGuest(weddingPlanId: weddingPlanId, payload: payload);
     }
     final json = await _apiClient.postJson(
-      '/wedding-plans/$weddingPlanId/guests',
+      '/api/v1/wedding-plans/$weddingPlanId/guests',
       payload,
     );
     return Guest.fromJson(json);
@@ -144,7 +144,7 @@ class GuestsApi {
     if (id.startsWith('local-guest-')) {
       return _updateLocalGuest(id: id, payload: payload);
     }
-    final json = await _apiClient.patchJson('/guests/$id', payload);
+    final json = await _apiClient.patchJson('/api/v1/guests/$id', payload);
     return Guest.fromJson(json);
   }
 
@@ -153,7 +153,7 @@ class GuestsApi {
       await _deleteLocalGuest(id);
       return;
     }
-    await _apiClient.deleteJson('/guests/$id');
+    await _apiClient.deleteJson('/api/v1/guests/$id');
   }
 
   String? _normalizeOptionalPhone(String? phone) {

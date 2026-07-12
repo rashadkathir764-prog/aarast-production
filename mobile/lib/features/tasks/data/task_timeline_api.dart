@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -30,7 +30,7 @@ class TaskTimelineApi {
     }
     try {
       final items = await _getJsonMapList(
-        '/wedding-plans/$weddingPlanId/tasks',
+        '/api/v1/wedding-plans/$weddingPlanId/tasks',
       );
       await _offline?.database.replaceCachedList(
         table: OfflineTables.cachedTasks,
@@ -58,7 +58,7 @@ class TaskTimelineApi {
     final key = 'timeline:$weddingPlanId';
     try {
       final json = await _apiClient.getJson(
-        '/wedding-plans/$weddingPlanId/timeline',
+        '/api/v1/wedding-plans/$weddingPlanId/timeline',
       );
       await _offline?.database.setMeta(key, jsonEncode(json));
       return Timeline.fromJson(json);
@@ -82,7 +82,7 @@ class TaskTimelineApi {
     final key = 'task-summary:$weddingPlanId';
     try {
       final json = await _apiClient.getJson(
-        '/wedding-plans/$weddingPlanId/tasks/summary',
+        '/api/v1/wedding-plans/$weddingPlanId/tasks/summary',
       );
       await _offline?.database.setMeta(key, jsonEncode(json));
       return TaskSummary.fromJson(json);
@@ -145,7 +145,7 @@ class TaskTimelineApi {
     }
     try {
       final json = await _apiClient.postJson(
-        '/wedding-plans/$weddingPlanId/tasks',
+        '/api/v1/wedding-plans/$weddingPlanId/tasks',
         payload,
       );
       var taskJson = Map<String, dynamic>.from(json);
@@ -185,7 +185,7 @@ class TaskTimelineApi {
       await _offline.database.enqueueSync(
         entityType: 'task',
         operation: 'create',
-        endpoint: '/wedding-plans/$weddingPlanId/tasks',
+        endpoint: '/api/v1/wedding-plans/$weddingPlanId/tasks',
         method: 'POST',
         payload: payload,
         localEntityId: localId,
@@ -216,7 +216,10 @@ class TaskTimelineApi {
       return _updateLocalTask(id: id, data: localData);
     }
 
-    final json = await _apiClient.patchJson('/tasks/$id/assign', payload);
+    final json = await _apiClient.patchJson(
+      '/api/v1/tasks/$id/assign',
+      payload,
+    );
     final hydratedJson = {
       ...Map<String, dynamic>.from(json),
       if (_hasValue(assigneeName)) 'assigneeName': assigneeName!.trim(),
@@ -236,7 +239,7 @@ class TaskTimelineApi {
       return _updateLocalTask(id: id, data: data);
     }
     try {
-      final json = await _apiClient.patchJson('/tasks/$id', data);
+      final json = await _apiClient.patchJson('/api/v1/tasks/$id', data);
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedTasks,
         json: json,
@@ -263,7 +266,7 @@ class TaskTimelineApi {
       await _offline.database.enqueueSync(
         entityType: 'task',
         operation: 'update',
-        endpoint: '/tasks/$id',
+        endpoint: '/api/v1/tasks/$id',
         method: 'PATCH',
         payload: data,
         localEntityId: id,
@@ -275,7 +278,7 @@ class TaskTimelineApi {
 
   Future<void> deleteTask(String id) async {
     try {
-      await _apiClient.deleteJson('/tasks/$id');
+      await _apiClient.deleteJson('/api/v1/tasks/$id');
       await _offline?.syncPendingChanges();
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
@@ -294,7 +297,7 @@ class TaskTimelineApi {
       await _offline.database.enqueueSync(
         entityType: 'task',
         operation: 'delete',
-        endpoint: '/tasks/$id',
+        endpoint: '/api/v1/tasks/$id',
         method: 'DELETE',
         payload: const {},
         localEntityId: id,
@@ -340,7 +343,7 @@ class TaskTimelineApi {
         .toList();
     return Timeline.fromJson({
       'upcomingTasks': upcoming,
-      'dueDebts': const [],
+      'dueCommitments': const [],
       'dueInstallments': const [],
     });
   }

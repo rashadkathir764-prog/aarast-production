@@ -7,13 +7,13 @@ class SettingsApi {
   final ApiClient _apiClient;
 
   Future<UserSettings> getSettings() async {
-    final json = await _apiClient.getJson('/users/me/settings');
+    final json = await _apiClient.getJson('/api/v1/users/me/settings');
     return UserSettings.fromJson(json);
   }
 
   Future<UserSettings> updateSettings(UserSettings settings) async {
     final json = await _apiClient.patchJson(
-      '/users/me/settings',
+      '/api/v1/users/me/settings',
       settings.toUpdateJson(),
     );
     return UserSettings.fromJson(json);

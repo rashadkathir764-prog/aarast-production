@@ -134,14 +134,14 @@ class ApiClient {
 
   bool _canRefresh(DioException error) {
     return error.response?.statusCode == 401 &&
-        !error.requestOptions.path.startsWith('/auth') &&
+        !error.requestOptions.path.startsWith('/api/v1/auth') &&
         error.requestOptions.extra[_refreshRetryKey] != true &&
         refreshSession != null;
   }
 
   bool _isFinalUnauthorized(DioException error) {
     return error.response?.statusCode == 401 &&
-        !error.requestOptions.path.startsWith('/auth');
+        !error.requestOptions.path.startsWith('/api/v1/auth');
   }
 
   Future<bool> _refreshOnce() async {
@@ -226,6 +226,7 @@ class ApiClient {
           headers: {
             Headers.contentTypeHeader: contentType,
             Headers.contentLengthHeader: bytes.length,
+            'If-None-Match': '*',
           },
         ),
       );
@@ -245,14 +246,14 @@ class ApiClient {
   }
 
   static void _debugAuthLoginRequest(RequestOptions options) {
-    if (!kDebugMode || options.path != '/auth/login') return;
+    if (!kDebugMode || options.path != '/api/v1/auth/login') return;
     debugPrint(
       '[AarastAuth] baseUrl=${options.baseUrl}; endpoint=${options.path}',
     );
   }
 
   static void _debugAuthLoginStatus(String path, int? statusCode) {
-    if (!kDebugMode || path != '/auth/login') return;
+    if (!kDebugMode || path != '/api/v1/auth/login') return;
     debugPrint(
       '[AarastAuth] statusCode=${statusCode?.toString() ?? 'no response'}',
     );

@@ -42,6 +42,7 @@ void main() {
     expect(adapter.authorizationHeader, isNull);
     expect(adapter.contentTypeHeader, 'image/jpeg');
     expect(adapter.contentLengthHeader, 3);
+    expect(adapter.ifNoneMatchHeader, '*');
   });
 }
 
@@ -81,6 +82,7 @@ class _CaptureUploadAdapter implements HttpClientAdapter {
   Object? authorizationHeader;
   Object? contentTypeHeader;
   Object? contentLengthHeader;
+  Object? ifNoneMatchHeader;
 
   @override
   Future<ResponseBody> fetch(
@@ -91,6 +93,7 @@ class _CaptureUploadAdapter implements HttpClientAdapter {
     authorizationHeader = options.headers['Authorization'];
     contentTypeHeader = options.headers[Headers.contentTypeHeader];
     contentLengthHeader = options.headers[Headers.contentLengthHeader];
+    ifNoneMatchHeader = options.headers['If-None-Match'];
     return ResponseBody.fromString('', 200);
   }
 

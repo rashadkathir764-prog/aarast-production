@@ -47,14 +47,17 @@ class MediaUploadApi {
   }) async {
     final byteSize = await file.length();
     final contentType = file.mimeType ?? _contentType(file.name);
-    final ticket = MediaUploadTicket.fromJson(
-      await _apiClient.postJson('/media/uploads/presign', {
-        'purpose': purpose,
-        'fileName': file.name,
-        'contentType': contentType,
-        'byteSize': byteSize,
-      }),
-    );
+    final ticketJson = await _apiClient
+        .postJson('/api/v1/media/uploads/presign', {
+          'purpose': purpose,
+          'fileName': file.name,
+          'contentType': contentType,
+          'byteSize': byteSize,
+        });
+    final ticket = MediaUploadTicket.fromJson(ticketJson);
+    if (ticket.key.isEmpty || ticket.uploadUrl.isEmpty) {
+      throw const ApiException('تعذر تجهيز رفع الصورة.');
+    }
     final bytes = await file.readAsBytes();
     await _uploadClient.put<void>(
       ticket.uploadUrl,
@@ -63,10 +66,25 @@ class MediaUploadApi {
         headers: {
           Headers.contentTypeHeader: ticket.contentType,
           Headers.contentLengthHeader: ticket.byteSize,
+          'If-None-Match': '*',
         },
       ),
     );
-    return ticket;
+    final verifiedJson = await _apiClient.postJson(
+      '/api/v1/media/uploads/verify',
+      {'key': ticket.key, 'purpose': purpose},
+    );
+    final verifiedTicket = MediaUploadTicket.fromJson({
+      ...ticketJson,
+      ...verifiedJson,
+    });
+    final hasVerifiedReference = purpose == 'chat-image'
+        ? verifiedTicket.attachmentRef.isNotEmpty
+        : verifiedTicket.publicUrl.isNotEmpty;
+    if (!hasVerifiedReference) {
+      throw const ApiException('تعذر التحقق من الصورة المرفوعة.');
+    }
+    return verifiedTicket;
   }
 
   String _contentType(String name) {

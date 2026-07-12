@@ -25,7 +25,7 @@ void main() {
     );
 
     expect(pending.purpose, 'REGISTER');
-    expect(adapter.requests.single.path, '/auth/register');
+    expect(adapter.requests.single.path, '/api/v1/auth/register');
     expect(adapter.requests.single.data, isNot(contains('otpCode')));
     expect(await storage.readAccessToken(), isNull);
     expect(await storage.readRefreshToken(), isNull);
@@ -37,7 +37,7 @@ void main() {
       otpCode: '123456',
     );
 
-    expect(adapter.requests.last.path, '/auth/register/complete');
+    expect(adapter.requests.last.path, '/api/v1/auth/register/complete');
     expect(adapter.requests.last.data['otpCode'], '123456');
     expect(completed.user.phoneVerifiedAt, isNotNull);
     expect(await storage.readAccessToken(), 'access-token');
@@ -55,7 +55,7 @@ class _RegistrationAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    if (options.path == '/auth/register') {
+    if (options.path == '/api/v1/auth/register') {
       return _jsonResponse({
         'registrationPending': true,
         'phone': '+967777123456',
@@ -65,7 +65,7 @@ class _RegistrationAdapter implements HttpClientAdapter {
         'code': '123456',
       });
     }
-    if (options.path == '/auth/register/complete') {
+    if (options.path == '/api/v1/auth/register/complete') {
       return _jsonResponse({
         'accessToken': 'access-token',
         'refreshToken': 'refresh-token',

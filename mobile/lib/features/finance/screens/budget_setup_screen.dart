@@ -6,10 +6,13 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/finance_write_access_block.dart';
+import '../models/financial_input_validation.dart';
 
 class BudgetSetupScreen extends StatefulWidget {
   const BudgetSetupScreen({required this.weddingPlanId, super.key});
@@ -50,6 +53,12 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final accessBlock = financeWriteAccessBlock(
+      context: context,
+      provider: provider,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (accessBlock != null) return accessBlock;
     final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
     final existingNames = provider.budgetCategories
         .map((category) => category.name.trim())
@@ -192,8 +201,17 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
       return parsed == null || parsed < 0;
     });
     if (invalidAmount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('المبالغ يجب أن تكون أرقاماً غير سالبة.')),
+      AarastToast.showError(context, 'المبالغ يجب أن تكون أرقاماً غير سالبة.');
+      return;
+    }
+
+    if (!hasUsableBudgetSetupAmount(
+      selected.map((item) => item.targetAmount),
+      hasGeneralBudget: provider.moneySummary.hasUsableBudget,
+    )) {
+      AarastToast.showError(
+        context,
+        'أدخل مبلغاً لبند واحد على الأقل حتى تصبح للميزانية قيمة فعلية.',
       );
       return;
     }
@@ -206,9 +224,7 @@ class _BudgetSetupScreenState extends State<BudgetSetupScreen> {
 
     final notice = provider.noticeMessage;
     if (notice != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(notice)));
+      AarastToast.showSuccess(context, notice);
     }
     context.go(AppRouter.finance(widget.weddingPlanId));
   }

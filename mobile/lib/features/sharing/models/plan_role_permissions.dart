@@ -2,7 +2,7 @@
   const PlanRolePermissions({
     required this.canViewBudget,
     required this.canViewExpenses,
-    required this.canViewDebts,
+    required this.canViewFinancialRecords,
     required this.canEditPlan,
     required this.canManageTasks,
     required this.canManageGuests,
@@ -19,7 +19,7 @@
         return const PlanRolePermissions(
           canViewBudget: true,
           canViewExpenses: true,
-          canViewDebts: true,
+          canViewFinancialRecords: true,
           canEditPlan: true,
           canManageTasks: true,
           canManageGuests: true,
@@ -32,7 +32,7 @@
         return const PlanRolePermissions(
           canViewBudget: false,
           canViewExpenses: false,
-          canViewDebts: false,
+          canViewFinancialRecords: false,
           canEditPlan: false,
           canManageTasks: true,
           canManageGuests: true,
@@ -45,7 +45,7 @@
         return const PlanRolePermissions(
           canViewBudget: false,
           canViewExpenses: false,
-          canViewDebts: false,
+          canViewFinancialRecords: false,
           canEditPlan: false,
           canManageTasks: true,
           canManageGuests: true,
@@ -58,7 +58,7 @@
         return const PlanRolePermissions(
           canViewBudget: false,
           canViewExpenses: false,
-          canViewDebts: false,
+          canViewFinancialRecords: false,
           canEditPlan: false,
           canManageTasks: false,
           canManageGuests: false,
@@ -72,7 +72,7 @@
 
   final bool canViewBudget;
   final bool canViewExpenses;
-  final bool canViewDebts;
+  final bool canViewFinancialRecords;
   final bool canEditPlan;
   final bool canManageTasks;
   final bool canManageGuests;
@@ -84,13 +84,13 @@
   bool get hasFinancialAccess =>
       canViewBudget ||
       canViewExpenses ||
-      canViewDebts ||
+      canViewFinancialRecords ||
       canManageFinancialRecords;
 
   PlanRolePermissions copyWith({
     bool? canViewBudget,
     bool? canViewExpenses,
-    bool? canViewDebts,
+    bool? canViewFinancialRecords,
     bool? canEditPlan,
     bool? canManageTasks,
     bool? canManageGuests,
@@ -102,7 +102,8 @@
     return PlanRolePermissions(
       canViewBudget: canViewBudget ?? this.canViewBudget,
       canViewExpenses: canViewExpenses ?? this.canViewExpenses,
-      canViewDebts: canViewDebts ?? this.canViewDebts,
+      canViewFinancialRecords:
+          canViewFinancialRecords ?? this.canViewFinancialRecords,
       canEditPlan: canEditPlan ?? this.canEditPlan,
       canManageTasks: canManageTasks ?? this.canManageTasks,
       canManageGuests: canManageGuests ?? this.canManageGuests,
@@ -131,7 +132,7 @@
         : '${manage.take(2).join(' و')} +${manage.length - 2}';
     final moneyPart = canManageFinancialRecords
         ? 'يدير المال'
-        : canViewBudget || canViewExpenses || canViewDebts
+        : canViewBudget || canViewExpenses || canViewFinancialRecords
         ? 'اطلاع مالي محدود'
         : 'بلا وصول مالي';
     return '$managePart · $moneyPart';

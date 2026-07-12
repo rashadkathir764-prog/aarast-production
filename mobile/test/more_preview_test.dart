@@ -328,7 +328,7 @@ SharedWeddingPlan _sharedPlan({
       role: role,
       canViewBudget: canViewBudget,
       canViewExpenses: false,
-      canViewDebts: false,
+      canViewFinancialRecords: false,
       canManageTasks: canManageTasks,
       canManageGuests: canManageGuests,
       canManageFinancialRecords: false,

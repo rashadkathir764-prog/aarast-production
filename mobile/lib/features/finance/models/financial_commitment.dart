@@ -74,7 +74,7 @@ class FinancialCommitment {
   bool get isCancelled => status == 'CANCELLED';
   bool get isProviderLinked =>
       sourceType == 'PROVIDER_SERVICE' || providerId != null;
-  bool get isManualDebt => sourceType == 'MANUAL_DEBT';
+  bool get isManualPayable => sourceType == 'MANUAL_PAYABLE';
 }
 
 class FinancialPaymentRecord {
@@ -137,9 +137,8 @@ class FinancialPaymentRecord {
 
   bool get isReversal => entryType == 'REVERSAL';
   bool get isReversed => reversedById != null;
-  String get signedAmount => isReversal && !amount.startsWith('-')
-      ? '-$amount'
-      : amount;
+  String get signedAmount =>
+      isReversal && !amount.startsWith('-') ? '-$amount' : amount;
 }
 
 class FinancialInstallment {

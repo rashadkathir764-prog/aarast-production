@@ -10,8 +10,6 @@
   static const cachedTasks = 'cached_tasks';
   static const cachedBudgetCategories = 'cached_budget_categories';
   static const cachedBudgetItems = 'cached_budget_items';
-  static const cachedDebts = 'cached_debts';
-  static const cachedInstallments = 'cached_installments';
   static const cachedFinancialCommitments = 'cached_financial_commitments';
   static const cachedFinancialPaymentRecords =
       'cached_financial_payment_records';
@@ -32,8 +30,6 @@
     cachedTasks,
     cachedBudgetCategories,
     cachedBudgetItems,
-    cachedDebts,
-    cachedInstallments,
     cachedFinancialCommitments,
     cachedFinancialPaymentRecords,
     cachedFinancialInstallments,
@@ -55,8 +51,6 @@
       'task' => cachedTasks,
       'budget_category' => cachedBudgetCategories,
       'expense' => cachedBudgetItems,
-      'debt' => cachedDebts,
-      'installment' => cachedInstallments,
       'financial_commitment' => cachedFinancialCommitments,
       'financial_payment_record' => cachedFinancialPaymentRecords,
       'financial_installment' => cachedFinancialInstallments,

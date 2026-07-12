@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -72,25 +73,30 @@ class _FinancialCommitmentDetailsScreenState
               const AarastEmptyState(
                 title: 'المستحق غير موجود',
                 message: 'ربما تم حذفه أو لم يتم تحميل البيانات بعد.',
-                icon: Icons.account_balance_wallet_outlined,
+                icon: LucideIcons.wallet,
               )
             else ...[
-              _CommitmentHero(commitment: commitment),
-              const SizedBox(height: 14),
-              _PrimaryActions(
-                onRecordPayment: _moneyValue(commitment.remainingAmount) <= 0
-                    ? null
-                    : () => _openRecordPayment(commitment),
-                onEdit: () => _openEdit(commitment),
-                onDelete: () => _confirmDelete(provider, commitment),
-                busy: provider.isSubmitting,
+              _CommitmentHero(
+                commitment: commitment,
+                currencyCode: provider.moneySummary.currency,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+              if (provider.canManageFinancialRecords) ...[
+                _PrimaryActions(
+                  onRecordPayment: _moneyValue(commitment.remainingAmount) <= 0
+                      ? null
+                      : () => _openRecordPayment(commitment),
+                  onEdit: () => _openEdit(commitment),
+                  onDelete: () => _confirmDelete(provider, commitment),
+                  busy: provider.isSubmitting,
+                ),
+                const SizedBox(height: 18),
+              ],
               _InfoCard(commitment: commitment),
               const SizedBox(height: 18),
               AarastSectionHeader(
                 title: 'سجلات الدفعات',
-                icon: Icons.payments_outlined,
+                icon: LucideIcons.banknote,
               ),
               const SizedBox(height: 10),
               if (payments.isEmpty)
@@ -99,6 +105,7 @@ class _FinancialCommitmentDetailsScreenState
                 for (final payment in payments) ...[
                   _PaymentTile(
                     payment: payment,
+                    currencyCode: provider.moneySummary.currency,
                     onTap: () => context.push(
                       AppRouter.financialPaymentRecordDetails(
                         widget.weddingPlanId,
@@ -111,14 +118,17 @@ class _FinancialCommitmentDetailsScreenState
               const SizedBox(height: 8),
               AarastSectionHeader(
                 title: 'الأقساط القريبة',
-                icon: Icons.event_available_outlined,
+                icon: LucideIcons.calendarCheck,
               ),
               const SizedBox(height: 10),
               if (installments.isEmpty)
                 const _QuietEmpty(message: 'لا توجد أقساط قريبة لهذا المستحق.')
               else
                 for (final installment in installments) ...[
-                  _InstallmentTile(installment: installment),
+                  _InstallmentTile(
+                    installment: installment,
+                    currencyCode: provider.moneySummary.currency,
+                  ),
                   const SizedBox(height: 10),
                 ],
             ],
@@ -167,7 +177,7 @@ class _FinancialCommitmentDetailsScreenState
     }
     if (!mounted) return;
 
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
       builder: (sheetContext) {
         return Directionality(
@@ -181,7 +191,7 @@ class _FinancialCommitmentDetailsScreenState
                   const _SheetHandle(),
                   const SizedBox(height: 18),
                   const Icon(
-                    Icons.delete_outline_rounded,
+                    LucideIcons.trash2,
                     color: AppTheme.danger,
                     size: 42,
                   ),
@@ -221,7 +231,7 @@ class _FinancialCommitmentDetailsScreenState
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.danger,
                           ),
-                          icon: const Icon(Icons.delete_outline_rounded),
+                          icon: const Icon(LucideIcons.trash2),
                           label: const Text('حذف'),
                         ),
                       ),
@@ -262,9 +272,10 @@ class _FinancialCommitmentDetailsScreenState
 }
 
 class _CommitmentHero extends StatelessWidget {
-  const _CommitmentHero({required this.commitment});
+  const _CommitmentHero({required this.commitment, required this.currencyCode});
 
   final FinancialCommitment commitment;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +300,7 @@ class _CommitmentHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 ),
                 child: const Icon(
-                  Icons.account_balance_wallet_outlined,
+                  LucideIcons.wallet,
                   color: AppTheme.gold,
                   size: 28,
                 ),
@@ -338,11 +349,20 @@ class _CommitmentHero extends StatelessWidget {
                 label: 'الباقي',
                 value: remaining,
                 danger: remaining > 0,
+                currencyCode: currencyCode,
               ),
               const SizedBox(width: 10),
-              _HeroBox(label: 'المدفوع', value: paid),
+              _HeroBox(
+                label: 'المدفوع',
+                value: paid,
+                currencyCode: currencyCode,
+              ),
               const SizedBox(width: 10),
-              _HeroBox(label: 'الإجمالي', value: total),
+              _HeroBox(
+                label: 'الإجمالي',
+                value: total,
+                currencyCode: currencyCode,
+              ),
             ],
           ),
         ],
@@ -355,11 +375,13 @@ class _HeroBox extends StatelessWidget {
   const _HeroBox({
     required this.label,
     required this.value,
+    required this.currencyCode,
     this.danger = false,
   });
 
   final String label;
   final num value;
+  final String currencyCode;
   final bool danger;
 
   @override
@@ -384,6 +406,7 @@ class _HeroBox extends StatelessWidget {
             const SizedBox(height: 5),
             YemeniMoneyText(
               value,
+              currencyCode: currencyCode,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: danger ? AppTheme.gold : Colors.white,
                 fontWeight: FontWeight.w900,
@@ -417,17 +440,17 @@ class _PrimaryActions extends StatelessWidget {
       children: [
         _ActionChipButton(
           label: 'تسجيل دفعة',
-          icon: Icons.payments_outlined,
+          icon: LucideIcons.banknote,
           onTap: onRecordPayment,
         ),
         _ActionChipButton(
           label: 'تعديل',
-          icon: Icons.edit_outlined,
+          icon: LucideIcons.pencil,
           onTap: busy ? null : onEdit,
         ),
         _ActionChipButton(
           label: 'حذف',
-          icon: Icons.delete_outline_rounded,
+          icon: LucideIcons.trash2,
           danger: true,
           onTap: busy ? null : onDelete,
         ),
@@ -535,40 +558,51 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _PaymentTile extends StatelessWidget {
-  const _PaymentTile({required this.payment, required this.onTap});
+  const _PaymentTile({
+    required this.payment,
+    required this.currencyCode,
+    required this.onTap,
+  });
 
   final FinancialPaymentRecord payment;
+  final String currencyCode;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return _TapTile(
       onTap: onTap,
-      icon: Icons.payments_outlined,
+      icon: LucideIcons.banknote,
       color: AppTheme.success,
       title: payment.title.trim().isEmpty ? 'دفعة مالية' : payment.title,
       subtitle: formatArabicCompactDate(payment.paidAt),
       amount: payment.amount,
+      currencyCode: currencyCode,
     );
   }
 }
 
 class _InstallmentTile extends StatelessWidget {
-  const _InstallmentTile({required this.installment});
+  const _InstallmentTile({
+    required this.installment,
+    required this.currencyCode,
+  });
 
   final FinancialInstallment installment;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
     return _TapTile(
       onTap: () {},
-      icon: Icons.event_available_outlined,
+      icon: LucideIcons.calendarCheck,
       color: AppTheme.gold,
       title: 'قسط قريب',
       subtitle: installment.dueDate == null
           ? 'بدون تاريخ'
           : formatArabicCompactDate(installment.dueDate!),
       amount: installment.amount,
+      currencyCode: currencyCode,
       showChevron: false,
     );
   }
@@ -582,6 +616,7 @@ class _TapTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.amount,
+    required this.currencyCode,
     this.showChevron = true,
   });
 
@@ -591,6 +626,7 @@ class _TapTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final String amount;
+  final String currencyCode;
   final bool showChevron;
 
   @override
@@ -637,6 +673,7 @@ class _TapTile extends StatelessWidget {
               ),
               YemeniMoneyText(
                 _moneyValue(amount),
+                currencyCode: currencyCode,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w900,
@@ -644,7 +681,7 @@ class _TapTile extends StatelessWidget {
               ),
               if (showChevron) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
+                const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
               ],
             ],
           ),
@@ -666,7 +703,7 @@ class _Header extends StatelessWidget {
       children: [
         IconButton(
           onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(LucideIcons.arrowRight),
           tooltip: 'رجوع',
         ),
         const SizedBox(width: 8),
@@ -745,7 +782,7 @@ class _SheetHandle extends StatelessWidget {
 
 String _sourceLabel(FinancialCommitment commitment) {
   if (commitment.isProviderLinked) return 'مورد / تكلفة خدمة';
-  if (commitment.isManualDebt) return 'مستحق عليك';
+  if (commitment.isManualPayable) return 'مستحق عليك';
   return 'مستحق مالي';
 }
 

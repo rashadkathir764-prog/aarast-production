@@ -3,10 +3,6 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
-import 'package:aarast_mobile/features/debts/data/debt_installment_api.dart';
-import 'package:aarast_mobile/features/debts/providers/debt_installment_provider.dart';
-import 'package:aarast_mobile/features/debts/screens/create_debt_screen.dart';
-import 'package:aarast_mobile/features/debts/screens/debt_installment_screen.dart';
 import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/budget_expense_screen.dart';
@@ -131,10 +127,6 @@ void main() {
         harness.apiClient,
         offline: harness.offline,
       );
-      final debtApi = DebtInstallmentApi(
-        harness.apiClient,
-        offline: harness.offline,
-      );
       final category = await financeApi.createBudgetCategory(
         weddingPlanId: localPlanId,
         name: 'الصالة',
@@ -155,12 +147,6 @@ void main() {
         title: 'دفعة القاعة',
         amount: '500000',
         budgetCategoryId: category.id,
-      );
-      await debtApi.createDebt(
-        weddingPlanId: localPlanId,
-        creditorName: 'القاعة',
-        title: 'باقي القاعة',
-        totalAmount: '2000000',
       );
 
       await _pumpLocalScreen(
@@ -193,13 +179,6 @@ void main() {
       expect(find.text('دفعة القاعة'), findsOneWidget);
       expect(find.text(cloudMessage), findsNothing);
 
-      await _pumpLocalScreen(
-        tester,
-        harness,
-        const DebtInstallmentScreen(weddingPlanId: localPlanId),
-      );
-      expect(find.text('باقي القاعة'), findsOneWidget);
-      expect(find.text(cloudMessage), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -265,9 +244,6 @@ void main() {
     final financeProvider = FinanceProvider(
       BudgetExpenseApi(harness.apiClient, offline: harness.offline),
     );
-    final debtProvider = DebtInstallmentProvider(
-      DebtInstallmentApi(harness.apiClient, offline: harness.offline),
-    );
     await financeProvider.createBudgetCategory(
       weddingPlanId: localPlanId,
       name: 'الصالة',
@@ -280,9 +256,6 @@ void main() {
         providers: [
           Provider<AuthStorage>.value(value: harness.authStorage),
           ChangeNotifierProvider<FinanceProvider>.value(value: financeProvider),
-          ChangeNotifierProvider<DebtInstallmentProvider>.value(
-            value: debtProvider,
-          ),
         ],
         child: MaterialApp.router(
           routerConfig: _router(
@@ -321,61 +294,8 @@ void main() {
     expect(financeProvider.expenses.single.title, 'دفعة صالة الأفراح');
     expect(financeProvider.expenses.single.amount, '200000');
     expect(financeProvider.expenses.single.budgetCategoryId, hallCategory.id);
-    expect(debtProvider.debts, isEmpty);
-    expect(debtProvider.installments, isEmpty);
     expect(find.text(cloudMessage), findsNothing);
     expect(find.text('finance-target'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('guest/local can add debt without login when local mode exists', (
-    tester,
-  ) async {
-    _setTallView(tester);
-    final harness = await _createHarness();
-    final debtProvider = DebtInstallmentProvider(
-      DebtInstallmentApi(harness.apiClient, offline: harness.offline),
-    );
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>.value(value: harness.authStorage),
-          ChangeNotifierProvider<DebtInstallmentProvider>.value(
-            value: debtProvider,
-          ),
-        ],
-        child: MaterialApp.router(
-          routerConfig: _router(
-            start: CreateDebtScreen(weddingPlanId: localPlanId),
-            targetPath: '/wedding-plans/:id/debts',
-            targetText: 'debts-target',
-          ),
-        ),
-      ),
-    );
-
-    await tester.enterText(
-      _textFormFieldWithLabel('لمن باقي المبلغ؟'),
-      'القاعة',
-    );
-    await tester.enterText(
-      _textFormFieldWithLabel('عنوان المبلغ'),
-      'باقي القاعة',
-    );
-    await tester.enterText(_textFormFieldWithLabel('إجمالي المبلغ'), '2000000');
-    final submit = find.text('حفظ المبلغ');
-    await tester.ensureVisible(submit);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
-
-    expect(debtProvider.debts, hasLength(1));
-    expect(debtProvider.debts.single.title, 'باقي القاعة');
-    expect(debtProvider.debts.single.totalAmount, '2000000');
-    expect(debtProvider.noticeMessage, localMessage);
-    expect(find.text(cloudMessage), findsNothing);
-    expect(find.text('debts-target'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -450,11 +370,6 @@ Future<void> _pumpLocalScreen(
         ChangeNotifierProvider<FinanceProvider>(
           create: (_) => FinanceProvider(
             BudgetExpenseApi(harness.apiClient, offline: harness.offline),
-          ),
-        ),
-        ChangeNotifierProvider<DebtInstallmentProvider>(
-          create: (_) => DebtInstallmentProvider(
-            DebtInstallmentApi(harness.apiClient, offline: harness.offline),
           ),
         ),
       ],

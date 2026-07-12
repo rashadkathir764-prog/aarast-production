@@ -51,7 +51,7 @@ void main() {
     final financeInvite = _invite(
       canViewBudget: true,
       canViewExpenses: true,
-      canViewDebts: true,
+      canViewFinancialRecords: true,
       canManageFinancialRecords: true,
     );
     expect(financeInvite.permissionLabels, contains('إدارة المال'));
@@ -68,7 +68,7 @@ Future<AuthController> _authController() async {
 PlanInvite _invite({
   bool canViewBudget = false,
   bool canViewExpenses = false,
-  bool canViewDebts = false,
+  bool canViewFinancialRecords = false,
   bool canEditPlan = false,
   bool canManageTasks = false,
   bool canManageGuests = false,
@@ -85,7 +85,7 @@ PlanInvite _invite({
     expiresAt: DateTime(2026),
     canViewBudget: canViewBudget,
     canViewExpenses: canViewExpenses,
-    canViewDebts: canViewDebts,
+    canViewFinancialRecords: canViewFinancialRecords,
     canEditPlan: canEditPlan,
     canManageTasks: canManageTasks,
     canManageGuests: canManageGuests,

@@ -111,8 +111,7 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
       }
       if (section == 'expenses' ||
           section == 'budget' ||
-          section == 'budget-categories' ||
-          section == 'debts') {
+          section == 'budget-categories') {
         return AppRouter.finance(planId);
       }
       return AppRouter.weddingPlanDashboard(planId);

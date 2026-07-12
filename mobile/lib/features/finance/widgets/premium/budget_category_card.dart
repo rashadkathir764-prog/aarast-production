@@ -45,11 +45,13 @@ class BudgetCategoryCard extends StatelessWidget {
   const BudgetCategoryCard({
     required this.row,
     required this.onOpenDetails,
+    this.currencyCode = 'YER',
     super.key,
   });
 
   final MoneyCategorySummary row;
   final VoidCallback onOpenDetails;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +73,8 @@ class BudgetCategoryCard extends StatelessWidget {
     final stateLabel = !hasBudget
         ? 'حدد ميزانية البند'
         : isOver
-        ? 'تجاوز بـ ${formatCompactYemeniMoney(spent - allocated)}'
-        : 'متبقي ${formatCompactYemeniMoney(remaining)}';
+        ? 'تجاوز بـ ${formatCompactMoney(spent - allocated, currencyCode: currencyCode)}'
+        : 'متبقي ${formatCompactMoney(remaining, currencyCode: currencyCode)}';
     final stateColor = !hasBudget
         ? AarastDesignTokens.muted
         : isOver
@@ -156,7 +158,10 @@ class BudgetCategoryCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                formatCompactYemeniMoney(spent),
+                                formatCompactMoney(
+                                  spent,
+                                  currencyCode: currencyCode,
+                                ),
                                 textDirection: TextDirection.ltr,
                                 style: TextStyle(
                                   color: isOver
@@ -169,7 +174,7 @@ class BudgetCategoryCard extends StatelessWidget {
                               ),
                               Text(
                                 hasBudget
-                                    ? 'من ${formatCompactYemeniMoney(allocated)}'
+                                    ? 'من ${formatCompactMoney(allocated, currencyCode: currencyCode)}'
                                     : 'غير محدد',
                                 textDirection: TextDirection.ltr,
                                 style: const TextStyle(
@@ -182,7 +187,7 @@ class BudgetCategoryCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           const Icon(
-                            Icons.chevron_left_rounded,
+                            LucideIcons.chevronLeft,
                             color: AarastDesignTokens.muted,
                             size: 20,
                           ),

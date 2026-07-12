@@ -90,7 +90,7 @@ DashboardSummary _summary() {
       isOwner: true,
       canViewBudget: true,
       canViewExpenses: true,
-      canViewDebts: true,
+      canViewFinancialRecords: true,
       canManageTasks: true,
       canManageGuests: true,
       canManageProviders: true,

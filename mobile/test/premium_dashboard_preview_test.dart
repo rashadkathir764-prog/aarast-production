@@ -19,7 +19,7 @@ const _permissions = DashboardPermissionSummary(
   isOwner: true,
   canViewBudget: true,
   canViewExpenses: true,
-  canViewDebts: true,
+  canViewFinancialRecords: true,
   canManageTasks: true,
   canManageGuests: true,
   canManageProviders: true,

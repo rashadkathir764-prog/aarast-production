@@ -68,6 +68,7 @@ class _BudgetCategoryDetailsScreenState
     final summary = category == null
         ? null
         : _categorySummary(provider.moneySummary, category, expenses);
+    final canManage = provider.canManageFinancialRecords;
 
     return AarastScreenFrame(
       maxWidth: 520,
@@ -97,8 +98,10 @@ class _BudgetCategoryDetailsScreenState
               AarastSectionHeader(
                 title: 'المستحقات المرتبطة',
                 icon: LucideIcons.wallet,
-                actionLabel: 'إضافة مستحق',
-                onAction: () => _openCreateCommitment(category),
+                actionLabel: canManage ? 'إضافة مستحق' : null,
+                onAction: canManage
+                    ? () => _openCreateCommitment(category)
+                    : null,
               ),
               const SizedBox(height: 12),
               if (commitments.isEmpty)
@@ -144,14 +147,17 @@ class _BudgetCategoryDetailsScreenState
                   const SizedBox(height: 10),
                 ],
               const SizedBox(height: 10),
-              _CategoryActionsCard(
-                onEdit: () => _showEditSheet(category),
-                onProviders: () => _openProviders(category),
-                onDelete:
-                    expenses.isEmpty && commitments.isEmpty && payments.isEmpty
-                    ? () => _confirmDeleteCategory(category)
-                    : null,
-              ),
+              if (canManage)
+                _CategoryActionsCard(
+                  onEdit: () => _showEditSheet(category),
+                  onProviders: () => _openProviders(category),
+                  onDelete:
+                      expenses.isEmpty &&
+                          commitments.isEmpty &&
+                          payments.isEmpty
+                      ? () => _confirmDeleteCategory(category)
+                      : null,
+                ),
             ],
           ],
         ),
@@ -237,7 +243,7 @@ class _BudgetCategoryDetailsScreenState
     final amountController = TextEditingController(
       text: category.targetAmount ?? '',
     );
-    final saved = await showModalBottomSheet<bool>(
+    final saved = await showAarastBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -339,7 +345,7 @@ class _BudgetCategoryDetailsScreenState
   Future<void> _confirmDeleteCategory(BudgetCategory category) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => AarastDialog(
         title: const Text('حذف بند الميزانية؟'),
         content: Text(
           'سيتم حذف بند ${category.name} لأنه لا يحتوي سجلات مالية.',
@@ -918,7 +924,7 @@ Color _commitmentColor(FinancialCommitment commitment) {
 String _commitmentSubtitle(FinancialCommitment commitment) {
   final source = commitment.isProviderLinked
       ? 'تكلفة مورد أو خدمة'
-      : commitment.isManualDebt
+      : commitment.isManualPayable
       ? 'مستحق عليك'
       : 'مستحق مالي';
   final dueDate = commitment.dueDate;

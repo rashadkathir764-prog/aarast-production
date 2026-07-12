@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../onboarding/widgets/location_picker_section.dart';
@@ -54,7 +55,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
     final now = DateTime.now();
     var tempDate = _weddingDate ?? now;
 
-    final selected = await showModalBottomSheet<DateTime>(
+    final selected = await showAarastBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -259,13 +260,10 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
     if (!_formKey.currentState!.validate()) return;
     final location = _locationDraft;
     if (!location.hasRequiredLocation) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('حدد المحافظة والمدينة أو المديرية قبل إنشاء الخطة.'),
-          ),
-        );
+      AarastToast.showError(
+        context,
+        'حدد المحافظة والمدينة أو المديرية قبل إنشاء الخطة.',
+      );
       return;
     }
 
@@ -283,9 +281,7 @@ class _CreateWeddingPlanScreenState extends State<CreateWeddingPlanScreen> {
     if (plan != null && mounted) {
       final notice = provider.noticeMessage;
       if (notice != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(notice)));
+        AarastToast.showInfo(context, notice);
       }
       context.go(AppRouter.weddingPlanDashboard(plan.id));
     }

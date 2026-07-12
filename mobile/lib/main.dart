@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,13 +15,12 @@ import 'core/session/session_boundary.dart';
 import 'core/session/session_scoped_change_notifier.dart';
 import 'core/storage/auth_storage.dart';
 import 'core/storage/token_vault.dart';
+import 'core/storage/sensitive_value_vault.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/providers/auth_controller.dart';
 import 'features/chat/data/chat_api.dart';
 import 'features/chat/data/chat_realtime_client.dart';
 import 'features/chat/providers/chat_provider.dart';
-import 'features/debts/data/debt_installment_api.dart';
-import 'features/debts/providers/debt_installment_provider.dart';
 import 'features/finance/data/budget_expense_api.dart';
 import 'features/finance/providers/finance_provider.dart';
 import 'features/guests/data/guests_api.dart';
@@ -46,13 +46,25 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final preferences = await SharedPreferences.getInstance();
+  const sensitiveValueVault = SecureSensitiveValueVault();
   final authStorage = AuthStorage(
     preferences,
     tokenVault: const SecureTokenVault(),
+    sensitiveValueVault: sensitiveValueVault,
   );
-  final guestOnboardingStorage = GuestOnboardingStorage(preferences);
+  await authStorage.initialize();
+  final guestOnboardingStorage = GuestOnboardingStorage(
+    preferences,
+    sensitiveValueVault: sensitiveValueVault,
+  );
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
-  final localDatabase = await createLocalDatabase(preferences);
+  late final LocalDatabase localDatabase;
+  try {
+    localDatabase = await createLocalDatabase(preferences);
+  } on Object {
+    runApp(const _SecureOfflineStorageFailureApp());
+    return;
+  }
   final offlineSyncService = OfflineSyncService(
     database: localDatabase,
     apiClient: apiClient,
@@ -68,10 +80,19 @@ Future<void> main() async {
   final budgetExpenseApi = BudgetExpenseApi(
     apiClient,
     offline: offlineSyncService,
-  );
-  final debtInstallmentApi = DebtInstallmentApi(
-    apiClient,
-    offline: offlineSyncService,
+    localPlanContextLoader: (weddingPlanId) async {
+      final draft = await guestOnboardingStorage.loadGuestPlan();
+      if (draft == null) return null;
+      final draftPlanId = draft.guestPlanId?.trim();
+      final effectivePlanId = draftPlanId?.isNotEmpty == true
+          ? draftPlanId!
+          : 'local-guest-plan';
+      if (effectivePlanId != weddingPlanId) return null;
+      return LocalFinancePlanContext(
+        estimatedBudget: draft.estimatedBudget,
+        currency: draft.currency,
+      );
+    },
   );
   final taskTimelineApi = TaskTimelineApi(
     apiClient,
@@ -100,7 +121,6 @@ Future<void> main() async {
         Provider<AuthRepository>.value(value: authRepository),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
-        Provider<DebtInstallmentApi>.value(value: debtInstallmentApi),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         Provider<SharingApi>.value(value: sharingApi),
         Provider<MarketplaceApi>.value(value: marketplaceApi),
@@ -132,7 +152,6 @@ Future<void> main() async {
         authStorage: authStorage,
         weddingPlansApi: weddingPlansApi,
         budgetExpenseApi: budgetExpenseApi,
-        debtInstallmentApi: debtInstallmentApi,
         taskTimelineApi: taskTimelineApi,
         sharingApi: sharingApi,
         marketplaceApi: marketplaceApi,
@@ -147,12 +166,55 @@ Future<void> main() async {
   );
 }
 
+class _SecureOfflineStorageFailureApp extends StatelessWidget {
+  const _SecureOfflineStorageFailureApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.shieldCheck, size: 52),
+                    SizedBox(height: 20),
+                    Text(
+                      'تعذر فتح التخزين الآمن',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'لم يتم حفظ أي بيانات بشكل غير مشفّر. أغلق التطبيق وافتحه مجددًا، وتأكد من تفعيل قفل الشاشة على الجهاز.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, height: 1.6),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AarastSessionProviders extends StatelessWidget {
   const _AarastSessionProviders({
     required this.authStorage,
     required this.weddingPlansApi,
     required this.budgetExpenseApi,
-    required this.debtInstallmentApi,
     required this.taskTimelineApi,
     required this.sharingApi,
     required this.marketplaceApi,
@@ -167,7 +229,6 @@ class _AarastSessionProviders extends StatelessWidget {
   final AuthStorage authStorage;
   final WeddingPlansApi weddingPlansApi;
   final BudgetExpenseApi budgetExpenseApi;
-  final DebtInstallmentApi debtInstallmentApi;
   final TaskTimelineApi taskTimelineApi;
   final SharingApi sharingApi;
   final MarketplaceApi marketplaceApi;
@@ -207,25 +268,13 @@ class _AarastSessionProviders extends StatelessWidget {
             DashboardSummaryProvider
           >(
             create: (_) => _bindPlanScope(
-              DashboardSummaryProvider(
-                weddingPlansApi: weddingPlansApi,
-                budgetExpenseApi: budgetExpenseApi,
-                debtInstallmentApi: debtInstallmentApi,
-                taskTimelineApi: taskTimelineApi,
-                sharingApi: sharingApi,
-              ),
+              DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
               _unselectedPlanScope,
             ),
             update: (_, plans, current) => _forPlanScope(
               current,
               _planScope(plans),
-              () => DashboardSummaryProvider(
-                weddingPlansApi: weddingPlansApi,
-                budgetExpenseApi: budgetExpenseApi,
-                debtInstallmentApi: debtInstallmentApi,
-                taskTimelineApi: taskTimelineApi,
-                sharingApi: sharingApi,
-              ),
+              () => DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
             ),
           ),
           ChangeNotifierProxyProvider<
@@ -235,9 +284,6 @@ class _AarastSessionProviders extends StatelessWidget {
             create: (_) => _bindPlanScope(
               HomeDashboardProvider(
                 weddingPlansApi: weddingPlansApi,
-                budgetExpenseApi: budgetExpenseApi,
-                debtInstallmentApi: debtInstallmentApi,
-                taskTimelineApi: taskTimelineApi,
                 sharingApi: sharingApi,
               ),
               _unselectedPlanScope,
@@ -247,36 +293,20 @@ class _AarastSessionProviders extends StatelessWidget {
               _planScope(plans),
               () => HomeDashboardProvider(
                 weddingPlansApi: weddingPlansApi,
-                budgetExpenseApi: budgetExpenseApi,
-                debtInstallmentApi: debtInstallmentApi,
-                taskTimelineApi: taskTimelineApi,
                 sharingApi: sharingApi,
               ),
             ),
           ),
           ChangeNotifierProxyProvider<WeddingPlansProvider, FinanceProvider>(
             create: (_) => _bindPlanScope(
-              FinanceProvider(budgetExpenseApi),
+              FinanceProvider(budgetExpenseApi, permissionsApi: sharingApi),
               _unselectedPlanScope,
             ),
             update: (_, plans, current) => _forPlanScope(
               current,
               _planScope(plans),
-              () => FinanceProvider(budgetExpenseApi),
-            ),
-          ),
-          ChangeNotifierProxyProvider<
-            WeddingPlansProvider,
-            DebtInstallmentProvider
-          >(
-            create: (_) => _bindPlanScope(
-              DebtInstallmentProvider(debtInstallmentApi),
-              _unselectedPlanScope,
-            ),
-            update: (_, plans, current) => _forPlanScope(
-              current,
-              _planScope(plans),
-              () => DebtInstallmentProvider(debtInstallmentApi),
+              () =>
+                  FinanceProvider(budgetExpenseApi, permissionsApi: sharingApi),
             ),
           ),
           ChangeNotifierProxyProvider<

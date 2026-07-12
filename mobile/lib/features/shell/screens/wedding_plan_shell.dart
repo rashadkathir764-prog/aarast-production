@@ -7,6 +7,8 @@ import '../../wedding_plans/widgets/quick_add_actions.dart';
 import '../../wedding_plans/providers/dashboard_summary_provider.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../../core/routing/app_router.dart';
+import '../../finance/providers/finance_provider.dart';
+import '../widgets/plan_shell_chrome.dart';
 
 class WeddingPlanShell extends StatelessWidget {
   const WeddingPlanShell({
@@ -91,44 +93,22 @@ class WeddingPlanShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentIndex = _calculateSelectedIndex(context);
     final location = GoRouterState.of(context).uri.path;
-
-    IconData getFabIcon() {
-      switch (currentIndex) {
-        case 1:
-          return Icons.account_balance_wallet_rounded;
-        case 2:
-          return Icons.check_circle_outline_rounded;
-        case 3:
-          return Icons.group_add_rounded;
-        case 4:
-          return Icons.storefront_rounded;
-        default:
-          return Icons.add_rounded;
-      }
-    }
+    final finance = context.watch<FinanceProvider?>();
 
     final isMoneyRoot = location.endsWith('/finance');
-    final showQuickFab =
-        currentIndex != 4 && (currentIndex != 1 || isMoneyRoot);
+    final showQuickFab = shouldShowPlanQuickAdd(
+      tabIndex: currentIndex,
+      isRootDestination: currentIndex != 1 || isMoneyRoot,
+      canManageFinancialRecords:
+          currentIndex != 1 || (finance?.canManageFinancialRecords ?? true),
+    );
 
-    return Scaffold(
+    return PlanShellChrome(
+      activeIndex: currentIndex,
+      onTabSelected: (index) => _onNavigate(context, index),
+      showQuickFab: showQuickFab,
+      onQuickAdd: () => _showQuickAdd(context, weddingPlanId, currentIndex),
       backgroundColor: Colors.transparent,
-      extendBody: true,
-      floatingActionButton: showQuickFab
-          ? RoyalSmartFloatingActionButton(
-              icon: getFabIcon(),
-              onPressed: () =>
-                  _showQuickAdd(context, weddingPlanId, currentIndex),
-            )
-          : null,
-      bottomNavigationBar: RoyalDashboardBottomNav(
-        activeIndex: currentIndex,
-        onHome: () => _onNavigate(context, 0),
-        onMoney: () => _onNavigate(context, 1),
-        onTasks: () => _onNavigate(context, 2),
-        onGuests: () => _onNavigate(context, 3),
-        onProviders: () => _onNavigate(context, 4),
-      ),
       body: child,
     );
   }

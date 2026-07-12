@@ -28,7 +28,7 @@ void main() {
     await api.lookupUserByPhone(accountPlanId, '777123456');
 
     final uri = Uri.parse(client.path!);
-    expect(uri.path, '/users/lookup');
+    expect(uri.path, '/api/v1/users/lookup');
     expect(uri.queryParameters['weddingPlanId'], accountPlanId);
     expect(uri.queryParameters['phone'], '+967777123456');
   });
@@ -242,7 +242,7 @@ SharedMember _member({
     role: 'VIEWER',
     canViewBudget: false,
     canViewExpenses: false,
-    canViewDebts: false,
+    canViewFinancialRecords: false,
     canManageTasks: false,
     canManageFinancialRecords: false,
     createdAt: DateTime(2026),
@@ -295,7 +295,7 @@ class _FakeSharingApi extends SharingApi {
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
-    required bool canViewDebts,
+    required bool canViewFinancialRecords,
     required bool canEditPlan,
     required bool canManageTasks,
     required bool canManageGuests,
@@ -315,7 +315,7 @@ class _FakeSharingApi extends SharingApi {
       expiresAt: DateTime(2026, 7, 1),
       canViewBudget: canViewBudget,
       canViewExpenses: canViewExpenses,
-      canViewDebts: canViewDebts,
+      canViewFinancialRecords: canViewFinancialRecords,
       canEditPlan: canEditPlan,
       canManageTasks: canManageTasks,
       canManageGuests: canManageGuests,

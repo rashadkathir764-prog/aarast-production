@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -175,7 +176,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     WeddingPlan plan, {
     bool requireCompleteLocation = false,
   }) async {
-    final result = await showModalBottomSheet<_PlanEditResult>(
+    final result = await showAarastBottomSheet<_PlanEditResult>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.ivory,
@@ -198,21 +199,21 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     );
     if (!mounted) return;
     if (updated == null) {
-      _showMessage(provider.errorMessage ?? 'تعذر تحديث الخطة.');
+      _showError(provider.errorMessage ?? 'تعذر تحديث الخطة.');
       return;
     }
     await context.read<DashboardSummaryProvider>().loadDashboard(
       plan.id,
       sharedMember: widget.sharedMember,
     );
-    if (mounted) _showMessage('تم تحديث بيانات الخطة.');
+    if (mounted) _showSuccess('تم تحديث بيانات الخطة.');
   }
 
   Future<void> _saveLocalEdit(_PlanEditResult result) async {
     final storage = context.read<GuestOnboardingStorage>();
     final draft = await storage.loadGuestPlan();
     if (draft == null) {
-      if (mounted) _showMessage('تعذر العثور على الخطة المحلية.');
+      if (mounted) _showError('تعذر العثور على الخطة المحلية.');
       return;
     }
     final location = result.location;
@@ -230,11 +231,11 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     );
     await storage.saveDraft(updated);
     await _loadLocalPlan();
-    if (mounted) _showMessage('تم تحديث الخطة على هذا الجهاز.');
+    if (mounted) _showSuccess('تم تحديث الخطة على هذا الجهاز.');
   }
 
   Future<void> _confirmArchive(WeddingPlan plan) async {
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
       backgroundColor: AppTheme.ivory,
       builder: (sheetContext) => Directionality(
@@ -305,7 +306,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final archived = await provider.archiveWeddingPlan(plan.id);
     if (!mounted) return;
     if (archived == null) {
-      _showMessage(provider.errorMessage ?? 'تعذر أرشفة الخطة.');
+      _showError(provider.errorMessage ?? 'تعذر أرشفة الخطة.');
       return;
     }
     context.go(AppRouter.weddingPlans);
@@ -332,11 +333,10 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     );
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showError(String message) => AarastToast.showError(context, message);
+
+  void _showSuccess(String message) =>
+      AarastToast.showSuccess(context, message);
 
   void _goBack() {
     if (context.canPop()) {

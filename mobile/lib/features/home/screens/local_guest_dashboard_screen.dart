@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
@@ -300,7 +301,7 @@ class _LocalSyncNotice extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
-                Icons.cloud_off_rounded,
+                LucideIcons.cloudOff,
                 color: AppTheme.burgundy,
                 size: 16,
               ),

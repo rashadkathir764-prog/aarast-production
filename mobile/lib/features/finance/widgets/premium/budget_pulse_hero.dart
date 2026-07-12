@@ -131,6 +131,7 @@ class BudgetPulseHero extends StatelessWidget {
           alignment: AlignmentDirectional.centerStart,
           child: YemeniMoneyHeroText(
             value: remaining,
+            currencyCode: summary.currency,
             color: remaining < 0
                 ? AarastDesignTokens.dangerSoft
                 : AarastDesignTokens.goldSoft,
@@ -140,6 +141,7 @@ class BudgetPulseHero extends StatelessWidget {
         _HeroBudgetContextLine(
           total: total,
           spent: spent,
+          currencyCode: summary.currency,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.86),
             fontSize: 12.5,
@@ -209,7 +211,7 @@ class BudgetPulseHero extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     hasLooseSpending
-                        ? 'سجلت ${formatCompactYemeniMoney(spent)} بدون ميزانية عامة — حدد السقف حتى نحسب لك المتبقي.'
+                        ? 'سجلت ${formatCompactMoney(spent, currencyCode: summary.currency)} بدون ميزانية عامة — حدد السقف حتى نحسب لك المتبقي.'
                         : 'رقم تقريبي يكفي للبداية، ويمكن تعديله في أي وقت.',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.85),
@@ -283,11 +285,13 @@ class _HeroBudgetContextLine extends StatelessWidget {
   const _HeroBudgetContextLine({
     required this.total,
     required this.spent,
+    required this.currencyCode,
     required this.style,
   });
 
   final double total;
   final double spent;
+  final String currencyCode;
   final TextStyle style;
 
   @override
@@ -301,9 +305,19 @@ class _HeroBudgetContextLine extends StatelessWidget {
         textDirection: TextDirection.rtl,
         children: [
           const Text('من ميزانية'),
-          YemeniMoneyText(total, style: style, overflow: TextOverflow.visible),
+          YemeniMoneyText(
+            total,
+            currencyCode: currencyCode,
+            style: style,
+            overflow: TextOverflow.visible,
+          ),
           const Text('- المؤكد'),
-          YemeniMoneyText(spent, style: style, overflow: TextOverflow.visible),
+          YemeniMoneyText(
+            spent,
+            currencyCode: currencyCode,
+            style: style,
+            overflow: TextOverflow.visible,
+          ),
         ],
       ),
     );
@@ -315,11 +329,13 @@ class YemeniMoneyHeroText extends StatelessWidget {
   const YemeniMoneyHeroText({
     required this.value,
     required this.color,
+    required this.currencyCode,
     super.key,
   });
 
   final double value;
   final Color color;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -331,19 +347,18 @@ class YemeniMoneyHeroText extends StatelessWidget {
           : const Duration(milliseconds: 1400),
       curve: Curves.easeOutExpo,
       builder: (context, animated, _) {
-        return Text.rich(
-          yemeniMoneyTextSpan(
-            animated,
-            style: TextStyle(
-              color: color,
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-              fontFamily: 'IBMPlexSansArabic',
-            ),
+        return YemeniMoneyText(
+          animated,
+          currencyCode: currencyCode,
+          style: TextStyle(
+            color: color,
+            fontSize: 32,
+            fontWeight: FontWeight.w800,
+            height: 1.1,
+            fontFamily: 'IBMPlexSansArabic',
           ),
           maxLines: 1,
-          textDirection: TextDirection.ltr,
+          overflow: TextOverflow.visible,
         );
       },
     );

@@ -1,4 +1,6 @@
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/premium/aarast_money_glance_card.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -6,6 +8,7 @@ void main() {
     final summary = DashboardSummary.fromJson({
       'planId': 'plan-1',
       'title': 'خطة الزفاف',
+      'currency': 'SAR',
       'status': 'PLANNING',
       'progressPercentage': 40,
       'totalTasks': 10,
@@ -47,7 +50,7 @@ void main() {
         'isOwner': true,
         'canViewBudget': true,
         'canViewExpenses': true,
-        'canViewDebts': true,
+        'canViewFinancialRecords': true,
         'canManageTasks': true,
         'canManageGuests': true,
         'canManageProviders': true,
@@ -58,6 +61,7 @@ void main() {
     });
 
     expect(summary.pendingGuests, 15);
+    expect(summary.currency, 'SAR');
     expect(summary.receivedQuotes, 1);
     expect(summary.acceptedProviders, 1);
     expect(summary.participantCount, 3);
@@ -69,6 +73,60 @@ void main() {
       summary.importantItems.first.routeTarget,
       '/wedding-plans/plan-1/tasks',
     );
+  });
+
+  testWidgets('money glance includes commitments and uses the plan currency', (
+    tester,
+  ) async {
+    final summary = DashboardSummary.fromJson({
+      'planId': 'plan-1',
+      'title': 'خطة',
+      'currency': 'SAR',
+      'status': 'PLANNING',
+      'progressPercentage': 0,
+      'totalTasks': 0,
+      'completedTasks': 0,
+      'overdueTasks': 0,
+      'todayTasks': 0,
+      'guestCount': 0,
+      'confirmedGuests': 0,
+      'providerCount': 0,
+      'quoteRequestsCount': 0,
+      'unreadNotificationsCount': 0,
+      'nextBestActions': const [],
+      'moneySummary': {
+        'totalBudget': '1000000',
+        'totalSpent': '0',
+        'remainingBudget': '100000',
+        'totalCommitments': '900000',
+      },
+      'permissions': {
+        'isOwner': true,
+        'canViewBudget': true,
+        'canViewExpenses': true,
+        'canViewFinancialRecords': true,
+        'canManageTasks': true,
+        'canManageFinancialRecords': true,
+        'canManagePlan': true,
+      },
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AarastMoneyGlanceCard(summary: summary, onOpenMoney: () {}),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('المؤكد'), findsOneWidget);
+    expect(find.textContaining('مستخدم 90%'), findsOneWidget);
+    final moneyFigures = tester
+        .widgetList<RichText>(find.byType(RichText))
+        .map((widget) => widget.text.toPlainText())
+        .where((text) => text.contains('ر.س'));
+    expect(moneyFigures, hasLength(3));
   });
 
   test('dashboard compact response does not require full entity lists', () {
@@ -91,7 +149,7 @@ void main() {
         'isOwner': true,
         'canViewBudget': true,
         'canViewExpenses': true,
-        'canViewDebts': true,
+        'canViewFinancialRecords': true,
         'canManageTasks': true,
         'canManageFinancialRecords': true,
         'canManagePlan': true,
@@ -137,7 +195,7 @@ void main() {
       },
       'nextInstallmentDue': {
         'id': 'installment-1',
-        'debtId': 'debt-1',
+        'financialCommitmentId': 'commitment-1',
         'amount': '50000',
         'status': 'PENDING',
       },
@@ -160,7 +218,7 @@ void main() {
         'isOwner': true,
         'canViewBudget': true,
         'canViewExpenses': true,
-        'canViewDebts': true,
+        'canViewFinancialRecords': true,
         'canManageTasks': true,
         'canManageFinancialRecords': true,
         'canManagePlan': true,

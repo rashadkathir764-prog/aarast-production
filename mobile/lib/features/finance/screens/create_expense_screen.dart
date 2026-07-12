@@ -15,6 +15,7 @@ import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/budget_category.dart';
 import '../models/expense.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/finance_write_access_block.dart';
 
 part 'create_expense_screen.widgets.dart';
 part 'create_expense_screen.fields.dart';
@@ -108,6 +109,12 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final accessBlock = financeWriteAccessBlock(
+      context: context,
+      provider: provider,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (accessBlock != null) return accessBlock;
     final category = _selectedCategory(provider.budgetCategories);
     final keyboardBottom = MediaQuery.viewInsetsOf(context).bottom;
 
@@ -307,7 +314,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
     final now = DateTime.now();
     var tempDate = current ?? now;
 
-    final selected = await showModalBottomSheet<DateTime>(
+    final selected = await showAarastBottomSheet<DateTime>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -360,7 +367,7 @@ class _CreateExpenseScreenState extends State<CreateExpenseScreen> {
   Future<void> _showCategoryPicker() async {
     FocusScope.of(context).unfocus();
     final provider = context.read<FinanceProvider>();
-    final selected = await showModalBottomSheet<String>(
+    final selected = await showAarastBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -52,7 +53,7 @@ class HomeErrorCard extends StatelessWidget {
       border: Border.all(color: AppTheme.dangerSoft),
       child: Column(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger),
+          const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
           const SizedBox(height: 8),
           Text(
             message,
@@ -65,7 +66,7 @@ class HomeErrorCard extends StatelessWidget {
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(LucideIcons.refreshCw),
             label: const Text('إعادة المحاولة'),
           ),
         ],
@@ -104,7 +105,7 @@ class HomeTopHeader extends StatelessWidget {
               Row(
                 children: [
                   const Icon(
-                    Icons.favorite_rounded,
+                    LucideIcons.heart,
                     color: AppTheme.burgundy,
                     size: 18,
                   ),
@@ -114,12 +115,13 @@ class HomeTopHeader extends StatelessWidget {
                       'أهلاً $name',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppTheme.title,
-                        fontFamily: AppTheme.displayFontFamily,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: AppTheme.title,
+                            fontFamily: AppTheme.displayFontFamily,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                          ),
                     ),
                   ),
                 ],
@@ -139,13 +141,13 @@ class HomeTopHeader extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         _HeaderCircleIcon(
-          icon: Icons.notifications_none_rounded,
+          icon: LucideIcons.bell,
           badgeCount: notificationCount,
           onTap: onNotifications,
         ),
         const SizedBox(width: 10),
         _HeaderCircleIcon(
-          icon: Icons.person_outline_rounded,
+          icon: LucideIcons.user,
           borderColor: AppTheme.gold,
           onTap: onProfile,
         ),
@@ -228,22 +230,22 @@ class HomeNoPlanWelcome extends StatelessWidget {
   Widget build(BuildContext context) {
     final features = const [
       _WelcomeFeature(
-        icon: Icons.account_balance_wallet_outlined,
+        icon: LucideIcons.wallet,
         title: 'ميزانية واضحة',
         subtitle: 'تابع مصاريفك وأقساطك بهدوء.',
       ),
       _WelcomeFeature(
-        icon: Icons.checklist_rounded,
+        icon: LucideIcons.listChecks,
         title: 'مهام منظّمة',
         subtitle: 'قائمة مهام ذكية تتبع خطة الزفاف.',
       ),
       _WelcomeFeature(
-        icon: Icons.groups_rounded,
+        icon: LucideIcons.users,
         title: 'مشاركة العائلة',
         subtitle: 'أشرك أفراد عائلتك بصلاحيات دقيقة.',
       ),
       _WelcomeFeature(
-        icon: Icons.storefront_rounded,
+        icon: LucideIcons.store,
         title: 'عروض مزوّدي الخدمات',
         subtitle: 'قارن الأسعار واختر بثقة.',
       ),
@@ -266,7 +268,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                 right: -40,
                 top: -40,
                 child: Icon(
-                  Icons.local_florist_rounded,
+                  LucideIcons.flower2,
                   size: 160,
                   color: AppTheme.gold.withAlpha(25),
                 ),
@@ -283,7 +285,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                       boxShadow: AppTheme.softShadow(opacity: 0.05),
                     ),
                     child: const Icon(
-                      Icons.favorite_rounded,
+                      LucideIcons.heart,
                       color: AppTheme.gold,
                       size: 22,
                     ),
@@ -318,55 +320,57 @@ class HomeNoPlanWelcome extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          ...features.map((feature) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: AppTheme.ivory,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: Icon(
-                        feature.icon,
-                        color: AppTheme.burgundy,
-                        size: 16,
-                      ),
+          ...features.map(
+            (feature) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppTheme.ivory,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.border),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            feature.title,
-                            style: const TextStyle(
-                              color: AppTheme.ink,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            feature.subtitle,
-                            style: const TextStyle(
-                              color: AppTheme.muted,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: Icon(
+                      feature.icon,
+                      color: AppTheme.burgundy,
+                      size: 16,
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          feature.title,
+                          style: const TextStyle(
+                            color: AppTheme.ink,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          feature.subtitle,
+                          style: const TextStyle(
+                            color: AppTheme.muted,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 18),
           SizedBox(
             height: 50,
@@ -380,7 +384,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
                 elevation: 0,
               ),
               onPressed: () => context.push(AppRouter.createWeddingPlan),
-              icon: const Icon(Icons.add_rounded, size: 22),
+              icon: const Icon(LucideIcons.plus, size: 22),
               label: const Text(
                 'إنشاء خطة زفاف',
                 style: TextStyle(
@@ -441,7 +445,7 @@ class HomeSharedPlansCard extends StatelessWidget {
         children: [
           AarastSectionHeader(
             title: 'الخطط المشتركة',
-            icon: Icons.groups_outlined,
+            icon: LucideIcons.users,
             actionLabel: 'عرض الكل',
             onAction: () => context.push(AppRouter.sharedWeddingPlans),
           ),
@@ -450,7 +454,7 @@ class HomeSharedPlansCard extends StatelessWidget {
             const AarastEmptyState(
               title: 'لا توجد خطط مشتركة بعد',
               message: 'عندما يشاركك أحد أفراد العائلة خطة، ستظهر هنا.',
-              icon: Icons.group_add_outlined,
+              icon: LucideIcons.userPlus,
             )
           else
             _SharedPlanRow(
@@ -496,7 +500,7 @@ class _SharedPlanRow extends StatelessWidget {
                 color: AppTheme.burgundySoft,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: const Icon(Icons.groups_rounded, color: AppTheme.burgundy),
+              child: const Icon(LucideIcons.users, color: AppTheme.burgundy),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -524,7 +528,7 @@ class _SharedPlanRow extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
+            const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
           ],
         ),
       ),

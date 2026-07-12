@@ -6,10 +6,12 @@ import 'package:provider/provider.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/aarast_toast.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
 import '../finance/screens/budget_expense_screen.dart';
+import '../finance/providers/finance_provider.dart';
 import '../guests/screens/guest_list_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
 import '../tasks/screens/task_timeline_screen.dart';
@@ -18,6 +20,7 @@ import '../wedding_plans/providers/wedding_plans_provider.dart';
 import '../wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../wedding_plans/widgets/quick_add_actions.dart';
 import '../wedding_plans/widgets/royal_home_chrome.dart';
+import 'widgets/plan_shell_chrome.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -64,9 +67,7 @@ class _MainShellState extends State<MainShell> {
 
   void _showQuickAdd() {
     if (_activePlanId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اختر أو أنشئ خطة زفاف أولًا.')),
-      );
+      AarastToast.showInfo(context, 'اختر أو أنشئ خطة زفاف أولًا.');
       return;
     }
     if (_index == 3) {
@@ -111,91 +112,80 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
+    final finance = context.watch<FinanceProvider?>();
+    final showQuickFab =
+        _activePlanId != null &&
+        shouldShowPlanQuickAdd(
+          tabIndex: _index,
+          canManageFinancialRecords:
+              _index != 1 || (finance?.canManageFinancialRecords ?? true),
+        );
 
     return RootTabBackScope(
       activeIndex: _index,
       onReturnToRoot: () => _onItemTapped(0),
       child: Theme(
         data: shellTheme,
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            backgroundColor: AppTheme.ivory,
-            extendBody: true,
-            body: IndexedStack(
-              index: _index,
-              children: [
-                // Index 0: Home overview. Plan lists are explicit routes.
-                _buildLazyTab(
-                  0,
-                  _activePlanId != null
-                      ? WeddingPlanDashboardScreen(
-                          key: ValueKey('home-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                          embedded: true,
-                        )
-                      : const HomeScreen(embedded: true),
-                ),
+        child: PlanShellChrome(
+          activeIndex: _index,
+          onTabSelected: _onItemTapped,
+          showQuickFab: showQuickFab,
+          onQuickAdd: _showQuickAdd,
+          backgroundColor: AppTheme.ivory,
+          body: IndexedStack(
+            index: _index,
+            children: [
+              // Index 0: Home overview. Plan lists are explicit routes.
+              _buildLazyTab(
+                0,
+                _activePlanId != null
+                    ? WeddingPlanDashboardScreen(
+                        key: ValueKey('home-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                        embedded: true,
+                      )
+                    : const HomeScreen(embedded: true),
+              ),
 
-                // Index 1: Money
-                _buildLazyTab(
-                  1,
-                  _activePlanId != null
-                      ? BudgetExpenseScreen(
-                          key: ValueKey('money-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                          embedded: true,
-                        )
-                      : _buildNoPlanFallback('المال'),
-                ),
+              // Index 1: Money
+              _buildLazyTab(
+                1,
+                _activePlanId != null
+                    ? BudgetExpenseScreen(
+                        key: ValueKey('money-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                        embedded: true,
+                      )
+                    : _buildNoPlanFallback('المال'),
+              ),
 
-                // Index 2: Tasks
-                _buildLazyTab(
-                  2,
-                  _activePlanId != null
-                      ? TaskTimelineScreen(
-                          key: ValueKey('tasks-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                        )
-                      : _buildNoPlanFallback('المهام'),
-                ),
+              // Index 2: Tasks
+              _buildLazyTab(
+                2,
+                _activePlanId != null
+                    ? TaskTimelineScreen(
+                        key: ValueKey('tasks-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                      )
+                    : _buildNoPlanFallback('المهام'),
+              ),
 
-                // Index 3: Guests
-                _buildLazyTab(
-                  3,
-                  _activePlanId != null
-                      ? GuestListScreen(
-                          key: ValueKey('guests-$_activePlanId'),
-                          weddingPlanId: _activePlanId!,
-                          showLocalFab: false,
-                          openAddRequest: _guestAddRequest,
-                        )
-                      : _buildNoPlanFallback('الضيوف'),
-                ),
+              // Index 3: Guests
+              _buildLazyTab(
+                3,
+                _activePlanId != null
+                    ? GuestListScreen(
+                        key: ValueKey('guests-$_activePlanId'),
+                        weddingPlanId: _activePlanId!,
+                        showLocalFab: false,
+                        openAddRequest: _guestAddRequest,
+                      )
+                    : _buildNoPlanFallback('الضيوف'),
+              ),
 
-                // Index 4: Vendors marketplace
-                _buildLazyTab(
-                  4,
-                  const ProviderMarketplaceScreen(embedded: true),
-                ),
-              ],
-            ),
-            floatingActionButton:
-                _activePlanId == null || !_showsQuickFab(_index)
-                ? null
-                : RoyalSmartFloatingActionButton(
-                    icon: _fabIconForIndex(_index),
-                    onPressed: _showQuickAdd,
-                  ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-            bottomNavigationBar: RoyalDashboardBottomNav(
-              activeIndex: _index,
-              onHome: () => _onItemTapped(0),
-              onMoney: () => _onItemTapped(1),
-              onTasks: () => _onItemTapped(2),
-              onGuests: () => _onItemTapped(3),
-              onProviders: () => _onItemTapped(4),
-            ),
+              // Index 4: Vendors marketplace
+              _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
+            ],
           ),
         ),
       ),
@@ -206,26 +196,11 @@ class _MainShellState extends State<MainShell> {
     return _visitedTabs.contains(index) ? child : const SizedBox.shrink();
   }
 
-  bool _showsQuickFab(int index) {
-    return index != 1 && index != 4;
-  }
-
-  IconData _fabIconForIndex(int index) {
-    // أيقونات Lucide لتوحيد القشرة مع بقية الشاشات الفخمة.
-    return switch (index) {
-      1 => LucideIcons.wallet,
-      2 => LucideIcons.listPlus,
-      3 => LucideIcons.userPlus,
-      4 => LucideIcons.store,
-      _ => LucideIcons.plus,
-    };
-  }
-
   Widget _buildNoPlanFallback(String title) {
     return AarastScaffold(
       child: Center(
         child: AarastEmptyState(
-          icon: Icons.info_outline_rounded,
+          icon: LucideIcons.info,
           title: title,
           message: 'اختر خطة من الرئيسية أولًا لفتح $title.',
         ),

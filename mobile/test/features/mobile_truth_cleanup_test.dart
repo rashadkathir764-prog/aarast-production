@@ -31,6 +31,28 @@ void main() {
       );
     });
 
+    test('removed route aliases and dead UI variants cannot return', () {
+      final router = File(
+        '${mobileRoot}lib/core/routing/app_router.dart',
+      ).readAsStringSync();
+      expect(router, isNot(contains('legacyProviderDashboard')));
+      expect(router, isNot(contains("'/provider-dashboard'")));
+
+      for (final removedPath in <String>[
+        'lib/core/widgets/primary_action_button.dart',
+        'lib/features/finance/widgets/budget_category_card.dart',
+        'test/goldens/premium_debts_on_track.png',
+        'test/goldens/premium_debts_overdue.png',
+      ]) {
+        expect(
+          File('$mobileRoot$removedPath').existsSync(),
+          isFalse,
+          reason:
+              '$removedPath is a deleted legacy artifact and must stay deleted.',
+        );
+      }
+    });
+
     test('old dashboard widget variants stay deleted or unreachable', () {
       final legacyDashboardVariant = File(
         '${mobileRoot}lib/features/wedding_plans/widgets/new_dashboard_widgets.dart',

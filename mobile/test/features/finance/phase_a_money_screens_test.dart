@@ -132,6 +132,20 @@ void main() {
       expect(find.textContaining('ر.س'), findsWidgets);
       expect(find.textContaining('ر.ي'), findsNothing);
     });
+
+    testWidgets('financial payables shows selected plan currency', (
+      tester,
+    ) async {
+      _setTallView(tester);
+
+      await tester.pumpWidget(
+        _wrap(const FinancialPayablesScreen(weddingPlanId: _planId)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('ر.س'), findsWidgets);
+      expect(find.textContaining('ر.ي'), findsNothing);
+    });
   });
 
   group('Current finance surfaces at narrow RTL width', () {

@@ -196,9 +196,9 @@ class _SharingContent extends StatelessWidget {
             ),
             child: Text(
               'الخطة خاصة بك الآن. استخدم زر إضافة عضو لإضافة شخص موثوق.',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.muted,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppTheme.muted),
               textAlign: TextAlign.center,
             ),
           ),

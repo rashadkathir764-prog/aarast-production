@@ -89,7 +89,7 @@ void main() {
     test('createWeddingPlan marks the created plan active locally', () async {
       final api = WeddingPlansApi(
         _client((options) {
-          expect(options.path, '/wedding-plans');
+          expect(options.path, '/api/v1/wedding-plans');
           return _activePlanJson(id: 'plan-new', title: 'New plan');
         }),
       );
@@ -205,15 +205,15 @@ void main() {
         'budgetTotal': null,
         'spentTotal': null,
         'remainingBudget': null,
-        'debtTotal': null,
-        'paidDebtTotal': null,
-        'unpaidDebtTotal': null,
+        'commitmentTotal': null,
+        'commitmentPaidTotal': null,
+        'commitmentOutstandingTotal': null,
         'dueInstallmentsCount': null,
         'permissions': {
           ..._permissionsJson(),
           'canViewBudget': false,
           'canViewExpenses': false,
-          'canViewDebts': false,
+          'canViewFinancialRecords': false,
         },
       });
 
@@ -308,9 +308,9 @@ Map<String, dynamic> _dashboardSummaryJson() {
     'budgetTotal': '120000.00',
     'spentTotal': '28450.00',
     'remainingBudget': '91550.00',
-    'debtTotal': '3500.00',
-    'paidDebtTotal': '0.00',
-    'unpaidDebtTotal': '3500.00',
+    'commitmentTotal': '3500.00',
+    'commitmentPaidTotal': '0.00',
+    'commitmentOutstandingTotal': '3500.00',
     'dueInstallmentsCount': 1,
     'totalTasks': 29,
     'completedTasks': 20,
@@ -332,7 +332,7 @@ Map<String, dynamic> _permissionsJson() {
     'role': 'OWNER',
     'canViewBudget': true,
     'canViewExpenses': true,
-    'canViewDebts': true,
+    'canViewFinancialRecords': true,
     'canManageTasks': true,
     'canManageFinancialRecords': true,
     'canManagePlan': true,

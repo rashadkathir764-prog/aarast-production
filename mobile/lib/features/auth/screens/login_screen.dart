@@ -7,6 +7,7 @@ import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
@@ -107,9 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         setState(() => _obscurePassword = !_obscurePassword);
                       },
                       icon: Icon(
-                        _obscurePassword
-                            ? LucideIcons.eye
-                            : LucideIcons.eyeOff,
+                        _obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff,
                       ),
                     ),
                     validator: (value) {
@@ -182,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'أعرسِت يساعدك على ترتيب الميزانية والمهام والديون والمشاركات من مكان واحد.',
+              'أعرسِت يساعدك على ترتيب الميزانية والمهام والمستحقات والمشاركات من مكان واحد.',
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
                 color: AppTheme.muted,
@@ -226,9 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _requestLoginOtp() async {
     final phoneInput = _phoneController.text.trim();
     if (!isValidYemeniPhoneInput(phoneInput)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('أدخل رقم هاتف صحيح أولًا.')),
-      );
+      AarastToast.showError(context, 'أدخل رقم هاتف صحيح أولًا.');
       return;
     }
 

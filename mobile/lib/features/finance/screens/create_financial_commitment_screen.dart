@@ -10,7 +10,9 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/financial_commitment.dart';
+import '../models/financial_input_validation.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/finance_write_access_block.dart';
 
 class CreateFinancialCommitmentScreen extends StatefulWidget {
   const CreateFinancialCommitmentScreen({
@@ -86,6 +88,12 @@ class _CreateFinancialCommitmentScreenState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final accessBlock = financeWriteAccessBlock(
+      context: context,
+      provider: provider,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (accessBlock != null) return accessBlock;
     final categories = provider.budgetCategories;
     final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
 
@@ -108,7 +116,7 @@ class _CreateFinancialCommitmentScreenState
                     child: Text(
                       _sourceType == 'PROVIDER_SERVICE'
                           ? 'حجز مورد / تكلفة خدمة'
-                          : _sourceType == 'MANUAL_DEBT'
+                          : _sourceType == 'MANUAL_PAYABLE'
                           ? 'مستحق عليك'
                           : _isEditMode
                           ? 'تعديل مستحق مالي'
@@ -175,7 +183,7 @@ class _CreateFinancialCommitmentScreenState
                                   child: Text('مورد / تكلفة خدمة'),
                                 ),
                                 DropdownMenuItem(
-                                  value: 'MANUAL_DEBT',
+                                  value: 'MANUAL_PAYABLE',
                                   child: Text('مستحق عليك'),
                                 ),
                                 DropdownMenuItem(
@@ -211,7 +219,7 @@ class _CreateFinancialCommitmentScreenState
                               textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
                                 labelText: 'المورد / الشخص',
-                                prefixIcon: Icon(Icons.account_circle_outlined),
+                                prefixIcon: Icon(LucideIcons.userCircle),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -239,7 +247,7 @@ class _CreateFinancialCommitmentScreenState
                                 suffixText: currencyLabel,
                                 prefixIcon: const Icon(LucideIcons.banknote),
                               ),
-                              validator: _requiredMoney,
+                              validator: validatePositiveMoney,
                             ),
                             const SizedBox(height: 14),
                             if (!_isEditMode) ...[
@@ -256,7 +264,10 @@ class _CreateFinancialCommitmentScreenState
                                   suffixText: currencyLabel,
                                   prefixIcon: const Icon(LucideIcons.receipt),
                                 ),
-                                validator: _optionalMoney,
+                                validator: (value) => validateInitialPayment(
+                                  value,
+                                  totalRaw: _totalAmountController.text,
+                                ),
                               ),
                               const SizedBox(height: 14),
                             ] else ...[
@@ -298,7 +309,7 @@ class _CreateFinancialCommitmentScreenState
                               maxLines: 4,
                               decoration: const InputDecoration(
                                 labelText: 'ملاحظة',
-                                prefixIcon: Icon(Icons.note_alt_outlined),
+                                prefixIcon: Icon(LucideIcons.fileText),
                               ),
                             ),
                             if (provider.errorMessage != null) ...[
@@ -522,20 +533,4 @@ String _planCurrencyLabel(BuildContext context, String weddingPlanId) {
 
 FormFieldValidator<String> _required(String message) {
   return (value) => value == null || value.trim().isEmpty ? message : null;
-}
-
-String? _requiredMoney(String? value) {
-  final raw = value?.trim() ?? '';
-  if (raw.isEmpty) return 'المبلغ مطلوب';
-  final parsed = num.tryParse(raw);
-  if (parsed == null || parsed < 0) return 'أدخل مبلغاً صحيحاً';
-  return null;
-}
-
-String? _optionalMoney(String? value) {
-  final raw = value?.trim() ?? '';
-  if (raw.isEmpty) return null;
-  final parsed = num.tryParse(raw);
-  if (parsed == null || parsed < 0) return 'أدخل مبلغاً صحيحاً';
-  return null;
 }

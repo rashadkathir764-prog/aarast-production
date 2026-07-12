@@ -6,14 +6,10 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
-import 'package:aarast_mobile/features/debts/data/debt_installment_api.dart';
-import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
 import 'package:aarast_mobile/features/home/screens/dashboard_entry_screen.dart';
 import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
-import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
-import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
@@ -272,13 +268,7 @@ class _Harness {
         guestOnboardingStorage: guestStorage,
       ),
       weddingPlans: WeddingPlansProvider(weddingPlansApi),
-      dashboard: DashboardSummaryProvider(
-        weddingPlansApi: weddingPlansApi,
-        budgetExpenseApi: BudgetExpenseApi(apiClient),
-        debtInstallmentApi: DebtInstallmentApi(apiClient),
-        taskTimelineApi: TaskTimelineApi(apiClient),
-        sharingApi: SharingApi(apiClient),
-      ),
+      dashboard: DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
     );
   }
 

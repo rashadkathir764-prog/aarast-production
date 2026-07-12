@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/offline/local_database.dart';
@@ -146,7 +147,7 @@ class _WeddingPlanDashboardScreenState
           key: const ValueKey('royal-home-error'),
           child: _DashboardStateList(
             bottomPadding: bottomPadding,
-            icon: Icons.cloud_off_rounded,
+            icon: LucideIcons.cloudOff,
             title: 'تعذر تحميل الرئيسية',
             message: errorMessage,
             actionLabel: 'إعادة المحاولة',
@@ -168,7 +169,7 @@ class _WeddingPlanDashboardScreenState
           key: const ValueKey('royal-home-empty'),
           child: _DashboardStateList(
             bottomPadding: bottomPadding,
-            icon: Icons.auto_awesome_rounded,
+            icon: LucideIcons.sparkles,
             title: 'ابدأ رحلتك معنا',
             message:
                 'لا توجد خطة نشطة بعد. أنشئ خطة زفافك الأولى وسنساعدك على تنظيم كل خطوة بهدوء.',

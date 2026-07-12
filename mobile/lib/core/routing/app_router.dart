@@ -9,10 +9,6 @@ import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/chat/screens/quote_conversation_entry_screen.dart';
 import '../../features/chat/widgets/conversation_list_view.dart';
-import '../../features/debts/screens/create_debt_screen.dart';
-import '../../features/debts/screens/create_installment_screen.dart';
-import '../../features/debts/screens/debt_details_screen.dart';
-import '../../features/debts/screens/debt_installment_screen.dart';
 import '../../features/finance/screens/budget_expense_screen.dart';
 import '../../features/finance/screens/budget_category_details_screen.dart';
 import '../../features/finance/screens/budget_setup_screen.dart';
@@ -83,7 +79,6 @@ class AppRouter {
   static const providerApplyStatus = '/provider/apply/status';
   static const providerDashboard = '/provider/dashboard';
   static const providerProfileEdit = '/provider/profile/edit';
-  static const legacyProviderDashboard = '/provider-dashboard';
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
@@ -198,22 +193,6 @@ class AppRouter {
 
   static String editExpense(String weddingPlanId, String expenseId) {
     return '/wedding-plans/$weddingPlanId/expenses/$expenseId/edit';
-  }
-
-  static String debts(String id) {
-    return '/wedding-plans/$id/debts';
-  }
-
-  static String createDebt(String id) {
-    return '/wedding-plans/$id/debts/create';
-  }
-
-  static String debtDetails(String debtId) {
-    return '/debts/$debtId';
-  }
-
-  static String createInstallment(String debtId) {
-    return '/debts/$debtId/installments/create';
   }
 
   static String tasks(String id) {
@@ -401,10 +380,6 @@ class AppRouter {
             providerAccountRequired: true,
             child: const EditProviderProfileScreen(),
           ),
-        ),
-        GoRoute(
-          path: legacyProviderDashboard,
-          redirect: (context, state) => providerDashboard,
         ),
         GoRoute(
           path: providerServiceNew,
@@ -737,47 +712,6 @@ class AppRouter {
             );
           },
         ),
-        GoRoute(
-          path: '/wedding-plans/:id/debts',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final sharedMember = state.extra is SharedMember
-                ? state.extra! as SharedMember
-                : null;
-            return DebtInstallmentScreen(
-              weddingPlanId: id,
-              sharedMember: sharedMember,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/debts/create',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final quoteContext = state.extra is QuoteFinanceContext
-                ? state.extra! as QuoteFinanceContext
-                : null;
-            return CreateDebtScreen(
-              weddingPlanId: id,
-              quoteContext: quoteContext,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/debts/:debtId',
-          builder: (context, state) {
-            final debtId = state.pathParameters['debtId'] ?? '';
-            return DebtDetailsScreen(debtId: debtId);
-          },
-        ),
-        GoRoute(
-          path: '/debts/:debtId/installments/create',
-          builder: (context, state) {
-            final debtId = state.pathParameters['debtId'] ?? '';
-            return CreateInstallmentScreen(debtId: debtId);
-          },
-        ),
-
         GoRoute(
           path: '/wedding-plans/:id/tasks/create',
           builder: (context, state) {

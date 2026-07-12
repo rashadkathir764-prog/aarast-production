@@ -6,10 +6,12 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/finance_write_access_block.dart';
 
 class CreateBudgetCategoryScreen extends StatefulWidget {
   const CreateBudgetCategoryScreen({
@@ -39,6 +41,10 @@ class _CreateBudgetCategoryScreenState
     if (initialName != null && initialName.isNotEmpty) {
       _nameController.text = initialName;
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<FinanceProvider>().loadFinance(widget.weddingPlanId);
+    });
   }
 
   @override
@@ -51,6 +57,12 @@ class _CreateBudgetCategoryScreenState
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final accessBlock = financeWriteAccessBlock(
+      context: context,
+      provider: provider,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (accessBlock != null) return accessBlock;
     final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
 
     return AarastScreenFrame(
@@ -177,9 +189,7 @@ class _CreateBudgetCategoryScreenState
     if (created && mounted) {
       final notice = provider.noticeMessage;
       if (notice != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(notice)));
+        AarastToast.showSuccess(context, notice);
       }
       _goBack();
     }

@@ -9,11 +9,15 @@ import '../models/expense.dart';
 import '../models/expense_summary.dart';
 import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
+import '../../sharing/data/sharing_api.dart';
+import '../../sharing/models/plan_access_permissions.dart';
 
 class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
-  FinanceProvider(this._api);
+  FinanceProvider(this._api, {SharingApi? permissionsApi})
+    : _permissionsApi = permissionsApi;
 
   final BudgetExpenseApi _api;
+  final SharingApi? _permissionsApi;
 
   bool _isLoading = false;
   bool _isSubmitting = false;
@@ -26,6 +30,11 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   List<FinancialInstallment> _dueFinancialInstallments = const [];
   ExpenseSummary _summary = ExpenseSummary.empty();
   MoneySummary _moneySummary = MoneySummary.empty('');
+  PlanAccessPermissions _access = const PlanAccessPermissions.denied(
+    weddingPlanId: '',
+  );
+  String? _loadedWeddingPlanId;
+  int _loadGeneration = 0;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -40,34 +49,67 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       _dueFinancialInstallments;
   ExpenseSummary get summary => _summary;
   MoneySummary get moneySummary => _moneySummary;
+  PlanAccessPermissions get access => _access;
+  String? get loadedWeddingPlanId => _loadedWeddingPlanId;
+  bool get canManageFinancialRecords => _access.canManageFinancialRecords;
 
   Future<void> loadFinance(
     String weddingPlanId, {
     bool canReadBudget = true,
     bool canReadExpenses = true,
+    bool canReadFinancialRecords = true,
+    bool canManageFinancialRecords = true,
   }) async {
+    final generation = ++_loadGeneration;
+    final planChanged = _loadedWeddingPlanId != weddingPlanId;
+    if (planChanged) {
+      _loadedWeddingPlanId = weddingPlanId;
+      _clearFinanceState(weddingPlanId);
+    }
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
+    var accessResolved = false;
     try {
+      final access = await _resolveAccess(
+        weddingPlanId,
+        canReadBudget: canReadBudget,
+        canReadExpenses: canReadExpenses,
+        canReadFinancialRecords: canReadFinancialRecords,
+        canManageFinancialRecords: canManageFinancialRecords,
+      );
+      if (generation != _loadGeneration || isSessionDisposed) return;
+      accessResolved = true;
+      _access = access;
+      if (!access.hasAnyFinanceAccess) {
+        _clearFinanceState(weddingPlanId);
+        _errorMessage = 'لا تملك صلاحية عرض السجلات المالية لهذه الخطة.';
+        return;
+      }
+
       final results = await Future.wait<Object?>([
-        canReadBudget
+        access.canReadBudget
             ? _api.getBudgetCategories(weddingPlanId)
             : Future<List<BudgetCategory>>.value(const []),
-        canReadExpenses
+        access.canReadExpenses
             ? _api.getExpenses(weddingPlanId)
             : Future<List<Expense>>.value(const []),
-        canReadExpenses
+        access.canReadExpenses
             ? _api.getExpenseSummary(weddingPlanId)
             : Future<ExpenseSummary>.value(ExpenseSummary.empty()),
         _api.getMoneySummary(weddingPlanId),
-        _api.getFinancialCommitments(weddingPlanId),
-        canReadExpenses
+        access.canReadFinancialRecords
+            ? _api.getFinancialCommitments(weddingPlanId)
+            : Future<List<FinancialCommitment>>.value(const []),
+        access.canReadFinancialRecords
             ? _api.getFinancialPaymentRecords(weddingPlanId)
             : Future<List<FinancialPaymentRecord>>.value(const []),
-        _api.getDueFinancialInstallments(weddingPlanId),
+        access.canReadFinancialRecords
+            ? _api.getDueFinancialInstallments(weddingPlanId)
+            : Future<List<FinancialInstallment>>.value(const []),
       ]);
+      if (generation != _loadGeneration || isSessionDisposed) return;
       _budgetCategories = results[0] as List<BudgetCategory>;
       _expenses = results[1] as List<Expense>;
       _summary = results[2] as ExpenseSummary;
@@ -76,13 +118,61 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       _financialPaymentRecords = results[5] as List<FinancialPaymentRecord>;
       _dueFinancialInstallments = results[6] as List<FinancialInstallment>;
     } on ApiException catch (error) {
+      if (generation != _loadGeneration || isSessionDisposed) return;
+      if (!accessResolved) _clearFinanceState(weddingPlanId);
       _errorMessage = error.message;
     } catch (_) {
+      if (generation != _loadGeneration || isSessionDisposed) return;
+      if (!accessResolved) _clearFinanceState(weddingPlanId);
       _errorMessage = 'تعذر تحميل الميزانية والمصاريف.';
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (generation == _loadGeneration && !isSessionDisposed) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
+  }
+
+  Future<PlanAccessPermissions> _resolveAccess(
+    String weddingPlanId, {
+    required bool canReadBudget,
+    required bool canReadExpenses,
+    required bool canReadFinancialRecords,
+    required bool canManageFinancialRecords,
+  }) async {
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      return PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+    }
+    final permissionsApi = _permissionsApi;
+    if (permissionsApi != null) {
+      try {
+        return await permissionsApi.getMyPlanPermissions(weddingPlanId);
+      } on ApiException catch (error) {
+        if (error.isNetworkFailure && _access.weddingPlanId == weddingPlanId) {
+          return _access;
+        }
+        rethrow;
+      }
+    }
+    return PlanAccessPermissions(
+      weddingPlanId: weddingPlanId,
+      isOwner: canManageFinancialRecords,
+      canViewBudget: canReadBudget,
+      canViewExpenses: canReadExpenses,
+      canViewFinancialRecords: canReadFinancialRecords,
+      canManageFinancialRecords: canManageFinancialRecords,
+    );
+  }
+
+  void _clearFinanceState(String weddingPlanId) {
+    _access = PlanAccessPermissions.denied(weddingPlanId: weddingPlanId);
+    _budgetCategories = const [];
+    _expenses = const [];
+    _financialCommitments = const [];
+    _financialPaymentRecords = const [];
+    _dueFinancialInstallments = const [];
+    _summary = ExpenseSummary.empty();
+    _moneySummary = MoneySummary.empty(weddingPlanId);
   }
 
   Future<bool> createBudgetCategory({

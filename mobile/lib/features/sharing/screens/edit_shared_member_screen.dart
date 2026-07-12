@@ -119,6 +119,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   Future<void> _save(SharedMember member) async {
     final provider = context.read<SharingProvider>();
     final updated = await provider.updateMember(
+      weddingPlanId: member.weddingPlanId,
       id: member.id,
       role: _role,
       permissions: _permissions,
@@ -140,22 +141,19 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
   Future<void> _confirmRemove(SharedMember member) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          title: const Text('إزالة العضو؟'),
-          content: Text('سيفقد "${member.displayName}" الوصول للخطة فورًا.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('إزالة'),
-            ),
-          ],
-        ),
+      builder: (dialogContext) => AarastDialog(
+        title: const Text('إزالة العضو؟'),
+        content: Text('سيفقد "${member.displayName}" الوصول للخطة فورًا.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('إزالة'),
+          ),
+        ],
       ),
     );
 
@@ -168,7 +166,10 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     }
 
     final provider = context.read<SharingProvider>();
-    final removed = await provider.removeMember(member.id);
+    final removed = await provider.removeMember(
+      member.weddingPlanId,
+      member.id,
+    );
 
     if (!mounted) {
       return;

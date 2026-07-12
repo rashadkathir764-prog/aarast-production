@@ -1,6 +1,4 @@
 ﻿import '../../../core/offline/sync_status.dart';
-import '../../debts/models/debt_summary.dart';
-import '../../debts/models/installment.dart';
 import '../../finance/models/expense_summary.dart';
 import '../../sharing/models/shared_member.dart';
 import '../../tasks/models/wedding_task.dart';
@@ -10,8 +8,6 @@ class PlanSummaryReadiness {
   const PlanSummaryReadiness({
     this.plan,
     this.expenseSummary,
-    this.debtSummary,
-    this.dueInstallments,
     this.tasks,
     this.sharedMembers,
     this.syncStatus,
@@ -24,8 +20,6 @@ class PlanSummaryReadiness {
   factory PlanSummaryReadiness.fromSources({
     WeddingPlan? plan,
     ExpenseSummary? expenseSummary,
-    DebtSummary? debtSummary,
-    List<Installment>? dueInstallments,
     List<WeddingTask>? tasks,
     List<SharedMember>? sharedMembers,
     SyncStatusSnapshot? syncStatus,
@@ -35,8 +29,6 @@ class PlanSummaryReadiness {
     return PlanSummaryReadiness(
       plan: plan,
       expenseSummary: expenseSummary,
-      debtSummary: debtSummary,
-      dueInstallments: dueInstallments,
       tasks: tasks,
       sharedMembers: sharedMembers,
       syncStatus: syncStatus,
@@ -47,8 +39,6 @@ class PlanSummaryReadiness {
 
   final WeddingPlan? plan;
   final ExpenseSummary? expenseSummary;
-  final DebtSummary? debtSummary;
-  final List<Installment>? dueInstallments;
   final List<WeddingTask>? tasks;
   final List<SharedMember>? sharedMembers;
   final SyncStatusSnapshot? syncStatus;
@@ -86,8 +76,6 @@ class PlanSummaryReadiness {
     }
     return sourceTasks.where((task) => !task.isDone).length;
   }
-
-  int? get dueInstallmentCount => dueInstallments?.length;
 
   int? get sharedMemberCount => sharedMembers?.length;
 

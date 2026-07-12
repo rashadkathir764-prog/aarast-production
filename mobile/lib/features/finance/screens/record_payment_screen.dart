@@ -10,7 +10,9 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 import '../models/financial_commitment.dart';
+import '../models/financial_input_validation.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/finance_write_access_block.dart';
 
 class RecordPaymentScreen extends StatefulWidget {
   const RecordPaymentScreen({
@@ -59,8 +61,14 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
+    final accessBlock = financeWriteAccessBlock(
+      context: context,
+      provider: provider,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    if (accessBlock != null) return accessBlock;
     final commitments = provider.financialCommitments
-        .where((commitment) => !commitment.isCancelled)
+        .where(_canReceivePayment)
         .toList();
     final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
 
@@ -112,7 +120,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                               isExpanded: true,
                               decoration: const InputDecoration(
                                 labelText: 'المستحق',
-                                prefixIcon: Icon(Icons.handshake_outlined),
+                                prefixIcon: Icon(LucideIcons.heartHandshake),
                               ),
                               items: [
                                 for (final commitment in commitments)
@@ -144,7 +152,10 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                 suffixText: currencyLabel,
                                 prefixIcon: const Icon(LucideIcons.receipt),
                               ),
-                              validator: _requiredMoney,
+                              validator: (value) => validatePaymentAmount(
+                                value,
+                                remaining: _selectedRemaining(commitments),
+                              ),
                             ),
                             const SizedBox(height: 14),
                             TextFormField(
@@ -190,7 +201,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                               maxLines: 4,
                               decoration: const InputDecoration(
                                 labelText: 'ملاحظة',
-                                prefixIcon: Icon(Icons.note_alt_outlined),
+                                prefixIcon: Icon(LucideIcons.fileText),
                               ),
                             ),
                             if (provider.errorMessage != null) ...[
@@ -231,6 +242,19 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
         : commitments.first.id;
   }
 
+  num _selectedRemaining(List<FinancialCommitment> commitments) {
+    final selected = _commitmentValue(commitments);
+    for (final commitment in commitments) {
+      if (commitment.id == selected) {
+        return num.tryParse(
+              commitment.remainingAmount.replaceAll(',', '').trim(),
+            ) ??
+            0;
+      }
+    }
+    return 0;
+  }
+
   Future<void> _pickPaidAt() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -249,7 +273,7 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
     final commitments = context
         .read<FinanceProvider>()
         .financialCommitments
-        .where((commitment) => !commitment.isCancelled)
+        .where(_canReceivePayment)
         .toList();
     _commitmentId = _commitmentValue(commitments);
     if (!_formKey.currentState!.validate()) return;
@@ -296,7 +320,7 @@ class _NoCommitmentCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Icon(
-            Icons.handshake_outlined,
+            LucideIcons.heartHandshake,
             color: AppTheme.burgundy,
             size: 34,
           ),
@@ -338,10 +362,8 @@ String _planCurrencyLabel(BuildContext context, String weddingPlanId) {
   );
 }
 
-String? _requiredMoney(String? value) {
-  final raw = value?.trim() ?? '';
-  if (raw.isEmpty) return 'المبلغ مطلوب';
-  final parsed = num.tryParse(raw);
-  if (parsed == null || parsed <= 0) return 'أدخل مبلغاً صحيحاً';
-  return null;
+bool _canReceivePayment(FinancialCommitment commitment) {
+  final remaining =
+      num.tryParse(commitment.remainingAmount.replaceAll(',', '').trim()) ?? 0;
+  return !commitment.isCancelled && remaining > 0;
 }

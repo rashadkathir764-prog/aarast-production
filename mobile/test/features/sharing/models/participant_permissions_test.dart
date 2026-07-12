@@ -8,7 +8,7 @@ void main() {
       final permissions = PlanRolePermissions.forRole(role);
       expect(permissions.canViewBudget, isFalse);
       expect(permissions.canViewExpenses, isFalse);
-      expect(permissions.canViewDebts, isFalse);
+      expect(permissions.canViewFinancialRecords, isFalse);
       expect(permissions.canManageFinancialRecords, isFalse);
       expect(permissions.canManageTasks, isTrue);
       expect(permissions.canManageGuests, isTrue);

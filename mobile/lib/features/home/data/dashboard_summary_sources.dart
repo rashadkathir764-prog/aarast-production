@@ -1,4 +1,4 @@
-﻿import '../../../core/offline/local_database.dart';
+import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/generated_dashboard_seed.dart';
@@ -58,9 +58,9 @@ class LocalGuestDashboardSummary {
     required this.incompleteGuestCount,
     required this.providerCount,
     required this.spentTotal,
-    required this.debtTotal,
-    required this.paidDebtTotal,
-    required this.unpaidDebtTotal,
+    required this.commitmentTotal,
+    required this.commitmentPaidTotal,
+    required this.commitmentOutstandingTotal,
     required this.dueInstallmentsCount,
     required this.localImportantItems,
     required this.localRecentActivity,
@@ -82,9 +82,9 @@ class LocalGuestDashboardSummary {
   final int incompleteGuestCount;
   final int providerCount;
   final String spentTotal;
-  final String debtTotal;
-  final String paidDebtTotal;
-  final String unpaidDebtTotal;
+  final String commitmentTotal;
+  final String commitmentPaidTotal;
+  final String commitmentOutstandingTotal;
   final int dueInstallmentsCount;
   final List<DashboardImportantItem> localImportantItems;
   final List<DashboardImportantItem> localRecentActivity;
@@ -121,9 +121,11 @@ class LocalGuestDashboardSummary {
       incompleteGuestCount: metrics.incompleteGuestCount,
       providerCount: 0,
       spentTotal: _amountString(metrics.spentTotal),
-      debtTotal: _amountString(metrics.debtTotal),
-      paidDebtTotal: _amountString(metrics.paidDebtTotal),
-      unpaidDebtTotal: _amountString(metrics.unpaidDebtTotal),
+      commitmentTotal: _amountString(metrics.commitmentTotal),
+      commitmentPaidTotal: _amountString(metrics.commitmentPaidTotal),
+      commitmentOutstandingTotal: _amountString(
+        metrics.commitmentOutstandingTotal,
+      ),
       dueInstallmentsCount: metrics.dueInstallmentsCount,
       localImportantItems: metrics.importantItems,
       localRecentActivity: metrics.recentActivity,
@@ -139,16 +141,16 @@ class LocalGuestDashboardSummary {
     final remainingBudget = budget == null
         ? null
         : _amountString(
-            (_moneyValue(budget) - _moneyValue(spentTotal)).clamp(
-              0,
-              double.infinity,
-            ),
+            _moneyValue(budget) -
+                _moneyValue(spentTotal) -
+                _moneyValue(commitmentTotal),
           );
     return DashboardSummary(
       dataScope: 'LOCAL',
       accountBacked: false,
       planId: plan.guestPlanId ?? 'local-guest-plan',
       title: seed.title,
+      currency: plan.currency ?? 'YER',
       weddingDate: plan.weddingDate,
       city: plan.weddingLocation.shortLabel ?? seed.shortLocationLabel,
       location: plan.weddingLocation.toJson(),
@@ -158,9 +160,9 @@ class LocalGuestDashboardSummary {
       budgetTotal: budget,
       spentTotal: spentTotal,
       remainingBudget: remainingBudget ?? budget,
-      debtTotal: debtTotal,
-      paidDebtTotal: paidDebtTotal,
-      unpaidDebtTotal: unpaidDebtTotal,
+      commitmentTotal: commitmentTotal,
+      commitmentPaidTotal: commitmentPaidTotal,
+      commitmentOutstandingTotal: commitmentOutstandingTotal,
       dueInstallmentsCount: dueInstallmentsCount,
       totalTasks: taskCount,
       completedTasks: completedTaskCount,
@@ -193,7 +195,7 @@ class LocalGuestDashboardSummary {
         totalBudget: budget,
         totalSpent: spentTotal,
         remainingBudget: remainingBudget ?? budget,
-        totalDebts: debtTotal,
+        totalCommitments: commitmentTotal,
         overBudget: budget == null
             ? null
             : _moneyValue(spentTotal) > _moneyValue(budget),
@@ -206,7 +208,7 @@ class LocalGuestDashboardSummary {
         role: 'GUEST_LOCAL',
         canViewBudget: true,
         canViewExpenses: true,
-        canViewDebts: true,
+        canViewFinancialRecords: true,
         canManageTasks: true,
         canManageGuests: true,
         canManageFinancialRecords: true,
@@ -252,9 +254,9 @@ class LocalDashboardMetrics {
     required this.declinedGuestCount,
     required this.incompleteGuestCount,
     required this.spentTotal,
-    required this.debtTotal,
-    required this.paidDebtTotal,
-    required this.unpaidDebtTotal,
+    required this.commitmentTotal,
+    required this.commitmentPaidTotal,
+    required this.commitmentOutstandingTotal,
     required this.dueInstallmentsCount,
     required this.importantItems,
     required this.recentActivity,
@@ -271,9 +273,9 @@ class LocalDashboardMetrics {
     declinedGuestCount: 0,
     incompleteGuestCount: 0,
     spentTotal: 0,
-    debtTotal: 0,
-    paidDebtTotal: 0,
-    unpaidDebtTotal: 0,
+    commitmentTotal: 0,
+    commitmentPaidTotal: 0,
+    commitmentOutstandingTotal: 0,
     dueInstallmentsCount: 0,
     importantItems: [],
     recentActivity: [],
@@ -289,9 +291,9 @@ class LocalDashboardMetrics {
   final int declinedGuestCount;
   final int incompleteGuestCount;
   final num spentTotal;
-  final num debtTotal;
-  final num paidDebtTotal;
-  final num unpaidDebtTotal;
+  final num commitmentTotal;
+  final num commitmentPaidTotal;
+  final num commitmentOutstandingTotal;
   final int dueInstallmentsCount;
   final List<DashboardImportantItem> importantItems;
   final List<DashboardImportantItem> recentActivity;
@@ -320,23 +322,16 @@ class LocalDashboardMetrics {
       parentColumn: 'planId',
       parentId: planId,
     );
-    final debts = await database.readCachedList(
-      table: OfflineTables.cachedDebts,
+    final commitments = await database.readCachedList(
+      table: OfflineTables.cachedFinancialCommitments,
       parentColumn: 'planId',
       parentId: planId,
     );
-    final installments = <Map<String, dynamic>>[];
-    for (final debt in debts) {
-      final debtId = debt['id']?.toString();
-      if (debtId == null || debtId.isEmpty) continue;
-      installments.addAll(
-        await database.readCachedList(
-          table: OfflineTables.cachedInstallments,
-          parentColumn: 'debtId',
-          parentId: debtId,
-        ),
-      );
-    }
+    final installments = await database.readCachedList(
+      table: OfflineTables.cachedFinancialInstallments,
+      parentColumn: 'planId',
+      parentId: planId,
+    );
 
     final today = _dateOnly(DateTime.now());
     final activeTasks = tasks.where((task) {
@@ -366,18 +361,19 @@ class LocalDashboardMetrics {
       (sum, expense) => sum + _moneyValue(expense['amount']),
     );
 
-    final activeDebts = debts.where((debt) {
-      return _statusOf(debt) != 'CANCELLED';
+    final activeCommitments = commitments.where((commitment) {
+      return _statusOf(commitment) != 'CANCELLED';
     }).toList();
-    final debtTotal = activeDebts.fold<num>(
+    final commitmentTotal = activeCommitments.fold<num>(
       0,
-      (sum, debt) => sum + _moneyValue(debt['totalAmount']),
+      (sum, commitment) => sum + _moneyValue(commitment['totalAmount']),
     );
-    final paidDebtTotal = activeDebts.fold<num>(
+    final commitmentPaidTotal = activeCommitments.fold<num>(
       0,
-      (sum, debt) => sum + _moneyValue(debt['paidAmount']),
+      (sum, commitment) => sum + _moneyValue(commitment['paidAmount']),
     );
-    final unpaidDebtTotal = (debtTotal - paidDebtTotal).clamp(0, debtTotal);
+    final commitmentOutstandingTotal = (commitmentTotal - commitmentPaidTotal)
+        .clamp(0, commitmentTotal);
     final dueInstallments = installments.where((installment) {
       final status = _statusOf(installment);
       return status != 'PAID' &&
@@ -404,9 +400,9 @@ class LocalDashboardMetrics {
           .length,
       incompleteGuestCount: incompleteGuestCount,
       spentTotal: spentTotal,
-      debtTotal: debtTotal,
-      paidDebtTotal: paidDebtTotal,
-      unpaidDebtTotal: unpaidDebtTotal,
+      commitmentTotal: commitmentTotal,
+      commitmentPaidTotal: commitmentPaidTotal,
+      commitmentOutstandingTotal: commitmentOutstandingTotal,
       dueInstallmentsCount: dueInstallmentsCount,
       importantItems: _localPriorityItems(
         guests: guests,
@@ -417,7 +413,7 @@ class LocalDashboardMetrics {
         guests: guests,
         tasks: activeTasks,
         expenses: activeExpenses,
-        debts: activeDebts,
+        commitments: activeCommitments,
       ),
     );
   }
@@ -563,7 +559,7 @@ List<DashboardImportantItem> _localActivityItems({
   required List<Map<String, dynamic>> guests,
   required List<Map<String, dynamic>> tasks,
   required List<Map<String, dynamic>> expenses,
-  required List<Map<String, dynamic>> debts,
+  required List<Map<String, dynamic>> commitments,
 }) {
   final rows = <_LocalActivityRow>[
     for (final task in tasks)
@@ -588,16 +584,17 @@ List<DashboardImportantItem> _localActivityItems({
         actionLabel: 'عرض المال',
         amount: _amountString(_moneyValue(expense['amount'])),
       ),
-    for (final debt in debts)
+    for (final commitment in commitments)
       _LocalActivityRow(
-        json: debt,
-        type: 'LOCAL_MONEY_DEBT',
-        title: 'دين محفوظ: ${_textValue(debt['title'], fallback: 'دين')}',
+        json: commitment,
+        type: 'LOCAL_MONEY_COMMITMENT',
+        title:
+            'مستحق محفوظ: ${_textValue(commitment['title'], fallback: 'مستحق')}',
         subtitle: 'نشاط محلي',
         icon: 'wallet',
         tone: 'danger',
-        actionLabel: 'عرض الديون',
-        amount: _amountString(_moneyValue(debt['totalAmount'])),
+        actionLabel: 'عرض المستحقات',
+        amount: _amountString(_moneyValue(commitment['totalAmount'])),
       ),
     for (final guest in guests)
       _LocalActivityRow(

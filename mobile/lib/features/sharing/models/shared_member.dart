@@ -10,7 +10,7 @@ class SharedMember {
     required this.role,
     required this.canViewBudget,
     required this.canViewExpenses,
-    required this.canViewDebts,
+    required this.canViewFinancialRecords,
     this.canEditPlan = false,
     required this.canManageTasks,
     this.canManageGuests = false,
@@ -32,7 +32,7 @@ class SharedMember {
       role: json['role']?.toString() ?? 'VIEWER',
       canViewBudget: json['canViewBudget'] == true,
       canViewExpenses: json['canViewExpenses'] == true,
-      canViewDebts: json['canViewDebts'] == true,
+      canViewFinancialRecords: json['canViewFinancialRecords'] == true,
       canEditPlan: json['canEditPlan'] == true,
       canManageTasks: json['canManageTasks'] == true,
       canManageGuests: json['canManageGuests'] == true,
@@ -53,7 +53,7 @@ class SharedMember {
   final String role;
   final bool canViewBudget;
   final bool canViewExpenses;
-  final bool canViewDebts;
+  final bool canViewFinancialRecords;
   final bool canEditPlan;
   final bool canManageTasks;
   final bool canManageGuests;
@@ -68,14 +68,15 @@ class SharedMember {
   bool get hasFinancialAccess =>
       canViewBudget ||
       canViewExpenses ||
-      canViewDebts ||
+      canViewFinancialRecords ||
       canManageFinancialRecords;
 
   bool get canReadBudget => canViewBudget || canManageFinancialRecords;
 
   bool get canReadExpenses => canViewExpenses || canManageFinancialRecords;
 
-  bool get canReadDebts => canViewDebts || canManageFinancialRecords;
+  bool get canReadFinancialRecords =>
+      canViewFinancialRecords || canManageFinancialRecords;
 
   String get displayName {
     final name = user?.name.trim();
@@ -103,7 +104,9 @@ class SharedMember {
     final labels = <String>[];
     if (canViewBudget) labels.add('يمكنه رؤية الميزانية');
     if (canViewExpenses) labels.add('يمكنه رؤية المصاريف');
-    if (canViewDebts) labels.add('يمكنه رؤية الديون والأقساط');
+    if (canViewFinancialRecords) {
+      labels.add('يمكنه رؤية المستحقات والدفعات');
+    }
     if (canManageTasks) labels.add('يمكنه إدارة المهام');
     if (canManageGuests) labels.add('يمكنه إدارة الضيوف');
     if (canManageProviders) labels.add('يمكنه إدارة الموردين والعروض');
@@ -118,7 +121,7 @@ class SharedMember {
     return PlanRolePermissions(
       canViewBudget: canViewBudget,
       canViewExpenses: canViewExpenses,
-      canViewDebts: canViewDebts,
+      canViewFinancialRecords: canViewFinancialRecords,
       canEditPlan: canEditPlan,
       canManageTasks: canManageTasks,
       canManageGuests: canManageGuests,
@@ -190,7 +193,7 @@ class PlanInvite {
     required this.expiresAt,
     required this.canViewBudget,
     required this.canViewExpenses,
-    required this.canViewDebts,
+    required this.canViewFinancialRecords,
     required this.canEditPlan,
     required this.canManageTasks,
     required this.canManageGuests,
@@ -215,7 +218,7 @@ class PlanInvite {
       status: json['status']?.toString() ?? 'PENDING',
       canViewBudget: json['canViewBudget'] == true,
       canViewExpenses: json['canViewExpenses'] == true,
-      canViewDebts: json['canViewDebts'] == true,
+      canViewFinancialRecords: json['canViewFinancialRecords'] == true,
       canEditPlan: json['canEditPlan'] == true,
       canManageTasks: json['canManageTasks'] == true,
       canManageGuests: json['canManageGuests'] == true,
@@ -241,7 +244,7 @@ class PlanInvite {
   final DateTime expiresAt;
   final bool canViewBudget;
   final bool canViewExpenses;
-  final bool canViewDebts;
+  final bool canViewFinancialRecords;
   final bool canEditPlan;
   final bool canManageTasks;
   final bool canManageGuests;
@@ -265,7 +268,7 @@ class PlanInvite {
     if (canInviteMembers) labels.add('دعوة أعضاء');
     if (canManageFinancialRecords) {
       labels.add('إدارة المال');
-    } else if (canViewBudget || canViewExpenses || canViewDebts) {
+    } else if (canViewBudget || canViewExpenses || canViewFinancialRecords) {
       labels.add('عرض مالي محدود');
     }
     return labels;

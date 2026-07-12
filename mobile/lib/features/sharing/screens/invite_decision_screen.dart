@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../models/shared_member.dart';
@@ -59,7 +61,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   Future<void> _requestOtp() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
-      _showMessage('أدخل الرقم الذي وصلت إليه الدعوة.');
+      _showError('أدخل الرقم الذي وصلت إليه الدعوة.');
       return;
     }
 
@@ -77,7 +79,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   Future<void> _verifyOtp() async {
     final code = _otpController.text.trim();
     if (code.length != _otpLength) {
-      _showMessage('رمز التحقق غير صحيح.');
+      _showError('رمز التحقق غير صحيح.');
       return;
     }
 
@@ -140,11 +142,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     context.go(AppRouter.planCenter(invite.weddingPlanId), extra: member);
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _showError(String message) => AarastToast.showError(context, message);
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +220,7 @@ class _PhoneStep extends StatelessWidget {
     return ListView(
       children: [
         const _InviteNotice(
-          icon: Icons.privacy_tip_outlined,
+          icon: LucideIcons.shieldCheck,
           title: 'الخصوصية أولاً',
           message:
               'لن تظهر تفاصيل الخطة قبل التحقق من رقم الهاتف المرتبط بالدعوة.',
@@ -242,7 +240,7 @@ class _PhoneStep extends StatelessWidget {
                   textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
                     hintText: '777 123 456',
-                    prefixIcon: Icon(Icons.phone_iphone_rounded),
+                    prefixIcon: Icon(LucideIcons.smartphone),
                   ),
                   onSubmitted: (_) => onSubmit(),
                 ),
@@ -255,7 +253,7 @@ class _PhoneStep extends StatelessWidget {
               AarastButton(
                 key: const Key('invite-request-otp-button'),
                 label: 'إرسال رمز التحقق',
-                icon: Icons.sms_outlined,
+                icon: LucideIcons.messageSquare,
                 isLoading: auth.isSubmitting,
                 onPressed: auth.isSubmitting ? null : onSubmit,
               ),
@@ -289,7 +287,7 @@ class _OtpStep extends StatelessWidget {
       children: [
         if (devOtpMessage != null) ...[
           _InviteNotice(
-            icon: Icons.developer_mode_rounded,
+            icon: LucideIcons.code2,
             title: 'رمز التحقق للتجربة',
             message: devOtpMessage!,
           ),
@@ -317,7 +315,7 @@ class _OtpStep extends StatelessWidget {
                   decoration: const InputDecoration(
                     counterText: '',
                     hintText: '000000',
-                    prefixIcon: Icon(Icons.verified_user_outlined),
+                    prefixIcon: Icon(LucideIcons.shieldCheck),
                   ),
                   onSubmitted: (_) => onVerify(),
                 ),
@@ -330,7 +328,7 @@ class _OtpStep extends StatelessWidget {
               AarastButton(
                 key: const Key('invite-verify-otp-button'),
                 label: 'تأكيد الرمز',
-                icon: Icons.check_circle_outline_rounded,
+                icon: LucideIcons.checkCircle2,
                 isLoading: auth.isSubmitting,
                 onPressed: auth.isSubmitting ? null : onVerify,
               ),
@@ -470,11 +468,11 @@ class _InviteDetails extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               _MetaLine(
-                icon: Icons.person_outline_rounded,
+                icon: LucideIcons.user,
                 text: 'صاحب الخطة: ${invite.inviterName ?? 'غير محدد'}',
               ),
               _MetaLine(
-                icon: Icons.badge_outlined,
+                icon: LucideIcons.badge,
                 text: 'دورك: ${sharedMemberRoleLabel(invite.role)}',
               ),
               const SizedBox(height: 14),
@@ -489,7 +487,7 @@ class _InviteDetails extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'الميزانية والديون والأقساط مخفية ما لم يمنحك صاحب الخطة صلاحية مالية واضحة.',
+                'الميزانية والمستحقات والدفعات مخفية ما لم يمنحك صاحب الخطة صلاحية مالية واضحة.',
                 style: TextStyle(
                   color: AppTheme.muted,
                   fontWeight: FontWeight.w700,
@@ -520,7 +518,7 @@ class _InviteDetails extends StatelessWidget {
                 child: AarastButton(
                   key: const Key('invite-accept-button'),
                   label: 'قبول الدعوة',
-                  icon: Icons.login_rounded,
+                  icon: LucideIcons.logIn,
                   isLoading: isSubmitting,
                   onPressed: isSubmitting ? null : onAccept,
                 ),
@@ -530,7 +528,7 @@ class _InviteDetails extends StatelessWidget {
         else if (invite.isAccepted)
           AarastButton(
             label: 'فتح الخطة',
-            icon: Icons.dashboard_customize_outlined,
+            icon: LucideIcons.layoutDashboard,
             isLoading: isSubmitting,
             onPressed: isSubmitting ? null : onOpenAcceptedPlan,
           )
@@ -570,7 +568,7 @@ class _InviteListCard extends StatelessWidget {
                   color: AppTheme.goldSoft,
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
-                child: const Icon(Icons.mark_email_read_outlined),
+                child: const Icon(LucideIcons.mailCheck),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -599,7 +597,7 @@ class _InviteListCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
+              const Icon(LucideIcons.arrowRight, color: AppTheme.muted),
             ],
           ),
         ),
@@ -624,7 +622,7 @@ class _NoInviteState extends StatelessWidget {
     return ListView(
       children: [
         AarastEmptyState(
-          icon: Icons.mark_email_unread_outlined,
+          icon: LucideIcons.mailQuestion,
           title: 'لا توجد دعوة',
           message: message,
         ),
@@ -810,7 +808,7 @@ class _ClosedInviteStatus extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = _statusLabel(status);
     return AarastEmptyState(
-      icon: Icons.info_outline_rounded,
+      icon: LucideIcons.info,
       title: label,
       message: switch (status) {
         'DECLINED' => 'تم رفض هذه الدعوة سابقًا.',

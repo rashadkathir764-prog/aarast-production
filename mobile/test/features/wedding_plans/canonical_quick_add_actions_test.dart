@@ -17,6 +17,22 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 void main() {
   group('buildCanonicalQuickAddActions', () {
+    test('keeps quick-add visibility aligned across both shells', () {
+      expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
+      expect(shouldShowPlanQuickAdd(tabIndex: 1), isTrue);
+      expect(
+        shouldShowPlanQuickAdd(tabIndex: 1, canManageFinancialRecords: false),
+        isFalse,
+      );
+      expect(
+        shouldShowPlanQuickAdd(tabIndex: 1, isRootDestination: false),
+        isFalse,
+      );
+      expect(shouldShowPlanQuickAdd(tabIndex: 2), isTrue);
+      expect(shouldShowPlanQuickAdd(tabIndex: 3), isTrue);
+      expect(shouldShowPlanQuickAdd(tabIndex: 4), isFalse);
+    });
+
     test('emits the canonical dashboard actions with stable labels', () {
       final calls = <String>[];
       Future<void> open(String route, {bool refreshDashboard = false}) async {
@@ -173,6 +189,34 @@ void main() {
   });
 
   group('WeddingPlanShell routing', () {
+    test('both production shells use one canonical chrome implementation', () {
+      final chrome = File('lib/features/shell/widgets/plan_shell_chrome.dart');
+      expect(
+        chrome.existsSync(),
+        isTrue,
+        reason: 'PlanShellChrome must be the only production shell frame.',
+      );
+
+      for (final path in <String>[
+        'lib/features/shell/main_shell.dart',
+        'lib/features/shell/screens/wedding_plan_shell.dart',
+      ]) {
+        final source = File(path).readAsStringSync();
+        expect(source, contains('PlanShellChrome('), reason: path);
+        expect(source, isNot(contains('child: Scaffold(')), reason: path);
+        expect(
+          source,
+          isNot(contains('RoyalSmartFloatingActionButton(')),
+          reason: path,
+        );
+        expect(
+          source,
+          isNot(contains('RoyalDashboardBottomNav(')),
+          reason: path,
+        );
+      }
+    });
+
     testWidgets('finance subpages hide the root money smart FAB', (
       tester,
     ) async {

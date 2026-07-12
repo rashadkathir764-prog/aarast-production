@@ -1,11 +1,11 @@
-﻿import 'wedding_plan.dart';
+import 'wedding_plan.dart';
 
 class DashboardPermissionSummary {
   const DashboardPermissionSummary({
     required this.isOwner,
     required this.canViewBudget,
     required this.canViewExpenses,
-    required this.canViewDebts,
+    required this.canViewFinancialRecords,
     required this.canManageTasks,
     this.canManageGuests = false,
     this.canManageProviders = false,
@@ -21,7 +21,7 @@ class DashboardPermissionSummary {
       role: json['role']?.toString(),
       canViewBudget: json['canViewBudget'] == true,
       canViewExpenses: json['canViewExpenses'] == true,
-      canViewDebts: json['canViewDebts'] == true,
+      canViewFinancialRecords: json['canViewFinancialRecords'] == true,
       canManageTasks: json['canManageTasks'] == true,
       canManageGuests: json['canManageGuests'] == true,
       canManageProviders: json['canManageProviders'] == true,
@@ -35,7 +35,7 @@ class DashboardPermissionSummary {
   final String? role;
   final bool canViewBudget;
   final bool canViewExpenses;
-  final bool canViewDebts;
+  final bool canViewFinancialRecords;
   final bool canManageTasks;
   final bool canManageGuests;
   final bool canManageProviders;
@@ -50,6 +50,7 @@ class DashboardSummary {
     this.accountBacked = true,
     required this.planId,
     required this.title,
+    this.currency = 'YER',
     required this.status,
     required this.progressPercentage,
     required this.totalTasks,
@@ -87,9 +88,9 @@ class DashboardSummary {
     this.budgetTotal,
     this.spentTotal,
     this.remainingBudget,
-    this.debtTotal,
-    this.paidDebtTotal,
-    this.unpaidDebtTotal,
+    this.commitmentTotal,
+    this.commitmentPaidTotal,
+    this.commitmentOutstandingTotal,
     this.dueInstallmentsCount,
     this.generatedAt,
     this.currentUserRole,
@@ -108,6 +109,10 @@ class DashboardSummary {
       accountBacked: json['accountBacked'] != false,
       planId: json['planId'].toString(),
       title: json['title'].toString(),
+      currency:
+          json['currency']?.toString() ??
+          _mapOrEmpty(json['moneySummary'])['currency']?.toString() ??
+          'YER',
       weddingDate: _dateTimeOrNull(json['weddingDate']),
       city: json['city']?.toString(),
       location: _mapOrNull(json['location']),
@@ -117,9 +122,10 @@ class DashboardSummary {
       budgetTotal: json['budgetTotal']?.toString(),
       spentTotal: json['spentTotal']?.toString(),
       remainingBudget: json['remainingBudget']?.toString(),
-      debtTotal: json['debtTotal']?.toString(),
-      paidDebtTotal: json['paidDebtTotal']?.toString(),
-      unpaidDebtTotal: json['unpaidDebtTotal']?.toString(),
+      commitmentTotal: json['commitmentTotal']?.toString(),
+      commitmentPaidTotal: json['commitmentPaidTotal']?.toString(),
+      commitmentOutstandingTotal: json['commitmentOutstandingTotal']
+          ?.toString(),
       dueInstallmentsCount: _intOrNull(json['dueInstallmentsCount']),
       totalTasks:
           _intOrNull(json['totalTasks']) ?? _intOrZero(taskSummary['total']),
@@ -214,6 +220,7 @@ class DashboardSummary {
   final bool accountBacked;
   final String planId;
   final String title;
+  final String currency;
   final DateTime? weddingDate;
   final String? city;
   final Map<String, dynamic>? location;
@@ -223,9 +230,9 @@ class DashboardSummary {
   final String? budgetTotal;
   final String? spentTotal;
   final String? remainingBudget;
-  final String? debtTotal;
-  final String? paidDebtTotal;
-  final String? unpaidDebtTotal;
+  final String? commitmentTotal;
+  final String? commitmentPaidTotal;
+  final String? commitmentOutstandingTotal;
   final int? dueInstallmentsCount;
   final int totalTasks;
   final int completedTasks;
@@ -261,7 +268,7 @@ class DashboardSummary {
   bool get canViewMoney {
     return permissions.canViewBudget ||
         permissions.canViewExpenses ||
-        permissions.canViewDebts;
+        permissions.canViewFinancialRecords;
   }
 
   bool get hasUrgentTodayItems {
@@ -282,7 +289,8 @@ class DashboardSummary {
   String? get spentTotalForDisplay => moneySummary.totalSpent ?? spentTotal;
   String? get remainingBudgetForDisplay =>
       moneySummary.remainingBudget ?? remainingBudget;
-  String? get debtTotalForDisplay => moneySummary.totalDebts ?? debtTotal;
+  String? get commitmentTotalForDisplay =>
+      moneySummary.totalCommitments ?? commitmentTotal;
 
   WeddingPlan toWeddingPlan({String ownerUserId = ''}) {
     final now = DateTime.now();
@@ -294,7 +302,7 @@ class DashboardSummary {
       location: location,
       weddingDate: weddingDate,
       estimatedBudget: budgetTotal,
-      currency: 'YER',
+      currency: currency,
       status: status,
       createdAt: now,
       updatedAt: now,
@@ -345,7 +353,7 @@ class DashboardMoneySummary {
     this.totalBudget,
     this.totalSpent,
     this.remainingBudget,
-    this.totalDebts,
+    this.totalCommitments,
     this.overBudget,
   });
 
@@ -354,7 +362,7 @@ class DashboardMoneySummary {
       totalBudget: json['totalBudget']?.toString(),
       totalSpent: json['totalSpent']?.toString(),
       remainingBudget: json['remainingBudget']?.toString(),
-      totalDebts: json['totalDebts']?.toString(),
+      totalCommitments: json['totalCommitments']?.toString(),
       overBudget: json['overBudget'] is bool
           ? json['overBudget'] as bool
           : null,
@@ -364,14 +372,14 @@ class DashboardMoneySummary {
   final String? totalBudget;
   final String? totalSpent;
   final String? remainingBudget;
-  final String? totalDebts;
+  final String? totalCommitments;
   final bool? overBudget;
 }
 
 class DashboardNextInstallment {
   const DashboardNextInstallment({
     required this.id,
-    required this.debtId,
+    required this.financialCommitmentId,
     required this.amount,
     required this.status,
     this.dueAt,
@@ -382,7 +390,7 @@ class DashboardNextInstallment {
     if (json.isEmpty) return null;
     return DashboardNextInstallment(
       id: json['id']?.toString() ?? '',
-      debtId: json['debtId']?.toString() ?? '',
+      financialCommitmentId: json['financialCommitmentId']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
       dueAt: DashboardSummary._dateTimeOrNull(json['dueAt']),
       status: json['status']?.toString() ?? 'PENDING',
@@ -390,7 +398,7 @@ class DashboardNextInstallment {
   }
 
   final String id;
-  final String debtId;
+  final String financialCommitmentId;
   final String amount;
   final DateTime? dueAt;
   final String status;

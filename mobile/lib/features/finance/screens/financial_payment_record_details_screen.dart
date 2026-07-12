@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -66,10 +67,13 @@ class _FinancialPaymentRecordDetailsScreenState
               const AarastEmptyState(
                 title: 'الدفعة غير موجودة',
                 message: 'ربما تم حذفها أو لم يتم تحميل البيانات بعد.',
-                icon: Icons.payments_outlined,
+                icon: LucideIcons.banknote,
               )
             else ...[
-              _PaymentHero(payment: payment),
+              _PaymentHero(
+                payment: payment,
+                currencyCode: provider.moneySummary.currency,
+              ),
               const SizedBox(height: 14),
               _ContextCard(payment: payment, commitment: commitment),
               const SizedBox(height: 14),
@@ -81,11 +85,11 @@ class _FinancialPaymentRecordDetailsScreenState
                       commitment.id,
                     ),
                   ),
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  icon: const Icon(LucideIcons.wallet),
                   label: const Text('فتح المستحق المرتبط'),
                 ),
               const SizedBox(height: 10),
-              if (payment.reversible)
+              if (payment.reversible && provider.canManageFinancialRecords)
                 ElevatedButton.icon(
                   onPressed: provider.isSubmitting
                       ? null
@@ -93,18 +97,20 @@ class _FinancialPaymentRecordDetailsScreenState
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.danger,
                   ),
-                  icon: const Icon(Icons.undo_rounded),
+                  icon: const Icon(LucideIcons.undo2),
                   label: const Text('عكس الدفعة'),
                 )
               else
                 AarastCard(
                   padding: const EdgeInsets.all(14),
                   child: Text(
-                    payment.isReversal
+                    !provider.canManageFinancialRecords
+                        ? 'يمكنك عرض سجل الدفعة، ولا تملك صلاحية تعديل السجلات المالية.'
+                        : payment.isReversal
                         ? 'هذا قيد عكس محفوظ ضمن السجل المالي.'
                         : payment.isReversed
-                            ? 'تم عكس هذه الدفعة مع الاحتفاظ بسجلها الأصلي.'
-                            : 'هذا القيد مرتبط بسجل مالي قديم ويُعدّل من مصدره.',
+                        ? 'تم عكس هذه الدفعة مع الاحتفاظ بسجلها الأصلي.'
+                        : 'هذا القيد مرتبط بسجل مالي قديم ويُعدّل من مصدره.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppTheme.muted,
@@ -148,7 +154,7 @@ class _FinancialPaymentRecordDetailsScreenState
     }
     if (!mounted) return;
 
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
       builder: (sheetContext) {
         return Directionality(
@@ -162,7 +168,7 @@ class _FinancialPaymentRecordDetailsScreenState
                   const _SheetHandle(),
                   const SizedBox(height: 18),
                   const Icon(
-                    Icons.undo_rounded,
+                    LucideIcons.undo2,
                     color: AppTheme.danger,
                     size: 42,
                   ),
@@ -201,7 +207,7 @@ class _FinancialPaymentRecordDetailsScreenState
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.danger,
                           ),
-                          icon: const Icon(Icons.undo_rounded),
+                          icon: const Icon(LucideIcons.undo2),
                           label: const Text('تسجيل العكس'),
                         ),
                       ),
@@ -242,9 +248,10 @@ class _FinancialPaymentRecordDetailsScreenState
 }
 
 class _PaymentHero extends StatelessWidget {
-  const _PaymentHero({required this.payment});
+  const _PaymentHero({required this.payment, required this.currencyCode});
 
   final FinancialPaymentRecord payment;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -264,7 +271,7 @@ class _PaymentHero extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                 ),
                 child: const Icon(
-                  Icons.payments_outlined,
+                  LucideIcons.banknote,
                   color: AppTheme.gold,
                   size: 28,
                 ),
@@ -301,6 +308,7 @@ class _PaymentHero extends StatelessWidget {
           const SizedBox(height: 20),
           YemeniMoneyText(
             _moneyValue(payment.signedAmount),
+            currencyCode: currencyCode,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -389,7 +397,7 @@ class _Header extends StatelessWidget {
       children: [
         IconButton(
           onPressed: onBack,
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          icon: const Icon(LucideIcons.arrowRight),
           tooltip: 'رجوع',
         ),
         const SizedBox(width: 8),

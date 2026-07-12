@@ -185,10 +185,11 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                   onChanged: (v) => _emit(value.copyWith(canViewExpenses: v)),
                 ),
                 _PermissionRow(
-                  title: 'عرض الديون والأقساط',
-                  value: value.canViewDebts,
+                  title: 'عرض المستحقات والدفعات',
+                  value: value.canViewFinancialRecords,
                   enabled: widget.enabled,
-                  onChanged: (v) => _emit(value.copyWith(canViewDebts: v)),
+                  onChanged: (v) =>
+                      _emit(value.copyWith(canViewFinancialRecords: v)),
                 ),
                 _PermissionRow(
                   title: 'إدارة السجلات المالية',

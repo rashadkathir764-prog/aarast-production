@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'offline_tables.dart';
 
@@ -50,7 +50,7 @@ LocalCacheRow buildCacheRow({
         'permissionsJson': jsonEncode({
           'canViewBudget': json['canViewBudget'] == true,
           'canViewExpenses': json['canViewExpenses'] == true,
-          'canViewDebts': json['canViewDebts'] == true,
+          'canViewFinancialRecords': json['canViewFinancialRecords'] == true,
           'canManageTasks': json['canManageTasks'] == true,
           'canManageFinancialRecords':
               json['canManageFinancialRecords'] == true,
@@ -85,22 +85,6 @@ LocalCacheRow buildCacheRow({
         'amount': _string(json['amount']),
         'paidAmount': json['status'] == 'PAID' ? _string(json['amount']) : null,
         'status': _string(json['status']) ?? 'PAID',
-      });
-    case OfflineTables.cachedDebts:
-      base.addAll({
-        'planId': _string(json['weddingPlanId']),
-        'title': _string(json['title']),
-        'creditorName': _string(json['creditorName']),
-        'amount': _string(json['totalAmount']),
-        'paidAmount': _string(json['paidAmount']),
-        'status': _string(json['status']) ?? 'OPEN',
-      });
-    case OfflineTables.cachedInstallments:
-      base.addAll({
-        'debtId': _string(json['debtId']),
-        'amount': _string(json['amount']),
-        'dueDate': _string(json['dueDate']),
-        'status': _string(json['status']) ?? 'PENDING',
       });
     case OfflineTables.cachedFinancialCommitments:
       base.addAll({

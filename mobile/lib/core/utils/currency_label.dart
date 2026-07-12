@@ -13,6 +13,18 @@ String currencyLabelAr(String? code) {
   };
 }
 
+/// اسم العملة الكامل لقارئات الشاشة والنصوص التفسيرية.
+String currencySpokenLabelAr(String? code) {
+  final normalized = code?.trim().toUpperCase();
+  return switch (normalized) {
+    null || '' || 'YER' || 'YR' => 'ريال يمني',
+    'SAR' => 'ريال سعودي',
+    'USD' => 'دولار أمريكي',
+    'EUR' => 'يورو',
+    _ => code!.trim(),
+  };
+}
+
 String currencyCodeFromDisplayInput(String? value) {
   final normalized = value?.trim().toUpperCase();
   return switch (normalized) {

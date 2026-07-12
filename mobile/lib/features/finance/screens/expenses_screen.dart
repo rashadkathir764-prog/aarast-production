@@ -56,6 +56,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final currencyLabel = _planCurrencyLabel(context, widget.weddingPlanId);
     final category = _initialCategory(provider.budgetCategories);
     final expenses = _visibleExpenses(provider.expenses);
+    final canManage = provider.canManageFinancialRecords;
     final total = expenses.fold<num>(
       0,
       (sum, expense) => sum + _moneyValue(expense.amount),
@@ -90,17 +91,18 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => context.push(
-                    AppRouter.createExpense(widget.weddingPlanId),
+                if (canManage)
+                  IconButton(
+                    onPressed: () => context.push(
+                      AppRouter.createExpense(widget.weddingPlanId),
+                    ),
+                    icon: const Icon(LucideIcons.plus),
+                    tooltip: 'تسجيل مصروف مدفوع',
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppTheme.burgundy,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
-                  icon: const Icon(LucideIcons.plus),
-                  tooltip: 'تسجيل مصروف مدفوع',
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.burgundy,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -149,8 +151,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     expense.budgetCategoryId,
                   ),
                   isBusy: provider.isSubmitting,
-                  onEdit: () => _openEditExpense(expense),
-                  onDelete: () => _confirmDeleteExpense(provider, expense),
+                  onEdit: canManage ? () => _openEditExpense(expense) : null,
+                  onDelete: canManage
+                      ? () => _confirmDeleteExpense(provider, expense)
+                      : null,
                 ),
                 const SizedBox(height: 10),
               ],
@@ -221,7 +225,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (dialogContext) => AarastDialog(
         title: const Text('حذف المصروف؟'),
         content: Text('سيتم حذف "${expense.title}" من السجل المالي.'),
         actions: [
@@ -333,16 +337,16 @@ class _ExpenseCard extends StatelessWidget {
     required this.currencyLabel,
     required this.categoryName,
     required this.isBusy,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
 
   final Expense expense;
   final String currencyLabel;
   final String categoryName;
   final bool isBusy;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -424,24 +428,27 @@ class _ExpenseCard extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              PopupMenuButton<_ExpenseAction>(
-                enabled: !isBusy,
-                tooltip: 'خيارات المصروف',
-                onSelected: (action) {
-                  if (action == _ExpenseAction.edit) onEdit();
-                  if (action == _ExpenseAction.delete) onDelete();
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: _ExpenseAction.edit,
-                    child: Text('تعديل'),
-                  ),
-                  PopupMenuItem(
-                    value: _ExpenseAction.delete,
-                    child: Text('حذف'),
-                  ),
-                ],
-              ),
+              if (onEdit != null || onDelete != null)
+                PopupMenuButton<_ExpenseAction>(
+                  enabled: !isBusy,
+                  tooltip: 'خيارات المصروف',
+                  onSelected: (action) {
+                    if (action == _ExpenseAction.edit) onEdit?.call();
+                    if (action == _ExpenseAction.delete) onDelete?.call();
+                  },
+                  itemBuilder: (context) => [
+                    if (onEdit != null)
+                      const PopupMenuItem(
+                        value: _ExpenseAction.edit,
+                        child: Text('تعديل'),
+                      ),
+                    if (onDelete != null)
+                      const PopupMenuItem(
+                        value: _ExpenseAction.delete,
+                        child: Text('حذف'),
+                      ),
+                  ],
+                ),
             ],
           ),
         ],

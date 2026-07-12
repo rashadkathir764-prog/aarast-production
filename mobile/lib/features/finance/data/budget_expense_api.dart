@@ -9,17 +9,36 @@ import '../models/expense.dart';
 import '../models/expense_summary.dart';
 import '../models/financial_commitment.dart';
 import '../models/money_summary.dart';
+import 'finance_local_data_source.dart';
+import 'finance_money_rules.dart';
+
+class LocalFinancePlanContext {
+  const LocalFinancePlanContext({this.estimatedBudget, this.currency});
+
+  final String? estimatedBudget;
+  final String? currency;
+}
+
+typedef LocalFinancePlanContextLoader =
+    Future<LocalFinancePlanContext?> Function(String weddingPlanId);
 
 class BudgetExpenseApi {
-  const BudgetExpenseApi(this._apiClient, {OfflineSyncService? offline})
-    : _offline = offline;
+  const BudgetExpenseApi(
+    this._apiClient, {
+    OfflineSyncService? offline,
+    LocalFinancePlanContextLoader? localPlanContextLoader,
+  }) : _offline = offline,
+       _localPlanContextLoader = localPlanContextLoader;
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
+  final LocalFinancePlanContextLoader? _localPlanContextLoader;
+
+  FinanceLocalDataSource get _local => FinanceLocalDataSource(_offline);
 
   Future<List<BudgetCategory>> getBudgetCategories(String weddingPlanId) async {
     const table = OfflineTables.cachedBudgetCategories;
-    if (_isLocalGuestPlanId(weddingPlanId)) {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
       final cached = await _offline?.database.readCachedList(
         table: table,
         parentColumn: 'planId',
@@ -31,7 +50,7 @@ class BudgetExpenseApi {
     }
     try {
       final items = await _getJsonMapList(
-        '/wedding-plans/$weddingPlanId/budget-categories',
+        '/api/v1/wedding-plans/$weddingPlanId/budget-categories',
       );
       await _offline?.database.replaceCachedList(
         table: table,
@@ -62,15 +81,15 @@ class BudgetExpenseApi {
       if (targetAmount != null && targetAmount.trim().isNotEmpty)
         'targetAmount': targetAmount.trim(),
     };
-    if (_isLocalGuestPlanId(weddingPlanId)) {
-      return _createLocalBudgetCategory(
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
+      return _local.createBudgetCategory(
         weddingPlanId: weddingPlanId,
         payload: payload,
       );
     }
     try {
       final json = await _apiClient.postJson(
-        '/wedding-plans/$weddingPlanId/budget-categories',
+        '/api/v1/wedding-plans/$weddingPlanId/budget-categories',
         payload,
       );
       await _offline?.database.saveCachedItem(
@@ -98,7 +117,7 @@ class BudgetExpenseApi {
       await _offline.database.enqueueSync(
         entityType: 'budget_category',
         operation: 'create',
-        endpoint: '/wedding-plans/$weddingPlanId/budget-categories',
+        endpoint: '/api/v1/wedding-plans/$weddingPlanId/budget-categories',
         method: 'POST',
         payload: payload,
         localEntityId: localId,
@@ -120,12 +139,12 @@ class BudgetExpenseApi {
           : null,
     };
     if (category.id.startsWith('local-budget-category-') ||
-        _isLocalGuestPlanId(category.weddingPlanId)) {
-      return _updateLocalBudgetCategory(category: category, payload: data);
+        FinanceLocalDataSource.isLocalGuestPlanId(category.weddingPlanId)) {
+      return _local.updateBudgetCategory(category: category, payload: data);
     }
     try {
       final json = await _apiClient.patchJson(
-        '/budget-categories/${category.id}',
+        '/api/v1/budget-categories/${category.id}',
         data,
       );
       await _offline?.database.saveCachedItem(
@@ -152,7 +171,7 @@ class BudgetExpenseApi {
       await _offline.database.enqueueSync(
         entityType: 'budget_category',
         operation: 'update',
-        endpoint: '/budget-categories/${category.id}',
+        endpoint: '/api/v1/budget-categories/${category.id}',
         method: 'PATCH',
         payload: data,
         localEntityId: category.id,
@@ -164,7 +183,7 @@ class BudgetExpenseApi {
 
   Future<void> deleteBudgetCategory(String id) async {
     try {
-      await _apiClient.deleteJson('/budget-categories/$id');
+      await _apiClient.deleteJson('/api/v1/budget-categories/$id');
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
       await _offline.database.saveCachedItem(
@@ -176,7 +195,7 @@ class BudgetExpenseApi {
       await _offline.database.enqueueSync(
         entityType: 'budget_category',
         operation: 'delete',
-        endpoint: '/budget-categories/$id',
+        endpoint: '/api/v1/budget-categories/$id',
         method: 'DELETE',
         payload: const {},
         localEntityId: id,
@@ -187,7 +206,7 @@ class BudgetExpenseApi {
 
   Future<List<Expense>> getExpenses(String weddingPlanId) async {
     const table = OfflineTables.cachedBudgetItems;
-    if (_isLocalGuestPlanId(weddingPlanId)) {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
       final cached = await _offline?.database.readCachedList(
         table: table,
         parentColumn: 'planId',
@@ -199,7 +218,7 @@ class BudgetExpenseApi {
     }
     try {
       final items = await _getJsonMapList(
-        '/wedding-plans/$weddingPlanId/expenses',
+        '/api/v1/wedding-plans/$weddingPlanId/expenses',
       );
       await _offline?.database.replaceCachedList(
         table: table,
@@ -222,17 +241,19 @@ class BudgetExpenseApi {
 
   Future<ExpenseSummary> getExpenseSummary(String weddingPlanId) async {
     final key = 'expense_summary:$weddingPlanId';
-    if (_isLocalGuestPlanId(weddingPlanId)) {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
       final expenses = await _offline?.database.readCachedList(
         table: OfflineTables.cachedBudgetItems,
         parentColumn: 'planId',
         parentId: weddingPlanId,
       );
-      return _summaryFromExpenses(expenses ?? const <Map<String, dynamic>>[]);
+      return _local.expenseSummaryFrom(
+        expenses ?? const <Map<String, dynamic>>[],
+      );
     }
     try {
       final json = await _apiClient.getJson(
-        '/wedding-plans/$weddingPlanId/expenses/summary',
+        '/api/v1/wedding-plans/$weddingPlanId/expenses/summary',
       );
       await _offline?.database.setMeta(key, jsonEncode(json));
       return ExpenseSummary.fromJson(json);
@@ -250,15 +271,20 @@ class BudgetExpenseApi {
         parentColumn: 'planId',
         parentId: weddingPlanId,
       );
-      if (expenses.isNotEmpty) return _summaryFromExpenses(expenses);
+      if (expenses.isNotEmpty) return _local.expenseSummaryFrom(expenses);
       rethrow;
     }
   }
 
   Future<MoneySummary> getMoneySummary(String weddingPlanId) async {
     final key = 'money_summary:$weddingPlanId';
-    if (_isLocalGuestPlanId(weddingPlanId)) {
-      return _localMoneySummary(weddingPlanId);
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
+      final context = await _localPlanContextLoader?.call(weddingPlanId);
+      return _local.moneySummary(
+        weddingPlanId,
+        estimatedBudget: context?.estimatedBudget,
+        currency: context?.currency,
+      );
     }
     try {
       final json = await _apiClient.getJson(
@@ -275,7 +301,7 @@ class BudgetExpenseApi {
           Map<String, dynamic>.from(jsonDecode(cached) as Map),
         );
       }
-      return _localMoneySummary(weddingPlanId);
+      return _local.moneySummary(weddingPlanId);
     }
   }
 
@@ -283,7 +309,7 @@ class BudgetExpenseApi {
     String weddingPlanId,
   ) async {
     const table = OfflineTables.cachedFinancialCommitments;
-    if (_isLocalGuestPlanId(weddingPlanId)) {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
       final cached = await _offline?.database.readCachedList(
         table: table,
         parentColumn: 'planId',
@@ -322,7 +348,7 @@ class BudgetExpenseApi {
     String weddingPlanId,
   ) async {
     const table = OfflineTables.cachedFinancialPaymentRecords;
-    if (_isLocalGuestPlanId(weddingPlanId)) {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
       final cached = await _offline?.database.readCachedList(
         table: table,
         parentColumn: 'planId',
@@ -361,14 +387,14 @@ class BudgetExpenseApi {
     String weddingPlanId,
   ) async {
     const table = OfflineTables.cachedFinancialInstallments;
-    if (_isLocalGuestPlanId(weddingPlanId)) {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
       final cached = await _offline?.database.readCachedList(
         table: table,
         parentColumn: 'planId',
         parentId: weddingPlanId,
       );
       return (cached ?? const <Map<String, dynamic>>[])
-          .where(_isDueFinancialInstallment)
+          .where(FinanceLocalDataSource.isDueFinancialInstallment)
           .map(FinancialInstallment.fromJson)
           .toList();
     }
@@ -389,7 +415,7 @@ class BudgetExpenseApi {
       );
       if (cached != null) {
         return cached
-            .where(_isDueFinancialInstallment)
+            .where(FinanceLocalDataSource.isDueFinancialInstallment)
             .map(FinancialInstallment.fromJson)
             .toList();
       }
@@ -414,7 +440,7 @@ class BudgetExpenseApi {
     DateTime? agreementDate,
     String? note,
   }) async {
-    _assertFinancialCommitmentAmounts(
+    FinanceMoneyRules.assertCommitmentAmounts(
       totalAmount: totalAmount,
       paidAmount: paidAmount,
     );
@@ -442,8 +468,8 @@ class BudgetExpenseApi {
         'agreementDate': agreementDate.toIso8601String(),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
-    if (_isLocalGuestPlanId(weddingPlanId)) {
-      return _createLocalFinancialCommitment(
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
+      return _local.createFinancialCommitment(
         weddingPlanId: weddingPlanId,
         payload: payload,
       );
@@ -461,7 +487,7 @@ class BudgetExpenseApi {
       return FinancialCommitment.fromJson(json);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final local = await _createLocalFinancialCommitment(
+      final local = await _local.createFinancialCommitment(
         weddingPlanId: weddingPlanId,
         payload: payload,
       );
@@ -486,7 +512,7 @@ class BudgetExpenseApi {
     String? method,
     String? note,
   }) async {
-    _assertPositiveMoney(amount, 'amount');
+    FinanceMoneyRules.assertPositive(amount, 'amount');
     final payload = {
       'amount': amount.trim(),
       if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
@@ -495,7 +521,7 @@ class BudgetExpenseApi {
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
     if (commitmentId.startsWith('local-financial-commitment-')) {
-      return _createLocalFinancialPaymentRecord(
+      return _local.createFinancialPaymentRecord(
         commitmentId: commitmentId,
         payload: payload,
       );
@@ -512,7 +538,7 @@ class BudgetExpenseApi {
       return FinancialPaymentRecord.fromJson(json);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final local = await _createLocalFinancialPaymentRecord(
+      final local = await _local.createFinancialPaymentRecord(
         commitmentId: commitmentId,
         payload: payload,
       );
@@ -541,7 +567,7 @@ class BudgetExpenseApi {
     DateTime? agreementDate,
     String? note,
   }) async {
-    _assertPositiveMoney(totalAmount, 'totalAmount');
+    FinanceMoneyRules.assertPositive(totalAmount, 'totalAmount');
     final payload = {
       'budgetCategoryId': budgetCategoryId.trim(),
       'sourceType': sourceType,
@@ -554,8 +580,8 @@ class BudgetExpenseApi {
       'note': note?.trim(),
     };
     if (commitment.id.startsWith('local-financial-commitment-') ||
-        _isLocalGuestPlanId(commitment.weddingPlanId)) {
-      return _updateLocalFinancialCommitment(
+        FinanceLocalDataSource.isLocalGuestPlanId(commitment.weddingPlanId)) {
+      return _local.updateFinancialCommitment(
         commitment: commitment,
         payload: payload,
       );
@@ -572,7 +598,7 @@ class BudgetExpenseApi {
       return FinancialCommitment.fromJson(json);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final local = await _updateLocalFinancialCommitment(
+      final local = await _local.updateFinancialCommitment(
         commitment: commitment,
         payload: payload,
       );
@@ -635,7 +661,7 @@ class BudgetExpenseApi {
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
     if (commitmentId.startsWith('local-financial-commitment-')) {
-      return _createLocalFinancialInstallment(
+      return _local.createFinancialInstallment(
         commitmentId: commitmentId,
         payload: payload,
       );
@@ -652,7 +678,7 @@ class BudgetExpenseApi {
       return FinancialInstallment.fromJson(json);
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      final local = await _createLocalFinancialInstallment(
+      final local = await _local.createFinancialInstallment(
         commitmentId: commitmentId,
         payload: payload,
       );
@@ -688,15 +714,15 @@ class BudgetExpenseApi {
       if (expenseDate != null) 'expenseDate': expenseDate.toIso8601String(),
       if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
     };
-    if (_isLocalGuestPlanId(weddingPlanId)) {
-      return _createLocalExpense(
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) {
+      return _local.createExpense(
         weddingPlanId: weddingPlanId,
         payload: payload,
       );
     }
     try {
       final json = await _apiClient.postJson(
-        '/wedding-plans/$weddingPlanId/expenses',
+        '/api/v1/wedding-plans/$weddingPlanId/expenses',
         payload,
       );
       await _offline?.database.saveCachedItem(
@@ -724,7 +750,7 @@ class BudgetExpenseApi {
       await _offline.database.enqueueSync(
         entityType: 'expense',
         operation: 'create',
-        endpoint: '/wedding-plans/$weddingPlanId/expenses',
+        endpoint: '/api/v1/wedding-plans/$weddingPlanId/expenses',
         method: 'POST',
         payload: payload,
         localEntityId: localId,
@@ -756,7 +782,7 @@ class BudgetExpenseApi {
     };
 
     if (id.startsWith('local-expense-')) {
-      return _updateLocalExpense(
+      return _local.updateExpense(
         id: id,
         weddingPlanId: weddingPlanId,
         payload: payload,
@@ -764,7 +790,7 @@ class BudgetExpenseApi {
     }
 
     try {
-      final json = await _apiClient.patchJson('/expenses/$id', payload);
+      final json = await _apiClient.patchJson('/api/v1/expenses/$id', payload);
       await _offline?.database.saveCachedItem(
         table: OfflineTables.cachedBudgetItems,
         json: json,
@@ -794,7 +820,7 @@ class BudgetExpenseApi {
       await _offline.database.enqueueSync(
         entityType: 'expense',
         operation: 'update',
-        endpoint: '/expenses/$id',
+        endpoint: '/api/v1/expenses/$id',
         method: 'PATCH',
         payload: payload,
         localEntityId: id,
@@ -806,39 +832,22 @@ class BudgetExpenseApi {
 
   Future<void> deleteExpense(String id) async {
     try {
-      await _apiClient.deleteJson('/expenses/$id');
-      await _markExpenseDeletedLocally(id, dirty: false);
+      await _apiClient.deleteJson('/api/v1/expenses/$id');
+      await _local.markExpenseDeleted(id, dirty: false);
       await _offline?.syncPendingChanges();
     } on Object catch (error) {
       if (!CachePolicy.shouldQueueWrite(error) || _offline == null) rethrow;
-      await _markExpenseDeletedLocally(id, dirty: true);
+      await _local.markExpenseDeleted(id, dirty: true);
       await _offline.database.enqueueSync(
         entityType: 'expense',
         operation: 'delete',
-        endpoint: '/expenses/$id',
+        endpoint: '/api/v1/expenses/$id',
         method: 'DELETE',
         payload: const {},
         localEntityId: id,
       );
       await _offline.refreshStatus();
     }
-  }
-
-  Future<void> _markExpenseDeletedLocally(
-    String id, {
-    required bool dirty,
-  }) async {
-    final cached = await _offline?.database.readCachedItem(
-      table: OfflineTables.cachedBudgetItems,
-      id: id,
-    );
-    if (cached == null) return;
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedBudgetItems,
-      json: cached,
-      dirty: dirty,
-      deletedLocally: true,
-    );
   }
 
   String _requiredPaidExpenseCategoryId(String? budgetCategoryId) {
@@ -869,273 +878,6 @@ class BudgetExpenseApi {
         .toList();
   }
 
-  Future<MoneySummary> _localMoneySummary(String weddingPlanId) async {
-    final categories =
-        await _offline?.database.readCachedList(
-          table: OfflineTables.cachedBudgetCategories,
-          parentColumn: 'planId',
-          parentId: weddingPlanId,
-        ) ??
-        const <Map<String, dynamic>>[];
-    final expenses =
-        await _offline?.database.readCachedList(
-          table: OfflineTables.cachedBudgetItems,
-          parentColumn: 'planId',
-          parentId: weddingPlanId,
-        ) ??
-        const <Map<String, dynamic>>[];
-    final debts =
-        await _offline?.database.readCachedList(
-          table: OfflineTables.cachedDebts,
-          parentColumn: 'planId',
-          parentId: weddingPlanId,
-        ) ??
-        const <Map<String, dynamic>>[];
-    final commitments =
-        await _offline?.database.readCachedList(
-          table: OfflineTables.cachedFinancialCommitments,
-          parentColumn: 'planId',
-          parentId: weddingPlanId,
-        ) ??
-        const <Map<String, dynamic>>[];
-    final financialInstallments =
-        await _offline?.database.readCachedList(
-          table: OfflineTables.cachedFinancialInstallments,
-          parentColumn: 'planId',
-          parentId: weddingPlanId,
-        ) ??
-        const <Map<String, dynamic>>[];
-
-    final installments = <Map<String, dynamic>>[];
-    for (final debt in debts) {
-      final debtId = debt['id']?.toString();
-      if (debtId == null || debtId.isEmpty) continue;
-      final debtInstallments = await _offline?.database.readCachedList(
-        table: OfflineTables.cachedInstallments,
-        parentColumn: 'debtId',
-        parentId: debtId,
-      );
-      if (debtInstallments != null) installments.addAll(debtInstallments);
-    }
-
-    final totalBudget = categories.fold<num>(
-      0,
-      (sum, category) => sum + _moneyValue(category['targetAmount']),
-    );
-    final totalSpent = expenses.fold<num>(0, (sum, expense) {
-      if (expense['status']?.toString() != 'PAID') return sum;
-      return sum + _moneyValue(expense['amount']);
-    });
-    final totalDebts = debts.fold<num>(
-      0,
-      (sum, debt) => sum + _moneyValue(debt['totalAmount']),
-    );
-    final paidDebts = debts.fold<num>(
-      0,
-      (sum, debt) => sum + _moneyValue(debt['paidAmount']),
-    );
-    final debtRemaining = (totalDebts - paidDebts).clamp(0, totalDebts);
-    final activeCommitments = commitments
-        .where((commitment) => commitment['status']?.toString() != 'CANCELLED')
-        .toList();
-    final commitmentTotal = activeCommitments.fold<num>(
-      0,
-      (sum, commitment) => sum + _moneyValue(commitment['totalAmount']),
-    );
-    final commitmentPaid = activeCommitments.fold<num>(
-      0,
-      (sum, commitment) => sum + _moneyValue(commitment['paidAmount']),
-    );
-    final commitmentRemaining = (commitmentTotal - commitmentPaid).clamp(
-      0,
-      commitmentTotal,
-    );
-    final remainingBudget = totalBudget - totalSpent;
-    final confirmedCostTotal = commitmentTotal + totalDebts;
-    final paidTotal = commitmentPaid + paidDebts + totalSpent;
-    final outstandingTotal = commitmentRemaining + debtRemaining;
-    final deficitOrSurplus = totalBudget - confirmedCostTotal;
-    final categorySummaries = categories.map((category) {
-      final id = category['id']?.toString() ?? '';
-      final allocated = _moneyValue(category['targetAmount']);
-      final categoryExpenses = expenses.where(
-        (expense) => expense['budgetCategoryId']?.toString() == id,
-      );
-      final categoryCommitments = activeCommitments.where(
-        (commitment) => commitment['budgetCategoryId']?.toString() == id,
-      );
-      final spent = categoryExpenses.fold<num>(0, (sum, expense) {
-        if (expense['status']?.toString() != 'PAID') return sum;
-        return sum + _moneyValue(expense['amount']);
-      });
-      final confirmedCost = categoryCommitments.fold<num>(
-        0,
-        (sum, commitment) => sum + _moneyValue(commitment['totalAmount']),
-      );
-      final commitmentPaidForCategory = categoryCommitments.fold<num>(
-        0,
-        (sum, commitment) => sum + _moneyValue(commitment['paidAmount']),
-      );
-      final categoryInstallments = financialInstallments.where(
-        (installment) => installment['budgetCategoryId']?.toString() == id,
-      );
-      final paid = spent + commitmentPaidForCategory;
-      final outstanding = (confirmedCost - commitmentPaidForCategory).clamp(
-        0,
-        confirmedCost,
-      );
-      final budgetRemaining = allocated - confirmedCost;
-      return MoneyCategorySummary(
-        categoryId: id,
-        name: category['name']?.toString() ?? '',
-        allocated: _moneyOrNull(allocated),
-        spent: _moneyOrNull(spent),
-        confirmedCost: _moneyOrNull(confirmedCost),
-        paid: _moneyOrNull(paid),
-        outstanding: _moneyOrNull(outstanding),
-        budgetRemaining: _moneyOrNull(budgetRemaining),
-        remaining: _moneyOrNull(allocated - spent),
-        expensesCount: categoryExpenses.length,
-        commitmentsCount: categoryCommitments.length,
-        installmentsCount: categoryInstallments.length,
-        overBudget: allocated > 0 && confirmedCost > allocated,
-      );
-    }).toList();
-
-    final now = DateTime.now();
-    final unpaidInstallments =
-        installments.where((installment) {
-          final status = installment['status']?.toString();
-          return status != 'PAID' && status != 'CANCELLED';
-        }).toList()..sort((a, b) {
-          final aDate = DateTime.tryParse(a['dueDate']?.toString() ?? '');
-          final bDate = DateTime.tryParse(b['dueDate']?.toString() ?? '');
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-          return aDate.compareTo(bDate);
-        });
-    final overdueCount = unpaidInstallments.where((installment) {
-      final dueDate = DateTime.tryParse(
-        installment['dueDate']?.toString() ?? '',
-      );
-      return dueDate != null &&
-          dueDate.isBefore(DateTime(now.year, now.month, now.day));
-    }).length;
-    final dueSoonCount = unpaidInstallments.where((installment) {
-      final dueDate = DateTime.tryParse(
-        installment['dueDate']?.toString() ?? '',
-      );
-      if (dueDate == null) return false;
-      final days = dueDate.difference(now).inDays;
-      return days >= 0 && days <= 7;
-    }).length;
-    final unpaidFinancialInstallments =
-        financialInstallments.where((installment) {
-          final status = installment['status']?.toString();
-          return status != 'PAID' && status != 'CANCELLED';
-        }).toList()..sort((a, b) {
-          final aDate = DateTime.tryParse(a['dueDate']?.toString() ?? '');
-          final bDate = DateTime.tryParse(b['dueDate']?.toString() ?? '');
-          if (aDate == null && bDate == null) return 0;
-          if (aDate == null) return 1;
-          if (bDate == null) return -1;
-          return aDate.compareTo(bDate);
-        });
-    final financialOverdueCount = unpaidFinancialInstallments.where((
-      installment,
-    ) {
-      final dueDate = DateTime.tryParse(
-        installment['dueDate']?.toString() ?? '',
-      );
-      return dueDate != null &&
-          dueDate.isBefore(DateTime(now.year, now.month, now.day));
-    }).length;
-    final financialDueSoonCount = unpaidFinancialInstallments.where((
-      installment,
-    ) {
-      final dueDate = DateTime.tryParse(
-        installment['dueDate']?.toString() ?? '',
-      );
-      if (dueDate == null) return false;
-      final days = dueDate.difference(now).inDays;
-      return days >= 0 && days <= 7;
-    }).length;
-    final warnings = <MoneyFinancialWarning>[
-      if (deficitOrSurplus < 0)
-        MoneyFinancialWarning(
-          type: 'BUDGET_EXCEEDED',
-          severity: 'DANGER',
-          message: 'ميزانيتك تجاوزت الحد',
-          amount: _moneyOrNull(deficitOrSurplus.abs()),
-        ),
-      if (categorySummaries.any((category) => category.overBudget == true))
-        MoneyFinancialWarning(
-          type: 'CATEGORY_EXCEEDED',
-          severity: 'WARNING',
-          message: 'تصنيف في الميزانية تجاوز المخصص',
-          count: categorySummaries
-              .where((category) => category.overBudget == true)
-              .length,
-        ),
-      if (overdueCount + financialOverdueCount > 0)
-        MoneyFinancialWarning(
-          type: 'INSTALLMENT_OVERDUE',
-          severity: 'DANGER',
-          message: 'قسط متأخر يحتاج متابعة',
-          count: overdueCount + financialOverdueCount,
-        ),
-      if (dueSoonCount + financialDueSoonCount > 0)
-        MoneyFinancialWarning(
-          type: 'INSTALLMENT_DUE_SOON',
-          severity: 'WARNING',
-          message: 'قسط قريب يحتاج متابعة',
-          count: dueSoonCount + financialDueSoonCount,
-        ),
-    ];
-
-    final nextInstallment = unpaidInstallments.isEmpty
-        ? null
-        : MoneyNextInstallment.fromJson(unpaidInstallments.first);
-
-    return MoneySummary(
-      weddingPlanId: weddingPlanId,
-      totalBudget: _moneyOrNull(totalBudget),
-      totalSpent: _moneyOrNull(totalSpent),
-      remainingBudget: _moneyOrNull(remainingBudget),
-      confirmedCostTotal: _moneyOrNull(confirmedCostTotal),
-      paidTotal: _moneyOrNull(paidTotal),
-      outstandingTotal: _moneyOrNull(outstandingTotal),
-      commitmentTotal: _moneyOrNull(commitmentTotal),
-      commitmentPaidTotal: _moneyOrNull(commitmentPaid),
-      commitmentRemainingTotal: _moneyOrNull(commitmentRemaining),
-      deficitOrSurplus: _moneyOrNull(deficitOrSurplus),
-      totalDebts: _moneyOrNull(totalDebts),
-      debtRemaining: _moneyOrNull(debtRemaining),
-      paidInstallmentsCount: installments
-          .where((installment) => installment['status']?.toString() == 'PAID')
-          .length,
-      remainingInstallmentsCount: unpaidInstallments.length,
-      overdueInstallmentsCount: overdueCount,
-      dueInstallmentsCount: dueSoonCount,
-      financialInstallmentsCount: financialInstallments.length,
-      financialDueInstallmentsCount: financialDueSoonCount,
-      financialOverdueInstallmentsCount: financialOverdueCount,
-      financialRemainingInstallmentsCount: unpaidFinancialInstallments.length,
-      nextInstallment: nextInstallment,
-      nextFinancialInstallment: unpaidFinancialInstallments.isEmpty
-          ? null
-          : MoneyNextInstallment.fromJson(unpaidFinancialInstallments.first),
-      categorySummaries: categorySummaries,
-      financialWarnings: warnings,
-      categoriesCount: categories.length,
-      expensesCount: expenses.length,
-      debtsCount: debts.length,
-      commitmentsCount: activeCommitments.length,
-      installmentsCount: installments.length,
-    );
-  }
-
   Future<List<Map<String, dynamic>>?> _cachedListOnNetworkFailure(
     Object error, {
     required String table,
@@ -1150,397 +892,5 @@ class BudgetExpenseApi {
       parentId: parentId,
     );
     return cached.isEmpty ? null : cached;
-  }
-
-  ExpenseSummary _summaryFromExpenses(List<Map<String, dynamic>> expenses) {
-    num totalPaid = 0;
-    num totalPlanned = 0;
-    num totalCancelled = 0;
-    var countPaid = 0;
-    var countPlanned = 0;
-    var countCancelled = 0;
-    for (final expense in expenses) {
-      final amount = num.tryParse(expense['amount']?.toString() ?? '') ?? 0;
-      switch (expense['status']?.toString()) {
-        case 'PAID':
-          totalPaid += amount;
-          countPaid++;
-        case 'CANCELLED':
-          totalCancelled += amount;
-          countCancelled++;
-        default:
-          totalPlanned += amount;
-          countPlanned++;
-      }
-    }
-    return ExpenseSummary(
-      totalPaid: totalPaid.toStringAsFixed(2),
-      totalPlanned: totalPlanned.toStringAsFixed(2),
-      totalCancelled: totalCancelled.toStringAsFixed(2),
-      countPaid: countPaid,
-      countPlanned: countPlanned,
-      countCancelled: countCancelled,
-    );
-  }
-
-  num _moneyValue(Object? value) {
-    return num.tryParse(value?.toString().replaceAll(',', '').trim() ?? '') ??
-        0;
-  }
-
-  num _assertPositiveMoney(Object? value, String field) {
-    final parsed = num.tryParse(
-      value?.toString().replaceAll(',', '').trim() ?? '',
-    );
-    if (parsed == null || parsed <= 0) {
-      throw ApiException(
-        field == 'totalAmount'
-            ? 'التكلفة المتفق عليها يجب أن تكون أكبر من صفر.'
-            : 'المبلغ يجب أن يكون أكبر من صفر.',
-      );
-    }
-    return parsed;
-  }
-
-  num _assertOptionalNonNegativeMoney(Object? value, String field) {
-    final raw = value?.toString().replaceAll(',', '').trim() ?? '';
-    if (raw.isEmpty) return 0;
-    final parsed = num.tryParse(raw);
-    if (parsed == null || parsed < 0) {
-      throw ApiException('$field غير صحيح.');
-    }
-    return parsed;
-  }
-
-  void _assertFinancialCommitmentAmounts({
-    required String totalAmount,
-    String? paidAmount,
-  }) {
-    final total = _assertPositiveMoney(totalAmount, 'totalAmount');
-    final paid = _assertOptionalNonNegativeMoney(paidAmount, 'paidAmount');
-    if (paid > total) {
-      throw const ApiException(
-        'المدفوع لا يمكن أن يتجاوز التكلفة المتفق عليها.',
-      );
-    }
-  }
-
-  void _assertPaymentWithinRemaining({
-    required Map<String, dynamic> commitment,
-    required num amount,
-  }) {
-    if (commitment['status']?.toString() == 'CANCELLED') {
-      throw const ApiException('لا يمكن تسجيل دفعة على التزام ملغي.');
-    }
-    final total = _moneyValue(commitment['totalAmount']);
-    final paid = _moneyValue(commitment['paidAmount']);
-    final remaining = (total - paid).clamp(0, total);
-    if (amount > remaining) {
-      throw const ApiException('مبلغ الدفعة لا يمكن أن يتجاوز الباقي المستحق.');
-    }
-  }
-
-  String? _moneyOrNull(num? value) {
-    if (value == null) return null;
-    return value.toStringAsFixed(2);
-  }
-
-  Future<Expense> _createLocalExpense({
-    required String weddingPlanId,
-    required Map<String, dynamic> payload,
-  }) async {
-    final now = DateTime.now();
-    final localId = 'local-expense-${now.microsecondsSinceEpoch}';
-    final localJson = {
-      'id': localId,
-      'weddingPlanId': weddingPlanId,
-      ...payload,
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedBudgetItems,
-      json: localJson,
-      dirty: true,
-    );
-    await _offline?.refreshStatus();
-    return Expense.fromJson(localJson);
-  }
-
-  Future<BudgetCategory> _createLocalBudgetCategory({
-    required String weddingPlanId,
-    required Map<String, dynamic> payload,
-  }) async {
-    final now = DateTime.now();
-    final localJson = {
-      'id': 'local-budget-category-${now.microsecondsSinceEpoch}',
-      'weddingPlanId': weddingPlanId,
-      ...payload,
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedBudgetCategories,
-      json: localJson,
-      dirty: true,
-    );
-    await _offline?.refreshStatus();
-    return BudgetCategory.fromJson(localJson);
-  }
-
-  Future<BudgetCategory> _updateLocalBudgetCategory({
-    required BudgetCategory category,
-    required Map<String, dynamic> payload,
-  }) async {
-    final cached = await _offline?.database.readCachedItem(
-      table: OfflineTables.cachedBudgetCategories,
-      id: category.id,
-    );
-    final now = DateTime.now();
-    final localJson = {
-      ...?cached,
-      ...payload,
-      'id': category.id,
-      'weddingPlanId': cached?['weddingPlanId'] ?? category.weddingPlanId,
-      'createdAt': cached?['createdAt'] ?? category.createdAt.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedBudgetCategories,
-      json: localJson,
-      dirty: true,
-    );
-    await _offline?.refreshStatus();
-    return BudgetCategory.fromJson(localJson);
-  }
-
-  Future<Expense> _updateLocalExpense({
-    required String id,
-    required String weddingPlanId,
-    required Map<String, dynamic> payload,
-  }) async {
-    final cached = await _offline?.database.readCachedItem(
-      table: OfflineTables.cachedBudgetItems,
-      id: id,
-    );
-    final now = DateTime.now();
-    final localJson = {
-      ...?cached,
-      ...payload,
-      'id': id,
-      'weddingPlanId': cached?['weddingPlanId'] ?? weddingPlanId,
-      'createdAt': cached?['createdAt'] ?? now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedBudgetItems,
-      json: localJson,
-      dirty: true,
-    );
-    await _offline?.refreshStatus();
-    return Expense.fromJson(localJson);
-  }
-
-  Future<FinancialCommitment> _createLocalFinancialCommitment({
-    required String weddingPlanId,
-    required Map<String, dynamic> payload,
-  }) async {
-    final now = DateTime.now();
-    final total = _assertPositiveMoney(payload['totalAmount'], 'totalAmount');
-    final paid = _assertOptionalNonNegativeMoney(
-      payload['paidAmount'],
-      'paidAmount',
-    );
-    if (paid > total) {
-      throw const ApiException(
-        'المدفوع لا يمكن أن يتجاوز التكلفة المتفق عليها.',
-      );
-    }
-    final remaining = (total - paid).clamp(0, total);
-    final localJson = {
-      ...payload,
-      'id': 'local-financial-commitment-${now.microsecondsSinceEpoch}',
-      'weddingPlanId': weddingPlanId,
-      'paidAmount': paid.toStringAsFixed(2),
-      'remainingAmount': remaining.toStringAsFixed(2),
-      'status': _deriveCommitmentStatus(total, paid),
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedFinancialCommitments,
-      json: localJson,
-      dirty: true,
-    );
-    if (paid > 0) {
-      await _createLocalFinancialPaymentRecord(
-        commitmentId: localJson['id']!.toString(),
-        payload: {
-          'title': 'دفعة أولى: ${payload['title'] ?? ''}',
-          'amount': paid.toStringAsFixed(2),
-          'paidAt': payload['agreementDate'] ?? now.toIso8601String(),
-        },
-        updateCommitmentBalance: false,
-      );
-    }
-    await _offline?.refreshStatus();
-    return FinancialCommitment.fromJson(localJson);
-  }
-
-  Future<FinancialPaymentRecord> _createLocalFinancialPaymentRecord({
-    required String commitmentId,
-    required Map<String, dynamic> payload,
-    bool updateCommitmentBalance = true,
-  }) async {
-    final commitment = await _offline?.database.readCachedItem(
-      table: OfflineTables.cachedFinancialCommitments,
-      id: commitmentId,
-    );
-    if (commitment == null) {
-      throw const ApiException('تعذر العثور على المستحق المالي.');
-    }
-    final now = DateTime.now();
-    final amount = _assertPositiveMoney(payload['amount'], 'amount');
-    if (updateCommitmentBalance) {
-      _assertPaymentWithinRemaining(commitment: commitment, amount: amount);
-    }
-    final localJson = {
-      'id': 'local-financial-payment-${now.microsecondsSinceEpoch}',
-      'weddingPlanId': commitment['weddingPlanId'],
-      'financialCommitmentId': commitmentId,
-      'budgetCategoryId': commitment['budgetCategoryId'],
-      'title': payload['title'] ?? 'دفعة: ${commitment['title'] ?? ''}',
-      'amount': amount.toStringAsFixed(2),
-      'paidAt': payload['paidAt'] ?? now.toIso8601String(),
-      if (payload['method'] != null) 'method': payload['method'],
-      if (payload['note'] != null) 'note': payload['note'],
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedFinancialPaymentRecords,
-      json: localJson,
-      dirty: true,
-    );
-    if (updateCommitmentBalance) {
-      final total = _moneyValue(commitment['totalAmount']);
-      final paid = _moneyValue(commitment['paidAmount']) + amount;
-      final remaining = (total - paid).clamp(0, total);
-      await _offline?.database.saveCachedItem(
-        table: OfflineTables.cachedFinancialCommitments,
-        json: {
-          ...commitment,
-          'paidAmount': paid.toStringAsFixed(2),
-          'remainingAmount': remaining.toStringAsFixed(2),
-          'status': _deriveCommitmentStatus(total, paid),
-          'updatedAt': now.toIso8601String(),
-        },
-        dirty: true,
-      );
-    }
-    await _offline?.refreshStatus();
-    return FinancialPaymentRecord.fromJson(localJson);
-  }
-
-  Future<FinancialCommitment> _updateLocalFinancialCommitment({
-    required FinancialCommitment commitment,
-    required Map<String, dynamic> payload,
-  }) async {
-    final cached = await _offline?.database.readCachedItem(
-      table: OfflineTables.cachedFinancialCommitments,
-      id: commitment.id,
-    );
-    final now = DateTime.now();
-    final total = _assertPositiveMoney(payload['totalAmount'], 'totalAmount');
-    final paid = _moneyValue(cached?['paidAmount'] ?? commitment.paidAmount);
-    if (paid > total) {
-      throw const ApiException(
-        'المدفوع لا يمكن أن يتجاوز التكلفة المتفق عليها.',
-      );
-    }
-    final remaining = (total - paid).clamp(0, total);
-    final localJson = {
-      ...?cached,
-      ...payload,
-      'id': commitment.id,
-      'weddingPlanId': cached?['weddingPlanId'] ?? commitment.weddingPlanId,
-      'paidAmount': paid.toStringAsFixed(2),
-      'remainingAmount': remaining.toStringAsFixed(2),
-      'status': _deriveCommitmentStatus(total, paid),
-      'createdAt':
-          cached?['createdAt'] ?? commitment.createdAt?.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedFinancialCommitments,
-      json: localJson,
-      dirty: true,
-    );
-    await _offline?.refreshStatus();
-    return FinancialCommitment.fromJson(localJson);
-  }
-
-  Future<FinancialInstallment> _createLocalFinancialInstallment({
-    required String commitmentId,
-    required Map<String, dynamic> payload,
-  }) async {
-    final commitment = await _offline?.database.readCachedItem(
-      table: OfflineTables.cachedFinancialCommitments,
-      id: commitmentId,
-    );
-    if (commitment == null) {
-      throw const ApiException('تعذر العثور على المستحق المالي.');
-    }
-    final now = DateTime.now();
-    final status = payload['status']?.toString() ?? 'PENDING';
-    final localJson = {
-      'id': 'local-financial-installment-${now.microsecondsSinceEpoch}',
-      'weddingPlanId': commitment['weddingPlanId'],
-      'financialCommitmentId': commitmentId,
-      'budgetCategoryId': commitment['budgetCategoryId'],
-      ...payload,
-      'status': status,
-      'createdAt': now.toIso8601String(),
-      'updatedAt': now.toIso8601String(),
-    };
-    await _offline?.database.saveCachedItem(
-      table: OfflineTables.cachedFinancialInstallments,
-      json: localJson,
-      dirty: true,
-    );
-    if (status == 'PAID') {
-      await _createLocalFinancialPaymentRecord(
-        commitmentId: commitmentId,
-        payload: {
-          'title': 'قسط: ${commitment['title'] ?? ''}',
-          'amount': payload['amount'],
-          'paidAt': payload['paidAt'] ?? now.toIso8601String(),
-          if (payload['note'] != null) 'note': payload['note'],
-        },
-      );
-    }
-    await _offline?.refreshStatus();
-    return FinancialInstallment.fromJson(localJson);
-  }
-
-  bool _isLocalGuestPlanId(String? planId) {
-    final value = planId?.trim() ?? '';
-    return value.isEmpty ||
-        value == 'local-guest-plan' ||
-        value.startsWith('guest-plan-') ||
-        value.startsWith('local-guest-');
-  }
-
-  bool _isDueFinancialInstallment(Map<String, dynamic> installment) {
-    final status = installment['status']?.toString().toUpperCase() ?? '';
-    return status != 'PAID' &&
-        status != 'CANCELLED' &&
-        installment['dueDate'] != null;
-  }
-
-  String _deriveCommitmentStatus(num total, num paid) {
-    if (total <= 0 || paid <= 0) return 'OPEN';
-    if (paid >= total) return 'PAID';
-    return 'PARTIALLY_PAID';
   }
 }

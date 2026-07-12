@@ -12,25 +12,17 @@ class MoneySummary {
     this.commitmentPaidTotal,
     this.commitmentRemainingTotal,
     this.providerCommitmentTotal,
-    this.manualDebtCommitmentTotal,
+    this.manualPayableCommitmentTotal,
     this.deficitOrSurplus,
-    this.totalDebts,
-    this.debtRemaining,
     this.paidInstallmentsCount,
     this.remainingInstallmentsCount,
     this.overdueInstallmentsCount,
     this.dueInstallmentsCount,
-    this.financialInstallmentsCount,
-    this.financialDueInstallmentsCount,
-    this.financialOverdueInstallmentsCount,
-    this.financialRemainingInstallmentsCount,
     this.nextInstallment,
-    this.nextFinancialInstallment,
     this.categorySummaries = const [],
     this.financialWarnings = const [],
     this.categoriesCount,
     this.expensesCount,
-    this.debtsCount,
     this.commitmentsCount,
     this.installmentsCount,
   });
@@ -57,37 +49,18 @@ class MoneySummary {
         json['commitmentRemainingTotal'],
       ),
       providerCommitmentTotal: _nullableString(json['providerCommitmentTotal']),
-      manualDebtCommitmentTotal: _nullableString(
-        json['manualDebtCommitmentTotal'],
+      manualPayableCommitmentTotal: _nullableString(
+        json['manualPayableCommitmentTotal'],
       ),
       deficitOrSurplus: _nullableString(json['deficitOrSurplus']),
-      totalDebts: _nullableString(json['totalDebts'] ?? json['debtTotal']),
-      debtRemaining: _nullableString(
-        json['debtRemaining'] ?? json['unpaidDebtTotal'],
-      ),
       paidInstallmentsCount: _intOrNull(json['paidInstallmentsCount']),
       remainingInstallmentsCount: _intOrNull(
         json['remainingInstallmentsCount'],
       ),
       overdueInstallmentsCount: _intOrNull(json['overdueInstallmentsCount']),
       dueInstallmentsCount: _intOrNull(json['dueInstallmentsCount']),
-      financialInstallmentsCount: _intOrNull(
-        json['financialInstallmentsCount'],
-      ),
-      financialDueInstallmentsCount: _intOrNull(
-        json['financialDueInstallmentsCount'],
-      ),
-      financialOverdueInstallmentsCount: _intOrNull(
-        json['financialOverdueInstallmentsCount'],
-      ),
-      financialRemainingInstallmentsCount: _intOrNull(
-        json['financialRemainingInstallmentsCount'],
-      ),
       nextInstallment: MoneyNextInstallment.fromJsonOrNull(
         json['nextInstallment'],
-      ),
-      nextFinancialInstallment: MoneyNextInstallment.fromJsonOrNull(
-        json['nextFinancialInstallment'],
       ),
       categorySummaries: _listOfMaps(
         json['categorySummaries'],
@@ -97,7 +70,6 @@ class MoneySummary {
       ).map(MoneyFinancialWarning.fromJson).toList(),
       categoriesCount: _intOrNull(json['categoriesCount']),
       expensesCount: _intOrNull(json['expensesCount']),
-      debtsCount: _intOrNull(json['debtsCount']),
       commitmentsCount: _intOrNull(json['commitmentsCount']),
       installmentsCount: _intOrNull(json['installmentsCount']),
     );
@@ -115,25 +87,17 @@ class MoneySummary {
   final String? commitmentPaidTotal;
   final String? commitmentRemainingTotal;
   final String? providerCommitmentTotal;
-  final String? manualDebtCommitmentTotal;
+  final String? manualPayableCommitmentTotal;
   final String? deficitOrSurplus;
-  final String? totalDebts;
-  final String? debtRemaining;
   final int? paidInstallmentsCount;
   final int? remainingInstallmentsCount;
   final int? overdueInstallmentsCount;
   final int? dueInstallmentsCount;
-  final int? financialInstallmentsCount;
-  final int? financialDueInstallmentsCount;
-  final int? financialOverdueInstallmentsCount;
-  final int? financialRemainingInstallmentsCount;
   final MoneyNextInstallment? nextInstallment;
-  final MoneyNextInstallment? nextFinancialInstallment;
   final List<MoneyCategorySummary> categorySummaries;
   final List<MoneyFinancialWarning> financialWarnings;
   final int? categoriesCount;
   final int? expensesCount;
-  final int? debtsCount;
   final int? commitmentsCount;
   final int? installmentsCount;
 
@@ -142,11 +106,9 @@ class MoneySummary {
         _moneyValue(confirmedCostTotal) > 0 ||
         _moneyValue(outstandingTotal) > 0 ||
         _moneyValue(totalSpent) > 0 ||
-        _moneyValue(totalDebts) > 0 ||
         categorySummaries.isNotEmpty ||
         financialWarnings.isNotEmpty ||
-        nextInstallment != null ||
-        nextFinancialInstallment != null;
+        nextInstallment != null;
   }
 
   double get spendingRatio {
@@ -168,12 +130,9 @@ class MoneySummary {
         (_moneyValue(totalSpent) > 0 || _moneyValue(confirmedCostTotal) > 0);
   }
 
-  bool get hasLegacyDebtData {
-    return (debtsCount ?? 0) > 0 || nextInstallment != null;
-  }
-
   String get budgetStatus {
     if (hasSpendingWithoutBudget) return 'OVER_BUDGET';
+    if (!hasUsableBudget) return 'NO_BUDGET';
     if (commitmentRatio > 1 || spendingRatio > 1) return 'OVER_BUDGET';
     if (financialWarnings.any((warning) => warning.severity == 'DANGER')) {
       return 'DANGER';
@@ -252,25 +211,23 @@ class MoneyCategorySummary {
 class MoneyNextInstallment {
   const MoneyNextInstallment({
     required this.id,
-    required this.debtId,
+    required this.financialCommitmentId,
     required this.amount,
-    this.financialCommitmentId,
     this.dueAt,
     this.status,
-    this.debtTitle,
-    this.creditorName,
+    this.commitmentTitle,
+    this.partyName,
   });
 
   factory MoneyNextInstallment.fromJson(Map<String, dynamic> json) {
     return MoneyNextInstallment(
       id: json['id']?.toString() ?? '',
-      debtId: json['debtId']?.toString() ?? '',
-      financialCommitmentId: json['financialCommitmentId']?.toString(),
+      financialCommitmentId: json['financialCommitmentId']?.toString() ?? '',
       amount: json['amount']?.toString() ?? '0',
       dueAt: _dateTimeOrNull(json['dueAt'] ?? json['dueDate']),
       status: json['status']?.toString(),
-      debtTitle: json['debtTitle']?.toString() ?? json['title']?.toString(),
-      creditorName: json['creditorName']?.toString(),
+      commitmentTitle: json['title']?.toString(),
+      partyName: json['partyName']?.toString(),
     );
   }
 
@@ -280,13 +237,12 @@ class MoneyNextInstallment {
   }
 
   final String id;
-  final String debtId;
-  final String? financialCommitmentId;
+  final String financialCommitmentId;
   final String amount;
   final DateTime? dueAt;
   final String? status;
-  final String? debtTitle;
-  final String? creditorName;
+  final String? commitmentTitle;
+  final String? partyName;
 
   bool get isPaid => status == 'PAID';
 }

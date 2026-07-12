@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 
 /// Bottom sheet showing the authenticated user's account info with a logout action.
 ///
@@ -12,7 +15,7 @@ Future<void> showAccountSheet(
   String? phone,
   required VoidCallback onLogout,
 }) {
-  return showModalBottomSheet<void>(
+  return showAarastBottomSheet<void>(
     context: context,
     backgroundColor: AppTheme.surface,
     shape: const RoundedRectangleBorder(
@@ -49,7 +52,7 @@ Future<void> showAccountSheet(
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.person_outline_rounded,
+                        LucideIcons.user,
                         color: AppTheme.burgundy,
                         size: 26,
                       ),
@@ -95,7 +98,7 @@ Future<void> showAccountSheet(
                     Navigator.of(sheetContext).pop();
                     onLogout();
                   },
-                  icon: const Icon(Icons.logout_rounded, size: 20),
+                  icon: const Icon(LucideIcons.logOut, size: 20),
                   label: const Text('تسجيل الخروج'),
                 ),
               ],

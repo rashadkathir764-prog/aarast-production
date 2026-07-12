@@ -1,6 +1,6 @@
 // Visual preview harness for the NEW premium finance widgets
-// (phase/mobile-premium-screens-v1): BudgetPulseHero + PaymentTimelineRail +
-// BudgetCategoryCard. Writes golden PNGs so the redesign can be inspected
+// (phase/mobile-premium-screens-v1): BudgetPulseHero + BudgetCategoryCard.
+// Writes golden PNGs so the redesign can be inspected
 // without a backend.
 //
 // Regenerate with:
@@ -14,7 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/widgets/premium/budget_pulse_hero.dart';
-import 'package:aarast_mobile/features/finance/widgets/premium/payment_timeline_rail.dart';
 import 'package:aarast_mobile/features/finance/widgets/premium/budget_category_card.dart';
 
 import 'support/preview_fonts.dart';
@@ -25,15 +24,15 @@ MoneySummary _healthyBudget() {
     totalBudget: '10000000',
     totalSpent: '3400000',
     remainingBudget: '6600000',
-    debtRemaining: '6400',
-    debtsCount: 3,
+    outstandingTotal: '6400',
+    commitmentsCount: 3,
     overdueInstallmentsCount: 1,
     nextInstallment: MoneyNextInstallment(
       id: 'i1',
-      debtId: 'd1',
+      financialCommitmentId: 'c1',
       amount: '500',
       dueAt: DateTime(2026, 7, 31),
-      creditorName: 'المحاسب',
+      partyName: 'المحاسب',
     ),
     categorySummaries: const [
       MoneyCategorySummary(
@@ -62,8 +61,6 @@ MoneySummary _healthyBudget() {
     ],
   );
 }
-
-final _previewNow = DateTime(2026, 7, 3);
 
 MoneySummary _noBudget() {
   return MoneySummary(weddingPlanId: 'p2', totalSpent: '700000');
@@ -108,13 +105,6 @@ void main() {
         children: [
           BudgetPulseHero(summary: s, onSetupBudget: () {}),
           const SizedBox(height: 14),
-          PaymentTimelineRail(
-            summary: s,
-            onViewDebts: () {},
-            onAddDebt: () {},
-            now: _previewNow,
-          ),
-          const SizedBox(height: 14),
           for (final row in s.categorySummaries) ...[
             BudgetCategoryCard(row: row, onOpenDetails: () {}),
             const SizedBox(height: 10),
@@ -134,11 +124,7 @@ void main() {
     await _pump(
       tester,
       Column(
-        children: [
-          BudgetPulseHero(summary: s, onSetupBudget: () {}),
-          const SizedBox(height: 14),
-          PaymentTimelineRail(summary: s, onViewDebts: () {}, onAddDebt: () {}),
-        ],
+        children: [BudgetPulseHero(summary: s, onSetupBudget: () {})],
       ),
       size: const Size(420, 700),
     );

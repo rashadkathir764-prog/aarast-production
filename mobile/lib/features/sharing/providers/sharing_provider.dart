@@ -139,7 +139,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
-    required bool canViewDebts,
+    required bool canViewFinancialRecords,
     required bool canManageTasks,
     required bool canManageFinancialRecords,
   }) async {
@@ -156,7 +156,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         role: role,
         canViewBudget: canViewBudget,
         canViewExpenses: canViewExpenses,
-        canViewDebts: canViewDebts,
+        canViewFinancialRecords: canViewFinancialRecords,
         canManageTasks: canManageTasks,
         canManageFinancialRecords: canManageFinancialRecords,
       );
@@ -191,7 +191,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
-    required bool canViewDebts,
+    required bool canViewFinancialRecords,
     required bool canEditPlan,
     required bool canManageTasks,
     required bool canManageGuests,
@@ -212,7 +212,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         role: role,
         canViewBudget: canViewBudget,
         canViewExpenses: canViewExpenses,
-        canViewDebts: canViewDebts,
+        canViewFinancialRecords: canViewFinancialRecords,
         canEditPlan: canEditPlan,
         canManageTasks: canManageTasks,
         canManageGuests: canManageGuests,
@@ -340,6 +340,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   }
 
   Future<bool> updateMember({
+    required String weddingPlanId,
     required String id,
     required String role,
     required PlanRolePermissions permissions,
@@ -352,11 +353,11 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     try {
       // الباك إند يقبل الصلاحيات العشر كاملة — نرسلها كلها حتى لا تضيع
       // تخصيصات المحرر (كانت الشاشة القديمة ترسل 5 فقط).
-      final member = await _api.updateSharedMember(id, {
+      final member = await _api.updateSharedMember(weddingPlanId, id, {
         'role': role,
         'canViewBudget': permissions.canViewBudget,
         'canViewExpenses': permissions.canViewExpenses,
-        'canViewDebts': permissions.canViewDebts,
+        'canViewFinancialRecords': permissions.canViewFinancialRecords,
         'canEditPlan': permissions.canEditPlan,
         'canManageTasks': permissions.canManageTasks,
         'canManageGuests': permissions.canManageGuests,
@@ -382,14 +383,14 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
-  Future<bool> removeMember(String id) async {
+  Future<bool> removeMember(String weddingPlanId, String id) async {
     _isSubmitting = true;
     _errorMessage = null;
     _authGateKind = null;
     notifyListeners();
 
     try {
-      await _api.deleteSharedMember(id);
+      await _api.deleteSharedMember(weddingPlanId, id);
       _members = _members.where((item) => item.id != id).toList();
       if (_selectedMember?.id == id) {
         _selectedMember = null;

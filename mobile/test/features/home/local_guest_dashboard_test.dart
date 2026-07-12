@@ -2,7 +2,6 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/features/debts/data/debt_installment_api.dart';
 import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/home/data/dashboard_summary_sources.dart';
@@ -97,15 +96,20 @@ void main() {
         amount: '500000',
         budgetCategoryId: category.id,
       );
-      final debt = await DebtInstallmentApi(apiClient, offline: offline)
-          .createDebt(
+      final commitment = await BudgetExpenseApi(apiClient, offline: offline)
+          .createFinancialCommitment(
             weddingPlanId: planId,
-            creditorName: 'القاعة',
+            budgetCategoryId: category.id,
+            partyName: 'القاعة',
             title: 'باقي القاعة',
             totalAmount: '2000000',
+            sourceType: 'MANUAL_PAYABLE',
           );
-      await DebtInstallmentApi(apiClient, offline: offline).createInstallment(
-        debtId: debt.id,
+      await BudgetExpenseApi(
+        apiClient,
+        offline: offline,
+      ).createFinancialInstallment(
+        commitmentId: commitment.id,
         amount: '2000000',
         dueDate: DateTime.now().add(const Duration(days: 7)),
       );
@@ -120,10 +124,10 @@ void main() {
       expect(summary.incompleteGuestCount, 1);
       expect(summary.taskCount, 1);
       expect(summary.spentTotal, '500000');
-      expect(summary.debtTotal, '2000000');
-      expect(summary.unpaidDebtTotal, '2000000');
+      expect(summary.commitmentTotal, '2000000');
+      expect(summary.commitmentOutstandingTotal, '2000000');
       expect(summary.dueInstallmentsCount, 1);
-      expect(royalSummary.remainingBudget, '500000');
+      expect(royalSummary.remainingBudget, '-1500000');
       expect(royalSummary.incompleteGuestsCount, 1);
       expect(royalSummary.unreadNotificationsCount, 0);
       expect(royalSummary.importantNotifications, isEmpty);
@@ -137,7 +141,7 @@ void main() {
           'LOCAL_GUEST',
           'LOCAL_TASK',
           'LOCAL_MONEY_EXPENSE',
-          'LOCAL_MONEY_DEBT',
+          'LOCAL_MONEY_COMMITMENT',
         ]),
       );
     },

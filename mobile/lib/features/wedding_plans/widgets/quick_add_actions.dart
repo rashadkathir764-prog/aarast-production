@@ -1,9 +1,36 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../core/routing/app_router.dart';
 import 'royal_home_chrome.dart';
 
 enum QuickAddContext { dashboard, money, tasks, guests, providers }
+
+IconData planQuickAddIconForTab(int tabIndex) {
+  return switch (tabIndex) {
+    1 => LucideIcons.wallet,
+    2 => LucideIcons.listPlus,
+    3 => LucideIcons.userPlus,
+    4 => LucideIcons.store,
+    _ => LucideIcons.plus,
+  };
+}
+
+/// Keeps quick-add visibility identical across the production home shell and
+/// the plan-scoped shell. Money shows it only at the tab root; providers never
+/// shows it because its primary action lives inside the marketplace flow.
+bool shouldShowPlanQuickAdd({
+  required int tabIndex,
+  bool isRootDestination = true,
+  bool canManageFinancialRecords = true,
+}) {
+  const moneyTabIndex = 1;
+  const providersTabIndex = 4;
+  return tabIndex != providersTabIndex &&
+      (tabIndex != moneyTabIndex || canManageFinancialRecords) &&
+      (tabIndex != moneyTabIndex || isRootDestination);
+}
 
 /// Canonical quick-add actions for any active wedding plan.
 ///
@@ -23,7 +50,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   openRoute,
 }) {
   final category = RoyalHomeAction(
-    icon: Icons.create_new_folder_outlined,
+    icon: LucideIcons.folderPlus,
     label: 'إضافة بند ميزانية',
     onTap: () => openRoute(
       AppRouter.createBudgetCategory(planId),
@@ -31,7 +58,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     ),
   );
   final commitment = RoyalHomeAction(
-    icon: Icons.handshake_outlined,
+    icon: LucideIcons.briefcase,
     label: 'حجز مورد / تكلفة خدمة',
     onTap: () => openRoute(
       AppRouter.createFinancialCommitment(
@@ -42,7 +69,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     ),
   );
   final payable = RoyalHomeAction(
-    icon: Icons.account_balance_wallet_outlined,
+    icon: LucideIcons.wallet,
     label: 'إضافة مستحق',
     onTap: () => openRoute(
       AppRouter.createFinancialCommitment(planId),
@@ -50,7 +77,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     ),
   );
   final payment = RoyalHomeAction(
-    icon: Icons.payments_outlined,
+    icon: LucideIcons.banknote,
     label: 'تسجيل دفعة',
     onTap: () => openRoute(
       AppRouter.recordPayment(planId),
@@ -58,17 +85,17 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     ),
   );
   final task = RoyalHomeAction(
-    icon: Icons.check_circle_outline_rounded,
+    icon: LucideIcons.listPlus,
     label: 'إضافة مهمة',
     onTap: () => openRoute(AppRouter.createTask(planId)),
   );
   final guest = RoyalHomeAction(
-    icon: Icons.group_add_outlined,
+    icon: LucideIcons.userPlus,
     label: 'إضافة ضيف',
     onTap: () => openRoute(AppRouter.guestListAdd(planId)),
   );
   final quote = RoyalHomeAction(
-    icon: Icons.request_quote_outlined,
+    icon: LucideIcons.filePlus2,
     label: 'طلب عرض سعر',
     onTap: onRequestQuote ?? () => openRoute(AppRouter.planProviders(planId)),
   );

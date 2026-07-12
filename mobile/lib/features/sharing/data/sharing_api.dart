@@ -7,6 +7,7 @@ import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
+import '../models/plan_access_permissions.dart';
 
 class SharingApi {
   const SharingApi(this._apiClient, {OfflineSyncService? offline})
@@ -14,6 +15,15 @@ class SharingApi {
 
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
+
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async {
+    final json = await _apiClient.getJson(
+      '/api/v1/wedding-plans/$weddingPlanId/permissions/me',
+    );
+    return PlanAccessPermissions.fromJson(json);
+  }
 
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
     try {
@@ -47,7 +57,7 @@ class SharingApi {
     final normalizedPhone = _normalizePhone(phone);
     final json = await _apiClient.getJson(
       Uri(
-        path: '/users/lookup',
+        path: '/api/v1/users/lookup',
         queryParameters: {
           'weddingPlanId': weddingPlanId,
           'phone': normalizedPhone,
@@ -64,7 +74,7 @@ class SharingApi {
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
-    required bool canViewDebts,
+    required bool canViewFinancialRecords,
     required bool canManageTasks,
     required bool canManageFinancialRecords,
   }) async {
@@ -74,7 +84,7 @@ class SharingApi {
       'role': role,
       'canViewBudget': canViewBudget,
       'canViewExpenses': canViewExpenses,
-      'canViewDebts': canViewDebts,
+      'canViewFinancialRecords': canViewFinancialRecords,
       'canManageTasks': canManageTasks,
       'canManageFinancialRecords': canManageFinancialRecords,
     };
@@ -82,7 +92,7 @@ class SharingApi {
       payload['phone'] = normalizedPhone;
     }
     final json = await _apiClient.postJson(
-      '/wedding-plans/$weddingPlanId/shared-members',
+      '/api/v1/wedding-plans/$weddingPlanId/members',
       payload,
     );
     return SharedMember.fromJson(json);
@@ -102,7 +112,7 @@ class SharingApi {
     required String role,
     required bool canViewBudget,
     required bool canViewExpenses,
-    required bool canViewDebts,
+    required bool canViewFinancialRecords,
     required bool canEditPlan,
     required bool canManageTasks,
     required bool canManageGuests,
@@ -119,7 +129,7 @@ class SharingApi {
           'role': role,
           'canViewBudget': canViewBudget,
           'canViewExpenses': canViewExpenses,
-          'canViewDebts': canViewDebts,
+          'canViewFinancialRecords': canViewFinancialRecords,
           'canEditPlan': canEditPlan,
           'canManageTasks': canManageTasks,
           'canManageGuests': canManageGuests,
@@ -174,21 +184,27 @@ class SharingApi {
   }
 
   Future<SharedMember> updateSharedMember(
+    String weddingPlanId,
     String id,
     Map<String, dynamic> data,
   ) async {
-    final json = await _apiClient.patchJson('/shared-members/$id', data);
+    final json = await _apiClient.patchJson(
+      '/api/v1/wedding-plans/$weddingPlanId/members/$id',
+      data,
+    );
     return SharedMember.fromJson(json);
   }
 
-  Future<void> deleteSharedMember(String id) async {
-    await _apiClient.deleteJson('/shared-members/$id');
+  Future<void> deleteSharedMember(String weddingPlanId, String id) async {
+    await _apiClient.deleteJson(
+      '/api/v1/wedding-plans/$weddingPlanId/members/$id',
+    );
   }
 
   Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
     const key = 'shared_wedding_plans';
     try {
-      final items = await _getJsonMapList('/shared/wedding-plans');
+      final items = await _getJsonMapList('/api/v1/shared/wedding-plans');
       await _offline?.database.setMeta(key, jsonEncode(items));
       return items.map(SharedWeddingPlan.fromJson).toList();
     } on Object catch (error) {

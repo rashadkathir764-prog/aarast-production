@@ -8,6 +8,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/plan_status_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
@@ -64,16 +65,11 @@ class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
         .setActiveWeddingPlan(plan.id);
     if (!mounted) return;
     if (active == null) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              context.read<WeddingPlansProvider>().errorMessage ??
-                  'تعذر فتح الخطة المختارة.',
-            ),
-          ),
-        );
+      AarastToast.showError(
+        context,
+        context.read<WeddingPlansProvider>().errorMessage ??
+            'تعذر فتح الخطة المختارة.',
+      );
       return;
     }
     if (widget.onSelectPlan != null) {

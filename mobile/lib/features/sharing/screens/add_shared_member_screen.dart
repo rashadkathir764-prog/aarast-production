@@ -199,7 +199,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       role: _role,
       canViewBudget: _permissions.canViewBudget,
       canViewExpenses: _permissions.canViewExpenses,
-      canViewDebts: _permissions.canViewDebts,
+      canViewFinancialRecords: _permissions.canViewFinancialRecords,
       canEditPlan: _permissions.canEditPlan,
       canManageTasks: _permissions.canManageTasks,
       canManageGuests: _permissions.canManageGuests,

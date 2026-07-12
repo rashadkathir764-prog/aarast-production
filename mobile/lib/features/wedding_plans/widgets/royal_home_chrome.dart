@@ -439,7 +439,7 @@ class _RoyalSheetHeader extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.close_rounded,
+                  LucideIcons.x,
                   color: AppTheme.burgundy,
                   size: 22,
                 ),

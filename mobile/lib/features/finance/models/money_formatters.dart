@@ -1,38 +1,81 @@
-﻿class CompactYemeniMoneyParts {
+import '../../../core/utils/currency_label.dart';
+
+class CompactYemeniMoneyParts {
   const CompactYemeniMoneyParts({
     required this.number,
     required this.currency,
+    required this.spokenCurrency,
     this.millionUnit,
   });
 
   final String number;
   final String? millionUnit;
   final String currency;
+  final String spokenCurrency;
 
   String get plainText {
     final unit = millionUnit;
-    return unit == null ? '$number $currency' : '$number$unit $currency';
+    return unit == null ? '$number $currency' : '$number $unit $currency';
+  }
+
+  String get semanticText {
+    final unit = millionUnit;
+    return unit == null
+        ? '$number $spokenCurrency'
+        : '$number $unit $spokenCurrency';
+  }
+
+  /// A directionally isolated representation for embedding inside Arabic text.
+  ///
+  /// The outer LTR isolate keeps the numeric amount in reading order, while
+  /// each Arabic suffix is its own RTL isolate. This prevents Unicode bidi
+  /// reordering from turning `1.5 مليون ر.ي` into a detached unit/currency.
+  String get directionalText {
+    final unit = millionUnit;
+    final suffix = unit == null
+        ? _isolateRtl(currency)
+        : '${_isolateRtl(unit)} ${_isolateRtl(currency)}';
+    return _isolateLtr('$number $suffix');
   }
 }
 
 CompactYemeniMoneyParts compactYemeniMoneyParts(num value) {
+  return compactMoneyParts(value, currencyCode: defaultCurrencyCode);
+}
+
+CompactYemeniMoneyParts compactMoneyParts(
+  num value, {
+  required String currencyCode,
+}) {
   final absValue = value.abs();
   final negative = value < 0 ? '-' : '';
   if (absValue >= 1000000) {
     return CompactYemeniMoneyParts(
       number: '$negative${_trimDecimal(absValue / 1000000)}',
-      millionUnit: 'م',
-      currency: 'ر.ي',
+      millionUnit: 'مليون',
+      currency: currencyLabelAr(currencyCode),
+      spokenCurrency: currencySpokenLabelAr(currencyCode),
     );
   }
   return CompactYemeniMoneyParts(
     number: '$negative${_formatMoney(absValue)}',
-    currency: 'ر.ي',
+    currency: currencyLabelAr(currencyCode),
+    spokenCurrency: currencySpokenLabelAr(currencyCode),
+  );
+}
+
+String formatCompactMoney(num value, {required String currencyCode}) {
+  return compactMoneyParts(value, currencyCode: currencyCode).directionalText;
+}
+
+String plainCompactMoneyForTests(num value, {required String currencyCode}) {
+  return stripMoneyDirectionalityMarks(
+    formatCompactMoney(value, currencyCode: currencyCode),
   );
 }
 
 String formatCompactYemeniMoney(num value) {
-  return _isolateLtr(compactYemeniMoneyParts(value).plainText);
+  return formatCompactMoney(value, currencyCode: defaultCurrencyCode);
 }
 
 String plainCompactYemeniMoneyForTests(num value) {
@@ -49,12 +92,12 @@ String stripMoneyDirectionalityMarks(String value) {
       .replaceAll('\u200f', '');
 }
 
-String _isolateLtr(String value) {
-  return '\u2066$value\u2069';
-}
+String _isolateLtr(String value) => '\u2066$value\u2069';
+
+String _isolateRtl(String value) => '\u2067$value\u2069';
 
 String _trimDecimal(num value) {
-  final fixed = value.toStringAsFixed(value >= 10 ? 0 : 1);
+  final fixed = value.toStringAsFixed(1);
   return fixed.endsWith('.0') ? fixed.substring(0, fixed.length - 2) : fixed;
 }
 

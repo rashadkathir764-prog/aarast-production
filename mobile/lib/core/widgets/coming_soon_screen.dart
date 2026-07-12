@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
@@ -8,7 +9,7 @@ class AarastComingSoonScreen extends StatelessWidget {
   const AarastComingSoonScreen({
     required this.title,
     required this.message,
-    this.icon = Icons.auto_awesome_rounded,
+    this.icon = LucideIcons.sparkles,
     super.key,
   });
 
@@ -36,7 +37,7 @@ class AarastComingSoonScreen extends StatelessWidget {
                   context.go('/home');
                 }
               },
-              icon: const Icon(Icons.chevron_right_rounded),
+              icon: const Icon(LucideIcons.chevronRight),
               label: const Text('رجوع'),
             ),
           ),
@@ -45,7 +46,7 @@ class AarastComingSoonScreen extends StatelessWidget {
             color: AppTheme.surface,
             child: Row(
               children: [
-                Icon(Icons.lock_outline_rounded, color: AppTheme.gold),
+                Icon(LucideIcons.lock, color: AppTheme.gold),
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(

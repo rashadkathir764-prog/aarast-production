@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
 
@@ -37,7 +39,7 @@ class AarastErrorState extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
                 child: const Icon(
-                  Icons.error_outline_rounded,
+                  LucideIcons.alertCircle,
                   color: AppTheme.danger,
                 ),
               ),
@@ -68,7 +70,7 @@ class AarastErrorState extends StatelessWidget {
             const SizedBox(height: 16),
             AarastButton(
               label: retryLabel,
-              icon: Icons.refresh_rounded,
+              icon: LucideIcons.refreshCw,
               variant: AarastButtonVariant.secondary,
               onPressed: onRetry,
             ),

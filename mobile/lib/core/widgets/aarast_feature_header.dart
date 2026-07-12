@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../theme/aarast_motion.dart';
 import '../theme/app_theme.dart';
 import 'aarast_ui.dart';
@@ -16,7 +18,7 @@ class AarastFeatureHeader extends StatelessWidget {
     this.subtitle,
     this.statusLabel,
     this.statusColor = AppTheme.burgundy,
-    this.statusIcon = Icons.verified_outlined,
+    this.statusIcon = LucideIcons.badgeCheck,
     this.actions = const [],
     this.showBack = false,
     this.onBack,
@@ -42,7 +44,7 @@ class AarastFeatureHeader extends StatelessWidget {
             IconButton(
               tooltip: 'رجوع',
               onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_forward_rounded),
+              icon: const Icon(LucideIcons.arrowRight),
             ),
             const SizedBox(width: AppTheme.gapSm),
           ],
@@ -82,10 +84,7 @@ class AarastFeatureHeader extends StatelessWidget {
               icon: statusIcon,
             ),
           ],
-          for (final action in actions) ...[
-            const SizedBox(width: 8),
-            action,
-          ],
+          for (final action in actions) ...[const SizedBox(width: 8), action],
         ],
       ),
     );

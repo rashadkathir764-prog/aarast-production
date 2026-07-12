@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../theme/app_theme.dart';
 
 class AarastPremiumBrandMark extends StatelessWidget {
@@ -56,7 +58,7 @@ class AarastPremiumBrandMark extends StatelessWidget {
                     ],
                   ),
                   child: const Icon(
-                    Icons.auto_awesome_rounded,
+                    LucideIcons.sparkles,
                     color: AppTheme.ivory,
                     size: 18,
                   ),
@@ -65,7 +67,7 @@ class AarastPremiumBrandMark extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-            'اعّرست',
+              'اعّرست',
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                 color: AppTheme.burgundy,
                 fontSize: 42,

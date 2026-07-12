@@ -59,6 +59,7 @@ void main() {
         'lib/core/widgets/aarast_error_state.dart',
         'lib/core/widgets/aarast_status_badge.dart',
         'lib/core/widgets/aarast_bottom_sheet.dart',
+        'lib/core/widgets/aarast_dialog.dart',
         'lib/core/widgets/aarast_metric_tile.dart',
         'lib/core/widgets/aarast_pressable.dart',
       ];
@@ -123,6 +124,84 @@ void main() {
       expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
 
+    test('keeps all production icons on the Lucide design language', () {
+      final rawMaterialIcon = RegExp(r'(?<![A-Za-z0-9_])Icons\.[A-Za-z0-9_]+');
+      final offenders = <String>[];
+
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final lines = entity.readAsLinesSync();
+        for (var index = 0; index < lines.length; index += 1) {
+          for (final match in rawMaterialIcon.allMatches(lines[index])) {
+            offenders.add('${entity.path}:${index + 1}: ${match.group(0)}');
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('routes feature dialogs through AarastDialog', () {
+      final roots = [Directory('lib/features'), Directory('lib/shared')];
+      final offenders = <String>[];
+
+      for (final root in roots.where((directory) => directory.existsSync())) {
+        for (final entity in root.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final lines = entity.readAsLinesSync();
+          for (var index = 0; index < lines.length; index += 1) {
+            if (RegExp(
+              r'(^|[^A-Za-z0-9_])AlertDialog\s*\(',
+            ).hasMatch(lines[index])) {
+              offenders.add('${entity.path}:${index + 1}');
+            }
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('routes transient feedback through AarastToast', () {
+      final roots = [Directory('lib/features'), Directory('lib/shared')];
+      final offenders = <String>[];
+
+      for (final root in roots.where((directory) => directory.existsSync())) {
+        for (final entity in root.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final lines = entity.readAsLinesSync();
+          for (var index = 0; index < lines.length; index += 1) {
+            if (RegExp(
+              r'(^|[^A-Za-z0-9_])SnackBar\s*\(',
+            ).hasMatch(lines[index])) {
+              offenders.add('${entity.path}:${index + 1}');
+            }
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
+    test('routes feature sheets through showAarastBottomSheet', () {
+      final roots = [Directory('lib/features'), Directory('lib/shared')];
+      final offenders = <String>[];
+
+      for (final root in roots.where((directory) => directory.existsSync())) {
+        for (final entity in root.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final lines = entity.readAsLinesSync();
+          for (var index = 0; index < lines.length; index += 1) {
+            if (lines[index].contains('showModalBottomSheet')) {
+              offenders.add('${entity.path}:${index + 1}');
+            }
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
     test('routes every production screen through Premium 2027 wrappers', () {
       // كل شاشة موجهة في التطبيق — لا شاشة خارج المستوى الفاخر الموحّد.
       // ملفات export الخالصة وقشرة الـ ShellRoute خارج القائمة عمداً.
@@ -154,10 +233,6 @@ void main() {
         'lib/features/finance/screens/financial_payment_record_details_screen.dart',
         'lib/features/finance/screens/expenses_screen.dart',
         'lib/features/finance/screens/record_payment_screen.dart',
-        'lib/features/debts/screens/debt_installment_screen.dart',
-        'lib/features/debts/screens/create_debt_screen.dart',
-        'lib/features/debts/screens/debt_details_screen.dart',
-        'lib/features/debts/screens/create_installment_screen.dart',
         'lib/features/tasks/screens/task_timeline_screen.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
         'lib/features/guests/screens/guest_list_screen.dart',
@@ -356,7 +431,7 @@ void main() {
           'plan_center_screen.dart',
           'provider_dashboard_screen.dart',
           'sharing_screen.dart',
-          'create_debt_screen.dart',
+          'create_financial_commitment_screen.dart',
         ]) {
           expect(text, contains(expected), reason: expected);
         }

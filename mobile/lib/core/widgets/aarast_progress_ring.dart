@@ -48,8 +48,7 @@ class AarastProgressRing extends StatelessWidget {
           painter: _RingPainter(
             progress: animated,
             strokeWidth: strokeWidth,
-            trackColor:
-                trackColor ?? Colors.white.withValues(alpha: 0.14),
+            trackColor: trackColor ?? Colors.white.withValues(alpha: 0.14),
             gradientColors: gradientColors,
             tipColor: tipColor,
           ),

@@ -1,11 +1,14 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../theme/app_theme.dart';
 import '../theme/aarast_motion.dart';
 import 'aarast_pressable.dart';
 
 export 'aarast_bottom_sheet.dart';
 export 'aarast_button.dart';
+export 'aarast_dialog.dart';
 export 'aarast_error_state.dart';
 export 'aarast_feature_header.dart';
 export 'aarast_loading_state.dart';
@@ -172,7 +175,7 @@ class AarastPageHeader extends StatelessWidget {
         if (showBack) ...[
           IconButton(
             onPressed: onBack ?? () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_forward_rounded),
+            icon: const Icon(LucideIcons.arrowRight),
             tooltip: 'رجوع',
           ),
           const SizedBox(width: AppTheme.gapSm),
@@ -380,7 +383,7 @@ class AarastEmptyState extends StatelessWidget {
   const AarastEmptyState({
     required this.title,
     required this.message,
-    this.icon = Icons.inbox_outlined,
+    this.icon = LucideIcons.inbox,
     this.action,
     super.key,
   });

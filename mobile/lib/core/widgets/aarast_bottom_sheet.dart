@@ -5,26 +5,41 @@ import '../theme/app_theme.dart';
 Future<T?> showAarastBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
+  bool isScrollControlled = false,
+  bool useSafeArea = false,
+  Color? backgroundColor,
+  Color? barrierColor,
+  ShapeBorder? shape,
+  Clip? clipBehavior,
+  BoxConstraints? constraints,
+  bool isDismissible = true,
+  bool enableDrag = true,
+  bool? showDragHandle,
+  bool useRootNavigator = false,
 }) {
   return showModalBottomSheet<T>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: Colors.transparent,
-    barrierColor: AppTheme.ink.withAlpha(105),
+    isScrollControlled: isScrollControlled,
+    useSafeArea: useSafeArea,
+    backgroundColor: backgroundColor ?? AppTheme.surface,
+    barrierColor: barrierColor ?? AppTheme.ink.withAlpha(105),
+    shape:
+        shape ??
+        const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusXl),
+          ),
+        ),
+    clipBehavior: clipBehavior,
+    constraints: constraints,
+    isDismissible: isDismissible,
+    enableDrag: enableDrag,
+    showDragHandle: showDragHandle,
+    useRootNavigator: useRootNavigator,
     builder: (context) {
       return Directionality(
         textDirection: TextDirection.rtl,
-        child: Container(
-          margin: const EdgeInsets.only(top: 16),
-          decoration: const BoxDecoration(
-            color: AppTheme.ivory,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(AppTheme.radiusXl),
-            ),
-          ),
-          child: builder(context),
-        ),
+        child: Builder(builder: builder),
       );
     },
   );

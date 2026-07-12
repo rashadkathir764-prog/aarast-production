@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import 'aarast_design_tokens.dart';
@@ -45,9 +45,7 @@ class AarastStagger {
 
   /// يلفّ قائمة أطفال كاملة — جاهزة لـ ListView/Column مباشرة.
   static List<Widget> children(BuildContext context, List<Widget> items) {
-    return [
-      for (var i = 0; i < items.length; i++) item(context, items[i], i),
-    ];
+    return [for (var i = 0; i < items.length; i++) item(context, items[i], i)];
   }
 }
 

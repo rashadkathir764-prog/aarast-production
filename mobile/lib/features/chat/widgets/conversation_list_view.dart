@@ -75,6 +75,16 @@ class _ConversationListViewState extends State<ConversationListView> {
               ),
               const SizedBox(height: 10),
             ],
+          if (chat.canLoadMoreConversations)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: AarastButton(
+                label: 'عرض المزيد',
+                icon: LucideIcons.chevronsDown,
+                isLoading: chat.isLoadingMoreConversations,
+                onPressed: chat.loadMoreConversations,
+              ),
+            ),
         ],
       ),
     );

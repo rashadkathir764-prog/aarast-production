@@ -119,9 +119,12 @@ AarastNotification _notification({
   required int hoursAgo,
   String priority = 'NORMAL',
 }) {
-  final createdAt = DateTime(2026, 7, 10, 12).subtract(
-    Duration(hours: hoursAgo),
-  );
+  final createdAt = DateTime(
+    2026,
+    7,
+    10,
+    12,
+  ).subtract(Duration(hours: hoursAgo));
   return AarastNotification(
     id: id,
     userId: 'user-1',
@@ -142,10 +145,19 @@ class _FakeNotificationsApi extends NotificationsApi {
   final List<AarastNotification> _items;
 
   @override
-  Future<List<AarastNotification>> getNotifications({
+  Future<NotificationsPage> getNotifications({
     String? weddingPlanId,
+    int page = 1,
+    int limit = 20,
   }) async {
-    return _items;
+    return NotificationsPage(
+      items: _items,
+      page: page,
+      limit: limit,
+      total: _items.length,
+      totalPages: _items.isEmpty ? 0 : 1,
+      hasMore: false,
+    );
   }
 
   @override

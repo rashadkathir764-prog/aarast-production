@@ -34,6 +34,28 @@ void main() {
     );
   });
 
+  test('chat API requests and parses a conversation cursor page', () async {
+    final client = _ConversationListApiClient();
+    final page = await ChatApi(client).listConversations(cursor: 'cursor-1');
+
+    final uri = Uri.parse(client.lastPath!);
+    expect(uri.path, '/api/v1/conversations');
+    expect(uri.queryParameters['cursor'], 'cursor-1');
+    expect(page.items.single.id, 'conversation-api');
+    expect(page.nextCursor, 'cursor-2');
+  });
+
+  test('chat API fetches one conversation for a direct route', () async {
+    final client = _ConversationListApiClient();
+
+    final conversation = await ChatApi(
+      client,
+    ).getConversation('conversation-api');
+
+    expect(client.lastPath, '/api/v1/conversations/conversation-api');
+    expect(conversation.id, 'conversation-api');
+  });
+
   test(
     'opening a conversation starts realtime even without inbox initialization',
     () async {
@@ -66,6 +88,70 @@ void main() {
 
     expect(chat.conversations.single.id, 'conversation-1');
     expect(chat.conversations.single.blocked, isTrue);
+    chat.dispose();
+  });
+
+  test(
+    'direct conversation open hydrates metadata outside the first inbox page',
+    () async {
+      final api = _FakeChatApi(
+        conversationPage: ChatConversationPage(
+          items: [_conversation(id: 'conversation-newest')],
+          nextCursor: 'conversation-newest',
+        ),
+        directConversation: _conversation(
+          id: 'conversation-old',
+          blocked: true,
+          blockedByCounterpart: true,
+        ),
+      );
+      final chat = ChatProvider(
+        api: api,
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+      );
+
+      await chat.openConversation('conversation-old');
+
+      final hydrated = chat.conversations.singleWhere(
+        (item) => item.id == 'conversation-old',
+      );
+      expect(hydrated.blocked, isTrue);
+      expect(hydrated.blockedByCounterpart, isTrue);
+      expect(api.requestedConversationIds, ['conversation-old']);
+      chat.dispose();
+    },
+  );
+
+  test('conversation inbox appends cursor pages without duplicates', () async {
+    final api = _FakeChatApi(
+      conversationPage: ChatConversationPage(
+        items: [_conversation(id: 'conversation-1')],
+        nextCursor: 'conversation-1',
+      ),
+      olderConversationPage: ChatConversationPage(
+        items: [
+          _conversation(id: 'conversation-1'),
+          _conversation(id: 'conversation-2'),
+        ],
+      ),
+    );
+    final chat = ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+
+    await chat.loadConversations();
+    expect(chat.canLoadMoreConversations, isTrue);
+    await chat.loadMoreConversations();
+
+    expect(chat.conversations.map((item) => item.id), [
+      'conversation-1',
+      'conversation-2',
+    ]);
+    expect(chat.canLoadMoreConversations, isFalse);
+    expect(api.requestedConversationCursors, [null, 'conversation-1']);
     chat.dispose();
   });
 
@@ -394,12 +480,13 @@ void main() {
 }
 
 ChatConversation _conversation({
+  String id = 'conversation-1',
   bool blocked = false,
   bool blockedByMe = false,
   bool blockedByCounterpart = false,
   DateTime? counterpartLastReadAt,
 }) => ChatConversation(
-  id: 'conversation-1',
+  id: id,
   quoteRequestId: 'quote-1',
   counterpart: const ChatUser(id: 'provider-user-1', name: 'المزوّد'),
   unreadCount: 0,
@@ -427,6 +514,9 @@ ChatMessage _message({
 class _FakeChatApi extends ChatApi {
   _FakeChatApi({
     this.conversations = const [],
+    this.conversationPage,
+    this.olderConversationPage,
+    this.directConversation,
     this.initialPage = const ChatMessagePage(items: []),
     this.olderPage = const ChatMessagePage(items: []),
     this.actionError,
@@ -434,15 +524,38 @@ class _FakeChatApi extends ChatApi {
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final List<ChatConversation> conversations;
+  final ChatConversationPage? conversationPage;
+  final ChatConversationPage? olderConversationPage;
+  final ChatConversation? directConversation;
   final ChatMessagePage initialPage;
   final ChatMessagePage olderPage;
   final ApiException? actionError;
   final ApiException? sendError;
   void Function(ChatMessage message)? onSend;
   int markReadCalls = 0;
+  final List<String?> requestedConversationCursors = [];
+  final List<String> requestedConversationIds = [];
 
   @override
-  Future<List<ChatConversation>> listConversations() async => conversations;
+  Future<ChatConversation> getConversation(String conversationId) async {
+    requestedConversationIds.add(conversationId);
+    final result = directConversation;
+    if (result != null && result.id == conversationId) return result;
+    return conversations.cast<ChatConversation?>().firstWhere(
+          (item) => item?.id == conversationId,
+          orElse: () => null,
+        ) ??
+        _conversation(id: conversationId);
+  }
+
+  @override
+  Future<ChatConversationPage> listConversations({String? cursor}) async {
+    requestedConversationCursors.add(cursor);
+    if (cursor != null && olderConversationPage != null) {
+      return olderConversationPage!;
+    }
+    return conversationPage ?? ChatConversationPage(items: conversations);
+  }
 
   @override
   Future<ChatMessagePage> messages(
@@ -470,6 +583,34 @@ class _FakeChatApi extends ChatApi {
   @override
   Future<void> setBlocked(String conversationId, bool enabled) async {
     if (actionError != null) throw actionError!;
+  }
+}
+
+class _ConversationListApiClient extends ApiClient {
+  _ConversationListApiClient() : super(tokenProvider: () async => null);
+
+  String? lastPath;
+
+  @override
+  Future<Map<String, dynamic>> getJson(String path) async {
+    lastPath = path;
+    final conversation = {
+      'id': 'conversation-api',
+      'quoteRequestId': 'quote-api',
+      'counterpart': {'id': 'provider-api', 'name': 'المزوّد'},
+      'unreadCount': 0,
+      'muted': false,
+      'blocked': false,
+      'createdAt': '2026-07-11T00:00:00.000Z',
+      'updatedAt': '2026-07-11T00:00:00.000Z',
+    };
+    if (path == '/api/v1/conversations/conversation-api') {
+      return conversation;
+    }
+    return {
+      'items': [conversation],
+      'nextCursor': 'cursor-2',
+    };
   }
 }
 

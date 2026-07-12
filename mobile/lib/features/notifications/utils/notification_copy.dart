@@ -48,8 +48,5 @@ NotificationCopy localizeNotification({
   }
 
   // نوع غير معروف بنص إنجليزي: على الأقل لا نعرض عنوانًا إنجليزيًا فجًّا.
-  return NotificationCopy(
-    _looksEnglish(title) ? 'تنبيه جديد' : title,
-    body,
-  );
+  return NotificationCopy(_looksEnglish(title) ? 'تنبيه جديد' : title, body);
 }

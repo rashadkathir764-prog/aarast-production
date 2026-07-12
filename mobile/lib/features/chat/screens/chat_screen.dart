@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/chat_api.dart';
 import '../models/chat_models.dart';
@@ -156,15 +157,11 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) setState(() => _attachment = ticket);
     } on ApiException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(error.message)));
+        AarastToast.showError(context, error.message);
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تعذر رفع الصورة الآن.')));
+        AarastToast.showError(context, 'تعذر رفع الصورة الآن.');
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -184,9 +181,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!ok) {
       final message = context.read<ChatProvider>().errorMessage;
       if (message != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(message)));
+        AarastToast.showError(context, message);
       }
       return;
     }
@@ -242,9 +237,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted || succeeded == null) return;
     final message = succeeded ? successMessage : chat.errorMessage;
     if (message != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      if (succeeded) {
+        AarastToast.showSuccess(context, message);
+      } else {
+        AarastToast.showError(context, message);
+      }
     }
   }
 
@@ -657,7 +654,7 @@ Future<String?> _reportReason(BuildContext context) async {
   final controller = TextEditingController();
   final result = await showDialog<String>(
     context: context,
-    builder: (context) => AlertDialog(
+    builder: (context) => AarastDialog(
       title: const Text('إبلاغ عن المحادثة'),
       content: TextField(
         controller: controller,

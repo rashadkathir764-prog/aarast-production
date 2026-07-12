@@ -150,9 +150,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
 
     return ListView.separated(
-      itemCount: notifications.length,
+      itemCount: notifications.length + (provider.hasMore ? 1 : 0),
       separatorBuilder: (context, index) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
+        if (index == notifications.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: AarastButton(
+              label: 'عرض المزيد',
+              icon: LucideIcons.chevronsDown,
+              isLoading: provider.isLoadingMore,
+              onPressed: () =>
+                  provider.loadMore(weddingPlanId: widget.weddingPlanId),
+            ),
+          );
+        }
         final notification = notifications[index];
         return AarastStagger.item(
           context,

@@ -2,7 +2,6 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/notifications/data/notifications_api.dart';
-import 'package:aarast_mobile/features/notifications/models/aarast_notification.dart';
 import 'package:aarast_mobile/features/notifications/providers/notifications_provider.dart';
 import 'package:aarast_mobile/features/notifications/screens/notifications_screen.dart';
 import 'package:flutter/material.dart';
@@ -87,11 +86,20 @@ class _FakeNotificationsApi extends NotificationsApi {
   int getUnreadCountCalls = 0;
 
   @override
-  Future<List<AarastNotification>> getNotifications({
+  Future<NotificationsPage> getNotifications({
     String? weddingPlanId,
+    int page = 1,
+    int limit = 20,
   }) async {
     getNotificationsCalls += 1;
-    return const [];
+    return NotificationsPage(
+      items: const [],
+      page: page,
+      limit: limit,
+      total: 0,
+      totalPages: 0,
+      hasMore: false,
+    );
   }
 
   @override

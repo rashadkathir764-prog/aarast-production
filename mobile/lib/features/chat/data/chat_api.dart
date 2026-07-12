@@ -7,22 +7,27 @@ class ChatApi {
 
   final ApiClient _apiClient;
 
-  Future<List<ChatConversation>> listConversations() async {
-    final list = await _apiClient.getJsonList('/conversations');
-    return list
-        .whereType<Map>()
-        .map(
-          (item) => ChatConversation.fromJson(Map<String, dynamic>.from(item)),
-        )
-        .toList(growable: false);
+  Future<ChatConversationPage> listConversations({String? cursor}) async {
+    final suffix = cursor == null
+        ? ''
+        : '?cursor=${Uri.encodeQueryComponent(cursor)}';
+    return ChatConversationPage.fromJson(
+      await _apiClient.getJson('/api/v1/conversations$suffix'),
+    );
   }
 
   Future<ChatConversation> ensureForQuote(String quoteRequestId) async {
     final json = await _apiClient.postJson(
-      '/conversations/quote-requests/$quoteRequestId',
+      '/api/v1/conversations/quote-requests/$quoteRequestId',
       const {},
     );
     return ChatConversation.fromJson(json);
+  }
+
+  Future<ChatConversation> getConversation(String conversationId) async {
+    return ChatConversation.fromJson(
+      await _apiClient.getJson('/api/v1/conversations/$conversationId'),
+    );
   }
 
   Future<ChatMessagePage> messages(
@@ -34,7 +39,7 @@ class ChatApi {
         : '?cursor=${Uri.encodeQueryComponent(cursor)}';
     return ChatMessagePage.fromJson(
       await _apiClient.getJson(
-        '/conversations/$conversationId/messages$suffix',
+        '/api/v1/conversations/$conversationId/messages$suffix',
       ),
     );
   }
@@ -45,7 +50,7 @@ class ChatApi {
     List<MediaUploadTicket> attachments = const [],
   }) async {
     final json = await _apiClient.postJson(
-      '/conversations/$conversationId/messages',
+      '/api/v1/conversations/$conversationId/messages',
       {
         'body': body,
         if (attachments.isNotEmpty)
@@ -68,29 +73,32 @@ class ChatApi {
     String attachmentId,
   ) async {
     final json = await _apiClient.getJson(
-      '/conversations/$conversationId/attachments/$attachmentId/download',
+      '/api/v1/conversations/$conversationId/attachments/$attachmentId/download',
     );
     return ChatAttachmentAccess.fromJson(json);
   }
 
   Future<void> markRead(String conversationId) async {
-    await _apiClient.patchJson('/conversations/$conversationId/read', const {});
+    await _apiClient.patchJson(
+      '/api/v1/conversations/$conversationId/read',
+      const {},
+    );
   }
 
   Future<void> setMuted(String conversationId, bool enabled) async {
-    await _apiClient.patchJson('/conversations/$conversationId/mute', {
+    await _apiClient.patchJson('/api/v1/conversations/$conversationId/mute', {
       'enabled': enabled,
     });
   }
 
   Future<void> setBlocked(String conversationId, bool enabled) async {
-    await _apiClient.patchJson('/conversations/$conversationId/block', {
+    await _apiClient.patchJson('/api/v1/conversations/$conversationId/block', {
       'enabled': enabled,
     });
   }
 
   Future<void> report(String conversationId, String reason) async {
-    await _apiClient.postJson('/conversations/$conversationId/report', {
+    await _apiClient.postJson('/api/v1/conversations/$conversationId/report', {
       'reason': reason,
     });
   }

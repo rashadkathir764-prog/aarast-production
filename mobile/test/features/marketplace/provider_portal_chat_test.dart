@@ -327,9 +327,9 @@ class _CountingChatApi extends ChatApi {
   int listCalls = 0;
 
   @override
-  Future<List<ChatConversation>> listConversations() async {
+  Future<ChatConversationPage> listConversations({String? cursor}) async {
     listCalls += 1;
-    return const [];
+    return const ChatConversationPage(items: []);
   }
 }
 

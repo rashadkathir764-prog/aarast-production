@@ -21,10 +21,7 @@ void main() {
     expect(notification.priority, 'HIGH');
     expect(notification.entityType, 'quote_request');
     expect(notification.entityId, 'quote-1');
-    expect(
-      notification.routeTarget,
-      '/wedding-plans/plan-1/plan-center',
-    );
+    expect(notification.routeTarget, '/wedding-plans/plan-1/plan-center');
     expect(notification.isUnread, isTrue);
   });
 

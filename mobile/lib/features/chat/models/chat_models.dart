@@ -189,6 +189,19 @@ class ChatMessagePage {
   final String? nextCursor;
 }
 
+class ChatConversationPage {
+  const ChatConversationPage({required this.items, this.nextCursor});
+
+  factory ChatConversationPage.fromJson(Map<String, dynamic> json) =>
+      ChatConversationPage(
+        items: _list(json['items'], ChatConversation.fromJson),
+        nextCursor: json['nextCursor']?.toString(),
+      );
+
+  final List<ChatConversation> items;
+  final String? nextCursor;
+}
+
 T? _map<T>(Object? value, T Function(Map<String, dynamic>) mapper) {
   final map = _jsonMap(value);
   return map == null ? null : mapper(map);

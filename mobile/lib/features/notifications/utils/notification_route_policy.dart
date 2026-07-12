@@ -4,6 +4,5 @@ bool isSafeNotificationRouteTarget(String target) {
       target.startsWith('/providers/') ||
       target.startsWith('/conversations/') ||
       target.startsWith('/invites/') ||
-      target.startsWith('/wedding-plans/') ||
-      target.startsWith('/debts/');
+      target.startsWith('/wedding-plans/');
 }

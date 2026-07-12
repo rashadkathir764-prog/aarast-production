@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
@@ -12,15 +12,20 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+  bool _isLoadingMore = false;
   String? _errorMessage;
   List<AarastNotification> _notifications = const [];
   int _unreadCount = 0;
+  int _page = 0;
+  bool _hasMore = false;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
+  bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;
   List<AarastNotification> get notifications => _notifications;
   int get unreadCount => _unreadCount;
+  bool get hasMore => _hasMore;
 
   Future<void> loadNotifications({String? weddingPlanId}) async {
     _isLoading = true;
@@ -28,9 +33,10 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
 
     try {
-      _notifications = await _api.getNotifications(
-        weddingPlanId: weddingPlanId,
-      );
+      final result = await _api.getNotifications(weddingPlanId: weddingPlanId);
+      _notifications = result.items;
+      _page = result.page;
+      _hasMore = result.hasMore;
       _unreadCount = await _api.getUnreadCount();
     } on ApiException catch (error) {
       _errorMessage = error.message;
@@ -38,6 +44,34 @@ class NotificationsProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = 'تعذر تحميل التنبيهات.';
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMore({String? weddingPlanId}) async {
+    if (_isLoading || _isLoadingMore || !_hasMore) return;
+    _isLoadingMore = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final result = await _api.getNotifications(
+        weddingPlanId: weddingPlanId,
+        page: _page + 1,
+      );
+      final existingIds = _notifications.map((item) => item.id).toSet();
+      _notifications = [
+        ..._notifications,
+        ...result.items.where((item) => existingIds.add(item.id)),
+      ];
+      _page = result.page;
+      _hasMore = result.hasMore;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+    } catch (_) {
+      _errorMessage = 'تعذر تحميل المزيد من التنبيهات.';
+    } finally {
+      _isLoadingMore = false;
       notifyListeners();
     }
   }

@@ -31,15 +31,19 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   final Map<String, String?> _nextCursors = {};
   final Set<String> _loadingOlder = {};
   final Set<String> _conversationLoadErrors = {};
+  String? _nextConversationCursor;
+  bool _isLoadingMoreConversations = false;
   bool _realtimeStarted = false;
   String? _activeConversationId;
   String? _sessionUserId;
 
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
+  bool get isLoadingMoreConversations => _isLoadingMoreConversations;
   String? get errorMessage => _errorMessage;
   List<ChatConversation> get conversations => _conversations;
   String? get currentUserId => _sessionUserId;
+  bool get canLoadMoreConversations => _nextConversationCursor != null;
   List<ChatMessage> messagesFor(String conversationId) =>
       _messages[conversationId] ?? const [];
   bool canLoadOlder(String conversationId) =>
@@ -72,6 +76,8 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _nextCursors.clear();
     _loadingOlder.clear();
     _conversationLoadErrors.clear();
+    _nextConversationCursor = null;
+    _isLoadingMoreConversations = false;
     if (userId != null) _startRealtime();
     notifyListeners();
   }
@@ -110,7 +116,9 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     _errorMessage = null;
     notifyListeners();
     try {
-      _conversations = await _api.listConversations();
+      final page = await _api.listConversations();
+      _conversations = page.items;
+      _nextConversationCursor = page.nextCursor;
       for (final conversation in _conversations) {
         _realtime.join(conversation.id);
       }
@@ -120,6 +128,33 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> loadMoreConversations() async {
+    final cursor = _nextConversationCursor;
+    if (cursor == null || _isLoadingMoreConversations) return;
+    _isLoadingMoreConversations = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final page = await _api.listConversations(cursor: cursor);
+      final existingIds = _conversations.map((item) => item.id).toSet();
+      _conversations = [
+        ..._conversations,
+        ...page.items.where((item) => existingIds.add(item.id)),
+      ];
+      _nextConversationCursor = page.nextCursor;
+      for (final conversation in page.items) {
+        _realtime.join(conversation.id);
+      }
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+    } catch (_) {
+      _errorMessage = aarastBackendConnectionErrorMessage;
+    } finally {
+      _isLoadingMoreConversations = false;
       notifyListeners();
     }
   }
@@ -141,14 +176,14 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
   Future<void> openConversation(String conversationId) async {
     _activeConversationId = conversationId;
     _startRealtime();
-    if (!_conversations.any((item) => item.id == conversationId)) {
-      await loadConversations();
-    }
     _isLoading = true;
     _errorMessage = null;
     _conversationLoadErrors.remove(conversationId);
     notifyListeners();
     try {
+      if (!_conversations.any((item) => item.id == conversationId)) {
+        _upsertConversation(await _api.getConversation(conversationId));
+      }
       final page = await _api.messages(conversationId);
       _messages[conversationId] = page.items;
       _nextCursors[conversationId] = page.nextCursor;

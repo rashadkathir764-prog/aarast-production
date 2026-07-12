@@ -1,124 +1,45 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  City,
   ConversationReportStatus,
-  Notification,
   NotificationPriority,
   NotificationType,
   Prisma,
-  Provider,
-  ProviderCategory,
-  ProviderPackage,
-  ProviderReview,
-  ProviderService,
-  ProviderServiceImage,
   ProviderStatus,
   QuoteRequestStatus,
   ReviewStatus,
-  User,
   UserRole,
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { toReviewIdentity } from '../common/privacy/review-identity';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
-  maskPhone,
-  toAdminNotificationPrivacyView,
-} from './admin-privacy';
+  toAdminNotificationResponse,
+  toAdminQuoteReport,
+  toAdminReportsOverviewResponse,
+  toAdminReviewResponse,
+  toAdminReviewReport,
+  toAdminServiceResponse,
+  toAdminUserReport,
+  toCategoryResponse,
+  toCityResponse,
+  toProviderResponse,
+  toUserResponse,
+} from './admin.presenter';
 import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
-import {
-  AdminReviewQueryDto,
-  AdminReviewStatusDto,
-} from './dto/admin-review.dto';
+import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dto';
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
-import {
-  AdminConversationReportQueryDto,
-  AdminConversationReportStatusDto,
-} from './dto/admin-conversation-report.dto';
+import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
 
 interface Pagination {
   page: number;
   limit: number;
   skip: number;
 }
-
-type SafeAdminUser = Pick<
-  User,
-  | 'id'
-  | 'name'
-  | 'phone'
-  | 'email'
-  | 'role'
-  | 'status'
-  | 'avatarUrl'
-  | 'createdAt'
-  | 'updatedAt'
->;
-
-type AdminServiceRecord = ProviderService & {
-  category: ProviderCategory;
-  city: City | null;
-  images: ProviderServiceImage[];
-};
-
-type AdminPackageRecord = ProviderPackage & {
-  service: ProviderService | null;
-};
-
-type AdminProviderRecord = Provider & {
-  user?: SafeAdminUser | null;
-  reviewedBy?: SafeAdminUser | null;
-  city?: City | null;
-  primaryCategory?: ProviderCategory | null;
-  services?: AdminServiceRecord[];
-  packages?: AdminPackageRecord[];
-  _count?: {
-    services: number;
-    packages: number;
-    quoteRequests: number;
-    reviews: number;
-  };
-};
-
-type AdminUserRecord = SafeAdminUser & {
-  providerProfile?: (Provider & {
-    city?: City | null;
-    primaryCategory?: ProviderCategory | null;
-  }) | null;
-};
-
-type AdminServiceWithDetails = ProviderService & {
-  provider: Provider & {
-    city?: City | null;
-    primaryCategory?: ProviderCategory | null;
-  };
-  category: ProviderCategory;
-  city: City | null;
-  images: ProviderServiceImage[];
-};
-
-type AdminReviewWithDetails = ProviderReview & {
-  user: Pick<User, 'id' | 'name'>;
-  provider: Provider & {
-    city?: City | null;
-    primaryCategory?: ProviderCategory | null;
-  };
-};
-
-type AdminNotificationWithDetails = Notification & {
-  user: Pick<User, 'id' | 'name' | 'phone'>;
-  weddingPlan?: { id: string; title: string; city: string | null } | null;
-};
 
 @Injectable()
 export class AdminService {
@@ -142,7 +63,9 @@ export class AdminService {
       this.prisma.provider.count(),
       this.prisma.provider.count({ where: { status: ProviderStatus.PENDING } }),
       this.prisma.provider.count({ where: { status: ProviderStatus.ACTIVE } }),
-      this.prisma.provider.count({ where: { status: ProviderStatus.REJECTED } }),
+      this.prisma.provider.count({
+        where: { status: ProviderStatus.REJECTED },
+      }),
       this.prisma.provider.count({
         where: { status: ProviderStatus.NEEDS_CHANGES },
       }),
@@ -193,7 +116,7 @@ export class AdminService {
     ]);
 
     return this.paginate(
-      providers.map((provider) => this.toProviderResponse(provider)),
+      providers.map((provider) => toProviderResponse(provider)),
       total,
       pagination,
     );
@@ -209,7 +132,7 @@ export class AdminService {
       throw new NotFoundException('Provider application not found');
     }
 
-    return this.toProviderResponse(provider);
+    return toProviderResponse(provider);
   }
 
   async listServices(query: AdminServiceQueryDto) {
@@ -227,7 +150,7 @@ export class AdminService {
     ]);
 
     return this.paginate(
-      services.map((service) => this.toAdminServiceResponse(service)),
+      services.map((service) => toAdminServiceResponse(service)),
       total,
       pagination,
     );
@@ -256,13 +179,16 @@ export class AdminService {
       include: this.adminServiceInclude(),
     });
 
-    return this.toAdminServiceResponse(service);
+    return toAdminServiceResponse(service);
   }
 
   async updateService(id: string, dto: AdminServiceDto) {
-    await this.findServiceOrThrow(id);
+    const existing = await this.findServiceOrThrow(id);
     if (dto.providerId !== undefined) {
-      await this.findProviderOrThrow(this.requiredText(dto.providerId, 'providerId'));
+      const providerId = this.requiredText(dto.providerId, 'providerId');
+      if (providerId !== existing.providerId) {
+        throw new BadRequestException('providerId cannot be changed after a service is created');
+      }
     }
     if (dto.categoryId !== undefined) {
       await this.findCategoryOrThrow(this.requiredText(dto.categoryId, 'categoryId'));
@@ -272,27 +198,12 @@ export class AdminService {
     const service = await this.prisma.providerService.update({
       where: { id },
       data: {
-        ...(dto.providerId !== undefined
-          ? { providerId: this.requiredText(dto.providerId, 'providerId') }
-          : {}),
-        ...(dto.categoryId !== undefined
-          ? { categoryId: this.requiredText(dto.categoryId, 'categoryId') }
-          : {}),
-        ...(dto.title !== undefined
-          ? { title: this.requiredText(dto.title, 'title') }
-          : {}),
-        ...(dto.description !== undefined
-          ? { description: this.optionalText(dto.description) }
-          : {}),
-        ...(dto.basePrice !== undefined
-          ? { basePrice: this.optionalDecimal(dto.basePrice, 'basePrice') }
-          : {}),
-        ...(dto.priceUnit !== undefined
-          ? { priceUnit: this.optionalText(dto.priceUnit) }
-          : {}),
-        ...(dto.currency !== undefined
-          ? { currency: this.requiredText(dto.currency, 'currency') }
-          : {}),
+        ...(dto.categoryId !== undefined ? { categoryId: this.requiredText(dto.categoryId, 'categoryId') } : {}),
+        ...(dto.title !== undefined ? { title: this.requiredText(dto.title, 'title') } : {}),
+        ...(dto.description !== undefined ? { description: this.optionalText(dto.description) } : {}),
+        ...(dto.basePrice !== undefined ? { basePrice: this.optionalDecimal(dto.basePrice, 'basePrice') } : {}),
+        ...(dto.priceUnit !== undefined ? { priceUnit: this.optionalText(dto.priceUnit) } : {}),
+        ...(dto.currency !== undefined ? { currency: this.requiredText(dto.currency, 'currency') } : {}),
         ...(dto.cityId !== undefined ? { cityId: this.optionalText(dto.cityId) } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         ...(dto.isFeatured !== undefined ? { isFeatured: dto.isFeatured } : {}),
@@ -300,7 +211,7 @@ export class AdminService {
       include: this.adminServiceInclude(),
     });
 
-    return this.toAdminServiceResponse(service);
+    return toAdminServiceResponse(service);
   }
 
   async deleteService(id: string) {
@@ -311,7 +222,7 @@ export class AdminService {
       include: this.adminServiceInclude(),
     });
 
-    return { ...this.toAdminServiceResponse(service), deleted: false };
+    return { ...toAdminServiceResponse(service), deleted: false };
   }
 
   async listReviews(query: AdminReviewQueryDto) {
@@ -329,7 +240,7 @@ export class AdminService {
     ]);
 
     return this.paginate(
-      reviews.map((review) => this.toAdminReviewResponse(review)),
+      reviews.map((review) => toAdminReviewResponse(review)),
       total,
       pagination,
     );
@@ -344,7 +255,7 @@ export class AdminService {
       include: this.adminReviewInclude(),
     });
     await this.recalculateProviderRating(existing.providerId);
-    return this.toAdminReviewResponse(review);
+    return toAdminReviewResponse(review);
   }
 
   async hideReview(id: string) {
@@ -355,7 +266,7 @@ export class AdminService {
       include: this.adminReviewInclude(),
     });
     await this.recalculateProviderRating(existing.providerId);
-    return { ...this.toAdminReviewResponse(review), deleted: false };
+    return { ...toAdminReviewResponse(review), deleted: false };
   }
 
   async listConversationReports(query: AdminConversationReportQueryDto) {
@@ -396,10 +307,7 @@ export class AdminService {
     return this.paginate(reports, total, pagination);
   }
 
-  async updateConversationReportStatus(
-    id: string,
-    dto: AdminConversationReportStatusDto,
-  ) {
+  async updateConversationReportStatus(id: string, dto: AdminConversationReportStatusDto) {
     const existing = await this.prisma.conversationReport.findUnique({
       where: { id },
       select: { id: true },
@@ -434,9 +342,7 @@ export class AdminService {
     ]);
 
     return this.paginate(
-      notifications.map((notification) =>
-        this.toAdminNotificationResponse(notification),
-      ),
+      notifications.map((notification) => toAdminNotificationResponse(notification)),
       total,
       pagination,
     );
@@ -456,7 +362,7 @@ export class AdminService {
       data: { readAt: new Date() },
       include: this.adminNotificationInclude(),
     });
-    return this.toAdminNotificationResponse(notification);
+    return toAdminNotificationResponse(notification);
   }
 
   async archiveNotification(id: string) {
@@ -470,7 +376,7 @@ export class AdminService {
       },
       include: this.adminNotificationInclude(),
     });
-    return this.toAdminNotificationResponse(notification);
+    return toAdminNotificationResponse(notification);
   }
 
   async deleteNotification(id: string) {
@@ -482,89 +388,50 @@ export class AdminService {
   async getReportsOverview(query: AdminReportQueryDto) {
     const range = this.parseDateRange(query.from, query.to);
     const createdAt = range.where;
-    const [
+    const [users, providers, services, reviews, quotes, notifications, weddingPlans, cities, categories] =
+      await Promise.all([
+        this.getUserReport(createdAt),
+        this.getProviderReport(createdAt),
+        this.getServiceReport(createdAt),
+        this.getReviewReport(createdAt),
+        this.getQuoteReport(createdAt),
+        this.getNotificationReport(createdAt),
+        this.prisma.weddingPlan.count({ where: { createdAt } }),
+        this.prisma.city.count(),
+        this.prisma.providerCategory.count(),
+      ]);
+
+    return toAdminReportsOverviewResponse({
+      generatedAt: new Date(),
+      from: range.from,
+      to: range.to,
       users,
       providers,
       services,
       reviews,
       quotes,
       notifications,
-      weddingPlans,
       cities,
       categories,
-    ] = await Promise.all([
-      this.getUserReport(createdAt),
-      this.getProviderReport(createdAt),
-      this.getServiceReport(createdAt),
-      this.getReviewReport(createdAt),
-      this.getQuoteReport(createdAt),
-      this.getNotificationReport(createdAt),
-      this.prisma.weddingPlan.count({ where: { createdAt } }),
-      this.prisma.city.count(),
-      this.prisma.providerCategory.count(),
-    ]);
-
-    return {
-      generatedAt: new Date(),
-      range: {
-        from: range.from,
-        to: range.to,
-      },
-      users,
-      providers,
-      services,
-      reviews,
-      quotes,
-      notifications,
-      catalog: {
-        cities,
-        categories,
-      },
-      weddingPlans: {
-        total: weddingPlans,
-      },
-      source: 'admin_operational_database',
-      paymentOrDepositDataIncluded: false,
-    };
+      weddingPlans,
+    });
   }
 
   async approveProvider(currentUser: AuthenticatedUser, id: string) {
     return this.reviewProvider(currentUser, id, ProviderStatus.ACTIVE, null);
   }
 
-  async rejectProvider(
-    currentUser: AuthenticatedUser,
-    id: string,
-    dto: AdminReviewActionDto,
-  ) {
-    return this.reviewProvider(
-      currentUser,
-      id,
-      ProviderStatus.REJECTED,
-      this.optionalText(dto.reason),
-    );
+  async rejectProvider(currentUser: AuthenticatedUser, id: string, dto: AdminReviewActionDto) {
+    return this.reviewProvider(currentUser, id, ProviderStatus.REJECTED, this.optionalText(dto.reason));
   }
 
-  async requestProviderChanges(
-    currentUser: AuthenticatedUser,
-    id: string,
-    dto: AdminReviewActionDto,
-  ) {
+  async requestProviderChanges(currentUser: AuthenticatedUser, id: string, dto: AdminReviewActionDto) {
     const note = this.requiredText(dto.note, 'note');
     return this.reviewProvider(currentUser, id, ProviderStatus.NEEDS_CHANGES, note);
   }
 
-  async suspendProvider(
-    currentUser: AuthenticatedUser,
-    id: string,
-    dto: AdminReviewActionDto,
-  ) {
-    return this.reviewProvider(
-      currentUser,
-      id,
-      ProviderStatus.SUSPENDED,
-      this.optionalText(dto.reason),
-    );
+  async suspendProvider(currentUser: AuthenticatedUser, id: string, dto: AdminReviewActionDto) {
+    return this.reviewProvider(currentUser, id, ProviderStatus.SUSPENDED, this.optionalText(dto.reason));
   }
 
   async activateProvider(currentUser: AuthenticatedUser, id: string) {
@@ -577,7 +444,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return categories.map((category) => this.toCategoryResponse(category));
+    return categories.map((category) => toCategoryResponse(category));
   }
 
   async createCategory(dto: AdminCategoryDto) {
@@ -593,7 +460,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return this.toCategoryResponse(category);
+    return toCategoryResponse(category);
   }
 
   async updateCategory(id: string, dto: AdminCategoryDto) {
@@ -601,9 +468,7 @@ export class AdminService {
     const category = await this.prisma.providerCategory.update({
       where: { id },
       data: {
-        ...(dto.nameAr !== undefined
-          ? { nameAr: this.requiredText(dto.nameAr, 'nameAr') }
-          : {}),
+        ...(dto.nameAr !== undefined ? { nameAr: this.requiredText(dto.nameAr, 'nameAr') } : {}),
         ...(dto.nameEn !== undefined ? { nameEn: this.optionalText(dto.nameEn) } : {}),
         ...(dto.slug !== undefined ? { slug: this.toSlug(dto.slug) } : {}),
         ...(dto.icon !== undefined ? { icon: this.optionalText(dto.icon) } : {}),
@@ -613,7 +478,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return this.toCategoryResponse(category);
+    return toCategoryResponse(category);
   }
 
   async deleteCategory(id: string) {
@@ -624,7 +489,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return { ...this.toCategoryResponse(category), deleted: false };
+    return { ...toCategoryResponse(category), deleted: false };
   }
 
   async listCities() {
@@ -633,7 +498,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return cities.map((city) => this.toCityResponse(city));
+    return cities.map((city) => toCityResponse(city));
   }
 
   async createCity(dto: AdminCityDto) {
@@ -648,7 +513,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return this.toCityResponse(city);
+    return toCityResponse(city);
   }
 
   async updateCity(id: string, dto: AdminCityDto) {
@@ -656,20 +521,16 @@ export class AdminService {
     const city = await this.prisma.city.update({
       where: { id },
       data: {
-        ...(dto.nameAr !== undefined
-          ? { nameAr: this.requiredText(dto.nameAr, 'nameAr') }
-          : {}),
+        ...(dto.nameAr !== undefined ? { nameAr: this.requiredText(dto.nameAr, 'nameAr') } : {}),
         ...(dto.nameEn !== undefined ? { nameEn: this.optionalText(dto.nameEn) } : {}),
-        ...(dto.countryCode !== undefined
-          ? { countryCode: this.optionalText(dto.countryCode) ?? 'YE' }
-          : {}),
+        ...(dto.countryCode !== undefined ? { countryCode: this.optionalText(dto.countryCode) ?? 'YE' } : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
       },
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return this.toCityResponse(city);
+    return toCityResponse(city);
   }
 
   async deleteCity(id: string) {
@@ -680,7 +541,7 @@ export class AdminService {
       include: { _count: { select: { providers: true, services: true } } },
     });
 
-    return { ...this.toCityResponse(city), deleted: false };
+    return { ...toCityResponse(city), deleted: false };
   }
 
   async listUsers(query: AdminProviderQueryDto) {
@@ -708,7 +569,7 @@ export class AdminService {
     ]);
 
     return this.paginate(
-      users.map((user) => this.toUserResponse(user)),
+      users.map((user) => toUserResponse(user)),
       total,
       pagination,
     );
@@ -724,7 +585,7 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    return this.toUserResponse(user);
+    return toUserResponse(user);
   }
 
   async activateUser(id: string) {
@@ -734,7 +595,7 @@ export class AdminService {
       data: { status: UserStatus.ACTIVE },
       select: this.userSelect(true),
     });
-    return this.toUserResponse(user);
+    return toUserResponse(user);
   }
 
   async disableUser(currentUser: AuthenticatedUser, id: string) {
@@ -754,7 +615,7 @@ export class AdminService {
         data: { revokedAt: now },
       }),
     ]);
-    return this.toUserResponse(user);
+    return toUserResponse(user);
   }
 
   private async reviewProvider(
@@ -790,7 +651,7 @@ export class AdminService {
       return updated;
     });
 
-    return this.toProviderResponse(provider);
+    return toProviderResponse(provider);
   }
 
   private serviceWhere(query: AdminServiceQueryDto): Prisma.ProviderServiceWhereInput {
@@ -817,7 +678,11 @@ export class AdminService {
         OR: [
           { title: { contains: search, mode: 'insensitive' } },
           { description: { contains: search, mode: 'insensitive' } },
-          { provider: { businessName: { contains: search, mode: 'insensitive' } } },
+          {
+            provider: {
+              businessName: { contains: search, mode: 'insensitive' },
+            },
+          },
           { provider: { phone: { contains: search, mode: 'insensitive' } } },
         ],
       });
@@ -835,16 +700,18 @@ export class AdminService {
         OR: [
           { comment: { contains: search, mode: 'insensitive' } },
           { user: { name: { contains: search, mode: 'insensitive' } } },
-          { provider: { businessName: { contains: search, mode: 'insensitive' } } },
+          {
+            provider: {
+              businessName: { contains: search, mode: 'insensitive' },
+            },
+          },
         ],
       });
     }
     return and.length ? { AND: and } : {};
   }
 
-  private notificationWhere(
-    query: AdminNotificationQueryDto,
-  ): Prisma.NotificationWhereInput {
+  private notificationWhere(query: AdminNotificationQueryDto): Prisma.NotificationWhereInput {
     const and: Prisma.NotificationWhereInput[] = [];
     if (query.type) and.push({ type: this.parseNotificationType(query.type) });
     if (query.priority) {
@@ -896,13 +763,17 @@ export class AdminService {
   }
 
   private async findServiceOrThrow(id: string) {
-    const service = await this.prisma.providerService.findUnique({ where: { id } });
+    const service = await this.prisma.providerService.findUnique({
+      where: { id },
+    });
     if (!service) throw new NotFoundException('Provider service not found');
     return service;
   }
 
   private async findReviewOrThrow(id: string) {
-    const review = await this.prisma.providerReview.findUnique({ where: { id } });
+    const review = await this.prisma.providerReview.findUnique({
+      where: { id },
+    });
     if (!review) throw new NotFoundException('Review not found');
     return review;
   }
@@ -928,7 +799,7 @@ export class AdminService {
       _count: { _all: true },
     });
     const ratingCount = aggregate._count._all;
-    const ratingAverage = ratingCount > 0 ? aggregate._avg.rating ?? 0 : 0;
+    const ratingAverage = ratingCount > 0 ? (aggregate._avg.rating ?? 0) : 0;
     await this.prisma.provider.update({
       where: { id: providerId },
       data: {
@@ -941,40 +812,61 @@ export class AdminService {
   private async getUserReport(createdAt?: Prisma.DateTimeFilter) {
     const [total, active, disabled, admins, providers] = await Promise.all([
       this.prisma.user.count({ where: { createdAt } }),
-      this.prisma.user.count({ where: { createdAt, status: UserStatus.ACTIVE } }),
-      this.prisma.user.count({ where: { createdAt, status: UserStatus.DISABLED } }),
+      this.prisma.user.count({
+        where: { createdAt, status: UserStatus.ACTIVE },
+      }),
+      this.prisma.user.count({
+        where: { createdAt, status: UserStatus.DISABLED },
+      }),
       this.prisma.user.count({ where: { createdAt, role: UserRole.ADMIN } }),
       this.prisma.user.count({ where: { createdAt, role: UserRole.PROVIDER } }),
     ]);
-    return { total, active, disabled, admins, providers, regularUsers: total - admins - providers };
+    return toAdminUserReport({ total, active, disabled, admins, providers });
   }
 
   private async getProviderReport(createdAt?: Prisma.DateTimeFilter) {
-    const [total, pending, active, needsChanges, suspended, rejected, featured] =
-      await Promise.all([
-        this.prisma.provider.count({ where: { createdAt } }),
-        this.prisma.provider.count({ where: { createdAt, status: ProviderStatus.PENDING } }),
-        this.prisma.provider.count({ where: { createdAt, status: ProviderStatus.ACTIVE } }),
-        this.prisma.provider.count({
-          where: { createdAt, status: ProviderStatus.NEEDS_CHANGES },
-        }),
-        this.prisma.provider.count({
-          where: { createdAt, status: ProviderStatus.SUSPENDED },
-        }),
-        this.prisma.provider.count({
-          where: { createdAt, status: ProviderStatus.REJECTED },
-        }),
-        this.prisma.provider.count({ where: { createdAt, isFeatured: true } }),
-      ]);
-    return { total, pending, active, needsChanges, suspended, rejected, featured };
+    const [total, pending, active, needsChanges, suspended, rejected, featured] = await Promise.all([
+      this.prisma.provider.count({ where: { createdAt } }),
+      this.prisma.provider.count({
+        where: { createdAt, status: ProviderStatus.PENDING },
+      }),
+      this.prisma.provider.count({
+        where: { createdAt, status: ProviderStatus.ACTIVE },
+      }),
+      this.prisma.provider.count({
+        where: { createdAt, status: ProviderStatus.NEEDS_CHANGES },
+      }),
+      this.prisma.provider.count({
+        where: { createdAt, status: ProviderStatus.SUSPENDED },
+      }),
+      this.prisma.provider.count({
+        where: { createdAt, status: ProviderStatus.REJECTED },
+      }),
+      this.prisma.provider.count({ where: { createdAt, isFeatured: true } }),
+    ]);
+    return {
+      total,
+      pending,
+      active,
+      needsChanges,
+      suspended,
+      rejected,
+      featured,
+    };
   }
 
   private async getServiceReport(createdAt?: Prisma.DateTimeFilter) {
     const [total, active, disabled, featured] = await Promise.all([
       this.prisma.providerService.count({ where: { createdAt } }),
-      this.prisma.providerService.count({ where: { createdAt, isActive: true } }),
-      this.prisma.providerService.count({ where: { createdAt, isActive: false } }),
-      this.prisma.providerService.count({ where: { createdAt, isFeatured: true } }),
+      this.prisma.providerService.count({
+        where: { createdAt, isActive: true },
+      }),
+      this.prisma.providerService.count({
+        where: { createdAt, isActive: false },
+      }),
+      this.prisma.providerService.count({
+        where: { createdAt, isFeatured: true },
+      }),
     ]);
     return { total, active, disabled, featured };
   }
@@ -982,40 +874,56 @@ export class AdminService {
   private async getReviewReport(createdAt?: Prisma.DateTimeFilter) {
     const [total, published, hidden, pending, average] = await Promise.all([
       this.prisma.providerReview.count({ where: { createdAt } }),
-      this.prisma.providerReview.count({ where: { createdAt, status: ReviewStatus.PUBLISHED } }),
-      this.prisma.providerReview.count({ where: { createdAt, status: ReviewStatus.HIDDEN } }),
-      this.prisma.providerReview.count({ where: { createdAt, status: ReviewStatus.PENDING } }),
-      this.prisma.providerReview.aggregate({ where: { createdAt }, _avg: { rating: true } }),
+      this.prisma.providerReview.count({
+        where: { createdAt, status: ReviewStatus.PUBLISHED },
+      }),
+      this.prisma.providerReview.count({
+        where: { createdAt, status: ReviewStatus.HIDDEN },
+      }),
+      this.prisma.providerReview.count({
+        where: { createdAt, status: ReviewStatus.PENDING },
+      }),
+      this.prisma.providerReview.aggregate({
+        where: { createdAt },
+        _avg: { rating: true },
+      }),
     ]);
-    return {
+    return toAdminReviewReport({
       total,
       published,
       hidden,
       pending,
-      averageRating: (average._avg.rating ?? 0).toFixed(2),
-    };
+      averageRating: average._avg.rating,
+    });
   }
 
   private async getQuoteReport(createdAt?: Prisma.DateTimeFilter) {
     const statuses = await Promise.all(
       Object.values(QuoteRequestStatus).map(async (status) => ({
         status,
-        count: await this.prisma.quoteRequest.count({ where: { createdAt, status } }),
+        count: await this.prisma.quoteRequest.count({
+          where: { createdAt, status },
+        }),
       })),
     );
-    return {
-      total: statuses.reduce((sum, item) => sum + item.count, 0),
-      byStatus: statuses,
-    };
+    return toAdminQuoteReport(statuses);
   }
 
   private async getNotificationReport(createdAt?: Prisma.DateTimeFilter) {
     const [total, unread, archived, high, urgent] = await Promise.all([
       this.prisma.notification.count({ where: { createdAt } }),
-      this.prisma.notification.count({ where: { createdAt, readAt: null, archivedAt: null } }),
-      this.prisma.notification.count({ where: { createdAt, archivedAt: { not: null } } }),
-      this.prisma.notification.count({ where: { createdAt, priority: NotificationPriority.HIGH } }),
-      this.prisma.notification.count({ where: { createdAt, priority: NotificationPriority.URGENT } }),
+      this.prisma.notification.count({
+        where: { createdAt, readAt: null, archivedAt: null },
+      }),
+      this.prisma.notification.count({
+        where: { createdAt, archivedAt: { not: null } },
+      }),
+      this.prisma.notification.count({
+        where: { createdAt, priority: NotificationPriority.HIGH },
+      }),
+      this.prisma.notification.count({
+        where: { createdAt, priority: NotificationPriority.URGENT },
+      }),
     ]);
     return { total, unread, archived, high, urgent };
   }
@@ -1031,10 +939,7 @@ export class AdminService {
     }
     if (query.categoryId) {
       and.push({
-        OR: [
-          { primaryCategoryId: query.categoryId },
-          { services: { some: { categoryId: query.categoryId } } },
-        ],
+        OR: [{ primaryCategoryId: query.categoryId }, { services: { some: { categoryId: query.categoryId } } }],
       });
     }
     const search = this.optionalText(query.search);
@@ -1145,14 +1050,10 @@ export class AdminService {
     throw new BadRequestException('review status is not supported');
   }
 
-  private parseConversationReportStatus(
-    value: string,
-  ): ConversationReportStatus {
+  private parseConversationReportStatus(value: string): ConversationReportStatus {
     const normalized = this.requiredText(value, 'status').toUpperCase();
     if (normalized in ConversationReportStatus) {
-      return ConversationReportStatus[
-        normalized as keyof typeof ConversationReportStatus
-      ];
+      return ConversationReportStatus[normalized as keyof typeof ConversationReportStatus];
     }
     throw new BadRequestException('conversation report status is not supported');
   }
@@ -1175,10 +1076,7 @@ export class AdminService {
 
   private parsePagination(pageValue?: string, limitValue?: string): Pagination {
     const page = this.parsePositiveInteger(pageValue ?? '1', 'page');
-    const limit = Math.min(
-      this.parsePositiveInteger(limitValue ?? '20', 'limit'),
-      100,
-    );
+    const limit = Math.min(this.parsePositiveInteger(limitValue ?? '20', 'limit'), 100);
     return { page, limit, skip: (page - 1) * limit };
   }
 
@@ -1215,20 +1113,14 @@ export class AdminService {
     return trimmed || null;
   }
 
-  private optionalDecimal(
-    value: string | null | undefined,
-    field: string,
-  ): string | null {
+  private optionalDecimal(value: string | null | undefined, field: string): string | null {
     if (value === undefined || value === null) return null;
     const normalized = value.trim();
     if (!normalized) return null;
     return requiredMoneyAmount(normalized, field);
   }
 
-  private optionalBoolean(
-    value: string | null | undefined,
-    field: string,
-  ): boolean | null {
+  private optionalBoolean(value: string | null | undefined, field: string): boolean | null {
     if (value === undefined || value === null || value.trim() === '') return null;
     const normalized = value.trim().toLowerCase();
     if (normalized === 'true') return true;
@@ -1274,244 +1166,5 @@ export class AdminService {
 
     if (!slug) throw new BadRequestException('slug must not be empty');
     return slug;
-  }
-
-  private toCityResponse(
-    city: City & { _count?: { providers: number; services: number } },
-  ) {
-    return {
-      id: city.id,
-      nameAr: city.nameAr,
-      nameEn: city.nameEn,
-      countryCode: city.countryCode,
-      isActive: city.isActive,
-      sortOrder: city.sortOrder,
-      createdAt: city.createdAt,
-      updatedAt: city.updatedAt,
-      providersCount: city._count?.providers ?? 0,
-      servicesCount: city._count?.services ?? 0,
-    };
-  }
-
-  private toCategoryResponse(
-    category: ProviderCategory & {
-      _count?: { providers: number; services: number };
-    },
-  ) {
-    return {
-      id: category.id,
-      nameAr: category.nameAr,
-      nameEn: category.nameEn,
-      slug: category.slug,
-      icon: category.icon,
-      isActive: category.isActive,
-      sortOrder: category.sortOrder,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt,
-      providersCount: category._count?.providers ?? 0,
-      servicesCount: category._count?.services ?? 0,
-    };
-  }
-
-  private toProviderResponse(provider: AdminProviderRecord) {
-    return {
-      id: provider.id,
-      userId: provider.userId,
-      user: provider.user ? this.toSafeUser(provider.user) : null,
-      cityId: provider.cityId,
-      city: provider.city ? this.toCityResponse(provider.city) : null,
-      primaryCategoryId: provider.primaryCategoryId,
-      primaryCategory: provider.primaryCategory
-        ? this.toCategoryResponse(provider.primaryCategory)
-        : null,
-      businessName: provider.businessName,
-      ownerName: provider.ownerName,
-      phone: provider.phone,
-      whatsapp: provider.whatsapp,
-      email: provider.email,
-      description: provider.description,
-      address: provider.address,
-      logoUrl: provider.logoUrl,
-      coverUrl: provider.coverUrl,
-      status: provider.status,
-      reviewNote: provider.reviewNote,
-      reviewedAt: provider.reviewedAt,
-      reviewedBy: provider.reviewedBy
-        ? this.toSafeUser(provider.reviewedBy)
-        : null,
-      isFeatured: provider.isFeatured,
-      ratingAverage: provider.ratingAverage.toString(),
-      ratingCount: provider.ratingCount,
-      servicesCount: provider._count?.services ?? provider.services?.length ?? 0,
-      packagesCount: provider._count?.packages ?? provider.packages?.length ?? 0,
-      quoteRequestsCount: provider._count?.quoteRequests ?? 0,
-      reviewsCount: provider._count?.reviews ?? 0,
-      services: provider.services?.map((service) => ({
-        id: service.id,
-        title: service.title,
-        description: service.description,
-        category: this.toCategoryResponse(service.category),
-        city: service.city ? this.toCityResponse(service.city) : null,
-        basePrice: service.basePrice?.toString() ?? null,
-        priceUnit: service.priceUnit,
-        currency: service.currency,
-        isActive: service.isActive,
-        isFeatured: service.isFeatured,
-        images: service.images.map((image) => ({
-          id: image.id,
-          imageUrl: image.imageUrl,
-          altText: image.altText,
-          sortOrder: image.sortOrder,
-          createdAt: image.createdAt,
-        })),
-        createdAt: service.createdAt,
-        updatedAt: service.updatedAt,
-      })),
-      packages: provider.packages?.map((providerPackage) => ({
-        id: providerPackage.id,
-        title: providerPackage.title,
-        description: providerPackage.description,
-        price: providerPackage.price?.toString() ?? null,
-        currency: providerPackage.currency,
-        items: providerPackage.items,
-        isActive: providerPackage.isActive,
-        service: providerPackage.service
-          ? { id: providerPackage.service.id, title: providerPackage.service.title }
-          : null,
-        createdAt: providerPackage.createdAt,
-        updatedAt: providerPackage.updatedAt,
-      })),
-      createdAt: provider.createdAt,
-      updatedAt: provider.updatedAt,
-    };
-  }
-
-  private toAdminServiceResponse(service: AdminServiceWithDetails) {
-    return {
-      id: service.id,
-      providerId: service.providerId,
-      provider: this.toProviderSummary(service.provider),
-      categoryId: service.categoryId,
-      category: this.toCategoryResponse(service.category),
-      title: service.title,
-      description: service.description,
-      basePrice: service.basePrice?.toString() ?? null,
-      priceUnit: service.priceUnit,
-      currency: service.currency,
-      cityId: service.cityId,
-      city: service.city ? this.toCityResponse(service.city) : null,
-      isActive: service.isActive,
-      isFeatured: service.isFeatured,
-      images: service.images.map((image) => ({
-        id: image.id,
-        serviceId: image.serviceId,
-        imageUrl: image.imageUrl,
-        altText: image.altText,
-        sortOrder: image.sortOrder,
-        createdAt: image.createdAt,
-      })),
-      createdAt: service.createdAt,
-      updatedAt: service.updatedAt,
-    };
-  }
-
-  private toAdminReviewResponse(review: AdminReviewWithDetails) {
-    return {
-      id: review.id,
-      userId: review.userId,
-      user: toReviewIdentity(review.user),
-      providerId: review.providerId,
-      provider: this.toProviderSummary(review.provider),
-      rating: review.rating,
-      comment: review.comment,
-      status: review.status,
-      createdAt: review.createdAt,
-      updatedAt: review.updatedAt,
-    };
-  }
-
-  private toAdminNotificationResponse(notification: AdminNotificationWithDetails) {
-    const privacy = toAdminNotificationPrivacyView(notification);
-    return {
-      id: notification.id,
-      userId: notification.userId,
-      user: {
-        id: notification.user.id,
-        name: notification.user.name,
-        phoneMasked: maskPhone(notification.user.phone),
-      },
-      weddingPlanId: notification.weddingPlanId,
-      weddingPlan: privacy.financialDetailsRedacted
-        ? null
-        : (notification.weddingPlan ?? null),
-      type: notification.type,
-      priority: notification.priority,
-      title: privacy.title,
-      body: privacy.body,
-      entityType: privacy.entityType,
-      entityId: privacy.entityId,
-      routeTarget: privacy.routeTarget,
-      data: privacy.data,
-      financialDetailsRedacted: privacy.financialDetailsRedacted,
-      readAt: notification.readAt,
-      archivedAt: notification.archivedAt,
-      createdAt: notification.createdAt,
-      updatedAt: notification.updatedAt,
-    };
-  }
-
-  private toProviderSummary(
-    provider: Provider & {
-      city?: City | null;
-      primaryCategory?: ProviderCategory | null;
-    },
-  ) {
-    return {
-      id: provider.id,
-      businessName: provider.businessName,
-      phone: provider.phone,
-      whatsapp: provider.whatsapp,
-      logoUrl: provider.logoUrl,
-      status: provider.status,
-      ratingAverage: provider.ratingAverage.toString(),
-      ratingCount: provider.ratingCount,
-      city: provider.city ? this.toCityResponse(provider.city) : null,
-      primaryCategory: provider.primaryCategory
-        ? this.toCategoryResponse(provider.primaryCategory)
-        : null,
-    };
-  }
-
-  private toUserResponse(user: AdminUserRecord) {
-    return {
-      ...this.toSafeUser(user),
-      provider: user.providerProfile
-        ? {
-            id: user.providerProfile.id,
-            businessName: user.providerProfile.businessName,
-            status: user.providerProfile.status,
-            city: user.providerProfile.city
-              ? this.toCityResponse(user.providerProfile.city)
-              : null,
-            primaryCategory: user.providerProfile.primaryCategory
-              ? this.toCategoryResponse(user.providerProfile.primaryCategory)
-              : null,
-          }
-        : null,
-    };
-  }
-
-  private toSafeUser(user: SafeAdminUser) {
-    return {
-      id: user.id,
-      name: user.name,
-      phone: user.phone,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      avatarUrl: user.avatarUrl,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    };
   }
 }

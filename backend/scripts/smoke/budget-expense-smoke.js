@@ -154,23 +154,23 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/wedding-plans', {
+    const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Budget Expense Smoke Plan',
       city: 'Sanaa',
     }, ownerToken);
-    check('POST /wedding-plans - HTTP 201', res.status === 201);
+    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     check('created wedding plan has id', typeof res.body?.id === 'string');
     check('wedding plan does not expose passwordHash', !hasPasswordHash(res.body));
     weddingPlanId = res.body?.id;
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: budgetViewerUserId,
       role: 'VIEWER',
       canViewBudget: true,
       canViewExpenses: false,
-      canViewDebts: false,
+      canViewFinancialRecords: false,
       canManageTasks: false,
       canManageFinancialRecords: false,
     }, ownerToken);
@@ -180,12 +180,12 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: expenseViewerUserId,
       role: 'VIEWER',
       canViewBudget: false,
       canViewExpenses: true,
-      canViewDebts: false,
+      canViewFinancialRecords: false,
       canManageTasks: false,
       canManageFinancialRecords: false,
     }, ownerToken);
@@ -195,12 +195,12 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: financeManagerUserId,
       role: 'VIEWER',
       canViewBudget: false,
       canViewExpenses: false,
-      canViewDebts: false,
+      canViewFinancialRecords: false,
       canManageTasks: false,
       canManageFinancialRecords: true,
     }, ownerToken);
@@ -210,7 +210,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/budget-categories`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, {
       name: 'Hall',
       targetAmount: '1000000.00',
     }, ownerToken);
@@ -223,7 +223,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/budget-categories`, null, ownerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, null, ownerToken);
     check('GET budget categories - HTTP 200', res.status === 200);
     check('budget category list is array', Array.isArray(res.body));
     check('budget category list includes created category', Array.isArray(res.body) && res.body.some((category) => category.id === categoryId));
@@ -231,14 +231,14 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/budget-categories`, null, budgetViewerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, null, budgetViewerToken);
     check('budget viewer reads budget categories - HTTP 200', res.status === 200);
     check('budget viewer sees created category', Array.isArray(res.body) && res.body.some((category) => category.id === categoryId));
     check('budget viewer category list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/budget-categories`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, {
       name: 'Shared Managed Category',
       targetAmount: '150000.00',
     }, financeManagerToken);
@@ -250,7 +250,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/budget-categories/${managerCategoryId}`, {
+    const res = await request('PATCH', `/api/v1/budget-categories/${managerCategoryId}`, {
       name: 'Updated Shared Managed Category',
     }, financeManagerToken);
     check('finance manager updates budget category - HTTP 200', res.status === 200);
@@ -259,12 +259,12 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/budget-categories`, null, unrelatedToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, null, unrelatedToken);
     check('unrelated user cannot read budget categories', res.status === 404);
   }
 
   {
-    const res = await request('PATCH', `/budget-categories/${categoryId}`, {
+    const res = await request('PATCH', `/api/v1/budget-categories/${categoryId}`, {
       name: 'Updated Hall',
       targetAmount: '1200000.00',
     }, ownerToken);
@@ -275,7 +275,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/expenses`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, {
       title: 'Hall Deposit',
       amount: '250000.00',
       budgetCategoryId: categoryId,
@@ -294,7 +294,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses`, null, ownerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, null, ownerToken);
     check('GET expenses - HTTP 200', res.status === 200);
     check('expense list is array', Array.isArray(res.body));
     check('expense list includes created expense', Array.isArray(res.body) && res.body.some((expense) => expense.id === expenseId));
@@ -302,7 +302,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses/summary`, null, ownerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses/summary`, null, ownerToken);
     check('GET expense summary - HTTP 200', res.status === 200);
     check('summary totalPaid is correct', res.body?.totalPaid === '250000.00');
     check('summary countPaid is correct', res.body?.countPaid === 1);
@@ -312,21 +312,21 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses`, null, expenseViewerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, null, expenseViewerToken);
     check('expense viewer reads expenses - HTTP 200', res.status === 200);
     check('expense viewer sees created expense', Array.isArray(res.body) && res.body.some((expense) => expense.id === expenseId));
     check('expense viewer list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses/summary`, null, expenseViewerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses/summary`, null, expenseViewerToken);
     check('expense viewer reads expense summary - HTTP 200', res.status === 200);
     check('expense viewer summary totalPaid is correct', res.body?.totalPaid === '250000.00');
     check('expense viewer summary does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/expenses`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, {
       title: 'Shared Managed Expense',
       amount: '50000.00',
       budgetCategoryId: managerCategoryId,
@@ -341,7 +341,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/expenses/${managerExpenseId}`, {
+    const res = await request('PATCH', `/api/v1/expenses/${managerExpenseId}`, {
       title: 'Updated Shared Managed Expense',
       amount: '75000.00',
     }, financeManagerToken);
@@ -352,12 +352,12 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses`, null, unrelatedToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, null, unrelatedToken);
     check('unrelated user cannot read expenses', res.status === 404);
   }
 
   {
-    const res = await request('PATCH', `/expenses/${expenseId}`, {
+    const res = await request('PATCH', `/api/v1/expenses/${expenseId}`, {
       title: 'Updated Hall Expense',
       amount: '300000.00',
       status: 'PAID',
@@ -371,35 +371,35 @@ async function run() {
   }
 
   {
-    const res = await request('DELETE', `/expenses/${managerExpenseId}`, null, financeManagerToken);
+    const res = await request('DELETE', `/api/v1/expenses/${managerExpenseId}`, null, financeManagerToken);
     check('finance manager deletes expense - HTTP 200', res.status === 200);
     check('finance manager-deleted expense id returned', res.body?.id === managerExpenseId);
     check('finance manager delete expense response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('DELETE', `/budget-categories/${managerCategoryId}`, null, financeManagerToken);
+    const res = await request('DELETE', `/api/v1/budget-categories/${managerCategoryId}`, null, financeManagerToken);
     check('finance manager deletes budget category - HTTP 200', res.status === 200);
     check('finance manager-deleted category id returned', res.body?.id === managerCategoryId);
     check('finance manager delete category response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('DELETE', `/expenses/${expenseId}`, null, ownerToken);
+    const res = await request('DELETE', `/api/v1/expenses/${expenseId}`, null, ownerToken);
     check('DELETE expense - HTTP 200', res.status === 200);
     check('deleted expense id returned', res.body?.id === expenseId);
     check('delete expense response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('DELETE', `/budget-categories/${categoryId}`, null, ownerToken);
+    const res = await request('DELETE', `/api/v1/budget-categories/${categoryId}`, null, ownerToken);
     check('DELETE budget category - HTTP 200', res.status === 200);
     check('deleted category id returned', res.body?.id === categoryId);
     check('delete category response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses`);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses`);
     check('GET expenses without token returns 401', res.status === 401);
   }
 

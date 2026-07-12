@@ -194,78 +194,78 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns accessToken', typeof res.body?.accessToken === 'string');
     token = res.body?.accessToken;
   }
 
   {
-    const res = await request('GET', '/cities');
-    check('GET /cities - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/cities');
+    check('GET /api/v1/cities - HTTP 200', res.status === 200);
     check('cities response is array', Array.isArray(res.body));
     check('cities include fixture city', Array.isArray(res.body) && res.body.some((city) => city.id === fixture.city.id));
   }
 
   {
-    const res = await request('GET', '/provider-categories');
-    check('GET /provider-categories - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider-categories');
+    check('GET /api/v1/provider-categories - HTTP 200', res.status === 200);
     check('categories response is array', Array.isArray(res.body));
     check('categories include fixture category', Array.isArray(res.body) && res.body.some((category) => category.id === fixture.category.id));
   }
 
   {
-    const res = await request('GET', `/providers?cityId=${fixture.city.id}&categoryId=${fixture.category.id}&featured=true`);
-    check('GET /providers - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/providers?cityId=${fixture.city.id}&categoryId=${fixture.category.id}&featured=true`);
+    check('GET /api/v1/providers - HTTP 200', res.status === 200);
     check('providers response is paginated', Array.isArray(res.body?.items));
     check('providers include active fixture', res.body?.items?.some((provider) => provider.id === fixture.provider.id));
     check('providers response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/providers/${fixture.provider.id}`);
-    check('GET /providers/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/providers/${fixture.provider.id}`);
+    check('GET /api/v1/providers/:id - HTTP 200', res.status === 200);
     check('provider detail id matches', res.body?.id === fixture.provider.id);
   }
 
   {
-    const res = await request('GET', `/providers/${fixture.provider.id}/services`);
-    check('GET /providers/:id/services - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/providers/${fixture.provider.id}/services`);
+    check('GET /api/v1/providers/:id/services - HTTP 200', res.status === 200);
     check('provider services include fixture', Array.isArray(res.body) && res.body.some((service) => service.id === fixture.service.id));
   }
 
   {
-    const res = await request('GET', `/services?providerId=${fixture.provider.id}&minPrice=1&maxPrice=200000`);
-    check('GET /services - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/services?providerId=${fixture.provider.id}&minPrice=1&maxPrice=200000`);
+    check('GET /api/v1/services - HTTP 200', res.status === 200);
     check('services response is paginated', Array.isArray(res.body?.items));
     check('services include fixture', res.body?.items?.some((service) => service.id === fixture.service.id));
   }
 
   {
-    const res = await request('GET', `/services/${fixture.service.id}`);
-    check('GET /services/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/services/${fixture.service.id}`);
+    check('GET /api/v1/services/:id - HTTP 200', res.status === 200);
     check('service detail id matches', res.body?.id === fixture.service.id);
   }
 
   {
-    const res = await request('GET', `/providers/${fixture.provider.id}/packages`);
-    check('GET /providers/:id/packages - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/providers/${fixture.provider.id}/packages`);
+    check('GET /api/v1/providers/:id/packages - HTTP 200', res.status === 200);
     check('provider packages response is array', Array.isArray(res.body));
   }
 
   {
-    const res = await request('POST', `/providers/${fixture.provider.id}/favorite`, null, token);
-    check('POST /providers/:id/favorite - HTTP 201', res.status === 201);
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/favorite`, null, token);
+    check('POST /api/v1/providers/:id/favorite - HTTP 201', res.status === 201);
     check('favorite providerId matches', res.body?.providerId === fixture.provider.id);
   }
 
   {
-    const res = await request('GET', '/me/favorite-providers', null, token);
-    check('GET /me/favorite-providers - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/me/favorite-providers', null, token);
+    check('GET /api/v1/me/favorite-providers - HTTP 200', res.status === 200);
     check('favorites include fixture', Array.isArray(res.body) && res.body.some((favorite) => favorite.providerId === fixture.provider.id));
   }
 
   {
-    const res = await request('POST', `/providers/${fixture.provider.id}/quote-requests`, {
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/quote-requests`, {
       serviceId: fixture.service.id,
       cityId: fixture.city.id,
       guestCount: 120,
@@ -273,60 +273,60 @@ async function run() {
       budgetMin: '50000',
       budgetMax: '150000',
     }, token);
-    check('POST /providers/:id/quote-requests - HTTP 201', res.status === 201);
+    check('POST /api/v1/providers/:id/quote-requests - HTTP 201', res.status === 201);
     check('quote request providerId matches', res.body?.providerId === fixture.provider.id);
     quoteId = res.body?.id;
   }
 
   {
-    const res = await request('GET', '/me/quote-requests', null, token);
-    check('GET /me/quote-requests - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/me/quote-requests', null, token);
+    check('GET /api/v1/me/quote-requests - HTTP 200', res.status === 200);
     check('my quote requests include created quote', Array.isArray(res.body) && res.body.some((quote) => quote.id === quoteId));
   }
 
   {
-    const res = await request('GET', `/me/quote-requests/${quoteId}`, null, token);
-    check('GET /me/quote-requests/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/me/quote-requests/${quoteId}`, null, token);
+    check('GET /api/v1/me/quote-requests/:id - HTTP 200', res.status === 200);
     check('quote detail id matches', res.body?.id === quoteId);
   }
 
   {
-    const res = await request('PATCH', `/me/quote-requests/${quoteId}/cancel`, null, token);
-    check('PATCH /me/quote-requests/:id/cancel - HTTP 200', res.status === 200);
+    const res = await request('PATCH', `/api/v1/me/quote-requests/${quoteId}/cancel`, null, token);
+    check('PATCH /api/v1/me/quote-requests/:id/cancel - HTTP 200', res.status === 200);
     check('quote status is CANCELLED', res.body?.status === 'CANCELLED');
   }
 
   {
-    const res = await request('POST', `/providers/${fixture.provider.id}/reviews`, {
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/reviews`, {
       rating: 5,
       comment: 'Smoke review',
     }, token);
-    check('POST /providers/:id/reviews - HTTP 201', res.status === 201);
+    check('POST /api/v1/providers/:id/reviews - HTTP 201', res.status === 201);
     check('review rating saved', res.body?.rating === 5);
     check('created review hides reviewer phone', !Object.hasOwn(res.body?.user ?? {}, 'phone'));
     reviewId = res.body?.id;
   }
 
   {
-    const res = await request('PATCH', `/reviews/${reviewId}`, {
+    const res = await request('PATCH', `/api/v1/reviews/${reviewId}`, {
       rating: 4,
       comment: 'Updated smoke review',
     }, token);
-    check('PATCH /reviews/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/reviews/:id - HTTP 200', res.status === 200);
     check('review rating updated', res.body?.rating === 4);
     check('updated review hides reviewer phone', !Object.hasOwn(res.body?.user ?? {}, 'phone'));
   }
 
   {
-    const res = await request('GET', `/providers/${fixture.provider.id}/reviews`);
-    check('GET /providers/:id/reviews - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/providers/${fixture.provider.id}/reviews`);
+    check('GET /api/v1/providers/:id/reviews - HTTP 200', res.status === 200);
     check('provider reviews include created review', Array.isArray(res.body) && res.body.some((review) => review.id === reviewId));
     check('public reviews hide every reviewer phone', Array.isArray(res.body) && res.body.every((review) => !Object.hasOwn(review.user ?? {}, 'phone')));
   }
 
   {
-    const res = await request('DELETE', `/reviews/${reviewId}`, null, token);
-    check('DELETE /reviews/:id - HTTP 200', res.status === 200);
+    const res = await request('DELETE', `/api/v1/reviews/${reviewId}`, null, token);
+    check('DELETE /api/v1/reviews/:id - HTTP 200', res.status === 200);
     check('review delete response', res.body?.deleted === true);
   }
 

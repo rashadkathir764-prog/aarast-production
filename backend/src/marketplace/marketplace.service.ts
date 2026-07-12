@@ -30,17 +30,12 @@ import {
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { NotificationsService } from "../notifications/notifications.service";
-import { requiredMoneyAmount } from "../common/validation/money";
 import { PrismaService } from "../prisma/prisma.service";
-import { toReviewIdentity } from "../common/privacy/review-identity";
 import {
   PermissionService,
   type PlanAccessContext,
 } from "../sharing/permission.service";
-import {
-  normalizeWeddingLocationInput,
-  weddingLocationResponse,
-} from "../wedding-plans/wedding-location";
+import { normalizeWeddingLocationInput } from "../wedding-plans/wedding-location";
 import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
 import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
@@ -52,56 +47,18 @@ import {
   quoteLifecycleStatus,
 } from "./quote-lifecycle";
 
-interface Pagination {
-  page: number;
-  limit: number;
-  skip: number;
-}
+import {
+  FULL_QUOTE_VISIBILITY,
+  MARKETPLACE_QUOTE_INCLUDE,
+  type QuoteVisibility,
+  type QuoteWithRelations,
+} from "./marketplace.contracts";
+import {
+  MarketplacePresenter,
+  MarketplaceQuery,
+} from "./marketplace.presenter";
 
-export interface PaginatedResponse<T> {
-  items: T[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-type ProviderWithCity = Provider & {
-  city: City;
-  primaryCategory?: ProviderCategory | null;
-};
-type ServiceWithDetails = ProviderService & {
-  provider: ProviderWithCity;
-  category: ProviderCategory;
-  city: City | null;
-  images: ProviderServiceImage[];
-};
-type PackageWithService = ProviderPackage & {
-  service?: ProviderService | null;
-};
-type ReviewWithUser = ProviderReview & {
-  user: Pick<User, "id" | "name">;
-};
-type FavoriteWithProvider = FavoriteProvider & {
-  provider: ProviderWithCity;
-};
-type QuoteWithRelations = QuoteRequest & {
-  provider: ProviderWithCity;
-  service?: (ProviderService & { category: ProviderCategory }) | null;
-  city?: City | null;
-  weddingPlan?: Pick<
-    WeddingPlan,
-    "id" | "title" | "city" | "weddingDate"
-  > | null;
-  offers?: QuoteOffer[];
-  providerLinks?: PlanProviderLink[];
-};
-
-// Field-level visibility for a quote request. Contact, budget, and offer
-// amounts are only exposed to members with the matching permission; a pure
-// read-only member (e.g. VIEWER) sees the quote context without private money.
-type QuoteVisibility = { budget: boolean; contact: boolean };
-const FULL_QUOTE_VISIBILITY: QuoteVisibility = { budget: true, contact: true };
+export type { PaginatedResponse } from "./marketplace.contracts";
 
 @Injectable()
 export class MarketplaceService {
@@ -117,7 +74,7 @@ export class MarketplaceService {
       orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
     });
 
-    return cities.map((city) => this.toCityResponse(city));
+    return cities.map((city) => MarketplacePresenter.toCityResponse(city));
   }
 
   async findCategories() {
@@ -126,51 +83,11 @@ export class MarketplaceService {
       orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
     });
 
-    return categories.map((category) => this.toCategoryResponse(category));
+    return categories.map((category) => MarketplacePresenter.toCategoryResponse(category));
   }
 
   async findProviders(query: ListProvidersQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
-    const and: Prisma.ProviderWhereInput[] = [
-      { status: ProviderStatus.ACTIVE },
-    ];
-    const where: Prisma.ProviderWhereInput = { AND: and };
-
-    if (query.cityId) {
-      this.assertUuid(query.cityId, "cityId");
-      and.push({ cityId: query.cityId });
-    }
-
-    if (query.categoryId) {
-      this.assertUuid(query.categoryId, "categoryId");
-      and.push({
-        OR: [
-          { primaryCategoryId: query.categoryId },
-          {
-            services: {
-              some: { categoryId: query.categoryId, isActive: true },
-            },
-          },
-        ],
-      });
-    }
-
-    const featured = this.optionalBoolean(query.featured, "featured");
-    if (featured !== null) {
-      and.push({ isFeatured: featured });
-    }
-
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { businessName: { contains: search, mode: "insensitive" } },
-          { ownerName: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-        ],
-      });
-    }
+    const { pagination, where } = MarketplaceQuery.providerSearch(query);
 
     const [total, providers] = await this.prisma.$transaction([
       this.prisma.provider.count({ where }),
@@ -187,15 +104,15 @@ export class MarketplaceService {
       }),
     ]);
 
-    return this.paginate(
-      providers.map((provider) => this.toProviderResponse(provider)),
+    return MarketplaceQuery.paginate(
+      providers.map((provider) => MarketplacePresenter.toProviderResponse(provider)),
       total,
       pagination,
     );
   }
 
   async findProvider(id: string) {
-    this.assertUuid(id, "providerId");
+    MarketplaceQuery.assertUuid(id, "providerId");
     const provider = await this.prisma.provider.findFirst({
       where: { id, status: ProviderStatus.ACTIVE },
       include: {
@@ -216,7 +133,7 @@ export class MarketplaceService {
       throw new NotFoundException("Provider not found");
     }
 
-    return this.toProviderResponse(provider);
+    return MarketplacePresenter.toProviderResponse(provider);
   }
 
   async findProviderServices(providerId: string) {
@@ -232,62 +149,11 @@ export class MarketplaceService {
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     });
 
-    return services.map((service) => this.toServiceResponse(service));
+    return services.map((service) => MarketplacePresenter.toServiceResponse(service));
   }
 
   async findServices(query: ListServicesQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
-    const and: Prisma.ProviderServiceWhereInput[] = [
-      { provider: { status: ProviderStatus.ACTIVE } },
-    ];
-    const where: Prisma.ProviderServiceWhereInput = {
-      isActive: true,
-      AND: and,
-    };
-
-    if (query.providerId) {
-      this.assertUuid(query.providerId, "providerId");
-      where.providerId = query.providerId;
-    }
-
-    if (query.categoryId) {
-      this.assertUuid(query.categoryId, "categoryId");
-      where.categoryId = query.categoryId;
-    }
-
-    if (query.cityId) {
-      this.assertUuid(query.cityId, "cityId");
-      and.push({
-        OR: [
-          { cityId: query.cityId },
-          { cityId: null, provider: { cityId: query.cityId } },
-        ],
-      });
-    }
-
-    const search = this.optionalText(query.search);
-    if (search) {
-      and.push({
-        OR: [
-          { title: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-          {
-            provider: {
-              businessName: { contains: search, mode: "insensitive" },
-            },
-          },
-        ],
-      });
-    }
-
-    const minPrice = this.optionalDecimal(query.minPrice, "minPrice");
-    const maxPrice = this.optionalDecimal(query.maxPrice, "maxPrice");
-    if (minPrice !== null || maxPrice !== null) {
-      where.basePrice = {
-        ...(minPrice !== null ? { gte: minPrice } : {}),
-        ...(maxPrice !== null ? { lte: maxPrice } : {}),
-      };
-    }
+    const { pagination, where } = MarketplaceQuery.serviceSearch(query);
 
     const [total, services] = await this.prisma.$transaction([
       this.prisma.providerService.count({ where }),
@@ -309,15 +175,15 @@ export class MarketplaceService {
       }),
     ]);
 
-    return this.paginate(
-      services.map((service) => this.toServiceResponse(service)),
+    return MarketplaceQuery.paginate(
+      services.map((service) => MarketplacePresenter.toServiceResponse(service)),
       total,
       pagination,
     );
   }
 
   async findService(id: string) {
-    this.assertUuid(id, "serviceId");
+    MarketplaceQuery.assertUuid(id, "serviceId");
     const service = await this.prisma.providerService.findFirst({
       where: {
         id,
@@ -336,7 +202,7 @@ export class MarketplaceService {
       throw new NotFoundException("Service not found");
     }
 
-    return this.toServiceResponse(service);
+    return MarketplacePresenter.toServiceResponse(service);
   }
 
   async findProviderPackages(providerId: string) {
@@ -348,7 +214,7 @@ export class MarketplaceService {
     });
 
     return packages.map((providerPackage) =>
-      this.toPackageResponse(providerPackage),
+      MarketplacePresenter.toPackageResponse(providerPackage),
     );
   }
 
@@ -360,7 +226,7 @@ export class MarketplaceService {
       orderBy: { createdAt: "desc" },
     });
 
-    return reviews.map((review) => this.toReviewResponse(review));
+    return reviews.map((review) => MarketplacePresenter.toReviewResponse(review));
   }
 
   async favoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
@@ -380,11 +246,11 @@ export class MarketplaceService {
       include: { provider: { include: { city: true, primaryCategory: true } } },
     });
 
-    return this.toFavoriteResponse(favorite);
+    return MarketplacePresenter.toFavoriteResponse(favorite);
   }
 
   async unfavoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
-    this.assertUuid(providerId, "providerId");
+    MarketplaceQuery.assertUuid(providerId, "providerId");
     await this.prisma.favoriteProvider.deleteMany({
       where: {
         userId: currentUser.id,
@@ -405,7 +271,7 @@ export class MarketplaceService {
       orderBy: { createdAt: "desc" },
     });
 
-    return favorites.map((favorite) => this.toFavoriteResponse(favorite));
+    return favorites.map((favorite) => MarketplacePresenter.toFavoriteResponse(favorite));
   }
 
   async createQuoteRequest(
@@ -434,8 +300,8 @@ export class MarketplaceService {
       await this.findActiveProviderServiceOrThrow(dto.serviceId, providerId);
     }
 
-    const budgetMin = this.optionalDecimal(dto.budgetMin, "budgetMin");
-    const budgetMax = this.optionalDecimal(dto.budgetMax, "budgetMax");
+    const budgetMin = MarketplaceQuery.optionalDecimal(dto.budgetMin, "budgetMin");
+    const budgetMax = MarketplaceQuery.optionalDecimal(dto.budgetMax, "budgetMax");
     if (
       budgetMin !== null &&
       budgetMax !== null &&
@@ -459,9 +325,9 @@ export class MarketplaceService {
       plan?.city ?? city?.nameAr ?? null,
     );
     const contactName =
-      this.optionalText(dto.contactName) ?? currentUser.name.trim();
+      MarketplaceQuery.optionalText(dto.contactName) ?? currentUser.name.trim();
     const contactPhone =
-      this.optionalText(dto.contactPhone) ?? currentUser.phone;
+      MarketplaceQuery.optionalText(dto.contactPhone) ?? currentUser.phone;
     const contactNormalizedPhone = PhoneNormalizer.normalizeOptional(
       contactPhone,
       "contactPhone",
@@ -473,18 +339,18 @@ export class MarketplaceService {
         providerId,
         weddingPlanId: dto.weddingPlanId ?? null,
         serviceId: dto.serviceId ?? null,
-        eventDate: this.optionalDate(dto.eventDate, "eventDate"),
+        eventDate: MarketplaceQuery.optionalDate(dto.eventDate, "eventDate"),
         location: location ?? Prisma.JsonNull,
         cityId: dto.cityId ?? null,
         guestCount: dto.guestCount ?? null,
         contactName,
         contactPhone,
         contactNormalizedPhone,
-        message: this.optionalText(dto.message),
+        message: MarketplaceQuery.optionalText(dto.message),
         budgetMin,
         budgetMax,
       },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
     });
 
     await this.notifications.createNotification({
@@ -507,7 +373,7 @@ export class MarketplaceService {
       dedupeKey: `${currentUser.id}:quote-submitted:${quote.id}`,
     });
 
-    return this.toQuoteResponse(quote);
+    return MarketplacePresenter.toQuoteResponse(quote);
   }
 
   async createPlanQuoteRequest(
@@ -532,12 +398,12 @@ export class MarketplaceService {
     );
     const quotes = await this.prisma.quoteRequest.findMany({
       where: { weddingPlanId },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
       orderBy: { createdAt: "desc" },
     });
 
     return quotes.map((quote) =>
-      this.toQuoteResponse(
+      MarketplacePresenter.toQuoteResponse(
         quote,
         this.quoteVisibility(context, quote, currentUser),
       ),
@@ -569,7 +435,7 @@ export class MarketplaceService {
       currentUser,
       id,
     );
-    return this.toQuoteResponse(quote, visibility);
+    return MarketplacePresenter.toQuoteResponse(quote, visibility);
   }
 
   async cancelQuoteRequestForCurrentUser(
@@ -599,10 +465,10 @@ export class MarketplaceService {
         status: QuoteRequestStatus.CANCELLED,
         cancelledAt: new Date(),
       },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
     });
 
-    return this.toQuoteResponse(quote, visibility);
+    return MarketplacePresenter.toQuoteResponse(quote, visibility);
   }
 
   async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
@@ -692,7 +558,7 @@ export class MarketplaceService {
     });
 
     return {
-      offer: this.toQuoteOfferResponse(result.offer),
+      offer: MarketplacePresenter.toQuoteOfferResponse(result.offer),
       planProviderLink: {
         id: result.link.id,
         weddingPlanId: result.link.weddingPlanId,
@@ -779,35 +645,35 @@ export class MarketplaceService {
       dedupeKey: `${offer.quoteRequest.userId}:quote-rejected:${offer.quoteRequestId}`,
     });
 
-    return this.toQuoteOfferResponse(rejected);
+    return MarketplacePresenter.toQuoteOfferResponse(rejected);
   }
 
   async findMyQuoteRequests(currentUser: AuthenticatedUser) {
     const quotes = await this.prisma.quoteRequest.findMany({
       where: { userId: currentUser.id },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
       orderBy: { createdAt: "desc" },
     });
 
-    return quotes.map((quote) => this.toQuoteResponse(quote));
+    return quotes.map((quote) => MarketplacePresenter.toQuoteResponse(quote));
   }
 
   async findMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
-    this.assertUuid(id, "quoteRequestId");
+    MarketplaceQuery.assertUuid(id, "quoteRequestId");
     const quote = await this.prisma.quoteRequest.findFirst({
       where: { id, userId: currentUser.id },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
     });
 
     if (!quote) {
       throw new NotFoundException("Quote request not found");
     }
 
-    return this.toQuoteResponse(quote);
+    return MarketplacePresenter.toQuoteResponse(quote);
   }
 
   async cancelMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
-    this.assertUuid(id, "quoteRequestId");
+    MarketplaceQuery.assertUuid(id, "quoteRequestId");
     const existing = await this.prisma.quoteRequest.findFirst({
       where: { id, userId: currentUser.id },
     });
@@ -827,10 +693,10 @@ export class MarketplaceService {
         status: QuoteRequestStatus.CANCELLED,
         cancelledAt: new Date(),
       },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
     });
 
-    return this.toQuoteResponse(quote);
+    return MarketplacePresenter.toQuoteResponse(quote);
   }
 
   async createReview(
@@ -862,13 +728,13 @@ export class MarketplaceService {
         userId: currentUser.id,
         providerId,
         rating: dto.rating,
-        comment: this.optionalText(dto.comment),
+        comment: MarketplaceQuery.optionalText(dto.comment),
       },
       include: { user: { select: { id: true, name: true } } },
     });
 
     await this.recalculateProviderRating(providerId);
-    return this.toReviewResponse(review);
+    return MarketplacePresenter.toReviewResponse(review);
   }
 
   async updateReview(
@@ -876,7 +742,7 @@ export class MarketplaceService {
     id: string,
     dto: UpdateProviderReviewDto,
   ) {
-    this.assertUuid(id, "reviewId");
+    MarketplaceQuery.assertUuid(id, "reviewId");
     const existing = await this.prisma.providerReview.findFirst({
       where: { id, userId: currentUser.id },
     });
@@ -890,18 +756,18 @@ export class MarketplaceService {
       data: {
         ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
         ...(dto.comment !== undefined
-          ? { comment: this.optionalText(dto.comment) }
+          ? { comment: MarketplaceQuery.optionalText(dto.comment) }
           : {}),
       },
       include: { user: { select: { id: true, name: true } } },
     });
 
     await this.recalculateProviderRating(existing.providerId);
-    return this.toReviewResponse(review);
+    return MarketplacePresenter.toReviewResponse(review);
   }
 
   async deleteReview(currentUser: AuthenticatedUser, id: string) {
-    this.assertUuid(id, "reviewId");
+    MarketplaceQuery.assertUuid(id, "reviewId");
     const existing = await this.prisma.providerReview.findFirst({
       where: { id, userId: currentUser.id },
     });
@@ -918,7 +784,7 @@ export class MarketplaceService {
   private async findActiveProviderOrThrow(
     providerId: string,
   ): Promise<Provider> {
-    this.assertUuid(providerId, "providerId");
+    MarketplaceQuery.assertUuid(providerId, "providerId");
     const provider = await this.prisma.provider.findFirst({
       where: { id: providerId, status: ProviderStatus.ACTIVE },
     });
@@ -934,7 +800,7 @@ export class MarketplaceService {
     serviceId: string,
     providerId: string,
   ): Promise<ProviderService> {
-    this.assertUuid(serviceId, "serviceId");
+    MarketplaceQuery.assertUuid(serviceId, "serviceId");
     const service = await this.prisma.providerService.findFirst({
       where: {
         id: serviceId,
@@ -954,7 +820,7 @@ export class MarketplaceService {
   }
 
   private async findActiveCityOrThrow(cityId: string): Promise<City> {
-    this.assertUuid(cityId, "cityId");
+    MarketplaceQuery.assertUuid(cityId, "cityId");
     const city = await this.prisma.city.findFirst({
       where: { id: cityId, isActive: true },
     });
@@ -984,32 +850,14 @@ export class MarketplaceService {
     });
   }
 
-  private quoteInclude() {
-    return {
-      provider: { include: { city: true, primaryCategory: true } },
-      service: { include: { category: true } },
-      city: true,
-      weddingPlan: {
-        select: {
-          id: true,
-          title: true,
-          city: true,
-          weddingDate: true,
-        },
-      },
-      offers: { orderBy: { createdAt: "desc" } },
-      providerLinks: true,
-    } satisfies Prisma.QuoteRequestInclude;
-  }
-
   private async findAccessibleQuoteRequestOrThrow(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<{ quote: QuoteWithRelations; visibility: QuoteVisibility }> {
-    this.assertUuid(id, "quoteRequestId");
+    MarketplaceQuery.assertUuid(id, "quoteRequestId");
     const quote = await this.prisma.quoteRequest.findUnique({
       where: { id },
-      include: this.quoteInclude(),
+      include: MARKETPLACE_QUOTE_INCLUDE,
     });
     if (!quote) {
       throw new NotFoundException("Quote request not found");
@@ -1037,7 +885,7 @@ export class MarketplaceService {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<QuoteOffer & { quoteRequest: QuoteRequest }> {
-    this.assertUuid(id, "quoteOfferId");
+    MarketplaceQuery.assertUuid(id, "quoteOfferId");
     const offer = await this.prisma.quoteOffer.findUnique({
       where: { id },
       include: { quoteRequest: true },
@@ -1058,359 +906,4 @@ export class MarketplaceService {
     return offer;
   }
 
-  private parsePagination(pageValue?: string, limitValue?: string): Pagination {
-    const page = this.parsePositiveInteger(pageValue ?? "1", "page");
-    const limit = Math.min(
-      this.parsePositiveInteger(limitValue ?? "20", "limit"),
-      100,
-    );
-    return { page, limit, skip: (page - 1) * limit };
-  }
-
-  private parsePositiveInteger(value: string, field: string): number {
-    if (!/^\d+$/.test(value)) {
-      throw new BadRequestException(`${field} must be a positive integer`);
-    }
-    const parsed = Number(value);
-    if (!Number.isSafeInteger(parsed) || parsed < 1) {
-      throw new BadRequestException(`${field} must be a positive integer`);
-    }
-    return parsed;
-  }
-
-  private optionalBoolean(
-    value: string | undefined,
-    field: string,
-  ): boolean | null {
-    if (value === undefined || value.trim() === "") return null;
-    const normalized = value.trim().toLowerCase();
-    if (normalized === "true") return true;
-    if (normalized === "false") return false;
-    throw new BadRequestException(`${field} must be true or false`);
-  }
-
-  private optionalText(value: string | null | undefined): string | null {
-    if (value === undefined || value === null) return null;
-    const trimmed = value.trim();
-    return trimmed || null;
-  }
-
-  private optionalDate(
-    value: string | null | undefined,
-    field: string,
-  ): Date | null {
-    if (value === undefined || value === null) return null;
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const timestamp = Date.parse(trimmed);
-    if (Number.isNaN(timestamp)) {
-      throw new BadRequestException(`${field} must be a valid ISO date string`);
-    }
-    return new Date(timestamp);
-  }
-
-  private optionalDecimal(
-    value: string | null | undefined,
-    field: string,
-  ): string | null {
-    if (value === undefined || value === null) return null;
-    const normalized = value.trim();
-    if (!normalized) return null;
-    return requiredMoneyAmount(normalized, field);
-  }
-
-  private assertUuid(value: string, field: string): void {
-    const uuidPattern =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidPattern.test(value)) {
-      throw new BadRequestException(`${field} must be a valid UUID`);
-    }
-  }
-
-  private paginate<T>(
-    items: T[],
-    total: number,
-    pagination: Pagination,
-  ): PaginatedResponse<T> {
-    return {
-      items,
-      page: pagination.page,
-      limit: pagination.limit,
-      total,
-      totalPages: Math.max(Math.ceil(total / pagination.limit), 1),
-    };
-  }
-
-  private toCityResponse(city: City) {
-    return {
-      id: city.id,
-      nameAr: city.nameAr,
-      nameEn: city.nameEn,
-      countryCode: city.countryCode,
-      isActive: city.isActive,
-      sortOrder: city.sortOrder,
-    };
-  }
-
-  private toCategoryResponse(category: ProviderCategory) {
-    return {
-      id: category.id,
-      nameAr: category.nameAr,
-      nameEn: category.nameEn,
-      slug: category.slug,
-      icon: category.icon,
-      isActive: category.isActive,
-      sortOrder: category.sortOrder,
-    };
-  }
-
-  private toProviderResponse(
-    provider: Provider & {
-      city?: City | null;
-      primaryCategory?: ProviderCategory | null;
-      services?: (ProviderService & {
-        category: ProviderCategory;
-        images: ProviderServiceImage[];
-      })[];
-    },
-  ) {
-    return {
-      id: provider.id,
-      cityId: provider.cityId,
-      city: provider.city ? this.toCityResponse(provider.city) : null,
-      primaryCategoryId: provider.primaryCategoryId,
-      primaryCategory: provider.primaryCategory
-        ? this.toCategoryResponse(provider.primaryCategory)
-        : null,
-      businessName: provider.businessName,
-      ownerName: provider.ownerName,
-      phone: provider.phone,
-      whatsapp: provider.whatsapp,
-      email: provider.email,
-      description: provider.description,
-      address: provider.address,
-      latitude: provider.latitude?.toString() ?? null,
-      longitude: provider.longitude?.toString() ?? null,
-      logoUrl: provider.logoUrl,
-      coverUrl: provider.coverUrl,
-      status: provider.status,
-      isFeatured: provider.isFeatured,
-      ratingAverage: provider.ratingAverage.toString(),
-      ratingCount: provider.ratingCount,
-      createdAt: provider.createdAt,
-      updatedAt: provider.updatedAt,
-      ...(provider.services
-        ? {
-            services: provider.services.map((service) => ({
-              id: service.id,
-              title: service.title,
-              description: service.description,
-              basePrice: service.basePrice?.toString() ?? null,
-              priceUnit: service.priceUnit,
-              currency: service.currency,
-              isFeatured: service.isFeatured,
-              category: this.toCategoryResponse(service.category),
-              images: service.images.map((image) =>
-                this.toImageResponse(image),
-              ),
-            })),
-          }
-        : {}),
-    };
-  }
-
-  private toServiceResponse(service: ServiceWithDetails) {
-    return {
-      id: service.id,
-      providerId: service.providerId,
-      provider: this.toProviderSummary(service.provider),
-      categoryId: service.categoryId,
-      category: this.toCategoryResponse(service.category),
-      title: service.title,
-      description: service.description,
-      basePrice: service.basePrice?.toString() ?? null,
-      priceUnit: service.priceUnit,
-      currency: service.currency,
-      cityId: service.cityId,
-      city: service.city ? this.toCityResponse(service.city) : null,
-      isActive: service.isActive,
-      isFeatured: service.isFeatured,
-      images: service.images.map((image) => this.toImageResponse(image)),
-      createdAt: service.createdAt,
-      updatedAt: service.updatedAt,
-    };
-  }
-
-  private toProviderSummary(provider: ProviderWithCity) {
-    return {
-      id: provider.id,
-      businessName: provider.businessName,
-      phone: provider.phone,
-      whatsapp: provider.whatsapp,
-      logoUrl: provider.logoUrl,
-      status: provider.status,
-      ratingAverage: provider.ratingAverage.toString(),
-      ratingCount: provider.ratingCount,
-      city: this.toCityResponse(provider.city),
-      primaryCategory: provider.primaryCategory
-        ? this.toCategoryResponse(provider.primaryCategory)
-        : null,
-    };
-  }
-
-  private toImageResponse(image: ProviderServiceImage) {
-    return {
-      id: image.id,
-      serviceId: image.serviceId,
-      imageUrl: image.imageUrl,
-      altText: image.altText,
-      sortOrder: image.sortOrder,
-      createdAt: image.createdAt,
-    };
-  }
-
-  private toPackageResponse(providerPackage: PackageWithService) {
-    return {
-      id: providerPackage.id,
-      providerId: providerPackage.providerId,
-      serviceId: providerPackage.serviceId,
-      service: providerPackage.service
-        ? {
-            id: providerPackage.service.id,
-            title: providerPackage.service.title,
-          }
-        : null,
-      title: providerPackage.title,
-      description: providerPackage.description,
-      price: providerPackage.price?.toString() ?? null,
-      currency: providerPackage.currency,
-      items: providerPackage.items,
-      isActive: providerPackage.isActive,
-      createdAt: providerPackage.createdAt,
-      updatedAt: providerPackage.updatedAt,
-    };
-  }
-
-  private toFavoriteResponse(favorite: FavoriteWithProvider) {
-    return {
-      id: favorite.id,
-      userId: favorite.userId,
-      providerId: favorite.providerId,
-      provider: this.toProviderResponse(favorite.provider),
-      createdAt: favorite.createdAt,
-    };
-  }
-
-  private toReviewResponse(review: ReviewWithUser) {
-    return {
-      id: review.id,
-      userId: review.userId,
-      user: toReviewIdentity(review.user),
-      providerId: review.providerId,
-      rating: review.rating,
-      comment: review.comment,
-      status: review.status,
-      createdAt: review.createdAt,
-      updatedAt: review.updatedAt,
-    };
-  }
-
-  private toQuoteResponse(
-    quote: QuoteWithRelations,
-    visibility: QuoteVisibility = FULL_QUOTE_VISIBILITY,
-  ) {
-    return {
-      id: quote.id,
-      userId: quote.userId,
-      weddingPlanId: quote.weddingPlanId,
-      weddingPlan: quote.weddingPlan ?? null,
-      providerId: quote.providerId,
-      provider: this.toProviderSummary(quote.provider),
-      serviceId: quote.serviceId,
-      service: quote.service
-        ? {
-            id: quote.service.id,
-            title: quote.service.title,
-            category: this.toCategoryResponse(quote.service.category),
-          }
-        : null,
-      eventDate: quote.eventDate,
-      location: weddingLocationResponse(quote.location),
-      cityId: quote.cityId,
-      city: quote.city ? this.toCityResponse(quote.city) : null,
-      guestCount: quote.guestCount,
-      contactName: quote.contactName,
-      contactPhone: visibility.contact ? quote.contactPhone : null,
-      contactNormalizedPhone: visibility.contact
-        ? quote.contactNormalizedPhone
-        : null,
-      message: quote.message,
-      budgetMin: visibility.budget ? (quote.budgetMin?.toString() ?? null) : null,
-      budgetMax: visibility.budget ? (quote.budgetMax?.toString() ?? null) : null,
-      status: quote.status,
-      lifecycleStatus: quoteLifecycleStatus(quote.status),
-      offers:
-        quote.offers?.map((offer) =>
-          this.toQuoteOfferResponse(offer, visibility.budget),
-        ) ?? [],
-      acceptedPlanProvider:
-        quote.providerLinks?.find(
-          (link) => link.status === PlanProviderLinkStatus.ACTIVE,
-        ) ?? null,
-      financialSuggestion: this.quoteFinancialSuggestion(
-        quote,
-        visibility.budget,
-      ),
-      acceptedAt: quote.acceptedAt,
-      rejectedAt: quote.rejectedAt,
-      cancelledAt: quote.cancelledAt,
-      createdAt: quote.createdAt,
-      updatedAt: quote.updatedAt,
-    };
-  }
-
-  private toQuoteOfferResponse(offer: QuoteOffer, showFinancials = true) {
-    return {
-      id: offer.id,
-      quoteRequestId: offer.quoteRequestId,
-      providerId: offer.providerId,
-      title: offer.title,
-      message: offer.message,
-      amount: showFinancials ? (offer.amount?.toString() ?? null) : null,
-      currency: showFinancials ? offer.currency : null,
-      validUntil: offer.validUntil,
-      status: offer.status,
-      createdAt: offer.createdAt,
-      updatedAt: offer.updatedAt,
-    };
-  }
-
-  private quoteFinancialSuggestion(
-    quote: QuoteWithRelations,
-    showFinancials = true,
-  ) {
-    const acceptedOffer = showFinancials
-      ? quote.offers?.find((offer) => offer.status === QuoteOfferStatus.ACCEPTED)
-      : null;
-    const isAccepted = quote.status === QuoteRequestStatus.ACCEPTED;
-    return {
-      providerId: quote.providerId,
-      providerName: quote.provider.businessName,
-      category:
-        quote.service?.category.nameAr ??
-        quote.provider.primaryCategory?.nameAr ??
-        null,
-      quotedAmount: acceptedOffer?.amount?.toString() ?? null,
-      currency: acceptedOffer?.currency ?? null,
-      suggestedAction:
-        showFinancials && isAccepted && acceptedOffer?.amount
-          ? "CREATE_FINANCIAL_COMMITMENT"
-          : "NONE",
-      availableActions: showFinancials && isAccepted
-        ? ["CREATE_FINANCIAL_COMMITMENT", "RECORD_PAYMENT"]
-        : [],
-      sourceType: "PROVIDER_SERVICE",
-      automaticFinancialRecordCreated: false,
-    };
-  }
 }

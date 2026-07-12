@@ -37,16 +37,6 @@ test('primary installment pay locks the installment before reading its state', (
   assert.match(payMethod, /financialInstallmentId: current\.id/);
 });
 
-test('legacy finance bridge appends ledger entries without mutating payment history', () => {
-  const bridge = read('src/common/finance/legacy-finance-bridge.ts');
-  assert.doesNotMatch(
-    bridge,
-    /financialPaymentRecord\.(?:delete|deleteMany|update|updateMany|upsert)\(/,
-  );
-  assert.match(bridge, /appendLedgerToDesiredBalance/);
-  assert.match(bridge, /FinancialPaymentRecordType\.REVERSAL/);
-});
-
 test('payment removal creates a reversal row and never deletes the original', () => {
   const service = read(
     'src/financial-commitments/financial-commitments.service.ts',
@@ -81,13 +71,4 @@ test('balance-changing updates and destructive routes acquire row locks', () => 
   assert.match(removeInstallment, /lockInstallment\(tx, id\)/);
   assert.match(removeInstallment, /financialPaymentRecord\.count/);
 
-  const debts = read('src/debts/debts.service.ts');
-  assert.match(debts, /lockDebtInstallments\(tx, id\)/);
-  assert.match(debts, /lockDebt\(tx, id\)/);
-
-  const installments = read('src/installments/installments.service.ts');
-  assert.match(
-    installments,
-    /installment payment cannot exceed the remaining debt balance/,
-  );
 });

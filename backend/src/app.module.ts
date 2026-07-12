@@ -17,8 +17,6 @@ import { WeddingPlansModule } from "./wedding-plans/wedding-plans.module";
 import { OnboardingModule } from "./onboarding/onboarding.module";
 import { BudgetCategoriesModule } from "./budget-categories/budget-categories.module";
 import { ExpensesModule } from "./expenses/expenses.module";
-import { DebtsModule } from "./debts/debts.module";
-import { InstallmentsModule } from "./installments/installments.module";
 import { FinancialCommitmentsModule } from "./financial-commitments/financial-commitments.module";
 import { MoneyModule } from "./money/money.module";
 import { TasksModule } from "./tasks/tasks.module";
@@ -74,8 +72,6 @@ import { OutboxModule } from "./outbox/outbox.module";
     OnboardingModule,
     BudgetCategoriesModule,
     ExpensesModule,
-    DebtsModule,
-    InstallmentsModule,
     FinancialCommitmentsModule,
     MoneyModule,
     TasksModule,

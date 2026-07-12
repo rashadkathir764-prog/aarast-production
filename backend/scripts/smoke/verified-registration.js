@@ -1,7 +1,7 @@
 'use strict';
 
 async function registerVerified(request, details) {
-  const pending = await request('POST', '/auth/register', details);
+  const pending = await request('POST', '/api/v1/auth/register', details);
   if (
     pending.status !== 201 ||
     pending.body?.registrationPending !== true
@@ -16,7 +16,7 @@ async function registerVerified(request, details) {
     );
   }
 
-  return request('POST', '/auth/register/complete', { ...details, otpCode });
+  return request('POST', '/api/v1/auth/register/complete', { ...details, otpCode });
 }
 
 module.exports = { registerVerified };

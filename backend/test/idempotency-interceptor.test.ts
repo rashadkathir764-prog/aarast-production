@@ -186,7 +186,7 @@ test("a later retry after completion replays instead of re-executing", async () 
   const interceptor = new IdempotencyInterceptor(store as any);
 
   let executions = 0;
-  const response = { id: "debt-9" };
+  const response = { id: "commitment-9" };
   const next = handler(() =>
     defer(() => {
       executions++;

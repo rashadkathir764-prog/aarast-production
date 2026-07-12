@@ -3,12 +3,6 @@ import { AuthModule } from "../auth/auth.module";
 import { PrismaModule } from "../prisma/prisma.module";
 import { SharingModule } from "../sharing/sharing.module";
 import {
-  ApiV1FinancialCommitmentsController,
-  ApiV1FinancialInstallmentsController,
-  ApiV1FinancialPaymentRecordsController,
-  ApiV1WeddingPlanFinancialCommitmentsController,
-  ApiV1WeddingPlanFinancialInstallmentsController,
-  ApiV1WeddingPlanFinancialPaymentRecordsController,
   FinancialCommitmentsController,
   FinancialInstallmentsController,
   FinancialPaymentRecordsController,
@@ -17,6 +11,7 @@ import {
   WeddingPlanFinancialPaymentRecordsController,
 } from "./financial-commitments.controller";
 import { FinancialCommitmentsService } from "./financial-commitments.service";
+import { FinancialInstallmentsOverdueScheduler } from "./financial-installments-overdue.scheduler";
 
 @Module({
   imports: [AuthModule, PrismaModule, SharingModule],
@@ -27,14 +22,11 @@ import { FinancialCommitmentsService } from "./financial-commitments.service";
     FinancialPaymentRecordsController,
     WeddingPlanFinancialInstallmentsController,
     FinancialInstallmentsController,
-    ApiV1WeddingPlanFinancialCommitmentsController,
-    ApiV1FinancialCommitmentsController,
-    ApiV1WeddingPlanFinancialPaymentRecordsController,
-    ApiV1FinancialPaymentRecordsController,
-    ApiV1WeddingPlanFinancialInstallmentsController,
-    ApiV1FinancialInstallmentsController,
   ],
-  providers: [FinancialCommitmentsService],
+  providers: [
+    FinancialCommitmentsService,
+    FinancialInstallmentsOverdueScheduler,
+  ],
   exports: [FinancialCommitmentsService],
 })
 export class FinancialCommitmentsModule {}

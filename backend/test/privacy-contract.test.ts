@@ -104,6 +104,7 @@ test("user lookup checks invite authority before querying an account", async () 
         throw new Error("forbidden");
       },
     } as any,
+    {} as any,
   );
 
   await assert.rejects(() =>

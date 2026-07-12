@@ -1,16 +1,26 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { ListQueryDto } from '../common/pagination/list-query.dto';
-import { AssignTaskDto } from './dto/assign-task.dto';
-import { CreateChecklistItemDto } from './dto/create-checklist-item.dto';
-import { CreateTaskDto } from './dto/create-task.dto';
-import { UpdateChecklistItemDto } from './dto/update-checklist-item.dto';
-import { UpdateTaskDto } from './dto/update-task.dto';
-import { TasksService } from './tasks.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { ListQueryDto } from "../common/pagination/list-query.dto";
+import { AssignTaskDto } from "./dto/assign-task.dto";
+import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
+import { CreateTaskDto } from "./dto/create-task.dto";
+import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
+import { UpdateTaskDto } from "./dto/update-task.dto";
+import { TasksService } from "./tasks.service";
 
-@Controller('wedding-plans/:weddingPlanId/tasks')
+@Controller("api/v1/wedding-plans/:weddingPlanId/tasks")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlanTasksController {
   constructor(private readonly tasksService: TasksService) {}
@@ -18,7 +28,7 @@ export class WeddingPlanTasksController {
   @Post()
   create(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
     @Body() dto: CreateTaskDto,
   ) {
     return this.tasksService.create(currentUser, weddingPlanId, dto);
@@ -27,184 +37,84 @@ export class WeddingPlanTasksController {
   @Get()
   findForPlan(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
     @Query() query: ListQueryDto,
   ) {
     return this.tasksService.findForPlan(currentUser, weddingPlanId, query);
   }
 
-  @Get('summary')
+  @Get("summary")
   summary(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
   ) {
     return this.tasksService.summary(currentUser, weddingPlanId);
   }
 }
 
-@Controller('tasks')
+@Controller("api/v1/tasks")
 @UseGuards(JwtAuthGuard)
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
-  @Get(':id')
+  @Get(":id")
   findOne(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param("id") id: string,
   ) {
     return this.tasksService.findOne(currentUser, id);
   }
 
-  @Post(':id/checklist')
+  @Post(":id/checklist")
   createChecklistItem(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() dto: CreateChecklistItemDto,
   ) {
     return this.tasksService.createChecklistItem(currentUser, id, dto);
   }
 
-  @Patch(':id/checklist/:itemId')
+  @Patch(":id/checklist/:itemId")
   updateChecklistItem(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Param('itemId') itemId: string,
+    @Param("id") id: string,
+    @Param("itemId") itemId: string,
     @Body() dto: UpdateChecklistItemDto,
   ) {
     return this.tasksService.updateChecklistItem(currentUser, id, itemId, dto);
   }
 
-  @Delete(':id/checklist/:itemId')
+  @Delete(":id/checklist/:itemId")
   removeChecklistItem(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Param('itemId') itemId: string,
+    @Param("id") id: string,
+    @Param("itemId") itemId: string,
   ) {
     return this.tasksService.removeChecklistItem(currentUser, id, itemId);
   }
 
-  @Patch(':id/assign')
+  @Patch(":id/assign")
   assign(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() dto: AssignTaskDto,
   ) {
     return this.tasksService.assign(currentUser, id, dto);
   }
 
-  @Patch(':id')
+  @Patch(":id")
   update(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() dto: UpdateTaskDto,
   ) {
     return this.tasksService.update(currentUser, id, dto);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   remove(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.tasksService.remove(currentUser, id);
-  }
-}
-
-@Controller('api/v1/wedding-plans/:weddingPlanId/tasks')
-@UseGuards(JwtAuthGuard)
-export class ApiV1WeddingPlanTasksController {
-  constructor(private readonly tasksService: TasksService) {}
-
-  @Post()
-  create(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-    @Body() dto: CreateTaskDto,
-  ) {
-    return this.tasksService.create(currentUser, weddingPlanId, dto);
-  }
-
-  @Get()
-  findForPlan(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-    @Query() query: ListQueryDto,
-  ) {
-    return this.tasksService.findForPlan(currentUser, weddingPlanId, query);
-  }
-
-  @Get('summary')
-  summary(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-  ) {
-    return this.tasksService.summary(currentUser, weddingPlanId);
-  }
-}
-
-@Controller('api/v1/tasks')
-@UseGuards(JwtAuthGuard)
-export class ApiV1TasksController {
-  constructor(private readonly tasksService: TasksService) {}
-
-  @Get(':id')
-  findOne(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.tasksService.findOne(currentUser, id);
-  }
-
-  @Post(':id/checklist')
-  createChecklistItem(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Body() dto: CreateChecklistItemDto,
-  ) {
-    return this.tasksService.createChecklistItem(currentUser, id, dto);
-  }
-
-  @Patch(':id/checklist/:itemId')
-  updateChecklistItem(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Param('itemId') itemId: string,
-    @Body() dto: UpdateChecklistItemDto,
-  ) {
-    return this.tasksService.updateChecklistItem(currentUser, id, itemId, dto);
-  }
-
-  @Delete(':id/checklist/:itemId')
-  removeChecklistItem(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Param('itemId') itemId: string,
-  ) {
-    return this.tasksService.removeChecklistItem(currentUser, id, itemId);
-  }
-
-  @Patch(':id/assign')
-  assign(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Body() dto: AssignTaskDto,
-  ) {
-    return this.tasksService.assign(currentUser, id, dto);
-  }
-
-  @Patch(':id')
-  update(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Body() dto: UpdateTaskDto,
-  ) {
-    return this.tasksService.update(currentUser, id, dto);
-  }
-
-  @Delete(':id')
-  remove(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
+    @Param("id") id: string,
   ) {
     return this.tasksService.remove(currentUser, id);
   }

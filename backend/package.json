@@ -6,8 +6,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "check": "tsc -p tsconfig.json --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "test": "node --test -r ts-node/register test/task-responsibility.test.ts test/backend-support.test.ts test/health-readiness.test.ts test/scheduler-lock.test.ts test/outbox-logic.test.ts test/admin-auth-session-security.test.ts test/admin-rbac-audit.test.ts test/admin-audit-interceptor.test.ts test/auth-otp-mode.test.ts test/auth-registration-security.test.ts test/whatsapp-otp-channel.test.ts test/request-target-redaction.test.ts test/privacy-contract.test.ts test/sharing-permission-ceiling.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/provider-chat-logic.test.ts test/media-upload-logic.test.ts test/private-chat-media.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/financial-integrity.test.ts test/financial-ledger.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts",
+    "pretest": "node --test -r ts-node/register test/legacy-finance-removal.test.ts test/canonical-api-routes.test.ts",
+    "build": "node scripts/clean-dist.cjs && tsc -p tsconfig.build.json",
+    "test": "node --test -r ts-node/register test/task-responsibility.test.ts test/backend-support.test.ts test/health-readiness.test.ts test/scheduler-lock.test.ts test/outbox-logic.test.ts test/admin-auth-session-security.test.ts test/admin-rbac-audit.test.ts test/admin-audit-interceptor.test.ts test/admin-presenter.test.ts test/auth-otp-mode.test.ts test/auth-registration-security.test.ts test/login-throttle.test.ts test/whatsapp-otp-channel.test.ts test/request-target-redaction.test.ts test/privacy-contract.test.ts test/sharing-permission-ceiling.test.ts test/auth-refresh-wiring.test.ts test/quote-lifecycle.test.ts test/marketplace-presenter.test.ts test/provider-chat-logic.test.ts test/conversation-pagination.test.ts test/media-upload-logic.test.ts test/media-upload-ticket.test.ts test/private-chat-media.test.ts test/media-url-ownership.test.ts test/notification-logic.test.ts test/notification-reminders-scheduler.test.ts test/plan-permissions.test.ts test/dashboard-priority.test.ts test/dashboard-summary-presenter.test.ts test/financial-integrity.test.ts test/financial-ledger.test.ts test/idempotency-interceptor.test.ts test/quote-guest-visibility.test.ts test/account-deletion.test.ts test/password-reset-logic.test.ts",
     "prisma:generate": "prisma generate",
     "smoke": "npm run smoke:health && npm run smoke:auth",
     "smoke:health": "node scripts/smoke/health-smoke.js",
@@ -19,7 +20,6 @@
     "smoke:money-apis": "node scripts/smoke/money-apis-smoke.js",
     "smoke:financial-ledger-concurrency": "node scripts/smoke/financial-ledger-concurrency-smoke.js",
     "smoke:budget-expense": "node scripts/smoke/budget-expense-smoke.js",
-    "smoke:debt-installment": "node scripts/smoke/debt-installment-smoke.js",
     "smoke:tasks-apis": "node scripts/smoke/tasks-apis-smoke.js",
     "smoke:task-timeline": "node scripts/smoke/task-timeline-smoke.js",
     "smoke:sharing": "node scripts/smoke/sharing-smoke.js",
@@ -75,6 +75,7 @@
     "prom-client": "^15.1.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "sharp": "^0.35.0",
     "socket.io": "^4.8.1"
   },
   "overrides": {

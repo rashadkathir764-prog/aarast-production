@@ -8,7 +8,7 @@ import { NotificationPreference } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
-import { normalizeOwnedMediaUrl } from "../media/media-upload-policy";
+import { MediaStorageService } from "../media/media-storage.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
@@ -43,6 +43,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissionService: PermissionService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   async updateMe(
@@ -57,29 +58,52 @@ export class UsersService {
         throw new ConflictException("Email is already registered");
       }
     }
+    const avatarUrl =
+      dto.avatarUrl !== undefined
+        ? await this.mediaStorage.verifyPublicMediaUrl(
+            currentUser,
+            dto.avatarUrl,
+            "user-avatar",
+          )
+        : undefined;
 
-    const user = await this.prisma.user.update({
-      where: { id: currentUser.id },
-      data: {
-        ...(dto.name !== undefined
-          ? { name: this.requiredText(dto.name, "name") }
-          : {}),
-        ...(dto.email !== undefined ? { email } : {}),
-        ...(dto.avatarUrl !== undefined
-          ? {
-              avatarUrl: normalizeOwnedMediaUrl(
-                dto.avatarUrl,
-                "user-avatar",
-                currentUser.id,
-              ),
-            }
-          : {}),
-        ...(dto.locale !== undefined
-          ? { locale: this.requiredText(dto.locale, "locale") }
-          : {}),
-        ...(dto.appRole !== undefined ? { appRole: dto.appRole } : {}),
-        ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
-      },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.user.findUniqueOrThrow({
+        where: { id: currentUser.id },
+        select: { avatarUrl: true },
+      });
+      const avatarChanged =
+        dto.avatarUrl !== undefined && avatarUrl !== existing.avatarUrl;
+      if (avatarChanged) {
+        await this.mediaStorage.scheduleTargetDeletion(
+          { type: "USER_AVATAR", id: currentUser.id },
+          tx,
+        );
+      }
+      if (avatarChanged && avatarUrl) {
+        await this.mediaStorage.consumePublicMediaUrl(
+          currentUser,
+          avatarUrl,
+          "user-avatar",
+          { type: "USER_AVATAR", id: currentUser.id },
+          tx,
+        );
+      }
+      return tx.user.update({
+        where: { id: currentUser.id },
+        data: {
+          ...(dto.name !== undefined
+            ? { name: this.requiredText(dto.name, "name") }
+            : {}),
+          ...(dto.email !== undefined ? { email } : {}),
+          ...(dto.avatarUrl !== undefined ? { avatarUrl } : {}),
+          ...(dto.locale !== undefined
+            ? { locale: this.requiredText(dto.locale, "locale") }
+            : {}),
+          ...(dto.appRole !== undefined ? { appRole: dto.appRole } : {}),
+          ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
+        },
+      });
     });
 
     return toSafeUser(user);
@@ -102,6 +126,51 @@ export class UsersService {
 
     await this.prisma.$transaction(
       async (tx) => {
+        // The same advisory account lock used by presigning prevents a new
+        // upload ticket from escaping this snapshot. Tickets survive User
+        // deletion (userId becomes null) as durable object-deletion jobs.
+        await this.mediaStorage.scheduleAllOwnedMediaDeletion(
+          userId,
+          tx,
+        );
+        const [notificationRows, conversationRows] = await Promise.all([
+          tx.notification.findMany({
+            where: { userId },
+            select: { id: true },
+          }),
+          tx.conversationParticipant.findMany({
+            where: { userId },
+            select: { conversationId: true },
+          }),
+        ]);
+        const notificationIds = notificationRows.map((row) => row.id);
+        const conversationIds = conversationRows.map(
+          (row) => row.conversationId,
+        );
+        if (notificationIds.length > 0 || conversationIds.length > 0) {
+          await tx.outboxEvent.deleteMany({
+            where: {
+              OR: [
+                ...(notificationIds.length > 0
+                  ? [
+                      {
+                        aggregateType: 'notification',
+                        aggregateId: { in: notificationIds },
+                      },
+                    ]
+                  : []),
+                ...(conversationIds.length > 0
+                  ? [
+                      {
+                        aggregateType: 'conversation',
+                        aggregateId: { in: conversationIds },
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          });
+        }
         const ownedPlans = await tx.weddingPlan.findMany({
           where: { ownerUserId: userId },
           select: { id: true },
@@ -116,7 +185,6 @@ export class UsersService {
           await tx.financialInstallment.deleteMany({ where: inPlans });
           await tx.expense.deleteMany({ where: inPlans });
           await tx.financialCommitment.deleteMany({ where: inPlans });
-          await tx.debt.deleteMany({ where: inPlans }); // cascades Installment
           await tx.weddingTask.deleteMany({ where: inPlans }); // cascades checklist items
           await tx.guest.deleteMany({ where: inPlans });
           await tx.guestGroup.deleteMany({ where: inPlans });

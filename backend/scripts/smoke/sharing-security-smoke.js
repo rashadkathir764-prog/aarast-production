@@ -94,7 +94,7 @@ async function run() {
 
   const managerMember = await request(
     "POST",
-    `/wedding-plans/${plan.body.id}/shared-members`,
+    `/api/v1/wedding-plans/${plan.body.id}/members`,
     {
       userId: manager.user.id,
       role: "MANAGER",
@@ -113,7 +113,7 @@ async function run() {
   });
   const ownerLookup = await request(
     "GET",
-    `/users/lookup?${lookupQuery}`,
+    `/api/v1/users/lookup?${lookupQuery}`,
     null,
     owner.token,
   );
@@ -121,7 +121,7 @@ async function run() {
 
   const managerLookup = await request(
     "GET",
-    `/users/lookup?${lookupQuery}`,
+    `/api/v1/users/lookup?${lookupQuery}`,
     null,
     manager.token,
   );
@@ -132,7 +132,7 @@ async function run() {
 
   const outsiderLookup = await request(
     "GET",
-    `/users/lookup?${lookupQuery}`,
+    `/api/v1/users/lookup?${lookupQuery}`,
     null,
     outsider.token,
   );

@@ -3,7 +3,10 @@ import { SharedMember, SharedMemberRole, WeddingPlan } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 
-export type FinancialPermissionType = 'budget' | 'expenses' | 'debts';
+export type FinancialPermissionType =
+  | 'budget'
+  | 'expenses'
+  | 'financialRecords';
 
 export interface PlanAccessContext {
   plan: WeddingPlan;
@@ -153,7 +156,7 @@ export class PermissionService {
       return member.canViewBudget;
     }
     if (type === 'expenses') return member.canViewExpenses;
-    return member.canViewDebts;
+    return member.canViewFinancialRecords;
   }
 
   canManageTasks(context: PlanAccessContext): boolean {

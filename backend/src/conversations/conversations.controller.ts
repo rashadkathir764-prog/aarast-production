@@ -12,14 +12,11 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import {
-  ConversationToggleDto,
-  ReportConversationDto,
-} from './dto/conversation-action.dto';
+import { ConversationToggleDto, ReportConversationDto } from './dto/conversation-action.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';
 
-@Controller('conversations')
+@Controller('api/v1/conversations')
 @UseGuards(JwtAuthGuard)
 export class ConversationsController {
   constructor(private readonly conversations: ConversationsService) {}
@@ -35,8 +32,18 @@ export class ConversationsController {
 
   @Get()
   @Header('Cache-Control', 'private, no-store')
-  list(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.conversations.list(currentUser);
+  list(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.conversations.list(currentUser, cursor, limit);
+  }
+
+  @Get(':id')
+  @Header('Cache-Control', 'private, no-store')
+  get(@CurrentUser() currentUser: AuthenticatedUser, @Param('id') id: string) {
+    return this.conversations.get(currentUser, id);
   }
 
   @Get(':id/messages')
@@ -71,10 +78,7 @@ export class ConversationsController {
   }
 
   @Patch(':id/read')
-  markRead(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
+  markRead(@CurrentUser() currentUser: AuthenticatedUser, @Param('id') id: string) {
     return this.conversations.markRead(currentUser, id);
   }
 

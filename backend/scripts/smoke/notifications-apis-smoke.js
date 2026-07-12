@@ -174,8 +174,8 @@ async function run() {
   {
     const res = await request('GET', '/api/v1/notifications', null, invitee.token);
     check('invitee notifications list - HTTP 200', res.status === 200);
-    const notification = Array.isArray(res.body)
-      ? res.body.find((item) => item.type === 'SHARING_INVITATION' && item.weddingPlanId === ownerPlanId)
+    const notification = Array.isArray(res.body?.items)
+      ? res.body.items.find((item) => item.type === 'SHARING_INVITATION' && item.weddingPlanId === ownerPlanId)
       : null;
     check('invite notification created', typeof notification?.id === 'string');
     check('invite notification does not expose passwordHash', !hasPasswordHash(res.body));
@@ -213,8 +213,8 @@ async function run() {
   {
     const res = await request('GET', '/api/v1/notifications', null, owner.token);
     check('owner notifications list - HTTP 200', res.status === 200);
-    const notification = Array.isArray(res.body)
-      ? res.body.find((item) => item.type === 'SHARING_INVITE_ACCEPTED' && item.weddingPlanId === ownerPlanId)
+    const notification = Array.isArray(res.body?.items)
+      ? res.body.items.find((item) => item.type === 'SHARING_INVITE_ACCEPTED' && item.weddingPlanId === ownerPlanId)
       : null;
     check('invite accepted notification created', typeof notification?.id === 'string');
     acceptedNotificationId = notification?.id;
@@ -227,7 +227,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/api/v1/provider/profile', {
+    const res = await request('POST', '/api/v1/provider/apply', {
       businessName: 'Phase9 Provider Business',
       phone: PROVIDER_PHONE,
       cityId: reference.city.id,
@@ -239,7 +239,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/api/v1/provider/services', {
+    const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
       title: 'Phase9 Service',
       basePrice: '150000.00',
@@ -275,7 +275,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/api/v1/provider/quote-requests/${quoteId}/offers`, {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
       title: 'Phase9 Offer',
       message: 'Phase9 offer notification body',
       amount: '180000.00',
@@ -286,8 +286,8 @@ async function run() {
   {
     const res = await request('GET', `/api/v1/notifications?weddingPlanId=${quotePlanId}`, null, customer.token);
     check('customer plan notifications - HTTP 200', res.status === 200);
-    const notification = Array.isArray(res.body)
-      ? res.body.find((item) => item.type === 'QUOTE_OFFER_RECEIVED' && item.weddingPlanId === quotePlanId)
+    const notification = Array.isArray(res.body?.items)
+      ? res.body.items.find((item) => item.type === 'QUOTE_OFFER_RECEIVED' && item.weddingPlanId === quotePlanId)
       : null;
     check('quote offer notification created', typeof notification?.id === 'string');
     check('quote offer notification has safe data', notification?.data?.quoteRequestId === quoteId);

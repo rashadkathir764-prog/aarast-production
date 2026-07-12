@@ -15,7 +15,6 @@ import { OutboxEventTypes } from '../outbox/outbox.constants';
 import { OutboxService } from '../outbox/outbox.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { MediaStorageService } from '../media/media-storage.service';
-import { assertOwnedMediaKey } from '../media/media-upload-policy';
 import {
   assertConversationParticipant,
   conversationParticipantState,
@@ -44,11 +43,7 @@ export class ConversationsService {
     if (!quote.provider.userId) {
       throw new ConflictException('Provider account is not available for chat');
     }
-    assertConversationParticipant(
-      currentUser.id,
-      quote.userId,
-      quote.provider.userId,
-    );
+    assertConversationParticipant(currentUser.id, quote.userId, quote.provider.userId);
 
     const participantData = [
       {
@@ -82,18 +77,32 @@ export class ConversationsService {
     return { conversationId };
   }
 
-  async list(currentUser: AuthenticatedUser) {
+  async get(currentUser: AuthenticatedUser, conversationId: string) {
+    return this.findConversation(currentUser, conversationId);
+  }
+
+  async list(currentUser: AuthenticatedUser, cursor?: string, limitValue?: string) {
+    const limit = normalizeMessagePageSize(limitValue);
+    await this.assertConversationCursor(currentUser.id, cursor);
     const conversations = await this.prisma.conversation.findMany({
       where: { participants: { some: { userId: currentUser.id } } },
-      orderBy: [{ lastMessageAt: 'desc' }, { createdAt: 'desc' }],
-      take: 100,
+      orderBy: [
+        { lastMessageAt: { sort: 'desc', nulls: 'last' } },
+        { createdAt: 'desc' },
+        { id: 'desc' },
+      ],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: this.conversationInclude(),
     });
-    return Promise.all(
-      conversations.map((conversation) =>
-        this.toConversationResponse(currentUser.id, conversation),
+    const hasMore = conversations.length > limit;
+    const page = conversations.slice(0, limit);
+    return {
+      items: await Promise.all(
+        page.map((conversation) => this.toConversationResponse(currentUser.id, conversation)),
       ),
-    );
+      nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+    };
   }
 
   async messages(
@@ -104,6 +113,7 @@ export class ConversationsService {
   ) {
     await this.assertAccess(currentUser, conversationId);
     const limit = normalizeMessagePageSize(limitValue);
+    await this.assertMessageCursor(conversationId, cursor);
     const messages = await this.prisma.chatMessage.findMany({
       where: { conversationId, deletedAt: null },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
@@ -118,51 +128,38 @@ export class ConversationsService {
     const page = messages.slice(0, limit);
     const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null;
     return {
-      items: await Promise.all(
-        page.reverse().map((message) => this.toMessageResponse(message)),
-      ),
+      items: await Promise.all(page.reverse().map((message) => this.toMessageResponse(message))),
       nextCursor,
     };
   }
 
-  async send(
-    currentUser: AuthenticatedUser,
-    conversationId: string,
-    dto: SendMessageDto,
-  ) {
+  async send(currentUser: AuthenticatedUser, conversationId: string, dto: SendMessageDto) {
     const conversation = await this.assertAccess(currentUser, conversationId);
     if (conversation.closedAt) {
       throw new ConflictException('Conversation is closed');
     }
-    if (
-      conversation.participants.some((participant) => participant.blockedAt)
-    ) {
+    if (conversation.participants.some((participant) => participant.blockedAt)) {
       throw new ConflictException('Conversation is blocked');
     }
     const attachments = dto.attachments ?? [];
     if (attachments.length > 4) {
-      throw new BadRequestException(
-        'A message can contain up to 4 attachments',
-      );
+      throw new BadRequestException('A message can contain up to 4 attachments');
     }
-    for (const attachment of attachments) {
-      if (!attachment.contentType.toLowerCase().startsWith('image/')) {
-        throw new BadRequestException('Only image attachments are supported');
-      }
-      assertOwnedMediaKey(
-        attachment.attachmentRef,
-        'chat-image',
-        currentUser.id,
-      );
+    if (
+      new Set(attachments.map((attachment) => attachment.attachmentRef)).size !== attachments.length
+    ) {
+      throw new BadRequestException('A message cannot contain the same attachment more than once');
     }
+    const verifiedAttachments = await Promise.all(
+      attachments.map((attachment) =>
+        this.mediaStorage.verifyUpload(currentUser, attachment.attachmentRef, 'chat-image'),
+      ),
+    );
     const signedDownloads = new Map(
       await Promise.all(
-        attachments.map(async (attachment) => {
-          const storageKey = attachment.attachmentRef.trim();
-          return [
-            storageKey,
-            await this.mediaStorage.createDownloadUrl(storageKey),
-          ] as const;
+        verifiedAttachments.map(async (attachment) => {
+          const storageKey = attachment.key;
+          return [storageKey, await this.mediaStorage.createDownloadUrl(storageKey)] as const;
         }),
       ),
     );
@@ -175,9 +172,9 @@ export class ConversationsService {
           senderUserId: currentUser.id,
           body,
           attachments: {
-            create: attachments.map((attachment) => ({
-              storageKey: attachment.attachmentRef.trim(),
-              contentType: attachment.contentType.trim().toLowerCase(),
+            create: verifiedAttachments.map((attachment) => ({
+              storageKey: attachment.key,
+              contentType: attachment.contentType,
               byteSize: attachment.byteSize,
             })),
           },
@@ -187,6 +184,21 @@ export class ConversationsService {
           attachments: true,
         },
       });
+      for (const attachment of verifiedAttachments) {
+        const createdAttachment = created.attachments.find(
+          (item) => item.storageKey === attachment.key,
+        );
+        if (!createdAttachment) {
+          throw new ConflictException('Verified attachment could not be bound to the message');
+        }
+        await this.mediaStorage.consumeUpload(
+          currentUser,
+          attachment.key,
+          'chat-image',
+          { type: 'CHAT_ATTACHMENT', id: createdAttachment.id },
+          tx,
+        );
+      }
       await tx.conversation.update({
         where: { id: conversationId },
         data: { lastMessageAt: now },
@@ -252,9 +264,7 @@ export class ConversationsService {
       select: { storageKey: true },
     });
     if (!attachment) throw new NotFoundException('Attachment not found');
-    const access = await this.mediaStorage.createDownloadUrl(
-      attachment.storageKey,
-    );
+    const access = await this.mediaStorage.createDownloadUrl(attachment.storageKey);
     return {
       url: access.downloadUrl,
       expiresInSeconds: access.expiresInSeconds,
@@ -276,11 +286,7 @@ export class ConversationsService {
     return receipt;
   }
 
-  async setMuted(
-    currentUser: AuthenticatedUser,
-    conversationId: string,
-    enabled: boolean,
-  ) {
+  async setMuted(currentUser: AuthenticatedUser, conversationId: string, enabled: boolean) {
     await this.assertAccess(currentUser, conversationId);
     const participant = await this.prisma.conversationParticipant.update({
       where: {
@@ -292,11 +298,7 @@ export class ConversationsService {
     return { conversationId, muted: participant.mutedAt !== null };
   }
 
-  async setBlocked(
-    currentUser: AuthenticatedUser,
-    conversationId: string,
-    enabled: boolean,
-  ) {
+  async setBlocked(currentUser: AuthenticatedUser, conversationId: string, enabled: boolean) {
     await this.assertAccess(currentUser, conversationId);
     const participant = await this.prisma.conversationParticipant.update({
       where: {
@@ -308,17 +310,11 @@ export class ConversationsService {
     return { conversationId, blocked: participant.blockedAt !== null };
   }
 
-  async report(
-    currentUser: AuthenticatedUser,
-    conversationId: string,
-    reasonValue: string,
-  ) {
+  async report(currentUser: AuthenticatedUser, conversationId: string, reasonValue: string) {
     await this.assertAccess(currentUser, conversationId);
     const reason = reasonValue.trim();
     if (reason.length < 3 || reason.length > 500) {
-      throw new BadRequestException(
-        'Report reason must contain 3 to 500 characters',
-      );
+      throw new BadRequestException('Report reason must contain 3 to 500 characters');
     }
     return this.prisma.conversationReport.upsert({
       where: {
@@ -333,10 +329,7 @@ export class ConversationsService {
     });
   }
 
-  private async findConversation(
-    currentUser: AuthenticatedUser,
-    conversationId: string,
-  ) {
+  private async findConversation(currentUser: AuthenticatedUser, conversationId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: this.conversationInclude(),
@@ -350,10 +343,7 @@ export class ConversationsService {
     return this.toConversationResponse(currentUser.id, conversation);
   }
 
-  private async assertAccess(
-    currentUser: AuthenticatedUser,
-    conversationId: string,
-  ) {
+  private async assertAccess(currentUser: AuthenticatedUser, conversationId: string) {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
@@ -370,6 +360,31 @@ export class ConversationsService {
       conversation.quoteRequest.provider.userId,
     );
     return conversation;
+  }
+
+  private async assertConversationCursor(currentUserId: string, cursor?: string) {
+    if (!cursor) return;
+    const conversation = await this.prisma.conversation.findFirst({
+      where: {
+        id: cursor,
+        participants: { some: { userId: currentUserId } },
+      },
+      select: { id: true },
+    });
+    if (!conversation) {
+      throw new BadRequestException('Invalid conversation cursor');
+    }
+  }
+
+  private async assertMessageCursor(conversationId: string, cursor?: string) {
+    if (!cursor) return;
+    const message = await this.prisma.chatMessage.findFirst({
+      where: { id: cursor, conversationId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!message) {
+      throw new BadRequestException('Invalid message cursor');
+    }
   }
 
   private conversationInclude() {
@@ -407,9 +422,7 @@ export class ConversationsService {
 
   private async toConversationResponse(
     currentUserId: string,
-    conversation: Awaited<
-      ReturnType<ConversationsService['conversationRecord']>
-    >,
+    conversation: Awaited<ReturnType<ConversationsService['conversationRecord']>>,
   ) {
     const membership = conversation.participants.find(
       (participant) => participant.userId === currentUserId,
@@ -418,18 +431,13 @@ export class ConversationsService {
     const counterpart = conversation.participants.find(
       (participant) => participant.userId !== currentUserId,
     );
-    const participantState = conversationParticipantState(
-      currentUserId,
-      conversation.participants,
-    );
+    const participantState = conversationParticipantState(currentUserId, conversation.participants);
     const unreadCount = await this.prisma.chatMessage.count({
       where: {
         conversationId: conversation.id,
         senderUserId: { not: currentUserId },
         deletedAt: null,
-        ...(membership?.lastReadAt
-          ? { createdAt: { gt: membership.lastReadAt } }
-          : {}),
+        ...(membership?.lastReadAt ? { createdAt: { gt: membership.lastReadAt } } : {}),
       },
     });
     const lastMessage = conversation.messages[0]
@@ -463,10 +471,7 @@ export class ConversationsService {
     },
   >(
     message: T,
-    signedDownloads?: Map<
-      string,
-      Awaited<ReturnType<MediaStorageService['createDownloadUrl']>>
-    >,
+    signedDownloads?: Map<string, Awaited<ReturnType<MediaStorageService['createDownloadUrl']>>>,
   ) {
     const attachments = await Promise.all(
       message.attachments.map(async (attachment) => {

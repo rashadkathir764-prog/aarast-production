@@ -5,58 +5,18 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { BadRequestException } from "@nestjs/common";
-import {
-  DebtStatus,
-  ExpenseStatus,
-  FinancialCommitmentSourceType,
-  Prisma,
-} from "@prisma/client";
-import { applyDebtPaymentDelta } from "../src/common/money/debt-balance";
+import { ExpenseStatus, Prisma } from "@prisma/client";
 import {
   optionalMoneyAmount,
   requiredMoneyAmount,
 } from "../src/common/validation/money";
-import { DebtsService } from "../src/debts/debts.service";
 import { ExpensesService } from "../src/expenses/expenses.service";
 import { FinancialCommitmentsService } from "../src/financial-commitments/financial-commitments.service";
+import {
+  combineVisibleMoney,
+  financialExposure,
+} from "../src/money/money-summary.math";
 import { WeddingPlansService } from "../src/wedding-plans/wedding-plans.service";
-
-const d = (value: string | number) => new Prisma.Decimal(value);
-
-test("payment delta moves debt through OPEN -> PARTIALLY_PAID -> PAID", () => {
-  const partial = applyDebtPaymentDelta(d("100000"), d(0), d("40000"));
-  assert.equal(partial.status, DebtStatus.PARTIALLY_PAID);
-  assert.equal(partial.paidAmount.toString(), "40000");
-
-  const paid = applyDebtPaymentDelta(d("100000"), d("40000"), d("60000"));
-  assert.equal(paid.status, DebtStatus.PAID);
-  assert.equal(paid.paidAmount.toString(), "100000");
-});
-
-test("un-pay and delete compensation never drops the balance below zero", () => {
-  const result = applyDebtPaymentDelta(d("100000"), d("30000"), d("-50000"));
-  assert.equal(result.paidAmount.toString(), "0");
-  assert.equal(result.status, DebtStatus.OPEN);
-});
-
-test("overpayment is clamped at the debt total", () => {
-  const result = applyDebtPaymentDelta(d("100000"), d("90000"), d("40000"));
-  assert.equal(result.paidAmount.toString(), "100000");
-  assert.equal(result.status, DebtStatus.PAID);
-});
-
-test("decimal amounts keep exact cents — no float drift", () => {
-  // 0.1 + 0.2 style drift would break this with Number arithmetic.
-  const result = applyDebtPaymentDelta(d("1000.30"), d("1000.10"), d("0.20"));
-  assert.equal(result.paidAmount.toString(), "1000.3");
-  assert.equal(result.status, DebtStatus.PAID);
-});
-
-test("zero-total debt never reports PAID", () => {
-  const result = applyDebtPaymentDelta(d(0), d(0), d("500"));
-  assert.equal(result.paidAmount.toString(), "0");
-  assert.equal(result.status, DebtStatus.OPEN);
-});
 
 test("money validation accepts sane amounts", () => {
   assert.equal(requiredMoneyAmount("1500000", "amount"), "1500000");
@@ -394,7 +354,6 @@ test("wedding plan financial children cannot cascade-delete private data", () =>
   for (const model of [
     "BudgetCategory",
     "Expense",
-    "Debt",
     "FinancialCommitment",
     "FinancialPaymentRecord",
     "FinancialInstallment",
@@ -422,135 +381,6 @@ test("wedding plan financial children cannot cascade-delete private data", () =>
   );
 });
 
-test("legacy debts and installments are linked into the financial backbone", () => {
-  const schema = readFileSync(
-    join(process.cwd(), "prisma/schema.prisma"),
-    "utf8",
-  );
-  assert.match(schema, /legacyDebtId\s+String\?\s+@unique/);
-  assert.match(schema, /legacyInstallmentId\s+String\?\s+@unique/);
-  const migration = readFileSync(
-    join(
-      process.cwd(),
-      "prisma/migrations/20260710090000_bridge_legacy_debts_to_financial_backbone/migration.sql",
-    ),
-    "utf8",
-  );
-  assert.match(migration, /legacy-debt-category-/);
-  assert.match(migration, /ON CONFLICT \("legacyDebtId"\) DO NOTHING/);
-  assert.match(migration, /ON CONFLICT \("legacyInstallmentId"\) DO NOTHING/);
-});
-
-test("debt creation clamps paid to total and mirrors into the financial backbone", async () => {
-  const created: any[] = [];
-  const mirroredCommitments: any[] = [];
-  const mirroredPayments: any[] = [];
-  const tx = {
-    budgetCategory: {
-      upsert: async ({ create }: any) => create,
-    },
-    installment: {
-      aggregate: async () => ({ _sum: { amount: new Prisma.Decimal(0) } }),
-    },
-    financialCommitment: {
-      upsert: async ({ create, update, where }: any) => {
-        const data = {
-          id: `commitment-${mirroredCommitments.length + 1}`,
-          ...create,
-        };
-        mirroredCommitments.push({ where, create, update, data });
-        return data;
-      },
-      deleteMany: async () => ({ count: 0 }),
-    },
-    financialPaymentRecord: {
-      findMany: async ({ where }: any) =>
-        mirroredPayments
-          .map((entry) => entry.create)
-          .filter((entry) =>
-            where.legacyDebtId
-              ? entry.legacyDebtId === where.legacyDebtId
-              : where.legacyInstallmentId
-                ? entry.legacyInstallmentId === where.legacyInstallmentId
-                : true,
-          )
-          .map((entry) => ({
-            amount: entry.amount,
-            entryType: entry.entryType ?? "PAYMENT",
-          })),
-      create: async ({ data }: any) => {
-        mirroredPayments.push({ create: data });
-        return { id: `payment-${mirroredPayments.length}`, ...data };
-      },
-    },
-  };
-  const prisma = {
-    $transaction: async (fn: any) => fn(tx),
-    debt: {
-      create: async ({ data }: any) => {
-        created.push(data);
-        return {
-          id: `debt-${created.length}`,
-          weddingPlanId: data.weddingPlanId,
-          creditorName: data.creditorName,
-          creditorPhone: data.creditorPhone ?? null,
-          creditorNormalizedPhone: data.creditorNormalizedPhone ?? null,
-          title: data.title,
-          totalAmount: new Prisma.Decimal(data.totalAmount),
-          paidAmount: new Prisma.Decimal(data.paidAmount),
-          dueDate: data.dueDate ?? null,
-          status: data.status,
-          note: data.note ?? null,
-          createdAt: new Date("2026-07-07T00:00:00.000Z"),
-          updatedAt: new Date("2026-07-07T00:00:00.000Z"),
-        };
-      },
-    },
-  };
-  (tx as any).debt = prisma.debt;
-  const permissions = {
-    assertFinancialManageable: async () => undefined,
-  };
-  const service = new DebtsService(prisma as any, permissions as any);
-  const user = { id: "user-1" } as any;
-
-  // Overpaid on create used to persist paid > total with status OPEN.
-  const overpaid = await service.create(user, "plan-1", {
-    creditorName: "أحمد",
-    title: "دين قات",
-    totalAmount: "100",
-    paidAmount: "150",
-  } as any);
-  assert.equal(overpaid.paidAmount, "100");
-  assert.equal(overpaid.status, DebtStatus.PAID);
-  assert.equal(
-    mirroredCommitments[0].create.sourceType,
-    FinancialCommitmentSourceType.MANUAL_DEBT,
-  );
-  assert.equal(mirroredCommitments[0].create.legacyDebtId, "debt-1");
-  assert.equal(mirroredCommitments[0].create.paidAmount.toString(), "100");
-  assert.equal(mirroredPayments[0].create.legacyDebtId, "debt-1");
-  assert.equal(mirroredPayments[0].create.amount.toString(), "100");
-
-  const partial = await service.create(user, "plan-1", {
-    creditorName: "أحمد",
-    title: "دين ذهب",
-    totalAmount: "100",
-    paidAmount: "40",
-    status: DebtStatus.OPEN,
-  } as any);
-  assert.equal(partial.status, DebtStatus.PARTIALLY_PAID);
-
-  // Cancellation is orthogonal to the balance and must survive.
-  const cancelled = await service.create(user, "plan-1", {
-    creditorName: "أحمد",
-    title: "ملغي",
-    totalAmount: "100",
-    status: DebtStatus.CANCELLED,
-  } as any);
-  assert.equal(cancelled.status, DebtStatus.CANCELLED);
-});
-
 test("database CHECK constraints guard every financial amount column", () => {
   const migration = readFileSync(
     join(
@@ -561,9 +391,6 @@ test("database CHECK constraints guard every financial amount column", () => {
   );
   for (const constraint of [
     "Expense_amount_non_negative",
-    "Debt_amounts_non_negative",
-    "Debt_paid_within_total",
-    "Installment_amount_non_negative",
     "FinancialCommitment_amounts_non_negative",
     "FinancialCommitment_paid_within_total",
     "FinancialInstallment_amount_non_negative",
@@ -586,4 +413,17 @@ test("money summary reports manage permission through PermissionService", () => 
     service,
     /context\.sharedMember\?\.canManageFinancialRecords/,
   );
+});
+
+test("money summary combines standalone expenses and commitments once", () => {
+  assert.equal(
+    financialExposure({
+      standaloneExpenses: 2_000_000,
+      commitments: 3_000_000,
+    }),
+    5_000_000,
+  );
+  assert.equal(combineVisibleMoney(2_000_000, null), 2_000_000);
+  assert.equal(combineVisibleMoney(null, 3_000_000), 3_000_000);
+  assert.equal(combineVisibleMoney(null, null), null);
 });

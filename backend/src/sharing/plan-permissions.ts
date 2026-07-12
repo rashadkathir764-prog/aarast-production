@@ -3,7 +3,7 @@ import { SharedMemberRole } from '@prisma/client';
 export interface PlanPermissionFlags {
   canViewBudget: boolean;
   canViewExpenses: boolean;
-  canViewDebts: boolean;
+  canViewFinancialRecords: boolean;
   canEditPlan: boolean;
   canManageTasks: boolean;
   canManageGuests: boolean;
@@ -16,7 +16,7 @@ export interface PlanPermissionFlags {
 const NONE: PlanPermissionFlags = {
   canViewBudget: false,
   canViewExpenses: false,
-  canViewDebts: false,
+  canViewFinancialRecords: false,
   canEditPlan: false,
   canManageTasks: false,
   canManageGuests: false,
@@ -72,7 +72,7 @@ export function rolePermissionDefaults(
         ...NONE,
         canViewBudget: true,
         canViewExpenses: true,
-        canViewDebts: true,
+        canViewFinancialRecords: true,
         canManageFinancialRecords: true,
       };
     case SharedMemberRole.VIEWER:
@@ -84,7 +84,7 @@ function allPermissions(): PlanPermissionFlags {
   return {
     canViewBudget: true,
     canViewExpenses: true,
-    canViewDebts: true,
+    canViewFinancialRecords: true,
     canEditPlan: true,
     canManageTasks: true,
     canManageGuests: true,

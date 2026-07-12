@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   WeddingTask,
   WeddingTaskChecklistItem,
@@ -12,6 +17,7 @@ import {
   startOfRiyadhDay,
 } from '../common/time/business-day';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PermissionService } from '../sharing/permission.service';
 import { AssignTaskDto } from './dto/assign-task.dto';
 import { CreateChecklistItemDto } from './dto/create-checklist-item.dto';
@@ -72,9 +78,12 @@ export interface TaskSummaryResponse {
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async create(
@@ -100,6 +109,7 @@ export class TasksService {
         priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
       },
     });
+    await this.notifyTaskDueBestEffort(task);
 
     return this.toResponse(task);
   }
@@ -168,6 +178,7 @@ export class TasksService {
         ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
       },
     });
+    await this.notifyTaskDueBestEffort(task);
 
     return this.toResponse(task);
   }
@@ -399,6 +410,16 @@ export class TasksService {
 
     if (!member) {
       throw new BadRequestException('assigneeUserId must belong to the plan');
+    }
+  }
+
+  private async notifyTaskDueBestEffort(task: WeddingTask): Promise<void> {
+    try {
+      await this.notifications.notifyTaskDue(task);
+    } catch (error) {
+      this.logger.warn(
+        `Deferred task reminder repair for task ${task.id}: ${error instanceof Error ? error.name : 'UnknownError'}`,
+      );
     }
   }
 

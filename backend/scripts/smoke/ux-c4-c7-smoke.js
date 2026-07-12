@@ -111,7 +111,7 @@ async function run() {
 
   const providerResponse = await request(
     'POST',
-    '/api/v1/provider/profile',
+    '/api/v1/provider/apply',
     {
       businessName: 'C4-C7 Provider',
       phone: PROVIDER_PHONE,
@@ -178,7 +178,7 @@ async function run() {
 
   const offerResponse = await request(
     'POST',
-    `/api/v1/provider/quote-requests/${quoteId}/offers`,
+    `/api/v1/provider/me/quote-requests/${quoteId}/offers`,
     {
       message: 'C4-C7 real provider offer',
       amount: '250000',
@@ -200,7 +200,6 @@ async function run() {
   );
 
   const financeBefore = await prisma.expense.count({ where: { weddingPlanId: planId } });
-  const debtsBefore = await prisma.debt.count({ where: { weddingPlanId: planId } });
   const commitmentsBefore = await prisma.financialCommitment.count({
     where: { weddingPlanId: planId },
   });
@@ -233,10 +232,6 @@ async function run() {
   check(
     'accept creates no automatic expense',
     (await prisma.expense.count({ where: { weddingPlanId: planId } })) === financeBefore,
-  );
-  check(
-    'accept creates no automatic debt',
-    (await prisma.debt.count({ where: { weddingPlanId: planId } })) === debtsBefore,
   );
   check(
     'accept creates no automatic financial commitment',
@@ -284,7 +279,7 @@ async function run() {
     undefined,
     owner.token,
   );
-  const declinedNotification = ownerNotifications.body?.find?.(
+  const declinedNotification = ownerNotifications.body?.items?.find?.(
     (item) => item.type === 'SHARING_INVITE_DECLINED',
   );
   check('decline creates routed notification', Boolean(

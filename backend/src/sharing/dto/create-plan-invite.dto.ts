@@ -47,7 +47,7 @@ export class CreatePlanInviteDto {
 
   @IsBoolean()
   @IsOptional()
-  canViewDebts?: boolean;
+  canViewFinancialRecords?: boolean;
 
   @IsBoolean()
   @IsOptional()

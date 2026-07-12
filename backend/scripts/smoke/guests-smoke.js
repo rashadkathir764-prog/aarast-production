@@ -79,30 +79,30 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns accessToken', typeof res.body?.accessToken === 'string');
     accessToken = res.body?.accessToken;
   }
 
   {
-    const res = await request('POST', '/wedding-plans', {
+    const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Guests Smoke Plan',
       city: 'Aden',
       weddingDate: '2026-12-20T00:00:00.000Z',
       estimatedBudget: '800000',
     }, accessToken);
-    check('POST /wedding-plans - HTTP 201', res.status === 201);
+    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     planId = res.body?.id;
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${planId}/guests`, null, accessToken);
-    check('GET /wedding-plans/:id/guests - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/guests`, null, accessToken);
+    check('GET /api/v1/wedding-plans/:id/guests - HTTP 200', res.status === 200);
     check('initial guests response is array', Array.isArray(res.body));
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${planId}/guests`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/guests`, {
       name: 'Smoke Guest',
       phone: '+967700000001',
       side: 'FAMILY',
@@ -110,7 +110,7 @@ async function run() {
       seatsCount: 2,
       notes: 'Smoke note',
     }, accessToken);
-    check('POST /wedding-plans/:id/guests - HTTP 201', res.status === 201);
+    check('POST /api/v1/wedding-plans/:id/guests - HTTP 201', res.status === 201);
     check('created guest has id', typeof res.body?.id === 'string');
     check('created guest persists submitted name', res.body?.name === 'Smoke Guest');
     check('created guest stores normalized phone', res.body?.phone === '+967700000001');
@@ -119,7 +119,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${planId}/guests`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/guests`, {
       name: '  Smoke   Guest  ',
       phone: '00967700000001',
       side: 'FAMILY',
@@ -133,7 +133,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${planId}/guests`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/guests`, {
       name: 'Smoke Guest',
       phone: '+967700000002',
       side: 'FAMILY',
@@ -145,7 +145,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/guests/${secondGuestId}`, {
+    const res = await request('PATCH', `/api/v1/guests/${secondGuestId}`, {
       phone: '700000001',
     }, accessToken);
     check('duplicate guest update returns 409', res.status === 409);
@@ -156,17 +156,17 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/guests/${guestId}`, {
+    const res = await request('PATCH', `/api/v1/guests/${guestId}`, {
       status: 'CONFIRMED',
       seatsCount: 3,
     }, accessToken);
-    check('PATCH /guests/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/guests/:id - HTTP 200', res.status === 200);
     check('updated guest status changed', res.body?.status === 'CONFIRMED');
     check('updated guest seats changed', res.body?.seatsCount === 3);
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${planId}/guests`, null, accessToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/guests`, null, accessToken);
     check('GET guests after update - HTTP 200', res.status === 200);
     check(
       'list includes updated guest',
@@ -176,19 +176,19 @@ async function run() {
   }
 
   {
-    const res = await request('DELETE', `/guests/${guestId}`, null, accessToken);
-    check('DELETE /guests/:id - HTTP 200', res.status === 200);
+    const res = await request('DELETE', `/api/v1/guests/${guestId}`, null, accessToken);
+    check('DELETE /api/v1/guests/:id - HTTP 200', res.status === 200);
     check('delete response marks deleted', res.body?.deleted === true);
   }
 
   if (secondGuestId) {
-    const res = await request('DELETE', `/guests/${secondGuestId}`, null, accessToken);
+    const res = await request('DELETE', `/api/v1/guests/${secondGuestId}`, null, accessToken);
     check('DELETE second guest - HTTP 200', res.status === 200);
     check('second guest delete response marks deleted', res.body?.deleted === true);
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${planId}/guests`, null, accessToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/guests`, null, accessToken);
     check('GET guests after delete - HTTP 200', res.status === 200);
     check(
       'deleted guests are removed',
@@ -198,7 +198,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${planId}/guests`);
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}/guests`);
     check('GET guests without token returns 401', res.status === 401);
   }
 

@@ -42,7 +42,9 @@ test("account task creation persists optional manual responsibility", async () =
     },
   };
   const permissions = { assertTaskManageable: async () => undefined };
-  const service = new TasksService(prisma as any, permissions as any);
+  const service = new TasksService(prisma as any, permissions as any, {
+    notifyTaskDue: async () => undefined,
+  } as any);
 
   const result = await service.create({ id: "user-1" } as any, "plan-1", {
     title: "تأكيد القاعة",
@@ -73,7 +75,9 @@ test("assigning a plan participant clears manual responsibility", async () => {
     sharedMember: { findUnique: async () => null },
   };
   const permissions = { assertTaskManageable: async () => undefined };
-  const service = new TasksService(prisma as any, permissions as any);
+  const service = new TasksService(prisma as any, permissions as any, {
+    notifyTaskDue: async () => undefined,
+  } as any);
 
   await service.assign(
     { id: "user-1" } as any,
@@ -108,7 +112,9 @@ test("read-only plan members never receive a manual responsible phone", async ()
     }),
     canManageTasks: () => false,
   };
-  const service = new TasksService(prisma as any, permissions as any);
+  const service = new TasksService(prisma as any, permissions as any, {
+    notifyTaskDue: async () => undefined,
+  } as any);
 
   const [result] = await service.findForPlan(
     { id: "viewer-1" } as any,

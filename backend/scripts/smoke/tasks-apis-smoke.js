@@ -115,7 +115,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${planId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
       userId: member.userId,
       role: 'VIEWER',
       canManageTasks: true,

@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import {
-  Debt,
-  DebtStatus,
-  Installment,
+  FinancialCommitment,
+  FinancialCommitmentStatus,
+  FinancialInstallment,
   InstallmentStatus,
-  WeddingPlan,
   WeddingTask,
   WeddingTaskStatus,
 } from '@prisma/client';
@@ -24,10 +23,10 @@ export interface TimelineTaskResponse {
   priority: string;
 }
 
-export interface TimelineDebtResponse {
+export interface TimelineCommitmentResponse {
   id: string;
   weddingPlanId: string;
-  creditorName: string;
+  partyName: string | null;
   title: string;
   totalAmount: string;
   paidAmount: string;
@@ -35,9 +34,9 @@ export interface TimelineDebtResponse {
   status: string;
 }
 
-export interface TimelineInstallmentResponse {
+export interface TimelineFinancialInstallmentResponse {
   id: string;
-  debtId: string;
+  financialCommitmentId: string;
   amount: string;
   dueDate: Date | null;
   status: string;
@@ -46,8 +45,8 @@ export interface TimelineInstallmentResponse {
 export interface TimelineResponse {
   weddingDate: Date | null;
   upcomingTasks: TimelineTaskResponse[];
-  dueDebts: TimelineDebtResponse[];
-  dueInstallments: TimelineInstallmentResponse[];
+  dueCommitments: TimelineCommitmentResponse[];
+  dueInstallments: TimelineFinancialInstallmentResponse[];
 }
 
 @Injectable()
@@ -65,33 +64,45 @@ export class TimelineService {
       weddingPlanId,
       currentUser,
     );
-    const canViewDebts = this.permissions.canReadFinancial(context, 'debts');
+    const canViewFinancialRecords = this.permissions.canReadFinancial(
+      context,
+      'financialRecords',
+    );
 
-    const [tasks, debts, installments] = await Promise.all([
+    const [tasks, commitments, installments] = await Promise.all([
       this.prisma.weddingTask.findMany({
         where: {
           weddingPlanId,
           dueDate: { not: null },
-          status: { notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED] },
+          status: {
+            notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
+          },
         },
         orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
       }),
-      canViewDebts
-        ? this.prisma.debt.findMany({
+      canViewFinancialRecords
+        ? this.prisma.financialCommitment.findMany({
             where: {
               weddingPlanId,
               dueDate: { not: null },
-              status: { in: [DebtStatus.OPEN, DebtStatus.PARTIALLY_PAID] },
+              status: {
+                in: [
+                  FinancialCommitmentStatus.OPEN,
+                  FinancialCommitmentStatus.PARTIALLY_PAID,
+                ],
+              },
             },
             orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
           })
         : Promise.resolve([]),
-      canViewDebts
-        ? this.prisma.installment.findMany({
+      canViewFinancialRecords
+        ? this.prisma.financialInstallment.findMany({
             where: {
+              weddingPlanId,
               dueDate: { not: null },
-              status: { in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE] },
-              debt: { weddingPlanId },
+              status: {
+                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
+              },
             },
             orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
           })
@@ -101,7 +112,9 @@ export class TimelineService {
     return {
       weddingDate: context.plan.weddingDate,
       upcomingTasks: tasks.map((task) => this.toTaskResponse(task)),
-      dueDebts: debts.map((debt) => this.toDebtResponse(debt)),
+      dueCommitments: commitments.map((commitment) =>
+        this.toCommitmentResponse(commitment),
+      ),
       dueInstallments: installments.map((installment) =>
         this.toInstallmentResponse(installment),
       ),
@@ -122,23 +135,27 @@ export class TimelineService {
     };
   }
 
-  private toDebtResponse(debt: Debt): TimelineDebtResponse {
+  private toCommitmentResponse(
+    commitment: FinancialCommitment,
+  ): TimelineCommitmentResponse {
     return {
-      id: debt.id,
-      weddingPlanId: debt.weddingPlanId,
-      creditorName: debt.creditorName,
-      title: debt.title,
-      totalAmount: debt.totalAmount.toString(),
-      paidAmount: debt.paidAmount.toString(),
-      dueDate: debt.dueDate,
-      status: debt.status,
+      id: commitment.id,
+      weddingPlanId: commitment.weddingPlanId,
+      partyName: commitment.partyName,
+      title: commitment.title,
+      totalAmount: commitment.totalAmount.toString(),
+      paidAmount: commitment.paidAmount.toString(),
+      dueDate: commitment.dueDate,
+      status: commitment.status,
     };
   }
 
-  private toInstallmentResponse(installment: Installment): TimelineInstallmentResponse {
+  private toInstallmentResponse(
+    installment: FinancialInstallment,
+  ): TimelineFinancialInstallmentResponse {
     return {
       id: installment.id,
-      debtId: installment.debtId,
+      financialCommitmentId: installment.financialCommitmentId,
       amount: installment.amount.toString(),
       dueDate: installment.dueDate,
       status: installment.status,

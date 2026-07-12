@@ -18,6 +18,7 @@ configureSmokeDatabaseUrl();
 
 const http = require('http');
 const { PrismaClient, ProviderStatus } = require('@prisma/client');
+const { uploadVerifiedImage } = require('./verified-media-upload');
 
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
@@ -148,45 +149,45 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/provider/apply', {
+    const res = await request('POST', '/api/v1/provider/apply', {
       businessName: 'لوحة مزود سموك',
       phone: PROVIDER_PHONE,
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'طلب مزود لاختبار لوحة المزود.',
     }, providerToken);
-    check('POST /provider/apply - HTTP 201', res.status === 201);
+    check('POST /api/v1/provider/apply - HTTP 201', res.status === 201);
     check('provider apply status is PENDING', res.body?.status === 'PENDING');
     check('provider apply does not expose passwordHash', !hasPasswordHash(res.body));
-    providerId = requireResponseId('POST /provider/apply', res);
+    providerId = requireResponseId('POST /api/v1/provider/apply', res);
   }
 
   {
-    const res = await request('GET', '/provider/me/profile', null, providerToken);
-    check('GET /provider/me/profile - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/profile', null, providerToken);
+    check('GET /api/v1/provider/me/profile - HTTP 200', res.status === 200);
     check('provider profile id matches', res.body?.id === providerId);
   }
 
   {
-    const res = await request('PATCH', '/provider/me/profile', {
+    const res = await request('PATCH', '/api/v1/provider/me/profile', {
       ownerName: 'مالك سموك',
       whatsapp: PROVIDER_PHONE,
       address: 'عنوان سموك',
       latitude: '12.7855',
       longitude: '45.0187',
     }, providerToken);
-    check('PATCH /provider/me/profile - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/provider/me/profile - HTTP 200', res.status === 200);
     check('provider ownerName updated', res.body?.ownerName === 'مالك سموك');
   }
 
   {
-    const res = await request('GET', '/provider/me/summary', null, providerToken);
-    check('GET /provider/me/summary - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/summary', null, providerToken);
+    check('GET /api/v1/provider/me/summary - HTTP 200', res.status === 200);
     check('summary starts with zero services', res.body?.servicesCount === 0);
   }
 
   {
-    const res = await request('POST', '/provider/me/services', {
+    const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
       title: 'خدمة لوحة المزود',
       description: 'خدمة لاختبار إدارة المزود.',
@@ -194,57 +195,70 @@ async function run() {
       priceUnit: 'package',
       cityId: reference.city.id,
     }, providerToken);
-    check('POST /provider/me/services - HTTP 201', res.status === 201);
+    check('POST /api/v1/provider/me/services - HTTP 201', res.status === 201);
     check('created service has id', typeof res.body?.id === 'string');
-    serviceId = requireResponseId('POST /provider/me/services', res);
+    serviceId = requireResponseId('POST /api/v1/provider/me/services', res);
   }
 
   {
-    const res = await request('GET', '/provider/me/services', null, providerToken);
-    check('GET /provider/me/services - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/services', null, providerToken);
+    check('GET /api/v1/provider/me/services - HTTP 200', res.status === 200);
     check('services include created service', Array.isArray(res.body) && res.body.some((service) => service.id === serviceId));
   }
 
   {
-    const res = await request('GET', `/provider/me/services/${serviceId}`, null, providerToken);
-    check('GET /provider/me/services/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/provider/me/services/${serviceId}`, null, providerToken);
+    check('GET /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
     check('service detail id matches', res.body?.id === serviceId);
   }
 
   {
-    const res = await request('PATCH', `/provider/me/services/${serviceId}`, {
+    const res = await request('PATCH', `/api/v1/provider/me/services/${serviceId}`, {
       title: 'خدمة لوحة المزود المحدثة',
       basePrice: '130000',
     }, providerToken);
-    check('PATCH /provider/me/services/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
     check('service title updated', res.body?.title === 'خدمة لوحة المزود المحدثة');
   }
 
   {
-    const mediaBaseUrl = process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.replace(/\/$/, '');
-    const canExerciseImageCrud = Boolean(mediaBaseUrl && providerUserId);
-    const imageUrl = canExerciseImageCrud
-      ? `${mediaBaseUrl}/service-image/${providerUserId}/provider-service-smoke.jpg`
-      : 'https://example.test/provider-service.jpg';
-    const res = await request('POST', `/provider/me/services/${serviceId}/images`, {
-      imageUrl,
+    const media = await uploadVerifiedImage({
+      request,
+      token: providerToken,
+      purpose: 'service-image',
+      fileName: 'provider-service-smoke.png',
+      contentType: 'image/png',
+    });
+    check('service image presign succeeds', media.presign.status === 201);
+    check('service image byte upload succeeds', media.upload?.ok === true);
+    check('service image verification succeeds', media.verify?.status === 201);
+    const verifiedKey = media.verify?.body?.key;
+    const verifiedTicket = verifiedKey
+      ? await prisma.mediaUploadTicket.findUnique({ where: { key: verifiedKey } })
+      : null;
+    check(
+      'service image has a durable unconsumed upload ticket',
+      verifiedTicket?.status === 'VERIFIED' && verifiedTicket.consumedAt === null,
+    );
+    const res = await request('POST', `/api/v1/provider/me/services/${serviceId}/images`, {
+      imageUrl: media.verify?.body?.publicUrl,
       altText: 'صورة خدمة سموك',
       sortOrder: 1,
     }, providerToken);
-    if (canExerciseImageCrud) {
-      check('POST /provider/me/services/:id/images - HTTP 201', res.status === 201);
-      check('created image has id', typeof res.body?.id === 'string');
-      imageId = res.body?.id;
-    } else {
-      check(
-        'service image rejects unmanaged URL when media storage is unavailable',
-        res.status === 400 || res.status === 503,
-      );
-    }
+    check('POST /api/v1/provider/me/services/:id/images - HTTP 201', res.status === 201);
+    check('created image has id', typeof res.body?.id === 'string');
+    const consumedTicket = verifiedKey
+      ? await prisma.mediaUploadTicket.findUnique({ where: { key: verifiedKey } })
+      : null;
+    check(
+      'persisting the service image consumes its durable ticket',
+      consumedTicket?.consumedAt instanceof Date,
+    );
+    imageId = res.body?.id;
   }
 
   if (imageId) {
-    const res = await request('PATCH', `/provider/me/services/${serviceId}/images/${imageId}`, {
+    const res = await request('PATCH', `/api/v1/provider/me/services/${serviceId}/images/${imageId}`, {
       altText: 'صورة خدمة سموك محدثة',
       sortOrder: 2,
     }, providerToken);
@@ -253,36 +267,36 @@ async function run() {
   }
 
   if (imageId) {
-    const res = await request('DELETE', `/provider/me/services/${serviceId}/images/${imageId}`, null, providerToken);
+    const res = await request('DELETE', `/api/v1/provider/me/services/${serviceId}/images/${imageId}`, null, providerToken);
     check('DELETE service image - HTTP 200', res.status === 200);
     check('image delete response', res.body?.deleted === true);
   }
 
   {
-    const res = await request('POST', '/provider/me/packages', {
+    const res = await request('POST', '/api/v1/provider/me/packages', {
       serviceId,
       title: 'باقة لوحة المزود',
       description: 'باقة لاختبار لوحة المزود.',
       price: '130000',
       items: ['خدمة', 'تنسيق'],
     }, providerToken);
-    check('POST /provider/me/packages - HTTP 201', res.status === 201);
+    check('POST /api/v1/provider/me/packages - HTTP 201', res.status === 201);
     check('created package has id', typeof res.body?.id === 'string');
     packageId = res.body?.id;
   }
 
   {
-    const res = await request('GET', '/provider/me/packages', null, providerToken);
-    check('GET /provider/me/packages - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/packages', null, providerToken);
+    check('GET /api/v1/provider/me/packages - HTTP 200', res.status === 200);
     check('packages include created package', Array.isArray(res.body) && res.body.some((item) => item.id === packageId));
   }
 
   {
-    const res = await request('PATCH', `/provider/me/packages/${packageId}`, {
+    const res = await request('PATCH', `/api/v1/provider/me/packages/${packageId}`, {
       title: 'باقة لوحة المزود المحدثة',
       price: '135000',
     }, providerToken);
-    check('PATCH /provider/me/packages/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/provider/me/packages/:id - HTTP 200', res.status === 200);
     check('package title updated', res.body?.title === 'باقة لوحة المزود المحدثة');
   }
 
@@ -298,7 +312,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/providers/${providerId}/quote-requests`, {
+    const res = await request('POST', `/api/v1/providers/${providerId}/quote-requests`, {
       serviceId,
       cityId: reference.city.id,
       guestCount: 80,
@@ -310,19 +324,19 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/provider/me/quote-requests', null, providerToken);
-    check('GET /provider/me/quote-requests - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/quote-requests', null, providerToken);
+    check('GET /api/v1/provider/me/quote-requests - HTTP 200', res.status === 200);
     check('provider quotes include customer quote', Array.isArray(res.body) && res.body.some((quote) => quote.id === quoteId));
   }
 
   {
-    const res = await request('GET', `/provider/me/quote-requests/${quoteId}`, null, providerToken);
-    check('GET /provider/me/quote-requests/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/provider/me/quote-requests/${quoteId}`, null, providerToken);
+    check('GET /api/v1/provider/me/quote-requests/:id - HTTP 200', res.status === 200);
     check('provider quote detail id matches', res.body?.id === quoteId);
   }
 
   {
-    const res = await request('PATCH', `/provider/me/quote-requests/${quoteId}/status`, {
+    const res = await request('PATCH', `/api/v1/provider/me/quote-requests/${quoteId}/status`, {
       status: 'VIEWED',
     }, providerToken);
     check('PATCH provider quote status - HTTP 200', res.status === 200);
@@ -330,7 +344,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/providers/${providerId}/reviews`, {
+    const res = await request('POST', `/api/v1/providers/${providerId}/reviews`, {
       rating: 5,
       comment: 'Provider dashboard review smoke',
     }, customerToken);
@@ -339,21 +353,21 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/provider/me/reviews', null, providerToken);
-    check('GET /provider/me/reviews - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/reviews', null, providerToken);
+    check('GET /api/v1/provider/me/reviews - HTTP 200', res.status === 200);
     check('provider reviews include customer review', Array.isArray(res.body) && res.body.some((review) => review.id === reviewId));
     check('provider reviews hide every customer phone', Array.isArray(res.body) && res.body.every((review) => !Object.hasOwn(review.user ?? {}, 'phone')));
   }
 
   {
-    const res = await request('DELETE', `/provider/me/packages/${packageId}`, null, providerToken);
-    check('DELETE /provider/me/packages/:id - HTTP 200', res.status === 200);
+    const res = await request('DELETE', `/api/v1/provider/me/packages/${packageId}`, null, providerToken);
+    check('DELETE /api/v1/provider/me/packages/:id - HTTP 200', res.status === 200);
     check('package deactivated', res.body?.isActive === false);
   }
 
   {
-    const res = await request('DELETE', `/provider/me/services/${serviceId}`, null, providerToken);
-    check('DELETE /provider/me/services/:id - HTTP 200', res.status === 200);
+    const res = await request('DELETE', `/api/v1/provider/me/services/${serviceId}`, null, providerToken);
+    check('DELETE /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
     check('service deactivated', res.body?.isActive === false);
   }
 

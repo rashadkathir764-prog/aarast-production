@@ -99,7 +99,7 @@ async function run() {
   let planId = null;
   let categoryId = null;
   let expenseId = null;
-  let debtId = null;
+  let commitmentId = null;
   let installmentId = null;
 
   {
@@ -173,36 +173,38 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/debts`, {
-      creditorName: 'Family Lender',
-      creditorPhone: '+967711111111',
-      title: 'Money smoke debt',
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/financial-commitments`, {
+      budgetCategoryId: categoryId,
+      partyName: 'Family Lender',
+      partyPhone: '+967711111111',
+      title: 'Money smoke payable',
       totalAmount: '500',
       paidAmount: '100',
       dueDate: dateOffsetIso(10),
       status: 'PARTIALLY_PAID',
+      sourceType: 'MANUAL_PAYABLE',
     }, owner.token);
-    check('POST /api/v1 debt - HTTP 201', res.status === 201);
-    check('debt has id', typeof res.body?.id === 'string');
-    debtId = res.body?.id;
+    check('POST /api/v1 commitment - HTTP 201', res.status === 201);
+    check('commitment has id', typeof res.body?.id === 'string');
+    commitmentId = res.body?.id;
   }
 
   {
-    const res = await request('GET', `/api/v1/debts/${debtId}`, null, owner.token);
-    check('GET /api/v1/debts/:id - HTTP 200', res.status === 200);
-    check('debt get-by-id matches', res.body?.id === debtId);
+    const res = await request('GET', `/api/v1/financial-commitments/${commitmentId}`, null, owner.token);
+    check('GET /api/v1/financial-commitments/:id - HTTP 200', res.status === 200);
+    check('commitment get-by-id matches', res.body?.id === commitmentId);
   }
 
   {
-    const res = await request('PATCH', `/api/v1/debts/${debtId}`, {
-      title: 'Updated money smoke debt',
+    const res = await request('PATCH', `/api/v1/financial-commitments/${commitmentId}`, {
+      title: 'Updated money smoke payable',
     }, owner.token);
-    check('PATCH /api/v1/debts/:id - HTTP 200', res.status === 200);
-    check('debt title updated', res.body?.title === 'Updated money smoke debt');
+    check('PATCH /api/v1/financial-commitments/:id - HTTP 200', res.status === 200);
+    check('commitment title updated', res.body?.title === 'Updated money smoke payable');
   }
 
   {
-    const res = await request('POST', `/api/v1/debts/${debtId}/installments`, {
+    const res = await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
       amount: '200',
       dueDate: dateOffsetIso(0),
       status: 'PENDING',
@@ -213,30 +215,30 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/api/v1/debts/${debtId}/installments`, null, owner.token);
-    check('GET /api/v1 debt installments - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/financial-commitments/${commitmentId}/installments`, null, owner.token);
+    check('GET /api/v1 financial installments - HTTP 200', res.status === 200);
     check('installments include created installment', Array.isArray(res.body) && res.body.some((installment) => installment.id === installmentId));
   }
 
   {
-    const res = await request('PATCH', `/api/v1/installments/${installmentId}`, {
+    const res = await request('PATCH', `/api/v1/financial-installments/${installmentId}`, {
       note: 'Updated installment note',
     }, owner.token);
-    check('PATCH /api/v1/installments/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/financial-installments/:id - HTTP 200', res.status === 200);
     check('installment note updated', res.body?.note === 'Updated installment note');
   }
 
   {
-    const res = await request('PATCH', `/api/v1/installments/${installmentId}/pay`, null, owner.token);
-    check('PATCH /api/v1/installments/:id/pay - HTTP 200', res.status === 200);
+    const res = await request('PATCH', `/api/v1/financial-installments/${installmentId}/pay`, null, owner.token);
+    check('PATCH /api/v1/financial-installments/:id/pay - HTTP 200', res.status === 200);
     check('paid installment status is PAID', res.body?.status === 'PAID');
     check('paid installment has paidAt', typeof res.body?.paidAt === 'string');
   }
 
   {
-    const res = await request('GET', `/api/v1/debts/${debtId}`, null, owner.token);
-    check('pay installment updates debt paidAmount', Number(res.body?.paidAmount) === 300);
-    check('pay installment keeps debt partially paid', res.body?.status === 'PARTIALLY_PAID');
+    const res = await request('GET', `/api/v1/financial-commitments/${commitmentId}`, null, owner.token);
+    check('pay installment updates commitment paidAmount', Number(res.body?.paidAmount) === 300);
+    check('pay installment keeps commitment partially paid', res.body?.status === 'PARTIALLY_PAID');
   }
 
   {
@@ -247,12 +249,14 @@ async function run() {
     check('money summary category target is real', res.body?.categoryTargetTotal === '1100.00');
     check('money summary spentTotal is real', res.body?.spentTotal === '350.00');
     check('money summary totalSpent alias is stable', res.body?.totalSpent === '350.00');
-    check('money summary remainingBudget is real', res.body?.remainingBudget === '850.00');
-    check('money summary debtTotal is real', res.body?.debtTotal === '500.00');
-    check('money summary totalDebts alias is stable', res.body?.totalDebts === '500.00');
-    check('money summary paidDebtTotal is real', res.body?.paidDebtTotal === '300.00');
-    check('money summary unpaidDebtTotal is real', res.body?.unpaidDebtTotal === '200.00');
-    check('money summary debtRemaining alias is stable', res.body?.debtRemaining === '200.00');
+    check(
+      'money summary confirmedCostTotal counts expenses and obligations once',
+      res.body?.confirmedCostTotal === '850.00',
+    );
+    check('money summary remainingBudget is real', res.body?.remainingBudget === '350.00');
+    check('money summary commitmentTotal is real', res.body?.commitmentTotal === '500.00');
+    check('money summary commitmentPaidTotal is real', res.body?.commitmentPaidTotal === '300.00');
+    check('money summary commitmentRemainingTotal is real', res.body?.commitmentRemainingTotal === '200.00');
     check('money summary paid installments are counted', res.body?.paidInstallmentsCount === 1);
     check('money summary remaining installments are counted', res.body?.remainingInstallmentsCount === 0);
     check('money summary next installment is explicit when absent', res.body?.nextInstallment === null);
@@ -263,7 +267,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${planId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
       userId: viewer.userId,
       role: 'VIEWER',
     }, owner.token);
@@ -283,21 +287,6 @@ async function run() {
   {
     const res = await request('DELETE', `/api/v1/expenses/${expenseId}`, null, owner.token);
     check('DELETE /api/v1/expenses/:id - HTTP 200', res.status === 200);
-  }
-
-  {
-    const res = await request('DELETE', `/api/v1/installments/${installmentId}`, null, owner.token);
-    check('DELETE /api/v1/installments/:id - HTTP 200', res.status === 200);
-  }
-
-  {
-    const res = await request('DELETE', `/api/v1/debts/${debtId}`, null, owner.token);
-    check('DELETE /api/v1/debts/:id - HTTP 200', res.status === 200);
-  }
-
-  {
-    const res = await request('DELETE', `/api/v1/budget-categories/${categoryId}`, null, owner.token);
-    check('DELETE /api/v1/budget-categories/:id - HTTP 200', res.status === 200);
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

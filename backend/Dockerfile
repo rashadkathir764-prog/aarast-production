@@ -9,6 +9,7 @@ RUN npm ci
 
 COPY prisma ./prisma
 COPY tsconfig*.json ./
+COPY scripts/clean-dist.cjs ./scripts/clean-dist.cjs
 COPY src ./src
 
 RUN npx prisma generate

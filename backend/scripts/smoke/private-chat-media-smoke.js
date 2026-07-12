@@ -8,6 +8,7 @@ configureSmokeDatabaseUrl();
 const http = require('http');
 const { PrismaClient } = require('@prisma/client');
 const { registerVerified } = require('./verified-registration');
+const { uploadVerifiedImage } = require('./verified-media-upload');
 
 const prisma = new PrismaClient();
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
@@ -124,35 +125,49 @@ async function run() {
 
     const ensured = await request(
       'POST',
-      `/conversations/quote-requests/${quote.id}`,
+      `/api/v1/conversations/quote-requests/${quote.id}`,
       {},
       requester.accessToken,
     );
     check('requester creates quote conversation', ensured.status === 201);
     const conversationId = requireResponseId('quote conversation', ensured);
 
-    const ticket = await request(
-      'POST',
-      '/media/uploads/presign',
-      {
-        purpose: 'chat-image',
-        fileName: 'private.webp',
-        contentType: 'image/webp',
-        byteSize: 2048,
-      },
-      requester.accessToken,
-    );
-    check('chat upload presign succeeds', ticket.status === 201);
-    check('chat upload returns no public URL', ticket.body?.publicUrl === null);
+    const media = await uploadVerifiedImage({
+      request,
+      token: requester.accessToken,
+      purpose: 'chat-image',
+      fileName: 'private.webp',
+      contentType: 'image/webp',
+    });
+    check('chat upload presign succeeds', media.presign.status === 201);
     check(
-      'chat upload returns opaque owned reference',
-      typeof ticket.body?.attachmentRef === 'string' &&
-        ticket.body.attachmentRef.startsWith(`chat-image/${requester.user.id}/`),
+      'chat upload presign response is private and non-cacheable',
+      media.presign.headers?.['cache-control'] === 'private, no-store',
+    );
+    check('chat bytes upload succeeds', media.upload?.ok === true);
+    check('chat upload verification succeeds', media.verify?.status === 201);
+    check(
+      'chat upload verification response is private and non-cacheable',
+      media.verify?.headers?.['cache-control'] === 'private, no-store',
+    );
+    check('chat upload returns no public URL', media.verify?.body?.publicUrl === null);
+    check(
+      'verified chat upload returns opaque owned reference',
+      typeof media.verify?.body?.attachmentRef === 'string' &&
+        media.verify.body.attachmentRef.startsWith(`chat-image/${requester.user.id}/`),
+    );
+    const verifiedKey = media.verify?.body?.key;
+    const verifiedTicket = verifiedKey
+      ? await prisma.mediaUploadTicket.findUnique({ where: { key: verifiedKey } })
+      : null;
+    check(
+      'verified chat upload has a durable unconsumed ticket',
+      verifiedTicket?.status === 'VERIFIED' && verifiedTicket.consumedAt === null,
     );
 
     const publicPayload = await request(
       'POST',
-      `/conversations/${conversationId}/messages`,
+      `/api/v1/conversations/${conversationId}/messages`,
       {
         body: 'must reject public URL',
         attachments: [
@@ -169,20 +184,28 @@ async function run() {
 
     const sent = await request(
       'POST',
-      `/conversations/${conversationId}/messages`,
+      `/api/v1/conversations/${conversationId}/messages`,
       {
         body: 'private image',
         attachments: [
           {
-            attachmentRef: ticket.body.attachmentRef,
-            contentType: 'image/webp',
-            byteSize: 2048,
+            attachmentRef: media.verify?.body?.attachmentRef,
+            contentType: media.verify?.body?.contentType,
+            byteSize: media.verify?.body?.byteSize,
           },
         ],
       },
       requester.accessToken,
     );
     check('owned private attachment message succeeds', sent.status === 201);
+    const consumedTicket = verifiedKey
+      ? await prisma.mediaUploadTicket.findUnique({ where: { key: verifiedKey } })
+      : null;
+    check(
+      'sending the attachment consumes its durable ticket',
+      consumedTicket?.status === 'VERIFIED' &&
+        consumedTicket.consumedAt instanceof Date,
+    );
     const attachment = sent.body?.attachments?.[0];
     check(
       'message returns a 120-second signed GET',
@@ -197,7 +220,7 @@ async function run() {
 
     const outsiderMessages = await request(
       'GET',
-      `/conversations/${conversationId}/messages`,
+      `/api/v1/conversations/${conversationId}/messages`,
       undefined,
       stranger.accessToken,
     );
@@ -205,7 +228,7 @@ async function run() {
 
     const providerMessages = await request(
       'GET',
-      `/conversations/${conversationId}/messages`,
+      `/api/v1/conversations/${conversationId}/messages`,
       undefined,
       providerUser.accessToken,
     );
@@ -215,7 +238,7 @@ async function run() {
     const attachmentId = attachment?.id;
     const outsiderRefresh = await request(
       'GET',
-      `/conversations/${conversationId}/attachments/${attachmentId}/download`,
+      `/api/v1/conversations/${conversationId}/attachments/${attachmentId}/download`,
       undefined,
       stranger.accessToken,
     );
@@ -223,7 +246,7 @@ async function run() {
 
     const memberRefresh = await request(
       'GET',
-      `/conversations/${conversationId}/attachments/${attachmentId}/download`,
+      `/api/v1/conversations/${conversationId}/attachments/${attachmentId}/download`,
       undefined,
       providerUser.accessToken,
     );

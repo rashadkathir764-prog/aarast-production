@@ -20,7 +20,7 @@ import { UpdateFinancialCommitmentDto } from "./dto/update-financial-commitment.
 import { UpdateFinancialInstallmentDto } from "./dto/update-financial-installment.dto";
 import { FinancialCommitmentsService } from "./financial-commitments.service";
 
-@Controller("wedding-plans/:weddingPlanId/financial-commitments")
+@Controller("api/v1/wedding-plans/:weddingPlanId/financial-commitments")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlanFinancialCommitmentsController {
   constructor(
@@ -54,7 +54,7 @@ export class WeddingPlanFinancialCommitmentsController {
   }
 }
 
-@Controller("financial-commitments")
+@Controller("api/v1/financial-commitments")
 @UseGuards(JwtAuthGuard)
 export class FinancialCommitmentsController {
   constructor(
@@ -135,7 +135,7 @@ export class FinancialCommitmentsController {
   }
 }
 
-@Controller("wedding-plans/:weddingPlanId/financial-payment-records")
+@Controller("api/v1/wedding-plans/:weddingPlanId/financial-payment-records")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlanFinancialPaymentRecordsController {
   constructor(
@@ -156,7 +156,7 @@ export class WeddingPlanFinancialPaymentRecordsController {
   }
 }
 
-@Controller("financial-payment-records")
+@Controller("api/v1/financial-payment-records")
 @UseGuards(JwtAuthGuard)
 export class FinancialPaymentRecordsController {
   constructor(
@@ -175,7 +175,7 @@ export class FinancialPaymentRecordsController {
   }
 }
 
-@Controller("wedding-plans/:weddingPlanId/financial-installments")
+@Controller("api/v1/wedding-plans/:weddingPlanId/financial-installments")
 @UseGuards(JwtAuthGuard)
 export class WeddingPlanFinancialInstallmentsController {
   constructor(
@@ -194,7 +194,7 @@ export class WeddingPlanFinancialInstallmentsController {
   }
 }
 
-@Controller("financial-installments")
+@Controller("api/v1/financial-installments")
 @UseGuards(JwtAuthGuard)
 export class FinancialInstallmentsController {
   constructor(
@@ -235,27 +235,3 @@ export class FinancialInstallmentsController {
     return this.financialCommitmentsService.removeInstallment(currentUser, id);
   }
 }
-
-@Controller("api/v1/wedding-plans/:weddingPlanId/financial-commitments")
-@UseGuards(JwtAuthGuard)
-export class ApiV1WeddingPlanFinancialCommitmentsController extends WeddingPlanFinancialCommitmentsController {}
-
-@Controller("api/v1/financial-commitments")
-@UseGuards(JwtAuthGuard)
-export class ApiV1FinancialCommitmentsController extends FinancialCommitmentsController {}
-
-@Controller("api/v1/wedding-plans/:weddingPlanId/financial-payment-records")
-@UseGuards(JwtAuthGuard)
-export class ApiV1WeddingPlanFinancialPaymentRecordsController extends WeddingPlanFinancialPaymentRecordsController {}
-
-@Controller("api/v1/financial-payment-records")
-@UseGuards(JwtAuthGuard)
-export class ApiV1FinancialPaymentRecordsController extends FinancialPaymentRecordsController {}
-
-@Controller("api/v1/wedding-plans/:weddingPlanId/financial-installments")
-@UseGuards(JwtAuthGuard)
-export class ApiV1WeddingPlanFinancialInstallmentsController extends WeddingPlanFinancialInstallmentsController {}
-
-@Controller("api/v1/financial-installments")
-@UseGuards(JwtAuthGuard)
-export class ApiV1FinancialInstallmentsController extends FinancialInstallmentsController {}

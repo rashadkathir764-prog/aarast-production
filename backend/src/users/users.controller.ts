@@ -16,7 +16,7 @@ import { UpdateSettingsDto } from "./dto/update-settings.dto";
 import { UserLookupDto } from "./dto/user-lookup.dto";
 import { UsersService } from "./users.service";
 
-@Controller("users")
+@Controller("api/v1/users")
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

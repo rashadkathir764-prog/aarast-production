@@ -56,6 +56,11 @@ function serviceFor(userCanReadAttachment = true) {
     },
   };
   const media = {
+    verifyUpload: async (_current: unknown, key: string) => ({
+      key,
+      contentType: 'image/webp',
+      byteSize: 128,
+    }),
     createDownloadUrl: async () => {
       signedCount += 1;
       return {

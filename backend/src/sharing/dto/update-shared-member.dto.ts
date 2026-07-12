@@ -16,7 +16,7 @@ export class UpdateSharedMemberDto {
 
   @IsBoolean()
   @IsOptional()
-  canViewDebts?: boolean;
+  canViewFinancialRecords?: boolean;
 
   @IsBoolean()
   @IsOptional()

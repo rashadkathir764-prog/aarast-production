@@ -69,3 +69,9 @@ export const idempotencyAmbiguousTombstones = new Gauge({
   help: 'Expired in-flight idempotency reservations with an unknown outcome.',
   registers: [metricsRegistry],
 });
+
+export const mediaUploadCleanupBacklog = new Gauge({
+  name: 'aarast_media_upload_cleanup_backlog',
+  help: 'Media upload tickets currently eligible for durable object cleanup.',
+  registers: [metricsRegistry],
+});

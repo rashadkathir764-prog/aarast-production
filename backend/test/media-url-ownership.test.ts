@@ -7,13 +7,76 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import {
+  assertOwnedMediaUrl,
   normalizeOwnedMediaUrl,
   requireOwnedMediaUrl,
 } from "../src/media/media-upload-policy";
 import { UsersService } from "../src/users/users.service";
 import { ProviderDashboardService } from "../src/provider-dashboard/provider-dashboard.service";
+import { validateRuntimeEnvironment } from "../src/common/config/runtime-environment";
 
 const BASE = "https://cdn.example.test";
+
+test("local HTTP media URLs are accepted only outside production", () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "development";
+    assert.doesNotThrow(() =>
+      assertOwnedMediaUrl(
+        "http://127.0.0.1:9000/aarast-media/service-image/u1/a.webp",
+        "http://127.0.0.1:9000/aarast-media",
+        "service-image",
+        "u1",
+      ),
+    );
+    process.env.NODE_ENV = "production";
+    assert.throws(() =>
+      assertOwnedMediaUrl(
+        "http://127.0.0.1:9000/aarast-media/service-image/u1/a.webp",
+        "http://127.0.0.1:9000/aarast-media",
+        "service-image",
+        "u1",
+      ),
+    );
+  } finally {
+    if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previousNodeEnv;
+  }
+});
+
+test("production rejects client-facing media endpoints without HTTPS", () => {
+  assert.throws(
+    () =>
+      validateRuntimeEnvironment({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgresql://example",
+        JWT_SECRET: "test-secret",
+        AUTH_LOGIN_THROTTLE_PEPPER: "separate-test-pepper",
+        AUTH_OTP_MODE: "disabled",
+        READINESS_REQUIRE_MEDIA: "true",
+        AARAST_MEDIA_ENDPOINT: "http://media.internal:9000",
+        AARAST_MEDIA_SIGNED_ENDPOINT: "http://uploads.example.test",
+        AARAST_MEDIA_BUCKET: "aarast-media",
+        AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
+      }),
+    /AARAST_MEDIA_SIGNED_ENDPOINT must use HTTPS in production/,
+  );
+
+  assert.doesNotThrow(() =>
+    validateRuntimeEnvironment({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgresql://example",
+      JWT_SECRET: "test-secret",
+      AUTH_LOGIN_THROTTLE_PEPPER: "separate-test-pepper",
+      AUTH_OTP_MODE: "disabled",
+      READINESS_REQUIRE_MEDIA: "true",
+      AARAST_MEDIA_ENDPOINT: "http://media.internal:9000",
+      AARAST_MEDIA_SIGNED_ENDPOINT: "https://uploads.example.test",
+      AARAST_MEDIA_BUCKET: "aarast-media",
+      AARAST_MEDIA_PUBLIC_BASE_URL: "https://cdn.example.test/aarast-media",
+    }),
+  );
+});
 const owned = (purpose: string, userId: string) =>
   `${BASE}/${purpose}/${userId}/asset.webp`;
 
@@ -137,13 +200,27 @@ test("requireOwnedMediaUrl demands a non-empty owned URL", async () => {
 
 test("profile update rejects an external avatar and stores an owned one", async () => {
   await withMediaBase(async () => {
+    let currentAvatar: string | null = null;
+    const txUser = {
+      findUniqueOrThrow: async () => ({ avatarUrl: currentAvatar }),
+      update: async ({ data }: any) => {
+        currentAvatar = data.avatarUrl ?? null;
+        return safeUserRow(currentAvatar);
+      },
+    };
     const prisma = {
       user: {
         findUnique: async () => null,
-        update: async ({ data }: any) => safeUserRow(data.avatarUrl ?? null),
       },
+      $transaction: async (operation: any) =>
+        operation({ user: txUser }),
     };
-    const svc = new UsersService(prisma as any, {} as any);
+    const svc = new UsersService(prisma as any, {} as any, {
+      verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
+        normalizeOwnedMediaUrl(value, purpose, current.id),
+      scheduleTargetDeletion: async () => undefined,
+      consumePublicMediaUrl: async () => undefined,
+    } as any);
     const current = { id: "u1" } as any;
 
     await assert.rejects(
@@ -176,7 +253,10 @@ test("service image creation rejects an external URL before persisting", async (
         },
       },
     };
-    const svc = new ProviderDashboardService(prisma as any, {} as any);
+    const svc = new ProviderDashboardService(prisma as any, {} as any, {
+      verifyPublicMediaUrl: async (current: any, value: any, purpose: any) =>
+        normalizeOwnedMediaUrl(value, purpose, current.id),
+    } as any);
     const serviceId = "11111111-1111-4111-8111-111111111111";
 
     await assert.rejects(

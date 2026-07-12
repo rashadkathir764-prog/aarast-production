@@ -81,13 +81,6 @@ enum ExpenseStatus {
   CANCELLED
 }
 
-enum DebtStatus {
-  OPEN
-  PARTIALLY_PAID
-  PAID
-  CANCELLED
-}
-
 enum InstallmentStatus {
   PENDING
   PAID
@@ -97,7 +90,7 @@ enum InstallmentStatus {
 
 enum FinancialCommitmentSourceType {
   PROVIDER_SERVICE
-  MANUAL_DEBT
+  MANUAL_PAYABLE
   MANUAL_COMMITMENT
   OTHER
 }
@@ -222,6 +215,14 @@ enum ConversationReportStatus {
   DISMISSED
 }
 
+enum MediaUploadStatus {
+  PENDING
+  VERIFYING
+  VERIFIED
+  DELETE_PENDING
+  DELETED
+}
+
 enum NotificationPriority {
   LOW
   NORMAL
@@ -295,6 +296,37 @@ model User {
   conversationParticipants ConversationParticipant[]
   chatMessages             ChatMessage[]             @relation("ChatMessageSender")
   conversationReports      ConversationReport[]      @relation("ConversationReporter")
+  mediaUploadTickets       MediaUploadTicket[]
+}
+
+/// Durable ownership and lifecycle record for every signed media upload.
+/// A short-lived presigned URL is never sufficient proof that an object may be
+/// persisted: the ticket also enforces per-user quota, verification state and
+/// bounded cleanup for uploads abandoned before they are attached to a record.
+model MediaUploadTicket {
+  key              String            @id
+  userId           String?
+  purpose          String
+  contentType      String
+  declaredByteSize Int
+  verifiedByteSize Int?
+  status           MediaUploadStatus @default(PENDING)
+  expiresAt        DateTime
+  verifiedAt       DateTime?
+  consumedAt       DateTime?
+  consumedByType   String?
+  consumedById     String?
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@index([status, updatedAt])
+  @@index([status, verifiedAt])
+  @@index([consumedByType, consumedById])
+  @@index([status, createdAt])
 }
 
 model AdminLoginChallenge {
@@ -348,6 +380,17 @@ model RefreshToken {
   @@index([expiresAt])
 }
 
+model LoginThrottle {
+  subjectHash     String    @id @db.Char(64)
+  failedCount     Int       @default(0)
+  windowStartedAt DateTime
+  lockedUntil     DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@index([lockedUntil])
+  @@index([updatedAt])
+}
+
 model WeddingPlan {
   id                      String                   @id @default(cuid())
   ownerUserId             String
@@ -369,7 +412,6 @@ model WeddingPlan {
   activeForUsers          User[]                   @relation("ActiveWeddingPlan")
   budgetCategories        BudgetCategory[]
   expenses                Expense[]
-  debts                   Debt[]
   financialCommitments    FinancialCommitment[]
   financialPaymentRecords FinancialPaymentRecord[]
   financialInstallments   FinancialInstallment[]
@@ -421,42 +463,6 @@ model Expense {
   @@index([budgetCategoryId])
 }
 
-model Debt {
-  id                      String        @id @default(cuid())
-  weddingPlanId           String
-  creditorName            String
-  creditorPhone           String?
-  creditorNormalizedPhone String?
-  title                   String
-  totalAmount             Decimal       @db.Decimal(14, 2)
-  paidAmount              Decimal       @default(0) @db.Decimal(14, 2)
-  dueDate                 DateTime?
-  status                  DebtStatus    @default(OPEN)
-  note                    String?
-  createdAt               DateTime      @default(now())
-  updatedAt               DateTime      @updatedAt
-  weddingPlan             WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  installments            Installment[]
-
-  @@index([weddingPlanId])
-}
-
-model Installment {
-  id        String            @id @default(cuid())
-  debtId    String
-  amount    Decimal           @db.Decimal(14, 2)
-  dueDate   DateTime?
-  paidAt    DateTime?
-  status    InstallmentStatus @default(PENDING)
-  note      String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  debt      Debt              @relation(fields: [debtId], references: [id], onDelete: Cascade)
-
-  @@index([debtId])
-  @@index([status, dueDate])
-}
-
 model FinancialCommitment {
   id                 String                        @id @default(cuid())
   weddingPlanId      String
@@ -475,7 +481,6 @@ model FinancialCommitment {
   agreementDate      DateTime?
   status             FinancialCommitmentStatus     @default(OPEN)
   note               String?
-  legacyDebtId       String?                       @unique
   createdAt          DateTime                      @default(now())
   updatedAt          DateTime                      @updatedAt
   weddingPlan        WeddingPlan                   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
@@ -509,9 +514,6 @@ model FinancialPaymentRecord {
   note                   String?
   financialInstallmentId String?                    @unique
   reversalOfId           String?                    @unique
-  legacyExpenseId        String?                    @unique
-  legacyDebtId           String?
-  legacyInstallmentId    String?
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
   weddingPlan            WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
@@ -524,8 +526,6 @@ model FinancialPaymentRecord {
   @@index([weddingPlanId, paidAt])
   @@index([financialCommitmentId])
   @@index([budgetCategoryId])
-  @@index([legacyDebtId])
-  @@index([legacyInstallmentId])
 }
 
 model FinancialInstallment {
@@ -538,7 +538,6 @@ model FinancialInstallment {
   paidAt                DateTime?
   status                InstallmentStatus       @default(PENDING)
   note                  String?
-  legacyInstallmentId   String?                 @unique
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
   weddingPlan           WeddingPlan             @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
@@ -595,7 +594,7 @@ model SharedMember {
   role                      SharedMemberRole @default(VIEWER)
   canViewBudget             Boolean          @default(false)
   canViewExpenses           Boolean          @default(false)
-  canViewDebts              Boolean          @default(false)
+  canViewFinancialRecords   Boolean          @default(false)
   canEditPlan               Boolean          @default(false)
   canManageTasks            Boolean          @default(false)
   canManageGuests           Boolean          @default(false)
@@ -624,7 +623,7 @@ model PlanInvite {
   role                      SharedMemberRole @default(VIEWER)
   canViewBudget             Boolean          @default(false)
   canViewExpenses           Boolean          @default(false)
-  canViewDebts              Boolean          @default(false)
+  canViewFinancialRecords   Boolean          @default(false)
   canEditPlan               Boolean          @default(false)
   canManageTasks            Boolean          @default(false)
   canManageGuests           Boolean          @default(false)
@@ -702,6 +701,8 @@ model Notification {
   weddingPlan   WeddingPlan?         @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
 
   @@index([userId, archivedAt, readAt, createdAt])
+  @@index([userId, archivedAt, createdAt])
+  @@index([userId, weddingPlanId, archivedAt, createdAt])
   @@index([weddingPlanId, createdAt])
   @@index([entityType, entityId])
 }
@@ -1046,6 +1047,7 @@ model Conversation {
   reports        ConversationReport[]
 
   @@index([lastMessageAt])
+  @@index([lastMessageAt, createdAt, id])
 }
 
 model ConversationParticipant {

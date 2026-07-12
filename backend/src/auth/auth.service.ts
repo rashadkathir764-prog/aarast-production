@@ -1,8 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  HttpException,
-  HttpStatus,
   Injectable,
   ServiceUnavailableException,
   UnauthorizedException,
@@ -38,6 +36,7 @@ import {
   refreshTokenExpiry,
 } from "./refresh-token-policy";
 import { SafeUser, toSafeUser } from "./safe-user";
+import { LoginThrottleService } from "./login-throttle.service";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -81,20 +80,13 @@ export interface AdminLoginPendingResponse {
 export class AuthService {
   private static readonly otpUnavailableMessage =
     "خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.";
-
-  // Per-account lockout: the IP throttle alone allows ~86k guesses/day
-  // against one account. In-memory is acceptable for the current
-  // single-container deployment; move to a shared store when scaling out.
-  private static readonly maxFailedLogins = 5;
-  private static readonly lockoutWindowMs = 15 * 60_000;
-  private readonly failedLogins = new Map<
-    string,
-    { count: number; lockedUntil: number }
-  >();
+  private static readonly dummyPasswordHash =
+    "$2b$10$jnsLrksGKUtGyEjkRk/CeO5zUi9WwfPpG6.bREun6R8yXlN85DEq6";
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly loginThrottle: LoginThrottleService,
   ) {}
 
   async startRegistration(
@@ -314,28 +306,23 @@ export class AuthService {
     requiredRole?: UserRole,
   ): Promise<User> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
-    this.assertNotLockedOut(phone);
+    await this.loginThrottle.assertAllowed(phone);
 
     const user = await this.prisma.user.findFirst({
       where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
     });
 
-    if (!user) {
-      // Counted too, so attackers cannot distinguish unknown phones.
-      this.recordFailedLogin(phone);
-      throw new UnauthorizedException("Invalid credentials");
-    }
-
-    if (user.status === "DISABLED") {
-      throw new UnauthorizedException("Account is disabled");
-    }
-
     const passwordMatch = await bcryptjs.compare(
       dto.password,
-      user.passwordHash,
+      user?.passwordHash ?? AuthService.dummyPasswordHash,
     );
-    if (!passwordMatch) {
-      this.recordFailedLogin(phone);
+    if (
+      !user ||
+      !passwordMatch ||
+      user.status === "DISABLED" ||
+      (requiredRole !== undefined && user.role !== requiredRole)
+    ) {
+      await this.loginThrottle.recordFailure(phone);
       throw new UnauthorizedException("Invalid credentials");
     }
 
@@ -343,11 +330,7 @@ export class AuthService {
       throw new UnauthorizedException("Phone verification is required");
     }
 
-    if (requiredRole && user.role !== requiredRole) {
-      throw new UnauthorizedException("Invalid credentials");
-    }
-
-    this.failedLogins.delete(phone);
+    await this.loginThrottle.clear(phone);
     return user;
   }
 
@@ -457,31 +440,6 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
     return { revoked: result.count };
-  }
-
-  private assertNotLockedOut(phone: string): void {
-    const entry = this.failedLogins.get(phone);
-    if (!entry) return;
-    if (entry.lockedUntil > Date.now()) {
-      throw new HttpException(
-        "Too many failed login attempts. Try again later.",
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
-    }
-    if (entry.lockedUntil !== 0) {
-      // Lock expired — start a fresh window.
-      this.failedLogins.delete(phone);
-    }
-  }
-
-  private recordFailedLogin(phone: string): void {
-    const entry = this.failedLogins.get(phone) ?? { count: 0, lockedUntil: 0 };
-    entry.count += 1;
-    if (entry.count >= AuthService.maxFailedLogins) {
-      entry.lockedUntil = Date.now() + AuthService.lockoutWindowMs;
-      entry.count = 0;
-    }
-    this.failedLogins.set(phone, entry);
   }
 
   async requestOtp(dto: RequestOtpDto): Promise<OtpRequestResponse> {
@@ -643,7 +601,7 @@ export class AuthService {
       }),
     ]);
 
-    this.failedLogins.delete(verification.phone);
+    await this.loginThrottle.clear(verification.phone);
 
     return { reset: true, phone: verification.phone };
   }

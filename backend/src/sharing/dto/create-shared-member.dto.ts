@@ -34,7 +34,7 @@ export class CreateSharedMemberDto {
 
   @IsBoolean()
   @IsOptional()
-  canViewDebts?: boolean;
+  canViewFinancialRecords?: boolean;
 
   @IsBoolean()
   @IsOptional()

@@ -21,7 +21,7 @@ test('family and helper roles keep financial data private by default', () => {
     const permissions = rolePermissionDefaults(role);
     assert.equal(permissions.canViewBudget, false);
     assert.equal(permissions.canViewExpenses, false);
-    assert.equal(permissions.canViewDebts, false);
+    assert.equal(permissions.canViewFinancialRecords, false);
     assert.equal(permissions.canManageFinancialRecords, false);
     assert.equal(permissions.canManageTasks, true);
     assert.equal(permissions.canManageGuests, true);

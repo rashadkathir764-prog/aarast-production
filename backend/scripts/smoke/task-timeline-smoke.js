@@ -74,7 +74,7 @@ async function run() {
   let token = null;
   let weddingPlanId = null;
   let taskId = null;
-  let debtId = null;
+  let commitmentId = null;
   let installmentId = null;
 
   {
@@ -83,19 +83,19 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns accessToken', typeof res.body?.accessToken === 'string');
     check('register does not expose passwordHash', !hasPasswordHash(res.body));
     token = res.body?.accessToken;
   }
 
   {
-    const res = await request('POST', '/wedding-plans', {
+    const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Task Timeline Smoke Plan',
       city: 'Sanaa',
       weddingDate: '2026-12-25T00:00:00.000Z',
     }, token);
-    check('POST /wedding-plans - HTTP 201', res.status === 201);
+    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     check('created wedding plan has id', typeof res.body?.id === 'string');
     check('created wedding plan has weddingDate', typeof res.body?.weddingDate === 'string');
     check('wedding plan does not expose passwordHash', !hasPasswordHash(res.body));
@@ -103,7 +103,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/tasks`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, {
       title: 'Confirm wedding hall',
       description: 'Call the hall manager',
       dueDate: '2026-12-05T00:00:00.000Z',
@@ -121,7 +121,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/tasks`, null, token);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, null, token);
     check('GET tasks - HTTP 200', res.status === 200);
     check('task list is array', Array.isArray(res.body));
     check('task list includes created task', Array.isArray(res.body) && res.body.some((task) => task.id === taskId));
@@ -129,7 +129,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/tasks/${taskId}`, {
+    const res = await request('PATCH', `/api/v1/tasks/${taskId}`, {
       title: 'Updated hall confirmation',
       description: 'Confirm final date',
       status: 'IN_PROGRESS',
@@ -143,22 +143,28 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/debts`, {
-      creditorName: 'Timeline Vendor',
-      title: 'Timeline debt',
+    const category = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, {
+      name: 'Timeline commitments',
+      targetAmount: '500000.00',
+    }, token);
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/financial-commitments`, {
+      budgetCategoryId: category.body?.id,
+      partyName: 'Timeline Vendor',
+      title: 'Timeline payable',
       totalAmount: '300000.00',
       paidAmount: '50000.00',
       dueDate: '2026-12-12T00:00:00.000Z',
       status: 'OPEN',
+      sourceType: 'MANUAL_PAYABLE',
     }, token);
-    check('POST debt for timeline - HTTP 201', res.status === 201);
-    check('timeline debt has id', typeof res.body?.id === 'string');
-    check('timeline debt does not expose passwordHash', !hasPasswordHash(res.body));
-    debtId = res.body?.id;
+    check('POST commitment for timeline - HTTP 201', res.status === 201);
+    check('timeline commitment has id', typeof res.body?.id === 'string');
+    check('timeline commitment does not expose passwordHash', !hasPasswordHash(res.body));
+    commitmentId = res.body?.id;
   }
 
   {
-    const res = await request('POST', `/debts/${debtId}/installments`, {
+    const res = await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
       amount: '100000.00',
       dueDate: '2026-12-15T00:00:00.000Z',
       status: 'PENDING',
@@ -170,32 +176,32 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/timeline`, null, token);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/timeline`, null, token);
     check('GET timeline - HTTP 200', res.status === 200);
     check('timeline includes weddingDate', typeof res.body?.weddingDate === 'string');
     check('timeline upcomingTasks is array', Array.isArray(res.body?.upcomingTasks));
     check('timeline includes upcoming task', Array.isArray(res.body?.upcomingTasks) && res.body.upcomingTasks.some((task) => task.id === taskId));
-    check('timeline dueDebts is array', Array.isArray(res.body?.dueDebts));
-    check('timeline includes due debt', Array.isArray(res.body?.dueDebts) && res.body.dueDebts.some((debt) => debt.id === debtId));
+    check('timeline dueCommitments is array', Array.isArray(res.body?.dueCommitments));
+    check('timeline includes due commitment', Array.isArray(res.body?.dueCommitments) && res.body.dueCommitments.some((commitment) => commitment.id === commitmentId));
     check('timeline dueInstallments is array', Array.isArray(res.body?.dueInstallments));
     check('timeline includes due installment', Array.isArray(res.body?.dueInstallments) && res.body.dueInstallments.some((installment) => installment.id === installmentId));
     check('timeline does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('DELETE', `/tasks/${taskId}`, null, token);
+    const res = await request('DELETE', `/api/v1/tasks/${taskId}`, null, token);
     check('DELETE task - HTTP 200', res.status === 200);
     check('deleted task id returned', res.body?.id === taskId);
     check('delete task response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/tasks`);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/tasks`);
     check('GET tasks without token returns 401', res.status === 401);
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/timeline`);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/timeline`);
     check('GET timeline without token returns 401', res.status === 401);
   }
 

@@ -81,7 +81,7 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns accessToken', typeof res.body?.accessToken === 'string');
     check('register does not expose passwordHash', !hasPasswordHash(res.body));
     accessToken = res.body?.accessToken;
@@ -89,13 +89,13 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/wedding-plans', {
+    const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Smoke Wedding Plan',
       city: 'Sanaa',
       weddingDate: '2026-12-20T00:00:00.000Z',
       estimatedBudget: '1500000.50',
     }, accessToken);
-    check('POST /wedding-plans - HTTP 201', res.status === 201);
+    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
     check('created plan has id', typeof res.body?.id === 'string');
     check('created plan has expected title', res.body?.title === 'Smoke Wedding Plan');
     check('created plan has ownerUserId', res.body?.ownerUserId === userId);
@@ -106,27 +106,27 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/wedding-plans/my', null, accessToken);
-    check('GET /wedding-plans/my - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/wedding-plans/my', null, accessToken);
+    check('GET /api/v1/wedding-plans/my - HTTP 200', res.status === 200);
     check('my plans response is array', Array.isArray(res.body));
     check('my plans includes created plan', Array.isArray(res.body) && res.body.some((plan) => plan.id === planId));
     check('my plans do not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${planId}`, null, accessToken);
-    check('GET /wedding-plans/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/wedding-plans/${planId}`, null, accessToken);
+    check('GET /api/v1/wedding-plans/:id - HTTP 200', res.status === 200);
     check('get plan returns correct id', res.body?.id === planId);
     check('get plan returns ownerUserId', res.body?.ownerUserId === userId);
     check('get plan does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('PATCH', `/wedding-plans/${planId}`, {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${planId}`, {
       title: 'Updated Smoke Wedding Plan',
       city: 'Aden',
     }, accessToken);
-    check('PATCH /wedding-plans/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/wedding-plans/:id - HTTP 200', res.status === 200);
     check('updated plan title changed', res.body?.title === 'Updated Smoke Wedding Plan');
     check('updated plan city changed', res.body?.city === 'Aden');
     check('updated plan ownerUserId unchanged', res.body?.ownerUserId === userId);
@@ -134,15 +134,15 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/wedding-plans/${planId}/archive`, null, accessToken);
-    check('PATCH /wedding-plans/:id/archive - HTTP 200', res.status === 200);
+    const res = await request('PATCH', `/api/v1/wedding-plans/${planId}/archive`, null, accessToken);
+    check('PATCH /api/v1/wedding-plans/:id/archive - HTTP 200', res.status === 200);
     check('archived plan status is ARCHIVED', res.body?.status === 'ARCHIVED');
     check('archived plan does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', '/wedding-plans/my');
-    check('GET /wedding-plans/my without token returns 401', res.status === 401);
+    const res = await request('GET', '/api/v1/wedding-plans/my');
+    check('GET /api/v1/wedding-plans/my without token returns 401', res.status === 401);
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

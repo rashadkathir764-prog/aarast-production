@@ -189,7 +189,7 @@ async function run() {
     }, owner.token);
     check('owner updates editor to finance manager - HTTP 200', res.status === 200);
     check('finance role updated', res.body?.role === 'FINANCE_MANAGER');
-    check('finance manager can view debts by default', res.body?.canViewDebts === true);
+    check('finance manager can view financial records by default', res.body?.canViewFinancialRecords === true);
     check('finance manager can manage financial records', res.body?.canManageFinancialRecords === true);
   }
 

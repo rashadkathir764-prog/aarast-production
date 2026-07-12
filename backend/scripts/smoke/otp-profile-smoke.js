@@ -85,25 +85,25 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns token', typeof res.body?.accessToken === 'string');
     check('register does not expose passwordHash', !hasPasswordHash(res.body));
     token = res.body?.accessToken;
   }
 
   {
-    const res = await request('POST', '/auth/otp/request', {
+    const res = await request('POST', '/api/v1/auth/otp/request', {
       phone: TEST_PHONE,
       purpose: 'VERIFY_PHONE',
     });
-    check('POST /auth/otp/request - HTTP 200', res.status === 200);
+    check('POST /api/v1/auth/otp/request - HTTP 200', res.status === 200);
     check('otp request returns expiry', typeof res.body?.expiresAt === 'string');
     check('local smoke receives OTP code', typeof res.body?.code === 'string');
     code = res.body?.code;
   }
 
   {
-    const res = await request('POST', '/auth/otp/verify', {
+    const res = await request('POST', '/api/v1/auth/otp/verify', {
       phone: TEST_PHONE,
       purpose: 'VERIFY_PHONE',
       code: '000000',
@@ -112,19 +112,19 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/auth/otp/verify', {
+    const res = await request('POST', '/api/v1/auth/otp/verify', {
       phone: TEST_PHONE,
       purpose: 'VERIFY_PHONE',
       code,
     });
-    check('POST /auth/otp/verify - HTTP 200', res.status === 200);
+    check('POST /api/v1/auth/otp/verify - HTTP 200', res.status === 200);
     check('OTP verify returns verified true', res.body?.verified === true);
     check('OTP verify marks user phone verified', Boolean(res.body?.user?.phoneVerifiedAt));
     check('OTP verify does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('POST', '/auth/otp/verify', {
+    const res = await request('POST', '/api/v1/auth/otp/verify', {
       phone: TEST_PHONE,
       purpose: 'VERIFY_PHONE',
       code,
@@ -133,14 +133,14 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/auth/me', null, token);
-    check('GET /auth/me - HTTP 200', res.status === 200);
-    check('GET /auth/me includes phoneVerifiedAt', Boolean(res.body?.phoneVerifiedAt));
-    check('GET /auth/me does not expose passwordHash', !hasPasswordHash(res.body));
+    const res = await request('GET', '/api/v1/auth/me', null, token);
+    check('GET /api/v1/auth/me - HTTP 200', res.status === 200);
+    check('GET /api/v1/auth/me includes phoneVerifiedAt', Boolean(res.body?.phoneVerifiedAt));
+    check('GET /api/v1/auth/me does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const externalAvatar = await request('PATCH', '/users/me', {
+    const externalAvatar = await request('PATCH', '/api/v1/users/me', {
       avatarUrl: 'https://example.test/avatar.png',
     }, token);
     check(
@@ -148,31 +148,31 @@ async function run() {
       externalAvatar.status === 400 || externalAvatar.status === 503,
     );
 
-    const res = await request('PATCH', '/users/me', {
+    const res = await request('PATCH', '/api/v1/users/me', {
       name: 'Updated OTP Smoke User',
       email: TEST_EMAIL,
       locale: 'ar',
     }, token);
-    check('PATCH /users/me - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/users/me - HTTP 200', res.status === 200);
     check('profile name updated', res.body?.name === 'Updated OTP Smoke User');
     check('profile email updated', res.body?.email === TEST_EMAIL);
     check('profile does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', '/users/me/settings', null, token);
-    check('GET /users/me/settings - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/users/me/settings', null, token);
+    check('GET /api/v1/users/me/settings - HTTP 200', res.status === 200);
     check('settings default pushEnabled true', res.body?.pushEnabled === true);
     check('settings default smsEnabled false', res.body?.smsEnabled === false);
   }
 
   {
-    const res = await request('PATCH', '/users/me/settings', {
+    const res = await request('PATCH', '/api/v1/users/me/settings', {
       smsEnabled: true,
       whatsappEnabled: true,
       emailEnabled: true,
     }, token);
-    check('PATCH /users/me/settings - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/users/me/settings - HTTP 200', res.status === 200);
     check('settings smsEnabled updated', res.body?.smsEnabled === true);
     check('settings whatsappEnabled updated', res.body?.whatsappEnabled === true);
     check('settings emailEnabled updated', res.body?.emailEnabled === true);

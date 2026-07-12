@@ -140,7 +140,9 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
   };
 
   const jwtService = { sign: () => 'test-token' };
-  const service = new AuthService(prisma as any, jwtService as any);
+  const service = new AuthService(prisma as any, jwtService as any, {
+    clear: async () => undefined,
+  } as any);
   return { service, otps, refreshTokens, user };
 }
 

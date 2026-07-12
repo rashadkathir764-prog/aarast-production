@@ -74,14 +74,8 @@ function toArabicDigits(value) {
   );
 }
 
-function toPersianDigits(value) {
-  return value.replace(/[0-9]/g, (digit) =>
-    String.fromCharCode(0x06f0 + Number(digit)),
-  );
-}
-
 function hasFullDashboardCollections(value) {
-  return ['expenses', 'debts', 'tasks', 'guests', 'providers'].some((key) =>
+  return ['expenses', 'tasks', 'guests', 'providers'].some((key) =>
     Object.prototype.hasOwnProperty.call(value ?? {}, key),
   );
 }
@@ -117,7 +111,7 @@ async function run() {
   {
     const res = await request(
       'PATCH',
-      '/users/me',
+      '/api/v1/users/me',
       { appRole: 'WEDDING_USER', persona: 'BRIDE' },
       owner.token,
     );
@@ -129,7 +123,7 @@ async function run() {
   {
     const res = await request(
       'PATCH',
-      '/users/me',
+      '/api/v1/users/me',
       { persona: 'NOT_A_PERSONA' },
       owner.token,
     );
@@ -139,7 +133,7 @@ async function run() {
   {
     const res = await request(
       'PATCH',
-      '/users/me',
+      '/api/v1/users/me',
       { appRole: 'NOT_AN_APP_ROLE' },
       owner.token,
     );
@@ -240,7 +234,7 @@ async function run() {
   {
     const res = await request(
       'PATCH',
-      '/users/me',
+      '/api/v1/users/me',
       { appRole: 'PROVIDER' },
       owner.token,
     );
@@ -312,23 +306,6 @@ async function run() {
       owner.token,
     );
     check('same normalized guest phone allowed in another plan', res.status === 201);
-  }
-
-  {
-    const res = await request(
-      'POST',
-      `/api/v1/wedding-plans/${planId}/debts`,
-      {
-        creditorName: 'Creditor Contact',
-        creditorPhone: toPersianDigits('00967777758200'),
-        title: 'Contact normalization debt',
-        totalAmount: '1000',
-      },
-      owner.token,
-    );
-    check('debt with Persian phone - HTTP 201', res.status === 201);
-    check('debt keeps backward-compatible raw phone', res.body?.creditorPhone === toPersianDigits('00967777758200'));
-    check('debt returns normalized creditor phone', res.body?.creditorNormalizedPhone === guestPhone);
   }
 
   {

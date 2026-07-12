@@ -159,7 +159,7 @@ async function run() {
 
   let planId = null;
   let categoryId = null;
-  let debtId = null;
+  let commitmentId = null;
   let installmentId = null;
   let taskId = null;
   let checklistItemId = null;
@@ -219,21 +219,23 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/debts`, {
-      creditorName: 'Completion Creditor',
-      creditorPhone: '+967733333333',
-      title: 'Completion debt',
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/financial-commitments`, {
+      budgetCategoryId: categoryId,
+      partyName: 'Completion Party',
+      partyPhone: '+967733333333',
+      title: 'Completion payable',
       totalAmount: '300000',
       paidAmount: '50000',
       dueDate: dateOffsetIso(30),
       status: 'PARTIALLY_PAID',
+      sourceType: 'MANUAL_PAYABLE',
     }, owner.token);
-    check('POST debt - HTTP 201', res.status === 201);
-    debtId = res.body?.id;
+    check('POST financial commitment - HTTP 201', res.status === 201);
+    commitmentId = res.body?.id;
   }
 
   {
-    const res = await request('POST', `/api/v1/debts/${debtId}/installments`, {
+    const res = await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
       amount: '100000',
       dueDate: dateOffsetIso(0),
       status: 'PENDING',
@@ -243,7 +245,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/api/v1/installments/${installmentId}/pay`, null, owner.token);
+    const res = await request('PATCH', `/api/v1/financial-installments/${installmentId}/pay`, null, owner.token);
     check('PATCH installment pay - HTTP 200', res.status === 200);
     check('installment becomes paid', res.body?.status === 'PAID');
   }
@@ -252,7 +254,7 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
     check('GET money-summary - HTTP 200', res.status === 200);
     check('money summary spent total is calculated', res.body?.spentTotal === '250000.00');
-    check('money summary paid debt includes installment', res.body?.paidDebtTotal === '150000.00');
+    check('money summary paid commitment includes installment', res.body?.commitmentPaidTotal === '150000.00');
   }
 
   {
@@ -333,7 +335,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/api/v1/provider/profile', {
+    const res = await request('POST', '/api/v1/provider/apply', {
       businessName: PROVIDER_BUSINESS_NAME,
       phone: providerUser.phone,
       cityId: reference.city.id,
@@ -345,7 +347,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/api/v1/provider/services', {
+    const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
       title: 'Backend Completion Service',
       basePrice: '350000',
@@ -383,7 +385,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/api/v1/provider/quote-requests/${quoteId}/offers`, {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
       title: 'Backend Completion Offer',
       message: 'Backend completion offer body',
       amount: '360000',
@@ -396,8 +398,8 @@ async function run() {
   {
     const res = await request('GET', `/api/v1/notifications?weddingPlanId=${planId}`, null, owner.token);
     check('GET plan notifications - HTTP 200', res.status === 200);
-    const notification = Array.isArray(res.body)
-      ? res.body.find((item) => item.type === 'QUOTE_OFFER_RECEIVED' && item.data?.quoteRequestId === quoteId)
+    const notification = Array.isArray(res.body?.items)
+      ? res.body.items.find((item) => item.type === 'QUOTE_OFFER_RECEIVED' && item.data?.quoteRequestId === quoteId)
       : null;
     check('quote offer notification exists', typeof notification?.id === 'string');
     check('notifications do not expose passwordHash', !hasPasswordHash(res.body));

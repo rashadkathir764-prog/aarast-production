@@ -132,7 +132,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', '/wedding-plans', {
+    const res = await request('POST', '/api/v1/wedding-plans', {
       title: 'Sharing Smoke Plan',
       city: 'Sanaa',
       weddingDate: '2026-12-30T00:00:00.000Z',
@@ -145,12 +145,12 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: sharedUserId,
       role: 'VIEWER',
       canViewBudget: false,
       canViewExpenses: false,
-      canViewDebts: false,
+      canViewFinancialRecords: false,
       canManageTasks: false,
       canManageFinancialRecords: false,
     }, ownerToken);
@@ -158,7 +158,7 @@ async function run() {
     check('shared member has id', typeof res.body?.id === 'string');
     check('shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);
     check('shared member role is VIEWER', res.body?.role === 'VIEWER');
-    check('shared member has no financial permissions', res.body?.canViewExpenses === false && res.body?.canViewDebts === false);
+    check('shared member has no financial permissions', res.body?.canViewExpenses === false && res.body?.canViewFinancialRecords === false);
     check('shared member response includes safe user name', res.body?.user?.name === 'Sharing Smoke Member');
     check('shared member response includes safe user phone', res.body?.user?.phone === SHARED_PHONE);
     check('shared member response user fields are safe', hasOnlySafeSharedUserFields(res.body));
@@ -167,12 +167,12 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       phone: SHARED_BY_PHONE,
       role: 'VIEWER',
       canViewBudget: false,
       canViewExpenses: false,
-      canViewDebts: false,
+      canViewFinancialRecords: false,
       canManageTasks: false,
       canManageFinancialRecords: false,
     }, ownerToken);
@@ -187,7 +187,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: sharedUserId,
       phone: SHARED_BY_PHONE,
       role: 'VIEWER',
@@ -196,7 +196,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/shared-members`, null, ownerToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/members`, null, ownerToken);
     check('owner lists shared members - HTTP 200', res.status === 200);
     check('shared member list includes member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedMemberId));
     check('shared member list includes phone-added member', Array.isArray(res.body) && res.body.some((member) => member.id === sharedByPhoneMemberId));
@@ -206,7 +206,7 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/shared/wedding-plans', null, sharedToken);
+    const res = await request('GET', '/api/v1/shared/wedding-plans', null, sharedToken);
     check('shared user lists shared wedding plans - HTTP 200', res.status === 200);
     check('shared plan list includes plan', Array.isArray(res.body) && res.body.some((plan) => plan.id === weddingPlanId));
     check('shared plan list includes role', Array.isArray(res.body) && res.body.some((plan) => plan.sharedMember?.role === 'VIEWER'));
@@ -216,14 +216,14 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/shared/wedding-plans', null, sharedByPhoneToken);
+    const res = await request('GET', '/api/v1/shared/wedding-plans', null, sharedByPhoneToken);
     check('phone-added shared user lists shared wedding plans - HTTP 200', res.status === 200);
     check('phone-added shared plan list includes plan', Array.isArray(res.body) && res.body.some((plan) => plan.id === weddingPlanId));
     check('phone-added shared plan list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}`, null, sharedToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}`, null, sharedToken);
     check('shared user reads basic plan - HTTP 200', res.status === 200);
     check('shared user reads correct plan id', res.body?.id === weddingPlanId);
     check('shared user cannot see estimatedBudget without permission', res.body?.estimatedBudget === null);
@@ -231,26 +231,26 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/wedding-plans/${weddingPlanId}`, {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}`, {
       title: 'Shared user should not update',
     }, sharedToken);
     check('shared VIEWER cannot update plan', res.status === 404);
   }
 
   {
-    const res = await request('PATCH', `/wedding-plans/${weddingPlanId}/archive`, null, sharedToken);
+    const res = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}/archive`, null, sharedToken);
     check('shared VIEWER cannot archive plan', res.status === 404);
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/tasks`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, {
       title: 'Blocked shared task',
     }, sharedToken);
     check('shared VIEWER cannot create task before permission', res.status === 404);
   }
 
   {
-    const res = await request('PATCH', `/shared-members/${sharedMemberId}`, {
+    const res = await request('PATCH', `/api/v1/wedding-plans/${weddingPlanId}/members/${sharedMemberId}`, {
       canManageTasks: true,
     }, ownerToken);
     check('owner grants task management - HTTP 200', res.status === 200);
@@ -259,7 +259,7 @@ async function run() {
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${weddingPlanId}/tasks`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, {
       title: 'Shared user can manage task',
       dueDate: '2026-12-10T00:00:00.000Z',
       priority: 'HIGH',
@@ -271,7 +271,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/tasks/${taskId}`, {
+    const res = await request('PATCH', `/api/v1/tasks/${taskId}`, {
       status: 'IN_PROGRESS',
     }, sharedToken);
     check('shared user updates task with permission - HTTP 200', res.status === 200);
@@ -280,54 +280,54 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/tasks`, null, sharedToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/tasks`, null, sharedToken);
     check('shared user lists tasks - HTTP 200', res.status === 200);
     check('shared task list includes task', Array.isArray(res.body) && res.body.some((task) => task.id === taskId));
     check('shared task list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/timeline`, null, sharedToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/timeline`, null, sharedToken);
     check('shared user reads timeline - HTTP 200', res.status === 200);
     check('shared timeline includes tasks array', Array.isArray(res.body?.upcomingTasks));
-    check('shared timeline hides due debts without permission', Array.isArray(res.body?.dueDebts) && res.body.dueDebts.length === 0);
+    check('shared timeline hides due commitments without permission', Array.isArray(res.body?.dueCommitments) && res.body.dueCommitments.length === 0);
     check('shared timeline hides due installments without permission', Array.isArray(res.body?.dueInstallments) && res.body.dueInstallments.length === 0);
     check('shared timeline does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/expenses`, null, sharedToken);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, null, sharedToken);
     check('shared user cannot access expenses without permission', res.status === 404);
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/debts`, null, sharedToken);
-    check('shared user cannot access debts without permission', res.status === 404);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/financial-commitments`, null, sharedToken);
+    check('shared user cannot access financial records without permission', res.status === 404);
   }
 
   {
-    const res = await request('DELETE', `/shared-members/${sharedMemberId}`, null, ownerToken);
+    const res = await request('DELETE', `/api/v1/wedding-plans/${weddingPlanId}/members/${sharedMemberId}`, null, ownerToken);
     check('owner removes shared member - HTTP 200', res.status === 200);
     check('removed shared member id returned', res.body?.id === sharedMemberId);
     check('remove shared member response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('DELETE', `/shared-members/${sharedByPhoneMemberId}`, null, ownerToken);
+    const res = await request('DELETE', `/api/v1/wedding-plans/${weddingPlanId}/members/${sharedByPhoneMemberId}`, null, ownerToken);
     check('owner removes phone-added shared member - HTTP 200', res.status === 200);
     check('removed phone-added shared member id returned', res.body?.id === sharedByPhoneMemberId);
     check('remove phone-added shared member response does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', '/shared/wedding-plans', null, sharedToken);
+    const res = await request('GET', '/api/v1/shared/wedding-plans', null, sharedToken);
     check('shared user no longer sees plan - HTTP 200', res.status === 200);
     check('removed plan not listed', Array.isArray(res.body) && !res.body.some((plan) => plan.id === weddingPlanId));
     check('post-removal shared plan list does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/wedding-plans/${weddingPlanId}/shared-members`);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/members`);
     check('unauthenticated sharing route returns 401', res.status === 401);
   }
 

@@ -1,8 +1,10 @@
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { InstallmentsOverdueScheduler } from '../src/installments/installments-overdue.scheduler';
+import { FinancialInstallmentsOverdueScheduler } from '../src/financial-commitments/financial-installments-overdue.scheduler';
 import { IdempotencyCleanupScheduler } from '../src/common/idempotency/idempotency-cleanup.scheduler';
 import { metricsRegistry } from '../src/common/observability/metrics';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -11,7 +13,7 @@ function schedulerWithLock(locked: boolean) {
   let updateCalls = 0;
   const transactionClient = {
     $queryRaw: async () => [{ locked }],
-    installment: {
+    financialInstallment: {
       updateMany: async () => {
         updateCalls += 1;
         return { count: 2 };
@@ -23,7 +25,7 @@ function schedulerWithLock(locked: boolean) {
       operation(transactionClient),
   } as unknown as PrismaService;
   return {
-    scheduler: new InstallmentsOverdueScheduler(prisma),
+    scheduler: new FinancialInstallmentsOverdueScheduler(prisma),
     updateCalls: () => updateCalls,
   };
 }
@@ -98,10 +100,31 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
   assert.equal(countWhere.completedAt, null);
   assert.ok(countWhere.expiresAt?.lt instanceof Date);
 
-  const metric = metricsRegistry.getSingleMetric(
-    'aarast_idempotency_ambiguous_tombstones',
-  );
+  const metric = metricsRegistry.getSingleMetric('aarast_idempotency_ambiguous_tombstones');
   assert.ok(metric);
   const value = await metric.get();
   assert.equal(value.values[0]?.value, 2);
+});
+
+test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {
+  const schedulerSources = [
+    'src/financial-commitments/financial-installments-overdue.scheduler.ts',
+    'src/common/idempotency/idempotency-cleanup.scheduler.ts',
+    'src/auth/login-throttle-cleanup.scheduler.ts',
+    'src/notifications/notifications.service.ts',
+    'src/media/media-upload-ticket.service.ts',
+    'src/outbox/outbox-cleanup.scheduler.ts',
+  ].map((path) => readFileSync(join(process.cwd(), path), 'utf8'));
+  const lockKeys = schedulerSources.flatMap((source) =>
+    [...source.matchAll(/pg_try_advisory_xact_lock\((\d+),\s*(\d+)\)/g)].map(
+      (match) => `${match[1]}:${match[2]}`,
+    ),
+  );
+
+  assert.ok(lockKeys.length >= schedulerSources.length);
+  assert.equal(
+    new Set(lockKeys).size,
+    lockKeys.length,
+    `duplicate advisory scheduler lock: ${lockKeys.join(', ')}`,
+  );
 });

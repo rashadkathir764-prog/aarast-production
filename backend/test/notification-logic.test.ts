@@ -2,16 +2,13 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import {
-  Notification,
-  NotificationPriority,
-  NotificationType,
-} from '@prisma/client';
+import { Notification, NotificationPriority, NotificationType } from '@prisma/client';
 import { AuthenticatedUser } from '../src/auth/authenticated-user.interface';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { OutboxService } from '../src/outbox/outbox.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PermissionService } from '../src/sharing/permission.service';
+import { SharingService } from '../src/sharing/sharing.service';
 
 const user = { id: 'user-1' } as AuthenticatedUser;
 
@@ -20,9 +17,7 @@ function createHarness() {
   let sequence = 0;
   const notification = {
     findUnique: async ({ where }: { where: { dedupeKey?: string } }) =>
-      [...records.values()].find(
-        (item) => item.dedupeKey === where.dedupeKey,
-      ) ?? null,
+      [...records.values()].find((item) => item.dedupeKey === where.dedupeKey) ?? null,
     create: async ({ data }: { data: Record<string, unknown> }) => {
       const now = new Date();
       const item: Notification = {
@@ -30,9 +25,7 @@ function createHarness() {
         userId: data.userId as string,
         weddingPlanId: (data.weddingPlanId as string | null) ?? null,
         type: data.type as NotificationType,
-        priority:
-          (data.priority as NotificationPriority) ??
-          NotificationPriority.NORMAL,
+        priority: (data.priority as NotificationPriority) ?? NotificationPriority.NORMAL,
         title: data.title as string,
         body: data.body as string,
         entityType: (data.entityType as string | null) ?? null,
@@ -48,33 +41,53 @@ function createHarness() {
       records.set(item.id, item);
       return item;
     },
-    findFirst: async ({
-      where,
-    }: {
-      where: { id: string; userId: string };
-    }) => {
+    findFirst: async ({ where }: { where: { id: string; userId: string } }) => {
       const item = records.get(where.id);
       return item?.userId === where.userId ? item : null;
     },
-    update: async ({
-      where,
-      data,
-    }: {
-      where: { id: string };
-      data: Partial<Notification>;
-    }) => {
-      const item = { ...records.get(where.id)!, ...data, updatedAt: new Date() };
+    update: async ({ where, data }: { where: { id: string }; data: Partial<Notification> }) => {
+      const item = {
+        ...records.get(where.id)!,
+        ...data,
+        updatedAt: new Date(),
+      };
       records.set(item.id, item);
       return item;
     },
+    count: async ({ where }: { where: { userId: string; archivedAt: null } }) =>
+      [...records.values()].filter(
+        (item) => item.userId === where.userId && item.archivedAt === where.archivedAt,
+      ).length,
+    findMany: async ({
+      where,
+      skip,
+      take,
+    }: {
+      where: { userId: string; archivedAt: null };
+      skip: number;
+      take: number;
+    }) =>
+      [...records.values()]
+        .filter((item) => item.userId === where.userId && item.archivedAt === where.archivedAt)
+        .sort(
+          (left, right) =>
+            right.createdAt.getTime() - left.createdAt.getTime() || right.id.localeCompare(left.id),
+        )
+        .slice(skip, skip + take),
   };
   const outboxEvent = { create: async () => ({ id: 'outbox-1' }) };
   const prisma = {
     notification,
     outboxEvent,
-    $transaction: async (
-      operation: (tx: { notification: typeof notification; outboxEvent: typeof outboxEvent }) => unknown,
-    ) => operation({ notification, outboxEvent }),
+    $transaction: async (operation: unknown) =>
+      Array.isArray(operation)
+        ? Promise.all(operation)
+        : (
+            operation as (tx: {
+              notification: typeof notification;
+              outboxEvent: typeof outboxEvent;
+            }) => unknown
+          )({ notification, outboxEvent }),
   } as unknown as PrismaService;
   const permissions = {} as PermissionService;
   return {
@@ -132,4 +145,185 @@ test('archive marks the notification read and removes it from the active inbox',
   const archived = await service.archive(user, created.id);
   assert.ok(archived.archivedAt);
   assert.ok(archived.readAt);
+});
+
+test('notification inbox is paginated and reads never generate reminders', async () => {
+  const { service } = createHarness();
+  for (let index = 0; index < 25; index++) {
+    await service.createNotification({
+      userId: user.id,
+      type: NotificationType.GENERAL,
+      title: `Event ${index}`,
+      body: 'Event body',
+    });
+  }
+
+  const first = await service.list(user, undefined, undefined, false, '1', '10');
+  const third = await service.list(user, undefined, undefined, false, '3', '10');
+
+  assert.equal(first.items.length, 10);
+  assert.equal(first.total, 25);
+  assert.equal(first.totalPages, 3);
+  assert.equal(first.hasMore, true);
+  assert.equal(third.items.length, 5);
+  assert.equal(third.hasMore, false);
+});
+
+test('scheduled reminders respect notification and financial permissions', async () => {
+  const now = new Date();
+  const dueDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const captured: Array<Record<string, unknown>> = [];
+  let outboxRows = 0;
+  const plan = {
+    id: 'plan-1',
+    ownerUserId: 'owner-1',
+    status: 'PLANNING',
+    sharedMembers: [
+      {
+        userId: 'finance-member',
+        receiveNotifications: true,
+        canViewFinancialRecords: true,
+      },
+      {
+        userId: 'task-only-member',
+        receiveNotifications: true,
+        canViewFinancialRecords: false,
+      },
+    ],
+  };
+  const tx = {
+    $queryRaw: async () => [{ locked: true }],
+    weddingPlan: { findMany: async () => [plan] },
+    weddingTask: {
+      findMany: async () => [
+        {
+          id: 'task-1',
+          weddingPlanId: plan.id,
+          title: 'Task',
+          dueDate,
+          status: 'TODO',
+        },
+      ],
+    },
+    financialInstallment: {
+      findMany: async () => [
+        {
+          id: 'installment-1',
+          weddingPlanId: plan.id,
+          financialCommitmentId: 'commitment-1',
+          amount: { toString: () => '100' },
+          dueDate,
+          status: 'PENDING',
+          financialCommitment: { title: 'Commitment', partyName: 'Private' },
+        },
+      ],
+    },
+    notification: {
+      createManyAndReturn: async ({ data }: { data: Array<Record<string, unknown>> }) => {
+        captured.push(...data);
+        return data.map((item, index) => ({ ...item, id: `created-${index}` }));
+      },
+    },
+    outboxEvent: {
+      create: async () => {
+        outboxRows++;
+        return { id: `outbox-${outboxRows}` };
+      },
+    },
+  };
+  const prisma = {
+    $transaction: async (operation: (client: typeof tx) => unknown) => operation(tx),
+  } as unknown as PrismaService;
+  const permissions = {
+    canReadFinancial: (context: { sharedMember: { canViewFinancialRecords: boolean } }) =>
+      context.sharedMember.canViewFinancialRecords,
+  } as unknown as PermissionService;
+  const service = new NotificationsService(prisma, permissions, new OutboxService());
+
+  const created = await service.generateDueNotifications();
+  assert.equal(created, 5);
+  assert.equal(outboxRows, 5);
+  assert.equal(captured.filter((row) => row.entityType === 'task').length, 3);
+  assert.equal(captured.filter((row) => row.entityType === 'financial_installment').length, 2);
+  assert.equal(
+    captured.some(
+      (row) => row.entityType === 'financial_installment' && row.userId === 'task-only-member',
+    ),
+    false,
+  );
+  const ownerInstallment = captured.find(
+    (row) => row.entityType === 'financial_installment' && row.userId === 'owner-1',
+  );
+  const memberInstallment = captured.find(
+    (row) => row.entityType === 'financial_installment' && row.userId === 'finance-member',
+  );
+  assert.ok(ownerInstallment);
+  assert.ok(memberInstallment);
+  assert.match(String(ownerInstallment.body), /100/);
+  assert.doesNotMatch(String(memberInstallment.body), /100|Commitment|Private/);
+  assert.equal(Object.prototype.hasOwnProperty.call(memberInstallment.data, 'partyName'), false);
+});
+
+test('revoking financial access purges stored financial notifications atomically', async () => {
+  const existing = {
+    id: 'member-1',
+    weddingPlanId: 'plan-1',
+    userId: 'member-user-1',
+    role: 'VIEWER',
+    canViewBudget: false,
+    canViewExpenses: false,
+    canViewFinancialRecords: true,
+    canEditPlan: false,
+    canManageTasks: false,
+    canManageGuests: false,
+    canManageProviders: false,
+    canInviteMembers: false,
+    canManageFinancialRecords: false,
+    receiveNotifications: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  let purgedInTransaction = false;
+  const tx = {
+    sharedMember: {
+      update: async ({ data }: { data: Record<string, unknown> }) => ({
+        ...existing,
+        ...data,
+        user: { id: existing.userId, name: 'Member', phone: null },
+      }),
+    },
+  };
+  const prisma = {
+    sharedMember: {
+      findFirst: async () => existing,
+    },
+    $transaction: async (operation: (client: typeof tx) => unknown) => operation(tx),
+  } as unknown as PrismaService;
+  const permissions = {
+    assertMemberManageable: async () => ({
+      plan: { id: 'plan-1', ownerUserId: 'owner-1' },
+      isOwner: true,
+      sharedMember: null,
+    }),
+    canReadFinancial: (context: { sharedMember: typeof existing | null }) =>
+      context.sharedMember?.canViewFinancialRecords === true ||
+      context.sharedMember?.canManageFinancialRecords === true,
+  } as unknown as PermissionService;
+  const notifications = {
+    purgeFinancialForMember: async (client: unknown, userId: string, weddingPlanId: string) => {
+      purgedInTransaction =
+        client === tx && userId === existing.userId && weddingPlanId === existing.weddingPlanId;
+    },
+  };
+  const sharing = new SharingService(
+    prisma,
+    permissions,
+    notifications as unknown as NotificationsService,
+  );
+
+  await sharing.updateMemberForPlan({ id: 'owner-1' } as AuthenticatedUser, 'plan-1', existing.id, {
+    canViewFinancialRecords: false,
+  });
+
+  assert.equal(purgedInTransaction, true);
 });

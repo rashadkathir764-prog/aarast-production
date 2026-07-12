@@ -63,20 +63,20 @@ async function run() {
     phone: TEST_PHONE,
     password: TEST_PASSWORD,
   };
-  const pending = await request('POST', '/auth/register', details);
+  const pending = await request('POST', '/api/v1/auth/register', details);
   check('registration request is accepted as pending', pending.status === 201);
   check('pending response is explicit', pending.body?.registrationPending === true);
   check('pending response has no access token', pending.body?.accessToken === undefined);
   check('pending response has no refresh token', pending.body?.refreshToken === undefined);
   check('pending response has no user', pending.body?.user === undefined);
 
-  const beforeVerification = await request('POST', '/auth/login', {
+  const beforeVerification = await request('POST', '/api/v1/auth/login', {
     phone: TEST_PHONE,
     password: TEST_PASSWORD,
   });
   check('pending phone cannot log in', beforeVerification.status === 401);
 
-  const wrong = await request('POST', '/auth/register/complete', {
+  const wrong = await request('POST', '/api/v1/auth/register/complete', {
     ...details,
     otpCode: '999999',
   });
@@ -90,7 +90,7 @@ async function run() {
     );
   }
 
-  const completed = await request('POST', '/auth/register/complete', {
+  const completed = await request('POST', '/api/v1/auth/register/complete', {
     ...details,
     otpCode: code,
   });
@@ -103,7 +103,7 @@ async function run() {
   const concurrentDetails = { ...details, phone: concurrentPhone };
   const concurrentPending = await request(
     'POST',
-    '/auth/register',
+    '/api/v1/auth/register',
     concurrentDetails,
   );
   const concurrentRegistrationCode =
@@ -114,11 +114,11 @@ async function run() {
     );
   }
   const concurrentRegistrations = await Promise.all([
-    request('POST', '/auth/register/complete', {
+    request('POST', '/api/v1/auth/register/complete', {
       ...concurrentDetails,
       otpCode: concurrentRegistrationCode,
     }),
-    request('POST', '/auth/register/complete', {
+    request('POST', '/api/v1/auth/register/complete', {
       ...concurrentDetails,
       otpCode: concurrentRegistrationCode,
     }),
@@ -134,7 +134,7 @@ async function run() {
     ).length === 1,
   );
 
-  const loginOtp = await request('POST', '/auth/otp/request', {
+  const loginOtp = await request('POST', '/api/v1/auth/otp/request', {
     phone: TEST_PHONE,
     purpose: 'LOGIN',
   });
@@ -146,12 +146,12 @@ async function run() {
   }
 
   const concurrent = await Promise.all([
-    request('POST', '/auth/otp/verify', {
+    request('POST', '/api/v1/auth/otp/verify', {
       phone: TEST_PHONE,
       purpose: 'LOGIN',
       code: loginCode,
     }),
-    request('POST', '/auth/otp/verify', {
+    request('POST', '/api/v1/auth/otp/verify', {
       phone: TEST_PHONE,
       purpose: 'LOGIN',
       code: loginCode,

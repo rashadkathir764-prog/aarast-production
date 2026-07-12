@@ -1,20 +1,15 @@
-import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
-import { SharingModule } from '../sharing/sharing.module';
+import { Module } from "@nestjs/common";
+import { PrismaModule } from "../prisma/prisma.module";
+import { SharingModule } from "../sharing/sharing.module";
 import {
-  ApiV1WeddingPlanDashboardController,
   DashboardController,
   WeddingPlanDashboardController,
-} from './dashboard.controller';
-import { DashboardService } from './dashboard.service';
+} from "./dashboard.controller";
+import { DashboardService } from "./dashboard.service";
 
 @Module({
   imports: [PrismaModule, SharingModule],
-  controllers: [
-    DashboardController,
-    WeddingPlanDashboardController,
-    ApiV1WeddingPlanDashboardController,
-  ],
+  controllers: [DashboardController, WeddingPlanDashboardController],
   providers: [DashboardService],
 })
 export class DashboardModule {}

@@ -1,10 +1,8 @@
-import { Module } from '@nestjs/common';
-import { PrismaModule } from '../prisma/prisma.module';
-import { NotificationsModule } from '../notifications/notifications.module';
-import { SharingModule } from '../sharing/sharing.module';
+import { Module } from "@nestjs/common";
+import { PrismaModule } from "../prisma/prisma.module";
+import { NotificationsModule } from "../notifications/notifications.module";
+import { SharingModule } from "../sharing/sharing.module";
 import {
-  ApiV1ProviderCategoriesController,
-  ApiV1ProvidersController,
   ApiV1QuoteOffersController,
   ApiV1QuoteRequestsController,
   ApiV1WeddingPlanQuoteRequestsController,
@@ -14,8 +12,8 @@ import {
   ProvidersController,
   ReviewsController,
   ServicesController,
-} from './marketplace.controller';
-import { MarketplaceService } from './marketplace.service';
+} from "./marketplace.controller";
+import { MarketplaceService } from "./marketplace.service";
 
 @Module({
   imports: [PrismaModule, SharingModule, NotificationsModule],
@@ -26,8 +24,6 @@ import { MarketplaceService } from './marketplace.service';
     ServicesController,
     MeMarketplaceController,
     ReviewsController,
-    ApiV1ProviderCategoriesController,
-    ApiV1ProvidersController,
     ApiV1WeddingPlanQuoteRequestsController,
     ApiV1QuoteRequestsController,
     ApiV1QuoteOffersController,

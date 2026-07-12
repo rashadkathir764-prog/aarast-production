@@ -83,7 +83,7 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns accessToken', typeof res.body?.accessToken === 'string');
     check('register returns user id', typeof res.body?.user?.id === 'string');
     check('register does not expose passwordHash', !hasPasswordHash(res.body));

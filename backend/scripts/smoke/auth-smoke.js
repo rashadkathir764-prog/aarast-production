@@ -5,7 +5,7 @@ const { registerVerified } = require('./verified-registration');
 
 /**
  * Auth Smoke Test
- * Tests: POST /auth/register, POST /auth/login, GET /auth/me
+ * Tests: POST /api/v1/auth/register, POST /api/v1/auth/login, GET /api/v1/auth/me
  * Confirms passwordHash is never returned.
  */
 
@@ -77,7 +77,7 @@ async function run() {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/register - HTTP 201', res.status === 201);
+    check('POST /api/v1/auth/register - HTTP 201', res.status === 201);
     check('register returns accessToken', typeof res.body?.accessToken === 'string');
     check('register returns user object', typeof res.body?.user === 'object');
     check('register does not expose passwordHash', !('passwordHash' in (res.body?.user ?? {})));
@@ -93,11 +93,11 @@ async function run() {
   let loginToken = null;
   let loginUser = null;
   {
-    const res = await request('POST', '/auth/login', {
+    const res = await request('POST', '/api/v1/auth/login', {
       phone: TEST_PHONE,
       password: TEST_PASSWORD,
     });
-    check('POST /auth/login - HTTP 200', res.status === 200);
+    check('POST /api/v1/auth/login - HTTP 200', res.status === 200);
     check('login returns accessToken', typeof res.body?.accessToken === 'string');
     check('login returns user object', typeof res.body?.user === 'object');
     check('login does not expose passwordHash', !('passwordHash' in (res.body?.user ?? {})));
@@ -107,30 +107,50 @@ async function run() {
     loginToken = res.body?.accessToken;
   }
 
-  // 3. Wrong password rejected
+  // 3. Wrong passwords are rejected and the durable account lock engages.
   {
-    const res = await request('POST', '/auth/login', {
+    const first = await request('POST', '/api/v1/auth/login', {
       phone: TEST_PHONE,
       password: 'wrongpassword',
     });
-    check('login with wrong password returns 401', res.status === 401);
+    check('login with wrong password returns 401', first.status === 401);
+    const nextStatuses = [];
+    for (let attempt = 2; attempt <= 5; attempt += 1) {
+      const res = await request('POST', '/api/v1/auth/login', {
+        phone: TEST_PHONE,
+        password: `wrongpassword-${attempt}`,
+      });
+      nextStatuses.push(res.status);
+    }
+    check(
+      'five failed passwords are rejected without a server error',
+      nextStatuses.every((status) => status === 401),
+    );
+    const blocked = await request('POST', '/api/v1/auth/login', {
+      phone: TEST_PHONE,
+      password: TEST_PASSWORD,
+    });
+    check(
+      'sixth password attempt is blocked by the shared account lock',
+      blocked.status === 429,
+    );
   }
 
-  // 4. GET /auth/me without token
+  // 4. GET /api/v1/auth/me without token
   {
-    const res = await request('GET', '/auth/me');
-    check('GET /auth/me without token returns 401', res.status === 401);
+    const res = await request('GET', '/api/v1/auth/me');
+    check('GET /api/v1/auth/me without token returns 401', res.status === 401);
   }
 
-  // 5. GET /auth/me with token
+  // 5. GET /api/v1/auth/me with token
   {
     const token = loginToken ?? registerToken;
-    const res = await request('GET', '/auth/me', null, token);
-    check('GET /auth/me with token - HTTP 200', res.status === 200);
-    check('GET /auth/me does not expose passwordHash', !('passwordHash' in (res.body ?? {})));
-    check('GET /auth/me returns correct phone', res.body?.phone === TEST_PHONE);
-    check('GET /auth/me user id matches login user', res.body?.id === loginUser?.id);
-    check('GET /auth/me role matches login user', res.body?.role === loginUser?.role);
+    const res = await request('GET', '/api/v1/auth/me', null, token);
+    check('GET /api/v1/auth/me with token - HTTP 200', res.status === 200);
+    check('GET /api/v1/auth/me does not expose passwordHash', !('passwordHash' in (res.body ?? {})));
+    check('GET /api/v1/auth/me returns correct phone', res.body?.phone === TEST_PHONE);
+    check('GET /api/v1/auth/me user id matches login user', res.body?.id === loginUser?.id);
+    check('GET /api/v1/auth/me role matches login user', res.body?.role === loginUser?.role);
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

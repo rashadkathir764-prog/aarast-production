@@ -89,11 +89,11 @@ async function registerUser(name, phone) {
 }
 
 async function createOptionalQuote(planId, token) {
-  const providersRes = await request('GET', '/providers?limit=1');
+  const providersRes = await request('GET', '/api/v1/providers?limit=1');
   const provider = providersRes.body?.items?.[0];
   if (!provider?.id) return false;
 
-  const quoteRes = await request('POST', `/providers/${provider.id}/quote-requests`, {
+  const quoteRes = await request('POST', `/api/v1/providers/${provider.id}/quote-requests`, {
     weddingPlanId: planId,
     eventDate: dateOffsetIso(30),
     guestCount: 120,
@@ -115,7 +115,7 @@ async function run() {
   const unrelated = await registerUser('Dashboard Unrelated', UNRELATED_PHONE);
 
   let planId = null;
-  let debtId = null;
+  let commitmentId = null;
   let quoteCreated = false;
 
   {
@@ -147,59 +147,61 @@ async function run() {
   }
 
   {
-    const categoryRes = await request('POST', `/wedding-plans/${planId}/budget-categories`, {
+    const categoryRes = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
       name: 'Hall',
       targetAmount: '800',
     }, owner.token);
     check('owner creates budget category - HTTP 201', categoryRes.status === 201);
     check('budget category has id', typeof categoryRes.body?.id === 'string');
 
-    const expenseRes = await request('POST', `/wedding-plans/${planId}/expenses`, {
+    const expenseRes = await request('POST', `/api/v1/wedding-plans/${planId}/expenses`, {
       title: 'Paid deposit placeholder-free expense',
       amount: '300',
       status: 'PAID',
       budgetCategoryId: categoryRes.body?.id,
     }, owner.token);
     check('owner creates categorized paid expense - HTTP 201', expenseRes.status === 201);
-    const debtRes = await request('POST', `/wedding-plans/${planId}/debts`, {
-      creditorName: 'Family Support',
-      title: 'Family support debt',
+    const commitmentRes = await request('POST', `/api/v1/wedding-plans/${planId}/financial-commitments`, {
+      budgetCategoryId: categoryRes.body?.id,
+      partyName: 'Family Support',
+      title: 'Family support payable',
       totalAmount: '500',
       paidAmount: '100',
       dueDate: dateOffsetIso(7),
       status: 'PARTIALLY_PAID',
+      sourceType: 'MANUAL_PAYABLE',
     }, owner.token);
-    debtId = debtRes.body?.id;
-    await request('POST', `/debts/${debtId}/installments`, {
+    commitmentId = commitmentRes.body?.id;
+    await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
       amount: '200',
       dueDate: dateOffsetIso(0),
       status: 'PENDING',
     }, owner.token);
-    await request('POST', `/wedding-plans/${planId}/tasks`, {
+    await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Done task',
       dueDate: dateOffsetIso(0),
       status: 'DONE',
       priority: 'MEDIUM',
     }, owner.token);
-    await request('POST', `/wedding-plans/${planId}/tasks`, {
+    await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Today task',
       dueDate: dateOffsetIso(0),
       status: 'TODO',
       priority: 'HIGH',
     }, owner.token);
-    await request('POST', `/wedding-plans/${planId}/tasks`, {
+    await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Overdue task',
       dueDate: dateOffsetIso(-1),
       status: 'TODO',
       priority: 'HIGH',
     }, owner.token);
-    await request('POST', `/wedding-plans/${planId}/guests`, {
+    await request('POST', `/api/v1/wedding-plans/${planId}/guests`, {
       name: 'Confirmed Guest',
       phone: '+967700000001',
       status: 'CONFIRMED',
       seatsCount: 1,
     }, owner.token);
-    await request('POST', `/wedding-plans/${planId}/guests`, {
+    await request('POST', `/api/v1/wedding-plans/${planId}/guests`, {
       name: 'Pending Guest',
       status: 'PENDING',
       seatsCount: 2,
@@ -211,10 +213,10 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, owner.token);
     check('populated summary - HTTP 200', res.status === 200);
     check('summary spentTotal is calculated', res.body?.spentTotal === '300.00');
-    check('summary remainingBudget is calculated', res.body?.remainingBudget === '1700.00');
-    check('summary debtTotal is calculated', res.body?.debtTotal === '500.00');
-    check('summary paidDebtTotal is calculated', res.body?.paidDebtTotal === '100.00');
-    check('summary unpaidDebtTotal is calculated', res.body?.unpaidDebtTotal === '400.00');
+    check('summary remainingBudget includes confirmed commitments once', res.body?.remainingBudget === '1200.00');
+    check('summary commitmentTotal is calculated', res.body?.commitmentTotal === '500.00');
+    check('summary commitmentPaidTotal is calculated', res.body?.commitmentPaidTotal === '100.00');
+    check('summary commitmentOutstandingTotal is calculated', res.body?.commitmentOutstandingTotal === '400.00');
     check('summary dueInstallmentsCount is calculated', res.body?.dueInstallmentsCount === 1);
     check('summary totalTasks is calculated', res.body?.totalTasks === 3);
     check('summary completedTasks is calculated', res.body?.completedTasks === 1);
@@ -234,11 +236,11 @@ async function run() {
     check('summary planProviders is array', Array.isArray(res.body?.planProviders));
     check('summary importantNotifications is array', Array.isArray(res.body?.importantNotifications));
     check('summary currentUserRole is OWNER', res.body?.currentUserRole === 'OWNER');
-    check('summary owner can view finance', res.body?.permissions?.canViewBudget === true && res.body?.permissions?.canViewDebts === true);
+    check('summary owner can view finance', res.body?.permissions?.canViewBudget === true && res.body?.permissions?.canViewFinancialRecords === true);
   }
 
   {
-    const res = await request('POST', `/wedding-plans/${planId}/shared-members`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
       userId: viewer.userId,
       role: 'VIEWER',
     }, owner.token);
@@ -249,10 +251,10 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, viewer.token);
     check('viewer summary - HTTP 200', res.status === 200);
     check('viewer role is included', res.body?.currentUserRole === 'VIEWER');
-    check('viewer finance permissions are false', res.body?.permissions?.canViewBudget === false && res.body?.permissions?.canViewDebts === false);
+    check('viewer finance permissions are false', res.body?.permissions?.canViewBudget === false && res.body?.permissions?.canViewFinancialRecords === false);
     check('viewer budget is hidden', res.body?.budgetTotal === null);
     check('viewer spent is hidden', res.body?.spentTotal === null);
-    check('viewer debt is hidden', res.body?.debtTotal === null);
+    check('viewer commitments are hidden', res.body?.commitmentTotal === null);
     check('viewer due installments are hidden', res.body?.dueInstallmentsCount === null);
     check('viewer importantItems hides installment details', !res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
     check('viewer still sees non-finance task count', res.body?.totalTasks === 3);

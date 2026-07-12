@@ -14,7 +14,6 @@ const smokeScripts = [
   ['smoke:money-apis', 'money-apis-smoke.js'],
   ['smoke:financial-ledger-concurrency', 'financial-ledger-concurrency-smoke.js'],
   ['smoke:budget-expense', 'budget-expense-smoke.js'],
-  ['smoke:debt-installment', 'debt-installment-smoke.js'],
   ['smoke:tasks-apis', 'tasks-apis-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],
   ['smoke:sharing', 'sharing-smoke.js'],
@@ -27,6 +26,12 @@ const smokeScripts = [
   ['smoke:otp-profile', 'otp-profile-smoke.js'],
   ['smoke:marketplace', 'marketplace-smoke.js'],
   ['smoke:providers-quotes', 'providers-quotes-smoke.js'],
+  ['smoke:private-chat-media', 'private-chat-media-smoke.js'],
+  [
+    'smoke:account-deletion',
+    'account-deletion-smoke.ts',
+    ['ts-node/register'],
+  ],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
   ['smoke:ux-backend-support', 'ux-backend-support-smoke.js'],
   ['smoke:ux-c4-c7', 'ux-c4-c7-smoke.js'],
@@ -39,11 +44,12 @@ const smokeBaseUrl = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 console.log('\nAarast Backend Smoke: All');
 console.log(`Target: ${smokeBaseUrl}\n`);
 
-for (const [index, [script, fileName]] of smokeScripts.entries()) {
+for (const [index, [script, fileName, preloads = []]] of smokeScripts.entries()) {
   console.log(`===== ${script} =====`);
   const result = spawnSync(process.execPath, [
     '-r',
     path.join(__dirname, 'smoke-client-ip-hook.js'),
+    ...preloads.flatMap((preload) => ['-r', require.resolve(preload)]),
     path.join(__dirname, fileName),
   ], {
     env: {

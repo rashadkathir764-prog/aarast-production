@@ -44,9 +44,9 @@ test("refresh token schema and authenticated lifecycle stay wired", () => {
 
   assert.match(schema, /model RefreshToken /);
   assert.match(schema, /refreshTokens\s+RefreshToken\[\]/);
-  assert.match(controller, /@Post\('refresh'\)/);
-  assert.match(controller, /@Post\('logout'\)/);
-  assert.match(controller, /@Post\('logout-all'\)/);
+  assert.match(controller, /@Post\(["']refresh["']\)/);
+  assert.match(controller, /@Post\(["']logout["']\)/);
+  assert.match(controller, /@Post\(["']logout-all["']\)/);
   assert.match(service, /refreshToken\.create/);
   assert.match(service, /refreshToken\.update/);
   assert.match(service, /refreshToken\.updateMany/);
@@ -110,6 +110,7 @@ test("reusing a rotated refresh token revokes the account token family", async (
   };
   const service = new AuthService(
     { $transaction: async (fn: any) => fn(tx) } as any,
+    {} as any,
     {} as any,
   );
 

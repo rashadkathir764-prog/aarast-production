@@ -1,87 +1,59 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { CurrentUser } from '../auth/current-user.decorator';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CreatePlanInviteDto } from './dto/create-plan-invite.dto';
-import { CreateSharedMemberDto } from './dto/create-shared-member.dto';
-import { UpdateSharedMemberDto } from './dto/update-shared-member.dto';
-import { SharingService } from './sharing.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { CurrentUser } from "../auth/current-user.decorator";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
+import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
+import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
+import { SharingService } from "./sharing.service";
 
-@Controller('wedding-plans/:weddingPlanId/shared-members')
+@Controller("api/v1/shared")
 @UseGuards(JwtAuthGuard)
-export class WeddingPlanSharedMembersController {
+export class SharedWeddingPlansController {
+  constructor(private readonly sharingService: SharingService) {}
+
+  @Get("wedding-plans")
+  findSharedPlans(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.sharingService.findSharedPlans(currentUser);
+  }
+}
+
+@Controller("api/v1/wedding-plans/:weddingPlanId/members")
+@UseGuards(JwtAuthGuard)
+export class ApiV1WeddingPlanMembersController {
   constructor(private readonly sharingService: SharingService) {}
 
   @Post()
-  create(
+  createMember(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
     @Body() dto: CreateSharedMemberDto,
   ) {
     return this.sharingService.create(currentUser, weddingPlanId, dto);
   }
 
   @Get()
-  findForPlan(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-  ) {
-    return this.sharingService.findForPlan(currentUser, weddingPlanId);
-  }
-}
-
-@Controller('shared-members')
-@UseGuards(JwtAuthGuard)
-export class SharedMembersController {
-  constructor(private readonly sharingService: SharingService) {}
-
-  @Patch(':id')
-  update(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-    @Body() dto: UpdateSharedMemberDto,
-  ) {
-    return this.sharingService.update(currentUser, id, dto);
-  }
-
-  @Delete(':id')
-  remove(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.sharingService.remove(currentUser, id);
-  }
-}
-
-@Controller('shared')
-@UseGuards(JwtAuthGuard)
-export class SharedWeddingPlansController {
-  constructor(private readonly sharingService: SharingService) {}
-
-  @Get('wedding-plans')
-  findSharedPlans(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.sharingService.findSharedPlans(currentUser);
-  }
-}
-
-@Controller('api/v1/wedding-plans/:weddingPlanId/members')
-@UseGuards(JwtAuthGuard)
-export class ApiV1WeddingPlanMembersController {
-  constructor(private readonly sharingService: SharingService) {}
-
-  @Get()
   findMembers(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
   ) {
     return this.sharingService.findMembersForPlan(currentUser, weddingPlanId);
   }
 
-  @Patch(':memberId')
+  @Patch(":memberId")
   updateMember(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-    @Param('memberId') memberId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Param("memberId") memberId: string,
     @Body() dto: UpdateSharedMemberDto,
   ) {
     return this.sharingService.updateMemberForPlan(
@@ -92,11 +64,11 @@ export class ApiV1WeddingPlanMembersController {
     );
   }
 
-  @Delete(':memberId')
+  @Delete(":memberId")
   removeMember(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-    @Param('memberId') memberId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Param("memberId") memberId: string,
   ) {
     return this.sharingService.removeMemberFromPlan(
       currentUser,
@@ -106,7 +78,7 @@ export class ApiV1WeddingPlanMembersController {
   }
 }
 
-@Controller('api/v1/wedding-plans/:weddingPlanId/invites')
+@Controller("api/v1/wedding-plans/:weddingPlanId/invites")
 @UseGuards(JwtAuthGuard)
 export class ApiV1WeddingPlanInvitesController {
   constructor(private readonly sharingService: SharingService) {}
@@ -114,7 +86,7 @@ export class ApiV1WeddingPlanInvitesController {
   @Post()
   createInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
     @Body() dto: CreatePlanInviteDto,
   ) {
     return this.sharingService.createInvite(currentUser, weddingPlanId, dto);
@@ -123,16 +95,16 @@ export class ApiV1WeddingPlanInvitesController {
   @Get()
   findInvites(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
   ) {
     return this.sharingService.findInvitesForPlan(currentUser, weddingPlanId);
   }
 
-  @Delete(':inviteId')
+  @Delete(":inviteId")
   cancelInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
-    @Param('inviteId') inviteId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Param("inviteId") inviteId: string,
   ) {
     return this.sharingService.cancelInvite(
       currentUser,
@@ -142,56 +114,56 @@ export class ApiV1WeddingPlanInvitesController {
   }
 }
 
-@Controller('api/v1/invites')
+@Controller("api/v1/invites")
 @UseGuards(JwtAuthGuard)
 export class ApiV1InvitesController {
   constructor(private readonly sharingService: SharingService) {}
 
-  @Get('mine')
+  @Get("mine")
   findMyInvites(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.sharingService.findInvitesForCurrentUser(currentUser);
   }
 
-  @Get(':token')
+  @Get(":token")
   getInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('token') token: string,
+    @Param("token") token: string,
   ) {
     return this.sharingService.getInviteForCurrentUser(currentUser, token);
   }
 }
 
-@Controller('api/v1/invites')
+@Controller("api/v1/invites")
 @UseGuards(JwtAuthGuard)
 export class ApiV1InviteAcceptController {
   constructor(private readonly sharingService: SharingService) {}
 
-  @Post(':token/accept')
+  @Post(":token/accept")
   acceptInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('token') token: string,
+    @Param("token") token: string,
   ) {
     return this.sharingService.acceptInvite(currentUser, token);
   }
 
-  @Post(':token/decline')
+  @Post(":token/decline")
   declineInvite(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('token') token: string,
+    @Param("token") token: string,
   ) {
     return this.sharingService.declineInvite(currentUser, token);
   }
 }
 
-@Controller('api/v1/wedding-plans/:weddingPlanId/permissions')
+@Controller("api/v1/wedding-plans/:weddingPlanId/permissions")
 @UseGuards(JwtAuthGuard)
 export class ApiV1WeddingPlanPermissionsController {
   constructor(private readonly sharingService: SharingService) {}
 
-  @Get('me')
+  @Get("me")
   permissionsForMe(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('weddingPlanId') weddingPlanId: string,
+    @Param("weddingPlanId") weddingPlanId: string,
   ) {
     return this.sharingService.permissionsForCurrentUser(
       currentUser,

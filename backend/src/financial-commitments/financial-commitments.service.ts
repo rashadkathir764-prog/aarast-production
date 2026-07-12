@@ -177,7 +177,7 @@ export class FinancialCommitmentsService {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
       currentUser,
-      "debts",
+      "financialRecords",
     );
 
     const commitments = await this.prisma.financialCommitment.findMany({
@@ -199,7 +199,7 @@ export class FinancialCommitmentsService {
     await this.permissionService.assertFinancialReadable(
       commitment.weddingPlanId,
       currentUser,
-      "debts",
+      "financialRecords",
     );
     return this.toCommitmentResponse(commitment);
   }
@@ -445,15 +445,6 @@ export class FinancialCommitmentsService {
       if (current.entryType === FinancialPaymentRecordType.REVERSAL) {
         throw new BadRequestException("Reversal entries cannot be reversed");
       }
-      if (
-        current.legacyDebtId ||
-        current.legacyInstallmentId ||
-        current.legacyExpenseId
-      ) {
-        throw new BadRequestException(
-          "Legacy payment entries must be adjusted from their original debt or installment",
-        );
-      }
       if (current.reversedBy) return current.reversedBy;
 
       if (current.financialInstallmentId) {
@@ -564,7 +555,7 @@ export class FinancialCommitmentsService {
     await this.permissionService.assertFinancialReadable(
       commitment.weddingPlanId,
       currentUser,
-      "debts",
+      "financialRecords",
     );
 
     const installments = await this.prisma.financialInstallment.findMany({
@@ -584,7 +575,7 @@ export class FinancialCommitmentsService {
     await this.permissionService.assertFinancialReadable(
       weddingPlanId,
       currentUser,
-      "debts",
+      "financialRecords",
     );
 
     const installments = await this.prisma.financialInstallment.findMany({
@@ -1082,9 +1073,6 @@ export class FinancialCommitmentsService {
       reversedById,
       reversible:
         record.entryType === FinancialPaymentRecordType.PAYMENT &&
-        !record.legacyDebtId &&
-        !record.legacyInstallmentId &&
-        !record.legacyExpenseId &&
         !reversedById,
       paidAt: record.paidAt,
       method: record.method,

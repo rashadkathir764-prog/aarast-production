@@ -61,6 +61,15 @@ export function assertOwnedMediaUrl(
   purpose: MediaPurpose,
   userId: string,
 ): void {
+  ownedMediaKeyFromUrl(value, publicBaseUrl, purpose, userId);
+}
+
+export function ownedMediaKeyFromUrl(
+  value: string,
+  publicBaseUrl: string,
+  purpose: MediaPurpose,
+  userId: string,
+): string {
   let actual: URL;
   let base: URL;
   try {
@@ -72,12 +81,14 @@ export function assertOwnedMediaUrl(
   const basePath = base.pathname.replace(/\/$/, '');
   const expectedPrefix = `${basePath}/${purpose}/${userId}/`;
   if (
-    actual.protocol !== 'https:' ||
+    actual.protocol !== base.protocol ||
+    (process.env.NODE_ENV === 'production' && actual.protocol !== 'https:') ||
     actual.origin !== base.origin ||
     !actual.pathname.startsWith(expectedPrefix)
   ) {
     throw new BadRequestException('Media URL is not owned by this account');
   }
+  return actual.pathname.slice(basePath.length + 1);
 }
 
 /**
@@ -146,4 +157,37 @@ export function requireOwnedMediaUrl(
     throw new BadRequestException(`${field} is required`);
   }
   return normalized;
+}
+
+export function assertImageSignature(
+  bytes: Uint8Array,
+  expectedContentType: string,
+): void {
+  const actual = detectImageContentType(bytes);
+  if (actual !== expectedContentType) {
+    throw new BadRequestException('Uploaded file content is not a valid image');
+  }
+}
+
+export function detectImageContentType(bytes: Uint8Array): string | null {
+  if (
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return 'image/jpeg';
+  }
+  const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (bytes.length >= png.length && png.every((value, i) => bytes[i] === value)) {
+    return 'image/png';
+  }
+  if (
+    bytes.length >= 12 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' &&
+    String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  return null;
 }

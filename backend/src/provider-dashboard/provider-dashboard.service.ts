@@ -32,10 +32,7 @@ import {
   assertQuoteRequestTransition,
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
-import {
-  normalizeOwnedMediaUrl,
-  requireOwnedMediaUrl,
-} from '../media/media-upload-policy';
+import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { weddingLocationResponse } from '../wedding-plans/wedding-location';
@@ -80,6 +77,7 @@ export class ProviderDashboardService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly mediaStorage: MediaStorageService,
   ) {}
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {
@@ -136,10 +134,61 @@ export class ProviderDashboardService {
     if (dto.cityId !== undefined) {
       await this.findActiveCityOrThrow(dto.cityId);
     }
+    const logoUrl =
+      dto.logoUrl !== undefined
+        ? await this.mediaStorage.verifyPublicMediaUrl(
+            currentUser,
+            dto.logoUrl,
+            'provider-logo',
+          )
+        : undefined;
+    const coverUrl =
+      dto.coverUrl !== undefined
+        ? await this.mediaStorage.verifyPublicMediaUrl(
+            currentUser,
+            dto.coverUrl,
+            'provider-cover',
+          )
+        : undefined;
 
-    const updated = await this.prisma.provider.update({
-      where: { id: provider.id },
-      data: {
+    const logoChanged =
+      dto.logoUrl !== undefined && logoUrl !== provider.logoUrl;
+    const coverChanged =
+      dto.coverUrl !== undefined && coverUrl !== provider.coverUrl;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      if (logoChanged) {
+        await this.mediaStorage.scheduleTargetDeletion(
+          { type: 'PROVIDER_LOGO', id: provider.id },
+          tx,
+        );
+        if (logoUrl) {
+          await this.mediaStorage.consumePublicMediaUrl(
+            currentUser,
+            logoUrl,
+            'provider-logo',
+            { type: 'PROVIDER_LOGO', id: provider.id },
+            tx,
+          );
+        }
+      }
+      if (coverChanged) {
+        await this.mediaStorage.scheduleTargetDeletion(
+          { type: 'PROVIDER_COVER', id: provider.id },
+          tx,
+        );
+        if (coverUrl) {
+          await this.mediaStorage.consumePublicMediaUrl(
+            currentUser,
+            coverUrl,
+            'provider-cover',
+            { type: 'PROVIDER_COVER', id: provider.id },
+            tx,
+          );
+        }
+      }
+      return tx.provider.update({
+        where: { id: provider.id },
+        data: {
         ...(dto.businessName !== undefined
           ? { businessName: this.requiredText(dto.businessName, 'businessName') }
           : {}),
@@ -171,26 +220,11 @@ export class ProviderDashboardService {
         ...(dto.longitude !== undefined
           ? { longitude: this.optionalSignedDecimal(dto.longitude, 'longitude') }
           : {}),
-        ...(dto.logoUrl !== undefined
-          ? {
-              logoUrl: normalizeOwnedMediaUrl(
-                dto.logoUrl,
-                'provider-logo',
-                currentUser.id,
-              ),
-            }
-          : {}),
-        ...(dto.coverUrl !== undefined
-          ? {
-              coverUrl: normalizeOwnedMediaUrl(
-                dto.coverUrl,
-                'provider-cover',
-                currentUser.id,
-              ),
-            }
-          : {}),
-      },
-      include: { city: true, primaryCategory: true },
+        ...(dto.logoUrl !== undefined ? { logoUrl } : {}),
+        ...(dto.coverUrl !== undefined ? { coverUrl } : {}),
+        },
+        include: { city: true, primaryCategory: true },
+      });
     });
 
     return this.toProviderProfileResponse(updated);
@@ -327,17 +361,29 @@ export class ProviderDashboardService {
     dto: CreateServiceImageDto,
   ) {
     await this.findOwnedServiceOrThrow(currentUser.id, serviceId);
-    const image = await this.prisma.providerServiceImage.create({
-      data: {
-        serviceId,
-        imageUrl: requireOwnedMediaUrl(
-          dto.imageUrl,
-          'service-image',
-          currentUser.id,
-        ),
-        altText: this.optionalText(dto.altText),
-        sortOrder: dto.sortOrder ?? 0,
-      },
+    const imageUrl = await this.mediaStorage.verifyPublicMediaUrl(
+      currentUser,
+      dto.imageUrl,
+      'service-image',
+    );
+    if (!imageUrl) throw new BadRequestException('imageUrl is required');
+    const image = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.providerServiceImage.create({
+        data: {
+          serviceId,
+          imageUrl,
+          altText: this.optionalText(dto.altText),
+          sortOrder: dto.sortOrder ?? 0,
+        },
+      });
+      await this.mediaStorage.consumePublicMediaUrl(
+        currentUser,
+        imageUrl,
+        'service-image',
+        { type: 'SERVICE_IMAGE', id: created.id },
+        tx,
+      );
+      return created;
     });
 
     return this.toImageResponse(image);
@@ -357,24 +403,44 @@ export class ProviderDashboardService {
     if (!existing) {
       throw new NotFoundException('Service image not found');
     }
+    const imageUrl =
+      dto.imageUrl !== undefined
+        ? await this.mediaStorage.verifyPublicMediaUrl(
+            currentUser,
+            dto.imageUrl,
+            'service-image',
+          )
+        : undefined;
+    if (dto.imageUrl !== undefined && !imageUrl) {
+      throw new BadRequestException('imageUrl is required');
+    }
 
-    const image = await this.prisma.providerServiceImage.update({
-      where: { id: imageId },
-      data: {
-        ...(dto.imageUrl !== undefined
-          ? {
-              imageUrl: requireOwnedMediaUrl(
-                dto.imageUrl,
-                'service-image',
-                currentUser.id,
-              ),
-            }
-          : {}),
-        ...(dto.altText !== undefined
-          ? { altText: this.optionalText(dto.altText) }
-          : {}),
-        ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
-      },
+    const imageChanged =
+      dto.imageUrl !== undefined && imageUrl !== existing.imageUrl;
+    const image = await this.prisma.$transaction(async (tx) => {
+      if (imageChanged) {
+        await this.mediaStorage.scheduleTargetDeletion(
+          { type: 'SERVICE_IMAGE', id: imageId },
+          tx,
+        );
+        await this.mediaStorage.consumePublicMediaUrl(
+          currentUser,
+          imageUrl!,
+          'service-image',
+          { type: 'SERVICE_IMAGE', id: imageId },
+          tx,
+        );
+      }
+      return tx.providerServiceImage.update({
+        where: { id: imageId },
+        data: {
+          ...(dto.imageUrl !== undefined ? { imageUrl: imageUrl! } : {}),
+          ...(dto.altText !== undefined
+            ? { altText: this.optionalText(dto.altText) }
+            : {}),
+          ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
+        },
+      });
     });
 
     return this.toImageResponse(image);
@@ -387,8 +453,17 @@ export class ProviderDashboardService {
   ) {
     await this.findOwnedServiceOrThrow(currentUser.id, serviceId);
     this.assertUuid(imageId, 'imageId');
-    const deleted = await this.prisma.providerServiceImage.deleteMany({
-      where: { id: imageId, serviceId },
+    const deleted = await this.prisma.$transaction(async (tx) => {
+      const result = await tx.providerServiceImage.deleteMany({
+        where: { id: imageId, serviceId },
+      });
+      if (result.count > 0) {
+        await this.mediaStorage.scheduleTargetDeletion(
+          { type: 'SERVICE_IMAGE', id: imageId },
+          tx,
+        );
+      }
+      return result;
     });
 
     if (deleted.count === 0) {

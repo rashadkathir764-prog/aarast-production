@@ -114,7 +114,15 @@ function createHarness() {
   };
 
   return {
-    service: new AuthService(prisma, { sign: () => 'signed-access-token' } as any),
+    service: new AuthService(
+      prisma,
+      { sign: () => 'signed-access-token' } as any,
+      {
+        assertAllowed: async () => undefined,
+        recordFailure: async () => undefined,
+        clear: async () => undefined,
+      } as any,
+    ),
     users,
     otps,
     refreshTokens,

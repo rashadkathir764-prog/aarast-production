@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import {
-  DebtStatus,
   ExpenseStatus,
   FinancialCommitmentSourceType,
   FinancialCommitmentStatus,
@@ -11,6 +10,7 @@ import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
+import { combineVisibleMoney } from "./money-summary.math";
 
 export interface MoneySummaryResponse {
   weddingPlanId: string;
@@ -31,29 +31,13 @@ export interface MoneySummaryResponse {
   commitmentPaidTotal: string | null;
   commitmentRemainingTotal: string | null;
   providerCommitmentTotal: string | null;
-  manualDebtCommitmentTotal: string | null;
+  manualPayableCommitmentTotal: string | null;
   deficitOrSurplus: string | null;
-  debtTotal: string | null;
-  totalDebts: string | null;
-  paidDebtTotal: string | null;
-  unpaidDebtTotal: string | null;
-  debtRemaining: string | null;
   dueInstallmentsCount: number | null;
   overdueInstallmentsCount: number | null;
   paidInstallmentsCount: number | null;
   remainingInstallmentsCount: number | null;
-  financialInstallmentsCount: number | null;
-  financialDueInstallmentsCount: number | null;
-  financialOverdueInstallmentsCount: number | null;
-  financialRemainingInstallmentsCount: number | null;
   nextInstallment: {
-    id: string;
-    debtId: string;
-    amount: string;
-    dueAt: Date | null;
-    status: InstallmentStatus;
-  } | null;
-  nextFinancialInstallment: {
     id: string;
     financialCommitmentId: string;
     amount: string;
@@ -90,13 +74,12 @@ export interface MoneySummaryResponse {
   }[];
   categoriesCount: number | null;
   expensesCount: number | null;
-  debtsCount: number | null;
   commitmentsCount: number | null;
   installmentsCount: number | null;
   permissions: {
     canViewBudget: boolean;
     canViewExpenses: boolean;
-    canViewDebts: boolean;
+    canViewFinancialRecords: boolean;
     canManageFinancialRecords: boolean;
   };
 }
@@ -121,122 +104,66 @@ export class MoneySummaryService {
       context,
       "expenses",
     );
-    const canViewDebts = this.permissions.canReadFinancial(context, "debts");
+    const canViewFinancialRecords = this.permissions.canReadFinancial(
+      context,
+      "financialRecords",
+    );
     const canManageFinancialRecords =
       this.permissions.canManageFinancialRecords(context);
 
-    if (!canViewBudget && !canViewExpenses && !canViewDebts) {
+    if (!canViewBudget && !canViewExpenses && !canViewFinancialRecords) {
       throw new NotFoundException("Wedding plan not found");
     }
 
     const today = this.startOfToday();
-    const [
-      categories,
-      expenses,
-      debts,
-      financialCommitments,
-      financialInstallments,
-    ] = await Promise.all([
+    const [categories, expenses, financialCommitments, financialInstallments] =
+      await Promise.all([
       canViewBudget
         ? this.prisma.budgetCategory.findMany({ where: { weddingPlanId } })
         : Promise.resolve([]),
       canViewExpenses
         ? this.prisma.expense.findMany({ where: { weddingPlanId } })
         : Promise.resolve([]),
-      canViewDebts
-        ? this.prisma.debt.findMany({ where: { weddingPlanId } })
-        : Promise.resolve([]),
-      canViewDebts
+      canViewFinancialRecords
         ? this.prisma.financialCommitment.findMany({
             where: { weddingPlanId },
           })
         : Promise.resolve([]),
-      canViewDebts
+      canViewFinancialRecords
         ? this.prisma.financialInstallment.findMany({
             where: { weddingPlanId },
             orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
         : Promise.resolve([]),
-    ]);
-    const mirroredDebtIds = new Set(
-      financialCommitments
-        .map((commitment) => commitment.legacyDebtId)
-        .filter((id): id is string => Boolean(id)),
-    );
-    const legacyDebts = debts.filter((debt) => !mirroredDebtIds.has(debt.id));
-    const mirroredInstallmentIds = new Set(
-      financialInstallments
-        .map((installment) => installment.legacyInstallmentId)
-        .filter((id): id is string => Boolean(id)),
-    );
-    const legacyInstallments = canViewDebts
-      ? await this.prisma.installment.findMany({
-          where: {
-            debt: { weddingPlanId },
-            ...(mirroredInstallmentIds.size > 0
-              ? { id: { notIn: [...mirroredInstallmentIds] } }
-              : {}),
-          },
-          orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-        })
-      : [];
-    const openLegacyInstallments = legacyInstallments.filter((installment) =>
-      this.isOpenInstallment(installment.status),
-    );
+      ]);
     const openFinancialInstallments = financialInstallments.filter(
       (installment) => this.isOpenInstallment(installment.status),
     );
-    const installmentsCount = canViewDebts ? legacyInstallments.length : null;
-    const dueInstallmentsCount = canViewDebts
-      ? openLegacyInstallments.filter(
+    const installmentsCount = canViewFinancialRecords
+      ? financialInstallments.length
+      : null;
+    const dueInstallmentsCount = canViewFinancialRecords
+      ? openFinancialInstallments.filter(
           (installment) =>
             installment.dueDate !== null &&
             installment.dueDate <= this.endOfToday(today),
         ).length
       : null;
-    const overdueInstallmentsCount = canViewDebts
-      ? openLegacyInstallments.filter(
+    const overdueInstallmentsCount = canViewFinancialRecords
+      ? openFinancialInstallments.filter(
           (installment) =>
             installment.dueDate !== null && installment.dueDate < today,
         ).length
       : null;
-    const paidInstallmentsCount = canViewDebts
-      ? legacyInstallments.filter(
+    const paidInstallmentsCount = canViewFinancialRecords
+      ? financialInstallments.filter(
           (installment) => installment.status === InstallmentStatus.PAID,
         ).length
       : null;
-    const remainingInstallmentsCount = canViewDebts
-      ? openLegacyInstallments.length
-      : null;
-    const dueSoonInstallmentsCount = canViewDebts
-      ? openLegacyInstallments.filter(
-          (installment) =>
-            installment.dueDate !== null &&
-            installment.dueDate >= today &&
-            installment.dueDate <= this.endOfDayOffset(today, 7),
-        ).length
-      : null;
-    const nextInstallment = openLegacyInstallments[0] ?? null;
-    const financialInstallmentsCount = canViewDebts
-      ? financialInstallments.length
-      : null;
-    const financialDueInstallmentsCount = canViewDebts
-      ? openFinancialInstallments.filter(
-          (installment) =>
-            installment.dueDate !== null &&
-            installment.dueDate <= this.endOfToday(today),
-        ).length
-      : null;
-    const financialOverdueInstallmentsCount = canViewDebts
-      ? openFinancialInstallments.filter(
-          (installment) =>
-            installment.dueDate !== null && installment.dueDate < today,
-        ).length
-      : null;
-    const financialRemainingInstallmentsCount = canViewDebts
+    const remainingInstallmentsCount = canViewFinancialRecords
       ? openFinancialInstallments.length
       : null;
-    const financialDueSoonInstallmentsCount = canViewDebts
+    const dueSoonInstallmentsCount = canViewFinancialRecords
       ? openFinancialInstallments.filter(
           (installment) =>
             installment.dueDate !== null &&
@@ -244,7 +171,7 @@ export class MoneySummaryService {
             installment.dueDate <= this.endOfDayOffset(today, 7),
         ).length
       : null;
-    const nextFinancialInstallment = openFinancialInstallments[0] ?? null;
+    const nextInstallment = openFinancialInstallments[0] ?? null;
 
     const categoryTargetTotal = canViewBudget
       ? categories.reduce(
@@ -256,78 +183,43 @@ export class MoneySummaryService {
       ? this.resolveBudgetTotal(context.plan, categoryTargetTotal ?? 0)
       : null;
     const expenseTotals = canViewExpenses ? this.expenseTotals(expenses) : null;
-    const debtTotals = canViewDebts ? this.debtTotals(legacyDebts) : null;
-    const commitmentTotals = canViewDebts
+    const commitmentTotals = canViewFinancialRecords
       ? this.commitmentTotals(financialCommitments)
       : null;
-    const combinedDebtTotal =
-      commitmentTotals && debtTotals
-        ? commitmentTotals.commitmentTotal + debtTotals.debtTotal
-        : null;
-    const combinedPaidDebtTotal =
-      commitmentTotals && debtTotals
-        ? commitmentTotals.commitmentPaidTotal + debtTotals.paidDebtTotal
-        : null;
-    const combinedUnpaidDebtTotal =
-      combinedDebtTotal !== null && combinedPaidDebtTotal !== null
-        ? Math.max(combinedDebtTotal - combinedPaidDebtTotal, 0)
-        : null;
-    const combinedPaidInstallmentsCount = this.sumNullableCounts(
-      paidInstallmentsCount,
-      canViewDebts
-        ? financialInstallments.filter(
-            (installment) => installment.status === InstallmentStatus.PAID,
-          ).length
-        : null,
+    const confirmedCostTotal = combineVisibleMoney(
+      expenseTotals?.spentTotal ?? null,
+      commitmentTotals?.commitmentTotal ?? null,
     );
-    const combinedRemainingInstallmentsCount = this.sumNullableCounts(
-      remainingInstallmentsCount,
-      financialRemainingInstallmentsCount,
-    );
-    const combinedInstallmentsCount = this.sumNullableCounts(
-      installmentsCount,
-      financialInstallmentsCount,
+    const paidTotal = combineVisibleMoney(
+      expenseTotals?.spentTotal ?? null,
+      commitmentTotals?.commitmentPaidTotal ?? null,
     );
     const remainingBudget =
-      budgetTotal !== null && expenseTotals
-        ? budgetTotal - expenseTotals.spentTotal
+      budgetTotal !== null && confirmedCostTotal !== null
+        ? budgetTotal - confirmedCostTotal
         : null;
-    const confirmedCostTotal = combinedDebtTotal;
-    const paidTotal =
-      combinedPaidDebtTotal !== null && expenseTotals
-        ? combinedPaidDebtTotal + expenseTotals.spentTotal
-        : null;
-    const outstandingTotal = combinedUnpaidDebtTotal;
+    const outstandingTotal =
+      commitmentTotals?.commitmentRemainingTotal ?? null;
     const deficitOrSurplus =
       budgetTotal !== null && confirmedCostTotal !== null
         ? budgetTotal - confirmedCostTotal
         : null;
-    const combinedDueInstallmentsCount = this.sumNullableCounts(
-      dueInstallmentsCount,
-      financialDueInstallmentsCount,
-    );
-    const combinedOverdueInstallmentsCount = this.sumNullableCounts(
-      overdueInstallmentsCount,
-      financialOverdueInstallmentsCount,
-    );
-    const combinedDueSoonInstallmentsCount = this.sumNullableCounts(
-      dueSoonInstallmentsCount,
-      financialDueSoonInstallmentsCount,
-    );
     const categorySummaries = this.buildCategorySummaries({
       canViewBudget,
       canViewExpenses,
-      canViewDebts,
+      canViewFinancialRecords,
       categories,
       expenses,
       commitments: financialCommitments,
-      financialInstallments: canViewDebts ? financialInstallments : [],
+      financialInstallments: canViewFinancialRecords
+        ? financialInstallments
+        : [],
     });
     const financialWarnings = this.buildFinancialWarnings({
       remainingBudget,
       categorySummaries,
-      overdueInstallmentsCount: combinedOverdueInstallmentsCount,
-      dueSoonInstallmentsCount: combinedDueSoonInstallmentsCount,
+      overdueInstallmentsCount,
+      dueSoonInstallmentsCount,
       uncategorizedExpenseCount: expenseTotals?.uncategorizedCount ?? null,
     });
 
@@ -346,15 +238,10 @@ export class MoneySummaryService {
         expenseTotals?.cancelledExpensesTotal ?? null,
       ),
       remainingBudget: this.moneyOrNull(remainingBudget),
-      debtTotal: this.moneyOrNull(combinedDebtTotal),
-      totalDebts: this.moneyOrNull(combinedDebtTotal),
-      paidDebtTotal: this.moneyOrNull(combinedPaidDebtTotal),
-      unpaidDebtTotal: this.moneyOrNull(combinedUnpaidDebtTotal),
-      debtRemaining: this.moneyOrNull(combinedUnpaidDebtTotal),
-      dueInstallmentsCount: combinedDueInstallmentsCount,
-      overdueInstallmentsCount: combinedOverdueInstallmentsCount,
-      paidInstallmentsCount: combinedPaidInstallmentsCount,
-      remainingInstallmentsCount: combinedRemainingInstallmentsCount,
+      dueInstallmentsCount,
+      overdueInstallmentsCount,
+      paidInstallmentsCount,
+      remainingInstallmentsCount,
       confirmedCostTotal: this.moneyOrNull(confirmedCostTotal),
       totalConfirmedCost: this.moneyOrNull(confirmedCostTotal),
       paidTotal: this.moneyOrNull(paidTotal),
@@ -371,44 +258,31 @@ export class MoneySummaryService {
       providerCommitmentTotal: this.moneyOrNull(
         commitmentTotals?.providerCommitmentTotal ?? null,
       ),
-      manualDebtCommitmentTotal: this.moneyOrNull(
-        commitmentTotals?.manualDebtCommitmentTotal ?? null,
+      manualPayableCommitmentTotal: this.moneyOrNull(
+        commitmentTotals?.manualPayableCommitmentTotal ?? null,
       ),
       deficitOrSurplus: this.moneyOrNull(deficitOrSurplus),
-      financialInstallmentsCount,
-      financialDueInstallmentsCount,
-      financialOverdueInstallmentsCount,
-      financialRemainingInstallmentsCount,
       nextInstallment: nextInstallment
         ? {
             id: nextInstallment.id,
-            debtId: nextInstallment.debtId,
+            financialCommitmentId: nextInstallment.financialCommitmentId,
             amount: nextInstallment.amount.toString(),
             dueAt: nextInstallment.dueDate,
             status: nextInstallment.status,
-          }
-        : null,
-      nextFinancialInstallment: nextFinancialInstallment
-        ? {
-            id: nextFinancialInstallment.id,
-            financialCommitmentId:
-              nextFinancialInstallment.financialCommitmentId,
-            amount: nextFinancialInstallment.amount.toString(),
-            dueAt: nextFinancialInstallment.dueDate,
-            status: nextFinancialInstallment.status,
           }
         : null,
       categorySummaries,
       financialWarnings,
       categoriesCount: canViewBudget ? categories.length : null,
       expensesCount: canViewExpenses ? expenses.length : null,
-      debtsCount: canViewDebts ? legacyDebts.length : null,
-      commitmentsCount: canViewDebts ? financialCommitments.length : null,
-      installmentsCount: combinedInstallmentsCount,
+      commitmentsCount: canViewFinancialRecords
+        ? financialCommitments.length
+        : null,
+      installmentsCount,
       permissions: {
         canViewBudget,
         canViewExpenses,
-        canViewDebts,
+        canViewFinancialRecords,
         canManageFinancialRecords,
       },
     };
@@ -454,7 +328,7 @@ export class MoneySummaryService {
   private buildCategorySummaries({
     canViewBudget,
     canViewExpenses,
-    canViewDebts,
+    canViewFinancialRecords,
     categories,
     expenses,
     commitments,
@@ -462,7 +336,7 @@ export class MoneySummaryService {
   }: {
     canViewBudget: boolean;
     canViewExpenses: boolean;
-    canViewDebts: boolean;
+    canViewFinancialRecords: boolean;
     categories: {
       id: string;
       name: string;
@@ -497,39 +371,37 @@ export class MoneySummaryService {
             return sum + this.decimalToNumber(expense.amount);
           }, 0)
         : null;
-      const activeCommitments = canViewDebts
+      const activeCommitments = canViewFinancialRecords
         ? commitments.filter(
             (commitment) =>
               commitment.budgetCategoryId === category.id &&
               commitment.status !== FinancialCommitmentStatus.CANCELLED,
           )
         : [];
-      const confirmedCost = canViewDebts
+      const confirmedCost = canViewFinancialRecords
         ? activeCommitments.reduce(
             (sum, commitment) =>
               sum + this.decimalToNumber(commitment.totalAmount),
             0,
           )
         : null;
-      const commitmentPaid = canViewDebts
+      const commitmentPaid = canViewFinancialRecords
         ? activeCommitments.reduce(
             (sum, commitment) =>
               sum + this.decimalToNumber(commitment.paidAmount),
             0,
           )
         : null;
-      const paid =
-        commitmentPaid === null || spent === null
-          ? null
-          : commitmentPaid + spent;
+      const paid = combineVisibleMoney(commitmentPaid, spent);
+      const totalConfirmedCost = combineVisibleMoney(confirmedCost, spent);
       const outstanding =
         confirmedCost === null || commitmentPaid === null
           ? null
           : Math.max(confirmedCost - commitmentPaid, 0);
       const budgetRemaining =
-        confirmedCost === null ? null : allocated - confirmedCost;
+        totalConfirmedCost === null ? null : allocated - totalConfirmedCost;
       const remaining = spent === null ? null : allocated - spent;
-      const categoryInstallments = canViewDebts
+      const categoryInstallments = canViewFinancialRecords
         ? financialInstallments.filter(
             (installment) => installment.budgetCategoryId === category.id,
           )
@@ -540,14 +412,18 @@ export class MoneySummaryService {
         name: category.name,
         allocated: this.moneyOrNull(allocated),
         spent: this.moneyOrNull(spent),
-        confirmedCost: this.moneyOrNull(confirmedCost),
+        confirmedCost: this.moneyOrNull(totalConfirmedCost),
         paid: this.moneyOrNull(paid),
         outstanding: this.moneyOrNull(outstanding),
         budgetRemaining: this.moneyOrNull(budgetRemaining),
         remaining: this.moneyOrNull(remaining),
         expensesCount: canViewExpenses ? categoryExpenses.length : null,
-        commitmentsCount: canViewDebts ? activeCommitments.length : null,
-        installmentsCount: canViewDebts ? categoryInstallments.length : null,
+        commitmentsCount: canViewFinancialRecords
+          ? activeCommitments.length
+          : null,
+        installmentsCount: canViewFinancialRecords
+          ? categoryInstallments.length
+          : null,
         overBudget:
           budgetRemaining === null
             ? remaining === null
@@ -626,29 +502,6 @@ export class MoneySummaryService {
     return warnings;
   }
 
-  private debtTotals(
-    debts: {
-      totalAmount: { toString(): string };
-      paidAmount: { toString(): string };
-      status: DebtStatus;
-    }[],
-  ) {
-    const totals = debts.reduce(
-      (summary, debt) => {
-        if (debt.status === DebtStatus.CANCELLED) return summary;
-        summary.debtTotal += this.decimalToNumber(debt.totalAmount);
-        summary.paidDebtTotal += this.decimalToNumber(debt.paidAmount);
-        return summary;
-      },
-      { debtTotal: 0, paidDebtTotal: 0 },
-    );
-
-    return {
-      ...totals,
-      unpaidDebtTotal: Math.max(totals.debtTotal - totals.paidDebtTotal, 0),
-    };
-  }
-
   private commitmentTotals(
     commitments: {
       totalAmount: { toString(): string };
@@ -675,9 +528,10 @@ export class MoneySummaryService {
           summary.providerCommitmentTotal += totalAmount;
         }
         if (
-          commitment.sourceType === FinancialCommitmentSourceType.MANUAL_DEBT
+          commitment.sourceType ===
+          FinancialCommitmentSourceType.MANUAL_PAYABLE
         ) {
-          summary.manualDebtCommitmentTotal += totalAmount;
+          summary.manualPayableCommitmentTotal += totalAmount;
         }
         return summary;
       },
@@ -685,7 +539,7 @@ export class MoneySummaryService {
         commitmentTotal: 0,
         commitmentPaidTotal: 0,
         providerCommitmentTotal: 0,
-        manualDebtCommitmentTotal: 0,
+        manualPayableCommitmentTotal: 0,
       },
     );
 
@@ -696,14 +550,6 @@ export class MoneySummaryService {
         0,
       ),
     };
-  }
-
-  private sumNullableCounts(
-    first: number | null,
-    second: number | null,
-  ): number | null {
-    if (first === null && second === null) return null;
-    return (first ?? 0) + (second ?? 0);
   }
 
   private decimalToNumber(value: { toString(): string } | null): number {

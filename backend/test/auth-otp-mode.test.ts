@@ -88,7 +88,7 @@ function createService() {
     $transaction: async (action: any) => action(prisma),
   };
   const jwtService = { sign: () => 'test-token' };
-  return new AuthService(prisma as any, jwtService as any);
+  return new AuthService(prisma as any, jwtService as any, {} as any);
 }
 
 async function withEnv(

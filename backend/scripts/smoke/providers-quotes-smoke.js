@@ -145,37 +145,37 @@ async function run() {
   let rejectedOfferId = null;
 
   {
-    const res = await request('POST', '/api/v1/provider/profile', {
+    const res = await request('POST', '/api/v1/provider/apply', {
       businessName: PROVIDER_BUSINESS_NAME,
       phone: PROVIDER_PHONE,
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'Phase8 provider profile',
     }, providerUser.token);
-    check('POST /api/v1/provider/profile - HTTP 201', res.status === 201);
+    check('POST /api/v1/provider/apply - HTTP 201', res.status === 201);
     check('provider profile has id', typeof res.body?.id === 'string');
     check('provider profile starts pending', res.body?.status === 'PENDING');
     check('provider profile does not expose passwordHash', !hasPasswordHash(res.body));
-    providerId = requireResponseId('POST /api/v1/provider/profile', res);
+    providerId = requireResponseId('POST /api/v1/provider/apply', res);
   }
 
   {
-    const res = await request('GET', '/api/v1/provider/me', null, providerUser.token);
-    check('GET /api/v1/provider/me - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/profile', null, providerUser.token);
+    check('GET /api/v1/provider/me/profile - HTTP 200', res.status === 200);
     check('provider me id matches', res.body?.id === providerId);
   }
 
   {
-    const res = await request('PATCH', '/api/v1/provider/profile', {
+    const res = await request('PATCH', '/api/v1/provider/me/profile', {
       ownerName: 'Phase8 Owner',
       whatsapp: PROVIDER_PHONE,
     }, providerUser.token);
-    check('PATCH /api/v1/provider/profile - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/provider/me/profile - HTTP 200', res.status === 200);
     check('provider ownerName updated', res.body?.ownerName === 'Phase8 Owner');
   }
 
   {
-    const res = await request('POST', '/api/v1/provider/services', {
+    const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
       title: 'Phase8 Service',
       description: 'Phase8 service description',
@@ -183,16 +183,16 @@ async function run() {
       priceUnit: 'event',
       cityId: reference.city.id,
     }, providerUser.token);
-    check('POST /api/v1/provider/services - HTTP 201', res.status === 201);
+    check('POST /api/v1/provider/me/services - HTTP 201', res.status === 201);
     check('provider service has id', typeof res.body?.id === 'string');
-    serviceId = requireResponseId('POST /api/v1/provider/services', res);
+    serviceId = requireResponseId('POST /api/v1/provider/me/services', res);
   }
 
   {
-    const res = await request('PATCH', `/api/v1/provider/services/${serviceId}`, {
+    const res = await request('PATCH', `/api/v1/provider/me/services/${serviceId}`, {
       title: 'Phase8 Service Updated',
     }, providerUser.token);
-    check('PATCH /api/v1/provider/services/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
     check('provider service updated', res.body?.title === 'Phase8 Service Updated');
   }
 
@@ -260,19 +260,19 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/api/v1/provider/quote-requests', null, providerUser.token);
-    check('GET /api/v1/provider/quote-requests - HTTP 200', res.status === 200);
+    const res = await request('GET', '/api/v1/provider/me/quote-requests', null, providerUser.token);
+    check('GET /api/v1/provider/me/quote-requests - HTTP 200', res.status === 200);
     check('provider quote list includes quote', Array.isArray(res.body) && res.body.some((quote) => quote.id === quoteId));
   }
 
   {
-    const res = await request('GET', `/api/v1/provider/quote-requests/${quoteId}`, null, providerUser.token);
-    check('GET /api/v1/provider/quote-requests/:id - HTTP 200', res.status === 200);
+    const res = await request('GET', `/api/v1/provider/me/quote-requests/${quoteId}`, null, providerUser.token);
+    check('GET /api/v1/provider/me/quote-requests/:id - HTTP 200', res.status === 200);
     check('provider quote detail id matches', res.body?.id === quoteId);
   }
 
   {
-    const res = await request('POST', `/api/v1/provider/quote-requests/${quoteId}/offers`, {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${quoteId}/offers`, {
       title: 'Phase8 Offer',
       message: 'Offer details for Phase8',
       amount: '300000.00',
@@ -285,10 +285,10 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/api/v1/provider/quote-offers/${offerId}`, {
+    const res = await request('PATCH', `/api/v1/provider/me/quote-offers/${offerId}`, {
       amount: '320000.00',
     }, providerUser.token);
-    check('PATCH /api/v1/provider/quote-offers/:id - HTTP 200', res.status === 200);
+    check('PATCH /api/v1/provider/me/quote-offers/:id - HTTP 200', res.status === 200);
     check('offer amount updated', res.body?.amount === '320000');
   }
 
@@ -313,7 +313,7 @@ async function run() {
   }
 
   {
-    const res = await request('PATCH', `/api/v1/provider/quote-offers/${offerId}`, {
+    const res = await request('PATCH', `/api/v1/provider/me/quote-offers/${offerId}`, {
       amount: '330000.00',
     }, providerUser.token);
     check('provider cannot update accepted offer', res.status === 409);
@@ -327,7 +327,7 @@ async function run() {
     }, customer.token);
     check('second quote create - HTTP 201', res.status === 201);
     const secondQuoteId = res.body?.id;
-    const offer = await request('POST', `/api/v1/provider/quote-requests/${secondQuoteId}/offers`, {
+    const offer = await request('POST', `/api/v1/provider/me/quote-requests/${secondQuoteId}/offers`, {
       message: 'Rejectable offer',
       amount: '200000.00',
     }, providerUser.token);
@@ -347,13 +347,13 @@ async function run() {
   }
 
   {
-    const res = await request('GET', '/api/v1/provider/quote-requests');
+    const res = await request('GET', '/api/v1/provider/me/quote-requests');
     check('provider quote requests without token returns 401', res.status === 401);
   }
 
   {
-    const res = await request('DELETE', `/api/v1/provider/services/${serviceId}`, null, providerUser.token);
-    check('DELETE /api/v1/provider/services/:id - HTTP 200', res.status === 200);
+    const res = await request('DELETE', `/api/v1/provider/me/services/${serviceId}`, null, providerUser.token);
+    check('DELETE /api/v1/provider/me/services/:id - HTTP 200', res.status === 200);
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

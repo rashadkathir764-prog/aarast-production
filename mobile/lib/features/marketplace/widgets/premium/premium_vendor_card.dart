@@ -459,7 +459,7 @@ class _FavoriteHeart extends StatelessWidget {
     final enabled = onTap != null;
 
     Widget heart = Icon(
-      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+      LucideIcons.heart,
       color:
           (isFavorite ? AarastDesignTokens.burgundy : AarastDesignTokens.muted)
               .withValues(alpha: enabled ? 1 : 0.42),

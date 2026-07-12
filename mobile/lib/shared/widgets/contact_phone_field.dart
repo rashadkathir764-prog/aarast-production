@@ -1,8 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../core/contacts/contact_picker_service.dart';
 import '../../core/phone/phone_number_utils.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/aarast_toast.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../models/contact_phone_draft.dart';
 
@@ -87,7 +90,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
           decoration: InputDecoration(
             labelText: widget.label,
             hintText: widget.hintText,
-            prefixIcon: const Icon(Icons.phone_outlined),
+            prefixIcon: const Icon(LucideIcons.phone),
           ),
           validator: (value) {
             final validation = PhoneNumberUtils.analyze(
@@ -131,7 +134,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                         : _pickContact,
                     icon: _isPicking
                         ? const AarastInlineSpinner(dimension: 16)
-                        : const Icon(Icons.contacts_outlined, size: 18),
+                        : const Icon(LucideIcons.contact, size: 18),
                     label: const Text('اختيار من جهات الاتصال'),
                   ),
                   if (widget.planContacts.isNotEmpty)
@@ -139,7 +142,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                       onPressed: !widget.enabled || _isPicking
                           ? null
                           : _pickPlanContact,
-                      icon: const Icon(Icons.groups_2_outlined, size: 18),
+                      icon: const Icon(LucideIcons.users, size: 18),
                       label: const Text('اختيار من جهات الخطة'),
                     ),
                 ],
@@ -168,18 +171,14 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
       _applyDraft(contact);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(contactPickerErrorMessage(error))),
-        );
+      AarastToast.showError(context, contactPickerErrorMessage(error));
     } finally {
       if (mounted) setState(() => _isPicking = false);
     }
   }
 
   Future<void> _pickPlanContact() async {
-    final selected = await showModalBottomSheet<ContactPhoneDraft>(
+    final selected = await showAarastBottomSheet<ContactPhoneDraft>(
       context: context,
       builder: (sheetContext) {
         return Directionality(
@@ -196,7 +195,7 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                 const SizedBox(height: 8),
                 for (final contact in widget.planContacts)
                   ListTile(
-                    leading: const Icon(Icons.person_outline_rounded),
+                    leading: const Icon(LucideIcons.user),
                     title: Text(
                       contact.name.isEmpty ? 'جهة اتصال' : contact.name,
                     ),

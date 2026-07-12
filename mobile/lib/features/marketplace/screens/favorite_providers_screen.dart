@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
 import '../models/marketplace_models.dart';
@@ -129,13 +130,10 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                   onRemove: () async {
                     await marketplace.toggleFavorite(provider.id);
                     if (!context.mounted) return;
-                    ScaffoldMessenger.of(context)
-                      ..hideCurrentSnackBar()
-                      ..showSnackBar(
-                        const SnackBar(
-                          content: Text('تمت إزالة المورد من المفضلة'),
-                        ),
-                      );
+                    AarastToast.showSuccess(
+                      context,
+                      'تمت إزالة المورد من المفضلة',
+                    );
                   },
                 ),
                 const SizedBox(height: 12),

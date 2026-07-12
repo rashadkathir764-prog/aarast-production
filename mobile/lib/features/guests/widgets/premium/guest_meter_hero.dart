@@ -141,11 +141,14 @@ class GuestMeterHero extends StatelessWidget {
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 9),
+                      horizontal: 12,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: AarastDesignTokens.ivory,
-                      borderRadius:
-                          BorderRadius.circular(AarastDesignTokens.radiusMd),
+                      borderRadius: BorderRadius.circular(
+                        AarastDesignTokens.radiusMd,
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -187,8 +190,11 @@ class GuestMeterHero extends StatelessWidget {
             color: AarastDesignTokens.goldSoft,
             borderRadius: BorderRadius.circular(AarastDesignTokens.radiusLg),
           ),
-          child: const Icon(LucideIcons.users,
-              color: AarastDesignTokens.gold, size: 26),
+          child: const Icon(
+            LucideIcons.users,
+            color: AarastDesignTokens.gold,
+            size: 26,
+          ),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -237,8 +243,11 @@ class GuestMeterHero extends StatelessWidget {
       child: const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(LucideIcons.smartphone,
-              size: 11, color: AarastDesignTokens.warning),
+          Icon(
+            LucideIcons.smartphone,
+            size: 11,
+            color: AarastDesignTokens.warning,
+          ),
           SizedBox(width: 4),
           Text(
             'تخطيط محلي',
@@ -297,7 +306,8 @@ class _SegmentedBar extends StatelessWidget {
               Expanded(
                 flex: declined,
                 child: Container(
-                    color: AarastDesignTokens.muted.withValues(alpha: 0.45)),
+                  color: AarastDesignTokens.muted.withValues(alpha: 0.45),
+                ),
               ),
           ],
         ),
@@ -307,12 +317,12 @@ class _SegmentedBar extends StatelessWidget {
     if (reduceMotion) return bar;
     // RTL: يبدأ الشريط من جهة البداية (اليمين).
     return bar.animate().scaleX(
-          begin: 0,
-          end: 1,
-          alignment: Alignment.centerRight,
-          duration: 900.ms,
-          curve: Curves.easeOutCubic,
-        );
+      begin: 0,
+      end: 1,
+      alignment: Alignment.centerRight,
+      duration: 900.ms,
+      curve: Curves.easeOutCubic,
+    );
   }
 }
 

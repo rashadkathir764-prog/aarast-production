@@ -8,6 +8,7 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -468,11 +469,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
     if (!mounted) return;
     if (success) {
-      final messenger = ScaffoldMessenger.of(context);
-      messenger.hideCurrentSnackBar();
-      messenger.showSnackBar(
-        const SnackBar(content: Text('تم إرسال طلب عرض السعر بنجاح')),
-      );
+      AarastToast.showSuccess(context, 'تم إرسال طلب عرض السعر بنجاح');
       if (context.canPop()) {
         context.pop(true);
       } else {

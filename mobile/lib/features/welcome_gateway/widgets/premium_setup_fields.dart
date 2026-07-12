@@ -122,11 +122,7 @@ class PremiumDateField extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                LucideIcons.calendarDays,
-                color: AppTheme.muted,
-                size: 20,
-              ),
+              Icon(LucideIcons.calendarDays, color: AppTheme.muted, size: 20),
             ],
           ),
         ),
@@ -357,11 +353,7 @@ class PremiumLocationCard extends StatelessWidget {
           children: [
             const Padding(
               padding: EdgeInsets.only(top: 12),
-              child: Icon(
-                LucideIcons.mapPin,
-                color: AppTheme.gold,
-                size: 24,
-              ),
+              child: Icon(LucideIcons.mapPin, color: AppTheme.gold, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -406,11 +398,7 @@ class PremiumLocationCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(
-              LucideIcons.pencil,
-              color: AppTheme.gold,
-              size: 22,
-            ),
+            const Icon(LucideIcons.pencil, color: AppTheme.gold, size: 22),
           ],
         ),
       ),

@@ -124,9 +124,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.done,
               onFieldSubmitted: (_) => _requestCode(),
-              suffixIcon: ContactPhoneFieldSuffix(
-                controller: _phoneController,
-              ),
+              suffixIcon: ContactPhoneFieldSuffix(controller: _phoneController),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'رقم الهاتف مطلوب';
@@ -194,9 +192,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   setState(() => _obscurePassword = !_obscurePassword);
                 },
                 icon: Icon(
-                  _obscurePassword
-                      ? LucideIcons.eye
-                      : LucideIcons.eyeOff,
+                  _obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff,
                 ),
               ),
               validator: (value) {
@@ -298,18 +294,22 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   Future<void> _requestCode() async {
     if (!_phoneFormKey.currentState!.validate()) return;
-    await _sendResetCode(onSuccess: () {
-      setState(() {
-        _step = _ResetStep.confirm;
-        _errorMessage = null;
-      });
-    });
+    await _sendResetCode(
+      onSuccess: () {
+        setState(() {
+          _step = _ResetStep.confirm;
+          _errorMessage = null;
+        });
+      },
+    );
   }
 
   Future<void> _requestCodeAgain() async {
-    await _sendResetCode(onSuccess: () {
-      setState(() => _errorMessage = null);
-    });
+    await _sendResetCode(
+      onSuccess: () {
+        setState(() => _errorMessage = null);
+      },
+    );
   }
 
   Future<void> _sendResetCode({required VoidCallback onSuccess}) async {
@@ -318,9 +318,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       _errorMessage = null;
     });
     try {
-      final result = await context
-          .read<AuthRepository>()
-          .requestPasswordReset(phone: _phoneController.text);
+      final result = await context.read<AuthRepository>().requestPasswordReset(
+        phone: _phoneController.text,
+      );
       if (!mounted) return;
       _devOtpMessage = result.localDevMessage;
       onSuccess();

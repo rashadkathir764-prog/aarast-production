@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../shared/models/contact_phone_draft.dart';
 import 'contact_picker_service.dart';
 
@@ -38,7 +40,7 @@ class _ContactPhoneFieldSuffixState extends State<ContactPhoneFieldSuffix> {
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Icon(Icons.contacts_outlined),
+          : const Icon(LucideIcons.contact),
     );
   }
 

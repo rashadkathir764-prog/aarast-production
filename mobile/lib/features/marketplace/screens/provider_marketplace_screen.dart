@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../widgets/premium/premium_vendor_card.dart';
 import '../../auth/utils/auth_action_guard.dart';
@@ -153,7 +155,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   const _MarketplaceSkeleton()
                 else if (provider.providers.isEmpty)
                   AarastEmptyState(
-                    icon: Icons.storefront_outlined,
+                    icon: LucideIcons.store,
                     title: 'لا يوجد موردون متاحون حاليًا',
                     message: _emptyProvidersMessage(
                       budgetIntent: provider.budgetMatchIntent,
@@ -161,7 +163,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     ),
                     action: OutlinedButton.icon(
                       onPressed: provider.clearFilters,
-                      icon: const Icon(Icons.tune_rounded),
+                      icon: const Icon(LucideIcons.slidersHorizontal),
                       label: const Text('مسح الفلاتر'),
                     ),
                   )
@@ -320,13 +322,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   void _openPlanCenterForQuote(QuoteRequest quote) {
     final planId = quote.weddingPlanId;
     if (planId == null || planId.trim().isEmpty) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('افتح مركز الخطة بعد ربط طلب العرض بخطة زفاف.'),
-          ),
-        );
+      AarastToast.showInfo(
+        context,
+        'افتح مركز الخطة بعد ربط طلب العرض بخطة زفاف.',
+      );
       return;
     }
     context.push(AppRouter.planCenter(planId));

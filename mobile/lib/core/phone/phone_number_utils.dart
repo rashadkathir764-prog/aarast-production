@@ -1,4 +1,4 @@
-﻿enum PhoneValidationState { empty, valid, warning, invalid }
+enum PhoneValidationState { empty, valid, warning, invalid }
 
 class PhoneNumberAnalysis {
   const PhoneNumberAnalysis({
@@ -30,8 +30,7 @@ class PhoneNumberUtils {
   static const invalidMessage = 'أدخل رقم جوال صحيح.';
   static const internationalWarningMessage =
       'تعذر التأكد من بلد الرقم؛ احتفظنا به كما أدخلته.';
-  static const optionalPhoneMessage =
-      'يمكنك إضافة الرقم لاحقًا من شاشة الضيف.';
+  static const optionalPhoneMessage = 'يمكنك إضافة الرقم لاحقًا من شاشة الضيف.';
 
   static PhoneNumberAnalysis analyze(
     String? input, {

@@ -101,10 +101,10 @@ class TasksProgressHero extends StatelessWidget {
                       isFresh
                           ? 'ابدأ بأول مهمة، وسنرتب لك الطريق خطوة خطوة.'
                           : summary.overdue > 0
-                              ? 'لديك ${summary.overdue} مهمة متأخرة — عالجها أولًا.'
-                              : summary.dueToday > 0
-                                  ? 'اليوم عندك ${summary.dueToday} مهمة — بالتوفيق.'
-                                  : 'أنجزت ${summary.completed} من ${summary.total} — استمر.',
+                          ? 'لديك ${summary.overdue} مهمة متأخرة — عالجها أولًا.'
+                          : summary.dueToday > 0
+                          ? 'اليوم عندك ${summary.dueToday} مهمة — بالتوفيق.'
+                          : 'أنجزت ${summary.completed} من ${summary.total} — استمر.',
                       style: const TextStyle(
                         color: AarastDesignTokens.muted,
                         fontSize: 12.5,
@@ -116,17 +116,23 @@ class TasksProgressHero extends StatelessWidget {
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 9, vertical: 3),
+                          horizontal: 9,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: AarastDesignTokens.goldSoft,
                           borderRadius: BorderRadius.circular(
-                              AarastDesignTokens.radiusPill),
+                            AarastDesignTokens.radiusPill,
+                          ),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(LucideIcons.smartphone,
-                                size: 11, color: AarastDesignTokens.warning),
+                            Icon(
+                              LucideIcons.smartphone,
+                              size: 11,
+                              color: AarastDesignTokens.warning,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'تخطيط محلي',

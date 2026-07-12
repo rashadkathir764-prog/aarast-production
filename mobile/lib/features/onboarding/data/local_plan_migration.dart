@@ -165,10 +165,7 @@ class LocalPlanMigrationService {
     };
   }
 
-  Future<List<Map<String, dynamic>>> _rows(
-    String table,
-    String? planId,
-  ) async {
+  Future<List<Map<String, dynamic>>> _rows(String table, String? planId) async {
     final db = database;
     if (db == null || planId == null || planId.isEmpty) return const [];
     return db.readCachedList(

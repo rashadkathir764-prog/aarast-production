@@ -518,6 +518,7 @@ class _FakeSharingProvider extends SharingProvider {
 
   @override
   Future<bool> updateMember({
+    required String weddingPlanId,
     required String id,
     required String role,
     required PlanRolePermissions permissions,
@@ -546,7 +547,7 @@ final _sharedMember = SharedMember(
   role: 'CONTRIBUTOR',
   canViewBudget: true,
   canViewExpenses: true,
-  canViewDebts: false,
+  canViewFinancialRecords: false,
   canManageTasks: true,
   canManageFinancialRecords: false,
   createdAt: _fixedDate,

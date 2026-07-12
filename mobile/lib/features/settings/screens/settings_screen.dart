@@ -321,9 +321,9 @@ class _StaticPreferencesCard extends StatelessWidget {
               '${formatArabicCompactDate(updatedAt)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.ink,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: AppTheme.ink),
             ),
           ),
         ],

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
@@ -209,9 +210,7 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
 
     if (!mounted) return;
     if (ok) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('تمت إضافة الباقة')));
+      AarastToast.showSuccess(context, 'تمت إضافة الباقة');
       context.go(AppRouter.providerDashboard);
     }
   }

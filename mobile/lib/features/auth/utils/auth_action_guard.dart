@@ -1,11 +1,14 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_bottom_sheet.dart';
+import '../../../core/widgets/aarast_toast.dart';
 
 class AuthActionGuard {
   const AuthActionGuard._();
@@ -57,7 +60,7 @@ class AuthActionGuard {
     if (await hasAccount(context)) return true;
     if (!context.mounted) return false;
 
-    await showModalBottomSheet<void>(
+    await showAarastBottomSheet<void>(
       context: context,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
@@ -74,7 +77,7 @@ class AuthActionGuard {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Icon(
-                    Icons.cloud_sync_rounded,
+                    LucideIcons.refreshCw,
                     size: 42,
                     color: AppTheme.burgundy,
                   ),
@@ -104,7 +107,7 @@ class AuthActionGuard {
                       Navigator.of(sheetContext).pop();
                       context.go(_withResume(AppRouter.login, context));
                     },
-                    icon: const Icon(Icons.login_rounded),
+                    icon: const Icon(LucideIcons.logIn),
                     label: const Text('تسجيل الدخول'),
                   ),
                   const SizedBox(height: 8),
@@ -113,7 +116,7 @@ class AuthActionGuard {
                       Navigator.of(sheetContext).pop();
                       context.go(_withResume(AppRouter.register, context));
                     },
-                    icon: const Icon(Icons.person_add_alt_1_rounded),
+                    icon: const Icon(LucideIcons.userPlus),
                     label: const Text('إنشاء حساب'),
                   ),
                 ],
@@ -134,9 +137,7 @@ class AuthActionGuard {
     if (await hasAccount(context)) return false;
     if (!context.mounted) return true;
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+    AarastToast.showInfo(context, message);
     return true;
   }
 
@@ -177,7 +178,7 @@ class AuthGatePanel extends StatelessWidget {
   const AuthGatePanel({
     required this.title,
     required this.body,
-    this.icon = Icons.lock_outline_rounded,
+    this.icon = LucideIcons.lock,
     super.key,
   });
 
@@ -231,7 +232,7 @@ class AuthGatePanel extends StatelessWidget {
                 onPressed: () => context.go(
                   AuthActionGuard._withResume(AppRouter.login, context),
                 ),
-                icon: const Icon(Icons.login_rounded),
+                icon: const Icon(LucideIcons.logIn),
                 label: const Text('تسجيل الدخول'),
               ),
               if (canPop) ...[
@@ -239,7 +240,7 @@ class AuthGatePanel extends StatelessWidget {
                 OutlinedButton.icon(
                   key: const Key('sharing-auth-gate-back'),
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.chevron_right_rounded),
+                  icon: const Icon(LucideIcons.chevronRight),
                   label: const Text('رجوع'),
                 ),
               ],

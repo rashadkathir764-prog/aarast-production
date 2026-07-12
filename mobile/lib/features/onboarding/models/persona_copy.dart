@@ -1,4 +1,4 @@
-﻿import 'guest_onboarding_draft.dart';
+import 'guest_onboarding_draft.dart';
 
 class AarastPersonaCopy {
   const AarastPersonaCopy({
@@ -85,8 +85,7 @@ const _brideCopy = AarastPersonaCopy(
   prioritiesTitle: 'ما أهم ما تريد ترتيبه؟',
   prioritiesDescription: 'اختياراتك تساعدنا نرتب أولويات الخطة لك.',
   budgetDescription: 'أضف ميزانية تقريبية أو اتركها لاحقًا من شاشة المال.',
-  categoriesDescription:
-      'اختر تصنيفات بداية تساعدك على فتح صفحة المال بوضوح.',
+  categoriesDescription: 'اختر تصنيفات بداية تساعدك على فتح صفحة المال بوضوح.',
   nextBudgetAction: 'أضف ميزانية تقريبية',
   nextDateAction: 'حدد تاريخ العرس',
   nextCategoriesAction: 'راجع تصنيفات البداية',

@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
@@ -100,7 +102,7 @@ class AuthBrandMark extends StatelessWidget {
               top: compact ? -3 : -6,
               right: compact ? -8 : -12,
               child: Icon(
-                Icons.favorite_rounded,
+                LucideIcons.heart,
                 color: AppTheme.gold,
                 size: compact ? 12 : 16,
               ),
@@ -227,11 +229,7 @@ class AuthInlineError extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppTheme.danger,
-            size: 19,
-          ),
+          const Icon(LucideIcons.alertCircle, color: AppTheme.danger, size: 19),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -259,7 +257,7 @@ class AuthBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onPressed,
-      icon: const Icon(Icons.arrow_forward_rounded),
+      icon: const Icon(LucideIcons.arrowRight),
       tooltip: 'رجوع',
     );
   }
@@ -362,11 +360,7 @@ class _HeartRule extends StatelessWidget {
         Container(width: 38, height: 1, color: AppTheme.gold2),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(
-            Icons.favorite_rounded,
-            color: AppTheme.gold,
-            size: 12,
-          ),
+          child: Icon(LucideIcons.heart, color: AppTheme.gold, size: 12),
         ),
         Container(width: 38, height: 1, color: AppTheme.gold2),
       ],

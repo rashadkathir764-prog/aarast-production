@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../models/pending_registration.dart';
@@ -105,9 +106,7 @@ class _OtpScreenState extends State<OtpScreen> {
     final purpose =
         widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
     if (phone == null || phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اطلب رمز تحقق جديد للمتابعة.')),
-      );
+      AarastToast.showInfo(context, 'اطلب رمز تحقق جديد للمتابعة.');
       return;
     }
 
@@ -147,12 +146,9 @@ class _OtpScreenState extends State<OtpScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'تم إنشاء الحساب وتوثيق الرقم، لكن تعذر إرسال طلب المزود. يمكنك إعادة الطلب من حسابك.',
-          ),
-        ),
+      AarastToast.showError(
+        context,
+        'تم إنشاء الحساب وتوثيق الرقم، لكن تعذر إرسال طلب المزود. يمكنك إعادة الطلب من حسابك.',
       );
     }
 
@@ -289,7 +285,6 @@ class _OtpScreenState extends State<OtpScreen> {
             action: 'إعادة الإرسال',
             onTap: () async {
               final authController = context.read<AuthController>();
-              final messenger = ScaffoldMessenger.of(context);
               final phone = widget.phone ?? auth.otpRequest?.phone;
               final purpose =
                   widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
@@ -302,10 +297,8 @@ class _OtpScreenState extends State<OtpScreen> {
               if (result.localDevMessage != null && mounted) {
                 setState(() => _devOtpMessage = result.localDevMessage);
               }
-              if (!mounted) return;
-              messenger.showSnackBar(
-                const SnackBar(content: Text('تم إعادة إرسال الرمز')),
-              );
+              if (!context.mounted) return;
+              AarastToast.showSuccess(context, 'تم إعادة إرسال الرمز');
             },
           ),
         ],

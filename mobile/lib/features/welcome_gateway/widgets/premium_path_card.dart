@@ -175,7 +175,11 @@ class _PremiumPathCardState extends State<PremiumPathCard>
                       ),
                     ],
                   ),
-                  child: Icon(widget.icon, color: style.tileIconColor, size: 28),
+                  child: Icon(
+                    widget.icon,
+                    color: style.tileIconColor,
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

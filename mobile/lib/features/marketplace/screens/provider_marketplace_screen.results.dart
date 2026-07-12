@@ -20,7 +20,7 @@ class _BudgetMatchedServicesSection extends StatelessWidget {
       children: [
         AarastSectionHeader(
           title: 'خدمات مناسبة لهذا البند',
-          icon: Icons.storefront_outlined,
+          icon: LucideIcons.store,
         ),
         const SizedBox(height: 10),
         for (final service in services.take(5)) ...[
@@ -75,7 +75,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                 ),
-                child: Icon(Icons.design_services_outlined, color: color),
+                child: Icon(LucideIcons.wrench, color: color),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -117,7 +117,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
             runSpacing: 6,
             children: [
               _ProviderFactPill(
-                icon: Icons.payments_outlined,
+                icon: LucideIcons.badgeDollarSign,
                 text: price == null
                     ? 'السعر غير محدد'
                     : '${_formatMoney(price)} ${service.currency ?? 'ر.ي'}',
@@ -125,13 +125,13 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
               ),
               if (categoryName != null && categoryName.trim().isNotEmpty)
                 _ProviderFactPill(
-                  icon: Icons.category_outlined,
+                  icon: LucideIcons.tags,
                   text: categoryName,
                   color: AppTheme.burgundy,
                 ),
               if (service.city != null)
                 _ProviderFactPill(
-                  icon: Icons.place_outlined,
+                  icon: LucideIcons.mapPin,
                   text: service.city!.nameAr,
                   color: AppTheme.muted,
                 ),
@@ -148,11 +148,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.check_circle_outline_rounded,
-                  color: color,
-                  size: 17,
-                ),
+                Icon(LucideIcons.checkCircle, color: color, size: 17),
                 const SizedBox(width: 7),
                 Expanded(
                   child: Text(
@@ -173,7 +169,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onOpenProvider,
-                  icon: const Icon(Icons.info_outline_rounded, size: 18),
+                  icon: const Icon(LucideIcons.info, size: 18),
                   label: const Text('التفاصيل'),
                 ),
               ),
@@ -181,7 +177,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
               Expanded(
                 child: FilledButton.icon(
                   onPressed: onRequestQuote,
-                  icon: const Icon(Icons.request_quote_outlined, size: 18),
+                  icon: const Icon(LucideIcons.fileText, size: 18),
                   label: const Text('طلب عرض'),
                 ),
               ),
@@ -210,11 +206,7 @@ class _LocationContextCard extends StatelessWidget {
       border: Border.all(color: AppTheme.border),
       child: Row(
         children: [
-          const Icon(
-            Icons.add_location_alt_outlined,
-            color: AppTheme.gold,
-            size: 20,
-          ),
+          const Icon(LucideIcons.mapPin, color: AppTheme.gold, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -275,10 +267,7 @@ class _QuoteRequestsOverview extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.request_quote_outlined,
-                color: AppTheme.burgundy,
-              ),
+              const Icon(LucideIcons.fileText, color: AppTheme.burgundy),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -379,13 +368,13 @@ class _QuoteRequestTile extends StatelessWidget {
               key: Key('quote-conversation-${quote.id}'),
               onPressed: () =>
                   context.push(AppRouter.quoteConversation(quote.id)),
-              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+              icon: const Icon(LucideIcons.messageCircle, size: 18),
               label: const Text('محادثة المزوّد'),
             ),
             if (quote.weddingPlanId?.trim().isNotEmpty == true)
               OutlinedButton.icon(
                 onPressed: onOpenPlanCenter,
-                icon: const Icon(Icons.event_note_outlined, size: 18),
+                icon: const Icon(LucideIcons.calendarDays, size: 18),
                 label: const Text('فتح مركز الخطة'),
               ),
           ],

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../../../core/theme/app_theme.dart';
 
 class QuoteStatusChip extends StatelessWidget {
@@ -23,9 +25,7 @@ class QuoteStatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: presentation.color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: presentation.color.withValues(alpha: 0.24),
-        ),
+        border: Border.all(color: presentation.color.withValues(alpha: 0.24)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -55,7 +55,7 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
     case 'READY_TO_SEND':
       return const QuoteStatusPresentation(
         label: 'جاهز للإرسال',
-        icon: Icons.outbox_outlined,
+        icon: LucideIcons.send,
         color: AppTheme.gold,
       );
     case 'PENDING_PROVIDER':
@@ -63,44 +63,44 @@ QuoteStatusPresentation quoteStatusPresentation(String status) {
     case 'VIEWED':
       return const QuoteStatusPresentation(
         label: 'بانتظار رد المورد',
-        icon: Icons.hourglass_top_rounded,
+        icon: LucideIcons.hourglass,
         color: AppTheme.ink,
       );
     case 'RECEIVED':
     case 'RESPONDED':
       return const QuoteStatusPresentation(
         label: 'وصل عرض سعر',
-        icon: Icons.mark_email_unread_outlined,
+        icon: LucideIcons.mail,
         color: AppTheme.burgundy,
       );
     case 'ACCEPTED':
       return const QuoteStatusPresentation(
         label: 'مقبول',
-        icon: Icons.check_circle_outline_rounded,
+        icon: LucideIcons.checkCircle,
         color: AppTheme.success,
       );
     case 'REJECTED':
       return const QuoteStatusPresentation(
         label: 'مرفوض',
-        icon: Icons.block_outlined,
+        icon: LucideIcons.ban,
         color: AppTheme.danger,
       );
     case 'CANCELLED':
       return const QuoteStatusPresentation(
         label: 'ملغي',
-        icon: Icons.cancel_outlined,
+        icon: LucideIcons.xCircle,
         color: AppTheme.muted,
       );
     case 'EXPIRED':
       return const QuoteStatusPresentation(
         label: 'منتهي',
-        icon: Icons.event_busy_outlined,
+        icon: LucideIcons.calendarX,
         color: AppTheme.muted,
       );
     default:
       return const QuoteStatusPresentation(
         label: 'مسودة',
-        icon: Icons.edit_note_outlined,
+        icon: LucideIcons.fileEdit,
         color: AppTheme.gold,
       );
   }

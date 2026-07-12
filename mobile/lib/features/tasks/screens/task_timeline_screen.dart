@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
@@ -119,9 +120,9 @@ class _TasksHeader extends StatelessWidget {
             'المهام',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: AppTheme.title,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
           ),
         ),
         const SizedBox(width: 10),
@@ -129,7 +130,7 @@ class _TasksHeader extends StatelessWidget {
           label: 'قائمة العمل',
           color: AppTheme.burgundy,
           backgroundColor: AppTheme.burgundySoft,
-          icon: Icons.checklist_rtl_rounded,
+          icon: LucideIcons.listChecks,
         ),
       ],
     );
@@ -169,10 +170,10 @@ class _TaskTimelineContent extends StatelessWidget {
           AarastEmptyState(
             title: 'تعذر تحميل المهام',
             message: provider.errorMessage!,
-            icon: Icons.error_outline_rounded,
+            icon: LucideIcons.alertCircle,
             action: ElevatedButton.icon(
               onPressed: () => provider.load(weddingPlanId),
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(LucideIcons.refreshCw),
               label: const Text('إعادة المحاولة'),
             ),
           ),
@@ -218,7 +219,7 @@ class _TaskTimelineContent extends StatelessWidget {
         const SizedBox(height: 20),
         AarastSectionHeader(
           title: _taskListTitle(filter),
-          icon: Icons.checklist_rtl_rounded,
+          icon: LucideIcons.listChecks,
         ),
         const SizedBox(height: 12),
         if (visibleTasks.isEmpty)
@@ -250,7 +251,7 @@ class _TaskTimelineContent extends StatelessWidget {
                 onMarkDone: visibleTasks[i].isDone
                     ? null
                     : () =>
-                        _markDoneWithUndo(context, provider, visibleTasks[i]),
+                          _markDoneWithUndo(context, provider, visibleTasks[i]),
                 onReopen: visibleTasks[i].isDone
                     ? () => _reopenTask(context, provider, visibleTasks[i])
                     : null,
@@ -324,7 +325,7 @@ class _TaskTimelineContent extends StatelessWidget {
     TaskTimelineProvider provider,
     WeddingTask task,
   ) async {
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
       builder: (sheetContext) {
         return Directionality(
@@ -345,7 +346,7 @@ class _TaskTimelineContent extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppTheme.radiusLg),
                     ),
                     child: const Icon(
-                      Icons.delete_outline_rounded,
+                      LucideIcons.trash2,
                       color: AppTheme.danger,
                       size: 30,
                     ),
@@ -388,7 +389,7 @@ class _TaskTimelineContent extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.danger,
                           ),
-                          icon: const Icon(Icons.delete_outline_rounded),
+                          icon: const Icon(LucideIcons.trash2),
                           label: const Text('حذف'),
                         ),
                       ),
@@ -434,7 +435,7 @@ class _ImportantNowCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppTheme.radiusMd),
               ),
               child: const Icon(
-                Icons.check_circle_outline_rounded,
+                LucideIcons.checkCircle2,
                 color: AppTheme.success,
               ),
             ),
@@ -477,7 +478,7 @@ class _ImportantNowCard extends StatelessWidget {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Icon(Icons.priority_high_rounded, color: AppTheme.burgundy),
+              const Icon(LucideIcons.alertCircle, color: AppTheme.burgundy),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 210),
                 child: Text(
@@ -562,7 +563,7 @@ class _ImportantTaskRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
+          const Icon(LucideIcons.arrowRight, color: AppTheme.muted),
         ],
       ),
     );
@@ -708,7 +709,7 @@ class _InlineError extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppTheme.danger),
+          const Icon(LucideIcons.alertCircle, color: AppTheme.danger),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -754,12 +755,12 @@ class _FilterItem {
 }
 
 const _filterItems = [
-  _FilterItem(_TaskFilter.all, 'الكل', Icons.grid_view_rounded),
-  _FilterItem(_TaskFilter.today, 'اليوم', Icons.today_rounded),
-  _FilterItem(_TaskFilter.week, 'هذا الأسبوع', Icons.date_range_rounded),
-  _FilterItem(_TaskFilter.overdue, 'متأخرة', Icons.warning_amber_rounded),
-  _FilterItem(_TaskFilter.completed, 'مكتملة', Icons.check_circle_rounded),
-  _FilterItem(_TaskFilter.highPriority, 'عالية الأولوية', Icons.flag_rounded),
+  _FilterItem(_TaskFilter.all, 'الكل', LucideIcons.grid),
+  _FilterItem(_TaskFilter.today, 'اليوم', LucideIcons.calendar),
+  _FilterItem(_TaskFilter.week, 'هذا الأسبوع', LucideIcons.calendarRange),
+  _FilterItem(_TaskFilter.overdue, 'متأخرة', LucideIcons.alertTriangle),
+  _FilterItem(_TaskFilter.completed, 'مكتملة', LucideIcons.checkCircle2),
+  _FilterItem(_TaskFilter.highPriority, 'عالية الأولوية', LucideIcons.flag),
 ];
 
 List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
@@ -887,15 +888,15 @@ bool _isNearDueTask(WeddingTask task) {
 }
 
 IconData _taskAttentionIcon(WeddingTask task) {
-  if (_isLateTask(task)) return Icons.warning_amber_rounded;
+  if (_isLateTask(task)) return LucideIcons.alertTriangle;
   final dueDate = task.dueDate;
   if (dueDate != null && _isSameDay(dueDate, DateTime.now())) {
-    return Icons.today_rounded;
+    return LucideIcons.calendar;
   }
   if (task.priority == 'HIGH' || task.priority == 'URGENT') {
-    return Icons.flag_rounded;
+    return LucideIcons.flag;
   }
-  return Icons.event_available_rounded;
+  return LucideIcons.calendarCheck2;
 }
 
 String _taskAttentionLabel(WeddingTask task) {

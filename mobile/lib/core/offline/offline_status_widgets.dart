@@ -1,5 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../theme/app_theme.dart';
 import 'offline_sync_service.dart';
@@ -56,8 +57,8 @@ class OfflineStatusBanner extends StatelessWidget {
               children: [
                 Icon(
                   state == SyncState.syncing
-                      ? Icons.sync_rounded
-                      : Icons.cloud_off_outlined,
+                      ? LucideIcons.refreshCw
+                      : LucideIcons.cloudOff,
                   color: color,
                   size: 18,
                 ),
@@ -112,11 +113,7 @@ class OfflinePendingBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
-            Icons.sync_problem_rounded,
-            color: AppTheme.gold,
-            size: 14,
-          ),
+          const Icon(LucideIcons.refreshCwOff, color: AppTheme.gold, size: 14),
           const SizedBox(width: 4),
           Text(
             'بانتظار المزامنة',
@@ -149,7 +146,7 @@ class OfflineSyncNowTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppTheme.radiusMd),
         ),
         child: Icon(
-          service.isSyncing ? Icons.sync_rounded : Icons.cloud_sync_outlined,
+          service.isSyncing ? LucideIcons.refreshCw : LucideIcons.cloudCog,
           color: AppTheme.ink,
         ),
       ),
@@ -169,7 +166,7 @@ class OfflineSyncNowTile extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
-      trailing: const Icon(Icons.chevron_left_rounded, color: AppTheme.muted),
+      trailing: const Icon(LucideIcons.chevronLeft, color: AppTheme.muted),
     );
   }
 }

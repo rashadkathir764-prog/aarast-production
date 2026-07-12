@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
@@ -71,7 +72,7 @@ class ProviderAuthGate extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Icon(
-                            Icons.lock_outline_rounded,
+                            LucideIcons.lock,
                             color: AppTheme.burgundy,
                             size: 32,
                           ),
@@ -101,7 +102,7 @@ class ProviderAuthGate extends StatelessWidget {
                         AarastButton(
                           key: const Key('provider-auth-gate-login'),
                           label: 'تسجيل الدخول',
-                          icon: Icons.login_rounded,
+                          icon: LucideIcons.logIn,
                           onPressed: () => context.go(
                             _withResume(AppRouter.login, resumeLocation),
                           ),
@@ -112,7 +113,7 @@ class ProviderAuthGate extends StatelessWidget {
                           label: registerAsProvider
                               ? 'إنشاء حساب مزود'
                               : 'إنشاء حساب',
-                          icon: Icons.person_add_alt_1_rounded,
+                          icon: LucideIcons.userPlus,
                           variant: AarastButtonVariant.secondary,
                           onPressed: () => context.go(
                             _withResume(
@@ -177,7 +178,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Icon(
-                            Icons.storefront_rounded,
+                            LucideIcons.store,
                             color: AppTheme.goldDeep,
                             size: 32,
                           ),
@@ -207,14 +208,14 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
                         AarastButton(
                           key: const Key('provider-account-required-apply'),
                           label: 'تقديم طلب مزوّد',
-                          icon: Icons.store_mall_directory_rounded,
+                          icon: LucideIcons.store,
                           onPressed: () => context.go(AppRouter.providerApply),
                         ),
                         const SizedBox(height: 10),
                         AarastButton(
                           key: const Key('provider-account-required-home'),
                           label: 'فتح لوحة التخطيط',
-                          icon: Icons.favorite_rounded,
+                          icon: LucideIcons.heart,
                           variant: AarastButtonVariant.secondary,
                           onPressed: () => context.go(AppRouter.home),
                         ),

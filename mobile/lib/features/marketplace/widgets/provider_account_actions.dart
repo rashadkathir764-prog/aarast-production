@@ -120,7 +120,7 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
 
   Future<void> _confirmLogout() async {
     if (_isBusy) return;
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
       builder: (sheetContext) => Directionality(
         textDirection: TextDirection.rtl,

@@ -359,7 +359,7 @@ class _GoldBurstCheck extends StatelessWidget {
         ),
       ),
       child: isDone
-          ? const Icon(Icons.check_rounded, color: Colors.white, size: 17)
+          ? const Icon(LucideIcons.check, color: Colors.white, size: 17)
           : null,
     );
 
@@ -444,9 +444,7 @@ class _TaskMenu extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                isDone
-                    ? Icons.restart_alt_rounded
-                    : Icons.check_circle_outline_rounded,
+                isDone ? LucideIcons.rotateCcw : LucideIcons.checkCircle2,
                 color: isDone
                     ? AarastDesignTokens.burgundy
                     : AarastDesignTokens.success,
@@ -460,7 +458,7 @@ class _TaskMenu extends StatelessWidget {
           value: 'edit',
           child: Row(
             children: [
-              Icon(Icons.edit_note_rounded, color: AarastDesignTokens.burgundy),
+              Icon(LucideIcons.fileEdit, color: AarastDesignTokens.burgundy),
               SizedBox(width: 10),
               Text('تعديل المهمة'),
             ],
@@ -471,10 +469,7 @@ class _TaskMenu extends StatelessWidget {
           value: 'delete',
           child: Row(
             children: [
-              Icon(
-                Icons.delete_outline_rounded,
-                color: AarastDesignTokens.danger,
-              ),
+              Icon(LucideIcons.trash2, color: AarastDesignTokens.danger),
               SizedBox(width: 10),
               Text('حذف المهمة'),
             ],

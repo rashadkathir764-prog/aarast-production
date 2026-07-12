@@ -29,7 +29,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
             children: [
               if (!embedded) ...[
                 _CircleButton(
-                  icon: Icons.chevron_right_rounded,
+                  icon: LucideIcons.chevronRight,
                   onTap: () {
                     if (context.canPop()) context.pop();
                   },
@@ -59,8 +59,8 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                       color: AppTheme.gold,
                       backgroundColor: AppTheme.goldSoft,
                       icon: provider.includesAccountData
-                          ? Icons.verified_user_outlined
-                          : Icons.visibility_outlined,
+                          ? LucideIcons.shieldCheck
+                          : LucideIcons.eye,
                     ),
                   ],
                 ),
@@ -113,12 +113,12 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                 FilledButton.icon(
                   key: const Key('user-conversations-action'),
                   onPressed: () => context.push(AppRouter.conversations),
-                  icon: const Icon(Icons.forum_outlined, size: 18),
+                  icon: const Icon(LucideIcons.messagesSquare, size: 18),
                   label: const Text('المحادثات'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => context.push(AppRouter.favoriteProviders),
-                  icon: const Icon(Icons.favorite_border_rounded, size: 18),
+                  icon: const Icon(LucideIcons.heart, size: 18),
                   label: const Text('فتح المحفوظات'),
                 ),
               ],
@@ -146,7 +146,7 @@ class _PublicBrowseNote extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.visibility_outlined, color: AppTheme.gold, size: 18),
+          const Icon(LucideIcons.eye, color: AppTheme.gold, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -239,7 +239,7 @@ class _ImportantNowCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.priority_high_rounded, color: AppTheme.burgundy),
+              const Icon(LucideIcons.alertCircle, color: AppTheme.burgundy),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -300,7 +300,7 @@ class _ImportantQuoteRow extends StatelessWidget {
             border: Border.all(color: AppTheme.border),
           ),
           child: const Icon(
-            Icons.request_quote_outlined,
+            LucideIcons.fileText,
             color: AppTheme.burgundy,
             size: 20,
           ),
@@ -339,7 +339,7 @@ class _ImportantQuoteRow extends StatelessWidget {
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: onOpenPlanCenter,
-                  icon: const Icon(Icons.event_note_outlined, size: 18),
+                  icon: const Icon(LucideIcons.calendarDays, size: 18),
                   label: const Text('فتح مركز الخطة'),
                 ),
               ],
@@ -374,7 +374,7 @@ class _MarketplaceSearch extends StatelessWidget {
           onSubmitted: provider.setSearch,
           decoration: InputDecoration(
             hintText: 'ابحث عن مورد أو خدمة',
-            prefixIcon: const Icon(Icons.search_rounded),
+            prefixIcon: const Icon(LucideIcons.search),
             suffixIcon: value.text.isEmpty
                 ? null
                 : IconButton(
@@ -382,7 +382,7 @@ class _MarketplaceSearch extends StatelessWidget {
                       controller.clear();
                       provider.setSearch('');
                     },
-                    icon: const Icon(Icons.close_rounded),
+                    icon: const Icon(LucideIcons.x),
                   ),
           ),
         );
@@ -497,8 +497,7 @@ class _CityFilterChip extends StatelessWidget {
         ? provider.cities
               .firstWhere(
                 (city) => city.id == selectedCity,
-                orElse: () =>
-                    const MarketplaceCity(id: '', nameAr: 'المدينة'),
+                orElse: () => const MarketplaceCity(id: '', nameAr: 'المدينة'),
               )
               .nameAr
         : null;
@@ -525,7 +524,11 @@ class _CityFilterChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.tune_rounded, size: 16, color: AppTheme.burgundy),
+            const Icon(
+              LucideIcons.slidersHorizontal,
+              size: 16,
+              color: AppTheme.burgundy,
+            ),
             if (cityLabel != null) ...[
               const SizedBox(width: 6),
               Text(
@@ -573,10 +576,7 @@ class _NoBudgetMatchesCard extends StatelessWidget {
               color: AppTheme.goldSoft,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: const Icon(
-              Icons.manage_search_rounded,
-              color: AppTheme.gold,
-            ),
+            child: const Icon(LucideIcons.search, color: AppTheme.gold),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -604,7 +604,7 @@ class _NoBudgetMatchesCard extends StatelessWidget {
                   alignment: AlignmentDirectional.centerStart,
                   child: TextButton.icon(
                     onPressed: onClear,
-                    icon: const Icon(Icons.tune_rounded, size: 18),
+                    icon: const Icon(LucideIcons.slidersHorizontal, size: 18),
                     label: const Text('عرض كل الموردين'),
                   ),
                 ),
@@ -651,10 +651,7 @@ class _BudgetMatchContextCard extends StatelessWidget {
               color: AppTheme.goldSoft,
               borderRadius: BorderRadius.circular(AppTheme.radiusMd),
             ),
-            child: const Icon(
-              Icons.account_balance_wallet_outlined,
-              color: AppTheme.gold,
-            ),
+            child: const Icon(LucideIcons.wallet, color: AppTheme.gold),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -688,7 +685,7 @@ class _BudgetMatchContextCard extends StatelessWidget {
           IconButton(
             tooltip: 'إزالة فلتر الميزانية',
             onPressed: onClear,
-            icon: const Icon(Icons.close_rounded),
+            icon: const Icon(LucideIcons.x),
           ),
         ],
       ),

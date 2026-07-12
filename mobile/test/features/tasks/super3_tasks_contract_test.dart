@@ -634,7 +634,7 @@ SharedMember _member({
     role: role,
     canViewBudget: false,
     canViewExpenses: false,
-    canViewDebts: false,
+    canViewFinancialRecords: false,
     canManageTasks: true,
     canManageFinancialRecords: false,
     isOwner: isOwner,

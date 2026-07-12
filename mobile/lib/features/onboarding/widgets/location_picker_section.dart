@@ -1,5 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
+import 'package:lucide_icons/lucide_icons.dart';
+
 import '../models/yemen_location_suggestions.dart';
 
 class LocationPickerSection extends StatelessWidget {
@@ -47,7 +49,7 @@ class LocationPickerSection extends StatelessWidget {
           controller: governorateController,
           label: 'حدد المحافظة',
           hintText: 'مثال: صنعاء',
-          icon: Icons.location_city_outlined,
+          icon: LucideIcons.map,
           requiredField: true,
           onChanged: (_) => onChanged?.call(),
         ),
@@ -67,7 +69,7 @@ class LocationPickerSection extends StatelessWidget {
           controller: cityOrDistrictController,
           label: 'اختر المدينة أو المديرية',
           hintText: governorate.isEmpty ? 'اختر المحافظة أولاً' : 'مثال: شميلة',
-          icon: Icons.place_outlined,
+          icon: LucideIcons.mapPin,
           requiredField: true,
           onChanged: (_) => onChanged?.call(),
         ),
@@ -89,7 +91,7 @@ class LocationPickerSection extends StatelessWidget {
             controller: areaOrNeighborhoodController,
             label: 'اكتب الحي أو المنطقة',
             hintText: 'مثال: حي الأنصار',
-            icon: Icons.apartment_outlined,
+            icon: LucideIcons.building2,
             onChanged: (_) => onChanged?.call(),
           ),
           if (areaSuggestions.isNotEmpty) ...[
@@ -108,7 +110,7 @@ class LocationPickerSection extends StatelessWidget {
             controller: streetController,
             label: 'أضف الشارع أو أقرب معلم',
             hintText: 'مثال: شارع تعز',
-            icon: Icons.signpost_outlined,
+            icon: LucideIcons.navigation,
             onChanged: (_) => onChanged?.call(),
           ),
           const SizedBox(height: 12),
@@ -116,7 +118,7 @@ class LocationPickerSection extends StatelessWidget {
             controller: detailedAddressController,
             label: 'العنوان التفصيلي أو المعلم القريب',
             hintText: 'مثال: بجوار القاعة الكبرى',
-            icon: Icons.notes_outlined,
+            icon: LucideIcons.fileText,
             maxLines: 2,
             onChanged: (_) => onChanged?.call(),
           ),
@@ -142,7 +144,7 @@ class _LocationGuidanceCard extends StatelessWidget {
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline_rounded, size: 20),
+          Icon(LucideIcons.info, size: 20),
           SizedBox(width: 8),
           Expanded(
             child: Text(

@@ -35,8 +35,7 @@ class SmartGuestCard extends StatelessWidget {
     final color = guestStatusColor(guest.status, guest.attendanceStatus);
     final phone = PhoneNumberUtils.display(guest.phone) ?? guest.phone?.trim();
     final missing = guest.hasMissingData;
-    final initial =
-        guest.name.trim().isNotEmpty ? guest.name.trim()[0] : '؟';
+    final initial = guest.name.trim().isNotEmpty ? guest.name.trim()[0] : '؟';
 
     return Material(
       color: Colors.transparent,
@@ -64,8 +63,7 @@ class SmartGuestCard extends StatelessWidget {
                   child: Container(width: 4, color: color),
                 ),
                 Padding(
-                  padding:
-                      const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
+                  padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -80,9 +78,11 @@ class SmartGuestCard extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: color.withValues(alpha: 0.10),
                               borderRadius: BorderRadius.circular(
-                                  AarastDesignTokens.radiusMd),
+                                AarastDesignTokens.radiusMd,
+                              ),
                               border: Border.all(
-                                  color: color.withValues(alpha: 0.22)),
+                                color: color.withValues(alpha: 0.22),
+                              ),
                             ),
                             child: Text(
                               initial,
@@ -135,7 +135,9 @@ class SmartGuestCard extends StatelessWidget {
                             label: guestStatusLabel(guest.status),
                             color: color,
                             icon: guestStatusIcon(
-                                guest.status, guest.attendanceStatus),
+                              guest.status,
+                              guest.attendanceStatus,
+                            ),
                           ),
                           if (phone != null && phone.isNotEmpty)
                             _PhoneChip(phone: phone),
@@ -286,8 +288,11 @@ class _PhoneChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(LucideIcons.phone,
-              size: 12, color: AarastDesignTokens.muted),
+          const Icon(
+            LucideIcons.phone,
+            size: 12,
+            color: AarastDesignTokens.muted,
+          ),
           const SizedBox(width: 5),
           Text(
             phone,
@@ -360,8 +365,11 @@ class _GuestMenu extends StatelessWidget {
     return PopupMenuButton<String>(
       enabled: !isBusy,
       tooltip: 'إجراءات الضيف',
-      icon: const Icon(LucideIcons.moreVertical,
-          color: AarastDesignTokens.muted, size: 18),
+      icon: const Icon(
+        LucideIcons.moreVertical,
+        color: AarastDesignTokens.muted,
+        size: 18,
+      ),
       onSelected: (value) {
         if (value == 'edit') {
           onEdit();

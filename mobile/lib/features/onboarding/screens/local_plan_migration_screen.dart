@@ -81,7 +81,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
   }
 
   Future<void> _confirmDiscard() async {
-    final confirmed = await showModalBottomSheet<bool>(
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
       backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(

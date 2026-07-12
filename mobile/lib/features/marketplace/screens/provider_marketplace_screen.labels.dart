@@ -263,7 +263,7 @@ class _LoginRequiredCard extends StatelessWidget {
       border: Border.all(color: AppTheme.border),
       child: Row(
         children: [
-          const Icon(Icons.login_rounded, color: AppTheme.gold, size: 20),
+          const Icon(LucideIcons.logIn, color: AppTheme.gold, size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

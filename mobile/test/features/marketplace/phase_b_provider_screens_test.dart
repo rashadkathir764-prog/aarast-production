@@ -18,7 +18,7 @@ void main() {
   group('Phase B provider screens premium contract', () {
     test('provider user screens use Lucide and Arabic currency helpers', () {
       for (final path in _phaseBScreenPaths) {
-        final source = _readSource(path);
+        final source = _phaseBSource(path);
 
         expect(source, contains('LucideIcons.'), reason: path);
         expect(source, contains('currencyLabelAr'), reason: path);
@@ -37,12 +37,16 @@ void main() {
       final detailsSource = _readSource(
         'lib/features/marketplace/screens/provider_details_screen.dart',
       );
+      final detailsViewSource = _readSource(
+        'lib/features/marketplace/widgets/provider_details_view.dart',
+      );
       final favoritesSource = _readSource(
         'lib/features/marketplace/screens/favorite_providers_screen.dart',
       );
 
       expect(quoteSource, contains('_QuoteRequestHero'));
-      expect(detailsSource, contains('_ProviderHero'));
+      expect(detailsSource, contains('ProviderDetailsView'));
+      expect(detailsViewSource, contains('class _ProviderHero'));
       expect(favoritesSource, contains('_FavoriteProvidersHero'));
     });
   });
@@ -273,6 +277,20 @@ List<String> _materialIconLines(String source) {
 
 String _readSource(String relativePath) {
   return File('${_findMobileRoot()}$relativePath').readAsStringSync();
+}
+
+String _phaseBSource(String relativePath) {
+  if (relativePath !=
+      'lib/features/marketplace/screens/provider_details_screen.dart') {
+    return _readSource(relativePath);
+  }
+  return [
+    _readSource(relativePath),
+    _readSource('lib/features/marketplace/widgets/provider_details_view.dart'),
+    _readSource(
+      'lib/features/marketplace/widgets/provider_details_sections.dart',
+    ),
+  ].join('\n');
 }
 
 void _setTallView(WidgetTester tester) {

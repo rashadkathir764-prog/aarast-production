@@ -10,7 +10,7 @@ void main() {
 
     expect(source, isNot(contains('class _QuoteSentState')));
     expect(source, isNot(contains('setState(() => _sent = true)')));
-    expect(source, contains("showSnackBar"));
+    expect(source, contains("AarastToast.showSuccess"));
     expect(source, contains("context.pop(true)"));
   });
 }

@@ -1,8 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../shared/models/contact_phone_draft.dart';
+import '../widgets/aarast_bottom_sheet.dart';
 
 class ContactPickerException implements Exception {
   const ContactPickerException(this.message);
@@ -59,7 +61,7 @@ class ContactPickerService {
     BuildContext context,
     List<String> phones,
   ) {
-    return showModalBottomSheet<String>(
+    return showAarastBottomSheet<String>(
       context: context,
       builder: (sheetContext) {
         return Directionality(
@@ -78,7 +80,7 @@ class ContactPickerService {
                   const SizedBox(height: 10),
                   for (final phone in phones)
                     ListTile(
-                      leading: const Icon(Icons.phone_outlined),
+                      leading: const Icon(LucideIcons.phone),
                       title: Text(
                         phone,
                         textDirection: TextDirection.ltr,

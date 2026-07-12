@@ -42,13 +42,44 @@ void main() {
       expect(currencyLabelAr(defaultCurrencyCode), 'ر.ي');
     });
 
-    test('provider portal formats visible prices through Arabic labels', () {
-      final source = File(
+    test('provider portal is split into bounded real tab libraries', () {
+      final barrel = File(
         'lib/features/marketplace/screens/provider_portal_tabs.dart',
       ).readAsStringSync();
+      const tabFiles = [
+        'provider_home_tab.dart',
+        'provider_requests_tab.dart',
+        'provider_services_tab.dart',
+        'provider_profile_tab.dart',
+      ];
+      final sources = <String>[];
+      for (final name in tabFiles) {
+        final file = File('lib/features/marketplace/screens/$name');
+        expect(file.existsSync(), isTrue, reason: name);
+        final source = file.readAsStringSync();
+        expect(source.split('\n').length, lessThanOrEqualTo(500), reason: name);
+        expect(source, isNot(contains('part of ')), reason: name);
+        expect(barrel, contains("export '$name';"), reason: name);
+        sources.add(source);
+      }
+
+      final executableBarrelLines = barrel
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => line.isNotEmpty && !line.startsWith('//'));
+      expect(
+        executableBarrelLines.every((line) => line.startsWith('export ')),
+        isTrue,
+      );
+
+      final source = sources.join('\n');
 
       expect(source, contains('currencyLabelAr(service.currency)'));
       expect(source, contains('currencyLabelAr(item.currency)'));
+      expect(source, contains('class ProviderHomeTab'));
+      expect(source, contains('class ProviderRequestsTab'));
+      expect(source, contains('class ProviderServicesTab'));
+      expect(source, contains('class ProviderProfileTab'));
       expect(source, isNot(contains('250000 YER')));
     });
   });

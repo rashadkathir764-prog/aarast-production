@@ -145,6 +145,18 @@ restart fail closed and recover without another QR scan. An independently owned
 second-recipient acceptance and the required 24-hour stability observation
 remain operational gates before a wider MVP rollout.
 
+The isolated server acceptance environment is now live at
+`https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its
+PostgreSQL, OpenWA session, and scoped credentials live on a separately keyed
+LUKS mount; OpenWA has public-only egress, the backend has no host port and does
+not join the shared Nginx Proxy Manager network, and the operator QR surface is
+loopback-only and time-limited. Live gates prove session `ready`, Aarast
+`/health=200` and `/ready=200`, HTTP-to-HTTPS redirect, valid Let's Encrypt TLS,
+HSTS, idempotent storage/bootstrap recreation, and blocked staging access to
+the host and production networks. This remains an OTP-only staging acceptance
+surface, not the production API. The independently owned second-recipient OTP
+and the running 24-hour observation are still mandatory before wider use.
+
 ## Verification Status
 
 For the current working tree on 2026-07-13, Flutter Analyze passes with no
@@ -171,6 +183,12 @@ passing production build, zero lint errors, and zero production dependency
 vulnerabilities. Its live lab image returns Aarast `/health=200` and
 `/ready=200`; transient sends create no OpenWA message, LID mapping, webhook, or
 plugin rows and expose neither recipient nor OTP in runtime logs.
+
+The QA release APK for this acceptance surface is signed with the dedicated
+Aarast MVP QA certificate using APK Signature Scheme v2, contains the stable
+staging HTTPS origin in its AOT artifact, and passes package/signature
+inspection. A physical device has not yet been connected to this workstation,
+so installation and the second-recipient request/verify flow remain unclaimed.
 
 Admin Web production build, all 30 Vitest checks, honesty checks, and all 16
 route smokes pass. Production dependency audit reports zero known

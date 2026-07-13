@@ -15,7 +15,7 @@ COPY src ./src
 
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.31-alpine AS runtime
 
 # Placed under templates/ so the image entrypoint runs envsubst on it,
 # injecting ${API_ORIGIN} into the CSP connect-src at container start.

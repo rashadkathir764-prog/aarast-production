@@ -326,7 +326,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       onSuccess();
     } on ApiException catch (error) {
       if (!mounted) return;
-      setState(() => _errorMessage = error.message);
+      setState(() {
+        _errorMessage = error.isNetworkFailure
+            ? 'تعذر إرسال رمز الاستعادة الآن. تحقق من الاتصال وحاول مجددًا.'
+            : error.message;
+      });
     } on Object {
       if (!mounted) return;
       setState(() {

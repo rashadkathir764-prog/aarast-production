@@ -16,12 +16,17 @@ class _FakeAuthRepository extends AuthRepository {
   String? lastConfirmCode;
   String? lastConfirmPassword;
   bool failConfirm = false;
+  bool failRequestWithNetworkError = false;
 
   @override
-  Future<OtpRequestResult> requestPasswordReset({
-    required String phone,
-  }) async {
+  Future<OtpRequestResult> requestPasswordReset({required String phone}) async {
     requestCalls += 1;
+    if (failRequestWithNetworkError) {
+      throw const ApiException(
+        aarastBackendConnectionErrorMessage,
+        isNetworkFailure: true,
+      );
+    }
     return OtpRequestResult(
       phone: phone,
       purpose: 'RESET_PASSWORD',
@@ -141,5 +146,24 @@ void main() {
 
     expect(find.text('OTP code is invalid or expired'), findsOneWidget);
     expect(find.text('تم تغيير كلمة المرور'), findsNothing);
+  });
+
+  testWidgets('reset request timeout names the operation instead of login', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository()
+      ..failRequestWithNetworkError = true;
+    await _pumpResetScreen(tester, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    expect(repository.requestCalls, 1);
+    expect(
+      find.text('تعذر إرسال رمز الاستعادة الآن. تحقق من الاتصال وحاول مجددًا.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('تعذر تسجيل الدخول'), findsNothing);
   });
 }

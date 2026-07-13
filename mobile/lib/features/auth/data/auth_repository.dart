@@ -10,6 +10,8 @@ import '../models/safe_user.dart';
 class AuthRepository {
   const AuthRepository(this._apiClient, this._authStorage);
 
+  static const _otpDeliveryReceiveTimeout = Duration(seconds: 25);
+
   final ApiClient _apiClient;
   final AuthStorage _authStorage;
 
@@ -42,12 +44,13 @@ class AuthRepository {
     String? email,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/api/v1/auth/register', {
-      'name': name,
-      'phone': normalizedPhone,
-      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
-      'password': password,
-    });
+    final json = await _apiClient
+        .postJsonWithReceiveTimeout('/api/v1/auth/register', {
+          'name': name,
+          'phone': normalizedPhone,
+          if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+          'password': password,
+        }, receiveTimeout: _otpDeliveryReceiveTimeout);
     return OtpRequestResult.fromJson(json);
   }
 
@@ -87,10 +90,11 @@ class AuthRepository {
     required String purpose,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson('/api/v1/auth/otp/request', {
-      'phone': normalizedPhone,
-      'purpose': purpose,
-    });
+    final json = await _apiClient.postJsonWithReceiveTimeout(
+      '/api/v1/auth/otp/request',
+      {'phone': normalizedPhone, 'purpose': purpose},
+      receiveTimeout: _otpDeliveryReceiveTimeout,
+    );
     return OtpRequestResult.fromJson(json);
   }
 
@@ -123,9 +127,10 @@ class AuthRepository {
   /// يطلب رمز استعادة كلمة المرور. الخادم لا يكشف وجود الحساب من عدمه.
   Future<OtpRequestResult> requestPasswordReset({required String phone}) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient.postJson(
+    final json = await _apiClient.postJsonWithReceiveTimeout(
       '/api/v1/auth/password-reset/request',
       {'phone': normalizedPhone},
+      receiveTimeout: _otpDeliveryReceiveTimeout,
     );
     return OtpRequestResult.fromJson(json);
   }

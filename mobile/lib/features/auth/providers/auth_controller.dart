@@ -130,15 +130,19 @@ class AuthController extends ChangeNotifier {
     String? email,
   }) async {
     OtpRequestResult? result;
-    final success = await _submit(() async {
-      result = await _authRepository.startRegistration(
-        name: name.trim(),
-        phone: phone.trim(),
-        email: email,
-        password: password,
-      );
-      _otpRequest = result;
-    });
+    final success = await _submit(
+      () async {
+        result = await _authRepository.startRegistration(
+          name: name.trim(),
+          phone: phone.trim(),
+          email: email,
+          password: password,
+        );
+        _otpRequest = result;
+      },
+      networkFailureMessage:
+          'تعذر إرسال رمز إنشاء الحساب الآن. تحقق من الاتصال وحاول مرة أخرى.',
+    );
     return success ? result : null;
   }
 
@@ -147,13 +151,17 @@ class AuthController extends ChangeNotifier {
     required String purpose,
   }) async {
     OtpRequestResult? result;
-    final success = await _submit(() async {
-      result = await _authRepository.requestOtp(
-        phone: phone.trim(),
-        purpose: purpose,
-      );
-      _otpRequest = result;
-    });
+    final success = await _submit(
+      () async {
+        result = await _authRepository.requestOtp(
+          phone: phone.trim(),
+          purpose: purpose,
+        );
+        _otpRequest = result;
+      },
+      networkFailureMessage:
+          'تعذر إرسال رمز التحقق الآن. تحقق من الاتصال وحاول مرة أخرى.',
+    );
     return success ? result : null;
   }
 
@@ -280,6 +288,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> _submit(
     Future<void> Function() action, {
     String? unauthorizedMessage,
+    String? networkFailureMessage,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -299,6 +308,7 @@ class AuthController extends ChangeNotifier {
         _errorMessage = unauthorizedMessage;
       } else if (error.isNetworkFailure) {
         _errorMessage =
+            networkFailureMessage ??
             'تعذر تسجيل الدخول الآن. تحقق من الاتصال وحاول مرة أخرى.';
       } else {
         _errorMessage = error.message;

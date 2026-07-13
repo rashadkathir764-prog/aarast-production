@@ -76,6 +76,7 @@ changing behavior.
 - `docs/deployment/README.md`
 - `docs/deployment/DOKPLOY_RUNBOOK.md`
 - `docs/deployment/OPENWA_OTP_MVP.md`
+- `deploy/openwa-otp-staging/README.md`
 - `docs/deployment/SCALING.md`
 - `docs/deployment/STORE_RELEASE.md`
 - `docs/deployment/STORE_LISTING.md`

@@ -59,6 +59,12 @@ The isolated `deploy/openwa-otp-lab/` stack is the reproducible local acceptance
 environment; it is intentionally separate from Dokploy and is not a production
 manifest.
 
+The server acceptance environment is defined separately in
+`deploy/openwa-otp-staging/`. It joins only the backend to the existing reverse
+proxy network and keeps OpenWA, its QR dashboard, PostgreSQL, Redis, and both
+OpenWA credentials private. It must use `otp-lab-api.shadowgardn.com` and must
+not reuse any production domain, Compose project, volume, or database.
+
 ## Private Chat Media Release Gate
 
 The S3-compatible bucket must deny anonymous reads for every object under

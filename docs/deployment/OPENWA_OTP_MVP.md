@@ -74,6 +74,13 @@ operator and Aarast ports to loopback, provisions a dedicated session-scoped
 `transient_sender` credential into a Docker volume, and leaves the normal
 Compose/Dokploy deployment untouched.
 
+After the local laboratory passes, `deploy/openwa-otp-staging/` is the only
+approved server acceptance manifest. It exposes only the Aarast backend through
+`otp-lab-api.shadowgardn.com`, keeps the OpenWA operator surface on loopback,
+uses separate transient and operator credentials, and shares no resource with
+production. A passing local run does not authorize pointing a release APK at an
+ephemeral tunnel.
+
 ## Manual Acceptance Gate
 
 The operator must scan the QR with the dedicated number, then verify:

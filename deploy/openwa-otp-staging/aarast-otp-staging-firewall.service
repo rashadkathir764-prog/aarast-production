@@ -1,0 +1,12 @@
+[Unit]
+Description=Aarast OTP staging egress firewall
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/aarast-otp-staging-security apply /var/lib/aarast-otp-staging/secure
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

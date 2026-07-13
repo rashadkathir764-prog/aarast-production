@@ -1,0 +1,243 @@
+name: aarast-openwa-otp-staging
+
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  db:
+    image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    # Do not auto-start after a host reboot before the encrypted mount and
+    # egress firewall have been restored manually.
+    restart: "on-failure:5"
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: ${OTP_DB_NAME:?set OTP_DB_NAME}
+      POSTGRES_USER: ${OTP_DB_USER:?set OTP_DB_USER}
+      POSTGRES_PASSWORD: ${OTP_DB_PASSWORD:?set OTP_DB_PASSWORD}
+    volumes:
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 768m
+    cpus: 1.0
+    logging: *bounded-logging
+    networks: [core]
+
+  redis:
+    image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    restart: "on-failure:5"
+    user: "999:1000"
+    command: [redis-server, --dir, /tmp, --save, "", --appendonly, "no", --maxmemory, 192mb, --maxmemory-policy, allkeys-lru]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=33554432,uid=999,gid=1000
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *bounded-logging
+    networks: [core]
+
+  openwa:
+    image: ${OPENWA_IMAGE:?set immutable OPENWA_IMAGE id or registry digest}
+    restart: "on-failure:5"
+    init: true
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "2785"
+      API_MASTER_KEY: ${OPENWA_MASTER_KEY:?set OPENWA_MASTER_KEY}
+      API_KEY_PEPPER: ${OPENWA_API_KEY_PEPPER:?set OPENWA_API_KEY_PEPPER}
+      DATABASE_TYPE: sqlite
+      DATABASE_NAME: /app/data/openwa.sqlite
+      DATABASE_SYNCHRONIZE: "false"
+      MAIN_DATABASE_SYNCHRONIZE: "false"
+      ENGINE_TYPE: whatsapp-web.js
+      PLUGINS_ENABLED: "false"
+      REDIS_ENABLED: "false"
+      QUEUE_ENABLED: "false"
+      SEARCH_ENABLED: "false"
+      MAX_CONCURRENT_SESSIONS: "1"
+      RESOLVE_LID_TO_PHONE: "false"
+      SIMULATE_TYPING: "false"
+      AUTO_START_SESSIONS: "true"
+      LOG_LEVEL: info
+    volumes:
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/openwa:/app/data
+    ports:
+      - "127.0.0.1:${OPENWA_OPERATOR_PORT:-2786}:2785"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=536870912
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 512
+    mem_limit: 1g
+    cpus: 1.5
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:2785/api/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    stop_grace_period: 45s
+    logging: *bounded-logging
+    networks:
+      transport:
+        aliases: [aarast-openwa-otp]
+      egress: {}
+
+  openwa-bootstrap:
+    image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    restart: "no"
+    depends_on:
+      openwa:
+        condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+    environment:
+      OPENWA_BASE_URL: http://openwa:2785
+      OPENWA_MASTER_KEY: ${OPENWA_MASTER_KEY:?set OPENWA_MASTER_KEY}
+      OPENWA_SESSION_NAME: ${OPENWA_SESSION_NAME:-aarast-otp-staging}
+      OPENWA_KEY_TTL_DAYS: ${OPENWA_KEY_TTL_DAYS:-7}
+    volumes:
+      - ./bootstrap-openwa.mjs:/opt/bootstrap-openwa.mjs:ro
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/backend-secret:/run/aarast/backend
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/operator-secret:/run/aarast/operator
+    command: ["node", "/opt/bootstrap-openwa.mjs"]
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    logging: *bounded-logging
+    networks: [transport]
+
+  storage-init:
+    image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    restart: "no"
+    user: "0:0"
+    command:
+      - sh
+      - -ec
+      - |
+        test -f /secure/.aarast-otp-encrypted
+        mkdir -p /secure/postgres /secure/openwa /secure/backend-secret /secure/operator-secret
+        chown 70:70 /secure/postgres
+        chown 0:0 /secure/openwa
+        chown 1000:1000 /secure/backend-secret /secure/operator-secret
+        chmod 0700 /secure/postgres /secure/openwa /secure/backend-secret /secure/operator-secret
+    volumes:
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}:/secure
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 32
+    mem_limit: 32m
+    logging: *bounded-logging
+
+  backend:
+    image: ${AARAST_BACKEND_IMAGE:?set immutable AARAST_BACKEND_IMAGE id or registry digest}
+    restart: "on-failure:5"
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      openwa-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://${OTP_DB_USER:?set OTP_DB_USER}:${OTP_DB_PASSWORD:?set OTP_DB_PASSWORD}@db:5432/${OTP_DB_NAME:?set OTP_DB_NAME}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${AARAST_JWT_SECRET:?set AARAST_JWT_SECRET}
+      AUTH_LOGIN_THROTTLE_PEPPER: ${AUTH_LOGIN_THROTTLE_PEPPER:?set AUTH_LOGIN_THROTTLE_PEPPER}
+      CORS_ORIGINS: ${AARAST_CORS_ORIGINS:-https://otp-lab-api.shadowgardn.com}
+      READINESS_REQUIRE_REDIS: "true"
+      READINESS_REQUIRE_MEDIA: "false"
+      AUTH_OTP_MODE: openwa
+      OPENWA_BASE_URL: http://aarast-openwa-otp:2785
+      OPENWA_OTP_TIMEOUT_MS: "15000"
+      OTP_GLOBAL_DAILY_LIMIT: ${OTP_GLOBAL_DAILY_LIMIT:-50}
+      OTP_EXPIRES_MINUTES: "5"
+      OTP_MAX_ATTEMPTS: "5"
+    volumes:
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/backend-secret:/run/aarast:ro
+    command:
+      - sh
+      - -ec
+      - |
+        set -a
+        . /run/aarast/openwa.env
+        set +a
+        ./node_modules/.bin/prisma migrate deploy
+        exec node dist/main.js
+    ports:
+      - "127.0.0.1:${AARAST_BACKEND_PORT:-8095}:3000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=67108864
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
+    stop_grace_period: 30s
+    logging: *bounded-logging
+    networks:
+      core: {}
+      transport: {}
+      proxy:
+        aliases: [aarast-otp-stage-api]
+
+networks:
+  core:
+    name: aarast_otp_staging_core
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+  transport:
+    name: aarast_otp_staging_transport
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+  proxy:
+    name: nginx-proxy-manager_default
+    external: true
+  egress:
+    name: aarast_otp_staging_openwa_egress
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.30.50.0/28

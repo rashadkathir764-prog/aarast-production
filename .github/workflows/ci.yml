@@ -165,7 +165,7 @@ jobs:
         with:
           # Full history so leaked-then-deleted secrets are still caught.
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

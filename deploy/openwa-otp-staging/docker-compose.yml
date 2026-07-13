@@ -103,7 +103,8 @@ services:
     networks:
       transport:
         aliases: [aarast-openwa-otp]
-      egress: {}
+      egress:
+        gw_priority: 1
 
   openwa-bootstrap:
     image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
@@ -226,13 +227,19 @@ networks:
     driver: bridge
     internal: true
     enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.30.50.32/28
   transport:
     name: aarast_otp_staging_transport
     driver: bridge
     internal: true
     enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.30.50.48/28
   proxy:
-    name: nginx-proxy-manager_default
+    name: aarast_otp_staging_proxy
     external: true
   egress:
     name: aarast_otp_staging_openwa_egress

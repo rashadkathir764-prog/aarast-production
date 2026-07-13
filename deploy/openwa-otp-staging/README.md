@@ -10,7 +10,9 @@ The only public route is:
 
 OpenWA has no public hostname. Its operator port binds to server loopback and is
 reached only through SSH. PostgreSQL and Redis are internal-only. The backend
-joins `nginx-proxy-manager_default` with a unique alias.
+joins a dedicated internal proxy bridge with a unique alias. The host security
+script attaches only the Nginx Proxy Manager container to that bridge; the
+backend never joins NPM's shared network.
 OpenWA alone also joins an outbound-only bridge so WhatsApp can be reached;
 that bridge publishes no port and is not shared with the database or Redis.
 `host-security.sh` blocks that bridge from loopback, private, link-local,
@@ -41,6 +43,8 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
    placeholder with a random URL-safe value, and set mode `0600`.
 3. Install and enable `aarast-otp-staging-firewall.service`, run
    `host-security.sh check`, and verify the `DOCKER-USER` chain before OpenWA.
+   This step also creates `aarast_otp_staging_proxy` and attaches the
+   `nginx-proxy-manager` container; rerun it after NPM is recreated.
    After a server reboot, unlock the LUKS mount first and then restart this
    service before running `docker compose up -d`. The persistent services use
    `on-failure` rather than a daemon-reboot restart policy so they cannot start

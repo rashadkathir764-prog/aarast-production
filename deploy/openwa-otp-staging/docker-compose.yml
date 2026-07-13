@@ -198,8 +198,6 @@ services:
         set +a
         ./node_modules/.bin/prisma migrate deploy
         exec node dist/main.js
-    ports:
-      - "127.0.0.1:${AARAST_BACKEND_PORT:-8095}:3000"
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=67108864

@@ -53,7 +53,9 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
 5. Start the stack and require `db`, `redis`, and `openwa` to become healthy.
 6. Create `ssh -N -L 2786:127.0.0.1:2786 rk-server` from the operator machine.
 7. Open `http://127.0.0.1:2786/sessions` and pair the dedicated test account.
-8. Require the loopback backend `/health` and `/ready` endpoints to return 200.
+8. From the Nginx Proxy Manager container, require
+   `http://aarast-otp-stage-api:3000/health` and `/ready` to return 200. The
+   backend intentionally has no host port and no non-internal network.
 9. Add the Nginx Proxy Manager host `otp-lab-api.shadowgardn.com` forwarding to
    `http://aarast-otp-stage-api:3000`; enable WebSocket support, request a new
    certificate, force SSL, HTTP/2, and HSTS.

@@ -14,7 +14,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+  bool _isReferenceDataLoading = false;
   String? _errorMessage;
+  String? _referenceDataErrorMessage;
   String? _quoteSubmitErrorMessage;
   String? _noticeMessage;
   String _search = '';
@@ -33,10 +35,13 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   Set<String> _favoriteProviderIds = {};
   List<FavoriteProvider> _favoriteProviders = const [];
   List<QuoteRequest> _quoteRequests = const [];
+  Future<void>? _referenceDataLoadInFlight;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
+  bool get isReferenceDataLoading => _isReferenceDataLoading;
   String? get errorMessage => _errorMessage;
+  String? get referenceDataErrorMessage => _referenceDataErrorMessage;
   String? get quoteSubmitErrorMessage => _quoteSubmitErrorMessage;
   String? get noticeMessage => _noticeMessage;
   String get search => _search;
@@ -108,14 +113,45 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     }
   }
 
-  Future<void> loadReferenceData() async {
-    if (_cities.isNotEmpty && _categories.isNotEmpty) return;
+  Future<void> loadReferenceData() {
+    if (_cities.isNotEmpty && _categories.isNotEmpty) {
+      return Future<void>.value();
+    }
+    final activeLoad = _referenceDataLoadInFlight;
+    if (activeLoad != null) return activeLoad;
+
+    late final Future<void> trackedLoad;
+    trackedLoad = _loadReferenceData().whenComplete(() {
+      if (identical(_referenceDataLoadInFlight, trackedLoad)) {
+        _referenceDataLoadInFlight = null;
+      }
+    });
+    _referenceDataLoadInFlight = trackedLoad;
+    return trackedLoad;
+  }
+
+  Future<void> _loadReferenceData() async {
+    _isReferenceDataLoading = true;
+    _referenceDataErrorMessage = null;
+    notifyListeners();
+
     try {
-      _cities = await _safeCities();
-      _categories = await _safeCategories();
-      notifyListeners();
+      final results = await Future.wait<Object>([
+        _api.getCities(),
+        _api.getCategories(),
+      ]);
+      final cities = results[0] as List<MarketplaceCity>;
+      final categories = results[1] as List<ProviderCategory>;
+      if (cities.isEmpty || categories.isEmpty) {
+        throw StateError('Provider reference catalog is empty');
+      }
+      _cities = cities;
+      _categories = categories;
     } catch (_) {
-      // The destination screens still render a clear empty state.
+      _referenceDataErrorMessage = providerReferenceDataErrorMessage;
+    } finally {
+      _isReferenceDataLoading = false;
+      notifyListeners();
     }
   }
 
@@ -825,6 +861,8 @@ String marketplaceErrorMessage(String message) {
   }
   return normalized;
 }
+
+const providerReferenceDataErrorMessage = 'تعذر تحميل خيارات المدينة والفئة.';
 
 bool _isMissingProviderProfile(String message) {
   final normalized = message.toLowerCase();

@@ -128,7 +128,10 @@ The backend now includes the approved provider-reference and quote-lead foundati
   migration `20260710140000_redact_legacy_idempotency_paths` removes legacy
   invite bearer values and query strings.
 - `Guest` and `GuestGroup` for saved WeddingPlan guest lists and grouping.
-- `City` and `ProviderCategory` for Yemen-first marketplace filters.
+- `City` and `ProviderCategory` for Yemen-first marketplace filters. Fresh
+  databases receive an additive baseline catalog from migration
+  `20260714100000_seed_provider_reference_catalog`; existing admin-managed rows
+  are preserved without forced rename, reactivation, or deletion.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, `PlanProviderLink`, and `BookingLead` for saved providers, reviews, quote leads, accepted planning provider links, and non-paid lead context.
 - `FinancialCommitment`, `FinancialPaymentRecord`, and

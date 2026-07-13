@@ -81,3 +81,35 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
   }
   assert.ok(contracts.split("\n").length <= 120);
 });
+
+test("marketplace reference catalog is installed by an idempotent migration", () => {
+  const migration = readFileSync(
+    "prisma/migrations/20260714100000_seed_provider_reference_catalog/migration.sql",
+    "utf8",
+  );
+
+  assert.match(migration, /INSERT INTO "City"/);
+  assert.match(
+    migration,
+    /ON CONFLICT \("nameAr", "countryCode"\) DO NOTHING/,
+  );
+  for (const city of ["صنعاء", "عدن", "تعز", "إب", "الحديدة", "المكلا"]) {
+    assert.ok(migration.includes(city), city);
+  }
+
+  assert.match(migration, /INSERT INTO "ProviderCategory"/);
+  assert.match(migration, /ON CONFLICT \("slug"\) DO NOTHING/);
+  for (const slug of [
+    "wedding-halls",
+    "photography",
+    "catering",
+    "stage-decor",
+    "dresses",
+    "sound-lighting",
+  ]) {
+    assert.ok(migration.includes(slug), slug);
+  }
+
+  assert.doesNotMatch(migration, /\bDELETE\b/i);
+  assert.doesNotMatch(migration, /\bUPDATE\b/i);
+});

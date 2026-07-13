@@ -171,37 +171,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   if (providerMode) ...[
                     const SizedBox(height: 14),
-                    _ProviderDropdown(
-                      value: _safeCityId(marketplace),
-                      label: 'المدينة',
-                      icon: LucideIcons.mapPin,
-                      items: marketplace.cities
-                          .map(
-                            (city) => DropdownMenuItem(
-                              value: city.id,
-                              child: Text(city.nameAr),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(() => _cityId = value),
-                      validator: (value) =>
-                          value == null ? 'اختر المدينة' : null,
-                    ),
-                    const SizedBox(height: 14),
-                    _ProviderDropdown(
-                      value: _safeCategoryId(marketplace),
-                      label: 'الفئة',
-                      icon: LucideIcons.shapes,
-                      items: marketplace.categories
-                          .map(
-                            (category) => DropdownMenuItem(
-                              value: category.id,
-                              child: Text(category.nameAr),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) => setState(() => _categoryId = value),
-                      validator: (value) => value == null ? 'اختر الفئة' : null,
+                    _ProviderReferenceFields(
+                      marketplace: marketplace,
+                      cityId: _safeCityId(marketplace),
+                      categoryId: _safeCategoryId(marketplace),
+                      onCityChanged: (value) => setState(() => _cityId = value),
+                      onCategoryChanged: (value) =>
+                          setState(() => _categoryId = value),
                     ),
                     const SizedBox(height: 14),
                     AuthTextField(
@@ -476,6 +452,7 @@ class _ProviderModeNote extends StatelessWidget {
 
 class _ProviderDropdown extends StatelessWidget {
   const _ProviderDropdown({
+    required this.fieldKey,
     required this.value,
     required this.label,
     required this.icon,
@@ -484,6 +461,7 @@ class _ProviderDropdown extends StatelessWidget {
     required this.validator,
   });
 
+  final Key fieldKey;
   final String? value;
   final String label;
   final IconData icon;
@@ -494,6 +472,7 @@ class _ProviderDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
+      key: fieldKey,
       initialValue: value,
       isExpanded: true,
       menuMaxHeight: 320,
@@ -509,6 +488,113 @@ class _ProviderDropdown extends StatelessWidget {
       items: items,
       onChanged: onChanged,
       validator: validator,
+    );
+  }
+}
+
+class _ProviderReferenceFields extends StatelessWidget {
+  const _ProviderReferenceFields({
+    required this.marketplace,
+    required this.cityId,
+    required this.categoryId,
+    required this.onCityChanged,
+    required this.onCategoryChanged,
+  });
+
+  final ProviderMarketplaceProvider marketplace;
+  final String? cityId;
+  final String? categoryId;
+  final ValueChanged<String?> onCityChanged;
+  final ValueChanged<String?> onCategoryChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (marketplace.isReferenceDataLoading &&
+        (marketplace.cities.isEmpty || marketplace.categories.isEmpty)) {
+      return const _ProviderReferenceLoading();
+    }
+
+    if (marketplace.cities.isEmpty || marketplace.categories.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthInlineError(
+            message:
+                marketplace.referenceDataErrorMessage ??
+                providerReferenceDataErrorMessage,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: marketplace.isReferenceDataLoading
+                ? null
+                : marketplace.loadReferenceData,
+            icon: const Icon(LucideIcons.refreshCw, size: 18),
+            label: const Text('إعادة المحاولة'),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        _ProviderDropdown(
+          fieldKey: const Key('provider-city-dropdown'),
+          value: cityId,
+          label: 'المدينة',
+          icon: LucideIcons.mapPin,
+          items: marketplace.cities
+              .map(
+                (city) =>
+                    DropdownMenuItem(value: city.id, child: Text(city.nameAr)),
+              )
+              .toList(),
+          onChanged: onCityChanged,
+          validator: (value) => value == null ? 'اختر المدينة' : null,
+        ),
+        const SizedBox(height: 14),
+        _ProviderDropdown(
+          fieldKey: const Key('provider-category-dropdown'),
+          value: categoryId,
+          label: 'الفئة',
+          icon: LucideIcons.shapes,
+          items: marketplace.categories
+              .map(
+                (category) => DropdownMenuItem(
+                  value: category.id,
+                  child: Text(category.nameAr),
+                ),
+              )
+              .toList(),
+          onChanged: onCategoryChanged,
+          validator: (value) => value == null ? 'اختر الفئة' : null,
+        ),
+      ],
+    );
+  }
+}
+
+class _ProviderReferenceLoading extends StatelessWidget {
+  const _ProviderReferenceLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AarastCard(
+      padding: EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          LinearProgressIndicator(minHeight: 3),
+          SizedBox(height: 10),
+          Text(
+            'جارٍ تحميل المدن والفئات…',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

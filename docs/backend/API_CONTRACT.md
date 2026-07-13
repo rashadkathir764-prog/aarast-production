@@ -782,6 +782,13 @@ Public/reference routes:
 - `GET /api/v1/providers`
 - `GET /api/v1/providers/:id`
 
+Fresh databases receive an additive baseline catalog of active Yemeni cities
+and provider categories through migration
+`20260714100000_seed_provider_reference_catalog`. The migration never renames,
+reactivates, or deletes admin-managed catalog rows. Both reference endpoints
+return active rows only; clients must expose loading, empty/error, and retry
+states instead of rendering enabled selectors with no options.
+
 Authenticated user routes:
 
 - `POST /api/v1/providers/:id/favorite`

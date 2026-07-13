@@ -146,7 +146,9 @@ services:
         test -f /secure/.aarast-otp-encrypted
         mkdir -p /secure/postgres /secure/openwa /secure/backend-secret /secure/operator-secret
         chown 70:70 /secure/postgres
-        chown 0:0 /secure/openwa
+        # The pinned OpenWA image drops its Node/Chromium processes to UID 996.
+        # Preserve that ownership on every idempotent init/recreate.
+        chown 996:996 /secure/openwa
         chown 1000:1000 /secure/backend-secret /secure/operator-secret
         chmod 0700 /secure/postgres /secure/openwa /secure/backend-secret /secure/operator-secret
     volumes:

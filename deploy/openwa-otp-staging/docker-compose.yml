@@ -229,7 +229,7 @@ networks:
     enable_ipv6: false
     ipam:
       config:
-        - subnet: 172.30.50.32/28
+        - subnet: 10.77.50.32/28
   transport:
     name: aarast_otp_staging_transport
     driver: bridge
@@ -237,7 +237,7 @@ networks:
     enable_ipv6: false
     ipam:
       config:
-        - subnet: 172.30.50.48/28
+        - subnet: 10.77.50.48/28
   proxy:
     name: aarast_otp_staging_proxy
     external: true
@@ -247,4 +247,4 @@ networks:
     enable_ipv6: false
     ipam:
       config:
-        - subnet: 172.30.50.0/28
+        - subnet: 10.77.50.0/28

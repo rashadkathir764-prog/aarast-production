@@ -26,7 +26,7 @@ The first private acceptance run may load those exact images over authenticated
 SSH. Before a wider rollout, publish to a project-owned registry and pin by
 registry digest. Never deploy `latest` or the upstream OpenWA image.
 
-- OpenWA: `97e758e08035d0ed16567d96cfdaa7450387a77c`
+- OpenWA: `c3b67952c046f0fc71c2e6bebe4ad4437ab299ce`
 - Aarast: `e2d0c1ab792fc1431d9a7d0be38c12f4ca3da47e`
 
 ## First deployment

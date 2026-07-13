@@ -141,9 +141,11 @@ fork now builds and runs in the isolated loopback lab: the dedicated session is
 QR-linked, transient-role boundaries pass, one live self-recipient OTP returns
 `200`, immediate resend returns `429`, verification returns `200`, private
 OpenWA persistence tables remain empty, and disconnect/reconnect plus container
-restart fail closed and recover without another QR scan. An independently owned
-second-recipient acceptance and the required 24-hour stability observation
-remain operational gates before a wider MVP rollout.
+restart fail closed and recover without another QR scan. On 2026-07-14, the
+hardened OpenWA revision `c3b67952c046f0fc71c2e6bebe4ad4437ab299ce`
+was deployed to staging. A real handset OTP request, confirmation, and the
+following login all returned `200`; the required fresh 24-hour stability
+observation remains an operational gate before a wider MVP rollout.
 
 The isolated server acceptance environment is now live at
 `https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its
@@ -154,17 +156,18 @@ loopback-only and time-limited. Live gates prove session `ready`, Aarast
 `/health=200` and `/ready=200`, HTTP-to-HTTPS redirect, valid Let's Encrypt TLS,
 HSTS, idempotent storage/bootstrap recreation, and blocked staging access to
 the host and production networks. This remains an OTP-only staging acceptance
-surface, not the production API. The independently owned second-recipient OTP
-and the running 24-hour observation are still mandatory before wider use.
+surface, not the production API. The running fresh 24-hour observation remains
+mandatory before wider use.
 
 ## Verification Status
 
-For the current working tree on 2026-07-13, Flutter Analyze passes with no
-issues and all 525 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
-included. These local results do not prove store signing, signed
-physical-device behavior, deployed association files, or the target
-object-storage environment. Final AAB/certificate verification is intentionally
-deferred at the product owner's request.
+For the current working tree on 2026-07-14, Flutter Analyze passes with no
+issues and all 529 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
+included. A QA-signed Android Release APK (`versionCode=2`) was built against
+the staging HTTPS origin and accepted a physical-device OTP flow. These results
+do not prove store signing, deployed association files, or the target
+object-storage environment. Final AAB/store-certificate verification is
+intentionally deferred at the product owner's request.
 
 Backend TypeScript check, all 5 canonical/legacy pretests, and all 235 source
 tests pass for the OpenWA integration branch. The previously rebuilt local

@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN npm run build
 RUN npm prune --omit=dev
 RUN npx prisma generate
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 WORKDIR /app
 

@@ -51,8 +51,12 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
    against an unmounted ordinary host directory.
 4. Run `docker compose --env-file .env config --quiet`.
 5. Start the stack and require `db`, `redis`, and `openwa` to become healthy.
-6. Create `ssh -N -L 2786:127.0.0.1:2786 rk-server` from the operator machine.
-7. Open `http://127.0.0.1:2786/sessions` and pair the dedicated test account.
+6. Start `operator-qr-bridge.mjs` as the deployment user with the master key and
+   session ID supplied only through its environment. It binds to server
+   loopback, exposes neither key, and shuts down automatically after 15 minutes.
+7. Create `ssh -N -L 2788:127.0.0.1:2787 rk-server`, open
+   `http://127.0.0.1:2788`, and pair the dedicated test account from the live,
+   auto-refreshing QR page. Stop the bridge immediately after pairing.
 8. From the Nginx Proxy Manager container, require
    `http://aarast-otp-stage-api:3000/health` and `/ready` to return 200. The
    backend intentionally has no host port and no non-internal network.

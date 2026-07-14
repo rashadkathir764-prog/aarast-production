@@ -11,8 +11,8 @@ The only public route is:
 OpenWA has no public hostname. Its operator port binds to server loopback and is
 reached only through SSH. PostgreSQL and Redis are internal-only. The backend
 joins a dedicated internal proxy bridge with a unique alias. The host security
-script attaches only the Nginx Proxy Manager container to that bridge; the
-backend never joins NPM's shared network.
+script attaches only the reviewed active reverse-proxy container to that bridge;
+the backend never joins the proxy's shared network.
 OpenWA alone also joins an outbound-only bridge so WhatsApp can be reached;
 that bridge publishes no port and is not shared with the database or Redis.
 `host-security.sh` blocks that bridge from loopback, private, link-local,
@@ -41,10 +41,15 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
    mount or marker is absent.
 2. Copy `.env.example` to a deployment-host-only `.env`, replace every
    placeholder with a random URL-safe value, and set mode `0600`.
-3. Install and enable `aarast-otp-staging-firewall.service`, run
-   `host-security.sh check`, and verify the `DOCKER-USER` chain before OpenWA.
-   This step also creates `aarast_otp_staging_proxy` and attaches the
-   `nginx-proxy-manager` container; rerun it after NPM is recreated.
+3. Install and start `aarast-otp-staging-firewall.service` with
+   `systemctl enable --now`, then run `host-security.sh check` and verify the
+   `DOCKER-USER` chain before OpenWA.
+   This step also creates `aarast_otp_staging_proxy` and attaches the active
+   reverse proxy. The script detects the current `dokploy-traefik` container
+   first and retains `nginx-proxy-manager` as a legacy fallback. Set
+   `AARAST_OTP_PROXY_CONTAINER_NAME` only when the deployment uses a different
+   explicitly reviewed proxy container. After that proxy is recreated, restart
+   the firewall service to apply the attachment and then rerun the check.
    After a server reboot, unlock the LUKS mount first and then restart this
    service before running `docker compose up -d`. The persistent services use
    `on-failure` rather than a daemon-reboot restart policy so they cannot start
@@ -57,10 +62,11 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
 7. Create `ssh -N -L 2788:127.0.0.1:2787 rk-server`, open
    `http://127.0.0.1:2788`, and pair the dedicated test account from the live,
    auto-refreshing QR page. Stop the bridge immediately after pairing.
-8. From the Nginx Proxy Manager container, require
+8. From the active reverse proxy container (Dokploy Traefik, or the legacy
+   Nginx Proxy Manager fallback), require
    `http://aarast-otp-stage-api:3000/health` and `/ready` to return 200. The
    backend intentionally has no host port and no non-internal network.
-9. Add the Nginx Proxy Manager host `otp-lab-api.shadowgardn.com` forwarding to
+9. Add the proxy route `otp-lab-api.shadowgardn.com` forwarding to
    `http://aarast-otp-stage-api:3000`; enable WebSocket support, request a new
    certificate, force SSL, HTTP/2, and HSTS.
 10. Require the public `/health` and `/ready` endpoints to return 200 before
@@ -71,12 +77,39 @@ and a separate encrypted operator path that the backend never mounts. Never
 print, commit, or include either key or the OpenWA session path in ordinary
 backups.
 
+Before a database-changing backend release, create a custom-format `pg_dump`
+inside the encrypted staging mount with mode `0600`, record its SHA-256, and
+copy a second encrypted copy off-host. Rehearse that backup with the immutable
+candidate backend:
+
+```sh
+AARAST_VERIFY_BACKEND_IMAGE=sha256:<candidate-image-id> \
+  AARAST_VERIFY_GIT_REVISION=<full-git-sha> \
+  AARAST_VERIFY_BACKUP_SHA256=<backup-sha256> \
+  deploy/dokploy/scripts/verify-backup-restore.sh <backup-file>
+```
+
+The verifier must pass the restore, migration, second migration pass, and
+canonical schema checks before the live database is touched. Record all
+container IDs and restart counts, then
+recreate only `backend` with `--no-deps`. Do not restart `db`, `redis`,
+`openwa`, or `openwa-bootstrap` during a backend-only release.
+
 ## Acceptance and rollback
 
 Run every live gate in `docs/deployment/OPENWA_OTP_MVP.md`. Begin with
 `OTP_GLOBAL_DAILY_LIMIT=50`. The immediate kill switch is removing the public
 proxy host. To preserve data while stopping delivery, set
 `AUTH_OTP_MODE=disabled` and recreate only the backend.
+
+For a backend rollback without an incompatible database migration, pin the
+previous immutable image and recreate only `backend`. If an incompatible
+migration reached the staging database, first remove public traffic and stop
+`backend`; restore the verified pre-deploy database backup while it is stopped;
+then pin the previous immutable image and recreate only `backend`. Require
+`/health`, `/ready`, the migration ledger, and the route-contract smoke to pass
+before restoring traffic. Never roll back or recreate `openwa`, `db`, or `redis`
+as part of a backend-only rollback.
 
 If the session is irrecoverable, remove the staging OpenWA data, backend-secret,
 and operator-secret volumes together and pair again. Never delete staging

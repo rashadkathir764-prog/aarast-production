@@ -67,10 +67,20 @@ environment instead of trusting this table.
 
 - Nightly `pg_dump` sidecar writes to the `aarast_postgres_backups`
   volume (retention: 7 daily / 4 weekly / 6 monthly).
-- **A backup is only real once restored**: run
-  `deploy/dokploy/scripts/verify-backup-restore.sh <file>` monthly and
-  after schema migrations. It restores into a scratch container and
-  fails on any restore error or missing core table.
+- **A backup is only real once restored**: run the verifier monthly and before
+  every non-backward-compatible migration, with the exact immutable backend
+  candidate that would be deployed:
+
+  ```sh
+  AARAST_VERIFY_BACKEND_IMAGE=sha256:<candidate-image-id> \
+    AARAST_VERIFY_GIT_REVISION=<full-git-sha> \
+    AARAST_VERIFY_BACKUP_SHA256=<backup-sha256> \
+    deploy/dokploy/scripts/verify-backup-restore.sh <backup-file>
+  ```
+
+  It accepts custom `pg_dump`, plain SQL, and gzip SQL backups; restores into a
+  pinned, isolated PostgreSQL container; applies the candidate migrations
+  twice; and fails unless the canonical schema and migration ledger are clean.
 
 ## Honest limits (require real infrastructure, not code)
 

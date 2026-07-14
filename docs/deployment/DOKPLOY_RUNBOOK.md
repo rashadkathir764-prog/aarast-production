@@ -180,16 +180,39 @@ Expected result: admin dashboard loads and sends API requests to `https://aarast
 
 ## Backups
 
-Enable backups for the PostgreSQL volume `aarast_postgres_data` in Dokploy or the VPS backup layer. Test restore before real user data is stored.
+Enable backups for the PostgreSQL volume `aarast_postgres_data` in Dokploy or
+the VPS backup layer. Before a schema-changing release, take a fresh backup,
+store its SHA-256 beside a second off-host encrypted copy, and rehearse the
+restore with the exact immutable candidate image:
+
+```sh
+AARAST_VERIFY_BACKEND_IMAGE=sha256:<candidate-image-id> \
+  AARAST_VERIFY_GIT_REVISION=<full-git-sha> \
+  AARAST_VERIFY_BACKUP_SHA256=<backup-sha256> \
+  deploy/dokploy/scripts/verify-backup-restore.sh <backup-file>
+```
+
+The release is blocked unless restore, candidate migrations, a clean second
+migration pass, and canonical schema checks all succeed. If an incompatible
+migration has committed, rolling back the backend image alone is invalid: stop
+the backend, restore the verified pre-deploy backup, and then restore the old
+image.
 
 ## Rollback
 
-1. In Dokploy, open the Aarast application deployment history.
-2. Select the previous known-good deployment.
-3. Redeploy the previous version.
-4. Check `backend` logs and `https://aarast-api.shadowgardn.com/health`.
-5. Check `admin-web` loads.
-6. If a database migration was applied, use the pre-deploy backup and a documented restore plan. Do not manually edit production data as a rollback shortcut.
+1. Remove public backend traffic and stop `backend` before changing database
+   state. Leave PostgreSQL, Redis, media, and OpenWA running.
+2. Determine whether the release applied a database migration that is
+   incompatible with the previous backend image.
+3. If it did, restore the verified pre-deploy backup while `backend` remains
+   stopped. Do not manually edit production data as a rollback shortcut.
+4. Pin the previous known-good immutable backend image and recreate only
+   `backend`. If no incompatible migration was applied, skip the database
+   restore and perform only this image rollback.
+5. Require the migration ledger, backend logs, `/health`, `/ready`, and the
+   post-deploy route smokes to pass before restoring public traffic.
+6. Roll back `admin-web` independently only when its artifact changed, then
+   verify it loads and calls the intended public API origin.
 
 ## Local Review Commands
 

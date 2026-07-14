@@ -1,6 +1,8 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
@@ -20,6 +22,35 @@ import {
   normalizeWeddingLocationInput,
   weddingLocationResponse,
 } from "../src/wedding-plans/wedding-location";
+
+test("backend image records the supplied Git revision in its OCI metadata", () => {
+  const dockerfile = readFileSync(join(__dirname, "..", "Dockerfile"), "utf8");
+  const pinnedNodeImage =
+    "node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2";
+  assert.equal(
+    dockerfile.match(new RegExp(`^FROM ${pinnedNodeImage}`, "gm"))?.length,
+    2,
+  );
+  assert.doesNotMatch(dockerfile, /^FROM node:22-alpine/m);
+  const runtimeStage = dockerfile.slice(
+    dockerfile.lastIndexOf(`${pinnedNodeImage} AS runtime`),
+  );
+
+  assert.match(
+    runtimeStage,
+    /^ARG AARAST_GIT_REVISION=development-unversioned$/m,
+  );
+  assert.match(
+    runtimeStage,
+    /AARAST_GIT_REVISION" != "development-unversioned"/,
+  );
+  assert.match(runtimeStage, /\$\{#AARAST_GIT_REVISION\}.*-ne 40/);
+  assert.match(runtimeStage, /\*\[!0-9a-f\]\*/);
+  assert.match(
+    runtimeStage,
+    /^LABEL org\.opencontainers\.image\.revision="\$\{AARAST_GIT_REVISION\}"$/m,
+  );
+});
 
 test("normalizes supported Yemeni phone formats", () => {
   const expected = "+967777758200";

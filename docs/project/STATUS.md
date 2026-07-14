@@ -183,7 +183,7 @@ mandatory before wider use.
 
 ## Verification Status
 
-For the current working tree on 2026-07-14, Flutter Analyze passes with no
+For the current working tree on 2026-07-15, Flutter Analyze passes with no
 issues and all 572 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
 included. A QA-signed Android Release APK (`versionCode=2`) was built against
 the staging HTTPS origin and accepted a physical-device OTP flow. These results
@@ -192,15 +192,16 @@ object-storage environment. Final AAB/store-certificate verification is
 intentionally deferred at the product owner's request.
 
 Backend TypeScript check, all 6 canonical/legacy pretests, and all 237 source
-tests pass for the OpenWA integration branch. The previously rebuilt local
-Docker backend, PostgreSQL, Redis, and
-MinIO-compatible media service are healthy, but that long-lived database is not
-used as proof for this money reset because it predates three pending migrations.
-A disposable database applied all 54 migrations and passed the direct SQL money
-integrity checks. Dependency audit previously reported zero known
-vulnerabilities. The candidate runtime and Docker-backed smoke gate must be
-rebuilt from the final commit before deployment; earlier smoke results do not
-substitute for that gate.
+tests pass for the OpenWA integration branch. The local Docker backend,
+PostgreSQL, Redis, and MinIO-compatible media service are healthy, and the
+long-lived local database now has all 54 migrations applied. A disposable
+database independently applied all 54 migrations and passed the direct SQL
+money integrity checks. All 28 Docker-backed smoke groups pass together against
+the migrated local runtime, including money concurrency, account deletion,
+media, sharing, provider, and OTP contracts. Dependency audit previously
+reported zero known vulnerabilities. Any Staging rollout must still use an
+immutable image built from the exact final commit and pass backup/restore and
+post-deploy health verification; older images do not satisfy that gate.
 
 The hardened OpenWA fork has 2,296 passing tests (5 intentionally skipped), a
 passing production build, zero lint errors, and zero production dependency

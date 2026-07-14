@@ -243,7 +243,10 @@ async function run() {
       request('PATCH', `/api/v1/costs/${raceCostId}`, { totalAmount: '100' }, token, `balance-total-${suffix}`),
     ]);
     const balanceStatuses = balanceRace.map((item) => item.status).sort((a, b) => a - b);
-    check('pay versus invalid total update serializes to one success and one rejection', balanceStatuses[0] === 201 && balanceStatuses[1] === 400);
+    const paymentWon = balanceRace[0].status === 201 && balanceRace[1].status === 400;
+    const totalUpdateWon = balanceRace[0].status === 400 && balanceRace[1].status === 200;
+    const balanceStatusIsValid = paymentWon || totalUpdateWon;
+    check('pay versus total update serializes to one committed action and one rejection', balanceStatusIsValid);
     check('balance-update race never returns HTTP 500', balanceRace.every((item) => item.status < 500));
 
     const raceCostState = await request('GET', `/api/v1/costs/${raceCostId}`, null, token);
@@ -255,7 +258,23 @@ async function run() {
     );
     const raceScheduleState = raceSchedules.body?.find((item) => item.id === raceScheduleId);
     check('balance race preserves paid <= total', Number(raceCostState.body?.paidAmount) <= Number(raceCostState.body?.totalAmount));
-    check('balance race commits only the valid paid state', raceCostState.body?.paidAmount === '200' && raceCostState.body?.totalAmount === '500' && raceScheduleState?.status === 'PAID');
+    const paidStateIsValid =
+      paymentWon &&
+      raceCostState.body?.paidAmount === '200' &&
+      raceCostState.body?.totalAmount === '500' &&
+      raceScheduleState?.status === 'PAID';
+    const updatedStateIsValid =
+      totalUpdateWon &&
+      raceCostState.body?.paidAmount === '0' &&
+      raceCostState.body?.totalAmount === '100' &&
+      raceScheduleState?.status === 'PENDING';
+    const balanceStateIsValid = paidStateIsValid || updatedStateIsValid;
+    check('balance race state matches the action that committed first', balanceStateIsValid);
+    if (!balanceStatusIsValid || !balanceStateIsValid) {
+      console.error(
+        `Balance race diagnostics: statuses=${balanceStatuses.join(',')} total=${raceCostState.body?.totalAmount ?? 'missing'} paid=${raceCostState.body?.paidAmount ?? 'missing'} schedule=${raceScheduleState?.status ?? 'missing'}`,
+      );
+    }
 
     const cancelRaceCost = await request(
       'POST',

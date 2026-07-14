@@ -1,15 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 import {
-  FinancialCommitment,
-  FinancialCommitmentStatus,
-  FinancialInstallment,
-  InstallmentStatus,
+  PaymentSchedule,
+  PaymentScheduleStatus,
   WeddingTask,
   WeddingTaskStatus,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionService } from '../sharing/permission.service';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
 
 export interface TimelineTaskResponse {
   id: string;
@@ -23,31 +21,22 @@ export interface TimelineTaskResponse {
   priority: string;
 }
 
-export interface TimelineCommitmentResponse {
+export interface TimelinePaymentScheduleResponse {
   id: string;
-  weddingPlanId: string;
-  partyName: string | null;
-  title: string;
-  totalAmount: string;
-  paidAmount: string;
-  dueDate: Date | null;
-  status: string;
-}
-
-export interface TimelineFinancialInstallmentResponse {
-  id: string;
-  financialCommitmentId: string;
+  weddingCostId: string;
+  costTitle: string;
   amount: string;
-  dueDate: Date | null;
-  status: string;
+  dueDate: Date;
+  status: PaymentScheduleStatus;
 }
 
 export interface TimelineResponse {
   weddingDate: Date | null;
   upcomingTasks: TimelineTaskResponse[];
-  dueCommitments: TimelineCommitmentResponse[];
-  dueInstallments: TimelineFinancialInstallmentResponse[];
+  paymentSchedules: TimelinePaymentScheduleResponse[];
 }
+
+type ScheduleWithCost = PaymentSchedule & { weddingCost: { title: string } };
 
 @Injectable()
 export class TimelineService {
@@ -64,12 +53,9 @@ export class TimelineService {
       weddingPlanId,
       currentUser,
     );
-    const canViewFinancialRecords = this.permissions.canReadFinancial(
-      context,
-      'financialRecords',
-    );
+    const canViewMoney = this.permissions.canViewMoney(context);
 
-    const [tasks, commitments, installments] = await Promise.all([
+    const [tasks, paymentSchedules] = await Promise.all([
       this.prisma.weddingTask.findMany({
         where: {
           weddingPlanId,
@@ -78,33 +64,16 @@ export class TimelineService {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       }),
-      canViewFinancialRecords
-        ? this.prisma.financialCommitment.findMany({
+      canViewMoney
+        ? this.prisma.paymentSchedule.findMany({
             where: {
-              weddingPlanId,
-              dueDate: { not: null },
-              status: {
-                in: [
-                  FinancialCommitmentStatus.OPEN,
-                  FinancialCommitmentStatus.PARTIALLY_PAID,
-                ],
-              },
+              status: PaymentScheduleStatus.PENDING,
+              weddingCost: { weddingPlanId, status: { not: "CANCELLED" } },
             },
-            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
-          })
-        : Promise.resolve([]),
-      canViewFinancialRecords
-        ? this.prisma.financialInstallment.findMany({
-            where: {
-              weddingPlanId,
-              dueDate: { not: null },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
-              },
-            },
-            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+            include: { weddingCost: { select: { title: true } } },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
         : Promise.resolve([]),
     ]);
@@ -112,11 +81,8 @@ export class TimelineService {
     return {
       weddingDate: context.plan.weddingDate,
       upcomingTasks: tasks.map((task) => this.toTaskResponse(task)),
-      dueCommitments: commitments.map((commitment) =>
-        this.toCommitmentResponse(commitment),
-      ),
-      dueInstallments: installments.map((installment) =>
-        this.toInstallmentResponse(installment),
+      paymentSchedules: paymentSchedules.map((schedule) =>
+        this.toPaymentScheduleResponse(schedule),
       ),
     };
   }
@@ -135,30 +101,16 @@ export class TimelineService {
     };
   }
 
-  private toCommitmentResponse(
-    commitment: FinancialCommitment,
-  ): TimelineCommitmentResponse {
+  private toPaymentScheduleResponse(
+    schedule: ScheduleWithCost,
+  ): TimelinePaymentScheduleResponse {
     return {
-      id: commitment.id,
-      weddingPlanId: commitment.weddingPlanId,
-      partyName: commitment.partyName,
-      title: commitment.title,
-      totalAmount: commitment.totalAmount.toString(),
-      paidAmount: commitment.paidAmount.toString(),
-      dueDate: commitment.dueDate,
-      status: commitment.status,
-    };
-  }
-
-  private toInstallmentResponse(
-    installment: FinancialInstallment,
-  ): TimelineFinancialInstallmentResponse {
-    return {
-      id: installment.id,
-      financialCommitmentId: installment.financialCommitmentId,
-      amount: installment.amount.toString(),
-      dueDate: installment.dueDate,
-      status: installment.status,
+      id: schedule.id,
+      weddingCostId: schedule.weddingCostId,
+      costTitle: schedule.weddingCost.title,
+      amount: schedule.amount.toString(),
+      dueDate: schedule.dueDate,
+      status: schedule.status,
     };
   }
 }

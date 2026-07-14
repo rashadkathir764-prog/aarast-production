@@ -120,7 +120,7 @@ async function setup() {
     const created = await request(
       'POST',
       `/api/v1/wedding-plans/${planId}/budget-categories`,
-      { name: 'قاعة الأفراح', targetAmount: '500000' },
+      { name: 'قاعة الأفراح', allocatedAmount: '500000' },
       token,
     );
     categoryId = created.body?.id;
@@ -128,18 +128,18 @@ async function setup() {
   if (!categoryId) throw new Error('no budget category available');
 
   for (let i = 0; i < 25; i++) {
-    const expense = await request(
+    const cost = await request(
       'POST',
-      `/api/v1/wedding-plans/${planId}/expenses`,
+      `/api/v1/wedding-plans/${planId}/costs`,
       {
-        title: `مصروف ${i}`,
-        amount: '1500.50',
+        title: `تكلفة اختبار الحمل ${i}`,
+        totalAmount: '1500.50',
         budgetCategoryId: categoryId,
       },
       token,
     );
-    if (expense.status !== 201) {
-      throw new Error(`expense seed failed: HTTP ${expense.status}`);
+    if (cost.status !== 201) {
+      throw new Error(`cost seed failed: HTTP ${cost.status}`);
     }
   }
 
@@ -159,7 +159,7 @@ async function main() {
 
   // Read-heavy mix mirroring real app traffic.
   const paths = [
-    `/api/v1/wedding-plans/${planId}/expenses`,
+    `/api/v1/wedding-plans/${planId}/costs`,
     `/api/v1/wedding-plans/${planId}/money-summary`,
     `/api/v1/wedding-plans/${planId}/budget-categories`,
     `/api/v1/wedding-plans/${planId}`,

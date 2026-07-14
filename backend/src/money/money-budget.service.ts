@@ -1,0 +1,269 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { Prisma } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { requiredMoneyAmount } from "../common/validation/money";
+import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
+import { PrismaService } from "../prisma/prisma.service";
+import { PermissionService } from "../sharing/permission.service";
+import {
+  MoneyBudgetCategoryDto,
+  ReplaceMoneyBudgetDto,
+} from "./dto/replace-money-budget.dto";
+
+export interface MoneyBudgetCategoryResult {
+  id: string;
+  weddingPlanId: string;
+  name: string;
+  allocatedAmount: string | null;
+  costsCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MoneyBudgetReplaceResult {
+  categories: MoneyBudgetCategoryResult[];
+  idMap: Record<string, string>;
+}
+
+@Injectable()
+export class MoneyBudgetService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly permissions: PermissionService,
+  ) {}
+
+  async replace(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    dto: ReplaceMoneyBudgetDto,
+  ): Promise<MoneyBudgetReplaceResult> {
+    await this.permissions.assertMoneyManageable(weddingPlanId, currentUser);
+    const totalBudget = this.totalBudget(dto.totalBudget);
+    const currency = this.currency(dto.currency);
+    const categories = dto.categories.map((item) => this.category(item));
+    this.assertUniqueCategories(categories);
+    const allocated = categories.reduce(
+      (sum, item) => sum.plus(item.allocatedAmount ?? 0),
+      new Prisma.Decimal(0),
+    );
+    if (totalBudget === null && allocated.gt(0)) {
+      throw new BadRequestException(
+        "Set the general budget before allocating money to categories",
+      );
+    }
+    if (totalBudget !== null && allocated.gt(totalBudget)) {
+      throw new BadRequestException(
+        "Category allocations cannot exceed the general budget",
+      );
+    }
+
+    try {
+      return await runSerializableTransaction(
+        this.prisma,
+        async (tx) => {
+          const plan = await this.lockPlan(tx, weddingPlanId);
+          const costsCount = await tx.weddingCost.count({
+            where: { weddingPlanId },
+          });
+          if (costsCount > 0 && currency !== plan.currency.toUpperCase()) {
+            throw new ConflictException(
+              "Currency cannot be changed after the first cost is created",
+            );
+          }
+
+          const existing = await tx.budgetCategory.findMany({
+            where: { weddingPlanId },
+            include: { _count: { select: { weddingCosts: true } } },
+          });
+          const existingById = new Map(existing.map((item) => [item.id, item]));
+          const submittedIds = new Set(
+            categories.flatMap((item) => (item.id ? [item.id] : [])),
+          );
+          for (const item of categories) {
+            if (item.id && !existingById.has(item.id)) {
+              throw new BadRequestException(
+                "Every category id must belong to this wedding plan",
+              );
+            }
+          }
+          const idMap: Record<string, string> = {};
+          const omitted = existing.filter((item) => !submittedIds.has(item.id));
+          const usedOmitted = omitted.find(
+            (item) => item._count.weddingCosts > 0,
+          );
+          if (usedOmitted) {
+            throw new ConflictException(
+              `Category "${usedOmitted.name}" has costs and cannot be omitted`,
+            );
+          }
+          if (omitted.length > 0) {
+            await tx.budgetCategory.deleteMany({
+              where: { id: { in: omitted.map((item) => item.id) } },
+            });
+          }
+
+          // Temporary unique keys allow atomic name swaps such as Hall <-> Dress.
+          const existingSubmitted = categories.filter(
+            (item): item is typeof item & { id: string } => Boolean(item.id),
+          );
+          for (const item of existingSubmitted) {
+            await tx.budgetCategory.update({
+              where: { id: item.id },
+              data: { normalizedName: `__money_budget_rekey__${item.id}` },
+            });
+          }
+          for (const item of existingSubmitted) {
+            await tx.budgetCategory.update({
+              where: { id: item.id },
+              data: {
+                name: item.name,
+                normalizedName: item.normalizedName,
+                allocatedAmount: item.allocatedAmount,
+              },
+            });
+          }
+          for (const item of categories.filter((category) => !category.id)) {
+            const created = await tx.budgetCategory.create({
+              data: {
+                weddingPlanId,
+                name: item.name,
+                normalizedName: item.normalizedName,
+                allocatedAmount: item.allocatedAmount,
+              },
+            });
+            idMap[item.clientId!] = created.id;
+          }
+          await tx.weddingPlan.update({
+            where: { id: weddingPlanId },
+            data: { estimatedBudget: totalBudget, currency },
+          });
+          const savedCategories = await tx.budgetCategory.findMany({
+            where: { weddingPlanId },
+            include: { _count: { select: { weddingCosts: true } } },
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return {
+            categories: savedCategories.map((category) => ({
+              id: category.id,
+              weddingPlanId: category.weddingPlanId,
+              name: category.name,
+              allocatedAmount: category.allocatedAmount?.toString() ?? null,
+              costsCount: category._count.weddingCosts,
+              createdAt: category.createdAt,
+              updatedAt: category.updatedAt,
+            })),
+            idMap,
+          };
+        },
+      );
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof ConflictException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2002") {
+          throw new ConflictException(
+            "Category names must be unique in the plan",
+          );
+        }
+        if (error.code === "P2003") {
+          throw new ConflictException("A category still has dependent records");
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async lockPlan(tx: Prisma.TransactionClient, id: string) {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT "id" FROM "WeddingPlan" WHERE "id" = ${id} FOR UPDATE`,
+    );
+    if (rows.length === 0)
+      throw new NotFoundException("Wedding plan not found");
+    return tx.weddingPlan.findUniqueOrThrow({ where: { id } });
+  }
+
+  private totalBudget(value: string | number | null | undefined) {
+    if (value === null || value === undefined || String(value).trim() === "")
+      return null;
+    const amount = new Prisma.Decimal(
+      requiredMoneyAmount(value, "totalBudget"),
+    );
+    if (!amount.gt(0)) {
+      throw new BadRequestException(
+        "totalBudget must be greater than zero when set",
+      );
+    }
+    return amount;
+  }
+
+  private currency(value: string) {
+    const currency = value.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new BadRequestException("currency must be a three-letter ISO code");
+    }
+    return currency;
+  }
+
+  private category(item: MoneyBudgetCategoryDto) {
+    const name = item.name.trim().replace(/\s+/gu, " ");
+    if (!name) throw new BadRequestException("Category name must not be empty");
+    const rawAllocation = item.allocatedAmount;
+    const parsed =
+      rawAllocation === null ||
+      rawAllocation === undefined ||
+      String(rawAllocation).trim() === ""
+        ? null
+        : new Prisma.Decimal(
+            requiredMoneyAmount(rawAllocation, "allocatedAmount"),
+          );
+    return {
+      id: item.id?.trim() || null,
+      clientId: item.clientId?.trim() || null,
+      name,
+      normalizedName: name.toLocaleLowerCase("ar"),
+      allocatedAmount: parsed?.isZero() ? null : parsed,
+    };
+  }
+
+  private assertUniqueCategories(
+    categories: Array<{
+      id: string | null;
+      clientId: string | null;
+      normalizedName: string;
+    }>,
+  ) {
+    for (const item of categories) {
+      if (Boolean(item.id) === Boolean(item.clientId)) {
+        throw new BadRequestException(
+          "Every category must have either id or clientId, but not both",
+        );
+      }
+    }
+    const ids = categories.flatMap((item) => (item.id ? [item.id] : []));
+    if (new Set(ids).size !== ids.length) {
+      throw new BadRequestException("Category ids must not be repeated");
+    }
+    const clientIds = categories.flatMap((item) =>
+      item.clientId ? [item.clientId] : [],
+    );
+    if (new Set(clientIds).size !== clientIds.length) {
+      throw new BadRequestException("Category clientIds must not be repeated");
+    }
+    const names = categories.map((item) => item.normalizedName);
+    if (new Set(names).size !== names.length) {
+      throw new BadRequestException(
+        "Category names must be unique in the plan",
+      );
+    }
+  }
+}

@@ -1,14 +1,12 @@
 import {
-  ExpenseStatus,
-  FinancialCommitmentSourceType,
-  FinancialCommitmentStatus,
+  CostPaymentType,
   GuestAttendanceStatus,
   GuestInvitationStatus,
   GuestSide,
   GuestStatus,
-  InstallmentStatus,
   NotificationType,
   OnboardingPath,
+  PaymentScheduleStatus,
   PlanProviderLinkStatus,
   PrismaClient,
   ProviderStatus,
@@ -16,6 +14,7 @@ import {
   QuoteRequestStatus,
   UserRole,
   UserStatus,
+  WeddingCostStatus,
   WeddingPersona,
   WeddingPlanStatus,
   WeddingTaskPriority,
@@ -446,21 +445,12 @@ async function seedBackendCompletionDemo(
     'Backend Completion Hall',
     '600000',
   );
-  await upsertExpense(
-    plan.id,
-    budgetCategory.id,
-    'Backend Completion Hall Deposit',
-    '120000',
-  );
-  const commitment = await upsertFinancialCommitment(
+  const cost = await upsertWeddingCost(
     plan.id,
     budgetCategory.id,
   );
-  await upsertFinancialInstallment(
-    plan.id,
-    budgetCategory.id,
-    commitment.id,
-  );
+  await upsertCostPayment(cost.id);
+  await upsertPaymentSchedule(cost.id);
   const task = await upsertTask(plan.id, user.id);
   await upsertTaskChecklistItem(task.id);
   const guestGroup = await upsertGuestGroup(plan.id);
@@ -499,108 +489,86 @@ async function seedBackendCompletionDemo(
 async function upsertBudgetCategory(
   weddingPlanId: string,
   name: string,
-  targetAmount: string,
+  allocatedAmount: string,
 ) {
+  const normalizedName = name.trim().replace(/\s+/g, ' ').toLowerCase();
   const existing = await prisma.budgetCategory.findFirst({
     where: { weddingPlanId, name },
   });
   if (existing) {
     return prisma.budgetCategory.update({
       where: { id: existing.id },
-      data: { targetAmount },
+      data: { name, normalizedName, allocatedAmount },
     });
   }
   return prisma.budgetCategory.create({
-    data: { weddingPlanId, name, targetAmount },
+    data: { weddingPlanId, name, normalizedName, allocatedAmount },
   });
 }
 
-async function upsertExpense(
+async function upsertWeddingCost(
   weddingPlanId: string,
   budgetCategoryId: string,
-  title: string,
-  amount: string,
 ) {
-  const existing = await prisma.expense.findFirst({
+  const title = 'Backend Completion Hall Cost';
+  const existing = await prisma.weddingCost.findFirst({
     where: { weddingPlanId, title },
   });
   const data = {
     budgetCategoryId,
-    amount,
-    status: ExpenseStatus.PAID,
-    expenseDate: new Date(),
-    note: 'Seeded by backend completion seed',
-  };
-  if (existing) {
-    return prisma.expense.update({ where: { id: existing.id }, data });
-  }
-  return prisma.expense.create({
-    data: { weddingPlanId, title, ...data },
-  });
-}
-
-async function upsertFinancialCommitment(
-  weddingPlanId: string,
-  budgetCategoryId: string,
-) {
-  const existing = await prisma.financialCommitment.findFirst({
-    where: { weddingPlanId, title: 'Backend Completion Commitment' },
-  });
-  const data = {
-    budgetCategoryId,
-    sourceType: FinancialCommitmentSourceType.MANUAL_COMMITMENT,
     partyName: 'Backend Completion Party',
     partyPhone: '+967700999003',
     totalAmount: '120000',
     paidAmount: '40000',
     dueDate: new Date('2026-11-30T00:00:00.000Z'),
     agreementDate: new Date(),
-    status: FinancialCommitmentStatus.PARTIALLY_PAID,
+    status: WeddingCostStatus.PARTIALLY_PAID,
     note: 'Seeded by backend completion seed',
   };
   if (existing) {
-    return prisma.financialCommitment.update({
-      where: { id: existing.id },
-      data,
-    });
+    return prisma.weddingCost.update({ where: { id: existing.id }, data });
   }
-  return prisma.financialCommitment.create({
-    data: {
-      weddingPlanId,
-      title: 'Backend Completion Commitment',
-      ...data,
-    },
+  return prisma.weddingCost.create({
+    data: { weddingPlanId, title, ...data },
   });
 }
 
-async function upsertFinancialInstallment(
-  weddingPlanId: string,
-  budgetCategoryId: string,
-  financialCommitmentId: string,
-) {
-  const existing = await prisma.financialInstallment.findFirst({
-    where: {
-      financialCommitmentId,
-      note: 'Backend Completion Financial Installment',
-    },
+async function upsertCostPayment(weddingCostId: string) {
+  const note = 'Backend Completion Initial Payment';
+  const existing = await prisma.costPayment.findFirst({
+    where: { weddingCostId, note, entryType: CostPaymentType.PAYMENT },
   });
   const data = {
-    weddingPlanId,
-    budgetCategoryId,
-    financialCommitmentId,
     amount: '40000',
-    dueDate: new Date('2026-10-31T00:00:00.000Z'),
+    entryType: CostPaymentType.PAYMENT,
     paidAt: new Date(),
-    status: InstallmentStatus.PAID,
-    note: 'Backend Completion Financial Installment',
+    note,
   };
   if (existing) {
-    return prisma.financialInstallment.update({
+    return prisma.costPayment.update({ where: { id: existing.id }, data });
+  }
+  return prisma.costPayment.create({ data: { weddingCostId, ...data } });
+}
+
+async function upsertPaymentSchedule(weddingCostId: string) {
+  const note = 'Backend Completion Payment Schedule';
+  const existing = await prisma.paymentSchedule.findFirst({
+    where: { weddingCostId, note },
+  });
+  const data = {
+    amount: '80000',
+    dueDate: new Date('2026-11-30T00:00:00.000Z'),
+    paidAt: null,
+    status: PaymentScheduleStatus.PENDING,
+    note,
+  };
+  if (existing) {
+    return prisma.paymentSchedule.update({
       where: { id: existing.id },
       data,
     });
   }
-  return prisma.financialInstallment.create({ data });
+  return prisma.paymentSchedule.create({ data: { weddingCostId, ...data } });
 }
 
 async function upsertTask(weddingPlanId: string, assigneeUserId: string) {

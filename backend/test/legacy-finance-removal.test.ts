@@ -1,106 +1,113 @@
-import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { test } from 'node:test';
+import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
 
-const backendRoot = join(__dirname, '..');
+const backendRoot = join(__dirname, "..");
+const read = (path: string) =>
+  readFileSync(join(backendRoot, path), "utf8");
 
-test('legacy debt and installment modules cannot return to the live backend', () => {
-  const schema = readFileSync(join(backendRoot, 'prisma', 'schema.prisma'), 'utf8');
-  const appModule = readFileSync(join(backendRoot, 'src', 'app.module.ts'), 'utf8');
+test("only the unified money domain remains in the live schema and modules", () => {
+  const schema = read("prisma/schema.prisma");
+  const appModule = read("src/app.module.ts");
 
-  for (const forbiddenSchemaToken of [
-    'model Debt ',
-    'model Installment ',
-    'legacyDebtId',
-    'legacyInstallmentId',
-    'legacyExpenseId',
-    'canViewDebts',
-    'MANUAL_DEBT',
+  for (const required of [
+    "model BudgetCategory {",
+    "model WeddingCost {",
+    "model CostPayment {",
+    "model PaymentSchedule {",
+    "canViewMoney",
+    "canManageMoney",
   ]) {
-    assert.equal(
-      schema.includes(forbiddenSchemaToken),
-      false,
-      `Prisma schema must not contain ${forbiddenSchemaToken}`,
+    assert.equal(schema.includes(required), true, required);
+  }
+
+  for (const forbidden of [
+    "model Debt ",
+    "model Installment ",
+    "model Expense ",
+    "model FinancialCommitment ",
+    "model FinancialPaymentRecord ",
+    "model FinancialInstallment ",
+    "legacyDebtId",
+    "legacyInstallmentId",
+    "legacyExpenseId",
+    "canViewBudget",
+    "canViewExpenses",
+    "canViewFinancialRecords",
+    "canManageFinancialRecords",
+  ]) {
+    assert.equal(schema.includes(forbidden), false, forbidden);
+  }
+
+  for (const removed of [
+    "src/expenses/expenses.controller.ts",
+    "src/expenses/expenses.service.ts",
+    "src/financial-commitments/financial-commitments.controller.ts",
+    "src/financial-commitments/financial-commitments.service.ts",
+    "src/common/finance/legacy-finance-bridge.ts",
+    "src/common/money/debt-balance.ts",
+  ]) {
+    assert.equal(existsSync(join(backendRoot, removed)), false, removed);
+  }
+
+  assert.doesNotMatch(appModule, /ExpensesModule|FinancialCommitmentsModule|DebtsModule|InstallmentsModule/);
+  assert.match(appModule, /WeddingCostsModule/);
+  assert.match(appModule, /MoneyModule/);
+});
+
+test("operational seed, load, and smoke tools cannot restore old money paths", () => {
+  const seed = read("prisma/seed.ts");
+  const load = read("scripts/load/load-test.js");
+  const packageJson = read("package.json");
+  const allSmoke = read("scripts/smoke/all-smoke.js");
+
+  for (const [name, source] of [
+    ["seed", seed],
+    ["load", load],
+    ["package", packageJson],
+    ["all-smoke", allSmoke],
+  ] as const) {
+    assert.doesNotMatch(
+      source,
+      /targetAmount|\/expenses|FinancialCommitment|FinancialInstallment|ExpenseStatus|InstallmentStatus|budget-expense/,
+      name,
     );
   }
 
-  for (const removedPath of [
-    join(backendRoot, 'src', 'common', 'finance', 'legacy-finance-bridge.ts'),
-    join(backendRoot, 'src', 'common', 'money', 'debt-balance.ts'),
-  ]) {
-    assert.equal(existsSync(removedPath), false, `${removedPath} must stay deleted`);
-  }
-
-  assert.equal(appModule.includes('DebtsModule'), false);
-  assert.equal(appModule.includes('InstallmentsModule'), false);
-
-  const packageJson = JSON.parse(
-    readFileSync(join(backendRoot, 'package.json'), 'utf8'),
-  ) as { scripts?: { build?: string } };
-  assert.match(
-    packageJson.scripts?.build ?? '',
-    /^node scripts\/clean-dist\.cjs && tsc /,
-    'backend build must clean dist before TypeScript emits new runtime files',
+  assert.equal(
+    existsSync(join(backendRoot, "scripts/smoke/money-budget-smoke.js")),
+    true,
   );
   assert.equal(
-    existsSync(join(backendRoot, 'scripts', 'clean-dist.cjs')),
-    true,
-    'safe dist cleaner must remain in the repository',
+    existsSync(join(backendRoot, "scripts/smoke/budget-expense-smoke.js")),
+    false,
   );
 });
 
-test('terminal cleanup migration removes the last legacy payment bridge', () => {
-  const migration = readFileSync(
-    join(
-      backendRoot,
-      'prisma',
-      'migrations',
-      '20260711163000_remove_financial_payment_legacy_expense',
-      'migration.sql',
-    ),
-    'utf8',
+test("the terminal prelaunch migration deletes old finance and fails closed", () => {
+  const migration = read(
+    "prisma/migrations/20260714190000_unify_money_domain/migration.sql",
   );
 
-  for (const requiredStatement of [
-    'DROP INDEX IF EXISTS "FinancialPaymentRecord_legacyExpenseId_key"',
-    'DROP COLUMN IF EXISTS "legacyExpenseId"',
+  for (const required of [
+    'DROP TABLE "Expense"',
+    'DROP TABLE "FinancialCommitment"',
+    'DROP TABLE "FinancialPaymentRecord"',
+    'DROP TABLE "FinancialInstallment"',
+    'DROP TYPE "ExpenseStatus"',
+    'DROP TYPE "FinancialCommitmentStatus"',
+    'DROP TYPE "FinancialPaymentRecordType"',
+    "prelaunch finance reset must create empty money tables",
+    "old finance tables or enum types remain after reset",
+    "old finance notifications remain after reset",
+    `SET "name" = 'غير مصنف'`,
+    `WHERE trim("name") = ''`,
   ]) {
-    assert.equal(
-      migration.includes(requiredStatement),
-      true,
-      `Terminal cleanup migration must contain ${requiredStatement}`,
-    );
+    assert.equal(migration.includes(required), true, required);
   }
-});
 
-test('destructive migration removes every live legacy finance artifact', () => {
-  const migration = readFileSync(
-    join(
-      backendRoot,
-      'prisma',
-      'migrations',
-      '20260711150000_remove_legacy_debt_system',
-      'migration.sql',
-    ),
-    'utf8',
-  );
-
-  for (const requiredStatement of [
-    'RAISE EXCEPTION \'Legacy Debt rows are not fully migrated\'',
-    'RAISE EXCEPTION \'Legacy Installment rows are not fully migrated\'',
-    'commitment."legacyDebtId" = debt."id"',
-    'financial_installment."legacyInstallmentId" = installment."id"',
-    'DROP TABLE IF EXISTS "Installment"',
-    'DROP TABLE IF EXISTS "Debt"',
-    'DROP TYPE IF EXISTS "DebtStatus"',
-    'DROP COLUMN "legacyDebtId"',
-    'DROP COLUMN "legacyInstallmentId"',
-  ]) {
-    assert.equal(
-      migration.includes(requiredStatement),
-      true,
-      `Removal migration must contain ${requiredStatement}`,
-    );
-  }
+  assert.match(migration, /^-- PRELAUNCH DESTRUCTIVE RESET/);
+  assert.match(migration, /BEGIN;[\s\S]*COMMIT;\s*$/);
+  assert.doesNotMatch(migration, /(?:Ø|Ù)[^\s']*/);
 });

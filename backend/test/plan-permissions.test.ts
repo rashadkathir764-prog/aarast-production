@@ -12,17 +12,16 @@ test('groom and bride roles can operate the plan while retaining explicit money 
     assert.equal(permissions.canManageTasks, true);
     assert.equal(permissions.canManageGuests, true);
     assert.equal(permissions.canManageProviders, true);
-    assert.equal(permissions.canManageFinancialRecords, true);
+    assert.equal(permissions.canViewMoney, true);
+    assert.equal(permissions.canManageMoney, true);
   }
 });
 
 test('family and helper roles keep financial data private by default', () => {
   for (const role of [SharedMemberRole.FAMILY, SharedMemberRole.HELPER]) {
     const permissions = rolePermissionDefaults(role);
-    assert.equal(permissions.canViewBudget, false);
-    assert.equal(permissions.canViewExpenses, false);
-    assert.equal(permissions.canViewFinancialRecords, false);
-    assert.equal(permissions.canManageFinancialRecords, false);
+    assert.equal(permissions.canViewMoney, false);
+    assert.equal(permissions.canManageMoney, false);
     assert.equal(permissions.canManageTasks, true);
     assert.equal(permissions.canManageGuests, true);
   }

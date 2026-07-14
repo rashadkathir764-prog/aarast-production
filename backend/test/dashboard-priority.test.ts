@@ -14,7 +14,7 @@ test('dashboard next actions are capped at three and ordered by priority', () =>
       dueDate: new Date('2026-06-20T00:00:00.000Z'),
     },
     {
-      id: 'installment',
+      id: 'payment-schedule',
       priority: 'URGENT' as const,
       dueDate: new Date('2026-06-25T00:00:00.000Z'),
     },
@@ -22,7 +22,7 @@ test('dashboard next actions are capped at three and ordered by priority', () =>
 
   assert.deepEqual(
     actions.map((action) => action.id),
-    ['overdue-task', 'installment', 'quote'],
+    ['overdue-task', 'payment-schedule', 'quote'],
   );
 });
 

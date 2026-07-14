@@ -1,5 +1,5 @@
-import { SharedMemberRole } from '@prisma/client';
-import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
+import { SharedMemberRole } from "@prisma/client";
+import { IsBoolean, IsEnum, IsOptional } from "class-validator";
 
 export class UpdateSharedMemberDto {
   @IsEnum(SharedMemberRole)
@@ -8,15 +8,7 @@ export class UpdateSharedMemberDto {
 
   @IsBoolean()
   @IsOptional()
-  canViewBudget?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  canViewExpenses?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  canViewFinancialRecords?: boolean;
+  canViewMoney?: boolean;
 
   @IsBoolean()
   @IsOptional()
@@ -40,7 +32,7 @@ export class UpdateSharedMemberDto {
 
   @IsBoolean()
   @IsOptional()
-  canManageFinancialRecords?: boolean;
+  canManageMoney?: boolean;
 
   @IsBoolean()
   @IsOptional()

@@ -118,6 +118,7 @@ const quoteOffer = () => ({
   status: "ACCEPTED",
   createdAt: new Date(),
   updatedAt: new Date(),
+  weddingCosts: [],
 });
 
 const quoteRow = (
@@ -165,7 +166,7 @@ const marketplace = (
 
 test("quote budget and contact phone are hidden from a read-only member", async () => {
   const svc = marketplace(quoteRow("owner"), {
-    canReadFinancial: () => false,
+    canViewMoney: () => false,
     canManageProviders: () => false,
   });
   const [q] = await svc.findPlanQuoteRequests(user("viewer"), "p1");
@@ -180,7 +181,7 @@ test("quote offer amounts and financial suggestion are hidden from a read-only m
   const svc = marketplace(
     quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer()] }),
     {
-      canReadFinancial: () => false,
+      canViewMoney: () => false,
       canManageProviders: () => false,
     },
   );
@@ -188,15 +189,16 @@ test("quote offer amounts and financial suggestion are hidden from a read-only m
   assert.equal(q.offers.length, 1, "offer context can remain visible");
   assert.equal(q.offers[0].amount, null);
   assert.equal(q.offers[0].currency, null);
-  assert.equal(q.financialSuggestion.quotedAmount, null);
-  assert.equal(q.financialSuggestion.currency, null);
-  assert.equal(q.financialSuggestion.suggestedAction, "NONE");
-  assert.deepEqual(q.financialSuggestion.availableActions, []);
+  assert.equal(q.costSuggestion.quotedAmount, null);
+  assert.equal(q.costSuggestion.currency, null);
+  assert.equal(q.costSuggestion.suggestedAction, "NONE");
+  assert.deepEqual(q.costSuggestion.availableActions, []);
+  assert.equal(q.costSuggestion.automaticCostCreated, false);
 });
 
 test("quote budget and contact phone are visible to a provider+budget manager", async () => {
   const svc = marketplace(quoteRow("owner"), {
-    canReadFinancial: () => true,
+    canViewMoney: () => true,
     canManageProviders: () => true,
   });
   const [q] = await svc.findPlanQuoteRequests(user("mgr"), "p1");
@@ -209,21 +211,23 @@ test("quote offer amounts and financial suggestion are visible to a budget manag
   const svc = marketplace(
     quoteRow("owner", { status: "ACCEPTED", offers: [quoteOffer()] }),
     {
-      canReadFinancial: () => true,
+      canViewMoney: () => true,
       canManageProviders: () => true,
     },
   );
   const [q] = await svc.findPlanQuoteRequests(user("mgr"), "p1");
   assert.equal(q.offers[0].amount, "250000");
   assert.equal(q.offers[0].currency, "YER");
-  assert.equal(q.financialSuggestion.quotedAmount, "250000");
-  assert.equal(q.financialSuggestion.currency, "YER");
-  assert.equal(q.financialSuggestion.suggestedAction, "CREATE_FINANCIAL_COMMITMENT");
+  assert.equal(q.costSuggestion.quotedAmount, "250000");
+  assert.equal(q.costSuggestion.currency, "YER");
+  assert.equal(q.costSuggestion.suggestedAction, "CREATE_COST");
+  assert.deepEqual(q.costSuggestion.availableActions, ["CREATE_COST"]);
+  assert.equal(q.costSuggestion.automaticCostCreated, false);
 });
 
 test("the member who submitted the request always sees their own contact and budget", async () => {
   const svc = marketplace(quoteRow("self"), {
-    canReadFinancial: () => false,
+    canViewMoney: () => false,
     canManageProviders: () => false,
   });
   const [q] = await svc.findPlanQuoteRequests(user("self"), "p1");

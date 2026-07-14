@@ -148,17 +148,15 @@ async function run() {
     const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       userId: sharedUserId,
       role: 'VIEWER',
-      canViewBudget: false,
-      canViewExpenses: false,
-      canViewFinancialRecords: false,
+      canViewMoney: false,
       canManageTasks: false,
-      canManageFinancialRecords: false,
+      canManageMoney: false,
     }, ownerToken);
     check('owner adds shared member - HTTP 201', res.status === 201);
     check('shared member has id', typeof res.body?.id === 'string');
     check('shared member belongs to plan', res.body?.weddingPlanId === weddingPlanId);
     check('shared member role is VIEWER', res.body?.role === 'VIEWER');
-    check('shared member has no financial permissions', res.body?.canViewExpenses === false && res.body?.canViewFinancialRecords === false);
+    check('shared member has no money permissions', res.body?.canViewMoney === false && res.body?.canManageMoney === false);
     check('shared member response includes safe user name', res.body?.user?.name === 'Sharing Smoke Member');
     check('shared member response includes safe user phone', res.body?.user?.phone === SHARED_PHONE);
     check('shared member response user fields are safe', hasOnlySafeSharedUserFields(res.body));
@@ -170,11 +168,9 @@ async function run() {
     const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/members`, {
       phone: SHARED_BY_PHONE,
       role: 'VIEWER',
-      canViewBudget: false,
-      canViewExpenses: false,
-      canViewFinancialRecords: false,
+      canViewMoney: false,
       canManageTasks: false,
-      canManageFinancialRecords: false,
+      canManageMoney: false,
     }, ownerToken);
     check('owner adds shared member by phone - HTTP 201', res.status === 201);
     check('phone-added shared member has id', typeof res.body?.id === 'string');
@@ -290,19 +286,18 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/timeline`, null, sharedToken);
     check('shared user reads timeline - HTTP 200', res.status === 200);
     check('shared timeline includes tasks array', Array.isArray(res.body?.upcomingTasks));
-    check('shared timeline hides due commitments without permission', Array.isArray(res.body?.dueCommitments) && res.body.dueCommitments.length === 0);
-    check('shared timeline hides due installments without permission', Array.isArray(res.body?.dueInstallments) && res.body.dueInstallments.length === 0);
+    check('shared timeline hides payment schedules without permission', Array.isArray(res.body?.paymentSchedules) && res.body.paymentSchedules.length === 0);
     check('shared timeline does not expose passwordHash', !hasPasswordHash(res.body));
   }
 
   {
-    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/expenses`, null, sharedToken);
-    check('shared user cannot access expenses without permission', res.status === 404);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/costs`, null, sharedToken);
+    check('shared user cannot access costs without permission', res.status === 404);
   }
 
   {
-    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/financial-commitments`, null, sharedToken);
-    check('shared user cannot access financial records without permission', res.status === 404);
+    const res = await request('GET', `/api/v1/wedding-plans/${weddingPlanId}/money-summary`, null, sharedToken);
+    check('shared user cannot access money summary without permission', res.status === 404);
   }
 
   {

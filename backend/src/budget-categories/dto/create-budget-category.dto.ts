@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateBudgetCategoryDto {
   @IsString()
@@ -6,5 +6,5 @@ export class CreateBudgetCategoryDto {
   name!: string;
 
   @IsOptional()
-  targetAmount?: string | number | null;
+  allocatedAmount?: string | number | null;
 }

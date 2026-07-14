@@ -83,7 +83,9 @@ export class MarketplaceService {
       orderBy: [{ sortOrder: "asc" }, { nameAr: "asc" }],
     });
 
-    return categories.map((category) => MarketplacePresenter.toCategoryResponse(category));
+    return categories.map((category) =>
+      MarketplacePresenter.toCategoryResponse(category),
+    );
   }
 
   async findProviders(query: ListProvidersQueryDto) {
@@ -105,7 +107,9 @@ export class MarketplaceService {
     ]);
 
     return MarketplaceQuery.paginate(
-      providers.map((provider) => MarketplacePresenter.toProviderResponse(provider)),
+      providers.map((provider) =>
+        MarketplacePresenter.toProviderResponse(provider),
+      ),
       total,
       pagination,
     );
@@ -149,7 +153,9 @@ export class MarketplaceService {
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     });
 
-    return services.map((service) => MarketplacePresenter.toServiceResponse(service));
+    return services.map((service) =>
+      MarketplacePresenter.toServiceResponse(service),
+    );
   }
 
   async findServices(query: ListServicesQueryDto) {
@@ -176,7 +182,9 @@ export class MarketplaceService {
     ]);
 
     return MarketplaceQuery.paginate(
-      services.map((service) => MarketplacePresenter.toServiceResponse(service)),
+      services.map((service) =>
+        MarketplacePresenter.toServiceResponse(service),
+      ),
       total,
       pagination,
     );
@@ -226,7 +234,9 @@ export class MarketplaceService {
       orderBy: { createdAt: "desc" },
     });
 
-    return reviews.map((review) => MarketplacePresenter.toReviewResponse(review));
+    return reviews.map((review) =>
+      MarketplacePresenter.toReviewResponse(review),
+    );
   }
 
   async favoriteProvider(currentUser: AuthenticatedUser, providerId: string) {
@@ -271,7 +281,9 @@ export class MarketplaceService {
       orderBy: { createdAt: "desc" },
     });
 
-    return favorites.map((favorite) => MarketplacePresenter.toFavoriteResponse(favorite));
+    return favorites.map((favorite) =>
+      MarketplacePresenter.toFavoriteResponse(favorite),
+    );
   }
 
   async createQuoteRequest(
@@ -300,8 +312,14 @@ export class MarketplaceService {
       await this.findActiveProviderServiceOrThrow(dto.serviceId, providerId);
     }
 
-    const budgetMin = MarketplaceQuery.optionalDecimal(dto.budgetMin, "budgetMin");
-    const budgetMax = MarketplaceQuery.optionalDecimal(dto.budgetMax, "budgetMax");
+    const budgetMin = MarketplaceQuery.optionalDecimal(
+      dto.budgetMin,
+      "budgetMin",
+    );
+    const budgetMax = MarketplaceQuery.optionalDecimal(
+      dto.budgetMax,
+      "budgetMax",
+    );
     if (
       budgetMin !== null &&
       budgetMax !== null &&
@@ -422,7 +440,7 @@ export class MarketplaceService {
   ): QuoteVisibility {
     if (quote.userId === currentUser.id) return FULL_QUOTE_VISIBILITY;
     return {
-      budget: this.permissions.canReadFinancial(context, "budget"),
+      budget: this.permissions.canViewMoney(context),
       contact: this.permissions.canManageProviders(context),
     };
   }
@@ -545,7 +563,7 @@ export class MarketplaceService {
       type: NotificationType.QUOTE_ACCEPTED,
       priority: NotificationPriority.HIGH,
       title: "تم قبول عرض السعر",
-      body: "أصبح المورد ضمن موردي الخطة المقبولين. لم يتم إنشاء التزام مالي أو دفعة تلقائيًا.",
+      body: "أصبح المزود ضمن مزودي الخطة المقبولين. لم يتم إنشاء تكلفة أو دفعة تلقائيًا.",
       entityType: "quote_request",
       entityId: offer.quoteRequestId,
       routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
@@ -569,27 +587,19 @@ export class MarketplaceService {
         createdAt: result.link.createdAt,
         updatedAt: result.link.updatedAt,
       },
-      automaticFinancialRecordCreated: false,
-      financialSuggestion: {
-        recommendedAction: result.offer.amount
-          ? "CREATE_FINANCIAL_COMMITMENT"
-          : "NONE",
+      automaticCostCreated: false,
+      costSuggestion: {
+        recommendedAction: result.offer.amount ? "CREATE_COST" : "NONE",
         message:
-          "Offer acceptance links the provider to the plan only. Create a financial commitment to track agreed cost, payments, remaining amount, and installments.",
+          "Offer acceptance links the provider to the plan only. Create a cost explicitly to track the agreed amount, payments, and payment dates.",
         quotedAmount: result.offer.amount?.toString() ?? null,
         currency: result.offer.currency ?? null,
-        sourceType: "PROVIDER_SERVICE",
         providerId: offer.providerId,
         planProviderLinkId: result.link.id,
         quoteRequestId: offer.quoteRequestId,
         quoteOfferId: offer.id,
       },
-      nextActions: [
-        "createFinancialCommitment",
-        "recordPayment",
-        "createFollowUpTask",
-        "viewAcceptedProvider",
-      ],
+      nextActions: ["createCost", "createFollowUpTask", "viewAcceptedProvider"],
     };
   }
 
@@ -905,5 +915,4 @@ export class MarketplaceService {
 
     return offer;
   }
-
 }

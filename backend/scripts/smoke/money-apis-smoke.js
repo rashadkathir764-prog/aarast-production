@@ -1,301 +1,361 @@
 #!/usr/bin/env node
 'use strict';
 
+const http = require('http');
+const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
 
 /**
- * Money APIs Smoke Test
- * Covers /api/v1 money aliases, item read endpoints, installment pay, summary,
- * auth blocking, and finance-permission blocking.
+ * Canonical money API smoke.
+ * Covers budget replacement, costs, payment schedules, append-only payments,
+ * reversals, cancellation, summary truth, auth, and money permissions.
  */
 
-const http = require('http');
-
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
-const timestamp = Date.now();
-const suffix = `${timestamp.toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`;
-const OWNER_PHONE = `+9674${suffix}`;
-const VIEWER_PHONE = `+9678${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
+const phoneSeed = Number(`${Date.now()}`.slice(-8));
 
 let passed = 0;
 let failed = 0;
 
+function phone(offset) {
+  return `+9677${String((phoneSeed + offset) % 100000000).padStart(8, '0')}`;
+}
+
 function check(label, condition) {
   if (condition) {
-    console.log(`PASS - ${label}`);
     passed++;
+    console.log(`PASS - ${label}`);
   } else {
-    console.log(`FAIL - ${label}`);
     failed++;
+    console.log(`FAIL - ${label}`);
   }
 }
 
 function request(method, path, body, token) {
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
-    const bodyStr = body ? JSON.stringify(body) : undefined;
-    const headers = { 'Content-Type': 'application/json' };
+    const payload = body === undefined || body === null ? null : JSON.stringify(body);
+    const headers = { Accept: 'application/json' };
+    if (payload) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(payload);
+    }
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const options = {
-      hostname: url.hostname,
-      port: url.port,
-      path: `${url.pathname}${url.search}`,
-      method,
-      headers,
-    };
-
-    const req = http.request(options, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          resolve({ status: res.statusCode, body: JSON.parse(data) });
-        } catch {
-          resolve({ status: res.statusCode, body: data });
-        }
-      });
-    });
-
+    const req = http.request(
+      {
+        hostname: url.hostname,
+        port: url.port,
+        path: `${url.pathname}${url.search}`,
+        method,
+        headers,
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode, body: data ? JSON.parse(data) : null });
+          } catch {
+            resolve({ status: res.statusCode, body: data });
+          }
+        });
+      },
+    );
     req.on('error', reject);
-    if (bodyStr) req.write(bodyStr);
+    if (payload) req.write(payload);
     req.end();
   });
 }
 
-function hasPasswordHash(value) {
-  return JSON.stringify(value).includes('passwordHash');
-}
-
 function dateOffsetIso(days) {
   const date = new Date();
-  date.setDate(date.getDate() + days);
-  date.setHours(9, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(9, 0, 0, 0);
   return date.toISOString();
 }
 
-async function registerUser(name, phone) {
-  const res = await registerVerified(request, {
+function hasSensitiveAuthData(value) {
+  const serialized = JSON.stringify(value);
+  return serialized.includes('passwordHash') || serialized.includes('refreshTokenHash');
+}
+
+async function register(name, value) {
+  const response = await registerVerified(request, {
     name,
-    phone,
+    phone: value,
     password: TEST_PASSWORD,
   });
-  check(`${name} register - HTTP 201`, res.status === 201);
-  check(`${name} register returns token`, typeof res.body?.accessToken === 'string');
-  check(`${name} register does not expose passwordHash`, !hasPasswordHash(res.body));
-  return { token: res.body?.accessToken, userId: res.body?.user?.id };
+  check(`${name} registration succeeds`, response.status === 201);
+  check(`${name} registration returns an access token`, typeof response.body?.accessToken === 'string');
+  check(`${name} registration does not expose auth secrets`, !hasSensitiveAuthData(response.body));
+  return {
+    token: response.body?.accessToken,
+    userId: response.body?.user?.id,
+  };
+}
+
+async function cleanupAccount(label, token) {
+  if (!token) return;
+  const response = await request('DELETE', '/api/v1/users/me', null, token);
+  check(`${label} fixture account is cleaned`, response.status === 200 && response.body?.deleted === true);
 }
 
 async function run() {
-  console.log('\nMoney APIs Smoke Report');
-  console.log(`Target: ${BASE_URL}`);
-  console.log(`Owner phone: ${OWNER_PHONE}`);
-  console.log(`Viewer phone: ${VIEWER_PHONE}\n`);
+  console.log('\nCanonical Money APIs Smoke Report');
+  console.log(`Target: ${BASE_URL}\n`);
 
-  const owner = await registerUser('Money Owner', OWNER_PHONE);
-  const viewer = await registerUser('Money Viewer', VIEWER_PHONE);
+  const accounts = [];
+  try {
+    const owner = await register('Money API owner', phone(11));
+    const viewer = await register('Money API viewer', phone(12));
+    accounts.push(['viewer', viewer.token], ['owner', owner.token]);
+    if (!owner.token || !viewer.token || !viewer.userId) {
+      throw new Error('registration setup failed');
+    }
 
-  let planId = null;
-  let categoryId = null;
-  let expenseId = null;
-  let commitmentId = null;
-  let installmentId = null;
-
-  {
-    const res = await request('POST', '/api/v1/wedding-plans', {
-      title: 'Money APIs Plan',
+    const plan = await request('POST', '/api/v1/wedding-plans', {
+      title: 'Canonical money API plan',
       city: 'Sanaa',
-      estimatedBudget: '1200',
     }, owner.token);
-    check('POST /api/v1/wedding-plans - HTTP 201', res.status === 201);
-    planId = res.body?.id;
-  }
+    check('money API plan is created', plan.status === 201 && typeof plan.body?.id === 'string');
+    const planId = plan.body?.id;
+    if (!planId) throw new Error(`plan setup failed with HTTP ${plan.status}`);
 
-  {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
-      name: 'Hall',
-      targetAmount: '1000',
-    }, owner.token);
-    check('POST /api/v1 budget category - HTTP 201', res.status === 201);
-    check('budget category has id', typeof res.body?.id === 'string');
-    categoryId = res.body?.id;
-  }
-
-  {
-    const res = await request('GET', `/api/v1/wedding-plans/${planId}/budget-categories`, null, owner.token);
-    check('GET /api/v1 budget categories - HTTP 200', res.status === 200);
-    check('budget categories include created category', Array.isArray(res.body) && res.body.some((category) => category.id === categoryId));
-  }
-
-  {
-    const res = await request('PATCH', `/api/v1/budget-categories/${categoryId}`, {
-      name: 'Updated Hall',
-      targetAmount: '1100',
-    }, owner.token);
-    check('PATCH /api/v1/budget-categories/:id - HTTP 200', res.status === 200);
-    check('budget category updated', res.body?.name === 'Updated Hall');
-  }
-
-  {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/expenses`, {
-      title: 'Paid hall expense',
-      budgetCategoryId: categoryId,
-      amount: '300',
-      status: 'PAID',
-    }, owner.token);
-    check('POST /api/v1 expense - HTTP 201', res.status === 201);
-    check('expense has id', typeof res.body?.id === 'string');
-    expenseId = res.body?.id;
-  }
-
-  {
-    const res = await request('GET', `/api/v1/expenses/${expenseId}`, null, owner.token);
-    check('GET /api/v1/expenses/:id - HTTP 200', res.status === 200);
-    check('expense get-by-id matches', res.body?.id === expenseId);
-  }
-
-  {
-    const res = await request('PATCH', `/api/v1/expenses/${expenseId}`, {
-      amount: '350',
-      note: 'Updated by money smoke',
-    }, owner.token);
-    check('PATCH /api/v1/expenses/:id - HTTP 200', res.status === 200);
-    check('expense amount updated', res.body?.amount === '350');
-  }
-
-  {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/expenses`, {
-      title: 'Invalid negative expense',
-      amount: '-1',
-    }, owner.token);
-    check('negative expense amount returns 400', res.status === 400);
-  }
-
-  {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/financial-commitments`, {
-      budgetCategoryId: categoryId,
-      partyName: 'Family Lender',
-      partyPhone: '+967711111111',
-      title: 'Money smoke payable',
-      totalAmount: '500',
-      paidAmount: '100',
-      dueDate: dateOffsetIso(10),
-      status: 'PARTIALLY_PAID',
-      sourceType: 'MANUAL_PAYABLE',
-    }, owner.token);
-    check('POST /api/v1 commitment - HTTP 201', res.status === 201);
-    check('commitment has id', typeof res.body?.id === 'string');
-    commitmentId = res.body?.id;
-  }
-
-  {
-    const res = await request('GET', `/api/v1/financial-commitments/${commitmentId}`, null, owner.token);
-    check('GET /api/v1/financial-commitments/:id - HTTP 200', res.status === 200);
-    check('commitment get-by-id matches', res.body?.id === commitmentId);
-  }
-
-  {
-    const res = await request('PATCH', `/api/v1/financial-commitments/${commitmentId}`, {
-      title: 'Updated money smoke payable',
-    }, owner.token);
-    check('PATCH /api/v1/financial-commitments/:id - HTTP 200', res.status === 200);
-    check('commitment title updated', res.body?.title === 'Updated money smoke payable');
-  }
-
-  {
-    const res = await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
-      amount: '200',
-      dueDate: dateOffsetIso(0),
-      status: 'PENDING',
-    }, owner.token);
-    check('POST /api/v1 installments - HTTP 201', res.status === 201);
-    check('installment has id', typeof res.body?.id === 'string');
-    installmentId = res.body?.id;
-  }
-
-  {
-    const res = await request('GET', `/api/v1/financial-commitments/${commitmentId}/installments`, null, owner.token);
-    check('GET /api/v1 financial installments - HTTP 200', res.status === 200);
-    check('installments include created installment', Array.isArray(res.body) && res.body.some((installment) => installment.id === installmentId));
-  }
-
-  {
-    const res = await request('PATCH', `/api/v1/financial-installments/${installmentId}`, {
-      note: 'Updated installment note',
-    }, owner.token);
-    check('PATCH /api/v1/financial-installments/:id - HTTP 200', res.status === 200);
-    check('installment note updated', res.body?.note === 'Updated installment note');
-  }
-
-  {
-    const res = await request('PATCH', `/api/v1/financial-installments/${installmentId}/pay`, null, owner.token);
-    check('PATCH /api/v1/financial-installments/:id/pay - HTTP 200', res.status === 200);
-    check('paid installment status is PAID', res.body?.status === 'PAID');
-    check('paid installment has paidAt', typeof res.body?.paidAt === 'string');
-  }
-
-  {
-    const res = await request('GET', `/api/v1/financial-commitments/${commitmentId}`, null, owner.token);
-    check('pay installment updates commitment paidAmount', Number(res.body?.paidAmount) === 300);
-    check('pay installment keeps commitment partially paid', res.body?.status === 'PARTIALLY_PAID');
-  }
-
-  {
-    const res = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
-    check('GET /api/v1 money-summary - HTTP 200', res.status === 200);
-    check('money summary budgetTotal is real', res.body?.budgetTotal === '1200.00');
-    check('money summary totalBudget alias is stable', res.body?.totalBudget === '1200.00');
-    check('money summary category target is real', res.body?.categoryTargetTotal === '1100.00');
-    check('money summary spentTotal is real', res.body?.spentTotal === '350.00');
-    check('money summary totalSpent alias is stable', res.body?.totalSpent === '350.00');
-    check(
-      'money summary confirmedCostTotal counts expenses and obligations once',
-      res.body?.confirmedCostTotal === '850.00',
+    const categoryClientId = randomUUID();
+    const budget = await request(
+      'PUT',
+      `/api/v1/wedding-plans/${planId}/money-budget`,
+      {
+        totalBudget: '1200',
+        currency: 'YER',
+        categories: [
+          { clientId: categoryClientId, name: 'Hall', allocatedAmount: '1100' },
+        ],
+      },
+      owner.token,
     );
-    check('money summary remainingBudget is real', res.body?.remainingBudget === '350.00');
-    check('money summary commitmentTotal is real', res.body?.commitmentTotal === '500.00');
-    check('money summary commitmentPaidTotal is real', res.body?.commitmentPaidTotal === '300.00');
-    check('money summary commitmentRemainingTotal is real', res.body?.commitmentRemainingTotal === '200.00');
-    check('money summary paid installments are counted', res.body?.paidInstallmentsCount === 1);
-    check('money summary remaining installments are counted', res.body?.remainingInstallmentsCount === 0);
-    check('money summary next installment is explicit when absent', res.body?.nextInstallment === null);
-    check('money summary includes category summaries', Array.isArray(res.body?.categorySummaries) && res.body.categorySummaries[0]?.allocated === '1100.00');
-    check('money summary financialWarnings is stable array', Array.isArray(res.body?.financialWarnings));
-    check('money summary due count reflects paid installment', res.body?.dueInstallmentsCount === 0);
-    check('money summary does not expose passwordHash', !hasPasswordHash(res.body));
-  }
+    check('canonical money budget is created', budget.status === 200);
+    check('budget response has summary, categories, and id map', budget.body?.summary?.budget?.total === '1200' && budget.body?.categories?.length === 1 && typeof budget.body?.idMap?.[categoryClientId] === 'string');
+    const categoryId = budget.body?.idMap?.[categoryClientId];
+    if (!categoryId) throw new Error('budget setup failed');
 
-  {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/members`, {
-      userId: viewer.userId,
-      role: 'VIEWER',
-    }, owner.token);
-    check('owner adds non-finance viewer - HTTP 201', res.status === 201);
-  }
+    const cost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Hall agreement',
+        totalAmount: '500',
+        dueDate: dateOffsetIso(20),
+      },
+      owner.token,
+    );
+    check('canonical wedding cost is created', cost.status === 201 && typeof cost.body?.id === 'string');
+    check('new cost starts unpaid and open', cost.body?.paidAmount === '0' && cost.body?.remainingAmount === '500' && cost.body?.status === 'OPEN');
+    const costId = cost.body?.id;
+    if (!costId) throw new Error('cost setup failed');
 
-  {
-    const res = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, viewer.token);
-    check('non-finance viewer cannot read money-summary', res.status === 404);
-  }
+    const getCost = await request('GET', `/api/v1/costs/${costId}`, null, owner.token);
+    check('cost get-by-id returns the canonical record', getCost.status === 200 && getCost.body?.id === costId);
 
-  {
-    const res = await request('GET', `/api/v1/wedding-plans/${planId}/expenses`);
-    check('expenses without token returns 401', res.status === 401);
-  }
+    const updateCost = await request(
+      'PATCH',
+      `/api/v1/costs/${costId}`,
+      { title: 'Updated hall agreement', note: 'Updated by canonical smoke' },
+      owner.token,
+    );
+    check('cost update persists canonical fields', updateCost.status === 200 && updateCost.body?.title === 'Updated hall agreement');
 
-  {
-    const res = await request('DELETE', `/api/v1/expenses/${expenseId}`, null, owner.token);
-    check('DELETE /api/v1/expenses/:id - HTTP 200', res.status === 200);
+    const invalidCost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Invalid negative cost',
+        totalAmount: '-1',
+      },
+      owner.token,
+    );
+    check('negative cost amount is rejected', invalidCost.status === 400);
+
+    const schedule = await request(
+      'POST',
+      `/api/v1/costs/${costId}/payment-schedules`,
+      {
+        amount: '200',
+        dueDate: dateOffsetIso(2),
+        note: 'First scheduled payment',
+      },
+      owner.token,
+    );
+    check('payment schedule is created under its cost', schedule.status === 201 && typeof schedule.body?.id === 'string' && schedule.body?.costId === costId);
+    check('new payment schedule is pending', schedule.body?.status === 'PENDING' && schedule.body?.paidAt === null);
+    const scheduleId = schedule.body?.id;
+    if (!scheduleId) throw new Error('payment schedule setup failed');
+
+    const schedules = await request(
+      'GET',
+      `/api/v1/costs/${costId}/payment-schedules`,
+      null,
+      owner.token,
+    );
+    check('cost payment schedules are listed', schedules.status === 200 && schedules.body?.some((item) => item.id === scheduleId));
+
+    const updateSchedule = await request(
+      'PATCH',
+      `/api/v1/payment-schedules/${scheduleId}`,
+      { dueDate: dateOffsetIso(3), note: 'Updated payment date' },
+      owner.token,
+    );
+    check('pending payment schedule can be updated', updateSchedule.status === 200 && updateSchedule.body?.note === 'Updated payment date');
+
+    const dueSchedules = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/payment-schedules/due`,
+      null,
+      owner.token,
+    );
+    check('due window includes the upcoming schedule', dueSchedules.status === 200 && dueSchedules.body?.some((item) => item.id === scheduleId));
+
+    const payment = await request(
+      'POST',
+      `/api/v1/payment-schedules/${scheduleId}/pay`,
+      { paidAt: dateOffsetIso(0), method: 'cash', note: 'Scheduled payment smoke' },
+      owner.token,
+    );
+    check('paying a schedule creates one canonical payment', payment.status === 201 && payment.body?.entryType === 'PAYMENT' && payment.body?.paymentScheduleId === scheduleId);
+    const paymentId = payment.body?.id;
+    if (!paymentId) throw new Error('scheduled payment setup failed');
+
+    const paidCost = await request('GET', `/api/v1/costs/${costId}`, null, owner.token);
+    check('schedule payment updates the cost balance', paidCost.status === 200 && paidCost.body?.paidAmount === '200' && paidCost.body?.status === 'PARTIALLY_PAID');
+
+    const planPayments = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/cost-payments?page=1&limit=20`,
+      null,
+      owner.token,
+    );
+    check('plan payments use the canonical paginated response', planPayments.status === 200 && Array.isArray(planPayments.body?.items));
+    check('plan payments include the scheduled payment', planPayments.body?.items?.some((item) => item.id === paymentId));
+
+    const paymentDetails = await request('GET', `/api/v1/cost-payments/${paymentId}`, null, owner.token);
+    check('payment get-by-id returns its inherited context', paymentDetails.status === 200 && paymentDetails.body?.costId === costId && paymentDetails.body?.categoryName === 'Hall');
+
+    const summary = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/money-summary`,
+      null,
+      owner.token,
+    );
+    check('money summary exposes the canonical budget', summary.status === 200 && summary.body?.budget?.total === '1200' && summary.body?.budget?.allocated === '1100');
+    check('money summary counts cost and payment exactly once', summary.body?.costs?.total === '500' && summary.body?.costs?.paid === '200' && summary.body?.costs?.outstanding === '300');
+    check('money summary counts the paid schedule', summary.body?.paymentSchedules?.paidCount === 1 && summary.body?.paymentSchedules?.upcomingCount === 0);
+    check('money summary has stable arrays and no auth secrets', Array.isArray(summary.body?.categories) && Array.isArray(summary.body?.warnings) && !hasSensitiveAuthData(summary.body));
+
+    const reversal = await request(
+      'POST',
+      `/api/v1/cost-payments/${paymentId}/reverse`,
+      { reason: 'Canonical smoke correction' },
+      owner.token,
+    );
+    check('payment reversal creates an immutable compensating entry', reversal.status === 201 && reversal.body?.entryType === 'REVERSAL' && reversal.body?.reversalOfId === paymentId);
+
+    const reopenedSchedules = await request(
+      'GET',
+      `/api/v1/costs/${costId}/payment-schedules`,
+      null,
+      owner.token,
+    );
+    const reopened = reopenedSchedules.body?.find((item) => item.id === scheduleId);
+    check('reversal reopens its linked payment schedule', reopenedSchedules.status === 200 && reopened?.status === 'PENDING' && reopened?.paidAt === null);
+
+    const cancelSchedule = await request(
+      'POST',
+      `/api/v1/payment-schedules/${scheduleId}/cancel`,
+      {},
+      owner.token,
+    );
+    check('reopened schedule can be explicitly cancelled', cancelSchedule.status === 201 && cancelSchedule.body?.status === 'CANCELLED');
+
+    const deleteHistoricSchedule = await request(
+      'DELETE',
+      `/api/v1/payment-schedules/${scheduleId}`,
+      null,
+      owner.token,
+    );
+    check('schedule with immutable ledger history cannot be deleted', deleteHistoricSchedule.status === 409);
+
+    const cancelCost = await request('POST', `/api/v1/costs/${costId}/cancel`, {}, owner.token);
+    check('zero-balance cost can be cancelled without deleting history', cancelCost.status === 201 && cancelCost.body?.status === 'CANCELLED');
+
+    const summaryAfterCancel = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/money-summary`,
+      null,
+      owner.token,
+    );
+    check('cancelled cost no longer contributes to active money totals', summaryAfterCancel.status === 200 && summaryAfterCancel.body?.costs?.count === 0 && summaryAfterCancel.body?.costs?.total === '0');
+
+    const addViewer = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/members`,
+      { userId: viewer.userId, role: 'VIEWER', canViewMoney: false, canManageMoney: false },
+      owner.token,
+    );
+    check('owner adds a member without money permission', addViewer.status === 201);
+
+    const hiddenSummary = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/money-summary`,
+      null,
+      viewer.token,
+    );
+    check('member without money permission cannot discover the summary', hiddenSummary.status === 404);
+
+    for (const [label, method, path, body] of [
+      ['cost detail', 'GET', `/api/v1/costs/${costId}`, null],
+      ['payment detail', 'GET', `/api/v1/cost-payments/${paymentId}`, null],
+      ['schedule detail', 'GET', `/api/v1/payment-schedules/${scheduleId}`, null],
+      ['cost payment write', 'POST', `/api/v1/costs/${costId}/payments`, { amount: '1' }],
+      ['schedule payment write', 'POST', `/api/v1/payment-schedules/${scheduleId}/pay`, {}],
+      ['payment reversal write', 'POST', `/api/v1/cost-payments/${paymentId}/reverse`, { reason: 'Denied smoke' }],
+    ]) {
+      const denied = await request(method, path, body, viewer.token);
+      check(`member without money permission cannot access ${label}`, denied.status === 404);
+    }
+
+    for (const [label, path] of [
+      ['plan expenses', `/api/v1/wedding-plans/${planId}/expenses`],
+      ['plan commitments', `/api/v1/wedding-plans/${planId}/financial-commitments`],
+      ['plan payment records', `/api/v1/wedding-plans/${planId}/financial-payment-records`],
+      ['plan installments', `/api/v1/wedding-plans/${planId}/financial-installments/due`],
+    ]) {
+      const removed = await request('GET', path, null, owner.token);
+      check(`removed ${label} endpoint stays absent`, removed.status === 404);
+    }
+
+    const noAuth = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`);
+    check('money summary requires authentication', noAuth.status === 401);
+  } finally {
+    for (const [label, token] of accounts) {
+      try {
+        await cleanupAccount(label, token);
+      } catch (error) {
+        check(`${label} fixture account cleanup completes`, false);
+        console.error(`Cleanup warning (${label}): ${error.message}`);
+      }
+    }
   }
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);
-
   if (failed > 0) process.exit(1);
 }
 
-run().catch((err) => {
-  console.error('Money APIs smoke error:', err.message);
+run().catch((error) => {
+  console.error('Canonical money APIs smoke error:', error.message);
   process.exit(1);
 });

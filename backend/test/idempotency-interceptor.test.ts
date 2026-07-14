@@ -145,7 +145,11 @@ const context = (
         method,
         baseUrl: options.baseUrl,
         body: options.body,
-        route: { path: options.routePath ?? "/expenses" },
+        route: {
+          path:
+            options.routePath ??
+            "/api/v1/wedding-plans/:weddingPlanId/costs",
+        },
         originalUrl: options.originalUrl,
         headers: key ? { "x-client-request-id": key } : {},
         user: { id: userId },
@@ -163,7 +167,7 @@ test("concurrent same-key requests execute the mutation exactly once", async () 
   const interceptor = new IdempotencyInterceptor(store as any);
 
   let executions = 0;
-  const response = { id: "expense-1", amount: "100.00" };
+  const response = { id: "cost-1", totalAmount: "100.00" };
   const next = handler(() =>
     defer(() => {
       executions++;
@@ -251,7 +255,7 @@ test("a replay restores safe representation headers but never session headers", 
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);
   const originalHeaders = new Map<string, number | string | string[]>([
-    ["location", "/api/v1/expenses/expense-1"],
+    ["location", "/api/v1/costs/cost-1"],
     ["content-type", "application/json; charset=utf-8"],
     ["content-language", "ar"],
     ["set-cookie", "refresh=secret; HttpOnly"],
@@ -268,7 +272,7 @@ test("a replay restores safe representation headers but never session headers", 
   let executions = 0;
   const next = handler(() => {
     executions++;
-    return of({ id: "expense-1" });
+    return of({ id: "cost-1" });
   });
 
   await firstValueFrom(
@@ -286,7 +290,7 @@ test("a replay restores safe representation headers but never session headers", 
 
   assert.equal(executions, 1);
   assert.equal(replayResponse.statusCode, 201);
-  assert.equal(replayHeaders.get("location"), "/api/v1/expenses/expense-1");
+  assert.equal(replayHeaders.get("location"), "/api/v1/costs/cost-1");
   assert.equal(
     replayHeaders.get("content-type"),
     "application/json; charset=utf-8",
@@ -370,12 +374,14 @@ test("expired signed URLs in durable mutation replays are never returned stale",
 test("canonical request fingerprints ignore JSON and query key ordering", () => {
   const first = requestFingerprint({
     method: "POST",
-    originalUrl: "/expenses?currency=YER&plan=p1",
+    originalUrl:
+      "/api/v1/wedding-plans/p1/costs?currency=YER&status=OPEN",
     body: { amount: 100, metadata: { note: "x", category: "hall" } },
   });
   const reordered = requestFingerprint({
     method: "POST",
-    originalUrl: "/expenses?plan=p1&currency=YER",
+    originalUrl:
+      "/api/v1/wedding-plans/p1/costs?status=OPEN&currency=YER",
     body: { metadata: { category: "hall", note: "x" }, amount: 100 },
   });
 
@@ -389,7 +395,7 @@ test("reusing a live key for a different body is rejected with 409", async () =>
   let executions = 0;
   const next = handler(() => {
     executions++;
-    return of({ id: `expense-${executions}` });
+    return of({ id: `cost-${executions}` });
   });
 
   await firstValueFrom(
@@ -764,10 +770,10 @@ test("an expired in-flight reservation is never deleted or re-executed", async (
       userId: "u1",
       key: "req-ambiguous-expired",
       method: "POST",
-      path: "/expenses",
+      path: "/api/v1/wedding-plans/:weddingPlanId/costs",
       requestHash: requestFingerprint({
         method: "POST",
-        route: { path: "/expenses" },
+        route: { path: "/api/v1/wedding-plans/:weddingPlanId/costs" },
       }),
       expiresAt: new Date(Date.now() - 60_000),
       response: Prisma.DbNull,
@@ -806,10 +812,10 @@ test("an in-flight owner that never completes fails with a retryable 503", async
       userId: "u1",
       key: "req-5",
       method: "POST",
-      path: "/expenses",
+      path: "/api/v1/wedding-plans/:weddingPlanId/costs",
       requestHash: requestFingerprint({
         method: "POST",
-        route: { path: "/expenses" },
+        route: { path: "/api/v1/wedding-plans/:weddingPlanId/costs" },
       }),
       expiresAt: new Date(Date.now() + 60 * 60 * 1_000),
       response: Prisma.DbNull,

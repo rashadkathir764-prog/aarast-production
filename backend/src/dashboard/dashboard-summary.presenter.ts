@@ -1,16 +1,15 @@
 import {
-  InstallmentStatus,
+  PaymentScheduleStatus,
   WeddingPlan,
   WeddingTaskPriority,
 } from "@prisma/client";
 import {
   DashboardDueMoneyItem,
-  DashboardFinancialCommitmentRecord,
-  DashboardFinancialInstallmentRecord,
   DashboardImportantItemResponse,
   DashboardImportantItemType,
   DashboardNotificationPreviewResponse,
   DashboardNotificationRecord,
+  DashboardPaymentScheduleRecord,
   DashboardPlanProviderLinkRecord,
   DashboardProviderPreviewResponse,
   DashboardTaskRecord,
@@ -18,41 +17,27 @@ import {
 } from "./dashboard.contracts";
 import { selectTopDashboardActions } from "./dashboard-priority";
 
-export function toFinancialDueMoneyItem(
-  installment: DashboardFinancialInstallmentRecord,
-  commitments: Map<string, DashboardFinancialCommitmentRecord>,
+export function toPaymentScheduleDueMoneyItem(
+  schedule: DashboardPaymentScheduleRecord,
 ): DashboardDueMoneyItem {
-  const commitment = commitments.get(installment.financialCommitmentId);
   return {
-    id: installment.id,
-    financialCommitmentId: installment.financialCommitmentId,
-    title: commitment?.title ?? "مستحق مالي",
-    amount: installment.amount,
-    dueDate: installment.dueDate,
-    status: installment.status,
+    id: schedule.id,
+    weddingCostId: schedule.weddingCostId,
+    title: schedule.weddingCost.title,
+    amount: schedule.amount,
+    dueDate: schedule.dueDate,
+    status: schedule.status,
   };
 }
 
-export function compareNullableDates(
-  first: Date | null,
-  second: Date | null,
-): number {
-  const firstTime = first?.getTime() ?? Number.MAX_SAFE_INTEGER;
-  const secondTime = second?.getTime() ?? Number.MAX_SAFE_INTEGER;
-  return firstTime - secondTime;
-}
-
-export function isOpenInstallment(status: InstallmentStatus): boolean {
-  return (
-    status === InstallmentStatus.PENDING ||
-    status === InstallmentStatus.OVERDUE
-  );
+export function compareDates(first: Date, second: Date): number {
+  return first.getTime() - second.getTime();
 }
 
 export function buildImportantItems({
   weddingPlanId,
   tasks,
-  installments,
+  paymentSchedules,
   providers,
   today,
   receivedQuotes,
@@ -62,10 +47,11 @@ export function buildImportantItems({
   guestCount,
   quoteRequestsCount,
   acceptedProviders,
+  currency,
 }: {
   weddingPlanId: string;
   tasks: DashboardTaskRecord[];
-  installments: DashboardDueMoneyItem[];
+  paymentSchedules: DashboardDueMoneyItem[];
   providers: DashboardPlanProviderLinkRecord[];
   today: Date;
   receivedQuotes: number;
@@ -75,6 +61,7 @@ export function buildImportantItems({
   guestCount: number;
   quoteRequestsCount: number;
   acceptedProviders: number;
+  currency: string;
 }): DashboardImportantItemResponse[] {
   const items: DashboardImportantItemResponse[] = [];
 
@@ -86,9 +73,7 @@ export function buildImportantItems({
       title: isOverdue ? "مهمة متأخرة" : "مهمة اليوم",
       subtitle: task.title,
       body: task.dueDate
-        ? `${isOverdue ? "كان موعدها" : "موعدها"} ${formatDateArabic(
-            task.dueDate,
-          )}`
+        ? `${isOverdue ? "كان موعدها" : "موعدها"} ${formatDateArabic(task.dueDate)}`
         : null,
       icon: "calendar",
       tone: isOverdue ? "danger" : toneForTaskPriority(task.priority),
@@ -99,46 +84,32 @@ export function buildImportantItems({
       route: `/wedding-plans/${weddingPlanId}/tasks`,
       routeTarget: `/wedding-plans/${weddingPlanId}/tasks`,
       entityId: task.id,
-      data: {
-        weddingPlanId,
-        taskId: task.id,
-      },
+      data: { weddingPlanId, taskId: task.id },
     });
   }
 
-  for (const installment of installments) {
-    const routeTarget = `/wedding-plans/${weddingPlanId}/finance/commitments/${installment.financialCommitmentId}`;
+  for (const schedule of paymentSchedules) {
+    const overdue = schedule.dueDate < today;
+    const routeTarget = `/wedding-plans/${weddingPlanId}/money/costs/${schedule.weddingCostId}/schedules/${schedule.id}`;
     items.push({
-      id: installment.id,
-      type: "INSTALLMENT_DUE",
-      title:
-        installment.status === InstallmentStatus.OVERDUE
-          ? "قسط متأخر"
-          : "دفعة قادمة",
-      subtitle: installment.title,
-      body: [
-        installment.dueDate ? formatDateArabic(installment.dueDate) : null,
-        `${moneyOrNull(decimalToNumber(installment.amount))} ر.ي`,
-      ]
-        .filter((part): part is string => Boolean(part))
-        .join(" · "),
+      id: schedule.id,
+      type: "PAYMENT_SCHEDULE_DUE",
+      title: overdue ? "موعد دفع متأخر" : "موعد دفع قريب",
+      subtitle: schedule.title,
+      body: `${formatDateArabic(schedule.dueDate)} · ${schedule.amount.toString()} ${currency}`,
       icon: "wallet",
-      tone:
-        installment.status === InstallmentStatus.OVERDUE
-          ? "danger"
-          : "warning",
-      priority:
-        installment.status === InstallmentStatus.OVERDUE ? "URGENT" : "HIGH",
-      actionLabel: "عرض التفاصيل",
-      dueDate: installment.dueDate,
-      amount: installment.amount.toString(),
+      tone: overdue ? "danger" : "warning",
+      priority: overdue ? "URGENT" : "HIGH",
+      actionLabel: "عرض موعد الدفع",
+      dueDate: schedule.dueDate,
+      amount: schedule.amount.toString(),
       route: routeTarget,
       routeTarget,
-      entityId: installment.id,
+      entityId: schedule.id,
       data: {
         weddingPlanId,
-        financialCommitmentId: installment.financialCommitmentId,
-        installmentId: installment.id,
+        weddingCostId: schedule.weddingCostId,
+        paymentScheduleId: schedule.id,
       },
     });
   }
@@ -200,8 +171,8 @@ export function buildImportantItems({
         weddingPlanId,
         "SET_BUDGET",
         "حدد ميزانية الخطة",
-        "أضف ميزانية حقيقية لعرض المتبقي والمصروف بدقة.",
-        `/wedding-plans/${weddingPlanId}/finance`,
+        "حدد سقفًا ماليًا واحدًا ثم وزّعه اختياريًا على التصنيفات.",
+        `/wedding-plans/${weddingPlanId}/money/budget`,
       ),
     );
   }
@@ -222,7 +193,7 @@ export function buildImportantItems({
         weddingPlanId,
         "REQUEST_QUOTE",
         "اطلب أول عرض سعر",
-        "لم يتم إرسال طلب عرض سعر لأي مورد بعد.",
+        "لم يتم إرسال طلب عرض سعر لأي مزود بعد.",
         "/providers",
       ),
     );
@@ -269,7 +240,6 @@ export function toProviderPreviewResponse(
 ): DashboardProviderPreviewResponse {
   const service = link.provider.services[0];
   const image = service?.images[0]?.imageUrl ?? null;
-
   return {
     id: link.id,
     providerId: link.providerId,
@@ -296,33 +266,41 @@ export function nextProviderAction(
 
 export function buildFinancialWarnings({
   remainingBudget,
-  dueInstallmentsCount,
+  overdueCount,
+  dueSoonCount,
 }: {
   remainingBudget: number | null;
-  dueInstallmentsCount: number | null;
+  overdueCount: number | null;
+  dueSoonCount: number | null;
 }): WeddingPlanDashboardSummaryResponse["financialWarnings"] {
-  const warnings: WeddingPlanDashboardSummaryResponse["financialWarnings"] =
-    [];
-
+  const warnings: WeddingPlanDashboardSummaryResponse["financialWarnings"] = [];
   if (remainingBudget !== null && remainingBudget < 0) {
     warnings.push({
       type: "BUDGET_EXCEEDED",
       severity: "DANGER",
-      message: "Spent total is above the available wedding budget.",
+      message: "التكاليف المؤكدة تجاوزت الميزانية العامة.",
       count: null,
       amount: moneyOrNull(Math.abs(remainingBudget)),
     });
   }
-  if (dueInstallmentsCount !== null && dueInstallmentsCount > 0) {
+  if (overdueCount !== null && overdueCount > 0) {
     warnings.push({
-      type: "INSTALLMENT_DUE_SOON",
-      severity: "WARNING",
-      message: "There are installments due soon.",
-      count: dueInstallmentsCount,
+      type: "PAYMENT_SCHEDULE_OVERDUE",
+      severity: "DANGER",
+      message: "لديك مواعيد دفع متأخرة تحتاج متابعة.",
+      count: overdueCount,
       amount: null,
     });
   }
-
+  if (dueSoonCount !== null && dueSoonCount > 0) {
+    warnings.push({
+      type: "PAYMENT_SCHEDULE_DUE_SOON",
+      severity: "WARNING",
+      message: "لديك مواعيد دفع خلال الأيام السبعة القادمة.",
+      count: dueSoonCount,
+      amount: null,
+    });
+  }
   return warnings;
 }
 
@@ -345,11 +323,10 @@ export function toNotificationPreview(
 }
 
 export function formatDateArabic(date: Date): string {
-  const formatter = new Intl.DateTimeFormat("ar-YE", {
+  return new Intl.DateTimeFormat("ar-YE", {
     day: "numeric",
     month: "long",
-  });
-  return formatter.format(date);
+  }).format(date);
 }
 
 export function toPlanResponse(plan: WeddingPlan) {
@@ -369,21 +346,13 @@ export function toPlanResponse(plan: WeddingPlan) {
 
 export function resolveBudgetTotal(
   plan: Pick<WeddingPlan, "estimatedBudget">,
-  categories: { targetAmount: { toString(): string } | null }[],
-): number {
-  if (plan.estimatedBudget) {
-    return decimalToNumber(plan.estimatedBudget);
-  }
-
-  return categories.reduce(
-    (sum, category) => sum + decimalToNumber(category.targetAmount),
-    0,
-  );
+): number | null {
+  return plan.estimatedBudget === null
+    ? null
+    : decimalToNumber(plan.estimatedBudget);
 }
 
-export function decimalToNumber(
-  value: { toString(): string } | null,
-): number {
+export function decimalToNumber(value: { toString(): string } | null): number {
   if (!value) return 0;
   const parsed = Number(value.toString());
   return Number.isFinite(parsed) ? parsed : 0;
@@ -403,8 +372,7 @@ export function daysRemaining(
     weddingDate.getMonth(),
     weddingDate.getDate(),
   );
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  return Math.ceil((weddingDay.getTime() - today.getTime()) / millisecondsPerDay);
+  return Math.ceil((weddingDay.getTime() - today.getTime()) / 86_400_000);
 }
 
 export function progressPercentage(

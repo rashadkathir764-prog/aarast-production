@@ -1,31 +1,29 @@
 import {
-  InstallmentStatus,
   NotificationPriority,
   NotificationType,
+  PaymentScheduleStatus,
   PlanProviderLinkStatus,
   Prisma,
   SharedMemberRole,
   WeddingPlanStatus,
   WeddingTaskStatus,
-} from '@prisma/client';
-import { WeddingLocationResponse } from '../wedding-plans/wedding-location';
+} from "@prisma/client";
+import { WeddingLocationResponse } from "../wedding-plans/wedding-location";
 
 export interface DashboardPermissionSummary {
   isOwner: boolean;
-  role: 'OWNER' | SharedMemberRole | null;
-  canViewBudget: boolean;
-  canViewExpenses: boolean;
-  canViewFinancialRecords: boolean;
+  role: "OWNER" | SharedMemberRole | null;
+  canViewMoney: boolean;
+  canManageMoney: boolean;
   canManageTasks: boolean;
   canManageGuests: boolean;
   canManageProviders: boolean;
   canManageMembers: boolean;
-  canManageFinancialRecords: boolean;
   canManagePlan: boolean;
 }
 
 export interface WeddingPlanDashboardSummaryResponse {
-  dataScope: 'ACCOUNT_BACKED';
+  dataScope: "ACCOUNT_BACKED";
   accountBacked: true;
   planId: string;
   title: string;
@@ -37,12 +35,11 @@ export interface WeddingPlanDashboardSummaryResponse {
   daysRemaining: number | null;
   progressPercentage: number;
   budgetTotal: string | null;
-  spentTotal: string | null;
+  confirmedCostTotal: string | null;
+  paidTotal: string | null;
+  outstandingTotal: string | null;
   remainingBudget: string | null;
-  commitmentTotal: string | null;
-  commitmentPaidTotal: string | null;
-  commitmentOutstandingTotal: string | null;
-  dueInstallmentsCount: number | null;
+  duePaymentSchedulesCount: number | null;
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
@@ -80,23 +77,28 @@ export interface WeddingPlanDashboardSummaryResponse {
     dueAt: Date | null;
     status: WeddingTaskStatus;
   } | null;
-  nextInstallmentDue: {
+  nextPaymentScheduleDue: {
     id: string;
-    financialCommitmentId: string;
+    weddingCostId: string;
+    title: string;
     amount: string;
-    dueAt: Date | null;
-    status: InstallmentStatus;
+    dueDate: Date;
+    status: PaymentScheduleStatus;
   } | null;
   moneySummary: {
     totalBudget: string | null;
-    totalSpent: string | null;
+    confirmedCost: string | null;
+    paid: string | null;
+    outstanding: string | null;
     remainingBudget: string | null;
-    totalCommitments: string | null;
     overBudget: boolean | null;
   };
   financialWarnings: {
-    type: 'BUDGET_EXCEEDED' | 'INSTALLMENT_OVERDUE' | 'INSTALLMENT_DUE_SOON';
-    severity: 'WARNING' | 'DANGER';
+    type:
+      | "BUDGET_EXCEEDED"
+      | "PAYMENT_SCHEDULE_OVERDUE"
+      | "PAYMENT_SCHEDULE_DUE_SOON";
+    severity: "WARNING" | "DANGER";
     message: string;
     count: number | null;
     amount: string | null;
@@ -126,28 +128,25 @@ export interface WeddingPlanDashboardSummaryResponse {
   participantSummary: {
     count: number;
     pendingInvites: number;
-    currentUserRole: 'OWNER' | SharedMemberRole | null;
+    currentUserRole: "OWNER" | SharedMemberRole | null;
   };
-  notificationSummary: {
-    unread: number;
-    highPriority: number;
-  };
+  notificationSummary: { unread: number; highPriority: number };
   generatedAt: Date;
-  currentUserRole: 'OWNER' | SharedMemberRole | null;
+  currentUserRole: "OWNER" | SharedMemberRole | null;
   permissions: DashboardPermissionSummary;
 }
 
 export type DashboardImportantItemType =
-  | 'TASK_OVERDUE'
-  | 'TASK_TODAY'
-  | 'INSTALLMENT_DUE'
-  | 'PLAN_PROVIDER'
-  | 'QUOTE_RECEIVED'
-  | 'INVITE_PENDING'
-  | 'SET_LOCATION'
-  | 'SET_BUDGET'
-  | 'ADD_GUESTS'
-  | 'REQUEST_QUOTE';
+  | "TASK_OVERDUE"
+  | "TASK_TODAY"
+  | "PAYMENT_SCHEDULE_DUE"
+  | "PLAN_PROVIDER"
+  | "QUOTE_RECEIVED"
+  | "INVITE_PENDING"
+  | "SET_LOCATION"
+  | "SET_BUDGET"
+  | "ADD_GUESTS"
+  | "REQUEST_QUOTE";
 
 export interface DashboardImportantItemResponse {
   id: string;
@@ -155,9 +154,9 @@ export interface DashboardImportantItemResponse {
   title: string;
   subtitle: string;
   body: string | null;
-  icon: 'calendar' | 'wallet' | 'provider';
-  tone: 'danger' | 'warning' | 'success' | 'info';
-  priority: 'URGENT' | 'HIGH' | 'NORMAL' | 'LOW';
+  icon: "calendar" | "wallet" | "provider";
+  tone: "danger" | "warning" | "success" | "info";
+  priority: "URGENT" | "HIGH" | "NORMAL" | "LOW";
   actionLabel: string;
   dueDate: Date | null;
   amount: string | null;
@@ -197,7 +196,7 @@ export interface DashboardTaskRecord {
   id: string;
   title: string;
   dueDate: Date | null;
-  priority: Prisma.WeddingTaskGetPayload<object>['priority'];
+  priority: Prisma.WeddingTaskGetPayload<object>["priority"];
 }
 
 export interface DashboardNotificationRecord {
@@ -214,26 +213,22 @@ export interface DashboardNotificationRecord {
   routeTarget: string | null;
 }
 
-export interface DashboardFinancialCommitmentRecord {
+export interface DashboardPaymentScheduleRecord {
   id: string;
-  title: string;
-}
-
-export interface DashboardFinancialInstallmentRecord {
-  id: string;
-  financialCommitmentId: string;
+  weddingCostId: string;
   amount: Prisma.Decimal;
-  dueDate: Date | null;
-  status: InstallmentStatus;
+  dueDate: Date;
+  status: PaymentScheduleStatus;
+  weddingCost: { title: string };
 }
 
 export interface DashboardDueMoneyItem {
   id: string;
-  financialCommitmentId: string;
+  weddingCostId: string;
   title: string;
   amount: Prisma.Decimal;
-  dueDate: Date | null;
-  status: InstallmentStatus;
+  dueDate: Date;
+  status: PaymentScheduleStatus;
 }
 
 export interface DashboardPlanProviderLinkRecord {
@@ -248,9 +243,6 @@ export interface DashboardPlanProviderLinkRecord {
     ratingAverage: { toString(): string };
     ratingCount: number;
     primaryCategory: { nameAr: string } | null;
-    services: {
-      title: string;
-      images: { imageUrl: string }[];
-    }[];
+    services: { title: string; images: { imageUrl: string }[] }[];
   };
 }

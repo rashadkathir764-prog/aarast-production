@@ -1,74 +1,82 @@
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { test } from 'node:test';
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
 
-const read = (path: string) => readFileSync(join(process.cwd(), path), 'utf8');
+const read = (path: string) =>
+  readFileSync(join(process.cwd(), path), "utf8");
 
-test('financial installment payments and reversals are unique at the database layer', () => {
-  const schema = read('prisma/schema.prisma');
-  const payment = schema.match(/model FinancialPaymentRecord \{[\s\S]*?\n\}/)?.[0] ?? '';
-  assert.match(payment, /financialInstallmentId\s+String\?\s+@unique/);
+test("the payment ledger is append-only and reversals stay in the same cost", () => {
+  const schema = read("prisma/schema.prisma");
+  const payment = schema.match(/model CostPayment \{[\s\S]*?\n\}/)?.[0] ?? "";
+  assert.match(payment, /entryType\s+CostPaymentType/);
   assert.match(payment, /reversalOfId\s+String\?\s+@unique/);
-  assert.match(payment, /entryType\s+FinancialPaymentRecordType/);
+  assert.match(payment, /@@unique\(\[reversalOfId, weddingCostId\]\)/);
+  assert.match(payment, /paymentSchedule\s+PaymentSchedule\?\s+@relation\(fields: \[paymentScheduleId, weddingCostId\]/);
 
   const migration = read(
-    'prisma/migrations/20260710143000_immutable_financial_ledger/migration.sql',
+    "prisma/migrations/20260714190000_unify_money_domain/migration.sql",
   );
-  assert.match(migration, /FinancialPaymentRecord_financialInstallmentId_key/);
-  assert.match(migration, /FinancialPaymentRecord_reversalOfId_key/);
-  assert.match(migration, /FinancialPaymentRecord_reversalOfId_fkey/);
-  assert.match(migration, /FinancialPaymentRecord_reversal_type/);
+  for (const required of [
+    "CostPayment_append_only",
+    "CostPayment_reversal_same_cost_fkey",
+    "CostPayment_reversal_type",
+    "CostPayment_ledger_integrity",
+    "CostPayment_entry_integrity",
+    "active_schedule_paid_at IS DISTINCT FROM linked_schedule",
+  ]) {
+    assert.equal(migration.includes(required), true, required);
+  }
 });
 
-test('primary installment pay locks the installment before reading its state', () => {
-  const service = read(
-    'src/financial-commitments/financial-commitments.service.ts',
-  );
-  const payMethod = service.slice(
-    service.indexOf('async payInstallment('),
-    service.indexOf('async removeInstallment('),
-  );
-  assert.ok(payMethod.indexOf('lockInstallment(tx, id)') >= 0);
-  assert.ok(
-    payMethod.indexOf('lockInstallment(tx, id)') <
-      payMethod.indexOf('financialInstallment.findUniqueOrThrow'),
-  );
-  assert.match(payMethod, /financialInstallmentId: current\.id/);
+test("cost and schedule balance changes lock rows and retry serialization failures", () => {
+  const service = read("src/wedding-costs/wedding-costs.service.ts");
+  const retry = read("src/common/prisma/serializable-transaction.ts");
+  for (const method of [
+    "createCost",
+    "updateCost",
+    "createPayment",
+    "reversePayment",
+    "createSchedule",
+    "updateSchedule",
+    "cancelSchedule",
+    "paySchedule",
+  ]) {
+    const start = service.indexOf("async " + method + "(");
+    assert.ok(start >= 0, method);
+    const end = service.indexOf("\n  async ", start + 8);
+    const body = service.slice(start, end < 0 ? undefined : end);
+    assert.match(body, /runSerializableTransaction|\$transaction/);
+  }
+  assert.match(service, /lockCost\(tx, current\.weddingCostId\)[\s\S]*lockSchedule\(tx, id\)/);
+  assert.match(retry, /P2034/);
+  assert.match(retry, /40001/);
+  assert.match(retry, /40P01/);
+  assert.match(retry, /DEFAULT_ATTEMPTS = 4/);
 });
 
-test('payment removal creates a reversal row and never deletes the original', () => {
-  const service = read(
-    'src/financial-commitments/financial-commitments.service.ts',
+test("database constraints protect budgets and pending schedule capacity", () => {
+  const migration = read(
+    "prisma/migrations/20260714190000_unify_money_domain/migration.sql",
   );
-  const reversal = service.slice(
-    service.indexOf('async removePaymentRecord('),
-    service.indexOf('async createInstallment('),
-  );
-  assert.match(reversal, /entryType: FinancialPaymentRecordType\.REVERSAL/);
-  assert.match(reversal, /reversalOfId: current\.id/);
-  assert.doesNotMatch(reversal, /financialPaymentRecord\.delete/);
+  for (const required of [
+    "BudgetCategory_allocation_non_negative",
+    "BudgetCategory_money_budget_integrity",
+    "WeddingPlan_money_budget_integrity",
+    "PaymentSchedule_capacity_integrity",
+    "WeddingCost_schedule_capacity_integrity",
+    "payment schedules exceed the remaining cost",
+  ]) {
+    assert.equal(migration.includes(required), true, required);
+  }
 });
 
-test('balance-changing updates and destructive routes acquire row locks', () => {
-  const commitments = read(
-    'src/financial-commitments/financial-commitments.service.ts',
-  );
-  const commitmentUpdate = commitments.slice(
-    commitments.indexOf('async update('),
-    commitments.indexOf('async remove('),
-  );
-  assert.match(commitmentUpdate, /lockCommitment\(tx, id\)/);
-  assert.ok(
-    commitmentUpdate.indexOf('lockCommitment(tx, id)') <
-      commitmentUpdate.indexOf('assertPaidDoesNotExceedTotal'),
-  );
-
-  const removeInstallment = commitments.slice(
-    commitments.indexOf('async removeInstallment('),
-    commitments.indexOf('private async findCommitmentOrThrow'),
-  );
-  assert.match(removeInstallment, /lockInstallment\(tx, id\)/);
-  assert.match(removeInstallment, /financialPaymentRecord\.count/);
-
+test("a reversed schedule can be cancelled and generic plan updates cannot bypass money-budget", () => {
+  const controller = read("src/wedding-costs/wedding-costs.controller.ts");
+  const service = read("src/wedding-costs/wedding-costs.service.ts");
+  const updatePlanDto = read("src/wedding-plans/dto/update-wedding-plan.dto.ts");
+  assert.match(controller, /@Post\(":id\/cancel"\)/);
+  assert.match(service, /async cancelSchedule\(/);
+  assert.match(service, /Reverse the payment before cancelling this payment schedule/);
+  assert.doesNotMatch(updatePlanDto, /estimatedBudget|currency/);
 });

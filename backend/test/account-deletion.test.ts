@@ -5,10 +5,9 @@ import { test } from 'node:test';
 import { UsersService } from '../src/users/users.service';
 
 const PLAN_CHILDREN = [
-  'financialPaymentRecord',
-  'financialInstallment',
-  'expense',
-  'financialCommitment',
+  'costPayment',
+  'paymentSchedule',
+  'weddingCost',
   'weddingTask',
   'guest',
   'guestGroup',
@@ -27,6 +26,10 @@ function recordingTx(planIds: string[]) {
     },
   });
   const tx: any = {
+    $executeRaw: async () => {
+      calls.push('ledgerPurge');
+      return 1;
+    },
     weddingPlan: {
       findMany: async () => planIds.map((id) => ({ id })),
       deleteMany: async () => {
@@ -85,11 +88,12 @@ test('account deletion clears plan children before plans and deletes the user la
   assert.deepEqual(result, { deleted: true });
 
   const at = (name: string) => calls.indexOf(name);
-  // Restrict parents (budgetCategory, financialCommitment) come after their refs.
-  assert.ok(at('financialPaymentRecord') < at('financialCommitment'));
-  assert.ok(at('financialInstallment') < at('financialCommitment'));
-  assert.ok(at('expense') < at('budgetCategory'));
-  assert.ok(at('financialCommitment') < at('budgetCategory'));
+  // The append-only ledger is unlocked only inside this transaction and
+  // children are erased from ledger to category in dependency order.
+  assert.ok(at('ledgerPurge') < at('costPayment'));
+  assert.ok(at('costPayment') < at('paymentSchedule'));
+  assert.ok(at('paymentSchedule') < at('weddingCost'));
+  assert.ok(at('weddingCost') < at('budgetCategory'));
   // Every plan child is removed before the plan row itself.
   for (const child of PLAN_CHILDREN) {
     assert.ok(at(child) >= 0 && at(child) < at('weddingPlan'), `${child} before plan`);

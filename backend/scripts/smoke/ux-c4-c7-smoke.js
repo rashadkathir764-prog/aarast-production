@@ -199,8 +199,7 @@ async function run() {
     quoteDetail.body?.lifecycleStatus === 'RECEIVED',
   );
 
-  const financeBefore = await prisma.expense.count({ where: { weddingPlanId: planId } });
-  const commitmentsBefore = await prisma.financialCommitment.count({
+  const costsBefore = await prisma.weddingCost.count({
     where: { weddingPlanId: planId },
   });
   const acceptResponse = await request(
@@ -215,28 +214,24 @@ async function run() {
     acceptResponse.body?.planProviderLink?.providerId === providerId,
   );
   check(
-    'accepted quote response declares no automatic financial record',
-    acceptResponse.body?.automaticFinancialRecordCreated === false,
+    'accepted quote response declares no automatic cost',
+    acceptResponse.body?.automaticCostCreated === false,
   );
   check(
     'accepted quote response includes next actions',
     Array.isArray(acceptResponse.body?.nextActions) &&
-      acceptResponse.body.nextActions.includes('createFinancialCommitment') &&
-      acceptResponse.body.nextActions.includes('recordPayment'),
+      acceptResponse.body.nextActions.includes('createCost') &&
+      acceptResponse.body.nextActions.includes('createFollowUpTask') &&
+      acceptResponse.body.nextActions.includes('viewAcceptedProvider'),
   );
   check(
-    'accepted quote response suggests financial commitment',
-    acceptResponse.body?.financialSuggestion?.recommendedAction ===
-      'CREATE_FINANCIAL_COMMITMENT',
+    'accepted quote response suggests explicit cost creation',
+    acceptResponse.body?.costSuggestion?.recommendedAction === 'CREATE_COST',
   );
   check(
-    'accept creates no automatic expense',
-    (await prisma.expense.count({ where: { weddingPlanId: planId } })) === financeBefore,
-  );
-  check(
-    'accept creates no automatic financial commitment',
-    (await prisma.financialCommitment.count({ where: { weddingPlanId: planId } })) ===
-      commitmentsBefore,
+    'accept creates no automatic cost',
+    (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) ===
+      costsBefore,
   );
 
   const inviteResponse = await request(

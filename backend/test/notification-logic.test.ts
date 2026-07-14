@@ -182,12 +182,14 @@ test('scheduled reminders respect notification and financial permissions', async
       {
         userId: 'finance-member',
         receiveNotifications: true,
-        canViewFinancialRecords: true,
+        canViewMoney: true,
+        canManageMoney: false,
       },
       {
         userId: 'task-only-member',
         receiveNotifications: true,
-        canViewFinancialRecords: false,
+        canViewMoney: false,
+        canManageMoney: false,
       },
     ],
   };
@@ -205,16 +207,20 @@ test('scheduled reminders respect notification and financial permissions', async
         },
       ],
     },
-    financialInstallment: {
+    paymentSchedule: {
       findMany: async () => [
         {
-          id: 'installment-1',
-          weddingPlanId: plan.id,
-          financialCommitmentId: 'commitment-1',
+          id: 'schedule-1',
+          weddingCostId: 'cost-1',
           amount: { toString: () => '100' },
           dueDate,
           status: 'PENDING',
-          financialCommitment: { title: 'Commitment', partyName: 'Private' },
+          weddingCost: {
+            weddingPlanId: plan.id,
+            title: 'Cost',
+            partyName: 'Private',
+            provider: null,
+          },
         },
       ],
     },
@@ -235,8 +241,8 @@ test('scheduled reminders respect notification and financial permissions', async
     $transaction: async (operation: (client: typeof tx) => unknown) => operation(tx),
   } as unknown as PrismaService;
   const permissions = {
-    canReadFinancial: (context: { sharedMember: { canViewFinancialRecords: boolean } }) =>
-      context.sharedMember.canViewFinancialRecords,
+    canViewMoney: (context: { sharedMember: { canViewMoney: boolean; canManageMoney: boolean } }) =>
+      context.sharedMember.canViewMoney || context.sharedMember.canManageMoney,
   } as unknown as PermissionService;
   const service = new NotificationsService(prisma, permissions, new OutboxService());
 
@@ -244,24 +250,28 @@ test('scheduled reminders respect notification and financial permissions', async
   assert.equal(created, 5);
   assert.equal(outboxRows, 5);
   assert.equal(captured.filter((row) => row.entityType === 'task').length, 3);
-  assert.equal(captured.filter((row) => row.entityType === 'financial_installment').length, 2);
+  assert.equal(captured.filter((row) => row.entityType === 'payment_schedule').length, 2);
   assert.equal(
     captured.some(
-      (row) => row.entityType === 'financial_installment' && row.userId === 'task-only-member',
+      (row) => row.entityType === 'payment_schedule' && row.userId === 'task-only-member',
     ),
     false,
   );
-  const ownerInstallment = captured.find(
-    (row) => row.entityType === 'financial_installment' && row.userId === 'owner-1',
+  const ownerSchedule = captured.find(
+    (row) => row.entityType === 'payment_schedule' && row.userId === 'owner-1',
   );
-  const memberInstallment = captured.find(
-    (row) => row.entityType === 'financial_installment' && row.userId === 'finance-member',
+  const memberSchedule = captured.find(
+    (row) => row.entityType === 'payment_schedule' && row.userId === 'finance-member',
   );
-  assert.ok(ownerInstallment);
-  assert.ok(memberInstallment);
-  assert.match(String(ownerInstallment.body), /100/);
-  assert.doesNotMatch(String(memberInstallment.body), /100|Commitment|Private/);
-  assert.equal(Object.prototype.hasOwnProperty.call(memberInstallment.data, 'partyName'), false);
+  assert.ok(ownerSchedule);
+  assert.ok(memberSchedule);
+  assert.match(String(ownerSchedule.body), /100/);
+  assert.equal(
+    ownerSchedule.routeTarget,
+    '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
+  );
+  assert.doesNotMatch(String(memberSchedule.body), /100|Cost|Private/);
+  assert.equal(Object.prototype.hasOwnProperty.call(memberSchedule.data, 'partyName'), false);
 });
 
 test('revoking financial access purges stored financial notifications atomically', async () => {
@@ -270,15 +280,13 @@ test('revoking financial access purges stored financial notifications atomically
     weddingPlanId: 'plan-1',
     userId: 'member-user-1',
     role: 'VIEWER',
-    canViewBudget: false,
-    canViewExpenses: false,
-    canViewFinancialRecords: true,
+    canViewMoney: true,
     canEditPlan: false,
     canManageTasks: false,
     canManageGuests: false,
     canManageProviders: false,
     canInviteMembers: false,
-    canManageFinancialRecords: false,
+    canManageMoney: false,
     receiveNotifications: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -305,12 +313,12 @@ test('revoking financial access purges stored financial notifications atomically
       isOwner: true,
       sharedMember: null,
     }),
-    canReadFinancial: (context: { sharedMember: typeof existing | null }) =>
-      context.sharedMember?.canViewFinancialRecords === true ||
-      context.sharedMember?.canManageFinancialRecords === true,
+    canViewMoney: (context: { sharedMember: typeof existing | null }) =>
+      context.sharedMember?.canViewMoney === true ||
+      context.sharedMember?.canManageMoney === true,
   } as unknown as PermissionService;
   const notifications = {
-    purgeFinancialForMember: async (client: unknown, userId: string, weddingPlanId: string) => {
+    purgeMoneyForMember: async (client: unknown, userId: string, weddingPlanId: string) => {
       purgedInTransaction =
         client === tx && userId === existing.userId && weddingPlanId === existing.weddingPlanId;
     },
@@ -322,7 +330,7 @@ test('revoking financial access purges stored financial notifications atomically
   );
 
   await sharing.updateMemberForPlan({ id: 'owner-1' } as AuthenticatedUser, 'plan-1', existing.id, {
-    canViewFinancialRecords: false,
+    canViewMoney: false,
   });
 
   assert.equal(purgedInTransaction, true);

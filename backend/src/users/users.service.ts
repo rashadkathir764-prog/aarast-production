@@ -129,10 +129,7 @@ export class UsersService {
         // The same advisory account lock used by presigning prevents a new
         // upload ticket from escaping this snapshot. Tickets survive User
         // deletion (userId becomes null) as durable object-deletion jobs.
-        await this.mediaStorage.scheduleAllOwnedMediaDeletion(
-          userId,
-          tx,
-        );
+        await this.mediaStorage.scheduleAllOwnedMediaDeletion(userId, tx);
         const [notificationRows, conversationRows] = await Promise.all([
           tx.notification.findMany({
             where: { userId },
@@ -154,7 +151,7 @@ export class UsersService {
                 ...(notificationIds.length > 0
                   ? [
                       {
-                        aggregateType: 'notification',
+                        aggregateType: "notification",
                         aggregateId: { in: notificationIds },
                       },
                     ]
@@ -162,7 +159,7 @@ export class UsersService {
                 ...(conversationIds.length > 0
                   ? [
                       {
-                        aggregateType: 'conversation',
+                        aggregateType: "conversation",
                         aggregateId: { in: conversationIds },
                       },
                     ]
@@ -179,12 +176,18 @@ export class UsersService {
 
         if (planIds.length > 0) {
           const inPlans = { weddingPlanId: { in: planIds } };
-          // Leaf-to-root: rows that reference budgetCategory / financialCommitment
-          // with Restrict must go before those parents.
-          await tx.financialPaymentRecord.deleteMany({ where: inPlans });
-          await tx.financialInstallment.deleteMany({ where: inPlans });
-          await tx.expense.deleteMany({ where: inPlans });
-          await tx.financialCommitment.deleteMany({ where: inPlans });
+          // CostPayment is append-only during normal product work. Account
+          // erasure is the one explicit, transaction-local purge path.
+          await tx.$executeRaw`
+            SELECT set_config('aarast.allow_ledger_purge', 'on', true)
+          `;
+          await tx.costPayment.deleteMany({
+            where: { weddingCost: inPlans },
+          });
+          await tx.paymentSchedule.deleteMany({
+            where: { weddingCost: inPlans },
+          });
+          await tx.weddingCost.deleteMany({ where: inPlans });
           await tx.weddingTask.deleteMany({ where: inPlans }); // cascades checklist items
           await tx.guest.deleteMany({ where: inPlans });
           await tx.guestGroup.deleteMany({ where: inPlans });

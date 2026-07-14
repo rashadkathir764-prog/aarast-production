@@ -15,7 +15,7 @@ export const metricsRegistry = new Registry();
 collectDefaultMetrics({ register: metricsRegistry });
 
 /**
- * Uses the matched Express route pattern (e.g. /expenses/:id) as the label,
+ * Uses the matched Express route pattern (e.g. /money/costs/:id) as the label,
  * never the raw URL — raw URLs contain IDs and would explode cardinality.
  */
 export const httpRequestDuration = new Histogram({

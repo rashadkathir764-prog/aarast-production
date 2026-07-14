@@ -24,12 +24,12 @@ test("review identity uses an allowlist that excludes contact details", () => {
 
 test("known financial admin notifications disclose no amount or creditor", () => {
   const response = toAdminNotificationPrivacyView({
-    type: NotificationType.INSTALLMENT_DUE_SOON,
+    type: NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
     title: "قسط بقيمة 50000 ر.ي",
     body: "تبقى 25000 ر.ي للدائن أحمد",
-    entityType: "installment",
-    entityId: "installment-secret-id",
-    routeTarget: "/plans/plan-1/finance/installment-secret-id",
+    entityType: "payment_schedule",
+    entityId: "schedule-secret-id",
+    routeTarget: "/wedding-plans/plan-1/money/costs/cost-1/schedules",
     data: { amount: 50000, remaining: 25000, creditor: "أحمد" },
   });
 

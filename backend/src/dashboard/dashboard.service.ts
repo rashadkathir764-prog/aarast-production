@@ -1,41 +1,43 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable } from "@nestjs/common";
 import {
-  ExpenseStatus,
-  FinancialCommitmentStatus,
   GuestStatus,
   NotificationPriority,
+  PaymentScheduleStatus,
   PlanProviderLinkStatus,
   ProviderStatus,
   QuoteRequestStatus,
   SharedMemberRole,
+  WeddingCostStatus,
   WeddingPlanStatus,
   WeddingTaskStatus,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { endOfRiyadhDay, startOfRiyadhDay } from '../common/time/business-day';
-import { PrismaService } from '../prisma/prisma.service';
-import { PermissionService, PlanAccessContext } from '../sharing/permission.service';
-import { weddingLocationResponse } from '../wedding-plans/wedding-location';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { PrismaService } from "../prisma/prisma.service";
+import {
+  PermissionService,
+  PlanAccessContext,
+} from "../sharing/permission.service";
+import { weddingLocationResponse } from "../wedding-plans/wedding-location";
 import {
   DashboardPermissionSummary,
   WeddingPlanDashboardSummaryResponse,
-} from './dashboard.contracts';
+} from "./dashboard.contracts";
 import {
   buildFinancialWarnings,
   buildImportantItems,
-  compareNullableDates,
+  compareDates,
   daysRemaining,
   decimalToNumber,
-  isOpenInstallment,
   moneyOrNull,
   nextProviderAction,
   progressPercentage,
   resolveBudgetTotal,
-  toFinancialDueMoneyItem,
+  toPaymentScheduleDueMoneyItem,
   toNotificationPreview,
   toPlanResponse,
   toProviderPreviewResponse,
-} from './dashboard-summary.presenter';
+} from "./dashboard-summary.presenter";
 
 export type {
   DashboardImportantItemResponse,
@@ -44,7 +46,7 @@ export type {
   DashboardPermissionSummary,
   DashboardProviderPreviewResponse,
   WeddingPlanDashboardSummaryResponse,
-} from './dashboard.contracts';
+} from "./dashboard.contracts";
 
 @Injectable()
 export class DashboardService {
@@ -59,22 +61,28 @@ export class DashboardService {
         ownerUserId: currentUser.id,
         status: WeddingPlanStatus.PLANNING,
       },
-      orderBy: [{ weddingDate: 'asc' }, { createdAt: 'desc' }],
+      orderBy: [{ weddingDate: "asc" }, { createdAt: "desc" }],
     });
 
-    const [marketplaceSummary, budgetSummary, expensesSummary, upcomingTasks, sharedMembers] =
+    const [marketplaceSummary, moneySummary, upcomingTasks, sharedMembers] =
       await Promise.all([
         this.getMarketplaceSummary(currentUser.id),
-        currentWeddingPlan ? this.getBudgetSummary(currentWeddingPlan.id) : Promise.resolve(null),
-        currentWeddingPlan ? this.getExpensesSummary(currentWeddingPlan.id) : Promise.resolve(null),
-        currentWeddingPlan ? this.getUpcomingTasks(currentWeddingPlan.id) : Promise.resolve([]),
-        currentWeddingPlan ? this.getSharedMembers(currentWeddingPlan.id) : Promise.resolve([]),
+        currentWeddingPlan
+          ? this.getMoneyHomeSummary(currentWeddingPlan.id)
+          : Promise.resolve(null),
+        currentWeddingPlan
+          ? this.getUpcomingTasks(currentWeddingPlan.id)
+          : Promise.resolve([]),
+        currentWeddingPlan
+          ? this.getSharedMembers(currentWeddingPlan.id)
+          : Promise.resolve([]),
       ]);
 
     return {
-      currentWeddingPlan: currentWeddingPlan ? toPlanResponse(currentWeddingPlan) : null,
-      budgetSummary,
-      expensesSummary,
+      currentWeddingPlan: currentWeddingPlan
+        ? toPlanResponse(currentWeddingPlan)
+        : null,
+      moneySummary,
       upcomingTasks,
       sharedMembers,
       marketplaceSummary,
@@ -85,18 +93,18 @@ export class DashboardService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
   ): Promise<WeddingPlanDashboardSummaryResponse> {
-    const context = await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
+    const context = await this.permissions.assertPlanReadable(
+      weddingPlanId,
+      currentUser,
+    );
     const today = this.startOfToday();
     const endOfToday = this.endOfToday(today);
-    const canViewBudget = this.permissions.canReadFinancial(context, 'budget');
-    const canViewExpenses = this.permissions.canReadFinancial(context, 'expenses');
-    const canViewFinancialRecords = this.permissions.canReadFinancial(context, 'financialRecords');
+    const dueSoonEnd = new Date(endOfToday.getTime() + 7 * 86_400_000);
+    const canViewMoney = this.permissions.canViewMoney(context);
 
     const [
-      budgetCategories,
-      expenses,
-      financialCommitments,
-      financialInstallments,
+      costs,
+      paymentSchedules,
       urgentTasks,
       nextTask,
       totalTasks,
@@ -123,21 +131,26 @@ export class DashboardService {
       latestNotifications,
       latestImportantNotification,
     ] = await Promise.all([
-      canViewBudget
-        ? this.prisma.budgetCategory.findMany({ where: { weddingPlanId } })
-        : Promise.resolve([]),
-      canViewExpenses
-        ? this.prisma.expense.findMany({ where: { weddingPlanId } })
-        : Promise.resolve([]),
-      canViewFinancialRecords
-        ? this.prisma.financialCommitment.findMany({
-            where: { weddingPlanId },
+      canViewMoney
+        ? this.prisma.weddingCost.findMany({
+            where: {
+              weddingPlanId,
+              status: { not: WeddingCostStatus.CANCELLED },
+            },
+            select: { id: true, totalAmount: true, paidAmount: true },
           })
         : Promise.resolve([]),
-      canViewFinancialRecords
-        ? this.prisma.financialInstallment.findMany({
-            where: { weddingPlanId },
-            orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      canViewMoney
+        ? this.prisma.paymentSchedule.findMany({
+            where: {
+              status: PaymentScheduleStatus.PENDING,
+              weddingCost: {
+                weddingPlanId,
+                status: { not: WeddingCostStatus.CANCELLED },
+              },
+            },
+            include: { weddingCost: { select: { title: true } } },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
           })
         : Promise.resolve([]),
       this.prisma.weddingTask.findMany({
@@ -148,7 +161,7 @@ export class DashboardService {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
         take: 2,
       }),
       this.prisma.weddingTask.findFirst({
@@ -158,7 +171,7 @@ export class DashboardService {
             notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
           },
         },
-        orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       }),
       this.prisma.weddingTask.count({ where: { weddingPlanId } }),
       this.prisma.weddingTask.count({
@@ -206,7 +219,7 @@ export class DashboardService {
       this.prisma.guest.count({
         where: {
           weddingPlanId,
-          OR: [{ phone: null }, { phone: '' }, { name: '' }],
+          OR: [{ phone: null }, { phone: "" }, { name: "" }],
         },
       }),
       this.prisma.planProviderLink.count({
@@ -227,11 +240,11 @@ export class DashboardService {
               primaryCategory: true,
               services: {
                 where: { isActive: true },
-                orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+                orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
                 take: 1,
                 include: {
                   images: {
-                    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+                    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
                     take: 1,
                   },
                 },
@@ -239,7 +252,7 @@ export class DashboardService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 3,
       }),
       this.prisma.quoteRequest.count({ where: { weddingPlanId } }),
@@ -299,7 +312,7 @@ export class DashboardService {
           weddingPlanId,
           archivedAt: null,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 3,
       }),
       this.prisma.notification.findFirst({
@@ -311,66 +324,49 @@ export class DashboardService {
             in: [NotificationPriority.URGENT, NotificationPriority.HIGH],
           },
         },
-        orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
       }),
     ]);
 
-    const activeFinancialCommitments = financialCommitments.filter(
-      (commitment) => commitment.status !== FinancialCommitmentStatus.CANCELLED,
+    const dueSoonSchedules = paymentSchedules.filter(
+      (schedule) => schedule.dueDate >= today && schedule.dueDate <= dueSoonEnd,
     );
-    const commitmentById = new Map(
-      financialCommitments.map((commitment) => [commitment.id, commitment]),
+    const overdueSchedules = paymentSchedules.filter(
+      (schedule) => schedule.dueDate < today,
     );
-    const openFinancialInstallments = financialInstallments.filter((installment) =>
-      isOpenInstallment(installment.status),
-    );
-    const financialDueInstallmentItems = openFinancialInstallments
-      .filter((installment) => installment.dueDate !== null && installment.dueDate <= endOfToday)
-      .map((installment) => toFinancialDueMoneyItem(installment, commitmentById));
-    const dueMoneyItems = [...financialDueInstallmentItems]
-      .sort((a, b) => compareNullableDates(a.dueDate, b.dueDate))
-      .slice(0, 2);
-    const nextMoneyInstallment = openFinancialInstallments[0]
-      ? toFinancialDueMoneyItem(openFinancialInstallments[0], commitmentById)
+    const actionableSchedules = paymentSchedules
+      .filter((schedule) => schedule.dueDate <= dueSoonEnd)
+      .map(toPaymentScheduleDueMoneyItem)
+      .sort((a, b) => compareDates(a.dueDate, b.dueDate));
+    const dueMoneyItems = actionableSchedules.slice(0, 2);
+    const nextPaymentSchedule = paymentSchedules[0]
+      ? toPaymentScheduleDueMoneyItem(paymentSchedules[0])
       : null;
-    const effectiveDueInstallmentsCount = canViewFinancialRecords
-      ? financialDueInstallmentItems.length
+    const effectiveDuePaymentSchedulesCount = canViewMoney
+      ? actionableSchedules.length
       : null;
 
-    const budgetTotalNumber = canViewBudget
-      ? resolveBudgetTotal(context.plan, budgetCategories)
+    const budgetTotalNumber = canViewMoney
+      ? resolveBudgetTotal(context.plan)
       : null;
-    const spentTotalNumber = canViewExpenses
-      ? expenses.reduce((sum, expense) => {
-          if (expense.status !== ExpenseStatus.PAID) return sum;
-          return sum + decimalToNumber(expense.amount);
-        }, 0)
+    const confirmedCostNumber = canViewMoney
+      ? costs.reduce((sum, cost) => sum + decimalToNumber(cost.totalAmount), 0)
       : null;
-    const commitmentTotalNumber = canViewFinancialRecords
-      ? activeFinancialCommitments.reduce(
-          (sum, commitment) => sum + decimalToNumber(commitment.totalAmount),
-          0,
-        )
+    const paidNumber = canViewMoney
+      ? costs.reduce((sum, cost) => sum + decimalToNumber(cost.paidAmount), 0)
       : null;
-    const commitmentPaidTotalNumber = canViewFinancialRecords
-      ? activeFinancialCommitments.reduce(
-          (sum, commitment) => sum + decimalToNumber(commitment.paidAmount),
-          0,
-        )
-      : null;
-    const confirmedCostNumber =
-      spentTotalNumber !== null && commitmentTotalNumber !== null
-        ? spentTotalNumber + commitmentTotalNumber
-        : (spentTotalNumber ?? commitmentTotalNumber);
+    const outstandingNumber =
+      confirmedCostNumber !== null && paidNumber !== null
+        ? confirmedCostNumber - paidNumber
+        : null;
     const remainingBudgetNumber =
       budgetTotalNumber !== null && confirmedCostNumber !== null
         ? budgetTotalNumber - confirmedCostNumber
         : null;
-    const commitmentOutstandingTotalNumber =
-      commitmentTotalNumber !== null && commitmentPaidTotalNumber !== null
-        ? Math.max(commitmentTotalNumber - commitmentPaidTotalNumber, 0)
-        : null;
-    const location = weddingLocationResponse(context.plan.location, context.plan.city);
+    const location = weddingLocationResponse(
+      context.plan.location,
+      context.plan.city,
+    );
     const nextProviderActionValue = nextProviderAction(
       pendingQuoteRequests,
       receivedQuotes,
@@ -378,12 +374,13 @@ export class DashboardService {
     );
     const financialWarnings = buildFinancialWarnings({
       remainingBudget: remainingBudgetNumber,
-      dueInstallmentsCount: effectiveDueInstallmentsCount,
+      overdueCount: canViewMoney ? overdueSchedules.length : null,
+      dueSoonCount: canViewMoney ? dueSoonSchedules.length : null,
     });
     const importantItems = buildImportantItems({
       weddingPlanId,
       tasks: urgentTasks,
-      installments: dueMoneyItems,
+      paymentSchedules: dueMoneyItems,
       providers: planProviderLinks,
       today,
       receivedQuotes,
@@ -393,6 +390,7 @@ export class DashboardService {
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
+      currency: context.plan.currency,
     });
     const currentUserRole = this.currentUserRole(context);
     const notificationPreviews = latestNotifications.map((notification) =>
@@ -400,7 +398,7 @@ export class DashboardService {
     );
 
     return {
-      dataScope: 'ACCOUNT_BACKED',
+      dataScope: "ACCOUNT_BACKED",
       accountBacked: true,
       planId: context.plan.id,
       title: context.plan.title,
@@ -412,12 +410,11 @@ export class DashboardService {
       daysRemaining: daysRemaining(context.plan.weddingDate, today),
       progressPercentage: progressPercentage(totalTasks, completedTasks),
       budgetTotal: moneyOrNull(budgetTotalNumber),
-      spentTotal: moneyOrNull(spentTotalNumber),
+      confirmedCostTotal: moneyOrNull(confirmedCostNumber),
+      paidTotal: moneyOrNull(paidNumber),
+      outstandingTotal: moneyOrNull(outstandingNumber),
       remainingBudget: moneyOrNull(remainingBudgetNumber),
-      commitmentTotal: moneyOrNull(commitmentTotalNumber),
-      commitmentPaidTotal: moneyOrNull(commitmentPaidTotalNumber),
-      commitmentOutstandingTotal: moneyOrNull(commitmentOutstandingTotalNumber),
-      dueInstallmentsCount: effectiveDueInstallmentsCount,
+      duePaymentSchedulesCount: effectiveDuePaymentSchedulesCount,
       totalTasks,
       completedTasks,
       overdueTasks,
@@ -446,7 +443,9 @@ export class DashboardService {
       highPriorityNotificationsCount,
       importantItems,
       nextBestActions: importantItems,
-      planProviders: planProviderLinks.map((link) => toProviderPreviewResponse(link)),
+      planProviders: planProviderLinks.map((link) =>
+        toProviderPreviewResponse(link),
+      ),
       importantNotifications: notificationPreviews,
       latestImportantNotification: latestImportantNotification
         ? toNotificationPreview(latestImportantNotification)
@@ -459,21 +458,24 @@ export class DashboardService {
             status: nextTask.status,
           }
         : null,
-      nextInstallmentDue: nextMoneyInstallment
+      nextPaymentScheduleDue: nextPaymentSchedule
         ? {
-            id: nextMoneyInstallment.id,
-            financialCommitmentId: nextMoneyInstallment.financialCommitmentId,
-            amount: nextMoneyInstallment.amount.toString(),
-            dueAt: nextMoneyInstallment.dueDate,
-            status: nextMoneyInstallment.status,
+            id: nextPaymentSchedule.id,
+            weddingCostId: nextPaymentSchedule.weddingCostId,
+            title: nextPaymentSchedule.title,
+            amount: nextPaymentSchedule.amount.toString(),
+            dueDate: nextPaymentSchedule.dueDate,
+            status: nextPaymentSchedule.status,
           }
         : null,
       moneySummary: {
         totalBudget: moneyOrNull(budgetTotalNumber),
-        totalSpent: moneyOrNull(spentTotalNumber),
+        confirmedCost: moneyOrNull(confirmedCostNumber),
+        paid: moneyOrNull(paidNumber),
+        outstanding: moneyOrNull(outstandingNumber),
         remainingBudget: moneyOrNull(remainingBudgetNumber),
-        totalCommitments: moneyOrNull(commitmentTotalNumber),
-        overBudget: remainingBudgetNumber === null ? null : remainingBudgetNumber < 0,
+        overBudget:
+          remainingBudgetNumber === null ? null : remainingBudgetNumber < 0,
       },
       financialWarnings,
       taskSummary: {
@@ -514,13 +516,14 @@ export class DashboardService {
   }
 
   private async getMarketplaceSummary(userId: string) {
-    const [featuredProvidersCount, favoriteProvidersCount, quoteRequestsCount] = await Promise.all([
-      this.prisma.provider.count({
-        where: { status: 'ACTIVE', isFeatured: true },
-      }),
-      this.prisma.favoriteProvider.count({ where: { userId } }),
-      this.prisma.quoteRequest.count({ where: { userId } }),
-    ]);
+    const [featuredProvidersCount, favoriteProvidersCount, quoteRequestsCount] =
+      await Promise.all([
+        this.prisma.provider.count({
+          where: { status: "ACTIVE", isFeatured: true },
+        }),
+        this.prisma.favoriteProvider.count({ where: { userId } }),
+        this.prisma.quoteRequest.count({ where: { userId } }),
+      ]);
 
     return {
       featuredProvidersCount,
@@ -529,57 +532,40 @@ export class DashboardService {
     };
   }
 
-  private async getBudgetSummary(weddingPlanId: string) {
-    const categories = await this.prisma.budgetCategory.findMany({
-      where: { weddingPlanId },
-    });
-    const totalTargetAmount = categories.reduce(
-      (sum, category) => sum + Number(category.targetAmount?.toString() ?? '0'),
+  private async getMoneyHomeSummary(weddingPlanId: string) {
+    const [plan, costs] = await Promise.all([
+      this.prisma.weddingPlan.findUniqueOrThrow({
+        where: { id: weddingPlanId },
+        select: { estimatedBudget: true, currency: true },
+      }),
+      this.prisma.weddingCost.findMany({
+        where: {
+          weddingPlanId,
+          status: { not: WeddingCostStatus.CANCELLED },
+        },
+        select: { totalAmount: true, paidAmount: true },
+      }),
+    ]);
+    const confirmedCost = costs.reduce(
+      (sum, cost) => sum + decimalToNumber(cost.totalAmount),
       0,
     );
-
+    const paid = costs.reduce(
+      (sum, cost) => sum + decimalToNumber(cost.paidAmount),
+      0,
+    );
+    const totalBudget = plan.estimatedBudget
+      ? decimalToNumber(plan.estimatedBudget)
+      : null;
     return {
-      categoriesCount: categories.length,
-      totalTargetAmount: totalTargetAmount.toFixed(2),
-    };
-  }
-
-  private async getExpensesSummary(weddingPlanId: string) {
-    const expenses = await this.prisma.expense.findMany({
-      where: { weddingPlanId },
-    });
-    const summary = {
-      totalPlanned: 0,
-      totalPaid: 0,
-      totalCancelled: 0,
-      countPlanned: 0,
-      countPaid: 0,
-      countCancelled: 0,
-    };
-
-    for (const expense of expenses) {
-      const amount = Number(expense.amount.toString());
-      if (expense.status === ExpenseStatus.PLANNED) {
-        summary.totalPlanned += amount;
-        summary.countPlanned++;
-      }
-      if (expense.status === ExpenseStatus.PAID) {
-        summary.totalPaid += amount;
-        summary.countPaid++;
-      }
-      if (expense.status === ExpenseStatus.CANCELLED) {
-        summary.totalCancelled += amount;
-        summary.countCancelled++;
-      }
-    }
-
-    return {
-      totalPlanned: summary.totalPlanned.toFixed(2),
-      totalPaid: summary.totalPaid.toFixed(2),
-      totalCancelled: summary.totalCancelled.toFixed(2),
-      countPlanned: summary.countPlanned,
-      countPaid: summary.countPaid,
-      countCancelled: summary.countCancelled,
+      currency: plan.currency,
+      totalBudget: moneyOrNull(totalBudget),
+      confirmedCost: moneyOrNull(confirmedCost),
+      paid: moneyOrNull(paid),
+      outstanding: moneyOrNull(confirmedCost - paid),
+      remainingBudget:
+        totalBudget === null ? null : moneyOrNull(totalBudget - confirmedCost),
+      costsCount: costs.length,
     };
   }
 
@@ -591,7 +577,7 @@ export class DashboardService {
           notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
         },
       },
-      orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
       take: 5,
     });
 
@@ -612,7 +598,7 @@ export class DashboardService {
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
       include: { user: { select: { id: true, name: true, phone: true } } },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: "asc" },
     });
 
     return members.map((member) => ({
@@ -621,15 +607,13 @@ export class DashboardService {
       userId: member.userId,
       user: member.user,
       role: member.role,
-      canViewBudget: member.canViewBudget,
-      canViewExpenses: member.canViewExpenses,
-      canViewFinancialRecords: member.canViewFinancialRecords,
+      canViewMoney: member.canViewMoney || member.canManageMoney,
       canEditPlan: member.canEditPlan,
       canManageTasks: member.canManageTasks,
       canManageGuests: member.canManageGuests,
       canManageProviders: member.canManageProviders,
       canInviteMembers: member.canInviteMembers,
-      canManageFinancialRecords: member.canManageFinancialRecords,
+      canManageMoney: member.canManageMoney,
       receiveNotifications: member.receiveNotifications,
       createdAt: member.createdAt,
       updatedAt: member.updatedAt,
@@ -644,24 +628,26 @@ export class DashboardService {
     return endOfRiyadhDay(today);
   }
 
-  private currentUserRole(context: PlanAccessContext): 'OWNER' | SharedMemberRole | null {
-    if (context.isOwner) return 'OWNER';
+  private currentUserRole(
+    context: PlanAccessContext,
+  ): "OWNER" | SharedMemberRole | null {
+    if (context.isOwner) return "OWNER";
     return context.sharedMember?.role ?? null;
   }
 
-  private permissionSummary(context: PlanAccessContext): DashboardPermissionSummary {
+  private permissionSummary(
+    context: PlanAccessContext,
+  ): DashboardPermissionSummary {
     const role = this.currentUserRole(context);
     return {
       isOwner: context.isOwner,
       role,
-      canViewBudget: this.permissions.canReadFinancial(context, 'budget'),
-      canViewExpenses: this.permissions.canReadFinancial(context, 'expenses'),
-      canViewFinancialRecords: this.permissions.canReadFinancial(context, 'financialRecords'),
+      canViewMoney: this.permissions.canViewMoney(context),
+      canManageMoney: this.permissions.canManageMoney(context),
       canManageTasks: this.permissions.canManageTasks(context),
       canManageGuests: this.permissions.canManageGuests(context),
       canManageProviders: this.permissions.canManageProviders(context),
       canManageMembers: this.permissions.canManageMembers(context),
-      canManageFinancialRecords: this.permissions.canManageFinancialRecords(context),
       canManagePlan: this.permissions.canManagePlan(context),
     };
   }

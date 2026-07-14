@@ -1,20 +1,24 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  InstallmentStatus,
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import {
   Notification,
   NotificationPriority,
   NotificationType,
+  PaymentScheduleStatus,
   Prisma,
   WeddingPlanStatus,
   WeddingTask,
   WeddingTaskStatus,
-} from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { endOfRiyadhDay, startOfRiyadhDay } from '../common/time/business-day';
-import { PrismaService } from '../prisma/prisma.service';
-import { OutboxEventTypes } from '../outbox/outbox.constants';
-import { OutboxService } from '../outbox/outbox.service';
-import { PermissionService } from '../sharing/permission.service';
+} from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
+import { PrismaService } from "../prisma/prisma.service";
+import { OutboxEventTypes } from "../outbox/outbox.constants";
+import { OutboxService } from "../outbox/outbox.service";
+import { PermissionService } from "../sharing/permission.service";
 
 export interface NotificationResponse {
   id: string;
@@ -57,7 +61,10 @@ export interface NotificationPageResponse {
   hasMore: boolean;
 }
 
-type NotificationPurgeClient = Pick<Prisma.TransactionClient, 'notification' | 'outboxEvent'>;
+type NotificationPurgeClient = Pick<
+  Prisma.TransactionClient,
+  "notification" | "outboxEvent"
+>;
 
 @Injectable()
 export class NotificationsService {
@@ -76,8 +83,11 @@ export class NotificationsService {
     limitValue?: string,
   ): Promise<NotificationPageResponse> {
     const planId = this.optionalText(weddingPlanId);
-    const page = this.positiveInteger(pageValue ?? '1', 'page');
-    const limit = Math.min(this.positiveInteger(limitValue ?? '20', 'limit'), 50);
+    const page = this.positiveInteger(pageValue ?? "1", "page");
+    const limit = Math.min(
+      this.positiveInteger(limitValue ?? "20", "limit"),
+      50,
+    );
     const where: Prisma.NotificationWhereInput = {
       userId: currentUser.id,
       archivedAt: null,
@@ -89,7 +99,7 @@ export class NotificationsService {
       this.prisma.notification.count({ where }),
       this.prisma.notification.findMany({
         where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -123,12 +133,18 @@ export class NotificationsService {
     return { count };
   }
 
-  async findOne(currentUser: AuthenticatedUser, id: string): Promise<NotificationResponse> {
+  async findOne(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<NotificationResponse> {
     const notification = await this.findOwnedOrThrow(currentUser, id);
     return this.toResponse(notification);
   }
 
-  async markRead(currentUser: AuthenticatedUser, id: string): Promise<NotificationResponse> {
+  async markRead(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<NotificationResponse> {
     const existing = await this.findOwnedOrThrow(currentUser, id);
     if (existing.readAt) return this.toResponse(existing);
 
@@ -158,13 +174,19 @@ export class NotificationsService {
     return { updated: result.count };
   }
 
-  async remove(currentUser: AuthenticatedUser, id: string): Promise<{ id: string; deleted: true }> {
+  async remove(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<{ id: string; deleted: true }> {
     await this.findOwnedOrThrow(currentUser, id);
     await this.prisma.notification.delete({ where: { id } });
     return { id, deleted: true };
   }
 
-  async archive(currentUser: AuthenticatedUser, id: string): Promise<NotificationResponse> {
+  async archive(
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<NotificationResponse> {
     const existing = await this.findOwnedOrThrow(currentUser, id);
     if (existing.archivedAt) return this.toResponse(existing);
 
@@ -179,7 +201,9 @@ export class NotificationsService {
     return this.toResponse(notification);
   }
 
-  async createNotification(input: CreateNotificationInput): Promise<NotificationResponse> {
+  async createNotification(
+    input: CreateNotificationInput,
+  ): Promise<NotificationResponse> {
     if (input.dedupeKey) {
       const existing = await this.prisma.notification.findUnique({
         where: { dedupeKey: input.dedupeKey },
@@ -206,7 +230,7 @@ export class NotificationsService {
         });
         await this.outbox.enqueue(tx, {
           type: OutboxEventTypes.notificationCreated,
-          aggregateType: 'notification',
+          aggregateType: "notification",
           aggregateId: created.id,
           payload: {
             notificationId: created.id,
@@ -220,7 +244,7 @@ export class NotificationsService {
       if (
         input.dedupeKey &&
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+        error.code === "P2002"
       ) {
         const existing = await this.prisma.notification.findUnique({
           where: { dedupeKey: input.dedupeKey },
@@ -233,7 +257,7 @@ export class NotificationsService {
 
   async createForPlanParticipants(
     weddingPlanId: string,
-    input: Omit<CreateNotificationInput, 'userId' | 'weddingPlanId'>,
+    input: Omit<CreateNotificationInput, "userId" | "weddingPlanId">,
     excludedUserIds: string[] = [],
   ): Promise<NotificationResponse[]> {
     const plan = await this.prisma.weddingPlan.findUnique({
@@ -247,7 +271,7 @@ export class NotificationsService {
       },
     });
     if (!plan) {
-      throw new NotFoundException('Wedding plan not found');
+      throw new NotFoundException("Wedding plan not found");
     }
 
     const excluded = new Set(excludedUserIds);
@@ -263,7 +287,9 @@ export class NotificationsService {
             ...input,
             userId,
             weddingPlanId,
-            dedupeKey: input.dedupeKey ? `${userId}:${input.dedupeKey}` : undefined,
+            dedupeKey: input.dedupeKey
+              ? `${userId}:${input.dedupeKey}`
+              : undefined,
           }),
         ),
     );
@@ -283,18 +309,22 @@ export class NotificationsService {
     if (task.dueDate > endOfRiyadhDay(dueWindowEnd)) return;
 
     const overdue = task.dueDate < today;
-    const type = overdue ? NotificationType.TASK_OVERDUE : NotificationType.TASK_DUE_SOON;
+    const type = overdue
+      ? NotificationType.TASK_OVERDUE
+      : NotificationType.TASK_DUE_SOON;
     await this.createForPlanParticipants(task.weddingPlanId, {
       type,
-      title: overdue ? 'مهمة متأخرة' : 'مهمة قريبة',
-      body: `${task.title} - ${overdue ? 'تجاوزت موعدها' : 'تستحق قريباً'} (${this.formatDate(task.dueDate)}).`,
+      title: overdue ? "مهمة متأخرة" : "مهمة قريبة",
+      body: `${task.title} - ${overdue ? "تجاوزت موعدها" : "تستحق قريباً"} (${this.formatDate(task.dueDate)}).`,
       data: {
         taskId: task.id,
         weddingPlanId: task.weddingPlanId,
         dueDate: task.dueDate.toISOString(),
       },
-      priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-      entityType: 'task',
+      priority: overdue
+        ? NotificationPriority.HIGH
+        : NotificationPriority.NORMAL,
+      entityType: "task",
       entityId: task.id,
       routeTarget: `/wedding-plans/${task.weddingPlanId}/tasks`,
       dedupeKey: `${type}:task:${task.id}`,
@@ -322,7 +352,7 @@ export class NotificationsService {
         if (plans.length === 0) return 0;
 
         const planIds = plans.map((plan) => plan.id);
-        const [tasks, installments] = await Promise.all([
+        const [tasks, paymentSchedules] = await Promise.all([
           tx.weddingTask.findMany({
             where: {
               weddingPlanId: { in: planIds },
@@ -332,17 +362,23 @@ export class NotificationsService {
               },
             },
           }),
-          tx.financialInstallment.findMany({
+          tx.paymentSchedule.findMany({
             where: {
-              weddingPlanId: { in: planIds },
-              dueDate: { not: null, lte: dueWindowEndOfDay },
-              status: {
-                in: [InstallmentStatus.PENDING, InstallmentStatus.OVERDUE],
+              dueDate: { lte: dueWindowEndOfDay },
+              status: PaymentScheduleStatus.PENDING,
+              weddingCost: {
+                weddingPlanId: { in: planIds },
+                status: { not: "CANCELLED" },
               },
             },
             include: {
-              financialCommitment: {
-                select: { title: true, partyName: true },
+              weddingCost: {
+                select: {
+                  weddingPlanId: true,
+                  title: true,
+                  partyName: true,
+                  provider: { select: { businessName: true } },
+                },
               },
             },
           }),
@@ -354,7 +390,9 @@ export class NotificationsService {
           const plan = plansById.get(task.weddingPlanId);
           if (!plan || !task.dueDate) continue;
           const overdue = task.dueDate < today;
-          const type = overdue ? NotificationType.TASK_OVERDUE : NotificationType.TASK_DUE_SOON;
+          const type = overdue
+            ? NotificationType.TASK_OVERDUE
+            : NotificationType.TASK_DUE_SOON;
           const recipients = new Set([
             plan.ownerUserId,
             ...plan.sharedMembers.map((member) => member.userId),
@@ -364,15 +402,17 @@ export class NotificationsService {
               userId,
               weddingPlanId: plan.id,
               type,
-              priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-              title: overdue ? 'مهمة متأخرة' : 'مهمة قريبة',
-              body: `${task.title} - ${overdue ? 'تجاوزت موعدها' : 'تستحق قريباً'} (${this.formatDate(task.dueDate)}).`,
+              priority: overdue
+                ? NotificationPriority.HIGH
+                : NotificationPriority.NORMAL,
+              title: overdue ? "مهمة متأخرة" : "مهمة قريبة",
+              body: `${task.title} - ${overdue ? "تجاوزت موعدها" : "تستحق قريباً"} (${this.formatDate(task.dueDate)}).`,
               data: {
                 taskId: task.id,
                 weddingPlanId: plan.id,
                 dueDate: task.dueDate.toISOString(),
               },
-              entityType: 'task',
+              entityType: "task",
               entityId: task.id,
               routeTarget: `/wedding-plans/${plan.id}/tasks`,
               dedupeKey: `${userId}:${type}:task:${task.id}`,
@@ -380,22 +420,22 @@ export class NotificationsService {
           }
         }
 
-        for (const installment of installments) {
-          const plan = plansById.get(installment.weddingPlanId);
-          if (!plan || !installment.dueDate) continue;
-          const overdue =
-            installment.status === InstallmentStatus.OVERDUE || installment.dueDate < today;
+        for (const schedule of paymentSchedules) {
+          const plan = plansById.get(schedule.weddingCost.weddingPlanId);
+          if (!plan) continue;
+          const overdue = schedule.dueDate < today;
           const type = overdue
-            ? NotificationType.INSTALLMENT_OVERDUE
-            : NotificationType.INSTALLMENT_DUE_SOON;
+            ? NotificationType.PAYMENT_SCHEDULE_OVERDUE
+            : NotificationType.PAYMENT_SCHEDULE_DUE_SOON;
           const recipients = [
             plan.ownerUserId,
             ...plan.sharedMembers
               .filter((member) =>
-                this.permissions.canReadFinancial(
-                  { plan, isOwner: false, sharedMember: member },
-                  'financialRecords',
-                ),
+                this.permissions.canViewMoney({
+                  plan,
+                  isOwner: false,
+                  sharedMember: member,
+                }),
               )
               .map((member) => member.userId),
           ];
@@ -405,24 +445,30 @@ export class NotificationsService {
               userId,
               weddingPlanId: plan.id,
               type,
-              priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-              title: overdue ? 'قسط متأخر' : 'قسط قريب',
+              priority: overdue
+                ? NotificationPriority.HIGH
+                : NotificationPriority.NORMAL,
+              title: overdue ? "موعد دفع متأخر" : "موعد دفع قريب",
               body: isOwnerRecipient
-                ? `${installment.financialCommitment.title} - قسط بقيمة ${installment.amount.toString()} ${overdue ? 'متأخر' : 'يستحق قريباً'} (${this.formatDate(installment.dueDate)}).`
-                : `لديك قسط ${overdue ? 'متأخر' : 'يستحق قريباً'} (${this.formatDate(installment.dueDate)}). افتح الخطة لعرض التفاصيل حسب صلاحياتك الحالية.`,
+                ? `${schedule.weddingCost.title} - دفعة بقيمة ${schedule.amount.toString()} ${overdue ? "متأخرة" : "تستحق قريباً"} (${this.formatDate(schedule.dueDate)}).`
+                : `لديك موعد دفع ${overdue ? "متأخر" : "قريب"} (${this.formatDate(schedule.dueDate)}). افتح تبويب المال لعرض التفاصيل.`,
               data: {
-                installmentId: installment.id,
-                financialCommitmentId: installment.financialCommitmentId,
+                paymentScheduleId: schedule.id,
+                weddingCostId: schedule.weddingCostId,
                 weddingPlanId: plan.id,
-                dueDate: installment.dueDate.toISOString(),
+                dueDate: schedule.dueDate.toISOString(),
                 ...(isOwnerRecipient
-                  ? { partyName: installment.financialCommitment.partyName }
+                  ? {
+                      partyName:
+                        schedule.weddingCost.provider?.businessName ??
+                        schedule.weddingCost.partyName,
+                    }
                   : {}),
               },
-              entityType: 'financial_installment',
-              entityId: installment.id,
-              routeTarget: `/wedding-plans/${plan.id}/finance/commitments/${installment.financialCommitmentId}`,
-              dedupeKey: `${userId}:${type}:financial-installment:${installment.id}`,
+              entityType: "payment_schedule",
+              entityId: schedule.id,
+              routeTarget: `/wedding-plans/${plan.id}/money/costs/${schedule.weddingCostId}/schedules/${schedule.id}`,
+              dedupeKey: `${userId}:${type}:payment-schedule:${schedule.id}`,
             });
           }
         }
@@ -435,7 +481,7 @@ export class NotificationsService {
         for (const notification of created) {
           await this.outbox.enqueue(tx, {
             type: OutboxEventTypes.notificationCreated,
-            aggregateType: 'notification',
+            aggregateType: "notification",
             aggregateId: notification.id,
             payload: {
               notificationId: notification.id,
@@ -449,7 +495,7 @@ export class NotificationsService {
     );
   }
 
-  async purgeFinancialForMember(
+  async purgeMoneyForMember(
     client: NotificationPurgeClient,
     userId: string,
     weddingPlanId: string,
@@ -458,7 +504,7 @@ export class NotificationsService {
       where: {
         userId,
         weddingPlanId,
-        entityType: 'financial_installment',
+        entityType: "payment_schedule",
       },
       select: { id: true },
     });
@@ -467,7 +513,7 @@ export class NotificationsService {
 
     await client.outboxEvent.deleteMany({
       where: {
-        aggregateType: 'notification',
+        aggregateType: "notification",
         aggregateId: { in: ids },
       },
     });
@@ -486,14 +532,16 @@ export class NotificationsService {
     });
 
     if (!notification) {
-      throw new NotFoundException('Notification not found');
+      throw new NotFoundException("Notification not found");
     }
 
-    if (notification.entityType === 'financial_installment' && notification.weddingPlanId) {
-      await this.permissions.assertFinancialReadable(
+    if (
+      notification.entityType === "payment_schedule" &&
+      notification.weddingPlanId
+    ) {
+      await this.permissions.assertMoneyReadable(
         notification.weddingPlanId,
         currentUser,
-        'financialRecords',
       );
     }
 
@@ -501,7 +549,7 @@ export class NotificationsService {
   }
 
   private optionalText(value: string | undefined): string | null {
-    const trimmed = value?.trim() ?? '';
+    const trimmed = value?.trim() ?? "";
     return trimmed || null;
   }
 
@@ -517,7 +565,7 @@ export class NotificationsService {
   }
 
   private formatDate(date: Date | null): string {
-    if (!date) return 'بدون تاريخ';
+    if (!date) return "بدون تاريخ";
     return `${date.getUTCDate()}/${date.getUTCMonth() + 1}/${date.getUTCFullYear()}`;
   }
 

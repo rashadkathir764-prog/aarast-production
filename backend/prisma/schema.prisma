@@ -75,36 +75,22 @@ enum WeddingPlanStatus {
   ARCHIVED
 }
 
-enum ExpenseStatus {
-  PLANNED
-  PAID
-  CANCELLED
-}
-
-enum InstallmentStatus {
-  PENDING
-  PAID
-  OVERDUE
-  CANCELLED
-}
-
-enum FinancialCommitmentSourceType {
-  PROVIDER_SERVICE
-  MANUAL_PAYABLE
-  MANUAL_COMMITMENT
-  OTHER
-}
-
-enum FinancialCommitmentStatus {
+enum WeddingCostStatus {
   OPEN
   PARTIALLY_PAID
   PAID
   CANCELLED
 }
 
-enum FinancialPaymentRecordType {
+enum CostPaymentType {
   PAYMENT
   REVERSAL
+}
+
+enum PaymentScheduleStatus {
+  PENDING
+  PAID
+  CANCELLED
 }
 
 enum WeddingTaskStatus {
@@ -188,9 +174,8 @@ enum NotificationType {
   QUOTE_REQUEST_SUBMITTED
   TASK_DUE_SOON
   TASK_OVERDUE
-  INSTALLMENT_DUE_SOON
-  INSTALLMENT_OVERDUE
-  DEBT_DUE_SOON
+  PAYMENT_SCHEDULE_DUE_SOON
+  PAYMENT_SCHEDULE_OVERDUE
   SHARING_INVITATION
   SHARING_UPDATED
   SHARING_INVITE_ACCEPTED
@@ -403,162 +388,123 @@ model OtpDispatchQuota {
 }
 
 model WeddingPlan {
-  id                      String                   @id @default(cuid())
-  ownerUserId             String
-  title                   String
-  city                    String?
-  location                Json?
-  weddingDate             DateTime?
-  priorities              String[]                 @default([])
-  estimatedBudget         Decimal?                 @db.Decimal(14, 2)
-  currency                String                   @default("YER")
-  onboardingPath          OnboardingPath?
-  persona                 WeddingPersona?
-  onboardingCompletedAt   DateTime?
-  importMigrationId       String?
-  status                  WeddingPlanStatus        @default(PLANNING)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  owner                   User                     @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
-  activeForUsers          User[]                   @relation("ActiveWeddingPlan")
-  budgetCategories        BudgetCategory[]
-  expenses                Expense[]
-  financialCommitments    FinancialCommitment[]
-  financialPaymentRecords FinancialPaymentRecord[]
-  financialInstallments   FinancialInstallment[]
-  tasks                   WeddingTask[]
-  sharedMembers           SharedMember[]
-  planInvites             PlanInvite[]
-  quoteRequests           QuoteRequest[]
-  bookingLeads            BookingLead[]
-  notifications           Notification[]
-  guests                  Guest[]
-  guestGroups             GuestGroup[]
-  providerLinks           PlanProviderLink[]
+  id                    String             @id @default(cuid())
+  ownerUserId           String
+  title                 String
+  city                  String?
+  location              Json?
+  weddingDate           DateTime?
+  priorities            String[]           @default([])
+  estimatedBudget       Decimal?           @db.Decimal(14, 2)
+  currency              String             @default("YER")
+  onboardingPath        OnboardingPath?
+  persona               WeddingPersona?
+  onboardingCompletedAt DateTime?
+  importMigrationId     String?
+  status                WeddingPlanStatus  @default(PLANNING)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  owner                 User               @relation("OwnedWeddingPlans", fields: [ownerUserId], references: [id])
+  activeForUsers        User[]             @relation("ActiveWeddingPlan")
+  budgetCategories      BudgetCategory[]
+  weddingCosts          WeddingCost[]
+  tasks                 WeddingTask[]
+  sharedMembers         SharedMember[]
+  planInvites           PlanInvite[]
+  quoteRequests         QuoteRequest[]
+  bookingLeads          BookingLead[]
+  notifications         Notification[]
+  guests                Guest[]
+  guestGroups           GuestGroup[]
+  providerLinks         PlanProviderLink[]
 
   @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
 }
 
 model BudgetCategory {
-  id                      String                   @id @default(cuid())
-  weddingPlanId           String
-  name                    String
-  targetAmount            Decimal?                 @db.Decimal(14, 2)
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  weddingPlan             WeddingPlan              @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  expenses                Expense[]
-  financialCommitments    FinancialCommitment[]
-  financialPaymentRecords FinancialPaymentRecord[]
-  financialInstallments   FinancialInstallment[]
+  id              String        @id @default(cuid())
+  weddingPlanId   String
+  name            String
+  normalizedName  String
+  allocatedAmount Decimal?      @db.Decimal(14, 2)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  weddingPlan     WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  weddingCosts    WeddingCost[]
 
+  @@unique([weddingPlanId, normalizedName])
+  @@unique([id, weddingPlanId])
   @@index([weddingPlanId])
 }
 
-model Expense {
-  id               String          @id @default(cuid())
+model WeddingCost {
+  id               String            @id @default(cuid())
   weddingPlanId    String
-  budgetCategoryId String?
+  budgetCategoryId String
+  providerId       String?
+  quoteOfferId     String?           @unique
   title            String
-  amount           Decimal         @db.Decimal(14, 2)
-  status           ExpenseStatus   @default(PAID)
-  expenseDate      DateTime?
+  partyName        String?
+  partyPhone       String?
+  totalAmount      Decimal           @db.Decimal(14, 2)
+  paidAmount       Decimal           @default(0) @db.Decimal(14, 2)
+  dueDate          DateTime?
+  agreementDate    DateTime?
+  status           WeddingCostStatus @default(OPEN)
   note             String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  weddingPlan      WeddingPlan     @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  budgetCategory   BudgetCategory? @relation(fields: [budgetCategoryId], references: [id], onDelete: SetNull)
-
-  @@index([weddingPlanId])
-  @@index([budgetCategoryId])
-}
-
-model FinancialCommitment {
-  id                 String                        @id @default(cuid())
-  weddingPlanId      String
-  budgetCategoryId   String
-  providerId         String?
-  planProviderLinkId String?
-  quoteRequestId     String?
-  quoteOfferId       String?
-  sourceType         FinancialCommitmentSourceType @default(MANUAL_COMMITMENT)
-  title              String
-  partyName          String?
-  partyPhone         String?
-  totalAmount        Decimal                       @db.Decimal(14, 2)
-  paidAmount         Decimal                       @default(0) @db.Decimal(14, 2)
-  dueDate            DateTime?
-  agreementDate      DateTime?
-  status             FinancialCommitmentStatus     @default(OPEN)
-  note               String?
-  createdAt          DateTime                      @default(now())
-  updatedAt          DateTime                      @updatedAt
-  weddingPlan        WeddingPlan                   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  budgetCategory     BudgetCategory                @relation(fields: [budgetCategoryId], references: [id], onDelete: Restrict)
-  provider           Provider?                     @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  planProviderLink   PlanProviderLink?             @relation(fields: [planProviderLinkId], references: [id], onDelete: SetNull)
-  quoteRequest       QuoteRequest?                 @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
-  quoteOffer         QuoteOffer?                   @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
-  paymentRecords     FinancialPaymentRecord[]
-  installments       FinancialInstallment[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  weddingPlan      WeddingPlan       @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  budgetCategory   BudgetCategory    @relation(fields: [budgetCategoryId, weddingPlanId], references: [id, weddingPlanId], onDelete: Restrict)
+  provider         Provider?         @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  quoteOffer       QuoteOffer?       @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
+  payments         CostPayment[]
+  paymentSchedules PaymentSchedule[]
 
   @@index([weddingPlanId, status])
   @@index([budgetCategoryId])
   @@index([providerId])
-  @@index([planProviderLinkId])
-  @@index([quoteRequestId])
-  @@index([quoteOfferId])
-  @@index([sourceType])
 }
 
-model FinancialPaymentRecord {
-  id                     String                     @id @default(cuid())
-  weddingPlanId          String
-  financialCommitmentId  String
-  budgetCategoryId       String
-  title                  String
-  amount                 Decimal                    @db.Decimal(14, 2)
-  entryType              FinancialPaymentRecordType @default(PAYMENT)
-  paidAt                 DateTime                   @default(now())
-  method                 String?
-  note                   String?
-  financialInstallmentId String?                    @unique
-  reversalOfId           String?                    @unique
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime                   @updatedAt
-  weddingPlan            WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  financialCommitment    FinancialCommitment        @relation(fields: [financialCommitmentId], references: [id], onDelete: Cascade)
-  budgetCategory         BudgetCategory             @relation(fields: [budgetCategoryId], references: [id], onDelete: Restrict)
-  financialInstallment   FinancialInstallment?      @relation(fields: [financialInstallmentId], references: [id], onDelete: SetNull)
-  reversalOf             FinancialPaymentRecord?    @relation("FinancialPaymentReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
-  reversedBy             FinancialPaymentRecord?    @relation("FinancialPaymentReversal")
+model CostPayment {
+  id                String           @id @default(cuid())
+  weddingCostId     String
+  amount            Decimal          @db.Decimal(14, 2)
+  entryType         CostPaymentType  @default(PAYMENT)
+  paidAt            DateTime         @default(now())
+  method            String?
+  note              String?
+  paymentScheduleId String?
+  reversalOfId      String?          @unique
+  createdAt         DateTime         @default(now())
+  weddingCost       WeddingCost      @relation(fields: [weddingCostId], references: [id], onDelete: Restrict)
+  paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict)
+  reversalOf        CostPayment?     @relation("CostPaymentReversal", fields: [reversalOfId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict)
+  reversedBy        CostPayment?     @relation("CostPaymentReversal")
 
-  @@index([weddingPlanId, paidAt])
-  @@index([financialCommitmentId])
-  @@index([budgetCategoryId])
+  @@unique([id, weddingCostId])
+  @@unique([reversalOfId, weddingCostId])
+  @@index([weddingCostId, paidAt])
+  @@index([paymentScheduleId])
 }
 
-model FinancialInstallment {
-  id                    String                  @id @default(cuid())
-  weddingPlanId         String
-  financialCommitmentId String
-  budgetCategoryId      String
-  amount                Decimal                 @db.Decimal(14, 2)
-  dueDate               DateTime?
-  paidAt                DateTime?
-  status                InstallmentStatus       @default(PENDING)
-  note                  String?
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
-  weddingPlan           WeddingPlan             @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  financialCommitment   FinancialCommitment     @relation(fields: [financialCommitmentId], references: [id], onDelete: Cascade)
-  budgetCategory        BudgetCategory          @relation(fields: [budgetCategoryId], references: [id], onDelete: Restrict)
-  paymentRecord         FinancialPaymentRecord?
+model PaymentSchedule {
+  id            String                @id @default(cuid())
+  weddingCostId String
+  amount        Decimal               @db.Decimal(14, 2)
+  dueDate       DateTime
+  paidAt        DateTime?
+  status        PaymentScheduleStatus @default(PENDING)
+  note          String?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  weddingCost   WeddingCost           @relation(fields: [weddingCostId], references: [id], onDelete: Cascade)
+  payments      CostPayment[]
 
-  @@index([weddingPlanId, status, dueDate])
-  @@index([financialCommitmentId])
-  @@index([budgetCategoryId])
+  @@unique([id, weddingCostId])
+  @@index([weddingCostId, status, dueDate])
+  @@index([status, dueDate])
 }
 
 model WeddingTask {
@@ -599,58 +545,54 @@ model WeddingTaskChecklistItem {
 }
 
 model SharedMember {
-  id                        String           @id @default(cuid())
-  weddingPlanId             String
-  userId                    String
-  role                      SharedMemberRole @default(VIEWER)
-  canViewBudget             Boolean          @default(false)
-  canViewExpenses           Boolean          @default(false)
-  canViewFinancialRecords   Boolean          @default(false)
-  canEditPlan               Boolean          @default(false)
-  canManageTasks            Boolean          @default(false)
-  canManageGuests           Boolean          @default(false)
-  canManageProviders        Boolean          @default(false)
-  canInviteMembers          Boolean          @default(false)
-  canManageFinancialRecords Boolean          @default(false)
-  receiveNotifications      Boolean          @default(true)
-  createdAt                 DateTime         @default(now())
-  updatedAt                 DateTime         @updatedAt
-  weddingPlan               WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  user                      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String           @id @default(cuid())
+  weddingPlanId        String
+  userId               String
+  role                 SharedMemberRole @default(VIEWER)
+  canViewMoney         Boolean          @default(false)
+  canEditPlan          Boolean          @default(false)
+  canManageTasks       Boolean          @default(false)
+  canManageGuests      Boolean          @default(false)
+  canManageProviders   Boolean          @default(false)
+  canInviteMembers     Boolean          @default(false)
+  canManageMoney       Boolean          @default(false)
+  receiveNotifications Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  weddingPlan          WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([weddingPlanId, userId])
 }
 
 model PlanInvite {
-  id                        String           @id @default(cuid())
-  weddingPlanId             String
-  inviterUserId             String
-  inviteeUserId             String?
-  name                      String?
-  phone                     String?
-  normalizedPhone           String?
-  email                     String?
-  tokenHash                 String           @unique
-  role                      SharedMemberRole @default(VIEWER)
-  canViewBudget             Boolean          @default(false)
-  canViewExpenses           Boolean          @default(false)
-  canViewFinancialRecords   Boolean          @default(false)
-  canEditPlan               Boolean          @default(false)
-  canManageTasks            Boolean          @default(false)
-  canManageGuests           Boolean          @default(false)
-  canManageProviders        Boolean          @default(false)
-  canInviteMembers          Boolean          @default(false)
-  canManageFinancialRecords Boolean          @default(false)
-  receiveNotifications      Boolean          @default(true)
-  expiresAt                 DateTime
-  acceptedAt                DateTime?
-  declinedAt                DateTime?
-  revokedAt                 DateTime?
-  createdAt                 DateTime         @default(now())
-  updatedAt                 DateTime         @updatedAt
-  weddingPlan               WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  inviter                   User             @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
-  invitee                   User?            @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
+  id                   String           @id @default(cuid())
+  weddingPlanId        String
+  inviterUserId        String
+  inviteeUserId        String?
+  name                 String?
+  phone                String?
+  normalizedPhone      String?
+  email                String?
+  tokenHash            String           @unique
+  role                 SharedMemberRole @default(VIEWER)
+  canViewMoney         Boolean          @default(false)
+  canEditPlan          Boolean          @default(false)
+  canManageTasks       Boolean          @default(false)
+  canManageGuests      Boolean          @default(false)
+  canManageProviders   Boolean          @default(false)
+  canInviteMembers     Boolean          @default(false)
+  canManageMoney       Boolean          @default(false)
+  receiveNotifications Boolean          @default(true)
+  expiresAt            DateTime
+  acceptedAt           DateTime?
+  declinedAt           DateTime?
+  revokedAt            DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  weddingPlan          WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  inviter              User             @relation("PlanInviteInviter", fields: [inviterUserId], references: [id], onDelete: Cascade)
+  invitee              User?            @relation("PlanInviteInvitee", fields: [inviteeUserId], references: [id], onDelete: SetNull)
 
   @@index([weddingPlanId, createdAt])
   @@index([inviteeUserId, acceptedAt])
@@ -815,43 +757,43 @@ model ProviderCategory {
 }
 
 model Provider {
-  id                   String                @id @default(uuid())
-  userId               String?               @unique
-  cityId               String
-  primaryCategoryId    String?
-  businessName         String
-  ownerName            String?
-  phone                String
-  whatsapp             String?
-  email                String?
-  description          String?               @db.Text
-  address              String?
-  latitude             Decimal?              @db.Decimal(10, 7)
-  longitude            Decimal?              @db.Decimal(10, 7)
-  logoUrl              String?
-  coverUrl             String?
-  status               ProviderStatus        @default(PENDING)
-  reviewNote           String?               @db.Text
-  reviewedAt           DateTime?
-  reviewedById         String?
-  isFeatured           Boolean               @default(false)
-  ratingAverage        Decimal               @default(0) @db.Decimal(3, 2)
-  ratingCount          Int                   @default(0)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  user                 User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
-  city                 City                  @relation(fields: [cityId], references: [id])
-  primaryCategory      ProviderCategory?     @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
-  reviewedBy           User?                 @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  services             ProviderService[]
-  packages             ProviderPackage[]
-  favorites            FavoriteProvider[]
-  reviews              ProviderReview[]
-  quoteRequests        QuoteRequest[]
-  quoteOffers          QuoteOffer[]
-  bookingLeads         BookingLead[]
-  planLinks            PlanProviderLink[]
-  financialCommitments FinancialCommitment[]
+  id                String             @id @default(uuid())
+  userId            String?            @unique
+  cityId            String
+  primaryCategoryId String?
+  businessName      String
+  ownerName         String?
+  phone             String
+  whatsapp          String?
+  email             String?
+  description       String?            @db.Text
+  address           String?
+  latitude          Decimal?           @db.Decimal(10, 7)
+  longitude         Decimal?           @db.Decimal(10, 7)
+  logoUrl           String?
+  coverUrl          String?
+  status            ProviderStatus     @default(PENDING)
+  reviewNote        String?            @db.Text
+  reviewedAt        DateTime?
+  reviewedById      String?
+  isFeatured        Boolean            @default(false)
+  ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
+  ratingCount       Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  city              City               @relation(fields: [cityId], references: [id])
+  primaryCategory   ProviderCategory?  @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  reviewedBy        User?              @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  services          ProviderService[]
+  packages          ProviderPackage[]
+  favorites         FavoriteProvider[]
+  reviews           ProviderReview[]
+  quoteRequests     QuoteRequest[]
+  quoteOffers       QuoteOffer[]
+  bookingLeads      BookingLead[]
+  planLinks         PlanProviderLink[]
+  weddingCosts      WeddingCost[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
@@ -944,7 +886,7 @@ model ProviderReview {
 }
 
 model QuoteRequest {
-  id                     String                @id @default(uuid())
+  id                     String             @id @default(uuid())
   userId                 String
   weddingPlanId          String?
   providerId             String
@@ -956,24 +898,23 @@ model QuoteRequest {
   contactName            String?
   contactPhone           String?
   contactNormalizedPhone String?
-  message                String?               @db.Text
-  budgetMin              Decimal?              @db.Decimal(14, 2)
-  budgetMax              Decimal?              @db.Decimal(14, 2)
-  status                 QuoteRequestStatus    @default(SENT)
+  message                String?            @db.Text
+  budgetMin              Decimal?           @db.Decimal(14, 2)
+  budgetMax              Decimal?           @db.Decimal(14, 2)
+  status                 QuoteRequestStatus @default(SENT)
   acceptedAt             DateTime?
   rejectedAt             DateTime?
   cancelledAt            DateTime?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
-  user                   User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weddingPlan            WeddingPlan?          @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
-  provider               Provider              @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  service                ProviderService?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  city                   City?                 @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weddingPlan            WeddingPlan?       @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
+  provider               Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service                ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  city                   City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
   bookingLeads           BookingLead[]
   offers                 QuoteOffer[]
   providerLinks          PlanProviderLink[]
-  financialCommitments   FinancialCommitment[]
   conversation           Conversation?
 
   @@index([userId, status])
@@ -983,40 +924,39 @@ model QuoteRequest {
 }
 
 model QuoteOffer {
-  id                   String                @id @default(uuid())
-  quoteRequestId       String
-  providerId           String
-  title                String?
-  message              String?               @db.Text
-  amount               Decimal?              @db.Decimal(14, 2)
-  currency             String                @default("YER")
-  validUntil           DateTime?
-  status               QuoteOfferStatus      @default(PENDING)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  quoteRequest         QuoteRequest          @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
-  provider             Provider              @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  providerLinks        PlanProviderLink[]
-  financialCommitments FinancialCommitment[]
+  id             String             @id @default(uuid())
+  quoteRequestId String
+  providerId     String
+  title          String?
+  message        String?            @db.Text
+  amount         Decimal?           @db.Decimal(14, 2)
+  currency       String             @default("YER")
+  validUntil     DateTime?
+  status         QuoteOfferStatus   @default(PENDING)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  quoteRequest   QuoteRequest       @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  provider       Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  providerLinks  PlanProviderLink[]
+  weddingCosts   WeddingCost[]
 
   @@index([quoteRequestId, status])
   @@index([providerId, status])
 }
 
 model PlanProviderLink {
-  id                   String                 @id @default(uuid())
-  weddingPlanId        String
-  providerId           String
-  quoteRequestId       String?
-  quoteOfferId         String?
-  status               PlanProviderLinkStatus @default(ACTIVE)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  weddingPlan          WeddingPlan            @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
-  provider             Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  quoteRequest         QuoteRequest?          @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
-  quoteOffer           QuoteOffer?            @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
-  financialCommitments FinancialCommitment[]
+  id             String                 @id @default(uuid())
+  weddingPlanId  String
+  providerId     String
+  quoteRequestId String?
+  quoteOfferId   String?
+  status         PlanProviderLinkStatus @default(ACTIVE)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  weddingPlan    WeddingPlan            @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  provider       Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  quoteRequest   QuoteRequest?          @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
+  quoteOffer     QuoteOffer?            @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
 
   @@unique([weddingPlanId, providerId])
   @@index([providerId, status])

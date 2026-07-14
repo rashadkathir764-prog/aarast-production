@@ -159,8 +159,8 @@ async function run() {
 
   let planId = null;
   let categoryId = null;
-  let commitmentId = null;
-  let installmentId = null;
+  let costId = null;
+  let paymentScheduleId = null;
   let taskId = null;
   let checklistItemId = null;
   let groupId = null;
@@ -201,60 +201,71 @@ async function run() {
   {
     const res = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
       name: 'Completion Hall',
-      targetAmount: '800000',
+      allocatedAmount: '800000',
     }, owner.token);
     check('POST budget category - HTTP 201', res.status === 201);
     categoryId = res.body?.id;
   }
 
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/expenses`, {
-      title: 'Completion paid expense',
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
       budgetCategoryId: categoryId,
-      amount: '250000',
-      status: 'PAID',
+      title: 'Completion paid cost',
+      totalAmount: '250000',
+      initialPaymentAmount: '250000',
     }, owner.token);
-    check('POST expense - HTTP 201', res.status === 201);
-    check('created expense has id', typeof res.body?.id === 'string');
+    check('POST fully paid cost - HTTP 201', res.status === 201);
+    check('created fully paid cost has id', typeof res.body?.id === 'string');
+    check('created fully paid cost status is PAID', res.body?.status === 'PAID');
   }
 
   {
-    const res = await request('POST', `/api/v1/wedding-plans/${planId}/financial-commitments`, {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
       budgetCategoryId: categoryId,
       partyName: 'Completion Party',
       partyPhone: '+967733333333',
-      title: 'Completion payable',
+      title: 'Completion scheduled cost',
       totalAmount: '300000',
-      paidAmount: '50000',
+      initialPaymentAmount: '50000',
       dueDate: dateOffsetIso(30),
-      status: 'PARTIALLY_PAID',
-      sourceType: 'MANUAL_PAYABLE',
     }, owner.token);
-    check('POST financial commitment - HTTP 201', res.status === 201);
-    commitmentId = res.body?.id;
+    check('POST scheduled cost - HTTP 201', res.status === 201);
+    check('scheduled cost starts partially paid', res.body?.status === 'PARTIALLY_PAID');
+    costId = res.body?.id;
   }
 
   {
-    const res = await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
+    const res = await request('POST', `/api/v1/costs/${costId}/payment-schedules`, {
       amount: '100000',
       dueDate: dateOffsetIso(0),
-      status: 'PENDING',
     }, owner.token);
-    check('POST installment - HTTP 201', res.status === 201);
-    installmentId = res.body?.id;
+    check('POST payment schedule - HTTP 201', res.status === 201);
+    check('created payment schedule is pending', res.body?.status === 'PENDING');
+    paymentScheduleId = res.body?.id;
   }
 
   {
-    const res = await request('PATCH', `/api/v1/financial-installments/${installmentId}/pay`, null, owner.token);
-    check('PATCH installment pay - HTTP 200', res.status === 200);
-    check('installment becomes paid', res.body?.status === 'PAID');
+    const res = await request('POST', `/api/v1/payment-schedules/${paymentScheduleId}/pay`, {}, owner.token);
+    check('POST payment schedule pay - HTTP 201', res.status === 201);
+    check('schedule payment links to schedule', res.body?.paymentScheduleId === paymentScheduleId);
+    check('schedule payment amount is preserved', Number(res.body?.amount) === 100000);
+  }
+
+  {
+    const res = await request('GET', `/api/v1/costs/${costId}/payment-schedules`, null, owner.token);
+    const paidSchedule = Array.isArray(res.body)
+      ? res.body.find((schedule) => schedule.id === paymentScheduleId)
+      : null;
+    check('GET cost payment schedules - HTTP 200', res.status === 200);
+    check('payment schedule becomes paid', paidSchedule?.status === 'PAID');
   }
 
   {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
     check('GET money-summary - HTTP 200', res.status === 200);
-    check('money summary spent total is calculated', res.body?.spentTotal === '250000.00');
-    check('money summary paid commitment includes installment', res.body?.commitmentPaidTotal === '150000.00');
+    check('money summary confirmed cost is calculated', Number(res.body?.budget?.confirmedCost) === 550000);
+    check('money summary paid total includes both costs', Number(res.body?.costs?.paid) === 400000);
+    check('money summary outstanding is calculated', Number(res.body?.costs?.outstanding) === 150000);
   }
 
   {
@@ -421,8 +432,9 @@ async function run() {
     const res = await request('PATCH', `/api/v1/quote-offers/${offerId}/accept`, null, owner.token);
     check('PATCH quote offer accept - HTTP 200', res.status === 200);
     check('accept creates provider link', res.body?.planProviderLink?.providerId === providerId);
-    check('accept declares no automatic financial record', res.body?.automaticFinancialRecordCreated === false);
-    check('accept exposes next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createFollowUpTask'));
+    check('accept declares no automatic cost', res.body?.automaticCostCreated === false);
+    check('accept exposes explicit cost suggestion', res.body?.costSuggestion?.recommendedAction === 'CREATE_COST');
+    check('accept exposes next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createCost'));
   }
 
   {

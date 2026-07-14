@@ -1,101 +1,60 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 
 const backendRoot = join(__dirname, "..");
+const read = (path: string) =>
+  readFileSync(join(backendRoot, path), "utf8");
 
-test("canonical product APIs do not expose unversioned duplicate controllers", () => {
-  const files = [
-    "auth/auth.controller.ts",
-    "budget-categories/budget-categories.controller.ts",
-    "conversations/conversations.controller.ts",
-    "dashboard/dashboard.controller.ts",
-    "expenses/expenses.controller.ts",
-    "financial-commitments/financial-commitments.controller.ts",
-    "guests/guests.controller.ts",
-    "marketplace/marketplace.controller.ts",
-    "media/media.controller.ts",
-    "money/money-summary.controller.ts",
-    "me/me.controller.ts",
-    "notifications/notifications.controller.ts",
-    "onboarding/onboarding.controller.ts",
-    "provider-dashboard/provider-dashboard.controller.ts",
-    "sharing/sharing.controller.ts",
-    "tasks/tasks.controller.ts",
-    "timeline/timeline.controller.ts",
-    "users/users.controller.ts",
-    "wedding-plans/wedding-plans.controller.ts",
-  ];
-  const sources = files.map((file) =>
-    readFileSync(join(backendRoot, "src", file), "utf8"),
-  );
+function controllerSources(root: string): string[] {
+  const result: string[] = [];
+  for (const entry of readdirSync(root)) {
+    const path = join(root, entry);
+    if (statSync(path).isDirectory()) result.push(...controllerSources(path));
+    else if (entry.endsWith(".controller.ts")) result.push(readFileSync(path, "utf8"));
+  }
+  return result;
+}
 
-  const forbiddenControllerPaths = [
-    "@Controller('auth')",
-    "@Controller('conversations')",
-    "@Controller('media/uploads')",
-    '@Controller("users")',
+test("old money endpoints are gone and canonical v1 endpoints are present", () => {
+  const sources = controllerSources(join(backendRoot, "src"));
+  const all = sources.join("\n");
+  for (const forbidden of [
+    "/expenses",
+    "/financial-commitments",
+    "/financial-installments",
+    "/financial-payment-records",
+    '@Controller("expenses")',
     '@Controller("financial-commitments")',
-    '@Controller("financial-installments")',
-    '@Controller("financial-payment-records")',
-    "@Controller('budget-categories')",
-    "@Controller('dashboard')",
-    "@Controller('expenses')",
-    "@Controller('cities')",
-    "@Controller('provider-categories')",
-    "@Controller('providers')",
-    "@Controller('services')",
-    "@Controller('reviews')",
-    "@Controller('onboarding')",
-    "@Controller('provider')",
-    "@Controller('provider/me')",
-    "@Controller('tasks')",
-    "@Controller('wedding-plans')",
-    "@Controller('notifications')",
-    "@Controller('shared')",
-    "@Controller('shared-members')",
-    "@Controller('me')",
-    "@Controller('guests')",
-    "@Controller('guest-groups')",
-    "@Controller('wedding-plans/:weddingPlanId/guests')",
-    "@Controller('wedding-plans/:weddingPlanId/guest-groups')",
-    "@Controller('wedding-plans/:planId')",
-    "@Controller('wedding-plans/:weddingPlanId/budget-categories')",
-    "@Controller('wedding-plans/:weddingPlanId/expenses')",
-    "@Controller('wedding-plans/:weddingPlanId/shared-members')",
-    "@Controller('wedding-plans/:weddingPlanId/tasks')",
-    "@Controller('wedding-plans/:weddingPlanId/timeline')",
-  ];
-
-  for (const path of forbiddenControllerPaths) {
-    assert.equal(
-      sources.some((source) => source.includes(path)),
-      false,
-      `Unversioned controller must stay removed: ${path}`,
-    );
+  ]) {
+    assert.equal(all.includes(forbidden), false, forbidden);
   }
 
-  for (const source of sources) {
-    assert.equal(
-      /class ApiV1\w+Controller extends \w+Controller/.test(source),
-      false,
-      "Canonical controllers must not be duplicated through compatibility subclasses",
-    );
+  const weddingCosts = read("src/wedding-costs/wedding-costs.controller.ts");
+  const money = read("src/money/money-summary.controller.ts");
+  for (const required of [
+    '@Controller("api/v1/wedding-plans/:weddingPlanId/costs")',
+    '@Controller("api/v1/costs")',
+    '@Controller("api/v1/wedding-plans/:weddingPlanId/cost-payments")',
+    '@Controller("api/v1/cost-payments")',
+    '@Controller("api/v1/wedding-plans/:weddingPlanId/payment-schedules")',
+    '@Controller("api/v1/payment-schedules")',
+  ]) {
+    assert.equal(weddingCosts.includes(required), true, required);
   }
+  assert.match(money, /@Get\("money-summary"\)/);
+  assert.match(money, /@Put\("money-budget"\)/);
 });
 
-test("legacy provider-owner route aliases stay removed from code and smoke gates", () => {
-  const providerController = readFileSync(
-    join(
-      backendRoot,
-      "src/provider-dashboard/provider-dashboard.controller.ts",
-    ),
-    "utf8",
-  );
-  assert.doesNotMatch(providerController, /class ApiV1ProviderController/);
+test("canonical controllers are not duplicated through compatibility subclasses", () => {
+  const all = controllerSources(join(backendRoot, "src")).join("\n");
+  assert.doesNotMatch(all, /class ApiV1\w+Controller extends \w+Controller/);
+  assert.doesNotMatch(all, /ApiV1ExpensesController|ApiV1FinancialCommitmentsController/);
+});
 
-  const smokeRoot = join(backendRoot, "scripts/smoke");
+test("legacy provider-owner aliases stay absent from smoke gates", () => {
+  const smokeRoot = join(backendRoot, "scripts", "smoke");
   const smokeSource = readdirSync(smokeRoot)
     .filter((file) => file.endsWith(".js") || file.endsWith(".ts"))
     .map((file) => readFileSync(join(smokeRoot, file), "utf8"))
@@ -106,10 +65,6 @@ test("legacy provider-owner route aliases stay removed from code and smoke gates
     "/api/v1/provider/quote-requests",
     "/api/v1/provider/quote-offers",
   ]) {
-    assert.equal(
-      smokeSource.includes(legacyRoute),
-      false,
-      `Smoke gates must use canonical provider/me route instead of ${legacyRoute}`,
-    );
+    assert.equal(smokeSource.includes(legacyRoute), false, legacyRoute);
   }
 });

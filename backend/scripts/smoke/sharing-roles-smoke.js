@@ -172,7 +172,8 @@ async function run() {
     check('editor permissions - HTTP 200', res.status === 200);
     check('editor can manage plan', res.body?.canManagePlan === true);
     check('editor can manage tasks', res.body?.canManageTasks === true);
-    check('editor cannot manage finance by default', res.body?.canManageFinancialRecords === false);
+    check('editor cannot view money by default', res.body?.canViewMoney === false);
+    check('editor cannot manage money by default', res.body?.canManageMoney === false);
   }
 
   {
@@ -189,14 +190,14 @@ async function run() {
     }, owner.token);
     check('owner updates editor to finance manager - HTTP 200', res.status === 200);
     check('finance role updated', res.body?.role === 'FINANCE_MANAGER');
-    check('finance manager can view financial records by default', res.body?.canViewFinancialRecords === true);
-    check('finance manager can manage financial records', res.body?.canManageFinancialRecords === true);
+    check('finance manager can view money by default', res.body?.canViewMoney === true);
+    check('finance manager can manage money', res.body?.canManageMoney === true);
   }
 
   {
     const res = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
       name: 'Finance Managed Category',
-      targetAmount: '100000.00',
+      allocatedAmount: '100000.00',
     }, editor.token);
     check('finance manager can create budget category', res.status === 201);
   }

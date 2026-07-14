@@ -1,12 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { SharedMember, SharedMemberRole, WeddingPlan } from '@prisma/client';
-import { AuthenticatedUser } from '../auth/authenticated-user.interface';
-import { PrismaService } from '../prisma/prisma.service';
-
-export type FinancialPermissionType =
-  | 'budget'
-  | 'expenses'
-  | 'financialRecords';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { SharedMember, SharedMemberRole, WeddingPlan } from "@prisma/client";
+import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { PrismaService } from "../prisma/prisma.service";
 
 export interface PlanAccessContext {
   plan: WeddingPlan;
@@ -27,7 +22,7 @@ export class PermissionService {
     });
 
     if (!plan) {
-      throw new NotFoundException('Wedding plan not found');
+      throw new NotFoundException("Wedding plan not found");
     }
 
     const isOwner = plan.ownerUserId === currentUser.id;
@@ -51,7 +46,7 @@ export class PermissionService {
   ): Promise<WeddingPlan> {
     const context = await this.getPlanAccessContext(weddingPlanId, currentUser);
     if (!context.isOwner) {
-      throw new NotFoundException('Wedding plan not found');
+      throw new NotFoundException("Wedding plan not found");
     }
     return context.plan;
   }
@@ -62,7 +57,7 @@ export class PermissionService {
   ): Promise<PlanAccessContext> {
     const context = await this.getPlanAccessContext(weddingPlanId, currentUser);
     if (!context.isOwner && !context.sharedMember) {
-      throw new NotFoundException('Wedding plan not found');
+      throw new NotFoundException("Wedding plan not found");
     }
     return context;
   }
@@ -73,7 +68,7 @@ export class PermissionService {
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (!this.canManagePlan(context)) {
-      throw new NotFoundException('Wedding plan not found');
+      throw new NotFoundException("Wedding plan not found");
     }
     return context;
   }
@@ -90,7 +85,7 @@ export class PermissionService {
       return context;
     }
 
-    throw new NotFoundException('Wedding plan not found');
+    throw new NotFoundException("Wedding plan not found");
   }
 
   async assertGuestManageable(
@@ -99,21 +94,20 @@ export class PermissionService {
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (this.canManageGuests(context)) return context;
-    throw new NotFoundException('Wedding plan not found');
+    throw new NotFoundException("Wedding plan not found");
   }
 
-  async assertFinancialReadable(
+  async assertMoneyReadable(
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
-    type: FinancialPermissionType,
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (context.isOwner) return context;
-    if (this.canReadFinancial(context, type)) return context;
-    throw new NotFoundException('Wedding plan not found');
+    if (this.canViewMoney(context)) return context;
+    throw new NotFoundException("Wedding plan not found");
   }
 
-  async assertFinancialManageable(
+  async assertMoneyManageable(
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext> {
@@ -121,11 +115,11 @@ export class PermissionService {
     if (context.isOwner) return context;
 
     const member = context.sharedMember;
-    if (this.canManageFinancialRecords(context)) {
+    if (this.canManageMoney(context)) {
       return context;
     }
 
-    throw new NotFoundException('Wedding plan not found');
+    throw new NotFoundException("Wedding plan not found");
   }
 
   async assertProviderManageable(
@@ -134,7 +128,7 @@ export class PermissionService {
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (this.canManageProviders(context)) return context;
-    throw new NotFoundException('Wedding plan not found');
+    throw new NotFoundException("Wedding plan not found");
   }
 
   async assertMemberManageable(
@@ -143,20 +137,15 @@ export class PermissionService {
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (this.canManageMembers(context)) return context;
-    throw new NotFoundException('Wedding plan not found');
+    throw new NotFoundException("Wedding plan not found");
   }
 
-  canReadFinancial(context: PlanAccessContext, type: FinancialPermissionType): boolean {
+  canViewMoney(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
 
     const member = context.sharedMember;
     if (!member) return false;
-    if (this.canManageFinancialRecords(context)) return true;
-    if (type === 'budget') {
-      return member.canViewBudget;
-    }
-    if (type === 'expenses') return member.canViewExpenses;
-    return member.canViewFinancialRecords;
+    return Boolean(member.canViewMoney || this.canManageMoney(context));
   }
 
   canManageTasks(context: PlanAccessContext): boolean {
@@ -164,13 +153,13 @@ export class PermissionService {
     const member = context.sharedMember;
     return Boolean(
       member?.canManageTasks ||
-        member?.role === SharedMemberRole.GROOM ||
-        member?.role === SharedMemberRole.BRIDE ||
-        member?.role === SharedMemberRole.FAMILY ||
-        member?.role === SharedMemberRole.MANAGER ||
-        member?.role === SharedMemberRole.EDITOR ||
-        member?.role === SharedMemberRole.HELPER ||
-        member?.role === SharedMemberRole.CONTRIBUTOR,
+      member?.role === SharedMemberRole.GROOM ||
+      member?.role === SharedMemberRole.BRIDE ||
+      member?.role === SharedMemberRole.FAMILY ||
+      member?.role === SharedMemberRole.MANAGER ||
+      member?.role === SharedMemberRole.EDITOR ||
+      member?.role === SharedMemberRole.HELPER ||
+      member?.role === SharedMemberRole.CONTRIBUTOR,
     );
   }
 
@@ -179,21 +168,21 @@ export class PermissionService {
     const member = context.sharedMember;
     return Boolean(
       member?.canManageGuests ||
-        member?.role === SharedMemberRole.GROOM ||
-        member?.role === SharedMemberRole.BRIDE ||
-        member?.role === SharedMemberRole.FAMILY ||
-        member?.role === SharedMemberRole.MANAGER ||
-        member?.role === SharedMemberRole.EDITOR ||
-        member?.role === SharedMemberRole.HELPER,
+      member?.role === SharedMemberRole.GROOM ||
+      member?.role === SharedMemberRole.BRIDE ||
+      member?.role === SharedMemberRole.FAMILY ||
+      member?.role === SharedMemberRole.MANAGER ||
+      member?.role === SharedMemberRole.EDITOR ||
+      member?.role === SharedMemberRole.HELPER,
     );
   }
 
-  canManageFinancialRecords(context: PlanAccessContext): boolean {
+  canManageMoney(context: PlanAccessContext): boolean {
     if (context.isOwner) return true;
     const member = context.sharedMember;
     return Boolean(
-      member?.canManageFinancialRecords ||
-        member?.role === SharedMemberRole.FINANCE_MANAGER,
+      member?.canManageMoney ||
+      member?.role === SharedMemberRole.FINANCE_MANAGER,
     );
   }
 
@@ -202,10 +191,10 @@ export class PermissionService {
     const member = context.sharedMember;
     return Boolean(
       member?.canEditPlan ||
-        member?.role === SharedMemberRole.GROOM ||
-        member?.role === SharedMemberRole.BRIDE ||
-        member?.role === SharedMemberRole.MANAGER ||
-        member?.role === SharedMemberRole.EDITOR,
+      member?.role === SharedMemberRole.GROOM ||
+      member?.role === SharedMemberRole.BRIDE ||
+      member?.role === SharedMemberRole.MANAGER ||
+      member?.role === SharedMemberRole.EDITOR,
     );
   }
 
@@ -214,11 +203,11 @@ export class PermissionService {
     const member = context.sharedMember;
     return Boolean(
       member?.canManageProviders ||
-        member?.role === SharedMemberRole.GROOM ||
-        member?.role === SharedMemberRole.BRIDE ||
-        member?.role === SharedMemberRole.HELPER ||
-        member?.role === SharedMemberRole.CONTRIBUTOR ||
-        member?.role === SharedMemberRole.MANAGER,
+      member?.role === SharedMemberRole.GROOM ||
+      member?.role === SharedMemberRole.BRIDE ||
+      member?.role === SharedMemberRole.HELPER ||
+      member?.role === SharedMemberRole.CONTRIBUTOR ||
+      member?.role === SharedMemberRole.MANAGER,
     );
   }
 

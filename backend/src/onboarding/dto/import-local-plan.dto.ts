@@ -1,57 +1,108 @@
-import { ExpenseStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
-  IsEnum,
+  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
   ValidateNested,
-} from 'class-validator';
-import { CreateGuestDto } from '../../guests/dto/create-guest.dto';
-import { CreateTaskDto } from '../../tasks/dto/create-task.dto';
-import { CompleteOnboardingDto } from './complete-onboarding.dto';
+} from "class-validator";
+import { CreateGuestDto } from "../../guests/dto/create-guest.dto";
+import { CreateTaskDto } from "../../tasks/dto/create-task.dto";
+import { CompleteOnboardingDto } from "./complete-onboarding.dto";
 
-/**
- * An expense captured while planning in local guest mode. Local budget
- * category ids are meaningless to the server, so the client sends the
- * category NAME and the server links it to the category created during
- * this same import.
- */
-export class ImportLocalExpenseDto {
+export class ImportLocalCostPaymentDto {
+  @IsNotEmpty()
+  amount!: string | number;
+
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsOptional()
+  paidAt?: string | null;
+
+  @IsString()
+  @MaxLength(80)
+  @IsOptional()
+  method?: string | null;
+
+  @IsString()
+  @MaxLength(1000)
+  @IsOptional()
+  note?: string | null;
+}
+
+export class ImportLocalPaymentScheduleDto {
+  @IsNotEmpty()
+  amount!: string | number;
+
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsNotEmpty()
+  dueDate!: string;
+
+  @IsString()
+  @MaxLength(1000)
+  @IsOptional()
+  note?: string | null;
+}
+
+/** A local-planning cost imported once into the unified money ledger. */
+export class ImportLocalCostDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(200)
   title!: string;
 
   @IsNotEmpty()
-  amount!: string | number;
+  totalAmount!: string | number;
 
   @IsString()
-  @MaxLength(80)
-  @IsOptional()
-  categoryName?: string | null;
-
-  @IsEnum(ExpenseStatus)
-  @IsOptional()
-  status?: ExpenseStatus;
+  @IsNotEmpty()
+  @MaxLength(120)
+  categoryName!: string;
 
   @IsString()
+  @MaxLength(200)
   @IsOptional()
-  expenseDate?: string | null;
+  partyName?: string | null;
 
   @IsString()
+  @MaxLength(40)
+  @IsOptional()
+  partyPhone?: string | null;
+
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsOptional()
+  agreementDate?: string | null;
+
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsOptional()
+  dueDate?: string | null;
+
+  @IsString()
+  @MaxLength(1000)
   @IsOptional()
   note?: string | null;
+
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => ImportLocalCostPaymentDto)
+  @IsOptional()
+  payments?: ImportLocalCostPaymentDto[];
+
+  @IsArray()
+  @ArrayMaxSize(500)
+  @ValidateNested({ each: true })
+  @Type(() => ImportLocalPaymentScheduleDto)
+  @IsOptional()
+  paymentSchedules?: ImportLocalPaymentScheduleDto[];
 }
 
 /**
  * One-shot migration of a guest-mode local plan into the authenticated
- * account. Everything is created inside a single transaction, and
- * `clientMigrationId` makes the call idempotent: retrying after a network
- * timeout returns the already-imported plan instead of duplicating it.
+ * account. Everything is created inside one transaction and the migration id
+ * makes retries idempotent.
  */
 export class ImportLocalPlanDto extends CompleteOnboardingDto {
   @IsString()
@@ -62,9 +113,9 @@ export class ImportLocalPlanDto extends CompleteOnboardingDto {
   @IsArray()
   @ArrayMaxSize(300)
   @ValidateNested({ each: true })
-  @Type(() => ImportLocalExpenseDto)
+  @Type(() => ImportLocalCostDto)
   @IsOptional()
-  expenses?: ImportLocalExpenseDto[];
+  costs?: ImportLocalCostDto[];
 
   @IsArray()
   @ArrayMaxSize(300)

@@ -27,13 +27,6 @@ export class UpdateWeddingPlanDto {
   @IsOptional()
   weddingDate?: string;
 
-  @IsOptional()
-  estimatedBudget?: string | number;
-
-  @IsString()
-  @IsOptional()
-  currency?: string;
-
   @IsArray()
   @ArrayMaxSize(12)
   @IsString({ each: true })

@@ -1,6 +1,10 @@
 import 'reflect-metadata';
 
-import { OtpPurpose, PrismaClient } from '@prisma/client';
+import {
+  OtpPurpose,
+  PrismaClient,
+  WeddingCostStatus,
+} from '@prisma/client';
 import sharp from 'sharp';
 import { MediaStorageService } from '../../src/media/media-storage.service';
 import { MediaUploadTicketService } from '../../src/media/media-upload-ticket.service';
@@ -144,27 +148,44 @@ async function main() {
       data: { ownerUserId: user.id, title: `${tag}-plan` },
     });
     const cat = await prisma.budgetCategory.create({
-      data: { weddingPlanId: plan.id, name: `${tag}-cat` },
-    });
-    const commitment = await prisma.financialCommitment.create({
       data: {
         weddingPlanId: plan.id,
-        budgetCategoryId: cat.id,
-        title: `${tag}-commit`,
-        totalAmount: 1000,
+        name: `${tag}-cat`,
+        normalizedName: `${tag}-cat`,
       },
     });
-    await prisma.financialPaymentRecord.create({
-      data: {
-        weddingPlanId: plan.id,
-        financialCommitmentId: commitment.id,
-        budgetCategoryId: cat.id,
-        title: `${tag}-pay`,
-        amount: 100,
-      },
-    });
-    await prisma.expense.create({
-      data: { weddingPlanId: plan.id, title: `${tag}-exp`, amount: 50 },
+    const cost = await prisma.$transaction(async (tx) => {
+      const created = await tx.weddingCost.create({
+        data: {
+          weddingPlanId: plan.id,
+          budgetCategoryId: cat.id,
+          title: `${tag}-cost`,
+          totalAmount: 1000,
+        },
+      });
+      await tx.costPayment.create({
+        data: {
+          weddingCostId: created.id,
+          amount: 100,
+          note: `${tag}-payment`,
+        },
+      });
+      await tx.weddingCost.update({
+        where: { id: created.id },
+        data: {
+          paidAmount: 100,
+          status: WeddingCostStatus.PARTIALLY_PAID,
+        },
+      });
+      await tx.paymentSchedule.create({
+        data: {
+          weddingCostId: created.id,
+          amount: 200,
+          dueDate: new Date(Date.now() + 24 * 60 * 60 * 1_000),
+          note: `${tag}-schedule`,
+        },
+      });
+      return created;
     });
     await prisma.guest.create({
       data: {
@@ -199,7 +220,17 @@ async function main() {
     );
     assertCheck(
       (await prisma.weddingPlan.count({ where: { id: plan.id } })) === 0,
-      'owned financial plan graph is deleted',
+      'owned money plan graph is deleted',
+    );
+    assertCheck(
+      (await prisma.weddingCost.count({ where: { id: cost.id } })) === 0 &&
+        (await prisma.costPayment.count({
+          where: { weddingCostId: cost.id },
+        })) === 0 &&
+        (await prisma.paymentSchedule.count({
+          where: { weddingCostId: cost.id },
+        })) === 0,
+      'cost, immutable payment ledger, and payment schedules are deleted',
     );
     assertCheck(
       (await prisma.idempotencyKey.count({ where: { userId: user.id } })) === 0 &&

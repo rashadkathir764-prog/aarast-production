@@ -1,28 +1,24 @@
-import { SharedMemberRole } from '@prisma/client';
+import { SharedMemberRole } from "@prisma/client";
 
 export interface PlanPermissionFlags {
-  canViewBudget: boolean;
-  canViewExpenses: boolean;
-  canViewFinancialRecords: boolean;
+  canViewMoney: boolean;
   canEditPlan: boolean;
   canManageTasks: boolean;
   canManageGuests: boolean;
   canManageProviders: boolean;
   canInviteMembers: boolean;
-  canManageFinancialRecords: boolean;
+  canManageMoney: boolean;
   receiveNotifications: boolean;
 }
 
 const NONE: PlanPermissionFlags = {
-  canViewBudget: false,
-  canViewExpenses: false,
-  canViewFinancialRecords: false,
+  canViewMoney: false,
   canEditPlan: false,
   canManageTasks: false,
   canManageGuests: false,
   canManageProviders: false,
   canInviteMembers: false,
-  canManageFinancialRecords: false,
+  canManageMoney: false,
   receiveNotifications: true,
 };
 
@@ -70,10 +66,8 @@ export function rolePermissionDefaults(
     case SharedMemberRole.FINANCE_MANAGER:
       return {
         ...NONE,
-        canViewBudget: true,
-        canViewExpenses: true,
-        canViewFinancialRecords: true,
-        canManageFinancialRecords: true,
+        canViewMoney: true,
+        canManageMoney: true,
       };
     case SharedMemberRole.VIEWER:
       return { ...NONE };
@@ -82,15 +76,13 @@ export function rolePermissionDefaults(
 
 function allPermissions(): PlanPermissionFlags {
   return {
-    canViewBudget: true,
-    canViewExpenses: true,
-    canViewFinancialRecords: true,
+    canViewMoney: true,
     canEditPlan: true,
     canManageTasks: true,
     canManageGuests: true,
     canManageProviders: true,
     canInviteMembers: true,
-    canManageFinancialRecords: true,
+    canManageMoney: true,
     receiveNotifications: true,
   };
 }

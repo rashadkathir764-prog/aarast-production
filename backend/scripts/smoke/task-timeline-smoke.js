@@ -74,8 +74,8 @@ async function run() {
   let token = null;
   let weddingPlanId = null;
   let taskId = null;
-  let commitmentId = null;
-  let installmentId = null;
+  let costId = null;
+  let paymentScheduleId = null;
 
   {
     const res = await registerVerified(request, {
@@ -144,35 +144,32 @@ async function run() {
 
   {
     const category = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/budget-categories`, {
-      name: 'Timeline commitments',
-      targetAmount: '500000.00',
+      name: 'Timeline costs',
     }, token);
-    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/financial-commitments`, {
+    check('POST timeline category - HTTP 201', category.status === 201);
+    const res = await request('POST', `/api/v1/wedding-plans/${weddingPlanId}/costs`, {
       budgetCategoryId: category.body?.id,
       partyName: 'Timeline Vendor',
-      title: 'Timeline payable',
+      title: 'Timeline wedding cost',
       totalAmount: '300000.00',
-      paidAmount: '50000.00',
+      initialPaymentAmount: '50000.00',
       dueDate: '2026-12-12T00:00:00.000Z',
-      status: 'OPEN',
-      sourceType: 'MANUAL_PAYABLE',
     }, token);
-    check('POST commitment for timeline - HTTP 201', res.status === 201);
-    check('timeline commitment has id', typeof res.body?.id === 'string');
-    check('timeline commitment does not expose passwordHash', !hasPasswordHash(res.body));
-    commitmentId = res.body?.id;
+    check('POST cost for timeline - HTTP 201', res.status === 201);
+    check('timeline cost has id', typeof res.body?.id === 'string');
+    check('timeline cost does not expose passwordHash', !hasPasswordHash(res.body));
+    costId = res.body?.id;
   }
 
   {
-    const res = await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
+    const res = await request('POST', `/api/v1/costs/${costId}/payment-schedules`, {
       amount: '100000.00',
       dueDate: '2026-12-15T00:00:00.000Z',
-      status: 'PENDING',
     }, token);
-    check('POST installment for timeline - HTTP 201', res.status === 201);
-    check('timeline installment has id', typeof res.body?.id === 'string');
-    check('timeline installment does not expose passwordHash', !hasPasswordHash(res.body));
-    installmentId = res.body?.id;
+    check('POST payment schedule for timeline - HTTP 201', res.status === 201);
+    check('timeline payment schedule has id', typeof res.body?.id === 'string');
+    check('timeline payment schedule does not expose passwordHash', !hasPasswordHash(res.body));
+    paymentScheduleId = res.body?.id;
   }
 
   {
@@ -181,10 +178,8 @@ async function run() {
     check('timeline includes weddingDate', typeof res.body?.weddingDate === 'string');
     check('timeline upcomingTasks is array', Array.isArray(res.body?.upcomingTasks));
     check('timeline includes upcoming task', Array.isArray(res.body?.upcomingTasks) && res.body.upcomingTasks.some((task) => task.id === taskId));
-    check('timeline dueCommitments is array', Array.isArray(res.body?.dueCommitments));
-    check('timeline includes due commitment', Array.isArray(res.body?.dueCommitments) && res.body.dueCommitments.some((commitment) => commitment.id === commitmentId));
-    check('timeline dueInstallments is array', Array.isArray(res.body?.dueInstallments));
-    check('timeline includes due installment', Array.isArray(res.body?.dueInstallments) && res.body.dueInstallments.some((installment) => installment.id === installmentId));
+    check('timeline paymentSchedules is array', Array.isArray(res.body?.paymentSchedules));
+    check('timeline includes payment schedule', Array.isArray(res.body?.paymentSchedules) && res.body.paymentSchedules.some((schedule) => schedule.id === paymentScheduleId && schedule.weddingCostId === costId));
     check('timeline does not expose passwordHash', !hasPasswordHash(res.body));
   }
 

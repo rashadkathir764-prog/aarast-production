@@ -115,7 +115,7 @@ async function run() {
   const unrelated = await registerUser('Dashboard Unrelated', UNRELATED_PHONE);
 
   let planId = null;
-  let commitmentId = null;
+  let payableCostId = null;
   let quoteCreated = false;
 
   {
@@ -138,7 +138,9 @@ async function run() {
     check('empty summary has real zero guests', res.body?.guestCount === 0);
     check('empty summary budget comes from plan', res.body?.budgetTotal === '2000.00');
     check('empty summary marks account-backed data', res.body?.accountBacked === true && res.body?.dataScope === 'ACCOUNT_BACKED');
-    check('empty summary spent is zero', res.body?.spentTotal === '0.00');
+    check('empty summary confirmed cost is zero', res.body?.confirmedCostTotal === '0.00');
+    check('empty summary paid total is zero', res.body?.paidTotal === '0.00');
+    check('empty summary outstanding total is zero', res.body?.outstandingTotal === '0.00');
     check('empty summary importantItems is array', Array.isArray(res.body?.importantItems));
     check('empty summary planProviders is array', Array.isArray(res.body?.planProviders));
     check('empty summary importantNotifications is array', Array.isArray(res.body?.importantNotifications));
@@ -149,34 +151,37 @@ async function run() {
   {
     const categoryRes = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
       name: 'Hall',
-      targetAmount: '800',
+      allocatedAmount: '800',
     }, owner.token);
     check('owner creates budget category - HTTP 201', categoryRes.status === 201);
     check('budget category has id', typeof categoryRes.body?.id === 'string');
 
-    const expenseRes = await request('POST', `/api/v1/wedding-plans/${planId}/expenses`, {
-      title: 'Paid deposit placeholder-free expense',
-      amount: '300',
-      status: 'PAID',
+    const paidCostRes = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      title: 'Paid hall deposit',
+      totalAmount: '300',
+      initialPaymentAmount: '300',
       budgetCategoryId: categoryRes.body?.id,
     }, owner.token);
-    check('owner creates categorized paid expense - HTTP 201', expenseRes.status === 201);
-    const commitmentRes = await request('POST', `/api/v1/wedding-plans/${planId}/financial-commitments`, {
+    check('owner creates categorized paid cost - HTTP 201', paidCostRes.status === 201);
+    check('paid cost is fully paid', paidCostRes.body?.status === 'PAID');
+
+    const payableCostRes = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
       budgetCategoryId: categoryRes.body?.id,
       partyName: 'Family Support',
-      title: 'Family support payable',
+      title: 'Family support cost',
       totalAmount: '500',
-      paidAmount: '100',
+      initialPaymentAmount: '100',
       dueDate: dateOffsetIso(7),
-      status: 'PARTIALLY_PAID',
-      sourceType: 'MANUAL_PAYABLE',
     }, owner.token);
-    commitmentId = commitmentRes.body?.id;
-    await request('POST', `/api/v1/financial-commitments/${commitmentId}/installments`, {
+    check('owner creates partially paid cost - HTTP 201', payableCostRes.status === 201);
+    check('partially paid cost status is derived', payableCostRes.body?.status === 'PARTIALLY_PAID');
+    payableCostId = payableCostRes.body?.id;
+
+    const scheduleRes = await request('POST', `/api/v1/costs/${payableCostId}/payment-schedules`, {
       amount: '200',
       dueDate: dateOffsetIso(0),
-      status: 'PENDING',
     }, owner.token);
+    check('owner creates due payment schedule - HTTP 201', scheduleRes.status === 201);
     await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
       title: 'Done task',
       dueDate: dateOffsetIso(0),
@@ -212,12 +217,11 @@ async function run() {
   {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, owner.token);
     check('populated summary - HTTP 200', res.status === 200);
-    check('summary spentTotal is calculated', res.body?.spentTotal === '300.00');
-    check('summary remainingBudget includes confirmed commitments once', res.body?.remainingBudget === '1200.00');
-    check('summary commitmentTotal is calculated', res.body?.commitmentTotal === '500.00');
-    check('summary commitmentPaidTotal is calculated', res.body?.commitmentPaidTotal === '100.00');
-    check('summary commitmentOutstandingTotal is calculated', res.body?.commitmentOutstandingTotal === '400.00');
-    check('summary dueInstallmentsCount is calculated', res.body?.dueInstallmentsCount === 1);
+    check('summary confirmedCostTotal is calculated once', res.body?.confirmedCostTotal === '800.00');
+    check('summary paidTotal is calculated from the ledger', res.body?.paidTotal === '400.00');
+    check('summary outstandingTotal is calculated', res.body?.outstandingTotal === '400.00');
+    check('summary remainingBudget subtracts confirmed costs once', res.body?.remainingBudget === '1200.00');
+    check('summary duePaymentSchedulesCount is calculated', res.body?.duePaymentSchedulesCount === 1);
     check('summary totalTasks is calculated', res.body?.totalTasks === 3);
     check('summary completedTasks is calculated', res.body?.completedTasks === 1);
     check('summary progressPercentage is calculated', res.body?.progressPercentage === 33);
@@ -232,11 +236,11 @@ async function run() {
     check('summary quote breakdown is explicit', typeof res.body?.quoteStatusBreakdown?.pending === 'number' && typeof res.body?.quoteStatusBreakdown?.offered === 'number');
     check('summary financialWarnings is array', Array.isArray(res.body?.financialWarnings));
     check('summary importantItems includes overdue task', res.body?.importantItems?.some((item) => item.type === 'TASK_OVERDUE'));
-    check('summary importantItems includes due installment', res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
+    check('summary importantItems includes due payment schedule', res.body?.importantItems?.some((item) => item.type === 'PAYMENT_SCHEDULE_DUE'));
     check('summary planProviders is array', Array.isArray(res.body?.planProviders));
     check('summary importantNotifications is array', Array.isArray(res.body?.importantNotifications));
     check('summary currentUserRole is OWNER', res.body?.currentUserRole === 'OWNER');
-    check('summary owner can view finance', res.body?.permissions?.canViewBudget === true && res.body?.permissions?.canViewFinancialRecords === true);
+    check('summary owner can view and manage money', res.body?.permissions?.canViewMoney === true && res.body?.permissions?.canManageMoney === true);
   }
 
   {
@@ -251,12 +255,13 @@ async function run() {
     const res = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, viewer.token);
     check('viewer summary - HTTP 200', res.status === 200);
     check('viewer role is included', res.body?.currentUserRole === 'VIEWER');
-    check('viewer finance permissions are false', res.body?.permissions?.canViewBudget === false && res.body?.permissions?.canViewFinancialRecords === false);
+    check('viewer money permissions are false', res.body?.permissions?.canViewMoney === false && res.body?.permissions?.canManageMoney === false);
     check('viewer budget is hidden', res.body?.budgetTotal === null);
-    check('viewer spent is hidden', res.body?.spentTotal === null);
-    check('viewer commitments are hidden', res.body?.commitmentTotal === null);
-    check('viewer due installments are hidden', res.body?.dueInstallmentsCount === null);
-    check('viewer importantItems hides installment details', !res.body?.importantItems?.some((item) => item.type === 'INSTALLMENT_DUE'));
+    check('viewer confirmed costs are hidden', res.body?.confirmedCostTotal === null);
+    check('viewer paid total is hidden', res.body?.paidTotal === null);
+    check('viewer outstanding total is hidden', res.body?.outstandingTotal === null);
+    check('viewer due payment schedules are hidden', res.body?.duePaymentSchedulesCount === null);
+    check('viewer importantItems hides payment schedule details', !res.body?.importantItems?.some((item) => item.type === 'PAYMENT_SCHEDULE_DUE'));
     check('viewer still sees non-finance task count', res.body?.totalTasks === 3);
     check('viewer still sees guest count', res.body?.guestCount === 2);
     check('viewer still sees incomplete guest count', res.body?.incompleteGuestsCount === 1);

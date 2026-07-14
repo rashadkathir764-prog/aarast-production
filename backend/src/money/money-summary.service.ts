@@ -1,88 +1,19 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import {
-  ExpenseStatus,
-  FinancialCommitmentSourceType,
-  FinancialCommitmentStatus,
-  InstallmentStatus,
-  WeddingPlan,
+  CostPaymentType,
+  PaymentScheduleStatus,
+  Prisma,
+  WeddingCostStatus,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
-import { endOfRiyadhDay, startOfRiyadhDay } from "../common/time/business-day";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
-import { combineVisibleMoney } from "./money-summary.math";
 
-export interface MoneySummaryResponse {
-  weddingPlanId: string;
-  currency: string;
-  budgetTotal: string | null;
-  totalBudget: string | null;
-  categoryTargetTotal: string | null;
-  spentTotal: string | null;
-  totalSpent: string | null;
-  plannedExpensesTotal: string | null;
-  cancelledExpensesTotal: string | null;
-  remainingBudget: string | null;
-  confirmedCostTotal: string | null;
-  totalConfirmedCost: string | null;
-  paidTotal: string | null;
-  outstandingTotal: string | null;
-  commitmentTotal: string | null;
-  commitmentPaidTotal: string | null;
-  commitmentRemainingTotal: string | null;
-  providerCommitmentTotal: string | null;
-  manualPayableCommitmentTotal: string | null;
-  deficitOrSurplus: string | null;
-  dueInstallmentsCount: number | null;
-  overdueInstallmentsCount: number | null;
-  paidInstallmentsCount: number | null;
-  remainingInstallmentsCount: number | null;
-  nextInstallment: {
-    id: string;
-    financialCommitmentId: string;
-    amount: string;
-    dueAt: Date | null;
-    status: InstallmentStatus;
-  } | null;
-  categorySummaries: {
-    categoryId: string;
-    name: string;
-    allocated: string | null;
-    spent: string | null;
-    confirmedCost: string | null;
-    paid: string | null;
-    outstanding: string | null;
-    budgetRemaining: string | null;
-    remaining: string | null;
-    expensesCount: number | null;
-    commitmentsCount: number | null;
-    installmentsCount: number | null;
-    overBudget: boolean | null;
-  }[];
-  financialWarnings: {
-    type:
-      | "BUDGET_EXCEEDED"
-      | "CATEGORY_EXCEEDED"
-      | "INSTALLMENT_OVERDUE"
-      | "INSTALLMENT_DUE_SOON"
-      | "EXPENSE_WITHOUT_CATEGORY"
-      | "COMMITMENT_BUDGET_EXCEEDED";
-    severity: "WARNING" | "DANGER";
-    message: string;
-    count: number | null;
-    amount: string | null;
-  }[];
-  categoriesCount: number | null;
-  expensesCount: number | null;
-  commitmentsCount: number | null;
-  installmentsCount: number | null;
-  permissions: {
-    canViewBudget: boolean;
-    canViewExpenses: boolean;
-    canViewFinancialRecords: boolean;
-    canManageFinancialRecords: boolean;
-  };
-}
+type WarningType =
+  | "BUDGET_EXCEEDED"
+  | "CATEGORY_EXCEEDED"
+  | "PAYMENT_SCHEDULE_OVERDUE"
+  | "PAYMENT_SCHEDULE_DUE_SOON";
 
 @Injectable()
 export class MoneySummaryService {
@@ -91,495 +22,222 @@ export class MoneySummaryService {
     private readonly permissions: PermissionService,
   ) {}
 
-  async getSummary(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-  ): Promise<MoneySummaryResponse> {
-    const context = await this.permissions.assertPlanReadable(
+  async getSummary(currentUser: AuthenticatedUser, weddingPlanId: string) {
+    const access = await this.permissions.assertMoneyReadable(
       weddingPlanId,
       currentUser,
     );
-    const canViewBudget = this.permissions.canReadFinancial(context, "budget");
-    const canViewExpenses = this.permissions.canReadFinancial(
-      context,
-      "expenses",
-    );
-    const canViewFinancialRecords = this.permissions.canReadFinancial(
-      context,
-      "financialRecords",
-    );
-    const canManageFinancialRecords =
-      this.permissions.canManageFinancialRecords(context);
+    const [categories, costs, payments, schedules] = await Promise.all([
+      this.prisma.budgetCategory.findMany({
+        where: { weddingPlanId },
+        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      }),
+      this.prisma.weddingCost.findMany({
+        where: { weddingPlanId, status: { not: WeddingCostStatus.CANCELLED } },
+        select: {
+          id: true,
+          budgetCategoryId: true,
+          totalAmount: true,
+          title: true,
+        },
+      }),
+      this.prisma.costPayment.findMany({
+        where: {
+          weddingCost: {
+            weddingPlanId,
+            status: { not: WeddingCostStatus.CANCELLED },
+          },
+        },
+        select: { weddingCostId: true, amount: true, entryType: true },
+      }),
+      this.prisma.paymentSchedule.findMany({
+        where: {
+          weddingCost: {
+            weddingPlanId,
+            status: { not: WeddingCostStatus.CANCELLED },
+          },
+        },
+        include: { weddingCost: { select: { budgetCategoryId: true } } },
+        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+      }),
+    ]);
 
-    if (!canViewBudget && !canViewExpenses && !canViewFinancialRecords) {
-      throw new NotFoundException("Wedding plan not found");
+    const zero = () => new Prisma.Decimal(0);
+    const totalCost = costs.reduce(
+      (sum, cost) => sum.plus(cost.totalAmount),
+      zero(),
+    );
+    const netPaidByCost = new Map<string, Prisma.Decimal>();
+    for (const payment of payments) {
+      const signed =
+        payment.entryType === CostPaymentType.REVERSAL
+          ? payment.amount.negated()
+          : payment.amount;
+      netPaidByCost.set(
+        payment.weddingCostId,
+        (netPaidByCost.get(payment.weddingCostId) ?? zero()).plus(signed),
+      );
     }
-
-    const today = this.startOfToday();
-    const [categories, expenses, financialCommitments, financialInstallments] =
-      await Promise.all([
-      canViewBudget
-        ? this.prisma.budgetCategory.findMany({ where: { weddingPlanId } })
-        : Promise.resolve([]),
-      canViewExpenses
-        ? this.prisma.expense.findMany({ where: { weddingPlanId } })
-        : Promise.resolve([]),
-      canViewFinancialRecords
-        ? this.prisma.financialCommitment.findMany({
-            where: { weddingPlanId },
-          })
-        : Promise.resolve([]),
-      canViewFinancialRecords
-        ? this.prisma.financialInstallment.findMany({
-            where: { weddingPlanId },
-            orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-          })
-        : Promise.resolve([]),
-      ]);
-    const openFinancialInstallments = financialInstallments.filter(
-      (installment) => this.isOpenInstallment(installment.status),
+    const paid = costs.reduce(
+      (sum, cost) => sum.plus(netPaidByCost.get(cost.id) ?? zero()),
+      zero(),
     );
-    const installmentsCount = canViewFinancialRecords
-      ? financialInstallments.length
-      : null;
-    const dueInstallmentsCount = canViewFinancialRecords
-      ? openFinancialInstallments.filter(
-          (installment) =>
-            installment.dueDate !== null &&
-            installment.dueDate <= this.endOfToday(today),
-        ).length
-      : null;
-    const overdueInstallmentsCount = canViewFinancialRecords
-      ? openFinancialInstallments.filter(
-          (installment) =>
-            installment.dueDate !== null && installment.dueDate < today,
-        ).length
-      : null;
-    const paidInstallmentsCount = canViewFinancialRecords
-      ? financialInstallments.filter(
-          (installment) => installment.status === InstallmentStatus.PAID,
-        ).length
-      : null;
-    const remainingInstallmentsCount = canViewFinancialRecords
-      ? openFinancialInstallments.length
-      : null;
-    const dueSoonInstallmentsCount = canViewFinancialRecords
-      ? openFinancialInstallments.filter(
-          (installment) =>
-            installment.dueDate !== null &&
-            installment.dueDate >= today &&
-            installment.dueDate <= this.endOfDayOffset(today, 7),
-        ).length
-      : null;
-    const nextInstallment = openFinancialInstallments[0] ?? null;
-
-    const categoryTargetTotal = canViewBudget
-      ? categories.reduce(
-          (sum, category) => sum + this.decimalToNumber(category.targetAmount),
-          0,
-        )
-      : null;
-    const budgetTotal = canViewBudget
-      ? this.resolveBudgetTotal(context.plan, categoryTargetTotal ?? 0)
-      : null;
-    const expenseTotals = canViewExpenses ? this.expenseTotals(expenses) : null;
-    const commitmentTotals = canViewFinancialRecords
-      ? this.commitmentTotals(financialCommitments)
-      : null;
-    const confirmedCostTotal = combineVisibleMoney(
-      expenseTotals?.spentTotal ?? null,
-      commitmentTotals?.commitmentTotal ?? null,
+    const allocated = categories.reduce(
+      (sum, category) => sum.plus(category.allocatedAmount ?? zero()),
+      zero(),
     );
-    const paidTotal = combineVisibleMoney(
-      expenseTotals?.spentTotal ?? null,
-      commitmentTotals?.commitmentPaidTotal ?? null,
+    const totalBudget = access.plan.estimatedBudget;
+    const now = new Date();
+    const today = this.startOfTodayInRiyadh(now);
+    const dueSoonEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const pendingSchedules = schedules.filter(
+      (schedule) => schedule.status === PaymentScheduleStatus.PENDING,
     );
-    const remainingBudget =
-      budgetTotal !== null && confirmedCostTotal !== null
-        ? budgetTotal - confirmedCostTotal
-        : null;
-    const outstandingTotal =
-      commitmentTotals?.commitmentRemainingTotal ?? null;
-    const deficitOrSurplus =
-      budgetTotal !== null && confirmedCostTotal !== null
-        ? budgetTotal - confirmedCostTotal
-        : null;
-    const categorySummaries = this.buildCategorySummaries({
-      canViewBudget,
-      canViewExpenses,
-      canViewFinancialRecords,
-      categories,
-      expenses,
-      commitments: financialCommitments,
-      financialInstallments: canViewFinancialRecords
-        ? financialInstallments
-        : [],
-    });
-    const financialWarnings = this.buildFinancialWarnings({
-      remainingBudget,
-      categorySummaries,
-      overdueInstallmentsCount,
-      dueSoonInstallmentsCount,
-      uncategorizedExpenseCount: expenseTotals?.uncategorizedCount ?? null,
-    });
-
-    return {
-      weddingPlanId,
-      currency: context.plan.currency,
-      budgetTotal: this.moneyOrNull(budgetTotal),
-      totalBudget: this.moneyOrNull(budgetTotal),
-      categoryTargetTotal: this.moneyOrNull(categoryTargetTotal),
-      spentTotal: this.moneyOrNull(expenseTotals?.spentTotal ?? null),
-      totalSpent: this.moneyOrNull(expenseTotals?.spentTotal ?? null),
-      plannedExpensesTotal: this.moneyOrNull(
-        expenseTotals?.plannedExpensesTotal ?? null,
-      ),
-      cancelledExpensesTotal: this.moneyOrNull(
-        expenseTotals?.cancelledExpensesTotal ?? null,
-      ),
-      remainingBudget: this.moneyOrNull(remainingBudget),
-      dueInstallmentsCount,
-      overdueInstallmentsCount,
-      paidInstallmentsCount,
-      remainingInstallmentsCount,
-      confirmedCostTotal: this.moneyOrNull(confirmedCostTotal),
-      totalConfirmedCost: this.moneyOrNull(confirmedCostTotal),
-      paidTotal: this.moneyOrNull(paidTotal),
-      outstandingTotal: this.moneyOrNull(outstandingTotal),
-      commitmentTotal: this.moneyOrNull(
-        commitmentTotals?.commitmentTotal ?? null,
-      ),
-      commitmentPaidTotal: this.moneyOrNull(
-        commitmentTotals?.commitmentPaidTotal ?? null,
-      ),
-      commitmentRemainingTotal: this.moneyOrNull(
-        commitmentTotals?.commitmentRemainingTotal ?? null,
-      ),
-      providerCommitmentTotal: this.moneyOrNull(
-        commitmentTotals?.providerCommitmentTotal ?? null,
-      ),
-      manualPayableCommitmentTotal: this.moneyOrNull(
-        commitmentTotals?.manualPayableCommitmentTotal ?? null,
-      ),
-      deficitOrSurplus: this.moneyOrNull(deficitOrSurplus),
-      nextInstallment: nextInstallment
-        ? {
-            id: nextInstallment.id,
-            financialCommitmentId: nextInstallment.financialCommitmentId,
-            amount: nextInstallment.amount.toString(),
-            dueAt: nextInstallment.dueDate,
-            status: nextInstallment.status,
-          }
-        : null,
-      categorySummaries,
-      financialWarnings,
-      categoriesCount: canViewBudget ? categories.length : null,
-      expensesCount: canViewExpenses ? expenses.length : null,
-      commitmentsCount: canViewFinancialRecords
-        ? financialCommitments.length
-        : null,
-      installmentsCount,
-      permissions: {
-        canViewBudget,
-        canViewExpenses,
-        canViewFinancialRecords,
-        canManageFinancialRecords,
-      },
-    };
-  }
-
-  private resolveBudgetTotal(
-    plan: WeddingPlan,
-    categoryTargetTotal: number,
-  ): number {
-    if (plan.estimatedBudget) return this.decimalToNumber(plan.estimatedBudget);
-    return categoryTargetTotal;
-  }
-
-  private expenseTotals(
-    expenses: {
-      amount: { toString(): string };
-      budgetCategoryId: string | null;
-      status: ExpenseStatus;
-    }[],
-  ) {
-    return expenses.reduce(
-      (summary, expense) => {
-        const amount = this.decimalToNumber(expense.amount);
-        if (expense.status === ExpenseStatus.PAID) summary.spentTotal += amount;
-        if (expense.status === ExpenseStatus.PLANNED) {
-          summary.plannedExpensesTotal += amount;
-        }
-        if (expense.status === ExpenseStatus.CANCELLED) {
-          summary.cancelledExpensesTotal += amount;
-        }
-        if (!expense.budgetCategoryId) summary.uncategorizedCount++;
-        return summary;
-      },
-      {
-        spentTotal: 0,
-        plannedExpensesTotal: 0,
-        cancelledExpensesTotal: 0,
-        uncategorizedCount: 0,
-      },
+    const overdueSchedules = pendingSchedules.filter(
+      (schedule) => schedule.dueDate < today,
     );
-  }
+    const upcomingSchedules = pendingSchedules.filter(
+      (schedule) => schedule.dueDate >= today,
+    );
+    const dueSoonSchedules = upcomingSchedules.filter(
+      (schedule) => schedule.dueDate <= dueSoonEnd,
+    );
 
-  private buildCategorySummaries({
-    canViewBudget,
-    canViewExpenses,
-    canViewFinancialRecords,
-    categories,
-    expenses,
-    commitments,
-    financialInstallments,
-  }: {
-    canViewBudget: boolean;
-    canViewExpenses: boolean;
-    canViewFinancialRecords: boolean;
-    categories: {
-      id: string;
-      name: string;
-      targetAmount: { toString(): string } | null;
-    }[];
-    expenses: {
-      budgetCategoryId: string | null;
-      amount: { toString(): string };
-      status: ExpenseStatus;
-    }[];
-    commitments: {
-      budgetCategoryId: string;
-      totalAmount: { toString(): string };
-      paidAmount: { toString(): string };
-      status: FinancialCommitmentStatus;
-    }[];
-    financialInstallments: {
-      budgetCategoryId: string;
-      status: InstallmentStatus;
-    }[];
-  }): MoneySummaryResponse["categorySummaries"] {
-    if (!canViewBudget) return [];
-
-    return categories.map((category) => {
-      const allocated = this.decimalToNumber(category.targetAmount);
-      const categoryExpenses = canViewExpenses
-        ? expenses.filter((expense) => expense.budgetCategoryId === category.id)
-        : [];
-      const spent = canViewExpenses
-        ? categoryExpenses.reduce((sum, expense) => {
-            if (expense.status !== ExpenseStatus.PAID) return sum;
-            return sum + this.decimalToNumber(expense.amount);
-          }, 0)
-        : null;
-      const activeCommitments = canViewFinancialRecords
-        ? commitments.filter(
-            (commitment) =>
-              commitment.budgetCategoryId === category.id &&
-              commitment.status !== FinancialCommitmentStatus.CANCELLED,
-          )
-        : [];
-      const confirmedCost = canViewFinancialRecords
-        ? activeCommitments.reduce(
-            (sum, commitment) =>
-              sum + this.decimalToNumber(commitment.totalAmount),
-            0,
-          )
-        : null;
-      const commitmentPaid = canViewFinancialRecords
-        ? activeCommitments.reduce(
-            (sum, commitment) =>
-              sum + this.decimalToNumber(commitment.paidAmount),
-            0,
-          )
-        : null;
-      const paid = combineVisibleMoney(commitmentPaid, spent);
-      const totalConfirmedCost = combineVisibleMoney(confirmedCost, spent);
-      const outstanding =
-        confirmedCost === null || commitmentPaid === null
-          ? null
-          : Math.max(confirmedCost - commitmentPaid, 0);
-      const budgetRemaining =
-        totalConfirmedCost === null ? null : allocated - totalConfirmedCost;
-      const remaining = spent === null ? null : allocated - spent;
-      const categoryInstallments = canViewFinancialRecords
-        ? financialInstallments.filter(
-            (installment) => installment.budgetCategoryId === category.id,
-          )
-        : [];
-
+    const categoryRows = categories.map((category) => {
+      const categoryCosts = costs.filter(
+        (cost) => cost.budgetCategoryId === category.id,
+      );
+      const confirmedCost = categoryCosts.reduce(
+        (sum, cost) => sum.plus(cost.totalAmount),
+        zero(),
+      );
+      const categoryPaid = categoryCosts.reduce(
+        (sum, cost) => sum.plus(netPaidByCost.get(cost.id) ?? zero()),
+        zero(),
+      );
+      const categorySchedules = schedules.filter(
+        (schedule) => schedule.weddingCost.budgetCategoryId === category.id,
+      );
       return {
         categoryId: category.id,
         name: category.name,
-        allocated: this.moneyOrNull(allocated),
-        spent: this.moneyOrNull(spent),
-        confirmedCost: this.moneyOrNull(totalConfirmedCost),
-        paid: this.moneyOrNull(paid),
-        outstanding: this.moneyOrNull(outstanding),
-        budgetRemaining: this.moneyOrNull(budgetRemaining),
-        remaining: this.moneyOrNull(remaining),
-        expensesCount: canViewExpenses ? categoryExpenses.length : null,
-        commitmentsCount: canViewFinancialRecords
-          ? activeCommitments.length
-          : null,
-        installmentsCount: canViewFinancialRecords
-          ? categoryInstallments.length
-          : null,
+        allocatedAmount: category.allocatedAmount?.toString() ?? null,
+        confirmedCost: confirmedCost.toString(),
+        paid: categoryPaid.toString(),
+        outstanding: confirmedCost.minus(categoryPaid).toString(),
+        remainingAllocation:
+          category.allocatedAmount?.minus(confirmedCost).toString() ?? null,
+        costsCount: categoryCosts.length,
+        paymentSchedulesCount: categorySchedules.length,
         overBudget:
-          budgetRemaining === null
-            ? remaining === null
-              ? null
-              : remaining < 0
-            : budgetRemaining < 0,
+          category.allocatedAmount === null
+            ? null
+            : confirmedCost.gt(category.allocatedAmount),
       };
     });
-  }
 
-  private buildFinancialWarnings({
-    remainingBudget,
-    categorySummaries,
-    overdueInstallmentsCount,
-    dueSoonInstallmentsCount,
-    uncategorizedExpenseCount,
-  }: {
-    remainingBudget: number | null;
-    categorySummaries: MoneySummaryResponse["categorySummaries"];
-    overdueInstallmentsCount: number | null;
-    dueSoonInstallmentsCount: number | null;
-    uncategorizedExpenseCount: number | null;
-  }): MoneySummaryResponse["financialWarnings"] {
-    const warnings: MoneySummaryResponse["financialWarnings"] = [];
-    const exceededCategories = categorySummaries.filter(
-      (category) => category.overBudget === true,
-    );
-
-    if (remainingBudget !== null && remainingBudget < 0) {
+    const warnings: Array<{
+      type: WarningType;
+      severity: "WARNING" | "DANGER";
+      categoryId?: string;
+      count: number | null;
+      amount: string | null;
+    }> = [];
+    if (totalBudget !== null && totalCost.gt(totalBudget)) {
       warnings.push({
         type: "BUDGET_EXCEEDED",
         severity: "DANGER",
-        message: "Spent total is above the available wedding budget.",
         count: null,
-        amount: this.moneyOrNull(Math.abs(remainingBudget)),
+        amount: totalCost.minus(totalBudget).toString(),
       });
     }
-    if (exceededCategories.length > 0) {
-      warnings.push({
-        type: "COMMITMENT_BUDGET_EXCEEDED",
-        severity: "WARNING",
-        message:
-          "One or more budget categories have confirmed costs above their allocation.",
-        count: exceededCategories.length,
-        amount: null,
-      });
+    for (const category of categoryRows) {
+      if (category.overBudget && category.allocatedAmount !== null) {
+        warnings.push({
+          type: "CATEGORY_EXCEEDED",
+          severity: "DANGER",
+          categoryId: category.categoryId,
+          count: category.costsCount,
+          amount: new Prisma.Decimal(category.confirmedCost)
+            .minus(category.allocatedAmount)
+            .toString(),
+        });
+      }
     }
-    if (overdueInstallmentsCount !== null && overdueInstallmentsCount > 0) {
+    if (overdueSchedules.length > 0) {
       warnings.push({
-        type: "INSTALLMENT_OVERDUE",
+        type: "PAYMENT_SCHEDULE_OVERDUE",
         severity: "DANGER",
-        message: "There are overdue installments.",
-        count: overdueInstallmentsCount,
-        amount: null,
+        count: overdueSchedules.length,
+        amount: overdueSchedules
+          .reduce((sum, schedule) => sum.plus(schedule.amount), zero())
+          .toString(),
       });
     }
-    if (dueSoonInstallmentsCount !== null && dueSoonInstallmentsCount > 0) {
+    if (dueSoonSchedules.length > 0) {
       warnings.push({
-        type: "INSTALLMENT_DUE_SOON",
+        type: "PAYMENT_SCHEDULE_DUE_SOON",
         severity: "WARNING",
-        message: "There are installments due soon.",
-        count: dueSoonInstallmentsCount,
-        amount: null,
-      });
-    }
-    if (uncategorizedExpenseCount !== null && uncategorizedExpenseCount > 0) {
-      warnings.push({
-        type: "EXPENSE_WITHOUT_CATEGORY",
-        severity: "WARNING",
-        message: "Some expenses are not assigned to a budget category.",
-        count: uncategorizedExpenseCount,
-        amount: null,
+        count: dueSoonSchedules.length,
+        amount: dueSoonSchedules
+          .reduce((sum, schedule) => sum.plus(schedule.amount), zero())
+          .toString(),
       });
     }
 
-    return warnings;
-  }
-
-  private commitmentTotals(
-    commitments: {
-      totalAmount: { toString(): string };
-      paidAmount: { toString(): string };
-      status: FinancialCommitmentStatus;
-      sourceType: FinancialCommitmentSourceType;
-      providerId: string | null;
-    }[],
-  ) {
-    const totals = commitments.reduce(
-      (summary, commitment) => {
-        if (commitment.status === FinancialCommitmentStatus.CANCELLED) {
-          return summary;
-        }
-        const totalAmount = this.decimalToNumber(commitment.totalAmount);
-        const paidAmount = this.decimalToNumber(commitment.paidAmount);
-        summary.commitmentTotal += totalAmount;
-        summary.commitmentPaidTotal += paidAmount;
-        if (
-          commitment.sourceType ===
-            FinancialCommitmentSourceType.PROVIDER_SERVICE ||
-          commitment.providerId
-        ) {
-          summary.providerCommitmentTotal += totalAmount;
-        }
-        if (
-          commitment.sourceType ===
-          FinancialCommitmentSourceType.MANUAL_PAYABLE
-        ) {
-          summary.manualPayableCommitmentTotal += totalAmount;
-        }
-        return summary;
-      },
-      {
-        commitmentTotal: 0,
-        commitmentPaidTotal: 0,
-        providerCommitmentTotal: 0,
-        manualPayableCommitmentTotal: 0,
-      },
-    );
-
+    const next = pendingSchedules[0] ?? null;
     return {
-      ...totals,
-      commitmentRemainingTotal: Math.max(
-        totals.commitmentTotal - totals.commitmentPaidTotal,
-        0,
-      ),
+      weddingPlanId,
+      currency: access.plan.currency,
+      budget: {
+        total: totalBudget?.toString() ?? null,
+        allocated: allocated.toString(),
+        unallocated: totalBudget?.minus(allocated).toString() ?? null,
+        confirmedCost: totalCost.toString(),
+        remaining: totalBudget?.minus(totalCost).toString() ?? null,
+      },
+      costs: {
+        total: totalCost.toString(),
+        paid: paid.toString(),
+        outstanding: totalCost.minus(paid).toString(),
+        count: costs.length,
+      },
+      paymentSchedules: {
+        totalCount: schedules.length,
+        upcomingCount: upcomingSchedules.length,
+        overdueCount: overdueSchedules.length,
+        paidCount: schedules.filter(
+          (schedule) => schedule.status === PaymentScheduleStatus.PAID,
+        ).length,
+        next: next
+          ? {
+              id: next.id,
+              weddingCostId: next.weddingCostId,
+              amount: next.amount.toString(),
+              dueDate: next.dueDate,
+              status: next.status,
+              isOverdue: next.dueDate < today,
+            }
+          : null,
+      },
+      categories: categoryRows,
+      warnings,
+      permissions: {
+        canViewMoney: this.permissions.canViewMoney(access),
+        canManageMoney: this.permissions.canManageMoney(access),
+      },
     };
   }
 
-  private decimalToNumber(value: { toString(): string } | null): number {
-    if (!value) return 0;
-    const parsed = Number(value.toString());
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  private moneyOrNull(value: number | null): string | null {
-    return value === null ? null : value.toFixed(2);
-  }
-
-  private isOpenInstallment(status: InstallmentStatus): boolean {
-    return (
-      status === InstallmentStatus.PENDING ||
-      status === InstallmentStatus.OVERDUE
+  private startOfTodayInRiyadh(now: Date) {
+    const riyadh = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+    return new Date(
+      Date.UTC(
+        riyadh.getUTCFullYear(),
+        riyadh.getUTCMonth(),
+        riyadh.getUTCDate(),
+      ) -
+        3 * 60 * 60 * 1000,
     );
-  }
-
-  private startOfToday(): Date {
-    return startOfRiyadhDay();
-  }
-
-  private endOfToday(today: Date): Date {
-    return endOfRiyadhDay(today);
-  }
-
-  private endOfDayOffset(today: Date, days: number): Date {
-    const target = new Date(today.getTime());
-    target.setDate(target.getDate() + days);
-    return endOfRiyadhDay(target);
   }
 }

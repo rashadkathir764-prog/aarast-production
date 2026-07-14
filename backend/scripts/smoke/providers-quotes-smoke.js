@@ -298,13 +298,17 @@ async function run() {
   }
 
   {
+    const costsBeforeAccept = await prisma.weddingCost.count({
+      where: { weddingPlanId: planId },
+    });
     const res = await request('PATCH', `/api/v1/quote-offers/${offerId}/accept`, null, customer.token);
     check('PATCH /api/v1/quote-offers/:id/accept - HTTP 200', res.status === 200);
     check('accepted offer status is ACCEPTED', res.body?.offer?.status === 'ACCEPTED');
     check('accept creates plan provider link', res.body?.planProviderLink?.providerId === providerId);
-    check('accept declares no automatic finance record', res.body?.automaticFinancialRecordCreated === false);
-    check('accept returns financial suggestion', res.body?.financialSuggestion?.recommendedAction === 'CREATE_FINANCIAL_COMMITMENT');
-    check('accept returns next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createFinancialCommitment') && res.body.nextActions.includes('recordPayment'));
+    check('accept declares no automatic cost', res.body?.automaticCostCreated === false);
+    check('accept returns explicit cost suggestion', res.body?.costSuggestion?.recommendedAction === 'CREATE_COST');
+    check('accept returns canonical next actions', Array.isArray(res.body?.nextActions) && res.body.nextActions.includes('createCost') && res.body.nextActions.includes('createFollowUpTask') && res.body.nextActions.includes('viewAcceptedProvider'));
+    check('accept creates no automatic cost', (await prisma.weddingCost.count({ where: { weddingPlanId: planId } })) === costsBeforeAccept);
   }
 
   {

@@ -4,43 +4,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { FinancialInstallmentsOverdueScheduler } from '../src/financial-commitments/financial-installments-overdue.scheduler';
 import { IdempotencyCleanupScheduler } from '../src/common/idempotency/idempotency-cleanup.scheduler';
 import { metricsRegistry } from '../src/common/observability/metrics';
 import { PrismaService } from '../src/prisma/prisma.service';
-
-function schedulerWithLock(locked: boolean) {
-  let updateCalls = 0;
-  const transactionClient = {
-    $queryRaw: async () => [{ locked }],
-    financialInstallment: {
-      updateMany: async () => {
-        updateCalls += 1;
-        return { count: 2 };
-      },
-    },
-  };
-  const prisma = {
-    $transaction: async (operation: (tx: typeof transactionClient) => unknown) =>
-      operation(transactionClient),
-  } as unknown as PrismaService;
-  return {
-    scheduler: new FinancialInstallmentsOverdueScheduler(prisma),
-    updateCalls: () => updateCalls,
-  };
-}
-
-test('overdue scheduler skips work when another replica owns the lock', async () => {
-  const fixture = schedulerWithLock(false);
-  await fixture.scheduler.markOverdueInstallments();
-  assert.equal(fixture.updateCalls(), 0);
-});
-
-test('overdue scheduler updates once while holding the transaction lock', async () => {
-  const fixture = schedulerWithLock(true);
-  await fixture.scheduler.markOverdueInstallments();
-  assert.equal(fixture.updateCalls(), 1);
-});
 
 function idempotencyCleanupWithLock(locked: boolean) {
   let deleteCalls = 0;
@@ -108,7 +74,6 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
 
 test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {
   const schedulerSources = [
-    'src/financial-commitments/financial-installments-overdue.scheduler.ts',
     'src/common/idempotency/idempotency-cleanup.scheduler.ts',
     'src/auth/login-throttle-cleanup.scheduler.ts',
     'src/notifications/notifications.service.ts',

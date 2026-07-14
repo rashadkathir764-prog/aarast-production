@@ -1,14 +1,12 @@
-import { NotificationType, Prisma } from '@prisma/client';
+import { NotificationType, Prisma } from "@prisma/client";
 
 const financialNotificationTypes = new Set<NotificationType>([
-  NotificationType.INSTALLMENT_DUE_SOON,
-  NotificationType.INSTALLMENT_OVERDUE,
-  NotificationType.DEBT_DUE_SOON,
+  NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
+  NotificationType.PAYMENT_SCHEDULE_OVERDUE,
 ]);
-const financialEntityPattern =
-  /(financial|finance|budget|expense|debt|installment|payment|commitment)/i;
+const financialEntityPattern = /(money|finance|budget|cost|payment|schedule)/i;
 const financialDataKeyPattern =
-  /(amount|balance|budget|cost|creditor|currency|debt|installment|paid|payment|price|remaining|total)/i;
+  /(amount|balance|budget|cost|currency|paid|payment|price|remaining|total)/i;
 
 export interface AdminNotificationPrivacyInput {
   type: NotificationType;
@@ -46,9 +44,9 @@ export function toAdminNotificationPrivacyView(
   }
 
   return {
-    title: 'إشعار مالي',
-    body: 'تم إخفاء التفاصيل المالية لحماية خصوصية المستخدم.',
-    entityType: 'financial',
+    title: "إشعار مالي",
+    body: "تم إخفاء التفاصيل المالية لحماية خصوصية المستخدم.",
+    entityType: "financial",
     entityId: null,
     routeTarget: null,
     data: null,
@@ -58,7 +56,7 @@ export function toAdminNotificationPrivacyView(
 
 export function maskPhone(phone: string | null): string | null {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
+  const digits = phone.replace(/\D/g, "");
   if (!digits) return null;
   return `••••${digits.slice(-4)}`;
 }
@@ -68,7 +66,7 @@ function isFinancialNotification(
 ): boolean {
   return (
     financialNotificationTypes.has(notification.type) ||
-    financialEntityPattern.test(notification.entityType ?? '') ||
+    financialEntityPattern.test(notification.entityType ?? "") ||
     containsFinancialDataKey(notification.data)
   );
 }
@@ -76,8 +74,9 @@ function isFinancialNotification(
 function containsFinancialDataKey(
   value: Prisma.JsonValue | null | undefined,
 ): boolean {
-  if (!value || typeof value !== 'object') return false;
-  if (Array.isArray(value)) return value.some((item) => containsFinancialDataKey(item));
+  if (!value || typeof value !== "object") return false;
+  if (Array.isArray(value))
+    return value.some((item) => containsFinancialDataKey(item));
   return Object.entries(value).some(
     ([key, nested]) =>
       financialDataKeyPattern.test(key) || containsFinancialDataKey(nested),

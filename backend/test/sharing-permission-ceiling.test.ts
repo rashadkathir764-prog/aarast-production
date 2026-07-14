@@ -57,7 +57,7 @@ test('manager and helper cannot mint finance authority they do not own', () => {
           memberContext(role, { canInviteMembers: true }),
           SharedMemberRole.FINANCE_MANAGER,
         ),
-      /canViewBudget|canManageFinancialRecords/,
+      /canViewMoney|canManageMoney/,
     );
   }
 });

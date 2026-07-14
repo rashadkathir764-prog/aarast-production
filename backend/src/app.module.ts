@@ -9,18 +9,14 @@ import { AdminAuditInterceptor } from "./admin/admin-audit.interceptor";
 import { MetricsController } from "./common/observability/metrics.controller";
 import { ResilientThrottlerStorage } from "./common/redis/resilient-throttler-storage";
 import { HealthController } from "./health.controller";
-import {
-  READINESS_FETCH,
-  ReadinessService,
-} from "./health/readiness.service";
+import { READINESS_FETCH, ReadinessService } from "./health/readiness.service";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./auth/auth.module";
 import { MeModule } from "./me/me.module";
 import { WeddingPlansModule } from "./wedding-plans/wedding-plans.module";
 import { OnboardingModule } from "./onboarding/onboarding.module";
 import { BudgetCategoriesModule } from "./budget-categories/budget-categories.module";
-import { ExpensesModule } from "./expenses/expenses.module";
-import { FinancialCommitmentsModule } from "./financial-commitments/financial-commitments.module";
+import { WeddingCostsModule } from "./wedding-costs/wedding-costs.module";
 import { MoneyModule } from "./money/money.module";
 import { TasksModule } from "./tasks/tasks.module";
 import { TimelineModule } from "./timeline/timeline.module";
@@ -74,8 +70,7 @@ import { OutboxModule } from "./outbox/outbox.module";
     WeddingPlansModule,
     OnboardingModule,
     BudgetCategoriesModule,
-    ExpensesModule,
-    FinancialCommitmentsModule,
+    WeddingCostsModule,
     MoneyModule,
     TasksModule,
     TimelineModule,

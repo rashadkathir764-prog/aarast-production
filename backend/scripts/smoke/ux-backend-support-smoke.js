@@ -75,7 +75,14 @@ function toArabicDigits(value) {
 }
 
 function hasFullDashboardCollections(value) {
-  return ['expenses', 'tasks', 'guests', 'providers'].some((key) =>
+  return [
+    'costs',
+    'costPayments',
+    'paymentSchedules',
+    'tasks',
+    'guests',
+    'providers',
+  ].some((key) =>
     Object.prototype.hasOwnProperty.call(value ?? {}, key),
   );
 }

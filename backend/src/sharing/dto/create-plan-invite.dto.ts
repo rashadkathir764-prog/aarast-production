@@ -1,4 +1,4 @@
-import { SharedMemberRole } from '@prisma/client';
+import { SharedMemberRole } from "@prisma/client";
 import {
   IsBoolean,
   IsEmail,
@@ -10,7 +10,7 @@ import {
   Max,
   MaxLength,
   Min,
-} from 'class-validator';
+} from "class-validator";
 
 export class CreatePlanInviteDto {
   @IsString()
@@ -39,15 +39,7 @@ export class CreatePlanInviteDto {
 
   @IsBoolean()
   @IsOptional()
-  canViewBudget?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  canViewExpenses?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  canViewFinancialRecords?: boolean;
+  canViewMoney?: boolean;
 
   @IsBoolean()
   @IsOptional()
@@ -71,7 +63,7 @@ export class CreatePlanInviteDto {
 
   @IsBoolean()
   @IsOptional()
-  canManageFinancialRecords?: boolean;
+  canManageMoney?: boolean;
 
   @IsBoolean()
   @IsOptional()

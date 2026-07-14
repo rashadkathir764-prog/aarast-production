@@ -1,22 +1,24 @@
 'use strict';
 
 const http = require('http');
+const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
 
-const BASE_URL = process.env.SMOKE_BASE_URL || 'http://127.0.0.1:3115';
+const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const TEST_PASSWORD = 'SmokePass123!';
 const suffix = `${Date.now()}`.slice(-8);
 const TEST_PHONE = `+9677${suffix}`;
+
 let passed = 0;
 let failed = 0;
 
-function check(name, condition) {
+function check(label, condition) {
   if (condition) {
     passed++;
-    console.log(`PASS - ${name}`);
+    console.log(`PASS - ${label}`);
   } else {
     failed++;
-    console.log(`FAIL - ${name}`);
+    console.log(`FAIL - ${label}`);
   }
 }
 
@@ -24,20 +26,21 @@ function request(method, path, body, token, requestId) {
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
     const payload = body === undefined || body === null ? null : JSON.stringify(body);
+    const headers = { Accept: 'application/json' };
+    if (payload) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(payload);
+    }
+    if (token) headers.Authorization = `Bearer ${token}`;
+    if (requestId) headers['X-Client-Request-Id'] = requestId;
+
     const req = http.request(
       {
         hostname: url.hostname,
         port: url.port,
         path: `${url.pathname}${url.search}`,
         method,
-        headers: {
-          Accept: 'application/json',
-          ...(payload
-            ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-            : {}),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(requestId ? { 'X-Client-Request-Id': requestId } : {}),
-        },
+        headers,
       },
       (res) => {
         let data = '';
@@ -57,192 +60,251 @@ function request(method, path, body, token, requestId) {
   });
 }
 
+function requireId(label, response) {
+  const id = response.body?.id;
+  if (typeof id === 'string' && id.length > 0) return id;
+  throw new Error(`${label} setup failed with HTTP ${response.status}`);
+}
+
 async function run() {
-  console.log('\nFinancial Ledger Concurrency Smoke');
+  console.log('\nCanonical Financial Ledger Concurrency Smoke');
   console.log(`Target: ${BASE_URL}\n`);
 
-  const registration = await registerVerified(request, {
-    name: 'Financial Concurrency Smoke',
-    phone: TEST_PHONE,
-    password: TEST_PASSWORD,
-  });
-  check('verified finance user registration succeeds', registration.status === 201);
-  const token = registration.body?.accessToken;
-  if (!token) throw new Error(`registration setup failed with HTTP ${registration.status}`);
+  let token;
+  try {
+    const registration = await registerVerified(request, {
+      name: 'Canonical financial concurrency smoke',
+      phone: TEST_PHONE,
+      password: TEST_PASSWORD,
+    });
+    check('verified money user registration succeeds', registration.status === 201);
+    token = registration.body?.accessToken;
+    if (!token) throw new Error(`registration setup failed with HTTP ${registration.status}`);
 
-  const plan = await request('POST', '/api/v1/wedding-plans', {
-    title: 'Immutable Ledger Smoke Plan',
-    city: 'Sanaa',
-    estimatedBudget: '1000',
-  }, token);
-  check('financial smoke plan created', plan.status === 201 && typeof plan.body?.id === 'string');
-  if (!plan.body?.id) throw new Error(`plan setup failed with HTTP ${plan.status}`);
+    const plan = await request('POST', '/api/v1/wedding-plans', {
+      title: 'Canonical immutable ledger smoke plan',
+      city: 'Sanaa',
+    }, token);
+    check('ledger smoke plan is created', plan.status === 201 && typeof plan.body?.id === 'string');
+    const planId = requireId('plan', plan);
 
-  const category = await request(
-    'POST',
-    `/api/v1/wedding-plans/${plan.body.id}/budget-categories`,
-    { name: 'Ledger', targetAmount: '1000' },
-    token,
-  );
-  check('financial smoke category created', category.status === 201 && typeof category.body?.id === 'string');
-  if (!category.body?.id) throw new Error(`category setup failed with HTTP ${category.status}`);
+    const categoryClientId = randomUUID();
+    const budget = await request(
+      'PUT',
+      `/api/v1/wedding-plans/${planId}/money-budget`,
+      {
+        totalBudget: '1000',
+        currency: 'YER',
+        categories: [
+          { clientId: categoryClientId, name: 'Ledger', allocatedAmount: '1000' },
+        ],
+      },
+      token,
+    );
+    check('ledger smoke money budget is created', budget.status === 200);
+    const categoryId = budget.body?.idMap?.[categoryClientId];
+    if (!categoryId) throw new Error('category setup failed');
 
-  const commitment = await request(
-    'POST',
-    `/api/v1/wedding-plans/${plan.body.id}/financial-commitments`,
-    {
-      budgetCategoryId: category.body.id,
-      title: 'Concurrency commitment',
-      totalAmount: '500',
-    },
-    token,
-  );
-  check('financial commitment created', commitment.status === 201 && typeof commitment.body?.id === 'string');
-  if (!commitment.body?.id) throw new Error(`commitment setup failed with HTTP ${commitment.status}`);
+    const cost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Concurrent schedule payment',
+        totalAmount: '500',
+      },
+      token,
+    );
+    check('concurrency cost is created', cost.status === 201 && typeof cost.body?.id === 'string');
+    const costId = requireId('cost', cost);
 
-  const installment = await request(
-    'POST',
-    `/api/v1/financial-commitments/${commitment.body.id}/installments`,
-    { amount: '200', status: 'PENDING' },
-    token,
-  );
-  check('pending financial installment created', installment.status === 201 && typeof installment.body?.id === 'string');
-  if (!installment.body?.id) throw new Error(`installment setup failed with HTTP ${installment.status}`);
+    const schedule = await request(
+      'POST',
+      `/api/v1/costs/${costId}/payment-schedules`,
+      { amount: '200', dueDate: new Date().toISOString() },
+      token,
+    );
+    check('pending schedule is created', schedule.status === 201 && schedule.body?.status === 'PENDING');
+    const scheduleId = requireId('schedule', schedule);
 
-  const payResults = await Promise.all([
-    request('PATCH', `/api/v1/financial-installments/${installment.body.id}/pay`, {}, token, `pay-a-${suffix}`),
-    request('PATCH', `/api/v1/financial-installments/${installment.body.id}/pay`, {}, token, `pay-b-${suffix}`),
-  ]);
-  check('both concurrent pay calls finish without server error', payResults.every((item) => item.status === 200));
-  check('both concurrent pay calls return PAID', payResults.every((item) => item.body?.status === 'PAID'));
+    const payResults = await Promise.all([
+      request('POST', `/api/v1/payment-schedules/${scheduleId}/pay`, {}, token, `schedule-pay-a-${suffix}`),
+      request('POST', `/api/v1/payment-schedules/${scheduleId}/pay`, {}, token, `schedule-pay-b-${suffix}`),
+    ]);
+    check('both concurrent schedule-pay calls complete successfully', payResults.every((item) => item.status === 201));
+    check('both concurrent calls resolve to the same payment', payResults[0].body?.id === payResults[1].body?.id && payResults.every((item) => item.body?.entryType === 'PAYMENT'));
 
-  let records = await request(
-    'GET',
-    `/api/v1/wedding-plans/${plan.body.id}/financial-payment-records`,
-    null,
-    token,
-  );
-  if (!Array.isArray(records.body)) throw new Error(`payment list failed with HTTP ${records.status}`);
-  const installmentPayments = records.body.filter(
-    (entry) => entry.financialInstallmentId === installment.body.id && entry.entryType === 'PAYMENT',
-  );
-  check('concurrent pay creates exactly one installment payment entry', installmentPayments.length === 1);
-  check('the installment payment is reversible before reversal', installmentPayments[0]?.reversible === true);
+    let ledger = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/cost-payments?page=1&limit=100`,
+      null,
+      token,
+    );
+    if (!Array.isArray(ledger.body?.items)) {
+      throw new Error(`payment ledger list failed with HTTP ${ledger.status}`);
+    }
+    let entries = ledger.body.items;
+    const schedulePayments = entries.filter(
+      (entry) => entry.paymentScheduleId === scheduleId && entry.entryType === 'PAYMENT',
+    );
+    check('concurrent schedule pay creates exactly one payment entry', schedulePayments.length === 1);
+    check('the original payment is reversible', schedulePayments[0]?.reversible === true);
 
-  let refreshedCommitment = await request(
-    'GET',
-    `/api/v1/financial-commitments/${commitment.body.id}`,
-    null,
-    token,
-  );
-  check('concurrent pay increments commitment exactly once', Number(refreshedCommitment.body?.paidAmount) === 200);
+    let refreshedCost = await request('GET', `/api/v1/costs/${costId}`, null, token);
+    check('concurrent schedule pay increments paid amount exactly once', refreshedCost.status === 200 && refreshedCost.body?.paidAmount === '200');
 
-  const paymentId = installmentPayments[0].id;
-  const reverseResults = await Promise.all([
-    request('DELETE', `/api/v1/financial-payment-records/${paymentId}`, null, token, `reverse-a-${suffix}`),
-    request('DELETE', `/api/v1/financial-payment-records/${paymentId}`, null, token, `reverse-b-${suffix}`),
-  ]);
-  check('both concurrent reversal calls are idempotent', reverseResults.every((item) => item.status === 200 && item.body?.reversed === true));
+    const paymentId = schedulePayments[0]?.id;
+    if (!paymentId) throw new Error('concurrent payment was not recorded');
+    const reverseResults = await Promise.all([
+      request(
+        'POST',
+        `/api/v1/cost-payments/${paymentId}/reverse`,
+        { reason: 'Concurrent correction A' },
+        token,
+        `reverse-a-${suffix}`,
+      ),
+      request(
+        'POST',
+        `/api/v1/cost-payments/${paymentId}/reverse`,
+        { reason: 'Concurrent correction B' },
+        token,
+        `reverse-b-${suffix}`,
+      ),
+    ]);
+    const reverseStatuses = reverseResults.map((item) => item.status).sort((a, b) => a - b);
+    check('concurrent reversal produces one success and one conflict', reverseStatuses[0] === 201 && reverseStatuses[1] === 409);
+    check('concurrent reversal never returns a server error', reverseResults.every((item) => item.status < 500));
 
-  records = await request(
-    'GET',
-    `/api/v1/wedding-plans/${plan.body.id}/financial-payment-records`,
-    null,
-    token,
-  );
-  const reversals = records.body.filter(
-    (entry) => entry.entryType === 'REVERSAL' && entry.reversalOfId === paymentId,
-  );
-  const original = records.body.find((entry) => entry.id === paymentId);
-  check('concurrent reversal creates exactly one compensating entry', reversals.length === 1);
-  check('original payment remains in immutable history', Boolean(original));
-  check('original payment points to its reversal and cannot be reversed again', original?.reversedById === reversals[0]?.id && original?.reversible === false);
+    ledger = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/cost-payments?page=1&limit=100`,
+      null,
+      token,
+    );
+    entries = ledger.body?.items ?? [];
+    const reversals = entries.filter(
+      (entry) => entry.entryType === 'REVERSAL' && entry.reversalOfId === paymentId,
+    );
+    const original = entries.find((entry) => entry.id === paymentId);
+    check('concurrent reversal creates exactly one compensating entry', reversals.length === 1);
+    check('original payment remains in immutable history', Boolean(original));
+    check('original payment points to its reversal and is no longer reversible', original?.reversedById === reversals[0]?.id && original?.reversible === false);
 
-  refreshedCommitment = await request(
-    'GET',
-    `/api/v1/financial-commitments/${commitment.body.id}`,
-    null,
-    token,
-  );
-  check('reversal restores commitment paid amount to zero', Number(refreshedCommitment.body?.paidAmount) === 0);
+    refreshedCost = await request('GET', `/api/v1/costs/${costId}`, null, token);
+    check('reversal restores cost paid amount to zero', refreshedCost.status === 200 && refreshedCost.body?.paidAmount === '0');
 
-  const installments = await request(
-    'GET',
-    `/api/v1/financial-commitments/${commitment.body.id}/installments`,
-    null,
-    token,
-  );
-  const reversedInstallment = installments.body.find((item) => item.id === installment.body.id);
-  check('reversal reopens the linked installment', reversedInstallment?.status === 'PENDING' && reversedInstallment?.paidAt === null);
+    const schedules = await request(
+      'GET',
+      `/api/v1/costs/${costId}/payment-schedules`,
+      null,
+      token,
+    );
+    const reopenedSchedule = schedules.body?.find((item) => item.id === scheduleId);
+    check('reversal reopens the linked schedule', reopenedSchedule?.status === 'PENDING' && reopenedSchedule?.paidAt === null);
 
-  const deleteHistoricInstallment = await request(
-    'DELETE',
-    `/api/v1/financial-installments/${installment.body.id}`,
-    null,
-    token,
-  );
-  check('installment with payment history cannot be deleted', deleteHistoricInstallment.status === 400);
+    const deleteHistoricSchedule = await request(
+      'DELETE',
+      `/api/v1/payment-schedules/${scheduleId}`,
+      null,
+      token,
+    );
+    check('schedule with ledger history cannot be deleted', deleteHistoricSchedule.status === 409);
 
-  const reverseAReversal = await request(
-    'DELETE',
-    `/api/v1/financial-payment-records/${reversals[0].id}`,
-    null,
-    token,
-  );
-  check('a reversal entry cannot itself be reversed', reverseAReversal.status === 400);
+    const reverseReversal = await request(
+      'POST',
+      `/api/v1/cost-payments/${reversals[0]?.id}/reverse`,
+      { reason: 'A reversal cannot be reversed' },
+      token,
+    );
+    check('a compensating reversal entry cannot itself be reversed', reverseReversal.status === 409);
 
-  const raceCommitment = await request(
-    'POST',
-    `/api/v1/wedding-plans/${plan.body.id}/financial-commitments`,
-    {
-      budgetCategoryId: category.body.id,
-      title: 'Pay versus total update race',
-      totalAmount: '500',
-    },
-    token,
-  );
-  const raceInstallment = await request(
-    'POST',
-    `/api/v1/financial-commitments/${raceCommitment.body.id}/installments`,
-    { amount: '200', status: 'PENDING' },
-    token,
-  );
-  check('balance-update race fixture created', raceCommitment.status === 201 && raceInstallment.status === 201);
-  if (!raceCommitment.body?.id || !raceInstallment.body?.id) {
-    throw new Error('balance-update race fixture failed');
+    const raceCost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Pay versus total update race',
+        totalAmount: '500',
+      },
+      token,
+    );
+    const raceCostId = requireId('balance race cost', raceCost);
+    const raceSchedule = await request(
+      'POST',
+      `/api/v1/costs/${raceCostId}/payment-schedules`,
+      { amount: '200', dueDate: new Date().toISOString() },
+      token,
+    );
+    const raceScheduleId = requireId('balance race schedule', raceSchedule);
+    check('balance-update race fixtures are created', raceCost.status === 201 && raceSchedule.status === 201);
+
+    const balanceRace = await Promise.all([
+      request('POST', `/api/v1/payment-schedules/${raceScheduleId}/pay`, {}, token, `balance-pay-${suffix}`),
+      request('PATCH', `/api/v1/costs/${raceCostId}`, { totalAmount: '100' }, token, `balance-total-${suffix}`),
+    ]);
+    const balanceStatuses = balanceRace.map((item) => item.status).sort((a, b) => a - b);
+    check('pay versus invalid total update serializes to one success and one rejection', balanceStatuses[0] === 201 && balanceStatuses[1] === 400);
+    check('balance-update race never returns HTTP 500', balanceRace.every((item) => item.status < 500));
+
+    const raceCostState = await request('GET', `/api/v1/costs/${raceCostId}`, null, token);
+    const raceSchedules = await request(
+      'GET',
+      `/api/v1/costs/${raceCostId}/payment-schedules`,
+      null,
+      token,
+    );
+    const raceScheduleState = raceSchedules.body?.find((item) => item.id === raceScheduleId);
+    check('balance race preserves paid <= total', Number(raceCostState.body?.paidAmount) <= Number(raceCostState.body?.totalAmount));
+    check('balance race commits only the valid paid state', raceCostState.body?.paidAmount === '200' && raceCostState.body?.totalAmount === '500' && raceScheduleState?.status === 'PAID');
+
+    const cancelRaceCost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Payment versus cancellation race',
+        totalAmount: '100',
+      },
+      token,
+    );
+    const cancelRaceCostId = requireId('cancel race cost', cancelRaceCost);
+    const cancelRace = await Promise.all([
+      request(
+        'POST',
+        `/api/v1/costs/${cancelRaceCostId}/payments`,
+        { amount: '100' },
+        token,
+        `cancel-race-pay-${suffix}`,
+      ),
+      request(
+        'POST',
+        `/api/v1/costs/${cancelRaceCostId}/cancel`,
+        {},
+        token,
+        `cancel-race-cancel-${suffix}`,
+      ),
+    ]);
+    const cancelRaceStatuses = cancelRace.map((item) => item.status).sort((a, b) => a - b);
+    check('payment versus cancellation commits one action and rejects the other', cancelRaceStatuses[0] === 201 && cancelRaceStatuses[1] === 409);
+    check('payment-cancellation race never returns HTTP 500', cancelRace.every((item) => item.status < 500));
+
+    const cancelRaceState = await request('GET', `/api/v1/costs/${cancelRaceCostId}`, null, token);
+    check(
+      'payment-cancellation race leaves a coherent final cost',
+      (cancelRaceState.body?.status === 'CANCELLED' && cancelRaceState.body?.paidAmount === '0') ||
+        (cancelRaceState.body?.status === 'PAID' && cancelRaceState.body?.paidAmount === '100'),
+    );
+  } finally {
+    if (token) {
+      try {
+        const cleanup = await request('DELETE', '/api/v1/users/me', null, token);
+        check('concurrency fixture account is cleaned', cleanup.status === 200 && cleanup.body?.deleted === true);
+      } catch (error) {
+        check('concurrency fixture account cleanup completes', false);
+        console.error(`Cleanup warning: ${error.message}`);
+      }
+    }
   }
-
-  const balanceRace = await Promise.all([
-    request('PATCH', `/api/v1/financial-installments/${raceInstallment.body.id}/pay`, {}, token, `balance-pay-${suffix}`),
-    request('PATCH', `/api/v1/financial-commitments/${raceCommitment.body.id}`, { totalAmount: '100' }, token, `balance-total-${suffix}`),
-  ]);
-  const raceStatuses = balanceRace.map((item) => item.status).sort();
-  check('pay versus invalid total update serializes to one success and one rejection', raceStatuses[0] === 200 && raceStatuses[1] === 400);
-  check('balance-update race never returns HTTP 500', balanceRace.every((item) => item.status < 500));
-
-  const raceCommitmentState = await request(
-    'GET',
-    `/api/v1/financial-commitments/${raceCommitment.body.id}`,
-    null,
-    token,
-  );
-  const raceInstallmentState = await request(
-    'GET',
-    `/api/v1/financial-commitments/${raceCommitment.body.id}/installments`,
-    null,
-    token,
-  );
-  const finalRaceInstallment = raceInstallmentState.body.find(
-    (item) => item.id === raceInstallment.body.id,
-  );
-  const finalPaid = Number(raceCommitmentState.body?.paidAmount);
-  const finalTotal = Number(raceCommitmentState.body?.totalAmount);
-  check('balance-update race preserves paid <= total', finalPaid >= 0 && finalPaid <= finalTotal);
-  check(
-    'installment status agrees with the serialized balance outcome',
-    (finalPaid === 200 && finalTotal === 500 && finalRaceInstallment?.status === 'PAID') ||
-      (finalPaid === 0 && finalTotal === 100 && finalRaceInstallment?.status === 'PENDING'),
-  );
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);
@@ -250,6 +312,6 @@ async function run() {
 }
 
 run().catch((error) => {
-  console.error('Financial ledger concurrency smoke error:', error.message);
+  console.error('Canonical financial ledger concurrency smoke error:', error.message);
   process.exit(1);
 });

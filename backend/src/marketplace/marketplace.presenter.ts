@@ -356,7 +356,10 @@ export class MarketplacePresenter {
       providerId: providerPackage.providerId,
       serviceId: providerPackage.serviceId,
       service: providerPackage.service
-        ? { id: providerPackage.service.id, title: providerPackage.service.title }
+        ? {
+            id: providerPackage.service.id,
+            title: providerPackage.service.title,
+          }
         : null,
       title: providerPackage.title,
       description: providerPackage.description,
@@ -423,8 +426,12 @@ export class MarketplacePresenter {
         ? quote.contactNormalizedPhone
         : null,
       message: quote.message,
-      budgetMin: visibility.budget ? (quote.budgetMin?.toString() ?? null) : null,
-      budgetMax: visibility.budget ? (quote.budgetMax?.toString() ?? null) : null,
+      budgetMin: visibility.budget
+        ? (quote.budgetMin?.toString() ?? null)
+        : null,
+      budgetMax: visibility.budget
+        ? (quote.budgetMax?.toString() ?? null)
+        : null,
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers:
@@ -435,10 +442,7 @@ export class MarketplacePresenter {
         quote.providerLinks?.find(
           (link) => link.status === PlanProviderLinkStatus.ACTIVE,
         ) ?? null,
-      financialSuggestion: this.quoteFinancialSuggestion(
-        quote,
-        visibility.budget,
-      ),
+      costSuggestion: this.quoteCostSuggestion(quote, visibility.budget),
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,
@@ -463,14 +467,17 @@ export class MarketplacePresenter {
     };
   }
 
-  private static quoteFinancialSuggestion(
+  private static quoteCostSuggestion(
     quote: QuoteWithRelations,
     showFinancials = true,
   ) {
     const acceptedOffer = showFinancials
-      ? quote.offers?.find((offer) => offer.status === QuoteOfferStatus.ACCEPTED)
+      ? quote.offers?.find(
+          (offer) => offer.status === QuoteOfferStatus.ACCEPTED,
+        )
       : null;
     const isAccepted = quote.status === QuoteRequestStatus.ACCEPTED;
+    const hasCost = (acceptedOffer?.weddingCosts.length ?? 0) > 0;
     return {
       providerId: quote.providerId,
       providerName: quote.provider.businessName,
@@ -481,15 +488,15 @@ export class MarketplacePresenter {
       quotedAmount: acceptedOffer?.amount?.toString() ?? null,
       currency: acceptedOffer?.currency ?? null,
       suggestedAction:
-        showFinancials && isAccepted && acceptedOffer?.amount
-          ? "CREATE_FINANCIAL_COMMITMENT"
+        showFinancials && isAccepted && acceptedOffer?.amount && !hasCost
+          ? "CREATE_COST"
           : "NONE",
       availableActions:
-        showFinancials && isAccepted
-          ? ["CREATE_FINANCIAL_COMMITMENT", "RECORD_PAYMENT"]
+        showFinancials && isAccepted && acceptedOffer?.amount && !hasCost
+          ? ["CREATE_COST"]
           : [],
-      sourceType: "PROVIDER_SERVICE",
-      automaticFinancialRecordCreated: false,
+      quoteOfferId: acceptedOffer?.id ?? null,
+      automaticCostCreated: false,
     };
   }
 }

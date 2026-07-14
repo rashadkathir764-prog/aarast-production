@@ -61,7 +61,7 @@ export type QuoteWithRelations = QuoteRequest & {
     WeddingPlan,
     "id" | "title" | "city" | "weddingDate"
   > | null;
-  offers?: QuoteOffer[];
+  offers?: (QuoteOffer & { weddingCosts: { id: string }[] })[];
   providerLinks?: PlanProviderLink[];
 };
 
@@ -86,6 +86,9 @@ export const MARKETPLACE_QUOTE_INCLUDE = {
       weddingDate: true,
     },
   },
-  offers: { orderBy: { createdAt: "desc" } },
+  offers: {
+    orderBy: { createdAt: "desc" },
+    include: { weddingCosts: { select: { id: true } } },
+  },
   providerLinks: true,
 } satisfies Prisma.QuoteRequestInclude;

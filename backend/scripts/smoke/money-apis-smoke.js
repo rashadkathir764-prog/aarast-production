@@ -213,7 +213,7 @@ async function run() {
     const reminderB = await request(
       'POST',
       `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
-      { amount: '300', dueDate: dateOffsetIso(8) },
+      { amount: '300', dueDate: dateOffsetIso(5) },
       owner.token,
     );
     check('reminders do not reserve or divide the outstanding balance', reminderA.status === 201 && reminderB.status === 201);

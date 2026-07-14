@@ -319,7 +319,7 @@ class AppRouter {
             return OtpScreen(
               phone: args?.phone,
               purpose: args?.purpose,
-              devOtpMessage: args?.devOtpMessage,
+              otpNoticeMessage: args?.otpNoticeMessage,
               registration: args?.registration,
               successLocation: args?.successLocation,
             );

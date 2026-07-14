@@ -19,14 +19,14 @@ class OtpScreenArgs {
   const OtpScreenArgs({
     required this.phone,
     this.purpose = 'VERIFY_PHONE',
-    this.devOtpMessage,
+    this.otpNoticeMessage,
     this.registration,
     this.successLocation,
   });
 
   final String phone;
   final String purpose;
-  final String? devOtpMessage;
+  final String? otpNoticeMessage;
   final PendingRegistration? registration;
   final String? successLocation;
 }
@@ -35,7 +35,7 @@ class OtpScreen extends StatefulWidget {
   const OtpScreen({
     this.phone,
     this.purpose,
-    this.devOtpMessage,
+    this.otpNoticeMessage,
     this.registration,
     this.successLocation,
     super.key,
@@ -43,7 +43,7 @@ class OtpScreen extends StatefulWidget {
 
   final String? phone;
   final String? purpose;
-  final String? devOtpMessage;
+  final String? otpNoticeMessage;
   final PendingRegistration? registration;
   final String? successLocation;
 
@@ -59,14 +59,14 @@ class _OtpScreenState extends State<OtpScreen> {
 
   bool _isVerifying = false;
   AarastOtpFieldState _fieldState = AarastOtpFieldState.idle;
-  String? _devOtpMessage;
+  String? _otpNoticeMessage;
   Timer? _resendTimer;
   int _resendSeconds = _resendCooldown;
 
   @override
   void initState() {
     super.initState();
-    _devOtpMessage = widget.devOtpMessage;
+    _otpNoticeMessage = widget.otpNoticeMessage;
     _startResendCooldown();
   }
 
@@ -114,7 +114,7 @@ class _OtpScreenState extends State<OtpScreen> {
     _codeController.clear();
     setState(() {
       _fieldState = AarastOtpFieldState.idle;
-      _devOtpMessage = result.localDevMessage;
+      _otpNoticeMessage = result.noticeMessage;
     });
     _startResendCooldown(notify: true);
     AarastToast.showSuccess(context, 'تم إعادة إرسال الرمز');
@@ -209,7 +209,8 @@ class _OtpScreenState extends State<OtpScreen> {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final auth = context.watch<AuthController>();
-    final devOtpMessage = _devOtpMessage ?? auth.otpRequest?.localDevMessage;
+    final otpNoticeMessage =
+        _otpNoticeMessage ?? auth.otpRequest?.noticeMessage;
 
     return AuthWeddingScaffold(
       leading: AuthBackButton(onPressed: _goBack),
@@ -248,8 +249,8 @@ class _OtpScreenState extends State<OtpScreen> {
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (devOtpMessage != null) ...[
-                          _DevOtpNotice(message: devOtpMessage),
+                        if (otpNoticeMessage != null) ...[
+                          _OtpNotice(message: otpNoticeMessage),
                           const SizedBox(height: 16),
                         ],
                         AarastOtpField(
@@ -291,8 +292,8 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 }
 
-class _DevOtpNotice extends StatelessWidget {
-  const _DevOtpNotice({required this.message});
+class _OtpNotice extends StatelessWidget {
+  const _OtpNotice({required this.message});
 
   final String message;
 

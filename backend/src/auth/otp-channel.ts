@@ -18,6 +18,18 @@ export interface OtpDeliveryResult {
 }
 
 /**
+ * The provider may have accepted the message, but Aarast did not receive a
+ * trustworthy acknowledgement. Callers must keep the OTP usable: retrying
+ * immediately could send two valid-looking codes and invalidate the first.
+ */
+export class OtpDeliveryUncertainError extends Error {
+  constructor() {
+    super('OTP delivery outcome is uncertain');
+    this.name = 'OtpDeliveryUncertainError';
+  }
+}
+
+/**
  * Seam for OTP delivery. AuthService owns generation/storage/verification;
  * a channel only produces the code format and delivers it out-of-band.
  * Production channels must send the code out-of-band and never echo it.
@@ -146,29 +158,46 @@ export class OpenWaOtpChannel implements OtpChannel {
     const sessionId = encodeURIComponent(this.config.sessionId);
 
     try {
-      const response = await this.fetchImplementation(
-        `${this.config.baseUrl}/api/sessions/${sessionId}/messages/send-transient-text`,
-        {
-          method: 'POST',
-          headers: {
-            'X-API-Key': this.config.apiKey,
-            'Content-Type': 'application/json',
+      let response: Response;
+      try {
+        response = await this.fetchImplementation(
+          `${this.config.baseUrl}/api/sessions/${sessionId}/messages/send-transient-text`,
+          {
+            method: 'POST',
+            headers: {
+              'X-API-Key': this.config.apiKey,
+              'Content-Type': 'application/json',
+            },
+            redirect: 'error',
+            signal: controller.signal,
+            body: JSON.stringify({
+              chatId: `${phone.replace(/\D/g, '')}@c.us`,
+              text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
+            }),
           },
-          redirect: 'error',
-          signal: controller.signal,
-          body: JSON.stringify({
-            chatId: `${phone.replace(/\D/g, '')}@c.us`,
-            text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
-          }),
-        },
-      );
+        );
+      } catch {
+        // A connection can fail after OpenWA accepted the send. Treating that
+        // as a definite failure would invalidate a code already on the phone.
+        throw new OtpDeliveryUncertainError();
+      }
 
       if (!response.ok) {
-        throw new Error(`OpenWA OTP delivery failed with HTTP ${response.status}`);
+        if (response.status >= 500) {
+          throw new OtpDeliveryUncertainError();
+        }
+        throw new Error(
+          `OpenWA OTP delivery failed with HTTP ${response.status}`,
+        );
       }
-      const payload = await readBoundedJson<{ messageId?: unknown }>(response);
+      let payload: { messageId?: unknown };
+      try {
+        payload = await readBoundedJson<{ messageId?: unknown }>(response);
+      } catch {
+        throw new OtpDeliveryUncertainError();
+      }
       if (typeof payload.messageId !== 'string' || !payload.messageId.trim()) {
-        throw new Error('OpenWA OTP delivery returned no message id');
+        throw new OtpDeliveryUncertainError();
       }
 
       return { delivery: 'WHATSAPP' };

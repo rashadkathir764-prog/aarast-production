@@ -43,7 +43,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _obscurePassword = true;
   AarastOtpFieldState _codeFieldState = AarastOtpFieldState.idle;
   String? _errorMessage;
-  String? _devOtpMessage;
+  String? _otpNoticeMessage;
   Timer? _resendTimer;
   int _resendSeconds = 0;
 
@@ -180,8 +180,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_devOtpMessage != null) ...[
-            _DevOtpNotice(message: _devOtpMessage!),
+          if (_otpNoticeMessage != null) ...[
+            _OtpNotice(message: _otpNoticeMessage!),
             const SizedBox(height: 14),
           ],
           Padding(
@@ -368,7 +368,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         phone: _phoneController.text,
       );
       if (!mounted) return;
-      _devOtpMessage = result.localDevMessage;
+      _otpNoticeMessage = result.noticeMessage;
       onSuccess();
       _startResendCooldown();
     } on ApiException catch (error) {
@@ -450,8 +450,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 }
 
-class _DevOtpNotice extends StatelessWidget {
-  const _DevOtpNotice({required this.message});
+class _OtpNotice extends StatelessWidget {
+  const _OtpNotice({required this.message});
 
   final String message;
 

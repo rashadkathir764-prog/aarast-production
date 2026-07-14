@@ -29,6 +29,7 @@ import {
   DevEchoOtpChannel,
   OpenWaOtpChannel,
   OtpChannel,
+  OtpDeliveryUncertainError,
   WhatsAppOtpChannel,
 } from "./otp-channel";
 import {
@@ -85,6 +86,8 @@ export interface AdminLoginPendingResponse {
 export class AuthService {
   private static readonly otpUnavailableMessage =
     "خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.";
+  private static readonly otpDeliveryUncertainMessage =
+    "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   private static readonly dummyPasswordHash =
     "$2b$10$jnsLrksGKUtGyEjkRk/CeO5zUi9WwfPpG6.bREun6R8yXlN85DEq6";
 
@@ -495,12 +498,19 @@ export class AuthService {
     let delivered;
     try {
       delivered = await channel.deliver(phone, code, purpose);
-    } catch {
-      await this.prisma.otpCode.updateMany({
-        where: { id: otp.id, consumedAt: null },
-        data: { consumedAt: new Date() },
-      });
-      throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+    } catch (error) {
+      if (error instanceof OtpDeliveryUncertainError) {
+        delivered = {
+          delivery: "WHATSAPP" as const,
+          message: AuthService.otpDeliveryUncertainMessage,
+        };
+      } else {
+        await this.prisma.otpCode.updateMany({
+          where: { id: otp.id, consumedAt: null },
+          data: { consumedAt: new Date() },
+        });
+        throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+      }
     }
     otpRequestsTotal.inc({ delivery: delivered.delivery });
 

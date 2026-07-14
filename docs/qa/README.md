@@ -131,6 +131,10 @@ offline queue preserves dependency and idempotency rules.
 
 OTP UI changes must prove the resend action remains actually disabled for the
 full 60-second server cooldown and becomes enabled at the same boundary.
+OpenWA tests must also distinguish definitive delivery rejection from an
+ambiguous post-send outcome: an ambiguous result keeps the OTP active, returns
+no code in the HTTP response, advances the mobile UI to code entry, and shows a
+safe notice instead of a false unavailable error.
 
 Session/privacy changes must include a two-account same-device regression:
 logout must dispose the first account's providers before network logout

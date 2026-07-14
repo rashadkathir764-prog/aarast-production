@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { OpenWaOtpChannel } from '../src/auth/otp-channel';
+import {
+  OpenWaOtpChannel,
+  OtpDeliveryUncertainError,
+} from '../src/auth/otp-channel';
 import { loadOpenWaOtpConfig } from '../src/auth/openwa-otp-config';
 import { validateRuntimeEnvironment } from '../src/common/config/runtime-environment';
 
@@ -44,16 +47,47 @@ test('OpenWA OTP uses only the transient route and never echoes the code', async
   assert.equal('code' in result, false);
 });
 
-test('OpenWA OTP rejects a response without a real message id', async () => {
-  const channel = new OpenWaOtpChannel(config, async () =>
-    new Response(JSON.stringify({ queued: true }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    }),
+test('OpenWA OTP marks a successful response without an acknowledgement as uncertain', async () => {
+  const channel = new OpenWaOtpChannel(
+    config,
+    async () =>
+      new Response(JSON.stringify({ queued: true }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
   );
   await assert.rejects(
     () => channel.deliver('+967777123456', '654321', 'REGISTER'),
-    /returned no message id/,
+    (error: unknown) => error instanceof OtpDeliveryUncertainError,
+  );
+});
+
+test('OpenWA OTP marks provider 5xx and transport failures as uncertain', async () => {
+  for (const fetchImplementation of [
+    async () => new Response('', { status: 503 }),
+    async () => {
+      throw new TypeError('socket closed');
+    },
+  ]) {
+    const channel = new OpenWaOtpChannel(config, fetchImplementation);
+    await assert.rejects(
+      () => channel.deliver('+967777123456', '654321', 'REGISTER'),
+      (error: unknown) => error instanceof OtpDeliveryUncertainError,
+    );
+  }
+});
+
+test('OpenWA OTP keeps definitive provider 4xx failures distinct', async () => {
+  const channel = new OpenWaOtpChannel(
+    config,
+    async () => new Response('', { status: 401 }),
+  );
+  await assert.rejects(
+    () => channel.deliver('+967777123456', '654321', 'REGISTER'),
+    (error: unknown) =>
+      error instanceof Error &&
+      !(error instanceof OtpDeliveryUncertainError) &&
+      /HTTP 401/.test(error.message),
   );
 });
 
@@ -133,15 +167,17 @@ test('runtime rejects a malformed OTP global safety ceiling before boot', () => 
 });
 
 test('OpenWA OTP rejects oversized provider responses', async () => {
-  const channel = new OpenWaOtpChannel(config, async () =>
-    new Response(JSON.stringify({ messageId: 'x'.repeat(5_000) }), {
-      status: 201,
-      headers: { 'content-type': 'application/json' },
-    }),
+  const channel = new OpenWaOtpChannel(
+    config,
+    async () =>
+      new Response(JSON.stringify({ messageId: 'x'.repeat(5_000) }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
   );
   await assert.rejects(
     () => channel.deliver('+967777123456', '654321', 'REGISTER'),
-    /exceeds the allowed size/,
+    (error: unknown) => error instanceof OtpDeliveryUncertainError,
   );
 });
 

@@ -18,6 +18,8 @@ class _FakeAuthRepository extends AuthRepository {
   String? lastConfirmPassword;
   bool failConfirm = false;
   bool failRequestWithNetworkError = false;
+  String delivery = 'LOCAL_DEV';
+  String? deliveryMessage = 'رمز التحقق مؤقت للتجربة المحلية: 123456';
 
   @override
   Future<OtpRequestResult> requestPasswordReset({required String phone}) async {
@@ -32,9 +34,9 @@ class _FakeAuthRepository extends AuthRepository {
       phone: phone,
       purpose: 'RESET_PASSWORD',
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
-      delivery: 'LOCAL_DEV',
-      code: '123456',
-      message: 'رمز التحقق مؤقت للتجربة المحلية: 123456',
+      delivery: delivery,
+      code: delivery == 'LOCAL_DEV' ? '123456' : null,
+      message: deliveryMessage,
     );
   }
 
@@ -190,6 +192,30 @@ void main() {
     );
     expect(find.textContaining('تعذر تسجيل الدخول'), findsNothing);
   });
+
+  testWidgets(
+    'uncertain WhatsApp delivery opens code entry and shows its notice',
+    (tester) async {
+      const notice =
+          'قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.';
+      final repository = await _fakeRepository()
+        ..delivery = 'WHATSAPP'
+        ..deliveryMessage = notice;
+      await _pumpResetScreen(tester, repository);
+
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال رمز الاستعادة'));
+      await tester.pumpAndSettle();
+
+      expect(repository.requestCalls, 1);
+      expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+      expect(find.text(notice), findsOneWidget);
+      expect(
+        find.text('خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.'),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('reset resend stays disabled for the full 60-second cooldown', (
     tester,

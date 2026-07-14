@@ -23,7 +23,7 @@ void main() {
           home: OtpScreen(
             phone: '+967777123456',
             purpose: 'VERIFY_PHONE',
-            devOtpMessage: 'رمز التحقق مؤقت للتجربة المحلية: 123456',
+            otpNoticeMessage: 'رمز التحقق مؤقت للتجربة المحلية: 123456',
           ),
         ),
       ),

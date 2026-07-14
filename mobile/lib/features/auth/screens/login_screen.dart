@@ -239,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen> {
       extra: OtpScreenArgs(
         phone: phone,
         purpose: 'LOGIN',
-        devOtpMessage: otp.localDevMessage,
+        otpNoticeMessage: otp.noticeMessage,
         successLocation: _safeResumeLocation(context),
       ),
     );

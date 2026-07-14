@@ -30,9 +30,12 @@ class OtpRequestResult {
 
   bool get isLocalDev => delivery == 'LOCAL_DEV' && code != null;
 
-  String? get localDevMessage {
-    if (!isLocalDev) return null;
-    return message ?? 'رمز التحقق مؤقت للتجربة المحلية: $code';
+  String? get noticeMessage {
+    if (isLocalDev) {
+      return message ?? 'رمز التحقق مؤقت للتجربة المحلية: $code';
+    }
+    final normalized = message?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 }
 

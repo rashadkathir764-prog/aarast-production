@@ -207,6 +207,15 @@ delivery: 60-second phone cooldown, bounded phone/IP windows, and an
 Provider delivery failures also consume quota so a failing transport cannot be
 used to bypass the safety ceiling.
 
+OpenWA delivery has an explicit ambiguous-outcome contract. A definitive
+client/configuration rejection invalidates the newly created code and returns
+the generic unavailable response. A timeout, transport break, provider 5xx, or
+missing acknowledgement may occur after WhatsApp accepted the message; in that
+case the code remains active and the request returns `200`, `delivery:
+"WHATSAPP"`, and a safe `message` asking the user to enter the code if it
+arrives. The response still never echoes the OTP. This prevents an already
+delivered code from being invalidated and avoids an immediate duplicate send.
+
 ### Profile image upload
 
 Authenticated profile images use the existing account profile field and the

@@ -36,7 +36,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   _InviteAccessStep _step = _InviteAccessStep.phone;
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
   bool _isVerifying = false;
-  String? _devOtpMessage;
+  String? _otpNoticeMessage;
   PlanInvite? _openedInvite;
   Timer? _resendTimer;
   int _resendSeconds = 0;
@@ -81,7 +81,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     setState(() {
       _step = _InviteAccessStep.otp;
       _otpFieldState = AarastOtpFieldState.idle;
-      _devOtpMessage = result.localDevMessage;
+      _otpNoticeMessage = result.noticeMessage;
     });
     _startResendCooldown();
   }
@@ -239,7 +239,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           controller: _otpController,
           state: _otpFieldState,
           resendSeconds: _resendSeconds,
-          devOtpMessage: _devOtpMessage,
+          otpNoticeMessage: _otpNoticeMessage,
           onCodeChanged: _onOtpChanged,
           onVerify: _verifyOtp,
           onResend: _resendOtp,
@@ -342,7 +342,7 @@ class _OtpStep extends StatelessWidget {
     required this.onVerify,
     required this.onResend,
     required this.onChangePhone,
-    this.devOtpMessage,
+    this.otpNoticeMessage,
   });
 
   final TextEditingController controller;
@@ -352,18 +352,18 @@ class _OtpStep extends StatelessWidget {
   final VoidCallback onVerify;
   final VoidCallback onResend;
   final VoidCallback onChangePhone;
-  final String? devOtpMessage;
+  final String? otpNoticeMessage;
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     return ListView(
       children: [
-        if (devOtpMessage != null) ...[
+        if (otpNoticeMessage != null) ...[
           _InviteNotice(
             icon: LucideIcons.code2,
-            title: 'رمز التحقق للتجربة',
-            message: devOtpMessage!,
+            title: 'حالة إرسال الرمز',
+            message: otpNoticeMessage!,
           ),
           const SizedBox(height: 16),
         ],

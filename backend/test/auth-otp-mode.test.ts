@@ -284,6 +284,82 @@ test('OpenWA mode consumes the durable quota before delivering a code', async ()
   );
 });
 
+test('OpenWA uncertain delivery keeps the OTP active and returns a safe notice', async () => {
+  const originalFetch = globalThis.fetch;
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'openwa',
+      OPENWA_BASE_URL: 'http://openwa:3000',
+      OPENWA_SESSION_ID: 'aarast-otp',
+      OPENWA_API_KEY: 'a-secure-openwa-api-key-for-tests-only',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      globalThis.fetch = async () => new Response('', { status: 503 });
+      const service = createService({ consume: async () => undefined });
+
+      try {
+        const response = await service.requestOtp({
+          phone: '777123456',
+          purpose: OtpPurpose.RESET_PASSWORD,
+        });
+        assert.equal(response.delivery, 'WHATSAPP');
+        assert.equal(response.code, undefined);
+        assert.match(response.message ?? '', /إذا وصلك الرمز/);
+
+        const activeOtp = await (service as any).prisma.otpCode.findFirst({
+          where: {
+            phone: '+967777123456',
+            purpose: OtpPurpose.RESET_PASSWORD,
+            consumedAt: null,
+          },
+        });
+        assert.ok(activeOtp, 'the possibly delivered OTP must remain active');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    },
+  );
+});
+
+test('OpenWA definitive delivery failure consumes the OTP and returns 503', async () => {
+  const originalFetch = globalThis.fetch;
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'openwa',
+      OPENWA_BASE_URL: 'http://openwa:3000',
+      OPENWA_SESSION_ID: 'aarast-otp',
+      OPENWA_API_KEY: 'a-secure-openwa-api-key-for-tests-only',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      globalThis.fetch = async () => new Response('', { status: 401 });
+      const service = createService({ consume: async () => undefined });
+
+      try {
+        await assert.rejects(
+          () =>
+            service.requestOtp({
+              phone: '777123456',
+              purpose: OtpPurpose.RESET_PASSWORD,
+            }),
+          (error: any) => error.message === safeOtpUnavailableMessage,
+        );
+        const activeOtp = await (service as any).prisma.otpCode.findFirst({
+          where: {
+            phone: '+967777123456',
+            purpose: OtpPurpose.RESET_PASSWORD,
+            consumedAt: null,
+          },
+        });
+        assert.equal(activeOtp, undefined);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    },
+  );
+});
+
 test('dev OTP mode never consumes the production delivery quota', async () => {
   await withEnv(
     {

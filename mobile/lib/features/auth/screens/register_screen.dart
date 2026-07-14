@@ -297,7 +297,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       extra: OtpScreenArgs(
         phone: normalizedPhone,
         purpose: 'REGISTER',
-        devOtpMessage: otp.localDevMessage,
+        otpNoticeMessage: otp.noticeMessage,
         registration: PendingRegistration(
           name: _nameController.text.trim(),
           phone: normalizedPhone,

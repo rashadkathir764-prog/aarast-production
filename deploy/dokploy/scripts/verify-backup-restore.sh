@@ -79,7 +79,12 @@ docker run -d --name "$CONTAINER" \
   "$PG_IMAGE" >/dev/null
 
 i=0
-until docker exec "$CONTAINER" pg_isready -U postgres -d "$DATABASE" >/dev/null 2>&1; do
+# The official PostgreSQL entrypoint briefly starts a socket-only server while
+# it creates the requested database, then stops it before launching the final
+# server. A socket probe can therefore win that initialization race and let
+# pg_restore run during the restart. TCP becomes ready only for the final
+# server, so it is the stable readiness contract for this disposable restore.
+until docker exec "$CONTAINER" pg_isready -h 127.0.0.1 -U postgres -d "$DATABASE" >/dev/null 2>&1; do
   i=$((i + 1))
   [ "$i" -lt 30 ] || { echo "FAIL: scratch PostgreSQL never became ready"; exit 1; }
   sleep 1

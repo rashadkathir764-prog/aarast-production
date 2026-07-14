@@ -2,7 +2,7 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-14. Route-level behavior belongs in
+Current documentation snapshot: 2026-07-15. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
@@ -26,10 +26,10 @@ Current documentation snapshot: 2026-07-14. Route-level behavior belongs in
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. |
 | OutboxEvent | Durable PostgreSQL queue for notification-created and conversation-message-available events. Domain rows and events commit together; workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. |
-| BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`, and their total may not exceed that general budget when it is set. |
-| WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. |
+| BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`. A positive allocation requires a non-null general budget, and total allocations may not exceed it. |
+| WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. It has no due-date field; payment timing belongs only to `PaymentSchedule.dueDate`. |
 | CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
-| PaymentSchedule | A dated reminder under one WeddingCost. `dueDate` is required. Paying a schedule creates one linked CostPayment under a row lock; reversing that payment reopens the schedule. A pending schedule never changes cost, paid, outstanding, or budget totals. |
+| PaymentSchedule | A dated, non-reserving reminder under one WeddingCost. `dueDate` is required and is the only payment-reminder date. A pending schedule never changes totals, reserves outstanding balance, or blocks a direct payment. Each schedule is independently capped by the row-locked outstanding cost on create/update. Paying creates one linked CostPayment; reversing it reopens that schedule, while fully paying the cost cancels all other pending reminders. |
 | Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. `canViewMoney` controls all money reads and `canManageMoney` controls money writes; task, guest, provider, and member-management permissions remain separate. |
@@ -73,9 +73,14 @@ Current documentation snapshot: 2026-07-14. Route-level behavior belongs in
   schedules is private by default.
 - Confirmed cost is the sum of non-cancelled WeddingCost totals. Paid is the net
   CostPayment ledger after reversals. Outstanding is confirmed cost minus paid.
-  A PaymentSchedule contributes nothing until it creates a real payment.
+  A PaymentSchedule contributes nothing until it creates a real payment, does
+  not reserve outstanding balance, and cannot block a direct payment. Its
+  amount is validated independently against current outstanding on create or
+  update; fully paying the cost cancels pending reminders.
 - A null `WeddingPlan.estimatedBudget` remains unset. Category allocations are
-  never summed as a fallback general budget.
+  never summed as a fallback general budget. The budget may be saved before any
+  categories exist, but positive category allocations require a non-null
+  general budget.
 - SharedMember permissions are implemented as a backend slice; financial
   endpoints must not expose money data without `canViewMoney`, and every
   mutation requires `canManageMoney`.
@@ -160,7 +165,7 @@ rewrite as permission to restore a removed live model.
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `WeddingPlan` | 29 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `WeddingCost` | 22 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `WeddingCost` | 21 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
 | `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |

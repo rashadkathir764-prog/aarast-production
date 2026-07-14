@@ -1,6 +1,6 @@
 # Product
 
-Snapshot date: 2026-07-14
+Snapshot date: 2026-07-15
 
 Aarast / اعّرست is a Yemen-first wedding planning product. The product center
 is a Wedding Financial OS: wedding plans, one general budget, budget
@@ -22,15 +22,21 @@ financial record.
 Financial planning uses one domain only:
 
 - `WeddingPlan.estimatedBudget` is the optional general budget. A null value
-  means the budget is still unset; category allocations never replace it.
+  means the budget is still unset; category allocations never replace it. The
+  user may save this budget before creating categories.
 - `BudgetCategory` groups and allocates the general budget.
 - `WeddingCost` records one agreed or immediate cost and must belong to exactly
   one budget category. It may optionally reference either an Aarast provider or
-  an external party.
+  an external party. It has no due-date field; payment timing belongs only to
+  `PaymentSchedule.dueDate`.
 - `CostPayment` records money that actually left the user. It belongs to one
   cost and inherits that cost's category and provider/party context.
-- `PaymentSchedule` is a dated reminder under one cost. It does not change
-  cost, paid, or remaining totals until a real payment is recorded.
+- `PaymentSchedule` is a dated, non-reserving reminder under one cost. It does
+  not deduct money, reserve outstanding balance, change totals, or block a
+  direct payment. Each reminder amount is checked independently against the
+  current outstanding cost when created or edited; reminders are not summed as
+  reservations. Any payment that completes the cost cancels its remaining
+  pending reminders.
 
 An accepted provider offer may prefill a cost draft only after an explicit
 user confirmation. Acceptance never creates a cost, payment, schedule, task,

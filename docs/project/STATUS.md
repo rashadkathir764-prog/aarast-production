@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-14
+Snapshot date: 2026-07-15
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -25,9 +25,14 @@ and runtime checks override historical completion reports.
   deployable Prometheus/Grafana/Alertmanager stack under
   `deploy/monitoring/`.
 - Financial integrity: the active prelaunch contract uses `WeddingCost`, an
-  append-only `CostPayment` ledger, and `PaymentSchedule`. Database constraints
-  and row-locked mutations must enforce positive amounts, paid not exceeding
-  cost, one reversal per payment, and one payment transition per schedule.
+  append-only `CostPayment` ledger, and `PaymentSchedule`. `WeddingCost` has no
+  due date; `PaymentSchedule.dueDate` is the only payment-reminder date. Pending
+  schedules do not reserve outstanding balance or block direct payments. Each
+  schedule is independently capped by the row-locked outstanding cost when
+  created or edited, and fully paying a cost cancels its remaining pending
+  schedules. Database constraints and row-locked mutations also enforce
+  positive amounts, paid not exceeding cost, one reversal per payment, and one
+  payment transition per schedule.
 - Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS
@@ -136,8 +141,8 @@ contract: `WeddingCost`, `CostPayment`, and `PaymentSchedule`. The removed
 restored by later work. Historical migrations may describe removed structures;
 they are not live product contracts.
 
-The local code gate completed on 2026-07-14: backend typecheck/build and 235
-tests passed, Flutter analysis and all 541 tests passed, generated docs were in
+The local code gate completed on 2026-07-15: backend typecheck/build and 237
+tests passed, Flutter analysis and all 572 tests passed, generated docs were in
 sync, and old live routes/models/operational scripts were guarded against
 returning. Production deployment verification remains part of the deferred
 release phase and is not implied by these local results.
@@ -179,24 +184,23 @@ mandatory before wider use.
 ## Verification Status
 
 For the current working tree on 2026-07-14, Flutter Analyze passes with no
-issues and all 529 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
+issues and all 572 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
 included. A QA-signed Android Release APK (`versionCode=2`) was built against
 the staging HTTPS origin and accepted a physical-device OTP flow. These results
 do not prove store signing, deployed association files, or the target
 object-storage environment. Final AAB/store-certificate verification is
 intentionally deferred at the product owner's request.
 
-Backend TypeScript check, all 5 canonical/legacy pretests, and all 235 source
+Backend TypeScript check, all 6 canonical/legacy pretests, and all 237 source
 tests pass for the OpenWA integration branch. The previously rebuilt local
 Docker backend, PostgreSQL, Redis, and
-MinIO-compatible media service are healthy; all 51 migrations are applied and
-dependency audit reports zero known vulnerabilities. `/ready` reports database,
-Redis, and media as `up`; an OpenWA-enabled runtime additionally requires its
-transport check to be `up`. The auth smoke also proves the durable fifth-failure
-account lock through HTTP. All 27 Docker-backed smoke groups pass, including
-real signed upload, full image sanitization, durable upload-ticket transition,
-private chat media, and provider media persistence. This proves the local
-runtime contract, not a multi-host production deployment.
+MinIO-compatible media service are healthy, but that long-lived database is not
+used as proof for this money reset because it predates three pending migrations.
+A disposable database applied all 54 migrations and passed the direct SQL money
+integrity checks. Dependency audit previously reported zero known
+vulnerabilities. The candidate runtime and Docker-backed smoke gate must be
+rebuilt from the final commit before deployment; earlier smoke results do not
+substitute for that gate.
 
 The hardened OpenWA fork has 2,296 passing tests (5 intentionally skipped), a
 passing production build, zero lint errors, and zero production dependency

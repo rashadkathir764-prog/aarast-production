@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-14
+Snapshot date: 2026-07-15
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -46,9 +46,25 @@ Money-domain changes additionally fail unless tests prove:
 - initial payment creation is atomic, ordinary payment cannot exceed the
   outstanding cost, reversal is append-only and unique, and concurrent
   schedule-payment requests create one payment only;
-- a schedule has a due date, remains a reminder until paid, and never changes
-  money totals by itself;
+- WeddingCost has no due-date field across schema, DTO, response, mobile cache,
+  offline import, and API examples; `PaymentSchedule.dueDate` is the only
+  payment-reminder date;
+- a pending schedule remains a non-reserving reminder: it never changes totals,
+  reserves outstanding balance, or blocks a direct payment;
+- each schedule amount is independently no greater than the row-locked
+  outstanding cost on create/update; other pending reminders are not summed as
+  reservations, and any payment that completes a cost cancels all remaining
+  pending reminders;
 - a null general budget stays null and category allocations never replace it;
+- the atomic money-budget route accepts `categories: []` for budget-first setup
+  without creating a placeholder category and rejects any positive allocation
+  when `totalBudget` is null; the mobile form prevents an entirely empty no-op
+  write before calling that route;
+- schedule warnings expose counts with `amount: null`, so overlapping reminders
+  are never summed or presented as debt;
+- direct SQL insert/update of one pending schedule above the current outstanding
+  cost is rejected, while overlapping reminders within that per-row limit are
+  allowed and remain non-reserving;
 - `canViewMoney` and `canManageMoney` fail closed across summary, detail, direct
   route, dashboard, notification, and sharing flows;
 - removed finance endpoints return `404` with an authenticated request.

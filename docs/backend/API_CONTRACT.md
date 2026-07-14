@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-11.
+Current documentation snapshot: 2026-07-15.
 
 Source status:
 
@@ -312,7 +312,8 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
 Dashboard `remainingBudget` and the money-card usage ratio use confirmed cost:
 the sum of non-cancelled WeddingCost totals. CostPayment rows change the
 paid/outstanding split and are not added to cost a second time. A pending
-PaymentSchedule changes reminder state only.
+PaymentSchedule changes reminder state only; it does not deduct or reserve
+outstanding money and cannot block a direct payment.
 
 Payment-schedule details appear only when the current user has `canViewMoney`.
 Notifications are always scoped to the authenticated
@@ -369,9 +370,26 @@ Unread count response:
 
 ## General Budget And Budget Categories
 
-The optional general budget is `WeddingPlan.estimatedBudget` and is changed
-through the protected WeddingPlan update route. Null means unset. The backend
-and offline client must never replace null with the sum of category allocations.
+The optional general budget is `WeddingPlan.estimatedBudget`. The canonical
+money setup write is the protected atomic route:
+
+- `PUT /api/v1/wedding-plans/:planId/money-budget`
+
+Its body contains `totalBudget`, `currency`, and `categories`:
+
+```json
+{
+  "totalBudget": "3000000.00",
+  "currency": "YER",
+  "categories": []
+}
+```
+
+`categories` may be an empty array so a user can save the general budget first
+and add categories later. Null `totalBudget` means the general budget is unset.
+The response contains the refreshed `summary`, canonical `categories`, and an
+`idMap` for client-generated category IDs. The backend and offline client must
+never replace null with the sum of category allocations.
 
 Protected category routes:
 
@@ -389,17 +407,20 @@ Create request:
 }
 ```
 
-Category allocations are non-negative. When the general budget is set, the sum
-of allocations may not exceed it. A category referenced by any cost cannot be
-deleted until those costs are moved or removed. All reads require
-`canViewMoney`; all mutations require `canManageMoney`.
+Category allocations are non-negative. Any positive allocation requires a
+non-null general budget, and the sum of allocations may not exceed that budget.
+A category referenced by any cost cannot be deleted until those costs are moved
+or removed. All reads require `canViewMoney`; all mutations require
+`canManageMoney`.
 
 ## Wedding Costs
 
 `WeddingCost` is the only cost backbone. Every cost belongs to exactly one
 budget category. It may optionally reference an Aarast provider/accepted quote
 or an external party, but provider and external-party modes are mutually
-exclusive.
+exclusive. `WeddingCost` has no due-date field. `agreementDate` records when the
+cost was agreed; every payment-reminder date belongs to
+`PaymentSchedule.dueDate`.
 
 Protected routes:
 
@@ -420,7 +441,6 @@ Create request:
   "initialPaymentAmount": "100000.00",
   "providerId": "provider_id",
   "quoteOfferId": "quote_offer_id",
-  "dueDate": "2026-12-15T00:00:00.000Z",
   "agreementDate": "2026-07-06T00:00:00.000Z",
   "note": "Optional note"
 }
@@ -430,8 +450,8 @@ For an external party, omit `providerId` and `quoteOfferId` and send optional
 `partyName` and `partyPhone`. `totalAmount` must be positive.
 `initialPaymentAmount`, when present, must be positive and no greater than the
 total; the cost and initial CostPayment commit atomically. Update requests may
-change the category, title, total, party/provider context, dates, and note but
-cannot directly set paid amount or derived payment status.
+change the category, title, total, party/provider context, agreement date, and
+note but cannot set a due date, paid amount, or derived payment status.
 
 Accepted quote data may prefill this request only after explicit user
 confirmation. Quote acceptance itself returns `automaticCostCreated: false`
@@ -461,7 +481,9 @@ Create request:
 
 Payment input never accepts category, provider, party, or WeddingPlan ids; they
 are inherited from the selected cost. The amount must be positive and may not
-exceed the row-locked outstanding cost.
+exceed the row-locked outstanding cost. Pending payment schedules are ignored
+for this limit because reminders do not reserve money or restrict direct
+payments.
 
 Payments are an append-only ledger. Reversal request:
 
@@ -475,9 +497,11 @@ duplicating it. There is no payment DELETE route.
 
 ## Payment Schedules
 
-A `PaymentSchedule` is a reminder under one cost, not a separate cost or paid
-record. Its `dueDate` is required and it contributes nothing to confirmed cost,
-paid, outstanding, or remaining-budget totals until paid.
+A `PaymentSchedule` is a non-reserving reminder under one cost, not a separate
+cost or paid record. Its required `dueDate` is the only payment-reminder date in
+the money contract. A pending schedule contributes nothing to confirmed cost,
+paid, outstanding, or remaining-budget totals; it does not deduct or reserve
+money and cannot block a direct payment.
 
 Protected routes:
 
@@ -498,10 +522,16 @@ Create request:
 }
 ```
 
-Update accepts only `amount`, `dueDate`, and `note`. Clients cannot submit
-status or paid-at fields. Paying accepts optional `paidAt`, `method`, and
-`note`, locks the schedule and cost, creates one linked CostPayment, and makes
-concurrent retries idempotent. Reversing that payment reopens the schedule.
+On create and update, `amount` must be positive and no greater than the current
+row-locked outstanding cost. The check is per reminder: other pending schedules
+are not summed because they reserve nothing. Update accepts only `amount`,
+`dueDate`, and `note`; clients cannot submit status or paid-at fields.
+
+Paying accepts optional `paidAt`, `method`, and `note`, locks the schedule and
+cost, rejects a reminder whose amount now exceeds the current outstanding cost,
+creates one linked CostPayment, and makes concurrent retries idempotent. Any
+direct or scheduled payment that fully pays the cost cancels every remaining
+pending reminder. Reversing a schedule-linked payment reopens that schedule.
 Paid schedules and schedules with payment history cannot be hard-deleted.
 
 ## Money Summary
@@ -572,7 +602,10 @@ The response is one nested contract with no legacy aliases:
 `costs.paid` is the net CostPayment ledger after reversals, and
 `costs.outstanding` is total minus paid. Category values use the same rules.
 Pending PaymentSchedule rows affect only schedule counts, `next`, and warning
-types `PAYMENT_SCHEDULE_OVERDUE` or `PAYMENT_SCHEDULE_DUE_SOON`.
+types `PAYMENT_SCHEDULE_OVERDUE` or `PAYMENT_SCHEDULE_DUE_SOON`; they never
+reserve outstanding balance or reduce direct-payment capacity. Schedule-warning
+`amount` is therefore `null`: overlapping reminder amounts must not be presented
+as debt or summed money. Callers use the warning type and schedule counts.
 
 Callers without `canViewMoney` receive no private money values; hidden values
 are not converted to zeros. Mutating routes require `canManageMoney`.

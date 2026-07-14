@@ -16,7 +16,7 @@
 | Allow conversations only when attached to a real quote request. | Accepted | Messaging is limited to the requester and the provider account on that quote. Open or unsolicited messaging remains excluded. |
 | Use one prelaunch money domain: general budget, categories, `WeddingCost`, `CostPayment`, and `PaymentSchedule`. | Accepted and implemented | `Expense`, `FinancialCommitment`, `FinancialPaymentRecord`, `FinancialInstallment`, their routes, caches, operational seed/load tools, and user-facing concepts were removed rather than kept as compatibility paths because there are no production users. Every cost belongs to one category; payments and schedules belong to one cost. |
 | Calculate every money surface from the canonical cost ledger. | Accepted | Confirmed cost is the sum of non-cancelled cost totals. Paid is the net append-only payment ledger after reversals. Outstanding is confirmed cost minus paid, and remaining budget is the general budget minus confirmed cost. A schedule is only a reminder and contributes nothing until paid. |
-| Keep category allocation separate from the general budget. | Accepted | A null general budget remains unset. Category allocations may total no more than the general budget when it exists, but their sum never becomes a fallback general budget. |
+| Keep category allocation separate from the general budget. | Accepted | A null general budget remains unset and category allocations never become a fallback general budget. Budget-first setup may save no categories; any positive category allocation requires a non-null general budget, and total allocations may not exceed it. |
 | Make finance sharing understandable. | Accepted | `canViewMoney` controls all private money reads and `canManageMoney` controls all money writes. Hidden values are absent, not returned as misleading zeros. |
 | Use short-lived access tokens with rotating refresh tokens. | Accepted and implemented | Access JWTs default to 15 minutes. Opaque 30-day refresh tokens are hashed at rest, rotated transactionally, and revocable per session or per user. |
 | Keep one active documentation source per area. | Accepted | `docs/README.md` owns the source map. Historical plans and reports live as `.md.txt` under `docs/archive/` and must not compete with current docs. |
@@ -42,6 +42,12 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Allow a temporary hardened OpenWA OTP transport for the risk-accepted MVP, while retaining Meta as the target channel. | Accepted and locally verified; limited rollout gates remain | Aarast never calls stock `send-text`, applies durable HMAC-keyed phone/IP/global quotas, and fails readiness unless a connected session exposes the transient contract. The pinned fork, QR link, no-persistence proof, protected restart, and live self-recipient request/verify flow pass. An independently owned second recipient and 24-hour stability observation remain mandatory before widening the MVP rollout. |
+
+## Current Decisions Addendum - 2026-07-15
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Keep payment schedules non-reserving and use one payment-reminder date. | Accepted and implemented | `WeddingCost` has no due date; `PaymentSchedule.dueDate` is the only payment-reminder date. A pending schedule neither deducts nor reserves money and cannot block a direct payment. Each reminder amount is checked independently against the row-locked outstanding cost on create/update, and any payment that completes the cost cancels the remaining pending reminders. |
 
 ## Initial Project Decisions
 

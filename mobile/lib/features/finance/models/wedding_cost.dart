@@ -14,7 +14,6 @@ class WeddingCost {
     this.partyPhone,
     this.note,
     this.agreementDate,
-    this.dueDate,
     this.paymentsCount,
     this.categoryName,
     this.providerName,
@@ -41,7 +40,6 @@ class WeddingCost {
       partyPhone: stringOrNull(json['partyPhone']),
       note: stringOrNull(json['note']),
       agreementDate: dateTimeOrNull(json['agreementDate']),
-      dueDate: dateTimeOrNull(json['dueDate']),
       paymentsCount: intOrNull(json['paymentsCount']),
       categoryName:
           stringOrNull(json['categoryName']) ??
@@ -68,7 +66,6 @@ class WeddingCost {
   final String? partyPhone;
   final String? note;
   final DateTime? agreementDate;
-  final DateTime? dueDate;
   final int? paymentsCount;
   final String? categoryName;
   final String? providerName;
@@ -77,6 +74,7 @@ class WeddingCost {
 
   bool get isCancelled => status == 'CANCELLED';
   bool get isPaid => status == 'PAID';
+  bool get hasActivePayments => moneyValue(paidAmount) > 0;
   bool get hasPaymentHistory =>
       (paymentsCount ?? 0) > 0 || moneyValue(paidAmount) > 0;
   bool get canDelete => !hasPaymentHistory;

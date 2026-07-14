@@ -8,12 +8,17 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:aarast_mobile/core/routing/app_router.dart';
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/money_summary.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/quick_add_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 void main() {
   group('buildCanonicalQuickAddActions', () {
@@ -21,6 +26,14 @@ void main() {
       expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
       expect(shouldShowPlanQuickAdd(tabIndex: 1), isFalse);
       expect(shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: true), isTrue);
+      expect(
+        shouldShowPlanQuickAdd(
+          tabIndex: 1,
+          canManageMoney: true,
+          hasConfiguredMoney: false,
+        ),
+        isFalse,
+      );
       expect(
         shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: false),
         isFalse,
@@ -43,6 +56,7 @@ void main() {
       final actions = buildCanonicalQuickAddActions(
         _DummyContext(),
         planId: 'plan-1',
+        canManageMoney: true,
         openRoute: open,
       );
 
@@ -64,6 +78,7 @@ void main() {
       final actions = buildCanonicalQuickAddActions(
         _DummyContext(),
         planId: 'plan-7',
+        canManageMoney: true,
         openRoute: open,
       );
 
@@ -86,35 +101,37 @@ void main() {
       );
     });
 
-    test('money context exposes the financial backbone actions only', () {
-      final calls = <String>[];
-      Future<void> open(String route, {bool refreshDashboard = false}) async {
-        calls.add(route);
-      }
+    test(
+      'money context exposes additions but never duplicates budget management',
+      () {
+        final calls = <String>[];
+        Future<void> open(String route, {bool refreshDashboard = false}) async {
+          calls.add(route);
+        }
 
-      final actions = buildCanonicalQuickAddActions(
-        _DummyContext(),
-        planId: 'plan-money',
-        contextOrder: QuickAddContext.money,
-        openRoute: open,
-      );
+        final actions = buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'plan-money',
+          canManageMoney: true,
+          contextOrder: QuickAddContext.money,
+          openRoute: open,
+        );
 
-      expect(actions.map((a) => a.label).toList(), <String>[
-        'إضافة تكلفة',
-        'إضافة تصنيف',
-        'إدارة الميزانية',
-      ]);
+        expect(actions.map((a) => a.label).toList(), <String>[
+          'إضافة تكلفة',
+          'إضافة تصنيف',
+        ]);
 
-      for (final action in actions) {
-        action.onTap();
-      }
+        for (final action in actions) {
+          action.onTap();
+        }
 
-      expect(calls, <String>[
-        AppRouter.moneyCostCreate('plan-money'),
-        AppRouter.moneyCategoryCreate('plan-money'),
-        AppRouter.moneyBudget('plan-money'),
-      ]);
-    });
+        expect(calls, <String>[
+          AppRouter.moneyCostCreate('plan-money'),
+          AppRouter.moneyCategoryCreate('plan-money'),
+        ]);
+      },
+    );
 
     test('forwards refreshDashboardOnMoney to money-changing opens', () {
       final calls = <String>[];
@@ -125,6 +142,7 @@ void main() {
       final actions = buildCanonicalQuickAddActions(
         _DummyContext(),
         planId: 'plan-r',
+        canManageMoney: true,
         refreshDashboardOnMoney: true,
         openRoute: open,
       );
@@ -147,6 +165,7 @@ void main() {
         buildCanonicalQuickAddActions(
           _DummyContext(),
           planId: 'plan-1',
+          canManageMoney: true,
           contextOrder: QuickAddContext.money,
           openRoute: open,
         ).first.label,
@@ -156,6 +175,7 @@ void main() {
         buildCanonicalQuickAddActions(
           _DummyContext(),
           planId: 'plan-1',
+          canManageMoney: true,
           contextOrder: QuickAddContext.tasks,
           openRoute: open,
         ).first.label,
@@ -165,6 +185,7 @@ void main() {
         buildCanonicalQuickAddActions(
           _DummyContext(),
           planId: 'plan-1',
+          canManageMoney: true,
           contextOrder: QuickAddContext.guests,
           openRoute: open,
         ).first.label,
@@ -174,11 +195,42 @@ void main() {
         buildCanonicalQuickAddActions(
           _DummyContext(),
           planId: 'plan-1',
+          canManageMoney: true,
           contextOrder: QuickAddContext.providers,
           openRoute: open,
         ).first.label,
         'طلب عرض سعر',
       );
+    });
+
+    test('never exposes financial actions without money management', () {
+      Future<void> open(String route, {bool refreshDashboard = false}) async {}
+
+      for (final contextOrder in QuickAddContext.values) {
+        final actions = buildCanonicalQuickAddActions(
+          _DummyContext(),
+          planId: 'shared-plan',
+          canManageMoney: false,
+          contextOrder: contextOrder,
+          openRoute: open,
+        );
+        final labels = actions.map((action) => action.label);
+        expect(
+          labels,
+          isNot(contains('إضافة تكلفة')),
+          reason: contextOrder.name,
+        );
+        expect(
+          labels,
+          isNot(contains('إضافة تصنيف')),
+          reason: contextOrder.name,
+        );
+        expect(
+          labels,
+          isNot(contains('إدارة الميزانية')),
+          reason: contextOrder.name,
+        );
+      }
     });
   });
 
@@ -222,6 +274,39 @@ void main() {
       expect(find.text('costs'), findsOneWidget);
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
     });
+
+    testWidgets(
+      'money root has one setup entry before budget and add-only FAB after it',
+      (tester) async {
+        Future<void> pumpWith({required bool hasBudget}) async {
+          final router = _buildPlanShellRouter(
+            initialLocation: AppRouter.money('plan-7'),
+          );
+          addTearDown(router.dispose);
+          await tester.pumpWidget(
+            ChangeNotifierProvider<FinanceProvider>.value(
+              value: _ShellFinanceProvider(hasBudget: hasBudget),
+              child: MaterialApp.router(routerConfig: router),
+            ),
+          );
+          await tester.pump();
+        }
+
+        await pumpWith(hasBudget: false);
+        expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
+
+        await pumpWith(hasBudget: true);
+        final fab = find.byKey(const ValueKey('royal-smart-fab'));
+        expect(fab, findsOneWidget);
+        await tester.tap(fab);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text('إضافة تكلفة'), findsOneWidget);
+        expect(find.text('إضافة تصنيف'), findsOneWidget);
+        expect(find.text('إدارة الميزانية'), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('guest smart FAB opens the add route without page key reuse', (
       tester,
@@ -420,4 +505,28 @@ Future<void> _tapNavIcon(WidgetTester tester, IconData icon) async {
 class _DummyContext implements BuildContext {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+class _ShellFinanceProvider extends FinanceProvider {
+  _ShellFinanceProvider({required bool hasBudget})
+    : _summary = MoneySummary(
+        planId: 'plan-7',
+        budget: MoneyBudgetSummary(total: hasBudget ? '1000' : null),
+        permissions: const MoneyPermissions(
+          canViewMoney: true,
+          canManageMoney: true,
+        ),
+      ),
+      super(FinanceApi(ApiClient(tokenProvider: () async => null)));
+
+  final MoneySummary _summary;
+
+  @override
+  String? get loadedPlanId => 'plan-7';
+
+  @override
+  bool get canManageMoney => true;
+
+  @override
+  MoneySummary get summary => _summary;
 }

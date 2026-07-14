@@ -244,7 +244,7 @@ class _NotificationSettingsCard extends StatelessWidget {
                 onChanged(settings.copyWith(taskRemindersEnabled: value)),
           ),
           _SwitchRow(
-            title: 'تذكير الأقساط',
+            title: 'تذكير مواعيد الدفع',
             value: settings.paymentRemindersEnabled,
             onChanged: (value) =>
                 onChanged(settings.copyWith(paymentRemindersEnabled: value)),

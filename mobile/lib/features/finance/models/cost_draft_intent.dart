@@ -11,7 +11,6 @@ class CostDraftIntent {
     this.quoteOfferId,
     this.currency,
     this.note,
-    this.firstPaymentDueDate,
   }) : assert(
          providerId == null || externalPartyName == null,
          'A cost cannot target a provider and an external party together.',
@@ -32,7 +31,6 @@ class CostDraftIntent {
   /// Optional convenience used by the form to offer creating the first
   /// payment schedule after the cost itself is saved. It is never sent as a
   /// cost field because a payment date belongs to a schedule, not to a cost.
-  final DateTime? firstPaymentDueDate;
 
   bool get isProviderLinked => providerId?.trim().isNotEmpty == true;
   bool get isExternalParty => externalPartyName?.trim().isNotEmpty == true;

@@ -181,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'أعرسِت يساعدك على ترتيب الميزانية والمهام والمستحقات والمشاركات من مكان واحد.',
+              'أعرسِت يساعدك على ترتيب الميزانية والتكاليف والمهام والمشاركات من مكان واحد.',
               textAlign: TextAlign.center,
               style: textTheme.bodySmall?.copyWith(
                 color: AppTheme.muted,

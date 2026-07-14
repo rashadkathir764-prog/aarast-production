@@ -71,6 +71,23 @@ void main() {
         expect(summary.budget.total, '1000000');
       },
     );
+
+    test('sends a budget-first write with an empty category list', () async {
+      final client = _RecordingApiClient();
+
+      await FinanceApi(client).replaceMoneyBudget(
+        planId: 'plan-1',
+        totalBudget: '1000000',
+        currency: 'YER',
+        categories: const [],
+      );
+
+      expect(client.lastPutBody, {
+        'totalBudget': '1000000',
+        'currency': 'YER',
+        'categories': <Map<String, dynamic>>[],
+      });
+    });
   });
 
   test('getBudgetCategories always returns BudgetCategory values', () async {

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -7,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
@@ -80,12 +79,18 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 28),
           children: [
-            if (provider.errorMessage != null) ...[
+            if (provider.errorMessage != null && schedules.isNotEmpty) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
             ],
             if (_isLoadingDetails && schedules.isEmpty)
               const AarastScreenLoading(label: 'جاري تحميل المواعيد')
+            else if (provider.errorMessage != null && schedules.isEmpty)
+              AarastErrorState(
+                title: 'تعذر تحميل مواعيد الدفع',
+                message: provider.errorMessage!,
+                onRetry: () => _load(refreshMoney: true),
+              )
             else if (widget.costId != null && cost == null)
               const AarastEmptyState(
                 icon: LucideIcons.receipt,
@@ -205,12 +210,18 @@ class _PaymentScheduleDetailsScreenState
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 28),
           children: [
-            if (provider.errorMessage != null) ...[
+            if (provider.errorMessage != null && schedule != null) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
             ],
             if (_isLoadingDetails && schedule == null)
               const AarastScreenLoading(label: 'جاري تحميل موعد الدفع')
+            else if (provider.errorMessage != null && schedule == null)
+              AarastErrorState(
+                title: 'تعذر تحميل موعد الدفع',
+                message: provider.errorMessage!,
+                onRetry: () => _load(refreshMoney: true),
+              )
             else if (schedule == null)
               const AarastEmptyState(
                 icon: LucideIcons.calendarX,
@@ -470,9 +481,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
     final cost = provider.costById(widget.costId);
     final schedule = provider.scheduleById(widget.scheduleId ?? '');
     _initialize(schedule);
-    final available = cost == null
-        ? 0
-        : _availableForSchedule(provider, cost, schedule);
+    final available = cost == null ? 0 : moneyValue(cost.remainingAmount);
 
     return AarastPageScaffold(
       title: _editing ? 'تعديل موعد الدفع' : 'إضافة موعد دفع',
@@ -482,12 +491,21 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
-          if (provider.errorMessage != null) ...[
+          if (provider.errorMessage != null &&
+              cost != null &&
+              (!_editing || schedule != null)) ...[
             MoneyMessageBanner(message: provider.errorMessage!, error: true),
             const SizedBox(height: 12),
           ],
           if (_isLoadingDetails && cost == null)
             const AarastScreenLoading(label: 'جاري تجهيز الموعد')
+          else if (provider.errorMessage != null &&
+              (cost == null || (_editing && schedule == null)))
+            AarastErrorState(
+              title: 'تعذر تحميل موعد الدفع',
+              message: provider.errorMessage!,
+              onRetry: _load,
+            )
           else if (cost == null || (_editing && schedule == null))
             const AarastEmptyState(
               icon: LucideIcons.calendarX,
@@ -515,7 +533,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'المتاح للجدولة',
+                    'المتبقي على التكلفة',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.muted,
                       fontWeight: FontWeight.w800,
@@ -547,7 +565,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
                       decoration: InputDecoration(
                         labelText: 'مبلغ الموعد',
                         prefixIcon: const Icon(LucideIcons.badgeDollarSign),
-                        suffixText: provider.summary.currency,
+                        suffixText: currencyLabelAr(provider.summary.currency),
                       ),
                       validator: (value) => _validateAmount(value, available),
                     ),
@@ -600,22 +618,10 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
     );
   }
 
-  num _availableForSchedule(
-    FinanceProvider provider,
-    WeddingCost cost,
-    PaymentSchedule? current,
-  ) {
-    final otherPending = provider
-        .schedulesForCost(cost.id)
-        .where((item) => item.isPending && item.id != current?.id)
-        .fold<num>(0, (sum, item) => sum + moneyValue(item.amount));
-    return math.max<num>(0, moneyValue(cost.remainingAmount) - otherPending);
-  }
-
   String? _validateAmount(String? value, num available) {
     final parsed = num.tryParse(value?.replaceAll(',', '').trim() ?? '');
     if (parsed == null || parsed <= 0) return 'أدخل مبلغًا أكبر من صفر.';
-    if (parsed > available) return 'المبلغ يتجاوز المتاح للجدولة.';
+    if (parsed > available) return 'المبلغ يتجاوز الباقي على التكلفة.';
     return null;
   }
 
@@ -720,12 +726,18 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
-          if (provider.errorMessage != null) ...[
+          if (provider.errorMessage != null && schedule != null) ...[
             MoneyMessageBanner(message: provider.errorMessage!, error: true),
             const SizedBox(height: 12),
           ],
           if (_isLoadingDetails && schedule == null)
             const AarastScreenLoading(label: 'جاري تجهيز دفع الموعد')
+          else if (provider.errorMessage != null && schedule == null)
+            AarastErrorState(
+              title: 'تعذر تحميل موعد الدفع',
+              message: provider.errorMessage!,
+              onRetry: _load,
+            )
           else if (cost == null || schedule == null)
             const AarastEmptyState(
               icon: LucideIcons.calendarX,

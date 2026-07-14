@@ -58,7 +58,7 @@ void main() {
     expect(planShell, isNot(contains("'finance'")));
     expect(quickActions, contains('AppRouter.moneyCostCreate(planId)'));
     expect(quickActions, contains('AppRouter.moneyCategoryCreate(planId)'));
-    expect(quickActions, contains('AppRouter.moneyBudget(planId)'));
+    expect(quickActions, isNot(contains('AppRouter.moneyBudget(planId)')));
     expect(quickActions, isNot(contains('createFinancialCommitment')));
     expect(quickActions, isNot(contains('recordPayment')));
   });

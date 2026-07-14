@@ -52,7 +52,9 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     final provider = context.watch<FinanceProvider>();
     if (!_hydrated &&
         !provider.isLoading &&
-        provider.loadedPlanId == widget.weddingPlanId) {
+        provider.loadedPlanId == widget.weddingPlanId &&
+        provider.hasLoadedMoney &&
+        provider.errorMessage == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _hydrate(provider);
       });
@@ -96,15 +98,17 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   TextFormField(
+                    key: const ValueKey('money-budget-total'),
                     controller: _totalController,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'الميزانية العامة (اختياري)',
                       hintText: 'مثال: 3,000,000',
-                      prefixIcon: Icon(LucideIcons.walletCards),
+                      prefixIcon: const Icon(LucideIcons.walletCards),
+                      suffixText: currencyLabelAr(_currency),
                     ),
                     validator: _validateTotal,
                     onChanged: (_) => setState(() {}),
@@ -190,8 +194,8 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
             if (_rows.isEmpty)
               const AarastEmptyState(
                 icon: LucideIcons.tags,
-                title: 'أضف تصنيفًا واحدًا',
-                message: 'مثل القاعة، التصوير، الضيافة أو الملابس.',
+                title: 'لا توجد تصنيفات بعد',
+                message: 'يمكنك حفظ الميزانية الآن وإضافة التصنيفات لاحقًا.',
               )
             else
               for (var index = 0; index < _rows.length; index++) ...[
@@ -199,6 +203,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   key: ValueKey(_rows[index].key),
                   fieldIndex: index,
                   row: _rows[index],
+                  currency: _currency,
                   canRemove: _rows[index].costsCount == 0,
                   onChanged: () => setState(() {}),
                   onRemove: () => _removeRow(index),
@@ -236,7 +241,12 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   }
 
   void _hydrate(FinanceProvider provider) {
-    if (_hydrated || provider.loadedPlanId != widget.weddingPlanId) return;
+    if (_hydrated ||
+        provider.loadedPlanId != widget.weddingPlanId ||
+        !provider.hasLoadedMoney ||
+        provider.errorMessage != null) {
+      return;
+    }
     _hydrated = true;
     _totalController.text = provider.summary.budget.total ?? '';
     _currency = provider.summary.currency;
@@ -255,9 +265,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
           ),
         ),
       );
-    if (_rows.isEmpty) {
-      _rows.add(_CategoryDraft(name: '', amount: null));
-    }
     setState(() {});
   }
 
@@ -290,8 +297,9 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_rows.isEmpty) {
-      setState(() => _draftError = 'أضف تصنيفًا واحدًا على الأقل.');
+    final total = moneyValue(_totalController.text);
+    if (total <= 0 && _rows.isEmpty) {
+      setState(() => _draftError = 'حدد ميزانية أو أضف تصنيفًا قبل الحفظ.');
       return;
     }
     final normalizedNames = <String>{};
@@ -301,7 +309,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
         return;
       }
     }
-    final total = moneyValue(_totalController.text);
     final allocated = _rows.fold<num>(
       0,
       (sum, row) => sum + moneyValue(row.amount.text),
@@ -369,6 +376,7 @@ class _CategoryEditorRow extends StatelessWidget {
   const _CategoryEditorRow({
     required this.fieldIndex,
     required this.row,
+    required this.currency,
     required this.canRemove,
     required this.onChanged,
     required this.onRemove,
@@ -377,6 +385,7 @@ class _CategoryEditorRow extends StatelessWidget {
 
   final int fieldIndex;
   final _CategoryDraft row;
+  final String currency;
   final bool canRemove;
   final VoidCallback onChanged;
   final VoidCallback onRemove;
@@ -417,9 +426,10 @@ class _CategoryEditorRow extends StatelessWidget {
             controller: row.amount,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             textDirection: TextDirection.ltr,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'المخصص (اختياري)',
-              prefixIcon: Icon(LucideIcons.coins),
+              prefixIcon: const Icon(LucideIcons.coins),
+              suffixText: currencyLabelAr(currency),
             ),
             validator: (value) {
               final text = value?.replaceAll(',', '').trim() ?? '';

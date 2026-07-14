@@ -119,6 +119,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       actions: buildCanonicalQuickAddActions(
         context,
         planId: planId,
+        canManageMoney: true,
         openRoute: open,
         onRequestQuote: requestQuote,
       ),

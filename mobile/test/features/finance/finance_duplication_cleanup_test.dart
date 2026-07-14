@@ -21,7 +21,61 @@ void main() {
       await tester.pumpWidget(_wrap(_FakeFinanceApi.noBudget()));
       await tester.pumpAndSettle();
 
-      expect(find.text('إعداد الميزانية'), findsOneWidget);
+      expect(find.text('ابدأ بإعداد الميزانية'), findsOneWidget);
+      expect(find.byTooltip('إدارة الميزانية'), findsNothing);
+      expect(find.text('مواعيد الدفع'), findsNothing);
+      expect(find.text('التصنيفات'), findsNothing);
+      expect(find.text('أحدث التكاليف'), findsNothing);
+      expect(find.text('آخر الدفعات'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('first load failure shows only a retryable error state', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      await tester.pumpWidget(_wrap(_FakeFinanceApi.failing()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('تعذر تحميل المال'), findsOneWidget);
+      expect(find.text('حاول مرة أخرى'), findsOneWidget);
+      expect(find.text('ابدأ تنظيم مال الزفاف'), findsNothing);
+      expect(find.text('مواعيد الدفع'), findsNothing);
+      expect(find.text('التصنيفات'), findsNothing);
+      expect(find.text('أحدث التكاليف'), findsNothing);
+      expect(find.text('آخر الدفعات'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('hero includes outstanding money in a responsive 2x2 grid', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      await tester.pumpWidget(
+        _wrap(_FakeFinanceApi.withCosts(), textScale: 1.3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('الباقي عليك'), findsOneWidget);
+      expect(find.byType(GridView), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('budget-only state shows one next step and no empty sections', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      await tester.pumpWidget(
+        _wrap(_FakeFinanceApi.budgetOnly(), textScale: 1.3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('أضف أول تصنيف'), findsOneWidget);
+      expect(find.text('إضافة تصنيف'), findsOneWidget);
+      expect(find.text('مواعيد الدفع'), findsNothing);
+      expect(find.text('التصنيفات'), findsNothing);
+      expect(find.text('أحدث التكاليف'), findsNothing);
+      expect(find.text('آخر الدفعات'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -86,7 +140,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('المال خاص'), findsOneWidget);
+      expect(find.text('تعذر تحميل المال'), findsOneWidget);
       expect(find.text('تكلفة 4'), findsNothing);
       expect(find.text('إعداد الميزانية'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -115,6 +169,26 @@ void main() {
       ]) {
         expect(router, isNot(contains(removed)), reason: removed);
       }
+    });
+
+    test('live mobile copy cannot restore legacy money terminology', () {
+      const removedTerms = <String>[
+        'المستحقات',
+        'مستحقات',
+        'المصروف',
+        'مصروف',
+        'الأقساط',
+        'أقساط',
+      ];
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        final source = entity.readAsStringSync();
+        for (final term in removedTerms) {
+          if (source.contains(term)) offenders.add('${entity.path}: $term');
+        }
+      }
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
   });
 }
@@ -148,10 +222,15 @@ Widget _wrap(
 }
 
 class _FakeFinanceApi extends FinanceApi {
-  _FakeFinanceApi._(this._costs)
+  _FakeFinanceApi._(this._costs, {this.fail = false, this.hasBudget = false})
     : super(ApiClient(tokenProvider: () async => null));
 
   factory _FakeFinanceApi.noBudget() => _FakeFinanceApi._(const []);
+
+  factory _FakeFinanceApi.budgetOnly() =>
+      _FakeFinanceApi._(const [], hasBudget: true);
+
+  factory _FakeFinanceApi.failing() => _FakeFinanceApi._(const [], fail: true);
 
   factory _FakeFinanceApi.withCosts() => _FakeFinanceApi._([
     for (var index = 1; index <= 4; index++)
@@ -170,10 +249,27 @@ class _FakeFinanceApi extends FinanceApi {
   ]);
 
   final List<WeddingCost> _costs;
+  final bool fail;
+  final bool hasBudget;
 
   @override
   Future<MoneySummary> getMoneySummary(String planId) async {
-    if (_costs.isEmpty) return MoneySummary.empty(planId);
+    if (fail) throw const ApiException('تعذر الاتصال بالخادم.');
+    if (_costs.isEmpty) {
+      return hasBudget
+          ? MoneySummary(
+              planId: planId,
+              currency: 'YER',
+              budget: const MoneyBudgetSummary(
+                total: '3000000',
+                allocated: '0',
+                unallocated: '3000000',
+                confirmedCost: '0',
+                remaining: '3000000',
+              ),
+            )
+          : MoneySummary.empty(planId);
+    }
     return MoneySummary(
       planId: planId,
       currency: 'YER',

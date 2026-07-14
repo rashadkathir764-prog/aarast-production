@@ -106,7 +106,7 @@ void main() {
       expect(find.text('1,200 ر.س'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(
-        find.textContaining('لا يتم إنشاء حجز أو مصروف تلقائياً'),
+        find.textContaining('لا يتم إنشاء حجز أو تكلفة تلقائياً'),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);

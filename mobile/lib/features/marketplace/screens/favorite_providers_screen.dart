@@ -161,7 +161,7 @@ class _FavoriteCompareNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'استخدم المفضلة للمقارنة السريعة، ثم اطلب عرضاً من المورد المناسب. لا يتم إنشاء حجز أو مصروف تلقائياً.',
+              'استخدم المفضلة للمقارنة السريعة، ثم اطلب عرضاً من المورد المناسب. لا يتم إنشاء حجز أو تكلفة تلقائياً.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: AppTheme.ink,
                 fontWeight: FontWeight.w800,

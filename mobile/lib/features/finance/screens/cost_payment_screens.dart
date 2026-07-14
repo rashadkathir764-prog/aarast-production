@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -7,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -67,9 +66,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
     final provider = context.watch<FinanceProvider>();
     final cost = provider.costById(widget.costId);
     final currency = provider.summary.currency;
-    final available = cost == null
-        ? 0
-        : _availableForDirectPayment(provider, cost);
+    final available = cost == null ? 0 : moneyValue(cost.remainingAmount);
 
     return AarastPageScaffold(
       title: 'تسجيل دفعة',
@@ -79,12 +76,18 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
       child: ListView(
         padding: const EdgeInsets.only(bottom: 28),
         children: [
-          if (provider.errorMessage != null) ...[
+          if (provider.errorMessage != null && cost != null) ...[
             MoneyMessageBanner(message: provider.errorMessage!, error: true),
             const SizedBox(height: 12),
           ],
           if (_isLoadingDetails && cost == null)
             const AarastScreenLoading(label: 'جاري تجهيز الدفعة')
+          else if (provider.errorMessage != null && cost == null)
+            AarastErrorState(
+              title: 'تعذر تحميل التكلفة',
+              message: provider.errorMessage!,
+              onRetry: _load,
+            )
           else if (cost == null)
             const AarastEmptyState(
               icon: LucideIcons.receipt,
@@ -104,16 +107,11 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
               error: true,
             )
           else ...[
-            _PaymentLimitCard(
-              cost: cost,
-              available: available,
-              currency: currency,
-            ),
+            _PaymentLimitCard(cost: cost, currency: currency),
             const SizedBox(height: 14),
             if (available <= 0)
               const MoneyMessageBanner(
-                message:
-                    'كل المبلغ الباقي مرتبط بمواعيد دفع. افتح الموعد المطلوب وسجّل دفعه من هناك.',
+                message: 'لا يوجد مبلغ متبقٍ لتسجيل دفعة جديدة.',
               )
             else
               Form(
@@ -132,7 +130,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
                         decoration: InputDecoration(
                           labelText: 'مبلغ الدفعة',
                           prefixIcon: const Icon(LucideIcons.banknote),
-                          suffixText: currency,
+                          suffixText: currencyLabelAr(currency),
                         ),
                         validator: (value) => _validateAmount(value, available),
                       ),
@@ -181,19 +179,11 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
     );
   }
 
-  num _availableForDirectPayment(FinanceProvider provider, WeddingCost cost) {
-    final scheduled = provider
-        .schedulesForCost(cost.id)
-        .where((schedule) => schedule.isPending)
-        .fold<num>(0, (sum, item) => sum + moneyValue(item.amount));
-    return math.max<num>(0, moneyValue(cost.remainingAmount) - scheduled);
-  }
-
   String? _validateAmount(String? value, num available) {
     final parsed = num.tryParse(value?.replaceAll(',', '').trim() ?? '');
     if (parsed == null || parsed <= 0) return 'أدخل مبلغًا أكبر من صفر.';
     if (parsed > available) {
-      return 'المبلغ يتجاوز المتاح للدفعة المباشرة.';
+      return 'المبلغ يتجاوز الباقي على التكلفة.';
     }
     return null;
   }
@@ -282,12 +272,18 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 28),
           children: [
-            if (provider.errorMessage != null) ...[
+            if (provider.errorMessage != null && payment != null) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
             ],
             if (_isLoadingDetails && payment == null)
               const AarastScreenLoading(label: 'جاري تحميل الدفعة')
+            else if (provider.errorMessage != null && payment == null)
+              AarastErrorState(
+                title: 'تعذر تحميل الدفعة',
+                message: provider.errorMessage!,
+                onRetry: () => _load(refreshMoney: true),
+              )
             else if (payment == null)
               const AarastEmptyState(
                 icon: LucideIcons.banknote,
@@ -360,14 +356,9 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
 }
 
 class _PaymentLimitCard extends StatelessWidget {
-  const _PaymentLimitCard({
-    required this.cost,
-    required this.available,
-    required this.currency,
-  });
+  const _PaymentLimitCard({required this.cost, required this.currency});
 
   final WeddingCost cost;
-  final num available;
   final String currency;
 
   @override
@@ -386,60 +377,21 @@ class _PaymentLimitCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _PaymentAmountMetric(
-                  label: 'الباقي',
-                  amount: cost.remainingAmount,
-                  currency: currency,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _PaymentAmountMetric(
-                  label: 'المتاح الآن',
-                  amount: available,
-                  currency: currency,
-                  color: AppTheme.success,
-                ),
-              ),
-            ],
+          Text(
+            'الباقي على التكلفة',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          MoneyAmountText(
+            amount: cost.remainingAmount,
+            currency: currency,
+            color: AppTheme.success,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PaymentAmountMetric extends StatelessWidget {
-  const _PaymentAmountMetric({
-    required this.label,
-    required this.amount,
-    required this.currency,
-    this.color,
-  });
-
-  final String label;
-  final Object amount;
-  final String currency;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.muted,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 4),
-        MoneyAmountText(amount: amount, currency: currency, color: color),
-      ],
     );
   }
 }

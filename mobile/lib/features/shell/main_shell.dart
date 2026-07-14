@@ -93,10 +93,21 @@ class _MainShellState extends State<MainShell> {
     return buildCanonicalQuickAddActions(
       context,
       planId: planId,
+      canManageMoney: _canManageMoney(planId),
       contextOrder: _quickAddContextForIndex(_index),
       refreshDashboardOnMoney: true,
       openRoute: open,
     );
+  }
+
+  bool _canManageMoney(String planId) {
+    final finance = context.read<FinanceProvider?>();
+    if (finance?.loadedPlanId == planId) {
+      return finance?.canManageMoney ?? false;
+    }
+    final summary = context.read<DashboardSummaryProvider>().summary;
+    return summary?.planId == planId &&
+        (summary?.permissions.canManageMoney ?? false);
   }
 
   QuickAddContext _quickAddContextForIndex(int index) {
@@ -116,11 +127,15 @@ class _MainShellState extends State<MainShell> {
     final canManageCurrentMoney =
         finance?.loadedPlanId == _activePlanId &&
         (finance?.canManageMoney ?? false);
+    final hasConfiguredCurrentMoney =
+        finance?.loadedPlanId == _activePlanId &&
+        (finance?.summary.hasBudget ?? false);
     final showQuickFab =
         _activePlanId != null &&
         shouldShowPlanQuickAdd(
           tabIndex: _index,
           canManageMoney: _index != 1 || canManageCurrentMoney,
+          hasConfiguredMoney: _index != 1 || hasConfiguredCurrentMoney,
         );
 
     return RootTabBackScope(

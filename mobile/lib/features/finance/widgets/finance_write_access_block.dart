@@ -16,13 +16,19 @@ Widget? financeWriteAccessBlock({
       label: 'جاري التحقق من صلاحية تعديل المال',
     );
   }
-  if (provider.errorMessage != null && !provider.access.hasAnyFinanceAccess) {
+  if (!provider.hasLoadedMoney) {
+    final error = provider.errorMessage;
+    if (error == null) {
+      return const AarastScreenLoading(
+        label: 'جاري التحقق من صلاحية تعديل المال',
+      );
+    }
     return AarastScreenFrame(
       maxWidth: 520,
       child: Center(
         child: AarastErrorState(
           title: 'تعذر التحقق من الصلاحيات',
-          message: provider.errorMessage!,
+          message: error,
           onRetry: () => provider.loadMoney(weddingPlanId),
         ),
       ),

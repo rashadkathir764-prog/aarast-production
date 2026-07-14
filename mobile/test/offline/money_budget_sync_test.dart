@@ -459,6 +459,258 @@ void main() {
     },
   );
 
+  test(
+    'offline cost cancellation rejects active payments and cancels only pending schedules',
+    () async {
+      final database = await _freshDatabase();
+      final client = _OfflineFinanceClient();
+      final offline = OfflineSyncService(database: database, apiClient: client);
+      await offline.initialize();
+      final api = FinanceApi(client, offline: offline);
+      final cost = _cost(id: 'cost-cancellable');
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCosts,
+        json: _costJson(cost),
+      );
+      await database.saveCachedItem(
+        table: OfflineTables.cachedPaymentSchedules,
+        json: {
+          'id': 'schedule-pending',
+          'weddingPlanId': cost.weddingPlanId,
+          'costId': cost.id,
+          'amount': '200',
+          'dueDate': '2026-08-01T00:00:00.000Z',
+          'status': 'PENDING',
+        },
+      );
+      await database.saveCachedItem(
+        table: OfflineTables.cachedPaymentSchedules,
+        json: {
+          'id': 'schedule-paid',
+          'weddingPlanId': cost.weddingPlanId,
+          'costId': cost.id,
+          'amount': '100',
+          'dueDate': '2026-07-01T00:00:00.000Z',
+          'status': 'PAID',
+          'paidAt': '2026-07-01T00:00:00.000Z',
+        },
+      );
+
+      final cancelled = await api.cancelCost(cost);
+
+      expect(cancelled.status, 'CANCELLED');
+      expect(
+        (await database.readCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          id: 'schedule-pending',
+        ))?['status'],
+        'CANCELLED',
+      );
+      expect(
+        (await database.readCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          id: 'schedule-paid',
+        ))?['status'],
+        'PAID',
+      );
+
+      final paidCost = _cost(id: 'cost-paid', paidAmount: '100');
+      await expectLater(
+        () => api.cancelCost(paidCost),
+        throwsA(
+          isA<ApiException>().having(
+            (error) => error.message,
+            'message',
+            contains('اعكس الدفعات'),
+          ),
+        ),
+      );
+
+      final onlineClient = ApiClient(tokenProvider: () async => 'token')
+        ..dio.httpClientAdapter = _StaticJsonAdapter({
+          ..._costJson(cost),
+          'status': 'CANCELLED',
+        });
+      final sync = OfflineSyncService(
+        database: database,
+        apiClient: onlineClient,
+      );
+      await sync.ensureCacheOwner('user-1');
+      await sync.syncPendingChanges();
+      expect(await database.pendingSyncCount(), 0);
+      await database.replaceCachedList(
+        table: OfflineTables.cachedPaymentSchedules,
+        items: const [],
+        parentColumn: 'planId',
+        parentId: cost.weddingPlanId,
+      );
+      expect(
+        await database.readCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          id: 'schedule-pending',
+        ),
+        isNull,
+        reason:
+            'the schedule cancelled as a cost side effect must be clean after the queued cancel succeeds',
+      );
+    },
+  );
+
+  test(
+    'payment reminders never reserve money and a full offline payment cancels them',
+    () async {
+      final database = await _freshDatabase();
+      final offlineClient = _OfflineFinanceClient();
+      final offline = OfflineSyncService(
+        database: database,
+        apiClient: offlineClient,
+      );
+      await offline.initialize();
+      final api = FinanceApi(offlineClient, offline: offline);
+      final cost = _cost(id: 'cost-1');
+
+      final first = await api.createSchedule(
+        cost: cost,
+        amount: '800',
+        dueDate: DateTime(2026, 8, 1),
+      );
+      final second = await api.createSchedule(
+        cost: cost,
+        amount: '800',
+        dueDate: DateTime(2026, 8, 2),
+      );
+      final updatedSecond = await api.updateSchedule(
+        schedule: second,
+        cost: cost,
+        amount: '900',
+        dueDate: DateTime(2026, 8, 3),
+      );
+      final payment = await api.createPayment(cost: cost, amount: '1000');
+
+      expect(first.amount, '800');
+      expect(updatedSecond.amount, '900');
+      expect(payment.amount, '1000.00');
+      final cachedCost = await database.readCachedItem(
+        table: OfflineTables.cachedCosts,
+        id: cost.id,
+      );
+      expect(cachedCost?['status'], 'PAID');
+      for (final scheduleId in [first.id, second.id]) {
+        expect(
+          (await database.readCachedItem(
+            table: OfflineTables.cachedPaymentSchedules,
+            id: scheduleId,
+          ))?['status'],
+          'CANCELLED',
+        );
+      }
+    },
+  );
+
+  test(
+    'queued reminder creates cannot reopen schedules after a terminal payment sync',
+    () async {
+      final database = await _freshDatabase();
+      final offlineClient = _OfflineFinanceClient();
+      final offline = OfflineSyncService(
+        database: database,
+        apiClient: offlineClient,
+      );
+      await offline.initialize();
+      final api = FinanceApi(offlineClient, offline: offline);
+      final cost = _cost(id: 'cost-1');
+      await api.createSchedule(
+        cost: cost,
+        amount: '700',
+        dueDate: DateTime(2026, 8, 1),
+      );
+      await api.createSchedule(
+        cost: cost,
+        amount: '700',
+        dueDate: DateTime(2026, 8, 2),
+      );
+      await api.createPayment(cost: cost, amount: '1000');
+
+      final adapter = _TerminalMoneySyncAdapter();
+      final onlineClient = ApiClient(tokenProvider: () async => 'token')
+        ..dio.httpClientAdapter = adapter;
+      final sync = OfflineSyncService(
+        database: database,
+        apiClient: onlineClient,
+      );
+      await sync.ensureCacheOwner('user-1');
+      await sync.syncPendingChanges();
+
+      expect(await database.pendingSyncCount(), 0);
+      expect(adapter.scheduleCreates, 2);
+      expect(adapter.paymentCreates, 1);
+      final schedules = await database.readCachedList(
+        table: OfflineTables.cachedPaymentSchedules,
+      );
+      expect(schedules, hasLength(2));
+      expect(
+        schedules.every((schedule) => schedule['status'] == 'CANCELLED'),
+        isTrue,
+      );
+      await database.replaceCachedList(
+        table: OfflineTables.cachedPaymentSchedules,
+        items: const [],
+        parentColumn: 'planId',
+        parentId: cost.weddingPlanId,
+      );
+      expect(
+        await database.readCachedList(
+          table: OfflineTables.cachedPaymentSchedules,
+        ),
+        isEmpty,
+        reason:
+            'terminal-payment side effects must be clean after replay so refresh can replace them',
+      );
+    },
+  );
+
+  test(
+    'paying the final scheduled amount keeps that schedule paid and cancels the others',
+    () async {
+      final database = await _freshDatabase();
+      final offlineClient = _OfflineFinanceClient();
+      final offline = OfflineSyncService(
+        database: database,
+        apiClient: offlineClient,
+      );
+      await offline.initialize();
+      final api = FinanceApi(offlineClient, offline: offline);
+      final cost = _cost(id: 'cost-1');
+      final paidSchedule = await api.createSchedule(
+        cost: cost,
+        amount: '1000',
+        dueDate: DateTime(2026, 8, 1),
+      );
+      final otherSchedule = await api.createSchedule(
+        cost: cost,
+        amount: '600',
+        dueDate: DateTime(2026, 8, 2),
+      );
+
+      await api.paySchedule(schedule: paidSchedule, cost: cost);
+
+      expect(
+        (await database.readCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          id: paidSchedule.id,
+        ))?['status'],
+        'PAID',
+      );
+      expect(
+        (await database.readCachedItem(
+          table: OfflineTables.cachedPaymentSchedules,
+          id: otherSchedule.id,
+        ))?['status'],
+        'CANCELLED',
+      );
+    },
+  );
+
   test('repeated offline payments use cached balance and unique ids', () async {
     final database = await _freshDatabase();
     final client = _OfflineFinanceClient();
@@ -835,7 +1087,6 @@ WeddingCost _withBalance(
     partyPhone: cost.partyPhone,
     note: cost.note,
     agreementDate: cost.agreementDate,
-    dueDate: cost.dueDate,
     paymentsCount: num.parse(paidAmount) > 0 ? 1 : 0,
     categoryName: cost.categoryName,
     providerName: cost.providerName,
@@ -958,6 +1209,63 @@ class _StaticJsonAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _TerminalMoneySyncAdapter implements HttpClientAdapter {
+  int scheduleCreates = 0;
+  int paymentCreates = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final payload = options.data is Map
+        ? Map<String, dynamic>.from(options.data as Map)
+        : const <String, dynamic>{};
+    late final Map<String, dynamic> body;
+    if (options.path.endsWith('/payment-schedules')) {
+      scheduleCreates += 1;
+      body = {
+        'id': 'schedule-$scheduleCreates',
+        'weddingPlanId': 'plan-1',
+        'costId': 'cost-1',
+        'amount': payload['amount'],
+        'dueDate': payload['dueDate'],
+        'status': 'PENDING',
+      };
+    } else if (options.path.endsWith('/payments')) {
+      paymentCreates += 1;
+      body = {
+        'id': 'payment-$paymentCreates',
+        'weddingPlanId': 'plan-1',
+        'costId': 'cost-1',
+        'amount': payload['amount'],
+        'entryType': 'PAYMENT',
+        'paidAt': '2026-07-15T00:00:00.000Z',
+        'reversible': true,
+      };
+    } else {
+      return ResponseBody.fromString(
+        jsonEncode({'message': 'unexpected ${options.path}'}),
+        500,
+        headers: {
+          Headers.contentTypeHeader: ['application/json'],
+        },
+      );
+    }
     return ResponseBody.fromString(
       jsonEncode(body),
       200,

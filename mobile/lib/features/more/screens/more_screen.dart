@@ -299,7 +299,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'سيُحذف حسابك وكل بياناتك — خطط العرس والميزانيات والمستحقات '
+                    'سيُحذف حسابك وكل بياناتك — خطط العرس والميزانيات والتكاليف والدفعات '
                     'والمهام وقوائم الضيوف — نهائياً ولا يمكن التراجع.',
                     textAlign: TextAlign.center,
                     style: Theme.of(sheetContext).textTheme.bodyMedium

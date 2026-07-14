@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -24,11 +24,13 @@ bool shouldShowPlanQuickAdd({
   required int tabIndex,
   bool isRootDestination = true,
   bool canManageMoney = false,
+  bool hasConfiguredMoney = true,
 }) {
   const moneyTabIndex = 1;
   const providersTabIndex = 4;
   return tabIndex != providersTabIndex &&
       (tabIndex != moneyTabIndex || canManageMoney) &&
+      (tabIndex != moneyTabIndex || hasConfiguredMoney) &&
       (tabIndex != moneyTabIndex || isRootDestination);
 }
 
@@ -43,6 +45,7 @@ bool shouldShowPlanQuickAdd({
 List<RoyalHomeAction> buildCanonicalQuickAddActions(
   BuildContext context, {
   required String planId,
+  required bool canManageMoney,
   QuickAddContext contextOrder = QuickAddContext.dashboard,
   bool refreshDashboardOnMoney = false,
   VoidCallback? onRequestQuote,
@@ -65,14 +68,6 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
       refreshDashboard: refreshDashboardOnMoney,
     ),
   );
-  final budget = RoyalHomeAction(
-    icon: LucideIcons.walletCards,
-    label: 'إدارة الميزانية',
-    onTap: () => openRoute(
-      AppRouter.moneyBudget(planId),
-      refreshDashboard: refreshDashboardOnMoney,
-    ),
-  );
   final task = RoyalHomeAction(
     icon: LucideIcons.listPlus,
     label: 'إضافة مهمة',
@@ -89,11 +84,15 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
     onTap: onRequestQuote ?? () => openRoute(AppRouter.planProviders(planId)),
   );
 
+  final financialActions = canManageMoney
+      ? <RoyalHomeAction>[cost, category]
+      : const <RoyalHomeAction>[];
+
   return switch (contextOrder) {
-    QuickAddContext.money => [cost, category, budget],
-    QuickAddContext.tasks => [task, cost, guest, quote],
-    QuickAddContext.guests => [guest, task, cost, quote],
-    QuickAddContext.providers => [quote, cost, task, guest],
-    QuickAddContext.dashboard => [cost, task, guest, quote],
+    QuickAddContext.money => financialActions,
+    QuickAddContext.tasks => [task, if (canManageMoney) cost, guest, quote],
+    QuickAddContext.guests => [guest, task, if (canManageMoney) cost, quote],
+    QuickAddContext.providers => [quote, if (canManageMoney) cost, task, guest],
+    QuickAddContext.dashboard => [if (canManageMoney) cost, task, guest, quote],
   };
 }

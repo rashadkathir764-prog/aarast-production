@@ -35,10 +35,7 @@ class _CostsScreenState extends State<CostsScreen> {
   void initState() {
     super.initState();
     _categoryId = widget.initialCategoryId;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<FinanceProvider>().loadMoney(widget.weddingPlanId);
-      if (mounted && _categoryId != null) await _applyFilters();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
   }
 
   @override
@@ -156,11 +153,21 @@ class _CostsScreenState extends State<CostsScreen> {
               },
             ),
             const SizedBox(height: 18),
-            if (provider.errorMessage != null) ...[
+            if (provider.hasLoadedMoney && provider.errorMessage != null) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
             ],
-            if (provider.isLoadingMoreCosts && provider.costs.isEmpty)
+            if (!provider.hasLoadedMoney && provider.isLoading)
+              const AarastScreenLoading(label: 'جاري تحميل التكاليف')
+            else if (!provider.hasLoadedMoney && provider.errorMessage != null)
+              AarastErrorState(
+                title: 'تعذر تحميل التكاليف',
+                message: provider.errorMessage!,
+                onRetry: _loadInitial,
+              )
+            else if (!provider.hasLoadedMoney)
+              const AarastScreenLoading(label: 'جاري تحميل التكاليف')
+            else if (provider.isLoadingMoreCosts && provider.costs.isEmpty)
               const AarastScreenLoading(label: 'جاري البحث في التكاليف')
             else if (provider.costs.isEmpty)
               const AarastEmptyState(
@@ -209,6 +216,18 @@ class _CostsScreenState extends State<CostsScreen> {
       categoryId: _categoryId,
       search: _searchController.text,
     );
+  }
+
+  Future<void> _loadInitial() async {
+    final provider = context.read<FinanceProvider>();
+    await provider.loadMoney(widget.weddingPlanId);
+    if (!mounted ||
+        !provider.hasLoadedMoney ||
+        provider.errorMessage != null ||
+        _categoryId == null) {
+      return;
+    }
+    await _applyFilters();
   }
 
   Future<void> _loadMore() {

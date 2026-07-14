@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -52,7 +54,6 @@ class _CostFormScreenState extends State<CostFormScreen> {
   String? _quoteOfferId;
   _PartyKind _partyKind = _PartyKind.none;
   DateTime? _agreementDate;
-  DateTime? _dueDate;
   bool _quoteCurrencyResolved = false;
   String? _quoteCurrencyWarning;
 
@@ -79,7 +80,6 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _providerName = intent?.providerName ?? cost?.providerName;
     _quoteOfferId = intent?.quoteOfferId ?? cost?.quoteOfferId;
     _agreementDate = cost?.agreementDate;
-    _dueDate = cost?.dueDate ?? intent?.firstPaymentDueDate;
     _partyKind = _providerId != null
         ? _PartyKind.provider
         : _partyNameController.text.trim().isNotEmpty
@@ -106,7 +106,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
     final provider = context.watch<FinanceProvider>();
     if (!_quoteCurrencyResolved &&
         provider.loadedPlanId == widget.weddingPlanId &&
-        !provider.isLoading) {
+        !provider.isLoading &&
+        provider.hasLoadedMoney &&
+        provider.errorMessage == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _resolveQuoteCurrency(provider.summary.currency);
       });
@@ -150,17 +152,19 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   if (provider.categories.isEmpty)
                     _NoCategory(
                       onCreate: () async {
-                        final finance = context.read<FinanceProvider>();
-                        final changed = await context.push<bool>(
+                        final created = await context.push<Object?>(
                           AppRouter.moneyCategoryCreate(widget.weddingPlanId),
                         );
-                        if (changed == true && mounted) {
-                          await finance.loadMoney(widget.weddingPlanId);
+                        if (created is String && mounted) {
+                          setState(() => _categoryId = created);
                         }
                       },
                     )
                   else
                     DropdownButtonFormField<String>(
+                      key: ValueKey(
+                        'cost-category-${_categoryId ?? 'none'}-${provider.categories.length}',
+                      ),
                       initialValue:
                           provider.categories.any(
                             (category) => category.id == _categoryId,
@@ -359,13 +363,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   _DateField(
                     label: 'تاريخ الاتفاق (اختياري)',
                     value: _agreementDate,
-                    onTap: () => _pickDate(agreement: true),
-                  ),
-                  const SizedBox(height: 10),
-                  _DateField(
-                    label: 'تاريخ الاستحقاق (اختياري)',
-                    value: _dueDate,
-                    onTap: () => _pickDate(agreement: false),
+                    onTap: _pickAgreementDate,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -399,10 +397,6 @@ class _CostFormScreenState extends State<CostFormScreen> {
       AarastToast.showError(context, 'سوق المزودين غير متاح الآن.');
       return;
     }
-    if (marketplace.providers.isEmpty && !marketplace.isLoading) {
-      await marketplace.loadMarketplace(includeAccountData: false);
-    }
-    if (!mounted) return;
     final selected = await showAarastBottomSheet<MarketplaceProvider>(
       context: context,
       isScrollControlled: true,
@@ -439,23 +433,16 @@ class _CostFormScreenState extends State<CostFormScreen> {
     });
   }
 
-  Future<void> _pickDate({required bool agreement}) async {
-    final current = agreement ? _agreementDate : _dueDate;
+  Future<void> _pickAgreementDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: current ?? DateTime.now(),
+      initialDate: _agreementDate ?? DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 3650)),
       locale: const Locale('ar'),
     );
     if (picked == null || !mounted) return;
-    setState(() {
-      if (agreement) {
-        _agreementDate = picked;
-      } else {
-        _dueDate = picked;
-      }
-    });
+    setState(() => _agreementDate = picked);
   }
 
   Future<void> _save() async {
@@ -489,7 +476,6 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     ? _partyPhoneController.text.trim()
                     : null,
                 agreementDate: _agreementDate,
-                dueDate: _dueDate,
                 note: _noteController.text.trim(),
               ) !=
               null
@@ -509,7 +495,6 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 ? _partyPhoneController.text.trim()
                 : null,
             agreementDate: _agreementDate,
-            dueDate: _dueDate,
             note: _noteController.text.trim(),
           );
     if (ok && mounted) context.pop(true);
@@ -586,23 +571,87 @@ class _ProviderPicker extends StatefulWidget {
 }
 
 class _ProviderPickerState extends State<_ProviderPicker> {
+  static const _pageSize = 30;
+
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  List<MarketplaceProvider> _providers = const [];
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  String? _errorMessage;
+  int _page = 0;
+  int _loadGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_load(reset: true));
+  }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String _) {
+    _loadGeneration += 1;
+    _searchDebounce?.cancel();
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => _load(reset: true),
+    );
+  }
+
+  Future<void> _load({required bool reset}) async {
+    if (!reset && (_isLoadingMore || !_hasMore)) return;
+    final generation = reset ? ++_loadGeneration : _loadGeneration;
+    final nextPage = reset ? 1 : _page + 1;
+    setState(() {
+      if (reset) {
+        _isLoading = true;
+        _errorMessage = null;
+      } else {
+        _isLoadingMore = true;
+      }
+    });
+
+    try {
+      final results = await widget.marketplace.searchProvidersForMoneyLink(
+        search: _searchController.text.trim(),
+        page: nextPage,
+        limit: _pageSize,
+      );
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _providers = reset ? results : [..._providers, ...results];
+        _page = nextPage;
+        _hasMore = results.length == _pageSize;
+        _errorMessage = null;
+      });
+    } catch (error) {
+      if (!mounted || generation != _loadGeneration) return;
+      setState(() {
+        _errorMessage = providerDirectoryErrorMessage(error);
+      });
+    } finally {
+      if (mounted && generation == _loadGeneration) {
+        setState(() {
+          _isLoading = false;
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final query = _searchController.text.trim().toLowerCase();
-    final providers = widget.marketplace.providers.where((provider) {
-      if (query.isEmpty) return true;
-      return provider.businessName.toLowerCase().contains(query) ||
-          provider.ownerName.toLowerCase().contains(query) ||
-          (provider.city?.nameAr.toLowerCase().contains(query) ?? false);
-    }).toList();
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -627,26 +676,49 @@ class _ProviderPickerState extends State<_ProviderPicker> {
                 controller: _searchController,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  labelText: 'ابحث بالاسم أو المدينة',
+                  labelText: 'ابحث باسم المزود',
                   prefixIcon: Icon(LucideIcons.search),
                 ),
-                onChanged: (_) => setState(() {}),
+                onChanged: _onSearchChanged,
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: widget.marketplace.isLoading
+                child: _isLoading
                     ? const AarastScreenLoading(label: 'جاري تحميل المزودين')
-                    : providers.isEmpty
+                    : _errorMessage != null && _providers.isEmpty
+                    ? AarastErrorState(
+                        title: 'تعذر تحميل المزودين',
+                        message: _errorMessage!,
+                        onRetry: () => _load(reset: true),
+                      )
+                    : _providers.isEmpty
                     ? const AarastEmptyState(
                         icon: LucideIcons.store,
                         title: 'لا توجد نتائج',
-                        message: 'جرّب اسمًا أو مدينة أخرى.',
+                        message: 'جرّب اسم مزود آخر.',
                       )
                     : ListView.separated(
-                        itemCount: providers.length,
+                        itemCount: _providers.length + (_hasMore ? 1 : 0),
                         separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
-                          final provider = providers[index];
+                          if (index == _providers.length) {
+                            return Center(
+                              child: TextButton.icon(
+                                onPressed: _isLoadingMore
+                                    ? null
+                                    : () => _load(reset: false),
+                                icon: _isLoadingMore
+                                    ? const AarastInlineSpinner()
+                                    : const Icon(LucideIcons.chevronDown),
+                                label: Text(
+                                  _isLoadingMore
+                                      ? 'جاري التحميل'
+                                      : 'عرض مزودين أكثر',
+                                ),
+                              ),
+                            );
+                          }
+                          final provider = _providers[index];
                           return AarastCard(
                             onTap: () => Navigator.pop(context, provider),
                             padding: const EdgeInsets.all(12),

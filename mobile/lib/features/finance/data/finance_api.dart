@@ -455,7 +455,6 @@ class FinanceApi {
     String? partyName,
     String? partyPhone,
     DateTime? agreementDate,
-    DateTime? dueDate,
     String? note,
   }) async {
     FinanceMoneyRules.assertCostAmounts(
@@ -473,7 +472,6 @@ class FinanceApi {
       partyName: partyName,
       partyPhone: partyPhone,
       agreementDate: agreementDate,
-      dueDate: dueDate,
       note: note,
     );
     final mutation = _mutation(
@@ -515,7 +513,6 @@ class FinanceApi {
     String? partyName,
     String? partyPhone,
     DateTime? agreementDate,
-    DateTime? dueDate,
     String? note,
   }) async {
     _assertPartyChoice(providerId: providerId, partyName: partyName);
@@ -528,7 +525,6 @@ class FinanceApi {
       partyName: partyName,
       partyPhone: partyPhone,
       agreementDate: agreementDate,
-      dueDate: dueDate,
       note: note,
     );
     final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', payload);
@@ -599,6 +595,9 @@ class FinanceApi {
   }
 
   Future<WeddingCost> cancelCost(WeddingCost cost) async {
+    if (cost.hasActivePayments) {
+      throw const ApiException('اعكس الدفعات القائمة أولًا قبل إلغاء التكلفة.');
+    }
     final mutation = _mutation(
       'POST',
       '/api/v1/costs/${cost.id}/cancel',
@@ -756,16 +755,6 @@ class FinanceApi {
     String? note,
   }) async {
     final paymentAmount = FinanceMoneyRules.assertPositive(amount, 'المبلغ');
-    final schedules = await getCostSchedules(
-      cost.id,
-      planId: cost.weddingPlanId,
-    );
-    final reserved = schedules
-        .where((schedule) => schedule.isPending)
-        .fold<num>(
-          0,
-          (sum, schedule) => sum + FinanceMoneyRules.value(schedule.amount),
-        );
     FinanceMoneyRules.assertPaymentWithinRemaining(
       cost: {
         'totalAmount': cost.totalAmount,
@@ -773,7 +762,6 @@ class FinanceApi {
         'status': cost.status,
       },
       amount: paymentAmount,
-      pendingScheduledAmount: reserved,
     );
     final payload = {
       'amount': amount.trim(),
@@ -1350,9 +1338,6 @@ class FinanceApi {
         ? null
         : FinanceMoneyRules.assertPositive(totalRaw, 'الميزانية');
     final categories = _listOfMaps(payload['categories']);
-    if (categories.isEmpty) {
-      throw const ApiException('أضف تصنيفًا واحدًا على الأقل.');
-    }
     final names = <String>{};
     var allocated = 0.0;
     for (final category in categories) {
@@ -1398,7 +1383,6 @@ class FinanceApi {
     String? partyName,
     String? partyPhone,
     DateTime? agreementDate,
-    DateTime? dueDate,
     String? note,
   }) {
     if (budgetCategoryId.trim().isEmpty) {
@@ -1422,7 +1406,6 @@ class FinanceApi {
         'partyPhone': partyPhone!.trim(),
       if (agreementDate != null)
         'agreementDate': agreementDate.toIso8601String(),
-      if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
       if (_nullableTrimmed(note) != null) 'note': note!.trim(),
     };
   }

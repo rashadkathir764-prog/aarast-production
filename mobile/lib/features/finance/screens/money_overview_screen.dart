@@ -57,80 +57,132 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         key: const PageStorageKey('money-overview-list'),
         padding: EdgeInsets.fromLTRB(20, 18, 20, bottomClearance),
         children: [
-          _OverviewHeader(
-            canManage: provider.canManageMoney,
-            onBudget: () =>
-                context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-          ),
-          const SizedBox(height: 14),
-          if (provider.isLoading && !provider.summary.hasAnyData)
+          if (provider.isLoading && !provider.hasLoadedMoney)
             const AarastScreenLoading(label: 'نرتب صورة المال')
-          else if (!provider.canViewMoney && provider.errorMessage != null)
+          else if (provider.errorMessage != null && !provider.hasLoadedMoney)
             AarastErrorState(
-              title: 'المال خاص',
+              title: 'تعذر تحميل المال',
               message: provider.errorMessage!,
               onRetry: _load,
             )
           else ...[
+            _OverviewHeader(
+              showBudgetAction:
+                  provider.canManageMoney && provider.summary.hasBudget,
+              onBudget: () =>
+                  context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+            ),
+            const SizedBox(height: 14),
             if (provider.errorMessage != null) ...[
               MoneyMessageBanner(message: provider.errorMessage!, error: true),
               const SizedBox(height: 12),
             ],
-            _MoneyHero(
-              summary: provider.summary,
-              canManage: provider.canManageMoney,
-              onBudget: () =>
-                  context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-            ),
-            const SizedBox(height: 20),
-            _SchedulesPreview(
-              summary: provider.summary,
-              schedules: provider.dueSchedules,
-              currency: provider.summary.currency,
-              onOpenAll: () =>
-                  context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
-              onOpen: (schedule) => context.push(
-                AppRouter.moneyScheduleDetails(
-                  widget.weddingPlanId,
-                  schedule.costId,
-                  schedule.id,
+            if (!provider.summary.hasAnyData &&
+                provider.costs.isEmpty &&
+                provider.payments.isEmpty &&
+                provider.dueSchedules.isEmpty)
+              _MoneyFirstUseCard(
+                canManage: provider.canManageMoney,
+                onStart: () =>
+                    context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+              )
+            else ...[
+              _MoneyHero(
+                summary: provider.summary,
+                canManage: provider.canManageMoney,
+                onBudget: () =>
+                    context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+              ),
+              if (provider.dueSchedules.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                _SchedulesPreview(
+                  summary: provider.summary,
+                  schedules: provider.dueSchedules,
+                  currency: provider.summary.currency,
+                  onOpenAll: () => context.push(
+                    AppRouter.moneySchedules(widget.weddingPlanId),
+                  ),
+                  onOpen: (schedule) => context.push(
+                    AppRouter.moneyScheduleDetails(
+                      widget.weddingPlanId,
+                      schedule.costId,
+                      schedule.id,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 22),
-            _CategoriesPreview(
-              categories: provider.categories,
-              currency: provider.summary.currency,
-              canManage: provider.canManageMoney,
-              onManage: () =>
-                  context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-              onOpen: (category) => context.push(
-                AppRouter.moneyCategoryDetails(
-                  widget.weddingPlanId,
-                  category.id,
+              ],
+              if (provider.categories.isNotEmpty) ...[
+                const SizedBox(height: 22),
+                _CategoriesPreview(
+                  categories: provider.categories,
+                  currency: provider.summary.currency,
+                  canManage: provider.canManageMoney,
+                  onManage: () =>
+                      context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+                  onOpen: (category) => context.push(
+                    AppRouter.moneyCategoryDetails(
+                      widget.weddingPlanId,
+                      category.id,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 22),
-            _CostsPreview(
-              costs: provider.costs,
-              categories: provider.categories,
-              currency: provider.summary.currency,
-              onOpenAll: () =>
-                  context.push(AppRouter.moneyCosts(widget.weddingPlanId)),
-              onOpen: (cost) => context.push(
-                AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
-              ),
-            ),
-            const SizedBox(height: 22),
-            _PaymentsPreview(
-              payments: provider.payments,
-              costs: provider.costs,
-              currency: provider.summary.currency,
-              onOpen: (payment) => context.push(
-                AppRouter.moneyPaymentDetails(widget.weddingPlanId, payment.id),
-              ),
-            ),
+              ],
+              if (provider.costs.isNotEmpty) ...[
+                const SizedBox(height: 22),
+                _CostsPreview(
+                  costs: provider.costs,
+                  categories: provider.categories,
+                  currency: provider.summary.currency,
+                  onOpenAll: () =>
+                      context.push(AppRouter.moneyCosts(widget.weddingPlanId)),
+                  onOpen: (cost) => context.push(
+                    AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
+                  ),
+                ),
+              ],
+              if (provider.payments.isNotEmpty) ...[
+                const SizedBox(height: 22),
+                _PaymentsPreview(
+                  payments: provider.payments,
+                  costs: provider.costs,
+                  currency: provider.summary.currency,
+                  onOpen: (payment) => context.push(
+                    AppRouter.moneyPaymentDetails(
+                      widget.weddingPlanId,
+                      payment.id,
+                    ),
+                  ),
+                ),
+              ],
+              if (provider.summary.hasBudget &&
+                  provider.categories.isEmpty) ...[
+                const SizedBox(height: 20),
+                _MoneyNextStepCard(
+                  icon: LucideIcons.tags,
+                  title: 'أضف أول تصنيف',
+                  message:
+                      'قسّم الميزانية إلى أقسام واضحة مثل القاعة والتصوير.',
+                  actionLabel: 'إضافة تصنيف',
+                  canManage: provider.canManageMoney,
+                  onAction: () => context.push(
+                    AppRouter.moneyCategoryCreate(widget.weddingPlanId),
+                  ),
+                ),
+              ] else if (provider.categories.isNotEmpty &&
+                  provider.costs.isEmpty) ...[
+                const SizedBox(height: 20),
+                _MoneyNextStepCard(
+                  icon: LucideIcons.receipt,
+                  title: 'سجّل أول تكلفة',
+                  message: 'اختر تصنيفًا ثم أضف التكلفة المتفق عليها.',
+                  actionLabel: 'إضافة تكلفة',
+                  canManage: provider.canManageMoney,
+                  onAction: () => context.push(
+                    AppRouter.moneyCostCreate(widget.weddingPlanId),
+                  ),
+                ),
+              ],
+            ],
           ],
         ],
       ),
@@ -156,10 +208,72 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   }
 }
 
-class _OverviewHeader extends StatelessWidget {
-  const _OverviewHeader({required this.canManage, required this.onBudget});
+class _MoneyFirstUseCard extends StatelessWidget {
+  const _MoneyFirstUseCard({required this.canManage, required this.onStart});
 
   final bool canManage;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastEmptyState(
+      icon: LucideIcons.walletCards,
+      title: canManage ? 'ابدأ تنظيم مال الزفاف' : 'لا توجد بيانات مالية بعد',
+      message: canManage
+          ? 'حدد الميزانية وأضف التصنيفات، ثم سجّل كل تكلفة ودفعاتها من مكانها.'
+          : 'لم تُضف ميزانية أو تكاليف لهذه الخطة حتى الآن.',
+      action: canManage
+          ? FilledButton.icon(
+              onPressed: onStart,
+              icon: const Icon(LucideIcons.arrowLeft),
+              label: const Text('ابدأ بإعداد الميزانية'),
+            )
+          : null,
+    );
+  }
+}
+
+class _MoneyNextStepCard extends StatelessWidget {
+  const _MoneyNextStepCard({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.canManage,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final bool canManage;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastEmptyState(
+      icon: icon,
+      title: title,
+      message: message,
+      action: canManage
+          ? FilledButton.icon(
+              onPressed: onAction,
+              icon: const Icon(LucideIcons.arrowLeft),
+              label: Text(actionLabel),
+            )
+          : null,
+    );
+  }
+}
+
+class _OverviewHeader extends StatelessWidget {
+  const _OverviewHeader({
+    required this.showBudgetAction,
+    required this.onBudget,
+  });
+
+  final bool showBudgetAction;
   final VoidCallback onBudget;
 
   @override
@@ -188,7 +302,7 @@ class _OverviewHeader extends StatelessWidget {
             ],
           ),
         ),
-        if (canManage)
+        if (showBudgetAction)
           IconButton(
             onPressed: onBudget,
             icon: const Icon(LucideIcons.settings2),
@@ -290,10 +404,9 @@ class _MoneyHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 330;
-              final metrics = [
+          Builder(
+            builder: (context) {
+              final metrics = <Widget>[
                 _HeroMetric(
                   label: 'الميزانية',
                   amount: summary.budget.total,
@@ -309,25 +422,25 @@ class _MoneyHero extends StatelessWidget {
                   amount: summary.costs.paid,
                   currency: summary.currency,
                 ),
+                _HeroMetric(
+                  label: 'الباقي عليك',
+                  amount: summary.costs.outstanding,
+                  currency: summary.currency,
+                ),
               ];
-              return narrow
-                  ? Column(
-                      children: [
-                        for (final metric in metrics) ...[
-                          metric,
-                          if (metric != metrics.last)
-                            const SizedBox(height: 10),
-                        ],
-                      ],
-                    )
-                  : Row(
-                      children: [
-                        for (var i = 0; i < metrics.length; i++) ...[
-                          Expanded(child: metrics[i]),
-                          if (i < metrics.length - 1) const SizedBox(width: 10),
-                        ],
-                      ],
-                    );
+              final textScale = MediaQuery.textScalerOf(context).scale(1);
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: metrics.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  mainAxisExtent: textScale > 1.15 ? 82 : 74,
+                ),
+                itemBuilder: (context, index) => metrics[index],
+              );
             },
           ),
         ],
@@ -360,6 +473,8 @@ class _HeroMetric extends StatelessWidget {
         children: [
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
             ).textTheme.labelSmall?.copyWith(color: Colors.white70),

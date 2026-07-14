@@ -340,7 +340,7 @@ class FinanceLocalDataSource {
     if (total < paid) {
       throw const ApiException('إجمالي التكلفة لا يمكن أن يقل عن المدفوع.');
     }
-    final json = {
+    final json = <String, dynamic>{
       ...?cached,
       ...payload,
       'id': cost.id,
@@ -351,7 +351,7 @@ class FinanceLocalDataSource {
           ? 'CANCELLED'
           : FinanceMoneyRules.costStatus(total, paid),
       'updatedAt': DateTime.now().toIso8601String(),
-    };
+    }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
     return WeddingCost.fromJson(json);
   }
@@ -369,14 +369,19 @@ class FinanceLocalDataSource {
 
   Future<WeddingCost> cancelCost(WeddingCost cost) async {
     final cached = await _read(OfflineTables.cachedCosts, cost.id);
-    final json = {
+    final current = cached == null ? cost : WeddingCost.fromJson(cached);
+    if (current.hasActivePayments) {
+      throw const ApiException('اعكس الدفعات القائمة أولًا قبل إلغاء التكلفة.');
+    }
+    final json = <String, dynamic>{
       ...?cached,
       'id': cost.id,
       'weddingPlanId': cost.weddingPlanId,
       'status': 'CANCELLED',
       'updatedAt': DateTime.now().toIso8601String(),
-    };
+    }..remove('dueDate');
     await _save(OfflineTables.cachedCosts, json, dirty: true);
+    await _cancelPendingSchedules(current.id);
     return WeddingCost.fromJson(json);
   }
 
@@ -385,7 +390,6 @@ class FinanceLocalDataSource {
     required Map<String, dynamic> payload,
   }) async {
     final currentCost = await _currentCost(cost);
-    final pending = await pendingScheduledTotal(currentCost.id);
     final amount = FinanceMoneyRules.assertPositive(
       payload['amount'],
       'المبلغ',
@@ -397,7 +401,6 @@ class FinanceLocalDataSource {
         'status': currentCost.status,
       },
       amount: amount,
-      pendingScheduledAmount: pending,
     );
     return _createPaymentCache(
       cost: weddingCostToLocalJson(currentCost),
@@ -451,11 +454,9 @@ class FinanceLocalDataSource {
       payload['amount'],
       'المبلغ',
     );
-    final pending = await pendingScheduledTotal(currentCost.id);
-    FinanceMoneyRules.assertScheduleWithinAvailable(
+    FinanceMoneyRules.assertScheduleWithinRemaining(
       amount: amount,
       remainingAmount: FinanceMoneyRules.value(currentCost.remainingAmount),
-      otherPendingSchedules: pending,
     );
     final now = DateTime.now();
     final json = {
@@ -484,14 +485,9 @@ class FinanceLocalDataSource {
       payload['amount'],
       'المبلغ',
     );
-    final pending = await pendingScheduledTotal(
-      currentCost.id,
-      excludingScheduleId: schedule.id,
-    );
-    FinanceMoneyRules.assertScheduleWithinAvailable(
+    FinanceMoneyRules.assertScheduleWithinRemaining(
       amount: amount,
       remainingAmount: FinanceMoneyRules.value(currentCost.remainingAmount),
-      otherPendingSchedules: pending,
     );
     final cached = await _read(
       OfflineTables.cachedPaymentSchedules,
@@ -540,26 +536,6 @@ class FinanceLocalDataSource {
     return payment;
   }
 
-  Future<num> pendingScheduledTotal(
-    String costId, {
-    String? excludingScheduleId,
-  }) async {
-    final schedules = await _offline?.database.readCachedList(
-      table: OfflineTables.cachedPaymentSchedules,
-    );
-    return (schedules ?? const <Map<String, dynamic>>[]).fold<num>(0, (
-      sum,
-      schedule,
-    ) {
-      if (schedule['costId']?.toString() != costId ||
-          schedule['status']?.toString() != 'PENDING' ||
-          schedule['id']?.toString() == excludingScheduleId) {
-        return sum;
-      }
-      return sum + FinanceMoneyRules.value(schedule['amount']);
-    });
-  }
-
   Future<CostPayment> _createPaymentCache({
     required Map<String, dynamic> cost,
     required Map<String, dynamic> payload,
@@ -587,15 +563,23 @@ class FinanceLocalDataSource {
     await _save(OfflineTables.cachedCostPayments, json, dirty: true);
     if (updateCost) {
       final paid = FinanceMoneyRules.value(cost['paidAmount']) + amount;
-      await _updateCostBalance(WeddingCost.fromJson(cost), paid);
+      await _updateCostBalance(
+        WeddingCost.fromJson(cost),
+        paid,
+        exceptScheduleId: payload['paymentScheduleId']?.toString(),
+      );
     }
     return CostPayment.fromJson(json);
   }
 
-  Future<void> _updateCostBalance(WeddingCost cost, num paid) async {
+  Future<void> _updateCostBalance(
+    WeddingCost cost,
+    num paid, {
+    String? exceptScheduleId,
+  }) async {
     final total = FinanceMoneyRules.value(cost.totalAmount);
     final cached = await _read(OfflineTables.cachedCosts, cost.id);
-    await _save(OfflineTables.cachedCosts, {
+    final json = <String, dynamic>{
       ...?cached,
       ...weddingCostToLocalJson(cost),
       'paidAmount': FinanceMoneyRules.asMoney(paid),
@@ -607,7 +591,35 @@ class FinanceLocalDataSource {
           : FinanceMoneyRules.costStatus(total, paid),
       'paymentsCount': (cost.paymentsCount ?? 0) + 1,
       'updatedAt': DateTime.now().toIso8601String(),
-    }, dirty: true);
+    }..remove('dueDate');
+    await _save(OfflineTables.cachedCosts, json, dirty: true);
+    if (json['status'] == 'PAID') {
+      await _cancelPendingSchedules(
+        cost.id,
+        exceptScheduleId: exceptScheduleId,
+      );
+    }
+  }
+
+  Future<void> _cancelPendingSchedules(
+    String costId, {
+    String? exceptScheduleId,
+  }) async {
+    final schedules = await _offline?.database.readCachedList(
+      table: OfflineTables.cachedPaymentSchedules,
+    );
+    for (final schedule in schedules ?? const <Map<String, dynamic>>[]) {
+      if (schedule['costId']?.toString() != costId ||
+          schedule['status']?.toString() != 'PENDING' ||
+          schedule['id']?.toString() == exceptScheduleId) {
+        continue;
+      }
+      await _save(OfflineTables.cachedPaymentSchedules, {
+        ...schedule,
+        'status': 'CANCELLED',
+        'updatedAt': DateTime.now().toIso8601String(),
+      }, dirty: true);
+    }
   }
 
   Future<void> _restoreScheduleAfterReversal(String? scheduleId) async {

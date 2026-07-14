@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
@@ -70,7 +71,13 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       title: _editing ? 'تعديل التصنيف' : 'تصنيف جديد',
       subtitle: 'استخدم اسمًا واضحًا يفهمه كل المشاركين.',
       showBack: true,
-      onBack: () => context.pop(false),
+      onBack: () {
+        if (_editing) {
+          context.pop(false);
+        } else {
+          context.pop<String?>(null);
+        }
+      },
       child: Form(
         key: _formKey,
         child: ListView(
@@ -107,10 +114,11 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                       decimal: true,
                     ),
                     textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'المخصص (اختياري)',
                       helperText: 'يمكنك تركه فارغًا وتحديده لاحقًا.',
-                      prefixIcon: Icon(LucideIcons.coins),
+                      prefixIcon: const Icon(LucideIcons.coins),
+                      suffixText: currencyLabelAr(provider.summary.currency),
                     ),
                     validator: (value) {
                       final text = value?.replaceAll(',', '').trim() ?? '';
@@ -169,18 +177,21 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       return;
     }
     setState(() => _draftError = null);
-    final ok = category == null
-        ? await provider.createCategory(
-            planId: widget.weddingPlanId,
-            name: _nameController.text.trim(),
-            allocatedAmount: amount.isEmpty ? null : amount,
-          )
-        : await provider.updateCategory(
-            category: category,
-            name: _nameController.text.trim(),
-            allocatedAmount: amount.isEmpty ? null : amount,
-          );
-    if (ok && mounted) context.pop(true);
+    if (category == null) {
+      final createdId = await provider.createCategory(
+        planId: widget.weddingPlanId,
+        name: _nameController.text.trim(),
+        allocatedAmount: amount.isEmpty ? null : amount,
+      );
+      if (createdId != null && mounted) context.pop<String>(createdId);
+      return;
+    }
+    final saved = await provider.updateCategory(
+      category: category,
+      name: _nameController.text.trim(),
+      allocatedAmount: amount.isEmpty ? null : amount,
+    );
+    if (saved && mounted) context.pop(true);
   }
 }
 

@@ -113,6 +113,17 @@ class ProviderMarketplaceProvider extends ChangeNotifier
     }
   }
 
+  /// Searches the public provider directory for a financial link without
+  /// reading or mutating the filters, pagination, or error state of the
+  /// marketplace tab.
+  Future<List<MarketplaceProvider>> searchProvidersForMoneyLink({
+    String? search,
+    int page = 1,
+    int limit = 30,
+  }) {
+    return _api.getProviders(search: search, page: page, limit: limit);
+  }
+
   Future<void> loadReferenceData() {
     if (_cities.isNotEmpty && _categories.isNotEmpty) {
       return Future<void>.value();
@@ -860,6 +871,11 @@ String marketplaceErrorMessage(String message) {
     return 'تحتاج إلى تسجيل الدخول للمتابعة.';
   }
   return normalized;
+}
+
+String providerDirectoryErrorMessage(Object error) {
+  if (error is ApiException) return marketplaceErrorMessage(error.message);
+  return aarastBackendConnectionErrorMessage;
 }
 
 const providerReferenceDataErrorMessage = 'تعذر تحميل خيارات المدينة والفئة.';

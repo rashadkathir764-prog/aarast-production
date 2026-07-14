@@ -61,14 +61,6 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
       subtitle: cost?.title ?? 'كل ما يخص التكلفة في مكان واحد.',
       showBack: true,
       onBack: _goBack,
-      actions: [
-        if (cost != null && provider.canManageMoney && !cost.isCancelled)
-          IconButton(
-            onPressed: provider.isSubmitting ? null : () => _editCost(cost),
-            icon: const Icon(LucideIcons.pencil),
-            tooltip: 'تعديل التكلفة',
-          ),
-      ],
       child: RefreshIndicator(
         color: AppTheme.burgundy,
         onRefresh: () => _load(refreshMoney: true),
@@ -76,12 +68,14 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 32),
           children: [
-            if (provider.errorMessage != null) ...[
-              MoneyMessageBanner(message: provider.errorMessage!, error: true),
-              const SizedBox(height: 12),
-            ],
             if (_isLoadingDetails && cost == null)
               const AarastScreenLoading(label: 'جاري تحميل تفاصيل التكلفة')
+            else if (provider.errorMessage != null && cost == null)
+              AarastErrorState(
+                title: 'تعذر تحميل التكلفة',
+                message: provider.errorMessage!,
+                onRetry: _load,
+              )
             else if (cost == null)
               AarastEmptyState(
                 icon: LucideIcons.receipt,
@@ -94,6 +88,13 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                 ),
               )
             else ...[
+              if (provider.errorMessage != null) ...[
+                MoneyMessageBanner(
+                  message: provider.errorMessage!,
+                  error: true,
+                ),
+                const SizedBox(height: 12),
+              ],
               _CostHero(cost: cost, currency: currency),
               const SizedBox(height: 14),
               _CostContextCard(
@@ -114,8 +115,6 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                   isSubmitting: provider.isSubmitting,
                   hasSchedules: schedules.isNotEmpty,
                   onEdit: () => _editCost(cost),
-                  onRecordPayment: () => _openRecordPayment(cost),
-                  onAddSchedule: () => _openScheduleCreate(cost),
                   onCancel: () => _confirmCancel(cost),
                   onDelete: () => _confirmDelete(cost),
                 ),
@@ -169,35 +168,28 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                     ? 'لا توجد مبالغ مجدولة بعد.'
                     : '${schedules.length} موعد مرتبط بهذه التكلفة.',
                 icon: LucideIcons.calendarClock,
-                actionLabel: schedules.isEmpty ? null : 'عرض الكل',
-                onAction: schedules.isEmpty
-                    ? null
-                    : () => context.push(
-                        AppRouter.moneySchedules(
-                          widget.weddingPlanId,
-                          costId: cost.id,
-                        ),
-                      ),
+                actionLabel:
+                    provider.canManageMoney &&
+                        !cost.isCancelled &&
+                        moneyValue(cost.remainingAmount) > 0
+                    ? 'إضافة موعد'
+                    : null,
+                onAction:
+                    provider.canManageMoney &&
+                        !cost.isCancelled &&
+                        moneyValue(cost.remainingAmount) > 0
+                    ? () => _openScheduleCreate(cost)
+                    : null,
               ),
               const SizedBox(height: 10),
               if (schedules.isEmpty)
-                AarastEmptyState(
+                const AarastEmptyState(
                   icon: LucideIcons.calendarPlus,
                   title: 'لا توجد مواعيد دفع',
                   message: 'أضف موعدًا إذا كان جزء من المبلغ سيُدفع لاحقًا.',
-                  action:
-                      provider.canManageMoney &&
-                          !cost.isCancelled &&
-                          moneyValue(cost.remainingAmount) > 0
-                      ? OutlinedButton.icon(
-                          onPressed: () => _openScheduleCreate(cost),
-                          icon: const Icon(LucideIcons.calendarPlus),
-                          label: const Text('إضافة موعد'),
-                        )
-                      : null,
                 )
               else
-                for (final schedule in schedules.take(3)) ...[
+                for (final schedule in schedules) ...[
                   ScheduleCard(
                     schedule: schedule,
                     currency: currency,
@@ -247,7 +239,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     final confirmed = await _confirmAction(
       title: 'إلغاء التكلفة؟',
       message:
-          'ستخرج من الإجماليات، وتبقى الدفعات السابقة محفوظة في السجل. يمكن الإلغاء فقط عندما لا يوجد مبلغ مدفوع قائم.',
+          'ستخرج من الإجماليات وتُلغى مواعيد الدفع المفتوحة، بينما يبقى السجل محفوظًا للرجوع إليه.',
       actionLabel: 'إلغاء التكلفة',
       danger: true,
     );
@@ -436,6 +428,11 @@ class _CostContextCard extends StatelessWidget {
                   : LucideIcons.store,
               label: cost.providerId == null ? 'الجهة' : 'المزود',
               value: party,
+              onTap: cost.providerId == null
+                  ? null
+                  : () => context.push(
+                      AppRouter.providerDetails(cost.providerId!),
+                    ),
             ),
           if (cost.partyPhone != null)
             _InfoRow(
@@ -448,12 +445,6 @@ class _CostContextCard extends StatelessWidget {
               icon: LucideIcons.calendarCheck,
               label: 'تاريخ الاتفاق',
               value: formatArabicCompactDate(cost.agreementDate!),
-            ),
-          if (cost.dueDate != null)
-            _InfoRow(
-              icon: LucideIcons.calendarClock,
-              label: 'موعد الاستحقاق',
-              value: formatArabicCompactDate(cost.dueDate!),
             ),
           if (cost.note != null)
             _InfoRow(
@@ -472,15 +463,17 @@ class _InfoRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final content = Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,7 +500,25 @@ class _InfoRow extends StatelessWidget {
               ),
             ),
           ),
+          if (onTap != null) ...[
+            const SizedBox(width: 6),
+            const Icon(
+              LucideIcons.externalLink,
+              size: 17,
+              color: AppTheme.burgundy,
+            ),
+          ],
         ],
+      ),
+    );
+    if (onTap == null) return content;
+    return Semantics(
+      button: true,
+      label: 'فتح ملف $label: $value',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        child: content,
       ),
     );
   }
@@ -519,8 +530,6 @@ class _CostActions extends StatelessWidget {
     required this.isSubmitting,
     required this.hasSchedules,
     required this.onEdit,
-    required this.onRecordPayment,
-    required this.onAddSchedule,
     required this.onCancel,
     required this.onDelete,
   });
@@ -529,8 +538,6 @@ class _CostActions extends StatelessWidget {
   final bool isSubmitting;
   final bool hasSchedules;
   final VoidCallback onEdit;
-  final VoidCallback onRecordPayment;
-  final VoidCallback onAddSchedule;
   final VoidCallback onCancel;
   final VoidCallback onDelete;
 
@@ -541,7 +548,6 @@ class _CostActions extends StatelessWidget {
         message: 'هذه التكلفة ملغاة وسجلها محفوظ للرجوع إليه.',
       );
     }
-    final hasRemaining = moneyValue(cost.remainingAmount) > 0;
     final canDelete = cost.canDelete && !hasSchedules;
     return AarastCard(
       child: Column(
@@ -558,28 +564,17 @@ class _CostActions extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (hasRemaining)
-                OutlinedButton.icon(
-                  onPressed: isSubmitting ? null : onRecordPayment,
-                  icon: const Icon(LucideIcons.banknote),
-                  label: const Text('تسجيل دفعة'),
-                ),
-              if (hasRemaining)
-                OutlinedButton.icon(
-                  onPressed: isSubmitting ? null : onAddSchedule,
-                  icon: const Icon(LucideIcons.calendarPlus),
-                  label: const Text('إضافة موعد'),
-                ),
               OutlinedButton.icon(
                 onPressed: isSubmitting ? null : onEdit,
                 icon: const Icon(LucideIcons.pencil),
                 label: const Text('تعديل'),
               ),
-              OutlinedButton.icon(
-                onPressed: isSubmitting ? null : onCancel,
-                icon: const Icon(LucideIcons.circleSlash2),
-                label: const Text('إلغاء'),
-              ),
+              if (!cost.hasActivePayments)
+                OutlinedButton.icon(
+                  onPressed: isSubmitting ? null : onCancel,
+                  icon: const Icon(LucideIcons.circleSlash2),
+                  label: const Text('إلغاء'),
+                ),
               if (canDelete)
                 OutlinedButton.icon(
                   onPressed: isSubmitting ? null : onDelete,

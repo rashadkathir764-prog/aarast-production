@@ -330,6 +330,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         );
       }
       await _markPaymentDerivedRowsClean(item, json);
+      await _markTerminalCostSchedulesClean(item, json);
       return;
     }
 
@@ -341,6 +342,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         remoteJson: json,
       );
       await _markPaymentDerivedRowsClean(item, json);
+      await _markTerminalCostSchedulesClean(item, json);
     }
   }
 
@@ -406,6 +408,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
       remoteJson: schedule,
     );
     await _markPaymentDerivedRowsClean(item, payment);
+    await _markTerminalCostSchedulesClean(item, payment);
   }
 
   Future<void> _mapInitialPaymentCreatedWithCost(
@@ -518,6 +521,50 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
               remoteJson: {...schedule, 'status': 'PENDING', 'paidAt': null},
             );
           }
+        }
+      }
+    }
+  }
+
+  Future<void> _markTerminalCostSchedulesClean(
+    SyncQueueItem item,
+    Map<String, dynamic> response,
+  ) async {
+    String? costId;
+    String? status;
+    if (item.entityType == 'cost' && item.operation == 'cancel') {
+      costId = response['id']?.toString().trim();
+      status = response['status']?.toString();
+    } else if (item.entityType == 'cost_payment' ||
+        (item.entityType == 'payment_schedule' && item.operation == 'pay')) {
+      costId = response['costId']?.toString().trim();
+      if (costId != null && costId.isNotEmpty) {
+        final cost = await database.readCachedItem(
+          table: OfflineTables.cachedCosts,
+          id: costId,
+        );
+        status = cost?['status']?.toString();
+      }
+    }
+    if (costId == null ||
+        costId.isEmpty ||
+        (status != 'PAID' && status != 'CANCELLED')) {
+      return;
+    }
+    final schedules = await database.readCachedList(
+      table: OfflineTables.cachedPaymentSchedules,
+    );
+    for (final schedule in schedules) {
+      final scheduleStatus = schedule['status']?.toString();
+      if (schedule['costId']?.toString() == costId &&
+          (scheduleStatus == 'PENDING' || scheduleStatus == 'CANCELLED')) {
+        final scheduleId = schedule['id']?.toString().trim();
+        if (scheduleId != null && scheduleId.isNotEmpty) {
+          await database.markCachedItemClean(
+            table: OfflineTables.cachedPaymentSchedules,
+            id: scheduleId,
+            remoteJson: {...schedule, 'status': 'CANCELLED', 'paidAt': null},
+          );
         }
       }
     }

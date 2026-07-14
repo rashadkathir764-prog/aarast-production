@@ -19,6 +19,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+  bool _hasLoadedMoney = false;
   String? _errorMessage;
   String? _noticeMessage;
   List<BudgetCategory> _categories = const [];
@@ -44,6 +45,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
+  bool get hasLoadedMoney => _hasLoadedMoney;
   String? get errorMessage => _errorMessage;
   String? get noticeMessage => _noticeMessage;
   List<BudgetCategory> get categories => List.unmodifiable(_categories);
@@ -159,6 +161,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       _dueSchedules = results[3] as List<PaymentSchedule>;
       _sortState();
+      _hasLoadedMoney = true;
     } on ApiException catch (error) {
       if (!_isCurrent(generation)) return;
       if (!accessResolved || _isPrivateAccessFailure(error)) {
@@ -361,12 +364,15 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
-  Future<bool> createCategory({
+  Future<String?> createCategory({
     required String planId,
     required String name,
     String? allocatedAmount,
-  }) {
-    return _submit(planId, () async {
+  }) async {
+    String? createdId;
+    final existingIds = _categories.map((category) => category.id).toSet();
+    final normalizedName = _normalizeCategoryName(name);
+    final saved = await _submit(planId, () async {
       await _replaceBudget(
         planId: planId,
         totalBudget: _summary.budget.total,
@@ -376,7 +382,15 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           (id: null, name: name, allocatedAmount: allocatedAmount),
         ],
       );
+      for (final category in _categories) {
+        if (!existingIds.contains(category.id) &&
+            _normalizeCategoryName(category.name) == normalizedName) {
+          createdId = category.id;
+          break;
+        }
+      }
     });
+    return saved ? createdId : null;
   }
 
   Future<bool> updateCategory({
@@ -432,7 +446,6 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? partyName,
     String? partyPhone,
     DateTime? agreementDate,
-    DateTime? dueDate,
     String? note,
   }) async {
     WeddingCost? result;
@@ -448,7 +461,6 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         partyName: partyName,
         partyPhone: partyPhone,
         agreementDate: agreementDate,
-        dueDate: dueDate,
         note: note,
       );
       await _reloadData(planId);
@@ -466,7 +478,6 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? partyName,
     String? partyPhone,
     DateTime? agreementDate,
-    DateTime? dueDate,
     String? note,
   }) {
     return _submit(cost.weddingPlanId, () async {
@@ -480,7 +491,6 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         partyName: partyName,
         partyPhone: partyPhone,
         agreementDate: agreementDate,
-        dueDate: dueDate,
         note: note,
       );
       await _reloadData(cost.weddingPlanId);
@@ -713,6 +723,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     }
     _dueSchedules = results[3] as List<PaymentSchedule>;
     _sortState();
+    _hasLoadedMoney = true;
   }
 
   Future<void> _replaceBudget({
@@ -797,6 +808,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     _isLoadingMoreCosts = false;
     _isLoadingMorePayments = false;
     _isSubmitting = false;
+    _hasLoadedMoney = false;
     _summary = MoneySummary.empty(planId);
   }
 
@@ -812,6 +824,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       planId == 'local-guest-plan' ||
       planId.startsWith('guest-plan-') ||
       planId.startsWith('local-guest-');
+
+  String _normalizeCategoryName(String value) =>
+      value.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
 
   @override
   void dispose() {

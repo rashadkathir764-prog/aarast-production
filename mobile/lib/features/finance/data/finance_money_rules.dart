@@ -43,7 +43,6 @@ abstract final class FinanceMoneyRules {
   static void assertPaymentWithinRemaining({
     required Map<String, dynamic> cost,
     required num amount,
-    num pendingScheduledAmount = 0,
   }) {
     if (cost['status']?.toString() == 'CANCELLED') {
       throw const ApiException('لا يمكن تسجيل دفعة على تكلفة ملغاة.');
@@ -51,27 +50,17 @@ abstract final class FinanceMoneyRules {
     final total = value(cost['totalAmount']);
     final paid = value(cost['paidAmount']);
     final remaining = (total - paid).clamp(0, total);
-    final available = (remaining - pendingScheduledAmount).clamp(0, remaining);
-    if (amount > available) {
-      throw const ApiException(
-        'المبلغ يتجاوز الجزء غير المجدول من الباقي. ادفع موعدًا قائمًا أو عدّله أولًا.',
-      );
+    if (amount > remaining) {
+      throw const ApiException('المبلغ يتجاوز الباقي على التكلفة.');
     }
   }
 
-  static void assertScheduleWithinAvailable({
+  static void assertScheduleWithinRemaining({
     required num amount,
     required num remainingAmount,
-    required num otherPendingSchedules,
   }) {
-    final available = (remainingAmount - otherPendingSchedules).clamp(
-      0,
-      remainingAmount,
-    );
-    if (amount > available) {
-      throw const ApiException(
-        'مبلغ الموعد يتجاوز المتاح للجدولة من باقي التكلفة.',
-      );
+    if (amount > remainingAmount) {
+      throw const ApiException('مبلغ الموعد يتجاوز الباقي على التكلفة.');
     }
   }
 

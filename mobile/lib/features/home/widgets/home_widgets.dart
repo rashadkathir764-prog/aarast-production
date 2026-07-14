@@ -232,7 +232,7 @@ class HomeNoPlanWelcome extends StatelessWidget {
       _WelcomeFeature(
         icon: LucideIcons.wallet,
         title: 'ميزانية واضحة',
-        subtitle: 'تابع مصاريفك وأقساطك بهدوء.',
+        subtitle: 'تابع تكاليفك ومواعيد دفعاتك بهدوء.',
       ),
       _WelcomeFeature(
         icon: LucideIcons.listChecks,

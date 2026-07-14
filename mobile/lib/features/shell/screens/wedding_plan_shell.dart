@@ -73,6 +73,7 @@ class WeddingPlanShell extends StatelessWidget {
       actions: buildCanonicalQuickAddActions(
         context,
         planId: planId,
+        canManageMoney: _canManageMoney(context, planId),
         contextOrder: contextOrder,
         openRoute: (route, {refreshDashboard = false}) async {
           Navigator.of(context, rootNavigator: true).pop();
@@ -89,6 +90,16 @@ class WeddingPlanShell extends StatelessWidget {
     );
   }
 
+  bool _canManageMoney(BuildContext context, String planId) {
+    final finance = context.read<FinanceProvider?>();
+    if (finance?.loadedPlanId == planId) {
+      return finance?.canManageMoney ?? false;
+    }
+    final summary = context.read<DashboardSummaryProvider>().summary;
+    return summary?.planId == planId &&
+        (summary?.permissions.canManageMoney ?? false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentIndex = _calculateSelectedIndex(context);
@@ -97,12 +108,16 @@ class WeddingPlanShell extends StatelessWidget {
     final canManageCurrentMoney =
         finance?.loadedPlanId == weddingPlanId &&
         (finance?.canManageMoney ?? false);
+    final hasConfiguredCurrentMoney =
+        finance?.loadedPlanId == weddingPlanId &&
+        (finance?.summary.hasBudget ?? false);
 
     final isMoneyRoot = location.endsWith('/money');
     final showQuickFab = shouldShowPlanQuickAdd(
       tabIndex: currentIndex,
       isRootDestination: currentIndex != 1 || isMoneyRoot,
       canManageMoney: currentIndex != 1 || canManageCurrentMoney,
+      hasConfiguredMoney: currentIndex != 1 || hasConfiguredCurrentMoney,
     );
 
     return PlanShellChrome(

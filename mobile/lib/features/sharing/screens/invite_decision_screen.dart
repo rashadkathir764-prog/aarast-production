@@ -564,7 +564,7 @@ class _InviteDetails extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'الميزانية والمستحقات والدفعات مخفية ما لم يمنحك صاحب الخطة صلاحية مالية واضحة.',
+                'الميزانية والتكاليف والدفعات مخفية ما لم يمنحك صاحب الخطة صلاحية مالية واضحة.',
                 style: TextStyle(
                   color: AppTheme.muted,
                   fontWeight: FontWeight.w700,

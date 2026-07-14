@@ -26,6 +26,26 @@ void main() {
     expect(gradle, isNot(contains('signingConfigs.getByName("debug")')));
   });
 
+  test(
+    'Android QA release can coexist without changing production identity',
+    () {
+      final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+      final manifest = File(
+        'android/app/src/main/AndroidManifest.xml',
+      ).readAsStringSync();
+
+      expect(gradle, contains('com.aarast.aarast_mobile'));
+      expect(gradle, contains('AARAST_ANDROID_APPLICATION_ID'));
+      expect(gradle, contains('AARAST_ANDROID_APP_LABEL'));
+      expect(gradle, contains('applicationId = releaseApplicationId'));
+      expect(
+        gradle,
+        contains('manifestPlaceholders["aarastAppLabel"] = releaseAppLabel'),
+      );
+      expect(manifest, contains(r'android:label="${aarastAppLabel}"'));
+    },
+  );
+
   test('iOS release executes the same fail-closed configuration gate', () {
     final project = File(
       'ios/Runner.xcodeproj/project.pbxproj',

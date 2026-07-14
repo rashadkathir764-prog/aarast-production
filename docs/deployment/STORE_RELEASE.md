@@ -75,6 +75,20 @@ private IPv4, malformed numeric IPv4, or IPv6 literal.
 Expected output after a successful build:
 `mobile/build/app/outputs/bundle/release/app-release.aab`.
 
+For a non-store QA Release that must coexist with an already installed build,
+the Android application ID and launcher label may be overridden explicitly:
+
+```powershell
+$env:AARAST_ANDROID_APPLICATION_ID = 'com.aarast.aarast_mobile.qa'
+$env:AARAST_ANDROID_APP_LABEL = 'اعّرست QA'
+flutter build apk --release `
+  --dart-define=AARAST_API_BASE_URL=https://your-staging-api.example
+```
+
+The default remains `com.aarast.aarast_mobile` with the production launcher
+label. Never use a QA application ID for a store artifact or production App
+Links; Play signing and `assetlinks.json` must reference the production ID.
+
 Flutter requires Android command-line tools, including `apkanalyzer`, to prove
 that native debug symbols were stripped into `BUNDLE-METADATA`. A stripping
 verification failure is a release blocker even if an AAB file exists; do not

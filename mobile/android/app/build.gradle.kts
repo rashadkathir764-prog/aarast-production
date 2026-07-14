@@ -101,6 +101,30 @@ fun validateReleaseDartDefines() {
     }
 }
 
+val productionApplicationId = "com.aarast.aarast_mobile"
+val releaseApplicationId = System.getenv("AARAST_ANDROID_APPLICATION_ID")
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?: productionApplicationId
+val androidApplicationIdPattern = Regex(
+    "^[a-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$",
+)
+if (!androidApplicationIdPattern.matches(releaseApplicationId)) {
+    throw GradleException(
+        "AARAST_ANDROID_APPLICATION_ID must be a valid reverse-DNS Android application ID.",
+    )
+}
+
+val releaseAppLabel = System.getenv("AARAST_ANDROID_APP_LABEL")
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?: "اعّرست"
+if (releaseAppLabel.length > 40 || releaseAppLabel.any(Character::isISOControl)) {
+    throw GradleException(
+        "AARAST_ANDROID_APP_LABEL must be 1-40 visible characters.",
+    )
+}
+
 // Store signing: android/key.properties stays out of Git and points at the
 // upload keystore. Release tasks fail closed when the file or any required
 // value is missing; a store artifact can never fall back to Android debug keys.
@@ -162,7 +186,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.aarast.aarast_mobile"
+        applicationId = releaseApplicationId
+        manifestPlaceholders["aarastAppLabel"] = releaseAppLabel
         // flutter_secure_storage requires API 23+ (Android Keystore).
         minSdk = maxOf(23, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion

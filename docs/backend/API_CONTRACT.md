@@ -302,22 +302,24 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
 - `incompleteGuestsCount`: persisted guests missing basic planning contact/name fields.
 - `quoteStatusBreakdown`: `pending`, `offered`, `accepted`, and `rejectedClosed` counts.
 - `acceptedProvidersCount`: stable alias for accepted/active `PlanProviderLink` count.
-- `financialWarnings`: simple computable warnings such as budget exceeded or installment due soon.
+- `financialWarnings`: simple computable warnings such as budget exceeded or a payment schedule due soon.
 
-- `importantItems`: actionable task/installment/provider cards for "الأهم اليوم".
+- `importantItems`: actionable task/payment-schedule/provider cards for "الأهم اليوم".
 - `planProviders`: providers actually linked to the current WeddingPlan.
 - `importantNotifications`: latest user-owned notifications for this WeddingPlan.
 - `generatedAt`: server timestamp used by the mobile sync/status copy.
 
 Dashboard `remainingBudget` and the money-card usage ratio use confirmed cost:
-paid standalone expenses plus active financial commitments. This keeps Home
-aligned with the Money tab and avoids treating an unpaid commitment as free
-budget.
+the sum of non-cancelled WeddingCost totals. CostPayment rows change the
+paid/outstanding split and are not added to cost a second time. A pending
+PaymentSchedule changes reminder state only.
 
-Financial installment details appear only when the current user has the required
-financial-record permission. Notifications are always scoped to the authenticated
+Payment-schedule details appear only when the current user has `canViewMoney`.
+Notifications are always scoped to the authenticated
 user. Provider cards are planning/reference data only and do not imply paid
-booking, deposits, payment status, loans, credit, financing, or AI.
+booking, deposits, provider settlement/payment-processing status, loans,
+credit, financing, or AI. This does not refer to the user's manual CostPayment
+ledger.
 
 ## Notifications
 
@@ -337,7 +339,7 @@ returns `{ items, page, limit, total, totalPages, hasMore }`. The unread-count
 route accepts optional `weddingPlanId`. Notifications are always owned by the
 authenticated user. List, count, and mark-all reads never generate records;
 task writes create immediate due reminders and an hourly cross-replica locked
-scheduler idempotently repairs task and financial-installment reminders.
+scheduler idempotently repairs task and payment-schedule reminders.
 
 Notification response:
 
@@ -365,9 +367,13 @@ Unread count response:
 { "count": 3 }
 ```
 
-## Budget Categories
+## General Budget And Budget Categories
 
-Protected routes:
+The optional general budget is `WeddingPlan.estimatedBudget` and is changed
+through the protected WeddingPlan update route. Null means unset. The backend
+and offline client must never replace null with the sum of category allocations.
+
+Protected category routes:
 
 - `POST /api/v1/wedding-plans/:weddingPlanId/budget-categories`
 - `GET /api/v1/wedding-plans/:weddingPlanId/budget-categories`
@@ -379,183 +385,200 @@ Create request:
 ```json
 {
   "name": "Hall",
-  "targetAmount": "500000.00"
+  "allocatedAmount": "500000.00"
 }
 ```
 
-Financial endpoints are private by default and must remain permission-aware for shared plan users.
-No unversioned budget-category aliases are exposed.
+Category allocations are non-negative. When the general budget is set, the sum
+of allocations may not exceed it. A category referenced by any cost cannot be
+deleted until those costs are moved or removed. All reads require
+`canViewMoney`; all mutations require `canManageMoney`.
 
-## Expenses
+## Wedding Costs
+
+`WeddingCost` is the only cost backbone. Every cost belongs to exactly one
+budget category. It may optionally reference an Aarast provider/accepted quote
+or an external party, but provider and external-party modes are mutually
+exclusive.
 
 Protected routes:
 
-- `POST /api/v1/wedding-plans/:weddingPlanId/expenses`
-- `GET /api/v1/wedding-plans/:weddingPlanId/expenses`
-- `GET /api/v1/wedding-plans/:weddingPlanId/expenses/summary`
-- `PATCH /api/v1/expenses/:id`
-- `DELETE /api/v1/expenses/:id`
+- `POST /api/v1/wedding-plans/:weddingPlanId/costs`
+- `GET /api/v1/wedding-plans/:weddingPlanId/costs`
+- `GET /api/v1/costs/:id`
+- `PATCH /api/v1/costs/:id`
+- `DELETE /api/v1/costs/:id`
+- `POST /api/v1/costs/:id/cancel`
 
 Create request:
 
 ```json
 {
-  "title": "Hall expense reference",
-  "amount": "250000.00",
   "budgetCategoryId": "category_id",
-  "status": "PAID",
-  "expenseDate": "2026-06-04T00:00:00.000Z",
-  "note": "Optional note"
-}
-```
-
-Expense responses use decimal values as strings.
-
-Expense creation is for actual money-out records only. `budgetCategoryId` is
-required, `amount` must be greater than zero, and new create/update requests may
-only use `status: "PAID"`. Planned provider/service costs, remaining amounts,
-manual payables and installment schedules belong to `FinancialCommitment` and its
-payment/installment records instead of `Expense`.
-
-Additional current expense routes:
-
-- `GET /api/v1/expenses/:id`
-
-No unversioned expense aliases are exposed.
-
-## Financial Commitments, Payment Records, And Financial Installments
-
-Financial commitments are the phase-2 money backbone. Every commitment must
-belong to a `budgetCategoryId`. Provider/service costs, manual payables, and other
-agreed costs should be represented here before payments or installments are
-recorded.
-
-Commitment routes:
-
-- `POST /api/v1/wedding-plans/:weddingPlanId/financial-commitments`
-- `GET /api/v1/wedding-plans/:weddingPlanId/financial-commitments`
-- `GET /api/v1/financial-commitments/:id`
-- `PATCH /api/v1/financial-commitments/:id`
-- `DELETE /api/v1/financial-commitments/:id`
-
-Create commitment request:
-
-```json
-{
-  "budgetCategoryId": "category_id",
-  "sourceType": "PROVIDER_SERVICE",
-  "providerId": "provider_id",
-  "planProviderLinkId": "plan_provider_link_id",
-  "quoteRequestId": "quote_request_id",
-  "quoteOfferId": "quote_offer_id",
   "title": "Hall agreement",
-  "partyName": "Hall provider",
-  "partyPhone": "+967 777 123 456",
   "totalAmount": "500000.00",
-  "paidAmount": "100000.00",
+  "initialPaymentAmount": "100000.00",
+  "providerId": "provider_id",
+  "quoteOfferId": "quote_offer_id",
   "dueDate": "2026-12-15T00:00:00.000Z",
   "agreementDate": "2026-07-06T00:00:00.000Z",
   "note": "Optional note"
 }
 ```
 
-`sourceType` values are `PROVIDER_SERVICE`, `MANUAL_PAYABLE`,
-`MANUAL_COMMITMENT`, and `OTHER`. The backend derives `status` from
-`totalAmount - paidAmount` except when the commitment is explicitly cancelled.
-`remainingAmount` is returned; clients must not ask users to type the remaining
-amount for provider/service commitments.
+For an external party, omit `providerId` and `quoteOfferId` and send optional
+`partyName` and `partyPhone`. `totalAmount` must be positive.
+`initialPaymentAmount`, when present, must be positive and no greater than the
+total; the cost and initial CostPayment commit atomically. Update requests may
+change the category, title, total, party/provider context, dates, and note but
+cannot directly set paid amount or derived payment status.
 
-Payment record routes:
+Accepted quote data may prefill this request only after explicit user
+confirmation. Quote acceptance itself returns `automaticCostCreated: false`
+and never invokes the cost route. Hard delete is limited to costs without
+ledger history; cancellation is explicit and must not erase paid money.
 
-- `POST /api/v1/financial-commitments/:id/payment-records`
-- `GET /api/v1/financial-commitments/:id/payment-records`
-- `GET /api/v1/wedding-plans/:weddingPlanId/financial-payment-records`
-- `DELETE /api/v1/financial-payment-records/:id`
+## Cost Payments
 
-Create payment record request:
+Protected routes:
+
+- `POST /api/v1/costs/:id/payments`
+- `GET /api/v1/costs/:id/payments`
+- `GET /api/v1/wedding-plans/:weddingPlanId/cost-payments`
+- `GET /api/v1/cost-payments/:id`
+- `POST /api/v1/cost-payments/:id/reverse`
+
+Create request:
 
 ```json
 {
   "amount": "100000.00",
-  "title": "Deposit paid",
   "paidAt": "2026-07-06T00:00:00.000Z",
   "method": "cash",
   "note": "Optional note"
 }
 ```
 
-A payment record means money actually left the user. Payment records are an
-append-only ledger: `DELETE /api/v1/financial-payment-records/:id` creates one
-`REVERSAL` row and returns
-`deleted: false, reversed: true`; it never deletes the original row. Repeating
-or concurrently submitting the same reversal returns the same single reversal.
-The response includes `entryType`, `financialInstallmentId`, `reversalOfId`,
-`reversedById`, and `reversible`. Creating or reversing a payment updates the
-parent commitment `paidAmount`, derived
-`status`, and `remainingAmount`.
+Payment input never accepts category, provider, party, or WeddingPlan ids; they
+are inherited from the selected cost. The amount must be positive and may not
+exceed the row-locked outstanding cost.
 
-Financial installment routes:
+Payments are an append-only ledger. Reversal request:
 
-- `POST /api/v1/financial-commitments/:id/installments`
-- `GET /api/v1/financial-commitments/:id/installments`
-- `GET /api/v1/wedding-plans/:weddingPlanId/financial-installments/due`
-- `PATCH /api/v1/financial-installments/:id/pay`
-- `PATCH /api/v1/financial-installments/:id`
-- `DELETE /api/v1/financial-installments/:id`
+```json
+{ "reason": "Incorrect amount" }
+```
 
-Financial installments always belong to a financial commitment. Paying a
-financial installment locks its PostgreSQL row before reading state, creates a
-payment record uniquely linked by `financialInstallmentId`, and updates the
-parent commitment balance. Concurrent pay requests therefore create exactly
-one payment. Reversing that payment creates one compensating ledger row and
-returns the installment to `PENDING`; installments or commitments with payment
-history cannot be hard-deleted through product APIs.
+Reversal creates one immutable `REVERSAL` row and retains the original payment.
+Retries and concurrent submissions return the same single reversal rather than
+duplicating it. There is no payment DELETE route.
 
-No unversioned financial aliases are exposed.
+## Payment Schedules
 
-## Money Summary
+A `PaymentSchedule` is a reminder under one cost, not a separate cost or paid
+record. Its `dueDate` is required and it contributes nothing to confirmed cost,
+paid, outstanding, or remaining-budget totals until paid.
 
 Protected routes:
 
+- `POST /api/v1/costs/:id/payment-schedules`
+- `GET /api/v1/costs/:id/payment-schedules`
+- `GET /api/v1/wedding-plans/:weddingPlanId/payment-schedules/due`
+- `PATCH /api/v1/payment-schedules/:id`
+- `DELETE /api/v1/payment-schedules/:id`
+- `POST /api/v1/payment-schedules/:id/pay`
+
+Create request:
+
+```json
+{
+  "amount": "100000.00",
+  "dueDate": "2026-12-15T00:00:00.000Z",
+  "note": "Optional note"
+}
+```
+
+Update accepts only `amount`, `dueDate`, and `note`. Clients cannot submit
+status or paid-at fields. Paying accepts optional `paidAt`, `method`, and
+`note`, locks the schedule and cost, creates one linked CostPayment, and makes
+concurrent retries idempotent. Reversing that payment reopens the schedule.
+Paid schedules and schedules with payment history cannot be hard-deleted.
+
+## Money Summary
+
+Protected route:
+
 - `GET /api/v1/wedding-plans/:planId/money-summary`
 
-Money summaries must remain permission-aware. Shared users without financial permissions must not receive private budget, expense, commitment, payment, or installment details.
+The response is one nested contract with no legacy aliases:
 
-Super Money UI consumes the canonical route and may use stable response-field aliases:
+```json
+{
+  "weddingPlanId": "plan_id",
+  "currency": "YER",
+  "budget": {
+    "total": "1500000.00",
+    "allocated": "900000.00",
+    "unallocated": "600000.00",
+    "confirmedCost": "700000.00",
+    "remaining": "800000.00"
+  },
+  "costs": {
+    "total": "700000.00",
+    "paid": "250000.00",
+    "outstanding": "450000.00",
+    "count": 3
+  },
+  "paymentSchedules": {
+    "totalCount": 2,
+    "upcomingCount": 1,
+    "overdueCount": 1,
+    "paidCount": 0,
+    "next": {
+      "id": "schedule_id",
+      "weddingCostId": "cost_id",
+      "amount": "100000.00",
+      "dueAt": "2026-12-15T00:00:00.000Z",
+      "status": "PENDING",
+      "isOverdue": false
+    }
+  },
+  "categories": [
+    {
+      "categoryId": "category_id",
+      "name": "Hall",
+      "allocatedAmount": "500000.00",
+      "confirmedCost": "400000.00",
+      "paid": "100000.00",
+      "outstanding": "300000.00",
+      "remainingAllocation": "100000.00",
+      "costsCount": 1,
+      "paymentSchedulesCount": 1,
+      "overBudget": false
+    }
+  ],
+  "warnings": [],
+  "permissions": {
+    "canViewMoney": true,
+    "canManageMoney": true
+  }
+}
+```
 
-- `totalBudget`, `totalSpent`, `commitmentTotal`, and
-  `commitmentRemainingTotal`.
-- `confirmedCostTotal` / `totalConfirmedCost`, `paidTotal`,
-  `outstandingTotal`, and `deficitOrSurplus`.
-- `commitmentTotal`, `commitmentPaidTotal`, `commitmentRemainingTotal`,
-  `providerCommitmentTotal`, and `manualPayableCommitmentTotal`.
-- `paidInstallmentsCount`, `remainingInstallmentsCount`, and `nextInstallment`.
-- `categorySummaries` with allocated, spent, confirmedCost, paid, outstanding,
-  budgetRemaining, remaining, commitmentsCount, and installmentsCount values
-  when permissions allow them.
-- `financialWarnings` for budget exceeded, category exceeded, overdue/due-soon installments, or uncategorized expenses when computable.
+`budget.total` is the optional general budget and remains null when unset.
+`budget.allocated` is still reported, but it never becomes the general budget;
+`unallocated` and `remaining` are null when total is null. `costs.total` and
+`budget.confirmedCost` are the sum of non-cancelled WeddingCost totals.
+`costs.paid` is the net CostPayment ledger after reversals, and
+`costs.outstanding` is total minus paid. Category values use the same rules.
+Pending PaymentSchedule rows affect only schedule counts, `next`, and warning
+types `PAYMENT_SCHEDULE_OVERDUE` or `PAYMENT_SCHEDULE_DUE_SOON`.
 
-Day/week/month financial reports are not a current contract. The backend exposes current aggregate totals only.
+Callers without `canViewMoney` receive no private money values; hidden values
+are not converted to zeros. Mutating routes require `canManageMoney`.
 
-Money-summary arithmetic uses one product definition across the backend and
-offline mobile summary:
-
-- `totalSpent` is standalone actual money-out from paid `Expense` rows.
-- `confirmedCostTotal` is standalone paid expenses plus active commitment
-  totals, including legacy obligations only when they are not already mirrored.
-- `paidTotal` is standalone paid expenses plus the paid balance of active
-  commitments.
-- `outstandingTotal` is the unpaid balance of commitments/compatible legacy
-  obligations; it does not include already-paid standalone expenses.
-- `remainingBudget` and `deficitOrSurplus` are the visible budget minus
-  `confirmedCostTotal`.
-- Category `confirmedCost` and `budgetRemaining` use the same formula. A
-  commitment payment is never added again because it is already contained in
-  that commitment's total.
-
-Every field remains permission-aware. If a caller cannot view one component,
-the summary combines only the components that caller may see and does not
-reveal the hidden amount.
+Removed prelaunch expense, commitment, financial-payment, and financial-
+installment routes are not aliases and must return `404`.
 
 ## Tasks
 
@@ -617,10 +640,13 @@ Response includes:
 
 - `weddingDate`
 - `upcomingTasks`
-- `dueCommitments`
-- `dueInstallments`
+- `duePaymentSchedules`
 
-Shared members can see task timeline items. Financial due items are hidden unless the shared member has `canViewFinancialRecords` or `canManageFinancialRecords`.
+Each `duePaymentSchedules` item contains `id`, `costId`, `costTitle`, `amount`,
+`dueDate`, `status`, and `isOverdue`.
+
+Shared members can see task timeline items. Payment-schedule items are hidden
+unless the shared member has `canViewMoney`.
 
 ## Sharing
 
@@ -656,11 +682,9 @@ Create shared member request:
 {
   "phone": "+967700000000",
   "role": "VIEWER",
-  "canViewBudget": false,
-  "canViewExpenses": false,
-  "canViewFinancialRecords": false,
+  "canViewMoney": false,
   "canManageTasks": false,
-  "canManageFinancialRecords": false
+  "canManageMoney": false
 }
 ```
 
@@ -679,11 +703,9 @@ Shared member response:
     "phone": "+967700000000"
   },
   "role": "VIEWER",
-  "canViewBudget": false,
-  "canViewExpenses": false,
-  "canViewFinancialRecords": false,
+  "canViewMoney": false,
   "canManageTasks": false,
-  "canManageFinancialRecords": false,
+  "canManageMoney": false,
   "createdAt": "2026-06-04T00:00:00.000Z",
   "updatedAt": "2026-06-04T00:00:00.000Z"
 }
@@ -765,7 +787,9 @@ Incomplete guest detection is informational only. It must not block saving guest
 ## Provider References And Quote Leads
 
 Current provider routes are planning/reference and lead workflows. They do not
-create paid bookings, deposits, payment status, loans, credit, financing, or AI.
+create paid bookings, deposits, provider settlement/payment-processing status,
+loans, credit, financing, or AI. Manual CostPayment entries remain a separate
+planning ledger and never move money.
 
 Public/reference routes:
 
@@ -817,13 +841,18 @@ Plan-scoped `/api/v1` quote routes:
 
 Accepting an offer returns the accepted offer and `planProviderLink`, and explicitly returns:
 
-- `automaticFinancialRecordCreated: false`
-- `financialSuggestion`
-- `nextActions`, including `createFinancialCommitment`, `recordPayment`,
-  `createFollowUpTask`, and `viewAcceptedProvider`
+- `automaticCostCreated: false`
+- `costSuggestion`, containing `recommendedAction`, `message`, quoted amount,
+  currency, provider id, and quote-offer id
+- `nextActions`, including `createCost`, `createFollowUpTask`, and
+  `viewAcceptedProvider`; payment recording is unavailable until a cost exists
 
-Accepting an offer must not silently create financial commitments, expenses,
-financial installments, tasks, payments, deposits, or confirmed bookings.
+Accepting an offer must not silently create costs, payment schedules, tasks,
+payments, deposits, or confirmed bookings. A `CREATE_COST` suggestion may
+prefill the cost form only after explicit confirmation. Quote presentation
+uses `availableActions: ["CREATE_COST"]` while an accepted offer has no cost;
+when a linked cost exists it may return `costId` and
+`availableActions: ["VIEW_COST"]` instead.
 
 Provider dashboard routes:
 
@@ -986,8 +1015,8 @@ Admin reviews are real `ProviderReview` moderation operations. Publishing or hid
 
 Admin notifications expose a privacy-minimized operational view of persisted
 notifications across users. The user reference contains `id`, `name`, and a
-masked phone suffix only. Financial installment/commitment notifications, notifications with a
-financial entity, and even misclassified notifications carrying financial data
+masked phone suffix only. Cost/payment-schedule notifications, notifications
+with a financial entity, and even misclassified notifications carrying money data
 keys return a generic Arabic title/body, `financialDetailsRedacted: true`, and
 `null` for `data`, `entityId`, `routeTarget`, and plan details. The general
 admin API has no endpoint that reveals that hidden financial content. Search
@@ -1033,7 +1062,7 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
 
 The current MVP backend contract does not include:
 
-- payments
+- payment processing
 - deposits
 - paid bookings
 - confirmed booking or reservation lifecycle
@@ -1120,21 +1149,17 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/conversations/:id/read` | `conversations.markRead` | 🔒 |
 | POST | `/api/v1/conversations/:id/report` | `conversations.report` | 🔒 |
 | POST | `/api/v1/conversations/quote-requests/:quoteRequestId` | `conversations.ensureForQuote` | 🔒 |
+| GET | `/api/v1/cost-payments/:id` | `wedding-costs.get` | 🔒 |
+| POST | `/api/v1/cost-payments/:id/reverse` | `wedding-costs.reverse` | 🔒 |
+| DELETE | `/api/v1/costs/:id` | `wedding-costs.remove` | 🔒 |
+| GET | `/api/v1/costs/:id` | `wedding-costs.get` | 🔒 |
+| PATCH | `/api/v1/costs/:id` | `wedding-costs.update` | 🔒 |
+| POST | `/api/v1/costs/:id/cancel` | `wedding-costs.cancel` | 🔒 |
+| GET | `/api/v1/costs/:id/payment-schedules` | `wedding-costs.listSchedules` | 🔒 |
+| POST | `/api/v1/costs/:id/payment-schedules` | `wedding-costs.createSchedule` | 🔒 |
+| GET | `/api/v1/costs/:id/payments` | `wedding-costs.listPayments` | 🔒 |
+| POST | `/api/v1/costs/:id/payments` | `wedding-costs.createPayment` | 🔒 |
 | GET | `/api/v1/dashboard/home` | `dashboard.getHome` | 🔒 |
-| DELETE | `/api/v1/expenses/:id` | `expenses.remove` | 🔒 |
-| GET | `/api/v1/expenses/:id` | `expenses.findOne` | 🔒 |
-| PATCH | `/api/v1/expenses/:id` | `expenses.update` | 🔒 |
-| DELETE | `/api/v1/financial-commitments/:id` | `financial-commitments.remove` | 🔒 |
-| GET | `/api/v1/financial-commitments/:id` | `financial-commitments.findOne` | 🔒 |
-| PATCH | `/api/v1/financial-commitments/:id` | `financial-commitments.update` | 🔒 |
-| GET | `/api/v1/financial-commitments/:id/installments` | `financial-commitments.listInstallments` | 🔒 |
-| POST | `/api/v1/financial-commitments/:id/installments` | `financial-commitments.createInstallment` | 🔒 |
-| GET | `/api/v1/financial-commitments/:id/payment-records` | `financial-commitments.listPaymentRecords` | 🔒 |
-| POST | `/api/v1/financial-commitments/:id/payment-records` | `financial-commitments.createPaymentRecord` | 🔒 |
-| DELETE | `/api/v1/financial-installments/:id` | `financial-commitments.remove` | 🔒 |
-| PATCH | `/api/v1/financial-installments/:id` | `financial-commitments.update` | 🔒 |
-| PATCH | `/api/v1/financial-installments/:id/pay` | `financial-commitments.pay` | 🔒 |
-| DELETE | `/api/v1/financial-payment-records/:id` | `financial-commitments.remove` | 🔒 |
 | DELETE | `/api/v1/guest-groups/:id` | `guests.removeGroup` | 🔒 |
 | PATCH | `/api/v1/guest-groups/:id` | `guests.updateGroup` | 🔒 |
 | DELETE | `/api/v1/guests/:id` | `guests.remove` | 🔒 |
@@ -1160,6 +1185,10 @@ configuration, and smoke checks.
 | GET | `/api/v1/notifications/unread-count` | `notifications.unreadCount` | 🔒 |
 | POST | `/api/v1/onboarding/complete` | `onboarding.complete` | 🔒 |
 | POST | `/api/v1/onboarding/import-local` | `onboarding.importLocal` | 🔒 |
+| DELETE | `/api/v1/payment-schedules/:id` | `wedding-costs.remove` | 🔒 |
+| PATCH | `/api/v1/payment-schedules/:id` | `wedding-costs.update` | 🔒 |
+| POST | `/api/v1/payment-schedules/:id/cancel` | `wedding-costs.cancel` | 🔒 |
+| POST | `/api/v1/payment-schedules/:id/pay` | `wedding-costs.pay` | 🔒 |
 | GET | `/api/v1/provider-categories` | `marketplace.findCategories` |  |
 | POST | `/api/v1/provider/apply` | `provider-dashboard.apply` | 🔒 |
 | GET | `/api/v1/provider/me/packages` | `provider-dashboard.findPackages` | 🔒 |
@@ -1220,16 +1249,13 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/wedding-plans/:id/archive` | `wedding-plans.archive` | 🔒 |
 | POST | `/api/v1/wedding-plans/:id/set-active` | `wedding-plans.setActive` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/dashboard-summary` | `dashboard.getDashboardSummary` | 🔒 |
+| PUT | `/api/v1/wedding-plans/:planId/money-budget` | `money-summary.replaceMoneyBudget` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.create` | 🔒 |
-| GET | `/api/v1/wedding-plans/:weddingPlanId/expenses` | `expenses.findForPlan` | 🔒 |
-| POST | `/api/v1/wedding-plans/:weddingPlanId/expenses` | `expenses.create` | 🔒 |
-| GET | `/api/v1/wedding-plans/:weddingPlanId/expenses/summary` | `expenses.summary` | 🔒 |
-| GET | `/api/v1/wedding-plans/:weddingPlanId/financial-commitments` | `financial-commitments.findForPlan` | 🔒 |
-| POST | `/api/v1/wedding-plans/:weddingPlanId/financial-commitments` | `financial-commitments.create` | 🔒 |
-| GET | `/api/v1/wedding-plans/:weddingPlanId/financial-installments/due` | `financial-commitments.dueForPlan` | 🔒 |
-| GET | `/api/v1/wedding-plans/:weddingPlanId/financial-payment-records` | `financial-commitments.findForPlan` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/cost-payments` | `wedding-costs.list` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.list` | 🔒 |
+| POST | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.create` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/guest-groups` | `guests.findGroups` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/guest-groups` | `guests.createGroup` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/guests` | `guests.findForPlan` | 🔒 |
@@ -1243,6 +1269,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/wedding-plans/:weddingPlanId/members` | `sharing.createMember` | 🔒 |
 | DELETE | `/api/v1/wedding-plans/:weddingPlanId/members/:memberId` | `sharing.removeMember` | 🔒 |
 | PATCH | `/api/v1/wedding-plans/:weddingPlanId/members/:memberId` | `sharing.updateMember` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/payment-schedules/due` | `wedding-costs.due` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/permissions/me` | `sharing.permissionsForMe` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/quote-requests` | `marketplace.findQuoteRequests` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/quote-requests` | `marketplace.createQuoteRequest` | 🔒 |

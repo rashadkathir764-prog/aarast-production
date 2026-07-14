@@ -1,8 +1,9 @@
 # Aarast / اعّرست
 
 Aarast is a Yemen-first wedding planning product. Its center is a Wedding
-Financial OS for plans, budgets, expenses, debts, installments, tasks, guests,
-sharing, and privacy-aware family coordination.
+Financial OS for plans, a general budget, budget categories, costs, payments,
+payment schedules, tasks, guests, sharing, and privacy-aware family
+coordination.
 
 Provider features support discovery, quote requests, provider operations, and
 quote-scoped conversations. They do not create paid bookings, deposits,

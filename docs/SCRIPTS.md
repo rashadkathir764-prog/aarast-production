@@ -12,7 +12,7 @@
 | `admin-web` | `npm run test:watch` | `vitest` |
 | `admin-web` | `npm run typecheck` | `tsc -b` |
 | `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
-| `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit` |
+| `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json --noEmit` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |
 | `backend` | `npm run pretest` | `node --test -r ts-node/register test/legacy-finance-removal.test.ts test/canonical-api-routes.test.ts` |
 | `backend` | `npm run prisma:generate` | `prisma generate` |
@@ -24,7 +24,6 @@
 | `backend` | `npm run smoke:auth` | `node scripts/smoke/auth-smoke.js` |
 | `backend` | `npm run smoke:auth-verification` | `node scripts/smoke/auth-verification-smoke.js` |
 | `backend` | `npm run smoke:backend-completion` | `node scripts/smoke/backend-completion-smoke.js` |
-| `backend` | `npm run smoke:budget-expense` | `node scripts/smoke/budget-expense-smoke.js` |
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/dashboard-summary-smoke.js` |
 | `backend` | `npm run smoke:financial-ledger-concurrency` | `node scripts/smoke/financial-ledger-concurrency-smoke.js` |
 | `backend` | `npm run smoke:guests` | `node scripts/smoke/guests-smoke.js` |
@@ -32,6 +31,8 @@
 | `backend` | `npm run smoke:health` | `node scripts/smoke/health-smoke.js` |
 | `backend` | `npm run smoke:marketplace` | `node scripts/smoke/marketplace-smoke.js` |
 | `backend` | `npm run smoke:money-apis` | `node scripts/smoke/money-apis-smoke.js` |
+| `backend` | `npm run smoke:money-budget` | `node scripts/smoke/money-budget-smoke.js` |
+| `backend` | `npm run smoke:money-routes` | `node scripts/smoke/money-route-contract-smoke.js` |
 | `backend` | `npm run smoke:notifications` | `node scripts/smoke/notifications-smoke.js` |
 | `backend` | `npm run smoke:notifications-apis` | `node scripts/smoke/notifications-apis-smoke.js` |
 | `backend` | `npm run smoke:onboarding-active-plan` | `node scripts/smoke/onboarding-active-plan-smoke.js` |

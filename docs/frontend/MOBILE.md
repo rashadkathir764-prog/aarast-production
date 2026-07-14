@@ -1,10 +1,10 @@
 # Mobile
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-14
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
-source includes auth, onboarding, home/dashboard, money, commitments, installments,
-tasks, guests, sharing, notifications, providers/quotes, settings, support, and
+product scope includes auth, onboarding, home/dashboard, one money system,
+tasks, guests, sharing, notifications, providers/quotes, settings, support,
 offline/cache behavior, the five-tab provider portal, quote-scoped
 conversations, signed image uploads, and rotating refresh sessions.
 
@@ -12,6 +12,8 @@ conversations, signed image uploads, and rotating refresh sessions.
 
 - Arabic-first and RTL-safe.
 - Wedding Financial OS first.
+- Money uses five user-facing terms only: `الميزانية`, `التصنيف`, `التكلفة`,
+  `الدفعة`, and `موعد الدفع`.
 - Provider flows use a dedicated five-tab portal: Home, Requests, Services,
   Messages, and Profile.
 - The approved messaging design starts only from a real quote request and
@@ -50,7 +52,7 @@ conversations, signed image uploads, and rotating refresh sessions.
 - It owns plan identity and date, structured wedding location, participants and
   permissions, saved preferences, data-completeness status, and supported plan
   administration.
-- Tasks, money, guests, providers, quotes, payables, countdowns, and daily progress
+- Tasks, money, guests, providers, quotes, costs, countdowns, and daily progress
   remain in the dashboard or their dedicated tabs.
 - Copy, export, and delete actions stay hidden until their backend contracts are
   implemented. The current supported destructive action is archive.
@@ -58,14 +60,26 @@ conversations, signed image uploads, and rotating refresh sessions.
 ## Implementation Rules
 
 - Do not show fake counts, fake participants, or unsupported live actions.
-- Do not expose private financial details to shared members without permission.
+- Do not expose private financial details to shared members without
+  `canViewMoney`.
 - Resolve the current plan's effective permissions before loading finance
-  resources or showing money write actions. Direct write routes must fail
-  closed for view-only members.
+  resources or showing money write actions. Every write action and direct write
+  route requires `canManageMoney` and fails closed otherwise.
 - Render every money amount with the selected plan currency; `ر.ي` is not a
   valid fallback for a plan whose currency is `SAR`, `USD`, or another code.
 - Clear plan-scoped finance state before loading a different plan so a failed
   request cannot leave the previous plan's private data visible.
+- The Money root presents one budget card, categories, costs, upcoming payment
+  dates, and recent payments. Its FAB contains only add cost, record payment,
+  and add category. Budget editing belongs to the budget card.
+- A cost always requires a category. It may optionally use either an Aarast
+  provider or an external party; payment entry never asks for category or party
+  again because those values are inherited from the selected cost.
+- Accepted quote data may prefill the cost form only after explicit user
+  confirmation. Quote acceptance alone never creates money data.
+- A payment schedule requires a date and remains a reminder until paid.
+- A missing general budget must render as unset, not zero and not the sum of
+  category allocations.
 - Keep route guards honest for guest, account, provider, permission, and
   feature-disabled states.
 - Do not introduce payment, deposit, confirmed booking, AI, FinTech, or open

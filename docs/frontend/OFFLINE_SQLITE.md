@@ -53,10 +53,9 @@ their separate secure token vault.
 - `cached_plan_members`: shared-member/member permission cache.
 - `cached_tasks`: task/timeline task cache with dirty and deleted flags.
 - `cached_budget_categories`: local budget category cache.
-- `cached_budget_items`: expense cache.
-- `cached_financial_commitments`: category-first agreed-cost cache.
-- `cached_financial_payment_records`: actual money-out record cache.
-- `cached_financial_installments`: commitment installment cache.
+- `cached_wedding_costs`: category-first cost cache.
+- `cached_cost_payments`: append-only actual money-out ledger cache.
+- `cached_payment_schedules`: dated payment-reminder cache.
 - `cached_provider_categories`: provider category reference cache.
 - `cached_cities`: city reference cache.
 - `cached_providers`: marketplace provider cache.
@@ -69,10 +68,16 @@ their separate secure token vault.
 
 Feature API classes remain the boundary used by UI providers. On successful remote reads, API classes update the local cache. On network failure, they return cached rows when available and mark sync state as offline. If no cache exists, the existing Arabic error flow is preserved.
 
-Financial commitments, payment records, and financial installments use their
-own cache tables. They remain separate from the expense cache because expenses
-mean actual money paid while commitments represent agreed
-costs and remaining obligations.
+Costs, payments, and payment schedules use separate cache tables but one domain
+contract. A payment and schedule always reference one cached cost; category and
+provider/party context are inherited from that cost. A schedule is never added
+to paid or confirmed-cost totals until a real payment exists.
+
+The prelaunch database upgrade intentionally drops the removed expense,
+financial-commitment, financial-payment, and financial-installment caches and
+their queue entity types. There are no production users whose mobile finance
+data requires compatibility. Tests must cover both a fresh database and an
+upgrade from the prior development schema so stale rows cannot reappear.
 
 ## Offline Write Queue
 
@@ -80,10 +85,9 @@ Network-failed safe writes create a local dirty row and add a `sync_queue` item:
 
 - create/update wedding plan
 - create budget category
-- create expense
-- create/update/delete financial commitment
-- create financial payment record
-- create financial installment
+- create/update/delete or cancel wedding cost
+- create cost payment or append a reversal
+- create/update/delete or pay a payment schedule
 - create/update/delete task
 - favorite/unfavorite provider
 - create quote request
@@ -92,7 +96,13 @@ Login, registration, OTP, password flows, provider dashboard/admin actions, and 
 
 ## Sync Behavior
 
-The app attempts sync after auth restore/login/register, when returning to foreground, and when the user taps `مزامنة الآن` in More. Queue items run in creation order. Failures keep payloads, increment retry count, and preserve `lastError`. Successful items are removed from the queue and clear their pending badge.
+The app attempts sync after auth restore/login/register, when returning to
+foreground, and when the user taps `مزامنة الآن` in More. Queue items run in
+dependency-safe creation order. A cost and its initial payment must replay as
+one idempotent logical operation; category deletion must be rejected locally
+while costs still reference it. Failures keep payloads, increment retry count,
+and preserve `lastError`. Successful items are removed from the queue and clear
+their pending badge.
 
 ## UI Indicators
 
@@ -104,7 +114,8 @@ The main shell shows a compact banner for:
 - pending change count
 - last sync time
 
-Pending plan/task/expense cards show `بانتظار المزامنة`. Offline saves show: `تم الحفظ على الجهاز، وسيتم المزامنة عند عودة الاتصال`.
+Pending plan/task/cost cards show `بانتظار المزامنة`. Offline saves show:
+`تم الحفظ على الجهاز، وسيتم المزامنة عند عودة الاتصال`.
 
 ## Development Reset
 
@@ -119,5 +130,7 @@ web/test fallback, clear browser site data or reset `shared_preferences`.
 - A mobile keystore/SQLCipher failure disables startup rather than silently
   writing financial or contact data without encryption.
 - Conflict handling is MVP-safe and simple: local dirty data is preserved until sync succeeds.
+- A missing general budget remains null offline; category allocations never
+  become its fallback value.
 - Shared-member permission writes and provider dashboard writes are not queued.
 - Images loaded from remote URLs may not be available offline even when provider text data is cached.

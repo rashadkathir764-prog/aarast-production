@@ -1,5 +1,5 @@
 # PLAN: Aarast Release — من الفحص العميق إلى الإطلاق العام
-**Slug:** aarast-release-plan | **Created:** 2026-07-04 | **Updated:** 2026-07-06 | **Status:** active
+**Slug:** aarast-release-plan | **Created:** 2026-07-04 | **Updated:** 2026-07-14 | **Status:** active
 
 ## Goal
 إيصال Aarast من حالة ما بعد الفحص العميق (تقييم 6.5/10) إلى إطلاق عام كامل على Google Play خلال ~6-7 أسابيع عبر 9 مراحل مرتبة بحرجية الثقة.
@@ -32,17 +32,17 @@
 - [x] م2: ربط SmartWelcome بـcompleteOnboarding للمستخدم المسجّل + كسر حلقة MainShell:44-48
 - [x] م2: تدفق ترحيل الضيف→الحساب بعد الدخول (شاشة ترحيل + لا حذف قبل تأكيد الخادم)
 - [x] م2: حذف كود onboarding الميت (active_plan_onboarding SAR، مسار 8 خطوات، rebuild tabs، readiness models)
-- [x] م3: آلة حالة الأقساط transactional (pay/update/remove + Prisma.Decimal بدل Number) installments.service.ts:105-187
-- [x] م3: validators مشتركة بحدود مبالغ (12 خانة/2 عشرية) + فهارس مالية migration (schema.prisma:261-316)
+- [ ] م3: إغلاق إعادة بناء المال قبل الإطلاق: ميزانية عامة + تصنيفات + WeddingCost + CostPayment + PaymentSchedule فقط، مع حذف العقود والمسارات والكاشات السابقة
+- [ ] م3: إثبات ledger عكسي append-only، دفع موعد ذري، منع overpay، ميزانية null صادقة، وصلاحيات canViewMoney/canManageMoney عبر اختبارات fresh/upgrade/concurrency
 - [x] م4: idempotency clientRequestId في syncQueue + جدول IdempotencyKey باكند + إصلاح سباق syncPendingChanges:79-92
 - [x] م4: إعادة ربط FK المحلية في payloads الطابور + سقف محاولات/blocked + توحيد تغطية update/deleteBudgetCategory
 - [x] م4: دمج Refresh Token كاملًا في Prisma وAuthController والموبايل، مع إعادة محاولة واحدة على 401 وإبطال الجلسة عند فشل التحديث
 - [x] م5: trust proxy + قفل حساب + exception filter (P2002→409) + Logger + config validation + PrismaService.$connect
 - [x] م5: تقييد users/lookup + cron OVERDUE + تجريد OtpChannel (pagination انتقل لبند مستقل)
-- [ ] م5+: pagination للقوائم الكبيرة (مصاريف/ديون/ضيوف/مهام/عروض) + تحديث الموبايل معها
+- [ ] م5+: pagination للقوائم الكبيرة (تكاليف/دفعات/ضيوف/مهام/عروض) + تحديث الموبايل معها
 - [ ] م6: FCM — موديل DeviceToken + fan-out + firebase_messaging + توجيه النقر ⚠️ يتطلب مشروع Firebase من المالك
 - [x] م6: Deep links للدعوات /invites/:token (Android VIEW + https App Links + iOS scheme؛ assetlinks.json في م9)
-- [ ] م7: تلميع UX — حالات فارغة أولى، قناة دعم حقيقية، توحيد مصطلحات، أعلام ميتة، goldens، تقسيم أكبر ملفين
+- [ ] م7: تلميع UX — حالات فارغة أولى، قناة دعم حقيقية، مصطلحات المال الخمسة فقط، actual-screen goldens، أعلام ميتة، وتقسيم أكبر ملفين
 - [ ] م8: واتساب OTP عبر OtpChannel + endpoints استعادة كلمة المرور + شاشات نسيت كلمة المرور
 - [ ] م9: e2e باكند (supertest) + تثبيت النشر (NODE_ENV/CORS/502 admin) + إصدار Android موقّع + QA نهائي
 

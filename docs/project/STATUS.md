@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-12
+Snapshot date: 2026-07-14
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -24,9 +24,10 @@ and runtime checks override historical completion reports.
   draining, nightly pg_dump sidecar in the Dokploy compose, and a
   deployable Prometheus/Grafana/Alertmanager stack under
   `deploy/monitoring/`.
-- Financial integrity: database CHECK constraints (non-negative amounts,
-  paid ≤ total, positive payment records) enforce money invariants below
-  the application layer.
+- Financial integrity: the active prelaunch contract uses `WeddingCost`, an
+  append-only `CostPayment` ledger, and `PaymentSchedule`. Database constraints
+  and row-locked mutations must enforce positive amounts, paid not exceeding
+  cost, one reversal per payment, and one payment transition per schedule.
 - Quality gates in CI: backend unit + e2e smoke, admin-web Vitest,
   mobile analyze + tests, gitleaks secret scan, and `npm audit` gate.
 - Mobile: Flutter, Provider, go_router, dio, SQLCipher-backed SQLite, and OS
@@ -41,9 +42,9 @@ and runtime checks override historical completion reports.
 
 - Verified-phone registration, atomic OTP consumption, password/OTP login,
   profile, and settings.
-- Wedding plans, onboarding, dashboard summaries, money, financial
-  commitments, payment records, tasks, guests, sharing, permissions,
-  notifications, and offline/cache support.
+- Wedding plans, onboarding, dashboard summaries, the canonical money domain
+  (general budget, categories, costs, payments, and payment schedules), tasks,
+  guests, sharing, permissions, notifications, and offline/cache support.
 - Provider catalog, favorites, reviews, quote requests/offers, provider
   dashboard operations, and admin catalog/provider operations.
 - Quote-scoped conversations, authenticated Socket.IO delivery, unread/read,
@@ -59,8 +60,8 @@ and runtime checks override historical completion reports.
   custom client skips the verify call.
 - Privacy-safe review identities, route-template-only telemetry, log-safe
   request ids, and server-side redaction of financial admin notifications.
-- Append-only financial payment/reversal entries, unique installment-payment
-  links, and row-locked installment payment transitions.
+- Append-only cost payment/reversal entries, unique schedule-payment links,
+  and row-locked payment-schedule transitions.
 - Rotating refresh sessions with single-session logout, logout-all, secure
   mobile storage, and one guarded retry after `401`.
 - Password brute-force protection is durable across restarts and backend
@@ -80,8 +81,9 @@ and runtime checks override historical completion reports.
   dedicated OS secure-storage namespace in production wiring. Existing
   SharedPreferences values migrate once and are deleted; non-sensitive plan
   selectors may remain in preferences.
-- A guest may explicitly defer the budget and still open the local dashboard;
-  previously saved no-budget local plans are migrated on read.
+- A guest may explicitly defer the budget and still open the local dashboard.
+  A missing general budget remains unset; category allocations never become a
+  substitute budget.
 - Mobile Release fails closed without a public HTTPS API origin and real
   Android signing configuration. iOS has the equivalent Release build phase,
   contact permission copy, and Associated Domains entitlement.
@@ -106,8 +108,8 @@ and runtime checks override historical completion reports.
   ID when it receives the recovery event. Queue metrics and alerts are wired.
 - User notification reads are side-effect free and paginated end to end. Task
   writes create immediate due reminders, while an hourly PostgreSQL-locked
-  repair scan idempotently creates task/installment reminders and preserves
-  financial visibility permissions for shared members.
+  repair scan idempotently creates task/payment-schedule reminders and
+  preserves `canViewMoney` visibility for shared members.
 - Authenticated mutations now bind each idempotency key to a SHA-256 request
   fingerprint without storing raw tokens or query values. Identical retries
   execute once and replay, mismatched reuse returns `409`, response retention is
@@ -123,7 +125,22 @@ and runtime checks override historical completion reports.
   cookies, and every admin JWT is bound to a live revocable server session.
 - Mobile and admin surfaces listed by the generated route references.
 
-## Approved Work In Flight
+## Completed Prelaunch Money Reset
+
+The prelaunch money rewrite was an approved destructive cleanup because there
+are no production users. Live source, routes, Prisma models, encrypted mobile
+caches, queue entity types, operational tools, tests, and user copy now use one
+contract: `WeddingCost`, `CostPayment`, and `PaymentSchedule`. The removed
+`Expense`, `FinancialCommitment`, `FinancialPaymentRecord`, and
+`FinancialInstallment` systems are not compatibility APIs and must not be
+restored by later work. Historical migrations may describe removed structures;
+they are not live product contracts.
+
+The local code gate completed on 2026-07-14: backend typecheck/build and 235
+tests passed, Flutter analysis and all 541 tests passed, generated docs were in
+sync, and old live routes/models/operational scripts were guarded against
+returning. Production deployment verification remains part of the deferred
+release phase and is not implied by these local results.
 
 The five-tab provider portal, paginated conversation/notification inboxes,
 verified media integration, refresh lifecycle, durable login lockout, and
@@ -213,8 +230,9 @@ depends on the external Meta-approved channel.
   validation are still required; they are not covered by the local code gate.
 - Android App Links and iOS Universal Links require deployed association files
   populated with real production identities and physical-device tests.
-- Financial data remains private by default, including financial commitments,
-  payment records, expenses, and financial installments.
+- Financial data remains private by default, including the general budget,
+  category allocations, costs, payments, and payment schedules. Reads require
+  `canViewMoney`; writes require `canManageMoney`.
 - Existing unrelated working-tree changes must be preserved.
 
 ## Documentation State

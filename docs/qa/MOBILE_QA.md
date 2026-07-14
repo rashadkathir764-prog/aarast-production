@@ -1,6 +1,6 @@
 # Aarast Mobile QA Plan
 
-Date: 2026-07-10
+Date: 2026-07-14
 Stage: Active mobile QA contract
 Status: Current; local automation does not replace device or environment smoke
 
@@ -59,7 +59,7 @@ Current test areas include:
 - Offline sync service tests.
 - JSON local database tests.
 - Offline local mapper tests.
-- Financial commitment and installment data tests.
+- WeddingCost, CostPayment, PaymentSchedule, and canonical money-summary tests.
 - Yemeni phone normalizer tests.
 
 New implementation work should extend these areas instead of replacing them blindly.
@@ -160,8 +160,9 @@ Repeated numbers must match across screens:
 - Total budget.
 - Spent amount.
 - Remaining amount.
-- Commitments total.
-- Due installments.
+- Confirmed cost total.
+- Paid and outstanding totals.
+- Due payment schedules.
 - Open tasks.
 - Overdue tasks.
 - Guests count.
@@ -171,9 +172,10 @@ Repeated numbers must match across screens:
 Test cases:
 
 - Create plan with date.
-- Add expense.
-- Add financial commitment.
-- Add financial installment.
+- Set or explicitly leave the general budget unset.
+- Add a category allocation.
+- Add a cost and optional initial payment.
+- Add and pay a payment schedule.
 - Add task due today.
 - Add overdue task.
 - Add guest.
@@ -190,9 +192,9 @@ Fail if:
 
 Sensitive areas:
 
-- Expenses.
-- Financial commitments and payment records.
-- Installments.
+- General budget and category allocations.
+- Costs and payment records.
+- Payment schedules.
 - Attachments.
 - Guest contacts.
 - Address/location.
@@ -201,18 +203,17 @@ Sensitive areas:
 
 Required shared-member cases:
 
-- Viewer with no finance permission.
+- Viewer with no `canViewMoney` permission.
 - Member with task permission only.
-- Member with expense read permission.
-- Member with financial-record read permission.
+- Member with `canViewMoney` but not `canManageMoney`.
 - Owner.
-- Financial-record-only member can read commitments/payment history without budget or
-  expense requests failing the whole screen.
+- A money viewer can read the complete permitted money surface through one
+  permission without split budget/payment requests failing the screen.
 - View-only members never see add, edit, delete, reverse-payment, or money FAB
   actions, including through direct write routes.
 - Switching to a plan whose finance load fails leaves no rows from the previous
   plan.
-- Money heroes, category cards, commitments, payments, and installments render
+- Money heroes, category cards, costs, payments, and payment schedules render
   `SAR` as `ر.س` and never as `ر.ي`.
 
 Fail if:
@@ -235,7 +236,7 @@ Manual smoke:
 
 - Open plan online.
 - Turn network off.
-- Add expense.
+- Add a cost.
 - Add task.
 - Add guest if supported offline.
 - Confirm pending-sync indicator.
@@ -259,10 +260,11 @@ Visible stable flows:
 - Open provider detail.
 - Request quote only when authenticated and feature enabled.
 - Provider dashboard only for provider path.
+- Accepting a quote may offer a prefilled cost draft only after explicit user
+  confirmation; cancelling that confirmation creates no money record.
 
 Deferred or flagged flows:
 
-- Quote acceptance.
 - Provider-in-plan conversion.
 - Payments/deposits.
 - Confirmed bookings.
@@ -302,6 +304,10 @@ Before visual polish is accepted:
 - Loading, empty, error, locked, offline, and pending states are visible.
 - Text scale does not break core screens.
 - Low-end device scrolling stays usable.
+- The Money root and every money sub-screen pass at 320px RTL and 1.3 text
+  scale with real loading, empty, error, locked, offline, and pending states.
+- User-facing money copy is limited to `الميزانية`, `التصنيف`, `التكلفة`,
+  `الدفعة`, and `موعد الدفع`; removed finance vocabulary does not reappear.
 
 This phase does not authorize visual polish before product/architecture readiness.
 

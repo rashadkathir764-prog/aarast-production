@@ -31,23 +31,26 @@
 - `/shared/wedding-plans`
 - `/support`
 - `/wedding-plans`
-- `/wedding-plans/:id/budget-categories/:categoryId`
-- `/wedding-plans/:id/budget-categories/create`
-- `/wedding-plans/:id/budget/setup`
 - `/wedding-plans/:id/dashboard`
-- `/wedding-plans/:id/expenses`
-- `/wedding-plans/:id/expenses/:expenseId/edit`
-- `/wedding-plans/:id/expenses/create`
-- `/wedding-plans/:id/finance`
-- `/wedding-plans/:id/finance/commitments/:commitmentId`
-- `/wedding-plans/:id/finance/commitments/:commitmentId/edit`
-- `/wedding-plans/:id/finance/payables`
-- `/wedding-plans/:id/finance/payments/:paymentRecordId`
-- `/wedding-plans/:id/financial-commitments/create`
 - `/wedding-plans/:id/guests`
 - `/wedding-plans/:id/guests/add`
+- `/wedding-plans/:id/money`
+- `/wedding-plans/:id/money/budget`
+- `/wedding-plans/:id/money/categories/:categoryId`
+- `/wedding-plans/:id/money/categories/:categoryId/edit`
+- `/wedding-plans/:id/money/categories/create`
+- `/wedding-plans/:id/money/costs`
+- `/wedding-plans/:id/money/costs/:costId`
+- `/wedding-plans/:id/money/costs/:costId/edit`
+- `/wedding-plans/:id/money/costs/:costId/payments/create`
+- `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId`
+- `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/edit`
+- `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay`
+- `/wedding-plans/:id/money/costs/:costId/schedules/create`
+- `/wedding-plans/:id/money/costs/create`
+- `/wedding-plans/:id/money/payments/:paymentId`
+- `/wedding-plans/:id/money/schedules`
 - `/wedding-plans/:id/notifications`
-- `/wedding-plans/:id/payments/record`
 - `/wedding-plans/:id/plan-center`
 - `/wedding-plans/:id/providers`
 - `/wedding-plans/:id/sharing`
@@ -59,4 +62,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 58 unique routes
+Total: 61 unique routes

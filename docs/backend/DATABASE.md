@@ -2,7 +2,7 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-11. Route-level behavior belongs in
+Current documentation snapshot: 2026-07-14. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
@@ -26,21 +26,20 @@ Current documentation snapshot: 2026-07-11. Route-level behavior belongs in
 | WeddingPlan | The main planning record for a wedding. The Prisma model and owner-scoped API are implemented with `ownerUserId`, `title`, `city`, `weddingDate`, `estimatedBudget`, `currency`, `status`, `createdAt`, and `updatedAt`. |
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. |
 | OutboxEvent | Durable PostgreSQL queue for notification-created and conversation-message-available events. Domain rows and events commit together; workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. |
-| BudgetCategory | Implemented for owner-scoped WeddingPlan budget groups, with optional target amounts and links to expenses, financial commitments, payment records, and financial installments. |
-| FinancialCommitment | Implemented as the phase-2 money backbone for agreed costs. Every commitment belongs to a WeddingPlan and BudgetCategory and may link to a provider, accepted quote, or plan-provider link. Remaining amount is derived from total amount minus paid amount. |
-| FinancialPaymentRecord | Implemented as an append-only planning ledger under a FinancialCommitment. `PAYMENT` and `REVERSAL` are separate immutable rows; the original payment is retained. A one-to-one `financialInstallmentId` and unique `reversalOfId` prevent duplicate installment payments and duplicate reversals. This is manual planning data, not payment processing. |
-| FinancialInstallment | Implemented for scheduled commitment payments. A financial installment belongs to a FinancialCommitment and BudgetCategory; paying it locks the installment row, creates one uniquely linked payment record, and updates the commitment balance. Reversing that payment reopens the installment without deleting history. |
-| Expense | Implemented for owner-scoped WeddingPlan actual money-out records with amount, paid status, optional date, optional note, and required BudgetCategory link for new records. New money flows should use FinancialCommitment + FinancialPaymentRecord for agreed costs, remaining balances, and payments. |
+| BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`, and their total may not exceed that general budget when it is set. |
+| WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. |
+| CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
+| PaymentSchedule | A dated reminder under one WeddingCost. `dueDate` is required. Paying a schedule creates one linked CostPayment under a row lock; reversing that payment reopens the schedule. A pending schedule never changes cost, paid, outstanding, or budget totals. |
 | Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
-| SharedMember | Implemented for permission-based WeddingPlan collaboration. A shared member links a User to a WeddingPlan with explicit permissions for budget, expenses, financial records, tasks, guests, providers, and member management. |
+| SharedMember | Implemented for permission-based WeddingPlan collaboration. `canViewMoney` controls all money reads and `canManageMoney` controls money writes; task, guest, provider, and member-management permissions remain separate. |
 | PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. |
 | Guest | Implemented for WeddingPlan guest management with name, optional phone, side, invitation status, seats count, optional notes, and timestamps. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
 | QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. |
 | QuoteOffer | Implemented for provider responses to quote requests. Accepting/rejecting an offer is a planning decision only, not a paid booking. |
 | PlanProviderLink | Implemented to connect an accepted provider/offer to a WeddingPlan as planning context. |
-| Attachment | Represents an optional supporting file or image for expenses, commitments, installments, quote requests, or provider agreements. This is planning-level only and does not require implementation in the Docs Foundation phase. |
+| Attachment | Represents an optional supporting file or image for costs, payment records, payment schedules, quote requests, or provider agreements. This is planning-level only and does not imply payment processing. |
 
 ## Conversation And Session Entities
 
@@ -63,23 +62,23 @@ Current documentation snapshot: 2026-07-11. Route-level behavior belongs in
 - WeddingPlan implementation depends on database persistence and an authenticated user context.
 - Persistence/Auth readiness work has already moved past the original docs-only foundation. Future schema changes must still be explicit, phased, migrated, and smoke-tested.
 - WeddingPlan remains the first Wedding Financial OS domain module after persistence and ownership prerequisites are ready.
-- WeddingPlan now has implemented BudgetCategory, FinancialCommitment,
-  FinancialPaymentRecord, FinancialInstallment, Expense, WeddingTask, and
-  SharedMember relations.
+- WeddingPlan's canonical financial relations are BudgetCategory, WeddingCost,
+  CostPayment, and PaymentSchedule. Removed prelaunch finance models are not
+  compatibility surfaces.
 - Every WeddingPlan must have clear ownership.
 - WeddingPlan ownership must not rely on a mock-auth shortcut; ownership must come from authenticated user context.
 - Owner-scoped records should use an explicit `ownerUserId` pattern and must be checked against the authenticated user before private access.
 - Shared access must be permission-based, not full access by default.
-- Financial data such as financial commitments, payment records, expenses,
-  commitments, payment records, and installments must be private by default.
-- A standalone paid `Expense` contributes once to confirmed financial exposure.
-  An active `FinancialCommitment` contributes its full agreed total once;
-  payment records only change its paid/outstanding split and never add the
-  commitment cost a second time.
+- Financial data such as budgets, allocations, costs, payments, and payment
+  schedules is private by default.
+- Confirmed cost is the sum of non-cancelled WeddingCost totals. Paid is the net
+  CostPayment ledger after reversals. Outstanding is confirmed cost minus paid.
+  A PaymentSchedule contributes nothing until it creates a real payment.
+- A null `WeddingPlan.estimatedBudget` remains unset. Category allocations are
+  never summed as a fallback general budget.
 - SharedMember permissions are implemented as a backend slice; financial
-  endpoints remain protected and must not expose financial commitments, payment
-  records, expenses, commitments, or installments to shared members unless permissions
-  explicitly allow it in an approved endpoint flow.
+  endpoints must not expose money data without `canViewMoney`, and every
+  mutation requires `canManageMoney`.
 - Marketplace entities support planning and quote/lead context; they must not replace the financial planning core.
 - No payment processing, deposit, confirmed booking, loan, credit, or financing
   data should be added until explicitly approved in a later phase.
@@ -115,7 +114,7 @@ The backend now includes the approved provider-reference and quote-lead foundati
   and logout invalidate access immediately.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
 - `NotificationPreference` for safe default account settings.
-- `Notification` for persisted task, installment, sharing, and quote alerts with deduplication.
+- `Notification` for persisted task, payment-schedule, sharing, and quote alerts with deduplication.
 - `IdempotencyKey` for client-generated request idempotency on mutating
   endpoints (offline-queue replays return the original response instead of
   duplicating financial records). Each key is bound to a SHA-256 fingerprint of
@@ -134,13 +133,17 @@ The backend now includes the approved provider-reference and quote-lead foundati
   are preserved without forced rename, reactivation, or deletion.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, `PlanProviderLink`, and `BookingLead` for saved providers, reviews, quote leads, accepted planning provider links, and non-paid lead context.
-- `FinancialCommitment`, `FinancialPaymentRecord`, and
-  `FinancialInstallment` for category-first agreed costs, actual money-out
-  records, and scheduled commitment payments.
+- `WeddingCost`, `CostPayment`, and `PaymentSchedule` for category-first costs,
+  actual money-out records, and dated payment reminders.
 - `WeddingTaskChecklistItem` plus task assignment support.
 - `PlanInvite` for invite-based collaboration.
 
-These models do not add payment processing, deposits, confirmed reservations, loans, credit, or financing behavior.
+These models do not add payment processing, deposits, confirmed reservations,
+loans, credit, or financing behavior.
+
+The generated model inventory below is refreshed from Prisma by
+`scripts/docs-sync.mjs`. Do not interpret stale generated rows from an in-flight
+rewrite as permission to restore a removed live model.
 
 <!-- DOCS-SYNC:START -->
 <!-- AUTO-GENERATED by scripts/docs-sync.mjs. Do not edit by hand. -->
@@ -155,16 +158,15 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `RefreshToken` | 10 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
-| `WeddingPlan` | 32 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
-| `BudgetCategory` | 11 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `Expense` | 12 | `id`, `weddingPlanId`, `budgetCategoryId`, `createdAt`, `updatedAt` |
-| `FinancialCommitment` | 27 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `planProviderLinkId`, `quoteRequestId`, `quoteOfferId`, `createdAt` |
-| `FinancialPaymentRecord` | 20 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `financialInstallmentId`, `reversalOfId`, `createdAt` |
-| `FinancialInstallment` | 15 | `id`, `weddingPlanId`, `financialCommitmentId`, `budgetCategoryId`, `paidAt`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 29 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `WeddingCost` | 22 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
+| `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
-| `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
-| `PlanInvite` | 29 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
+| `SharedMember` | 16 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
+| `PlanInvite` | 27 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 10 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
@@ -179,9 +181,9 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
-| `QuoteRequest` | 31 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteRequest` | 30 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
 | `QuoteOffer` | 15 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
-| `PlanProviderLink` | 13 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `BookingLead` | 15 | `id`, `userId`, `weddingPlanId`, `providerId`, `quoteRequestId`, `createdAt`, `updatedAt` |
 | `Conversation` | 10 | `id`, `quoteRequestId`, `lastMessageAt`, `closedAt`, `createdAt`, `updatedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `lastReadAt`, `mutedAt`, `blockedAt`, `createdAt`, `updatedAt` |
@@ -189,5 +191,5 @@ These models do not add payment processing, deposits, confirmed reservations, lo
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 41
+Total models: 40
 <!-- DOCS-SYNC:END -->

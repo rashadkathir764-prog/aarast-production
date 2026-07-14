@@ -5,7 +5,7 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Treat Flutter SQLite as a mobile cache/sync layer only. | Accepted | PostgreSQL remains the backend source of truth; SQLite supports offline UX and selected queued writes without storing credentials or replacing server data. |
-| Keep provider marketplace work as planning/reference and quote-lead flows. | Accepted | Provider listings, favorites, reviews, quote requests, provider dashboard, and admin approval exist, but paid booking, deposits, payment status, and financing remain excluded. |
+| Keep provider marketplace work as planning/reference and quote-lead flows. | Accepted | Provider listings, favorites, reviews, quote requests, provider dashboard, and admin approval exist, but paid booking, deposits, provider settlement/payment-processing status, and financing remain excluded. The user's manual CostPayment ledger is part of planning, not payment processing. |
 | Split production domains only after Compose/Dokploy/NPM are aligned. | Accepted | Current Dokploy Compose has backend on `8093` and admin-web on `8094`. A separate Flutter web service on `8095` is not configured in the committed production Compose file. |
 | Meta WhatsApp OTP has a production channel, while external activation remains pending. | Accepted and implemented in code | The backend sends approved authentication templates through Meta Cloud API, never echoes production codes, and fails boot on incomplete channel configuration. Live activation still requires Meta business/template approval and real secrets outside Git. |
 
@@ -14,8 +14,10 @@
 | Decision | Status | Rationale |
 | --- | --- | --- |
 | Allow conversations only when attached to a real quote request. | Accepted | Messaging is limited to the requester and the provider account on that quote. Open or unsolicited messaging remains excluded. |
-| Make `FinancialCommitment` the only obligation backbone of the money tab. | Accepted and implemented | Every agreed amount must belong to a budget category. Provider/service costs, manual payables, payment records, and financial installments attach to that commitment model. The former `Debt`/`Installment` models, routes, bridge fields, Flutter feature, and caches were removed before launch because there are no production users. |
-| Calculate confirmed financial exposure without dropping or duplicating money-out records. | Accepted and implemented | Confirmed cost is the sum of standalone paid `Expense` rows and active commitment totals. Payments under a commitment update its paid balance but do not add its cost again. Remaining budget and category risk use this same exposure definition. |
+| Use one prelaunch money domain: general budget, categories, `WeddingCost`, `CostPayment`, and `PaymentSchedule`. | Accepted and implemented | `Expense`, `FinancialCommitment`, `FinancialPaymentRecord`, `FinancialInstallment`, their routes, caches, operational seed/load tools, and user-facing concepts were removed rather than kept as compatibility paths because there are no production users. Every cost belongs to one category; payments and schedules belong to one cost. |
+| Calculate every money surface from the canonical cost ledger. | Accepted | Confirmed cost is the sum of non-cancelled cost totals. Paid is the net append-only payment ledger after reversals. Outstanding is confirmed cost minus paid, and remaining budget is the general budget minus confirmed cost. A schedule is only a reminder and contributes nothing until paid. |
+| Keep category allocation separate from the general budget. | Accepted | A null general budget remains unset. Category allocations may total no more than the general budget when it exists, but their sum never becomes a fallback general budget. |
+| Make finance sharing understandable. | Accepted | `canViewMoney` controls all private money reads and `canManageMoney` controls all money writes. Hidden values are absent, not returned as misleading zeros. |
 | Use short-lived access tokens with rotating refresh tokens. | Accepted and implemented | Access JWTs default to 15 minutes. Opaque 30-day refresh tokens are hashed at rest, rotated transactionally, and revocable per session or per user. |
 | Keep one active documentation source per area. | Accepted | `docs/README.md` owns the source map. Historical plans and reports live as `.md.txt` under `docs/archive/` and must not compete with current docs. |
 
@@ -27,7 +29,7 @@
 | Persist invite-token fingerprints and enforce delegated permission ceilings. | Accepted and implemented | Raw external tokens exist only in the create response, invite consumption is atomic, and a delegated inviter cannot grant effective authority above their own. Email-only invites remain disabled until verified-email identity exists. |
 | Scope Flutter state by account and selected plan. | Accepted and implemented | Account identity changes dispose the complete data-provider subtree; plan changes replace plan-sensitive providers without rebuilding navigation. Late responses from disposed providers cannot repopulate another session. |
 | Bind offline replay to its originating session. | Accepted and implemented | Replay captures the cache owner, session generation, and access token. Logout or account change stops the old loop, prevents the new token from authorizing an old write, and restarts only the new account queue. |
-| Keep guest budget optional through dashboard entry. | Accepted and implemented | Saving an empty quick-setup budget records an explicit skip; completion accepts a budget or that skip, and legacy saved no-budget plans are upgraded while loading. |
+| Keep guest budget optional through dashboard entry. | Accepted and implemented | Saving an empty quick-setup budget records an explicit skip; completion accepts a budget or that skip. A skipped or null budget remains unset and category allocations must not silently replace it. |
 | Fail mobile Release closed. | Accepted and implemented in source | Product builds require an explicit public HTTPS API origin, reject development login bypass, and Android refuses missing/placeholder/nonexistent signing configuration instead of falling back to debug keys. iOS runs the equivalent API gate before its Flutter build. |
 | Keep native launch identity consistent with the live design system. | Accepted and implemented | Android adaptive/legacy icons and splash plus iOS AppIcon/LaunchImage use the same burgundy, gold, ivory, and celebration-spark mark as the in-app brand. Generated sizes are tested, while final store and device review remains a release gate. |
 | Separate liveness from readiness. | Accepted and implemented | `/live` and `/health` prove only that the process responds; `/ready` verifies PostgreSQL and required Redis/media dependencies with bounded timeouts and redacted failures. Production containers use readiness before receiving dependent traffic. |
@@ -51,8 +53,8 @@
 | Use Git worktree workflow. | Accepted | Worktrees support isolated branches and safer phase-based development, but actual worktree usage must wait until the correct Git repository root is confirmed. Do not run git init, create branches, or create worktrees during Docs Foundation. |
 | Run smoke tests before expanding core features. | Accepted | Smoke checks help confirm foundations are stable before more work is added. |
 | MVP starts with Wedding Financial OS, not marketplace-first. | Accepted | The primary user problem is planning, money, obligations, and coordination. |
-| Do not implement confirmed bookings, deposits, payment status, payment processing, loans, credit, financing flows, or FinTech features in MVP. | Accepted | These flows require later validation, privacy review, legal review, operational readiness, and explicit approval before implementation. |
-| Financial data is private by default. | Accepted | Financial commitments, payment records, expenses, installments, attachments, and private tasks must not be visible to shared members unless permissions explicitly allow it. |
+| Do not implement confirmed bookings, deposits, provider settlement/payment-processing status, payment processing, loans, credit, financing flows, or FinTech features in MVP. | Accepted | These flows require later validation, privacy review, legal review, operational readiness, and explicit approval before implementation. Manual CostPayment entries remain allowed because they record the user's own planning ledger and do not move money. |
+| Financial data is private by default. | Accepted | Budgets, categories, costs, payments, payment schedules, attachments, and private tasks must not be visible unless `canViewMoney` allows it; mutations require `canManageMoney`. |
 | Early provider/service features are planning references and quote/lead flows only. | Accepted | The MVP must not become marketplace-first, paid booking, confirmed reservation, or deposit-driven. |
 | Phase 3 readiness order is Prisma + PostgreSQL, User, Auth, ownership context, then WeddingPlan. | Accepted | WeddingPlan ownership must be backed by persistence and real authenticated user context before domain implementation begins. |
 | Do not use mock-auth shortcuts for WeddingPlan ownership. | Accepted | Ownership and privacy behavior must not be validated against fake or temporary identity assumptions. |
@@ -71,7 +73,7 @@
 - Final admin dashboard implementation details.
 - Final database schema and migration sequence.
 - AI planning approach.
-- Payment, installment, savings, or financing partnerships.
+- Payment-processing, savings, or financing partnerships.
 - Confirming the actual Git repository root.
 - Permission model details for shared members.
 - Attachment storage implementation.

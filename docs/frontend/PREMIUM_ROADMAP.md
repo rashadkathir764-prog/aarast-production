@@ -1,133 +1,125 @@
-# PLAN: Aarast Mobile — التحويل الفخم لكل الشاشات (Premium Screens Roadmap)
+# Aarast Mobile Premium Roadmap
 
-**Slug:** mobile-premium-screens | **Branch:** `phase/mobile-premium-screens-v1` | **Owner:** John
-**Created:** 2026-07-05 | **Status:** active | **Source of truth:** هذا الملف (mxLore ملغاة — لا تعتمد عليها)
+Snapshot date: 2026-07-14
 
-> جرد دقيق مبنيّ على git الفعلي (base `99fdb3c8` → HEAD) وليس على تخمين. حدّثه بعد كل مرحلة.
+This active roadmap records the current product and visual contract. Commit
+history and removed screen names are not a source of truth. The live code,
+`docs/project/PRODUCT.md`, `docs/frontend/MOBILE.md`, and the QA contracts own
+the implementation details.
 
-## الهدف
-تحويل كل شاشة في تطبيق Aarast إلى نسخة 2026 فخمة، موحّدة على نظام التصميم نفسه:
-هيدر نحيف → hero فخم → كروت ذكية → أيقونات Lucide → مسح التسريبات (English/YER/PLANNING) →
-golden preview → `flutter analyze` نظيف + كل الاختبارات خضراء.
+## Product Direction
 
-## نمط التنفيذ لكل شاشة (Definition of Done)
-1. تدقيق: ايش يخص الشاشة؟ ايش مكرر/ناقص/قديم/محيّر؟ ايش الفعل الأساسي؟
-2. توحيد أيقونات Material → Lucide
-3. مسح التسريبات اللغوية والصياغة (محايدة الجنس، عربي طبيعي، RTL)
-4. hero/كروت فخمة حيث الشاشة ضعيفة
-5. حالات فارغة/تحميل/خطأ فخمة وذكية
-6. golden preview + إبقاء الـ suite خضراء + `flutter analyze` نظيف
-7. الحفاظ على منطق العمل والفورمات — لا مساس بالباكند
+Aarast is an Arabic-first Wedding Financial OS. Premium means clear, honest,
+compact, and dependable on a real phone. It does not mean adding decorative
+cards, duplicate actions, or accounting vocabulary the user must learn.
 
----
+Every user-facing money surface uses only these concepts:
 
-## ✅ ما تم (premium — لا يُعاد)
-التبويبات الخمسة الرئيسية + الهيكل + الترحيب + الدخول (نصوص) + لوحة الضيف:
+- `الميزانية`: the optional general plan budget.
+- `التصنيف`: a user-created group and optional allocation inside the budget.
+- `التكلفة`: an agreed or immediate cost assigned to exactly one category.
+- `الدفعة`: money actually paid against one cost.
+- `موعد الدفع`: a dated reminder under one cost; it is not paid money.
 
-| البند | Commit |
-|------|--------|
-| Dashboard (`PremiumDashboardView`) | e2cfb579 |
-| Money/Budget (`BudgetPulseHero`, `PaymentTimelineRail`) | 8ad67264 |
-| Tasks (`SmartTaskCard`, `TasksProgressHero`) | 0e6b6ceb |
-| Guests (`GuestMeterHero`, `SmartGuestCard`) | f0090f7f |
-| Providers tab (`PremiumVendorCard`) + language polish | a99066e2 |
-| App shell (bottom nav + FAB) | 71e4eed1 |
-| Welcome gateway | 06a327b8 |
-| Auth copy (محايد الجنس) | aa7c8701 |
-| Guest dashboard unified | 4f8f5b3f |
-| create-expense — أيقونات فقط | a6640eca |
-| create-task — أيقونات فقط | 68428363 |
-| plan-center — أيقونات + عملة العرض فقط | 8e061cb1 |
+The implementation domain is `WeddingCost`, `CostPayment`, and
+`PaymentSchedule`. Removed expense, commitment, financial-payment, installment,
+and debt domains are not compatibility paths and must not reappear in screens,
+routes, providers, caches, tests, copy, or generated references.
 
-> **تحذير:** كل الـ commits محلية — **لم تُدفع بعد**.
+## Money Information Architecture
 
----
+The Money root answers three questions without requiring accounting knowledge:
 
-## المرحلة 0 — تنظيف سريع (قبل أي شاشة جديدة) 🔴
-- [x] حذف الكود الميت `royal_home_today_center.dart` (3613) + اختباره (473) — صفر مستدعين. `226fdb42`
-- [x] إصلاح باغ العملة في `create_expense_screen.dart` — 8 مواضع «ر.ي» ثابتة → `currencyLabelAr` بقراءة دفاعية للخطة النشطة. `a64612e1`
-- [x] «نسيت كلمة المرور؟» في `login_screen.dart` — bottom sheet فخم «قريباً + تواصل مع الدعم» مكتفٍ ذاتياً. `36f587e6`
-- [x] **دفع الـ commits** — 17 commit مدفوعة لـ`aarast-production/phase/mobile-premium-screens-v1`، upstream مضبوط.
+1. What is my budget and how much remains?
+2. What costs do I have and how much is still unpaid?
+3. What payment date is next?
 
-**✅ المرحلة 0 مكتملة.**
+Its visible structure is:
 
-## المرحلة أ — عنقود المال (أعلى قيمة يومية) 🔴
-| # | الشاشة | أسطر | حالة | ملاحظة |
-|---|--------|:---:|:---:|--------|
-| A1 | `plan_center_screen.dart` | 2375 | ✅ تمّت | التدقيق أكد وجود hero/كروت premium + Lucide + `currencyLabelAr`، وأضيف حارس source يمنع الرجوع للقديم. |
-| A2 | `financial_payables_screen.dart` | — | ✅ تمّت | شاشة موحدة لكل المستحقات والدفعات عبر `FinancialCommitment` فقط. |
-| A3 | `financial_commitment_details_screen.dart` | — | ✅ تمّت | تفاصيل المستحق والتعديل والحذف وتسجيل الدفعة من مسار واحد. |
-| A4 | `create_financial_commitment_screen.dart` | — | ✅ تمّت | إنشاء مستحق مصنف دون أي اعتماد على النظام المالي المحذوف. |
-| A5 | `financial_payment_record_details_screen.dart` | — | ✅ تمّت | تفاصيل حركة الدفع وربطها بالمستحق المعتمد. |
-| A6 | `budget_category_details_screen.dart` | 682 | ✅ تمّت | Lucide + عملة الخطة/ملخص المال بدل `ر.ي` ثابتة + hero/بطاقات تفاصيل البند + اختبار SAR. |
-| A7 | `expenses_screen.dart` | 516 | ✅ تمّت | أبقيت كشاشة "كل المصاريف/مصروفات بند" مع بحث وفلاتر؛ أصبحت hero فخم + Lucide + عملة الخطة. |
-| A8 | `budget_setup_screen.dart` | 424 | ✅ تمّت | إعداد جماعي premium + Lucide + قوالب بنود محسّنة + عملة الخطة في الحقول + حفظ local guest محفوظ. |
-| A9 | `create_budget_category_screen.dart` | 249 | ✅ تمّت | Hero فخم + Lucide + صياغة عربية محايدة + عملة الخطة في مبلغ البند + اختبار SAR. |
+1. One budget card. When unset it says so and offers setup; category allocation
+   totals never impersonate the general budget.
+2. Compact category cards with allocation, confirmed cost, paid, and remaining
+   only when those values are meaningful.
+3. Costs, with clear paid/outstanding state and optional provider or external
+   party context.
+4. Upcoming payment dates.
+5. Recent payments.
 
-**حالة المرحلة أ:** مكتملة 10/10: شاشات المال كلها منفذة، اختبارات المرحلة مضافة، وبوابة `flutter test` الكاملة أُغلقت بنجاح بعد تحديث goldens المقصودة واختبار `/onboarding`.
+The root FAB contains only `إضافة تكلفة`, `تسجيل دفعة`, and `إضافة تصنيف`.
+Budget editing belongs to the budget card. A payment chooses a cost and inherits
+its category and provider/party; it never asks the user to classify the same
+money twice.
 
-## المرحلة ب — المزودون (واجهة المستخدم) ✅
-| # | الشاشة | أسطر | حالة |
-|---|--------|:---:|:---:|
-| B1 | `quote_request_screen.dart` | 775 | ✅ تمّت: Hero طلب عرض + Lucide + `currencyLabelAr` + تأكيد أنها مقارنة/تخطيط فقط بلا حجز أو دفع. |
-| B2 | `provider_details_screen.dart` | 691 | ✅ تمّت: Lucide + أسعار عربية من `currencyLabelAr` + شارات تخطيط/طلب عرض + كروت خدمات/باقات محسّنة. |
-| B3 | `favorite_providers_screen.dart` | 453 | ✅ تمّت: Hero محفوظات + Lucide + أسعار عربية + نص مقارنة صريح بلا إنشاء حجز/مصروف تلقائي. |
+## Required Money Screens
 
-**حالة المرحلة ب:** مكتملة 10/10: شاشات المزودين الثلاث منفذة، اختبار `phase_b_provider_screens_test.dart` مضاف، وبوابة `flutter test` الكاملة أُغلقت بنجاح مع `flutter analyze` و`git diff --check`.
+The complete routed surface is:
 
-## المرحلة ج — المشاركة/العائلة ✅
-> أُنجزت كشاشات مشاركة منفصلة مع إبقاء الدمج كتوصية لاحقة، لأن تنفيذ تبويبات جديدة الآن يوسّع النطاق ويغيّر التنقل.
+- Money overview.
+- Set or edit general budget.
+- Create or edit category.
+- Category details with its costs and totals.
+- Costs list.
+- Create or edit cost, including inline category creation.
+- Cost details with payments and payment dates.
+- Record payment.
+- Payment details and append-only reversal.
+- Create or edit payment date.
+- Payment-date details and explicit pay action.
 
-| # | الشاشة | أسطر | حالة |
-|---|--------|:---:|:---:|
-| C1 | `add_shared_member_screen.dart` | 777 | ✅ تمّت: Hero دعوة آمنة + Lucide + توضيح صلاحيات المشاركة والمال بدون كشف افتراضي. |
-| C2 | `sharing_screen.dart` | 320 | ✅ تمّت: Hero مشاركة آمنة + مؤشرات حقيقية من بيانات API + كروت أعضاء توضّح الوصول المالي حسب الصلاحية. |
-| C3 | `edit_shared_member_screen.dart` | 249 | ✅ تمّت: Hero عضو مشارك + Lucide + مفاتيح صلاحيات واضحة بدون تغيير API. |
-| C4 | `shared_wedding_plans_screen.dart` | 169 | ✅ تمّت: Hero خطط مشتركة + Lucide + عملة عربية عبر `currencyLabelAr` في كرت الخطة. |
+An accepted quote may offer a prefilled cost draft only after an explicit user
+confirmation. Cancelling that confirmation creates no money data. A cost always
+requires one category and may optionally reference either an Aarast provider or
+an external party, never both.
 
-**حالة المرحلة ج:** مكتملة 10/10: شاشات المشاركة الأربع والكروت المرئية التابعة لها منفذة، اختبار `phase_c_sharing_screens_test.dart` مضاف، وبوابة `flutter test` الكاملة أُغلقت بنجاح مع `flutter analyze` و`git diff --check`.
+## Cross-Screen Design Contract
 
-## المرحلة د — الإعداد/الحساب (ثانوية) ✅
-| # | الشاشة | أسطر | حالة |
-|---|--------|:---:|:---:|
-| D1 | `more_screen.dart` | 879 | ✅ تمّت: Lucide كامل + قائمة حساب/مساعدة بلا وجهات وهمية وبنصوص مقارنة/دعم صادقة. |
-| D2 | `create_wedding_plan_screen.dart` | 605 | ✅ تمّت: Lucide + عملة عربية في الواجهة عبر `currencyLabelAr` مع تحويل آمن لرمز API عند الحفظ. |
-| D3 | `register_screen.dart` | 528 | ✅ تمّت: Lucide لمساري العميل/المزوّد مع بقاء التسجيل وOTP وطلب المزود كما هي. |
-| D4 | `settings_screen.dart` | 427 | ✅ تمّت: Lucide + بوابة حساب محفوظة تمنع نداءات API المحمية بدون حساب. |
-| D5 | `support_screen.dart` | 237 | ✅ تمّت: Lucide + دعم عملي وحدود منتج صريحة بلا دفع/حجز/ضمانات وهمية. |
-| D6 | `auth/splash_screen.dart` | 116 | ✅ تمّت: تأكيد المسار الحقيقي القديم في الخطة، والشاشة الحالية premium بلا placeholder أو أيقونات قديمة. |
+Every screen must:
 
-**حالة المرحلة د:** مكتملة 10/10: شاشات الحساب والإعداد الست منفذة أو مؤكدة حسب المسار الحقيقي، اختبار `phase_d_account_screens_test.dart` مضاف، وبوابة `flutter test` الكاملة أُغلقت بنجاح مع `flutter analyze` و`git diff --check`.
+- preserve Arabic RTL reading order and natural Arabic copy;
+- use the plan currency dynamically and consistently;
+- fit at 320px width with 1.3 text scale without overflow;
+- expose one clear primary action and avoid duplicate FAB/card actions;
+- use the shared header, spacing, typography, buttons, cards, and state system;
+- show real loading, empty, error/retry, offline, pending-sync, read-only, and
+  denied states where applicable;
+- hide all write actions without `canManageMoney` and load no private values
+  without `canViewMoney`;
+- clear plan-scoped money state before loading a different plan;
+- never present a schedule as paid or add it to totals before a payment exists.
 
-## المرحلة هـ — جانب المزوّد B2B (أدنى أولوية) ✅
-> أُنجزت كتحسين واجهات المزوّد الحالية فقط، بدون فتح ميزات دفع/حجز/اعتماد تلقائي أو تغيير عقود API.
+Visual polish may not hide invalid or incomplete states. Null is displayed as
+unset, not zero. Hidden financial values are absent, not replaced by zeros.
 
-| # | الشاشة | أسطر | حالة |
-|---|--------|:---:|:---:|
-| E1 | `provider_portal_screen.dart` + `provider_portal_tabs.dart` | حي | ✅ البوابة القانونية الوحيدة للمورد؛ شاشة `provider_dashboard_screen.dart` القديمة حُذفت في 2026-07-10 بعد إثبات عدم وجود imports أو routes لها. الأسعار المرئية تمر عبر `currencyLabelAr`. |
-| E2 | `provider_apply_screen.dart` | 478 | ✅ تمّت: Lucide + بوابة حساب ومراجعة مزود صريحة بلا اعتماد تلقائي. |
-| E3 | `edit_provider_profile_screen.dart` | 382 | ✅ تمّت: Lucide + ملاحظات حالة وفئة مقفلة بدون تغيير مسار المراجعة. |
-| E4 | `add_provider_service_screen.dart` | 299 | ✅ تمّت: Lucide + عملة عربية في السعر + إرسال `defaultCurrencyCode` بدل رمز خام داخل الشاشة. |
-| E5 | `add_provider_package_screen.dart` | 278 | ✅ تمّت: Lucide + عملة عربية في السعر + نص يحظر وعود الدفع أو الحجز المؤكد. |
+## Definition Of Done
 
-**حالة المرحلة هـ:** مكتملة 10/10: شاشات المزوّد الخمس منفذة، اختبار `phase_e_provider_b2b_screens_test.dart` مضاف، وبوابة `flutter test` الكاملة أُغلقت بنجاح مع `flutter analyze` و`git diff --check`.
+A money screen or flow is complete only when all of the following pass:
 
----
+1. Product contract and navigation review.
+2. Real backend and offline mapping contract tests.
+3. Permission tests for owner, viewer, manager, and denied member.
+4. Fresh, empty, healthy, near-limit, over-budget, paid, outstanding, reversed,
+   cancelled, offline, pending, error, and retry states as relevant.
+5. 320px RTL and 1.3 text-scale widget coverage.
+6. Golden coverage of the actual routed screen, not an isolated hero widget.
+7. `flutter analyze` and the complete mobile test suite.
+8. Physical-device verification for the end-to-end critical flow.
 
-## توصيات John
-1. **ابدأ بالمرحلة 0** — الكود الميت وباغ العملة يفسدان أي تدقيق قادم، ودفع الـ commits يحمي 12 commit محلي.
-2. **عنقود المال (أ) هو الجوهر** — Aarast نظام مالي للعرس؛ المسار المعتمد هو المستحقات والدفعات داخل `FinancialCommitment` فقط.
-3. **راجع تكرار الميزانية** — `expenses_screen` (516) مقابل `budget_expense_screen` (1242، فخمة). قد يكونان متداخلين؛ قرّر دمج/إلغاء قبل تلميع القديم.
-4. **جانب المزوّد (هـ) آخراً** — لا يستحق أولوية على شاشات المستخدم اليومي.
-5. **بنيوية:** `home_screen` (117) و`wedding_plan_shell` (130) هيكلية — لا تحتاج تلميعاً بصرياً غالباً.
+No document or test may call a screen `10/10` merely because it builds or an
+isolated widget looks correct. Completion is evidence-based and applies to the
+whole routed flow.
 
-## سجل التقدم
-- 2026-07-05 — إنشاء الخطة، جرد كامل مبنيّ على git، mxLore ملغاة (اعتماد md فقط).
-- 2026-07-05 — **المرحلة 0 مكتملة**: حذف الكود الميت (`226fdb42`) + إصلاح باغ العملة (`a64612e1`) + توثيق (`a90091d0`) + إصلاح رابط «نسيت كلمة المرور» (`36f587e6`). `flutter analyze` نظيف؛ اختبارات المصادقة/المالية خضراء. **مدفوعة** (17 commit، upstream مضبوط). فشلا goldens (`premium_finance_healthy` 0.03% + `premium_tasks_active` 0.75%) **سابقان/بيئيان** — مؤكد بإعادة التشغيل على HEAD النظيف. دَين تقني: إعادة توليد الـgoldens على جهاز مرجعي/CI.
-- 2026-07-11 — أزيل نظام `Debt/Installment` القديم بالكامل قبل الإطلاق. الشاشة والمسارات والكاش والباكند والجداول القديمة لم تعد جزءاً من المنتج؛ المستحقات والأقساط تعمل حصراً عبر `FinancialCommitment` و`FinancialInstallment`.
-- 2026-07-05 — **بوابة المرحلة أ أُغلقت 10/10**: تحديث goldens المقصودة (`premium_finance_healthy.png`، `premium_tasks_active.png`، `premium_welcome_cards.png`) بعد فحص صور master/test، وتحديث اختبار `/onboarding` للنص الحالي في `SmartWelcomeScreen`. النتيجة: `flutter test` PASS كامل، `flutter analyze` PASS، `git diff --check` PASS، ولا يوجد `mobile/test/failures`.
-- 2026-07-05 — **المرحلة ب / المزودون مكتملة 10/10**: `quote_request_screen` و`provider_details_screen` و`favorite_providers_screen` أصبحت على Lucide، تعرض العملات عبر `currencyLabelAr`، وتوضح أن طلبات العروض للمقارنة والتخطيط فقط بلا دفع أو حجز مؤكد. أُضيف `mobile/test/features/marketplace/phase_b_provider_screens_test.dart`. التحقق: `flutter test test\features\marketplace\phase_b_provider_screens_test.dart` PASS، و`flutter test test\features\marketplace test\features\auth\dev_ux_protected_submit_test.dart` PASS، و`flutter analyze` PASS، و`git diff --check` PASS، و`flutter test` PASS كامل.
-- 2026-07-05 — **المرحلة ج / المشاركة والعائلة مكتملة 10/10**: `add_shared_member_screen` و`sharing_screen` و`edit_shared_member_screen` و`shared_wedding_plans_screen` أصبحت على Lucide مع بطاقات/Hero عربية توضّح الخصوصية وصلاحيات المال بصدق، وكروت المشاركة تعرض العملة العربية عبر `currencyLabelAr`. أُضيف `mobile/test/features/sharing/phase_c_sharing_screens_test.dart`. التحقق: `flutter test test\features\sharing\phase_c_sharing_screens_test.dart` PASS، و`flutter test test\features\sharing` PASS، و`flutter analyze` PASS، و`flutter test` PASS كامل، و`git diff --check` PASS، ولا يوجد `mobile/test/failures`.
-- 2026-07-05 — **المرحلة د / الإعداد والحساب مكتملة 10/10**: `more_screen` و`create_wedding_plan_screen` و`register_screen` و`settings_screen` و`support_screen` أصبحت بلا أيقونات Material مباشرة، و`create_wedding_plan_screen` يعرض العملة بالعربية مع إرسال رمز العملة الصحيح للـAPI، و`auth/splash_screen` تأكد كالمسار الفعلي بدل مسار الخطة القديم. أُضيف `mobile/test/features/settings/phase_d_account_screens_test.dart`. التحقق: `flutter test test\features\settings\phase_d_account_screens_test.dart` PASS، و`flutter test test\features\more test\features\settings test\features\support test\features\auth test\features\wedding_plans` PASS، و`flutter analyze` PASS، و`flutter test` PASS كامل، و`git diff --check` PASS، ولا يوجد `mobile/test/failures`.
-- 2026-07-05 — **المرحلة هـ / جانب المزود B2B مكتملة 10/10**: `provider_dashboard_screen` و`provider_apply_screen` و`edit_provider_profile_screen` و`add_provider_service_screen` و`add_provider_package_screen` أصبحت بلا أيقونات Material مباشرة، ونماذج الخدمة/الباقة تعرض العملة بالعربية وترسل `defaultCurrencyCode`، مع إبقاء الاعتماد والطلبات كمسارات مراجعة/عروض لا دفع أو حجز مؤكد. أُضيف `mobile/test/features/marketplace/phase_e_provider_b2b_screens_test.dart`. التحقق: `flutter test test\features\marketplace\phase_e_provider_b2b_screens_test.dart` PASS، و`flutter test test\features\marketplace` PASS، و`flutter analyze` PASS، و`flutter test` PASS كامل، و`git diff --check` PASS، ولا يوجد `mobile/test/failures`.
-- 2026-07-07 — **عقد الشاشة الفاخرة v2 مفعّل وحارس**: صفر `CircularProgressIndicator` في `lib/features` و`lib/shared` (skeletons عبر `AarastSkeleton.list/.form/.page`، أزرار عبر `AarastButton.isLoading`/`AarastInlineSpinner`)، ترويسة موحّدة `AarastFeatureHeader`، stagger موحّد `AarastStagger` في القوائم الرئيسية (more/sharing/shared_plans)، حذف 23 alias ميت من `AppTheme` مع إبقاء re-exports كاملة للمقياس. اختبار العقد `aarast_premium_contract_test.dart` شُدّد: قائمة 52 شاشة كاملة + حظر CPI دائم. goldens أساس جديدة `premium_foundation_preview_test.dart`. **استعادة كلمة المرور حقيقية end-to-end**: باك إند `POST /api/v1/auth/password-reset/request|confirm` (OTP بغرض `RESET_PASSWORD` الموجود أصلًا — بلا migration، بلا تسريب وجود الحساب، إبطال كل الجلسات) + 5 اختبارات logic؛ موبايل `reset_password_screen` (هاتف→رمز+كلمة مرور→نجاح) مربوطة بـ«نسيت كلمة المرور؟» بدل sheet «قريباً»، + 3 اختبارات widget. عقد الـAPI محدّث. التحقق: `flutter analyze` PASS، اختبار العقد PASS، `npm test` باك إند 52/52 PASS.
+## Other Product Surfaces
+
+Tasks, guests, sharing, providers, quotes, provider operations, account, and
+support continue to use the same design contract. Provider flows remain
+planning/reference and quote-scoped: no silent booking, deposit, payment
+processing, financing, or open unsolicited messaging.
+
+## Current Execution Order
+
+1. Finish the destructive prelaunch money-domain cleanup across backend,
+   mobile, offline cache, tests, and generated documentation.
+2. Close the complete Money QA gate above.
+3. Re-run full backend, mobile, admin, documentation, and Docker quality gates.
+4. Continue non-finance premium work only after the canonical Money flow is
+   stable, so visual work cannot preserve obsolete product behavior.

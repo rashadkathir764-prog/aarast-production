@@ -1,11 +1,11 @@
 # Product
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-14
 
 Aarast / اعّرست is a Yemen-first wedding planning product. The product center
-is a Wedding Financial OS: wedding plans, budget categories, financial
-commitments, payment records, expenses, commitment installments, tasks,
-timelines, guests, sharing, and privacy-aware family coordination.
+is a Wedding Financial OS: wedding plans, one general budget, budget
+categories, costs, payments, payment schedules, tasks, timelines, guests,
+sharing, and privacy-aware family coordination.
 
 Provider and marketplace features are support flows only at the current stage:
 provider references, services, packages, favorites, reviews, quote requests,
@@ -19,11 +19,22 @@ only between the requester and the provider account attached to a real quote
 request. It is not an open social inbox and it does not create a booking or a
 financial record.
 
-Financial planning now uses `FinancialCommitment` as the backbone for agreed
-costs. Every agreed amount must belong to a budget category and may also point
-to a provider, quote, plan-provider link, payment record, installment, manual
-payable, or invoice-like note. A provider offer acceptance may suggest creating a
-financial commitment, but it must not create one silently.
+Financial planning uses one domain only:
+
+- `WeddingPlan.estimatedBudget` is the optional general budget. A null value
+  means the budget is still unset; category allocations never replace it.
+- `BudgetCategory` groups and allocates the general budget.
+- `WeddingCost` records one agreed or immediate cost and must belong to exactly
+  one budget category. It may optionally reference either an Aarast provider or
+  an external party.
+- `CostPayment` records money that actually left the user. It belongs to one
+  cost and inherits that cost's category and provider/party context.
+- `PaymentSchedule` is a dated reminder under one cost. It does not change
+  cost, paid, or remaining totals until a real payment is recorded.
+
+An accepted provider offer may prefill a cost draft only after an explicit
+user confirmation. Acceptance never creates a cost, payment, schedule, task,
+deposit, or booking silently.
 
 ## Boundaries
 
@@ -32,7 +43,8 @@ Currently excluded unless explicitly approved:
 - Payment processing.
 - Deposits.
 - Paid or confirmed bookings.
-- Payment status flows.
+- Provider booking/payment-processing status, settlement, and gateway flows.
+  This boundary does not exclude the user's own manual CostPayment ledger.
 - Loans, credit, financing, or FinTech.
 - Production AI planning automation.
 - Open or unsolicited marketplace messaging outside a quote request.
@@ -40,10 +52,10 @@ Currently excluded unless explicitly approved:
 
 ## Privacy
 
-Financial data is private by default. Financial commitments, payment records,
-expenses, commitments, installments, attachments, private tasks, and sensitive plan
-details must not be shown to shared members unless explicit permissions allow
-it.
+Financial data is private by default. Budgets, categories, costs, payments,
+payment schedules, attachments, private tasks, and sensitive plan details must
+not be shown to shared members unless `canViewMoney` allows it. Financial write
+actions require `canManageMoney`.
 
 ## Growth Order
 

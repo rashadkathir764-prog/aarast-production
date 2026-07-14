@@ -203,7 +203,7 @@ Rules:
 
 Use when there is a clear next best action:
 
-- Urgent money/installment.
+- Urgent cost or payment date.
 - Overdue tasks.
 - Received quotes.
 - Today tasks.
@@ -249,9 +249,9 @@ Use only when permissions allow money visibility.
 
 Shows:
 
-- Allocated budget.
-- Confirmed cost (paid standalone expenses plus active commitments).
-- Remaining.
+- General budget, or an honest unset state.
+- Confirmed cost from non-cancelled costs.
+- Remaining budget.
 - Usage progress.
 - The whole card opens the Money surface.
 
@@ -283,9 +283,9 @@ Use `RoyalSmartFloatingActionButton`.
 
 Canonical quick actions are context-specific:
 
-- Dashboard: provider/service cost, payment, task, guest, and quote request.
-- Money root: budget category, payable, and payment. Do not restore a duplicate
-  expense action to the shell; expense entry remains inside the finance flow.
+- Dashboard: cost, payment, task, guest, and quote request.
+- Money root: cost, payment, and budget category. Budget editing opens from the
+  budget card, not a duplicate FAB action.
 - Tasks: task first, followed by the shared planning actions.
 - Guests: guest first, followed by the shared planning actions.
 - Providers: no shell FAB; its primary actions live inside the marketplace.
@@ -294,7 +294,7 @@ Rules:
 
 - Use the canonical quick action builder.
 - Avoid duplicate create affordances on the same surface.
-- Money quick-add visibility requires financial-management permission and is
+- Money quick-add visibility requires `canManageMoney` and is
   hidden on finance subroutes.
 - Protected submit actions must remain account-gated for local guest plans.
 
@@ -314,6 +314,18 @@ Dashboard state examples:
 - Dashboard error card with retry.
 - Empty state that sends user to onboarding.
 - Local sync notice for guest plans.
+
+Finance state rules:
+
+- Use only the visible terms `الميزانية`, `التصنيف`, `التكلفة`, `الدفعة`, and
+  `موعد الدفع`.
+- Never ask for category, provider, or external party again after the user
+  selects a cost for payment.
+- Render a null general budget as unset. Category allocations are not a
+  substitute budget.
+- Payment schedules are reminders and must not look paid before a CostPayment
+  exists.
+- Quote-prefilled cost forms require an explicit confirmation step.
 
 ## Motion
 
@@ -344,7 +356,10 @@ Rules:
 
 When improving an existing screen:
 
-1. Keep API behavior and routes unchanged.
+1. Keep API behavior and routes unchanged unless an approved domain decision
+   explicitly replaces an obsolete contract. The prelaunch money cleanup is
+   such an approved replacement; removed finance routes must not survive as
+   aliases.
 2. Use tokens from `AarastDesignTokens`.
 3. Reuse existing core widgets before creating new ones.
 4. Match the dashboard visual language.

@@ -23,7 +23,7 @@ if data handling changes.
 | Personal info | Phone number | Yes | No | Account, OTP sign-in | Required |
 | Personal info | Email address | Yes | No | Account | Optional |
 | Personal info | Other (guest names/phones you add) | Yes | No | App functionality (guest list) | Optional |
-| Financial info | Other (self-entered budgets, expenses, debts) | Yes | No | App functionality | Optional |
+| Financial info | Other (self-entered budgets, wedding costs, and payment schedules) | Yes | No | App functionality | Optional |
 | Photos | Photos | Yes | No | App functionality (profile/provider media) | Optional |
 | App activity | Other (wedding plan content) | Yes | No | App functionality | Required |
 | App info & performance | Crash logs | Yes | No | Diagnostics | Optional |
@@ -32,7 +32,7 @@ if data handling changes.
 Notes for the reviewer form:
 
 - **Financial info**: this is user-entered planning data (budgets,
-  expenses, debts). The app does **not** collect payment-card or bank
+  wedding costs, recorded payments, and payment schedules). The app does **not** collect payment-card or bank
   numbers and processes **no** in-app payments — do not tick "Payment
   info".
 - **Contacts**: the `READ_CONTACTS` permission is used only to let the

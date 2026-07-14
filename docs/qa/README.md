@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-14
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -30,9 +30,28 @@ npm run smoke:sharing-security
 npm run smoke:marketplace
 npm run smoke:provider-dashboard
 npm run smoke:private-chat-media
+npm run smoke:money-apis
 npm run smoke:financial-ledger-concurrency
 npm run smoke:all
 ```
+
+Money-domain changes additionally fail unless tests prove:
+
+- live schema, controllers, and mobile source contain no removed finance model,
+  route, or cache contract;
+- fresh and upgraded databases contain only BudgetCategory, WeddingCost,
+  CostPayment, and PaymentSchedule for the money domain;
+- every cost has one valid category and at most one party mode (provider or
+  external party);
+- initial payment creation is atomic, ordinary payment cannot exceed the
+  outstanding cost, reversal is append-only and unique, and concurrent
+  schedule-payment requests create one payment only;
+- a schedule has a due date, remains a reminder until paid, and never changes
+  money totals by itself;
+- a null general budget stays null and category allocations never replace it;
+- `canViewMoney` and `canManageMoney` fail closed across summary, detail, direct
+  route, dashboard, notification, and sharing flows;
+- removed finance endpoints return `404` with an authenticated request.
 
 For temporary OpenWA OTP work, additionally run the OpenWA channel, durable
 quota, readiness, registration, admin MFA, and password-reset source tests.
@@ -79,6 +98,20 @@ flutter test
 
 Run targeted tests for touched flows and check Arabic/RTL layout at narrow phone
 widths for UI work.
+
+The complete Money gate covers the real root and every sub-screen at 320px RTL
+with 1.3 text scale: budget management, category create/edit/detail, cost
+list/create/edit/detail, payment create/detail/reversal, and payment-schedule
+create/detail/pay. It must also cover first use, unset budget, empty, healthy,
+near-limit, over-budget, read-only, denied, offline, pending, error/retry,
+cancelled cost, paid cost, and reversed payment states. Goldens must render the
+actual routed screens, not only isolated hero widgets.
+
+Mobile contract tests must prove that payment entry inherits category and
+provider/party from its cost, inline category creation returns to the cost form
+selected, accepted quote context is only applied after confirmation, access
+revocation clears cached rows, plan switching cannot leak prior money, and the
+offline queue preserves dependency and idempotency rules.
 
 OTP UI changes must prove the resend action remains actually disabled for the
 full 60-second server cooldown and becomes enabled at the same boundary.

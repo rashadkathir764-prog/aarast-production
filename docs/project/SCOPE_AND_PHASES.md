@@ -1,6 +1,6 @@
 # Scope And Phases
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-14
 
 This is the compact phase source. Older phase files were archived during the
 2026-07 documentation consolidation.
@@ -12,8 +12,8 @@ Current implemented scope includes:
 - Auth, profile, OTP helpers, and settings.
 - WeddingPlan ownership and active-plan flows.
 - Dashboard summary.
-- Budget categories, financial commitments, payment records, expenses,
-  financial installments, and money summary.
+- One optional general budget, budget categories, `WeddingCost`, `CostPayment`,
+  `PaymentSchedule`, and one canonical money summary.
 - Tasks, checklists, assignments, and timeline.
 - Guests and guest groups.
 - Sharing, invites, roles, and permissions.

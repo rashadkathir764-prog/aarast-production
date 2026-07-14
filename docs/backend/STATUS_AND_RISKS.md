@@ -1,6 +1,6 @@
 # Backend Status And Risks
 
-Snapshot date: 2026-07-11
+Snapshot date: 2026-07-14
 
 ## Implemented Areas
 
@@ -9,6 +9,10 @@ Snapshot date: 2026-07-11
   WhatsApp OTP delivery, profile, settings, user lookup, and avatar handling.
 - WeddingPlan, onboarding, dashboard summary, money, tasks, timeline, guests,
   sharing, permissions, and notifications.
+- The money contract is being consolidated before launch to one optional
+  general budget, `BudgetCategory`, `WeddingCost`, append-only `CostPayment`,
+  and dated `PaymentSchedule`. There are no compatibility endpoints for the
+  removed finance models.
 - Sharing invitations use hashed tokens, verified phone identity, atomic
   accept/decline claims, and a permission ceiling for delegated inviters.
 - Provider catalog, city/category references, favorites, reviews, quote
@@ -47,6 +51,13 @@ Snapshot date: 2026-07-11
 
 ## Integrated Runtime Contract
 
+The finance runtime is acceptable only when both fresh and upgraded databases
+contain the canonical cost tables and no live legacy finance tables, routes, or
+queue entity types. A cost must belong to a category and may reference either a
+provider or an external party. Payments and schedules inherit that context from
+the cost. Schedule dates are required; schedules do not affect totals until a
+payment is recorded.
+
 Conversation/media, refresh sessions, and admin report moderation are wired
 through the active schema, modules, routes, clients, and source tests. The local
 Compose runtime includes PostgreSQL, Redis, and MinIO-compatible storage so
@@ -72,6 +83,13 @@ template are approved and a real device receives a code.
 - Keep server-side phone normalization aligned with mobile behavior.
 - Cascade restrictions protect financial children; future plan deletion must
   preserve that integrity.
+- The prelaunch finance cleanup is destructive by design. Do not deploy a
+  partially mixed schema or restore removed finance controllers from build
+  output. Verify old endpoints return `404`, not `401`, and inspect the live
+  database for absent old tables before accepting the image.
+- Cost/payment mutations require concurrency and idempotency smoke. The release
+  gate must prove that concurrent payment, schedule-payment, and reversal
+  requests cannot overpay a cost or duplicate ledger rows.
 
 ## Verification
 

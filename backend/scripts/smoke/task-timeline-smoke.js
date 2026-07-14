@@ -153,7 +153,6 @@ async function run() {
       title: 'Timeline wedding cost',
       totalAmount: '300000.00',
       initialPaymentAmount: '50000.00',
-      dueDate: '2026-12-12T00:00:00.000Z',
     }, token);
     check('POST cost for timeline - HTTP 201', res.status === 201);
     check('timeline cost has id', typeof res.body?.id === 'string');

@@ -59,7 +59,9 @@ test('serves a scoped no-store QR page without exposing the master key', async (
     }
     if (request.url === `/api/sessions/${sessionId}`) {
       response.writeHead(200, { 'content-type': 'application/json' });
-      return response.end(JSON.stringify({ status: 'qr_ready', phone: null }));
+      return response.end(
+        JSON.stringify({ status: 'qr_ready', phone: '+967700000000' }),
+      );
     }
     if (request.url === `/api/sessions/${sessionId}/qr`) {
       response.writeHead(200, { 'content-type': 'application/json' });

@@ -121,7 +121,10 @@ const server = http.createServer(async (request, response) => {
       const upstream = await openwa(`/sessions/${encodeURIComponent(sessionId)}`);
       if (!upstream.ok) return send(response, 503, '{"status":"unavailable","linked":false}', 'application/json');
       const session = await upstream.json();
-      const linked = Boolean(session.phone) || ['authenticated', 'ready', 'connected'].includes(session.status);
+      // OpenWA retains the last known phone after WhatsApp sends LOGOUT. The
+      // runtime status is authoritative; using the stale phone would hide the
+      // QR exactly when the operator needs to re-pair the session.
+      const linked = ['authenticated', 'ready', 'connected'].includes(session.status);
       return send(
         response,
         200,

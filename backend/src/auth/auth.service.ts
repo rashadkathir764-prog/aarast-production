@@ -193,7 +193,13 @@ export class AuthService {
     dto: LoginDto,
     context: OtpDispatchContext = {},
   ): Promise<AdminLoginPendingResponse> {
-    const user = await this.validatePasswordCredentials(dto, UserRole.ADMIN);
+    // The OTP completed below is itself proof that the administrator controls
+    // the configured phone. This keeps pre-MFA/bootstrap administrators from
+    // being permanently locked out while still requiring both their password
+    // and the out-of-band code before a session can be issued.
+    const user = await this.validatePasswordCredentials(dto, UserRole.ADMIN, {
+      allowUnverifiedPhone: true,
+    });
     const otp = await this.requestOtp({
       phone: user.phone!,
       purpose: OtpPurpose.LOGIN,
@@ -246,8 +252,7 @@ export class AuthService {
       challenge.expiresAt <= now ||
       challenge.user.role !== UserRole.ADMIN ||
       challenge.user.status === "DISABLED" ||
-      !challenge.user.phone ||
-      !challenge.user.phoneVerifiedAt
+      !challenge.user.phone
     ) {
       throw new UnauthorizedException(
         "Admin login challenge is invalid or expired",
@@ -285,9 +290,11 @@ export class AuthService {
               id: challenge.userId,
               role: UserRole.ADMIN,
               status: "ACTIVE",
-              phoneVerifiedAt: { not: null },
             },
-            data: { lastLoginAt: now },
+            data: {
+              lastLoginAt: now,
+              phoneVerifiedAt: challenge.user.phoneVerifiedAt ?? now,
+            },
           });
           if (eligible.count !== 1) {
             throw new UnauthorizedException("Admin access is required");
@@ -315,6 +322,7 @@ export class AuthService {
   private async validatePasswordCredentials(
     dto: LoginDto,
     requiredRole?: UserRole,
+    options: { allowUnverifiedPhone?: boolean } = {},
   ): Promise<User> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     await this.loginThrottle.assertAllowed(phone);
@@ -337,7 +345,7 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (!user.phoneVerifiedAt) {
+    if (!user.phoneVerifiedAt && !options.allowUnverifiedPhone) {
       throw new UnauthorizedException("Phone verification is required");
     }
 

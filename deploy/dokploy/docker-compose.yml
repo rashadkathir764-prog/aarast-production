@@ -99,8 +99,10 @@ services:
       AARAST_MEDIA_SECRET_ACCESS_KEY: ${AARAST_MEDIA_SECRET_ACCESS_KEY:-}
       AARAST_MEDIA_FORCE_PATH_STYLE: ${AARAST_MEDIA_FORCE_PATH_STYLE:-false}
       AUTH_OTP_MODE: ${AUTH_OTP_MODE:?AUTH_OTP_MODE is required}
+      AUTH_LOGIN_THROTTLE_PEPPER: ${AUTH_LOGIN_THROTTLE_PEPPER:?AUTH_LOGIN_THROTTLE_PEPPER is required}
       OTP_EXPIRES_MINUTES: ${OTP_EXPIRES_MINUTES:-5}
       OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-5}
+      OTP_GLOBAL_DAILY_LIMIT: ${OTP_GLOBAL_DAILY_LIMIT:-150}
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-1000}
       THROTTLE_TTL_MS: ${THROTTLE_TTL_MS:-60000}
       IDEMPOTENCY_RESERVATION_TTL_HOURS: ${IDEMPOTENCY_RESERVATION_TTL_HOURS:-24}
@@ -112,6 +114,10 @@ services:
       WHATSAPP_OTP_TEMPLATE_LANGUAGE: ${WHATSAPP_OTP_TEMPLATE_LANGUAGE:-}
       WHATSAPP_OTP_TIMEOUT_MS: ${WHATSAPP_OTP_TIMEOUT_MS:-10000}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
+      OPENWA_BASE_URL: ${OPENWA_BASE_URL:-}
+      OPENWA_SESSION_ID: ${OPENWA_SESSION_ID:-}
+      OPENWA_API_KEY: ${OPENWA_API_KEY:-}
+      OPENWA_OTP_TIMEOUT_MS: ${OPENWA_OTP_TIMEOUT_MS:-15000}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
       SMTP_USER: ${SMTP_USER:-}
@@ -137,18 +143,19 @@ services:
           memory: ${BACKEND_MEMORY_LIMIT:-768m}
     networks:
       - aarast_internal
+      - aarast_otp_transport
 
   admin-web:
     build:
       context: ../../admin-web
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://aarast-api.shadowgardn.com}
     image: aarast-admin-web:prod
     container_name: aarast-admin-web-prod
     restart: unless-stopped
     environment:
-      API_ORIGIN: ${VITE_API_BASE_URL}
+      API_ORIGIN: ${VITE_API_BASE_URL:-https://aarast-api.shadowgardn.com}
     depends_on:
       backend:
         condition: service_healthy
@@ -173,3 +180,6 @@ volumes:
 networks:
   aarast_internal:
     driver: bridge
+  aarast_otp_transport:
+    external: true
+    name: ${OPENWA_DOCKER_NETWORK:-aarast_otp_staging_transport}

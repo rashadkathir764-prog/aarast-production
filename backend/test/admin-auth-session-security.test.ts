@@ -26,6 +26,33 @@ test("admin login requires a persisted password-bound MFA challenge", () => {
   assert.match(controller, /@Post\(["']admin\/login\/complete["']\)/);
 });
 
+test("admin MFA can securely verify a pre-MFA administrator phone", () => {
+  const service = read("src/auth/auth.service.ts");
+  const startBlock = service.slice(
+    service.indexOf("async startAdminLogin("),
+    service.indexOf("async completeAdminLogin("),
+  );
+  const completeBlock = service.slice(
+    service.indexOf("async completeAdminLogin("),
+    service.indexOf("private async validatePasswordCredentials("),
+  );
+  const credentialsBlock = service.slice(
+    service.indexOf("private async validatePasswordCredentials("),
+    service.indexOf("async refresh("),
+  );
+
+  assert.match(startBlock, /allowUnverifiedPhone:\s*true/);
+  assert.match(completeBlock, /assertOtpCodeMatches/);
+  assert.match(
+    completeBlock,
+    /phoneVerifiedAt:\s*challenge\.user\.phoneVerifiedAt\s*\?\?\s*now/,
+  );
+  assert.match(
+    credentialsBlock,
+    /!user\.phoneVerifiedAt\s*&&\s*!options\.allowUnverifiedPhone/,
+  );
+});
+
 test("admin refresh is a rotating HttpOnly cookie session", () => {
   const controller = read("src/auth/auth.controller.ts");
   const main = read("src/main.ts");

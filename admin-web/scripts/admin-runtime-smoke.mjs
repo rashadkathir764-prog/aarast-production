@@ -176,7 +176,9 @@ async function createLocalSmokeAdmin() {
         adminRole: "SUPER_ADMIN",
         appRole: "WEDDING_USER",
         status: "ACTIVE",
-        phoneVerifiedAt: new Date(),
+        // Regression coverage: a pre-MFA administrator must be able to prove
+        // ownership through the MFA code instead of remaining locked out.
+        phoneVerifiedAt: null,
         passwordHash,
       },
     });
@@ -294,6 +296,10 @@ async function run() {
     "auth me returns admin user",
     res.status === 200 && res.body?.role === "ADMIN",
     String(res.status),
+  );
+  check(
+    "admin MFA verifies a pre-MFA administrator phone",
+    Boolean(res.body?.phoneVerifiedAt),
   );
   check("auth me does not expose passwordHash", !hasPasswordHash(res.body));
 

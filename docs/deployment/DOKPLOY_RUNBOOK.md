@@ -42,8 +42,16 @@ Required:
 - `NODE_ENV`
 - `PORT`
 - `VITE_API_BASE_URL`
+- `AUTH_OTP_MODE`
+- `AUTH_LOGIN_THROTTLE_PEPPER`
 
 Current backend note: the backend code reads `JWT_SECRET`. The compose file maps `JWT_ACCESS_SECRET` into the backend container as `JWT_SECRET`. `JWT_REFRESH_SECRET` is documented for the production secret contract, but it is not consumed by the current backend code.
+
+Channel-dependent required values:
+
+- `AUTH_OTP_MODE=whatsapp`: configure the `WHATSAPP_*` Graph API/template values.
+- `AUTH_OTP_MODE=openwa`: configure `OPENWA_BASE_URL`, `OPENWA_SESSION_ID`,
+  `OPENWA_API_KEY`, and the existing private `OPENWA_DOCKER_NETWORK`.
 
 Optional:
 
@@ -56,9 +64,10 @@ Optional:
 - `SMTP_PASS`
 - `EMAIL_FROM`
 
-WhatsApp/Meta OTP provider secrets are not part of the current deployment
-contract. Keep production OTP disabled until the approved Meta provider phase is
-started.
+Production never echoes OTP codes. Meta remains the supported long-term
+channel; the hardened OpenWA channel is the explicitly risk-accepted MVP path.
+Its API key must come from the bootstrap secret and its session must pass the
+`otp-readiness` contract before backend traffic is switched.
 
 Use the Docker network service name for PostgreSQL:
 
@@ -73,6 +82,11 @@ CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
 VITE_API_BASE_URL=https://aarast-api.shadowgardn.com
 ```
 
+The production admin image and Compose file also default to this public API
+origin so a missing build argument can never produce a browser bundle that
+calls `127.0.0.1`. The admin build gate rejects any production bundle that
+contains the development loopback origin or omits the current MFA login route.
+
 If only the admin dashboard calls the API, `aarast-admin.shadowgardn.com` is enough. If Flutter web/mobile also runs on `aarast.shadowgardn.com`, include both browser origins:
 
 ```env
@@ -85,7 +99,7 @@ CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
 2. Create a project named `Aarast`.
 3. Add a Docker Compose application.
 4. Select the GitHub repository for Aarast.
-5. Select the release branch intentionally. Current audit observed `main`; use `phase/frontend-rebuild-v1` only if that is the approved deployment branch for the current redeploy.
+5. Select the protected `main` release branch.
 6. Set the compose file path to `deploy/dokploy/docker-compose.yml`.
 7. Add environment variables from `deploy/dokploy/.env.example`, replacing every placeholder secret with a strong generated value.
 8. Create a domain for the backend service:
@@ -101,8 +115,10 @@ CORS_ORIGINS=https://aarast.shadowgardn.com,https://aarast-admin.shadowgardn.com
 10. Enable SSL for both domains.
 11. Deploy.
 12. Open logs for `postgres`, `backend`, and `admin-web`.
-13. Test API health at `https://aarast-api.shadowgardn.com/health`.
-14. Open `https://aarast-admin.shadowgardn.com` and test admin login.
+13. Test API liveness and readiness at `https://aarast-api.shadowgardn.com/health`
+    and `https://aarast-api.shadowgardn.com/ready`.
+14. Open `https://aarast-admin.shadowgardn.com`, confirm the browser bundle calls
+    the public API origin, and complete password plus OTP admin login.
 
 If the target split is used, open `https://aarast-admin.shadowgardn.com` for admin and reserve `https://aarast.shadowgardn.com` for Flutter web/mobile.
 

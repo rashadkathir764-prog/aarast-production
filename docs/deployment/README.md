@@ -22,6 +22,9 @@ Public domains documented for the current deployment path:
 - Backend API: `https://aarast-api.shadowgardn.com`
 - Admin web: `https://aarast-admin.shadowgardn.com`
 
+Admin production builds default to the public backend origin and fail their
+post-build gate if a loopback API or the current MFA login route is missing.
+
 ## Rules
 
 - Do not modify Docker, Docker Compose, Dokploy, domains, ports, migrations, or
@@ -52,9 +55,12 @@ must remain in Dokploy/environment storage and never be committed.
 
 For the explicitly risk-accepted MVP only, `AUTH_OTP_MODE=openwa` is available
 behind a hardened private contract and PostgreSQL delivery quotas. Stock OpenWA
-`send-text` is forbidden because it stores OTP content. Do not add the service
-to production Compose until the pinned fork, transient-persistence test, QR
-link, protected volume, and stop rules in `OPENWA_OTP_MVP.md` all pass.
+`send-text` is forbidden because it stores OTP content. The production backend
+may join the existing private OpenWA transport network only after the pinned
+fork, transient-persistence test, QR link, protected volume, and stop rules in
+`OPENWA_OTP_MVP.md` pass. `OPENWA_BASE_URL`, session ID, API key, login-throttle
+pepper, and network name are required deployment secrets/configuration; no OTP
+secret is committed to Compose or Git.
 The isolated `deploy/openwa-otp-lab/` stack is the reproducible local acceptance
 environment; it is intentionally separate from Dokploy and is not a production
 manifest.

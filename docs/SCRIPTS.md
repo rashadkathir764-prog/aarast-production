@@ -2,7 +2,7 @@
 
 | Package | Script | Command |
 | --- | --- | --- |
-| `admin-web` | `npm run build` | `tsc -b && vite build` |
+| `admin-web` | `npm run build` | `tsc -b && vite build && node scripts/build-config-smoke.mjs` |
 | `admin-web` | `npm run dev` | `vite` |
 | `admin-web` | `npm run preview` | `vite preview` |
 | `admin-web` | `npm run smoke:admin-runtime` | `node scripts/admin-runtime-smoke.mjs` |

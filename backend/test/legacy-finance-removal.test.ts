@@ -101,6 +101,9 @@ test("the terminal prelaunch migration deletes old finance and fails closed", ()
     "prelaunch finance reset must create empty money tables",
     "old finance tables or enum types remain after reset",
     "old finance notifications remain after reset",
+    'CREATE TEMP TABLE "aarast_removed_finance_notification"',
+    'DELETE FROM "OutboxEvent"',
+    "old finance notification outbox events remain after reset",
     `SET "name" = 'غير مصنف'`,
     `WHERE trim("name") = ''`,
   ]) {

@@ -171,7 +171,6 @@ async function run() {
       title: 'Family support cost',
       totalAmount: '500',
       initialPaymentAmount: '100',
-      dueDate: dateOffsetIso(7),
     }, owner.token);
     check('owner creates partially paid cost - HTTP 201', payableCostRes.status === 201);
     check('partially paid cost status is derived', payableCostRes.body?.status === 'PARTIALLY_PAID');

@@ -427,6 +427,7 @@ export class WeddingPlansService {
           `costs[${costIndex}].payments exceed totalAmount`,
         );
       }
+      const remainingAmount = totalAmount.minus(paidAmount);
       const paymentSchedules = (cost.paymentSchedules ?? []).map(
         (schedule, scheduleIndex) => {
           const dueDate = this.parseDateField(
@@ -438,27 +439,24 @@ export class WeddingPlansService {
               `costs[${costIndex}].paymentSchedules[${scheduleIndex}].dueDate is required`,
             );
           }
-          return {
-            amount: new Prisma.Decimal(
-              this.requiredPositiveAmount(
-                schedule.amount,
-                `costs[${costIndex}].paymentSchedules[${scheduleIndex}].amount`,
-              ),
+          const amount = new Prisma.Decimal(
+            this.requiredPositiveAmount(
+              schedule.amount,
+              `costs[${costIndex}].paymentSchedules[${scheduleIndex}].amount`,
             ),
+          );
+          if (amount.gt(remainingAmount)) {
+            throw new BadRequestException(
+              `costs[${costIndex}].paymentSchedules[${scheduleIndex}].amount exceeds the remaining cost`,
+            );
+          }
+          return {
+            amount,
             dueDate,
             note: this.optionalText(schedule.note ?? undefined),
           };
         },
       );
-      const scheduledAmount = paymentSchedules.reduce(
-        (sum, schedule) => sum.plus(schedule.amount),
-        new Prisma.Decimal(0),
-      );
-      if (scheduledAmount.gt(totalAmount.minus(paidAmount))) {
-        throw new BadRequestException(
-          `costs[${costIndex}].paymentSchedules exceed the remaining cost`,
-        );
-      }
       return {
         title: this.requiredText(cost.title, `costs[${costIndex}].title`),
         totalAmount,
@@ -472,10 +470,6 @@ export class WeddingPlansService {
         agreementDate: this.parseDateField(
           cost.agreementDate ?? undefined,
           `costs[${costIndex}].agreementDate`,
-        ),
-        dueDate: this.parseDateField(
-          cost.dueDate ?? undefined,
-          `costs[${costIndex}].dueDate`,
         ),
         note: this.optionalText(cost.note ?? undefined),
         payments,
@@ -590,7 +584,6 @@ export class WeddingPlansService {
               totalAmount: cost.totalAmount,
               paidAmount: cost.paidAmount,
               agreementDate: cost.agreementDate,
-              dueDate: cost.dueDate,
               status,
               note: cost.note,
               payments: {

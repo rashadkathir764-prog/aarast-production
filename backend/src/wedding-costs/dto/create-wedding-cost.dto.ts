@@ -42,10 +42,6 @@ export class CreateWeddingCostDto {
 
   @IsISO8601({ strict: true, strictSeparator: true })
   @IsOptional()
-  dueDate?: string | null;
-
-  @IsISO8601({ strict: true, strictSeparator: true })
-  @IsOptional()
   agreementDate?: string | null;
 
   @IsString()

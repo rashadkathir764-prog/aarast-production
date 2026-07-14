@@ -75,10 +75,6 @@ export class ImportLocalCostDto {
   @IsOptional()
   agreementDate?: string | null;
 
-  @IsISO8601({ strict: true, strictSeparator: true })
-  @IsOptional()
-  dueDate?: string | null;
-
   @IsString()
   @MaxLength(1000)
   @IsOptional()

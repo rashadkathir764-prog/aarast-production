@@ -96,7 +96,6 @@ export interface WeddingCostResponse {
   totalAmount: string;
   paidAmount: string;
   remainingAmount: string;
-  dueDate: Date | null;
   agreementDate: Date | null;
   status: WeddingCostStatus;
   note: string | null;
@@ -204,7 +203,6 @@ export class WeddingCostsService {
               title: this.requiredText(dto.title, "title"),
               totalAmount,
               paidAmount: initialPayment,
-              dueDate: this.optionalDate(dto.dueDate, "dueDate"),
               agreementDate: this.optionalDate(
                 dto.agreementDate,
                 "agreementDate",
@@ -334,13 +332,6 @@ export class WeddingCostsService {
               ? locked.budgetCategoryId
               : dto.budgetCategoryId.trim();
           await this.assertCategory(tx, budgetCategoryId, locked.weddingPlanId);
-          const pendingScheduled = await this.pendingScheduleTotal(tx, id);
-          if (pendingScheduled.gt(totalAmount.minus(locked.paidAmount))) {
-            throw new BadRequestException(
-              "totalAmount cannot leave less than the pending payment schedules",
-            );
-          }
-
           const counterparty = await this.normalizeCounterparty(tx, {
             weddingPlanId: locked.weddingPlanId,
             planCurrency: access.plan.currency,
@@ -357,6 +348,7 @@ export class WeddingCostsService {
               dto.partyPhone === undefined ? locked.partyPhone : dto.partyPhone,
             currentCostId: id,
           });
+          const status = this.deriveStatus(totalAmount, locked.paidAmount);
           const updated = await tx.weddingCost.update({
             where: { id },
             data: {
@@ -366,10 +358,7 @@ export class WeddingCostsService {
                 ? {}
                 : { title: this.requiredText(dto.title, "title") }),
               totalAmount,
-              status: this.deriveStatus(totalAmount, locked.paidAmount),
-              ...(dto.dueDate === undefined
-                ? {}
-                : { dueDate: this.optionalDate(dto.dueDate, "dueDate") }),
+              status,
               ...(dto.agreementDate === undefined
                 ? {}
                 : {
@@ -384,6 +373,7 @@ export class WeddingCostsService {
             },
             include: costInclude,
           });
+          await this.cancelPendingSchedulesWhenPaid(tx, id, status);
           return this.costResponse(updated);
         },
       );
@@ -475,12 +465,6 @@ export class WeddingCostsService {
             "Payment amount cannot exceed the remaining cost",
           );
         }
-        const pendingScheduled = await this.pendingScheduleTotal(tx, costId);
-        if (pendingScheduled.gt(remaining.minus(amount))) {
-          throw new BadRequestException(
-            "Payment would consume money reserved by pending payment schedules",
-          );
-        }
         const payment = await tx.costPayment.create({
           data: {
             weddingCostId: costId,
@@ -492,13 +476,15 @@ export class WeddingCostsService {
           include: paymentInclude,
         });
         const paidAmount = cost.paidAmount.plus(amount);
+        const status = this.deriveStatus(cost.totalAmount, paidAmount);
         await tx.weddingCost.update({
           where: { id: costId },
           data: {
             paidAmount,
-            status: this.deriveStatus(cost.totalAmount, paidAmount),
+            status,
           },
         });
+        await this.cancelPendingSchedulesWhenPaid(tx, costId, status);
         return this.paymentResponse(payment);
       },
     );
@@ -603,12 +589,6 @@ export class WeddingCostsService {
           },
           include: paymentInclude,
         });
-        if (payment.paymentScheduleId) {
-          await tx.paymentSchedule.update({
-            where: { id: payment.paymentScheduleId },
-            data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
-          });
-        }
         await tx.weddingCost.update({
           where: { id: cost.id },
           data: {
@@ -616,6 +596,12 @@ export class WeddingCostsService {
             status: this.deriveStatus(cost.totalAmount, paidAmount),
           },
         });
+        if (payment.paymentScheduleId) {
+          await tx.paymentSchedule.update({
+            where: { id: payment.paymentScheduleId },
+            data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
+          });
+        }
         return this.paymentResponse(reversal);
       },
     );
@@ -637,10 +623,9 @@ export class WeddingCostsService {
       async (tx) => {
         const cost = await this.lockCost(tx, costId);
         this.assertCostPayable(cost.status);
-        const pending = await this.pendingScheduleTotal(tx, costId);
-        if (pending.plus(amount).gt(cost.totalAmount.minus(cost.paidAmount))) {
+        if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
           throw new BadRequestException(
-            "Pending payment schedules cannot exceed the remaining cost",
+            "Payment schedule amount cannot exceed the remaining cost",
           );
         }
         const schedule = await tx.paymentSchedule.create({
@@ -729,12 +714,10 @@ export class WeddingCostsService {
           dto.amount === undefined
             ? schedule.amount
             : this.positiveAmount(dto.amount, "amount");
-        const otherPending = await this.pendingScheduleTotal(tx, cost.id, id);
-        if (
-          otherPending.plus(amount).gt(cost.totalAmount.minus(cost.paidAmount))
-        ) {
+        this.assertCostPayable(cost.status);
+        if (amount.gt(cost.totalAmount.minus(cost.paidAmount))) {
           throw new BadRequestException(
-            "Pending payment schedules cannot exceed the remaining cost",
+            "Payment schedule amount cannot exceed the remaining cost",
           );
         }
         const updated = await tx.paymentSchedule.update({
@@ -914,13 +897,15 @@ export class WeddingCostsService {
           data: { status: PaymentScheduleStatus.PAID, paidAt },
         });
         const paidAmount = cost.paidAmount.plus(schedule.amount);
+        const status = this.deriveStatus(cost.totalAmount, paidAmount);
         await tx.weddingCost.update({
           where: { id: cost.id },
           data: {
             paidAmount,
-            status: this.deriveStatus(cost.totalAmount, paidAmount),
+            status,
           },
         });
+        await this.cancelPendingSchedulesWhenPaid(tx, cost.id, status);
         return { payment: this.paymentResponse(payment), created: true };
       },
     );
@@ -1051,20 +1036,19 @@ export class WeddingCostsService {
       throw new NotFoundException("Payment schedule not found");
   }
 
-  private async pendingScheduleTotal(
+  private async cancelPendingSchedulesWhenPaid(
     tx: Tx,
     costId: string,
-    excludeId?: string,
+    status: WeddingCostStatus,
   ) {
-    const result = await tx.paymentSchedule.aggregate({
+    if (status !== WeddingCostStatus.PAID) return;
+    await tx.paymentSchedule.updateMany({
       where: {
         weddingCostId: costId,
         status: PaymentScheduleStatus.PENDING,
-        ...(excludeId ? { id: { not: excludeId } } : {}),
       },
-      _sum: { amount: true },
+      data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
     });
-    return result._sum.amount ?? new Prisma.Decimal(0);
   }
 
   private async costOrThrow(id: string) {
@@ -1109,7 +1093,6 @@ export class WeddingCostsService {
       totalAmount: cost.totalAmount.toString(),
       paidAmount: cost.paidAmount.toString(),
       remainingAmount: cost.totalAmount.minus(cost.paidAmount).toString(),
-      dueDate: cost.dueDate,
       agreementDate: cost.agreementDate,
       status: cost.status,
       note: cost.note,
@@ -1197,7 +1180,11 @@ export class WeddingCostsService {
     value: string | number | null | undefined,
     field: string,
   ) {
-    if (value === null || value === undefined || String(value).trim() === "") {
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === "string" && value.trim() === "")
+    ) {
       return new Prisma.Decimal(0);
     }
     return this.positiveAmount(value, field);

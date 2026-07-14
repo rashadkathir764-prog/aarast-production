@@ -4,10 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { NotificationPreference } from "@prisma/client";
+import { NotificationPreference, Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { runRetryableTransaction } from "../common/prisma/serializable-transaction";
 import { MediaStorageService } from "../media/media-storage.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
@@ -124,12 +125,59 @@ export class UsersService {
   async deleteMe(currentUser: AuthenticatedUser): Promise<{ deleted: true }> {
     const userId = currentUser.id;
 
-    await this.prisma.$transaction(
+    await runRetryableTransaction(
+      this.prisma,
       async (tx) => {
         // The same advisory account lock used by presigning prevents a new
         // upload ticket from escaping this snapshot. Tickets survive User
         // deletion (userId becomes null) as durable object-deletion jobs.
         await this.mediaStorage.scheduleAllOwnedMediaDeletion(userId, tx);
+
+        // Lock the account before enumerating its plans. A concurrent plan
+        // create needs a foreign-key key-share lock on this row and therefore
+        // cannot slip a new owned plan past the deletion snapshot.
+        const lockedUsers = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "User"
+            WHERE "id" = ${userId}
+            FOR UPDATE
+          `,
+        );
+        if (lockedUsers.length === 0) {
+          throw new NotFoundException("User not found");
+        }
+
+        // Parent rows are locked in a deterministic order before any child is
+        // purged. This blocks new FK children while this transaction deletes
+        // the complete plan graph and avoids cross-plan lock inversions.
+        const ownedPlans = await tx.$queryRaw<Array<{ id: string }>>(
+          Prisma.sql`
+            SELECT "id"
+            FROM "WeddingPlan"
+            WHERE "ownerUserId" = ${userId}
+            ORDER BY "id" ASC
+            FOR UPDATE
+          `,
+        );
+        const planIds = ownedPlans.map((plan) => plan.id);
+
+        if (planIds.length > 0) {
+          // Every money mutation locks WeddingCost before CostPayment. Account
+          // erasure follows the same order, so reversePayment can never hold a
+          // cost while this path holds its payment and waits in the opposite
+          // direction.
+          await tx.$queryRaw<Array<{ id: string }>>(
+            Prisma.sql`
+              SELECT "id"
+              FROM "WeddingCost"
+              WHERE "weddingPlanId" IN (${Prisma.join(planIds)})
+              ORDER BY "id" ASC
+              FOR UPDATE
+            `,
+          );
+        }
+
         const [notificationRows, conversationRows] = await Promise.all([
           tx.notification.findMany({
             where: { userId },
@@ -168,12 +216,6 @@ export class UsersService {
             },
           });
         }
-        const ownedPlans = await tx.weddingPlan.findMany({
-          where: { ownerUserId: userId },
-          select: { id: true },
-        });
-        const planIds = ownedPlans.map((plan) => plan.id);
-
         if (planIds.length > 0) {
           const inPlans = { weddingPlanId: { in: planIds } };
           // CostPayment is append-only during normal product work. Account
@@ -214,7 +256,10 @@ export class UsersService {
         // links.
         await tx.user.delete({ where: { id: userId } });
       },
-      { timeout: 15_000 },
+      {
+        timeout: 15_000,
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      },
     );
 
     return { deleted: true };

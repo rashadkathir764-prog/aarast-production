@@ -449,7 +449,6 @@ model WeddingCost {
   partyPhone       String?
   totalAmount      Decimal           @db.Decimal(14, 2)
   paidAmount       Decimal           @default(0) @db.Decimal(14, 2)
-  dueDate          DateTime?
   agreementDate    DateTime?
   status           WeddingCostStatus @default(OPEN)
   note             String?

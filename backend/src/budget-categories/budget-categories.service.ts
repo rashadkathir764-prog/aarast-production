@@ -211,7 +211,11 @@ export class BudgetCategoriesService {
   }
 
   private optionalAllocation(value: string | number | null | undefined) {
-    if (value === undefined || value === null || String(value).trim() === "")
+    if (
+      value === undefined ||
+      value === null ||
+      (typeof value === "string" && value.trim() === "")
+    )
       return null;
     return new Prisma.Decimal(requiredMoneyAmount(value, "allocatedAmount"));
   }

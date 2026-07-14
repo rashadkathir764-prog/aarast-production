@@ -157,6 +157,17 @@ async function run() {
         managerMember.body?.canManageMoney === true,
     );
 
+    const emptyBudget = await request(
+      'PUT',
+      `/api/v1/wedding-plans/${planId}/money-budget`,
+      { totalBudget: '1000000', currency: 'YER', categories: [] },
+      owner.token,
+    );
+    check(
+      'owner can save a budget before adding categories',
+      emptyBudget.status === 200 && emptyBudget.body?.categories?.length === 0,
+    );
+
     const hallClientId = randomUUID();
     const attireClientId = randomUUID();
     const budget = await request(
@@ -242,6 +253,17 @@ async function run() {
     check('created cost reports paid and remaining balances', cost.body?.paidAmount === '250000' && cost.body?.remainingAmount === '150000');
     const costId = cost.body?.id;
     if (!costId) throw new Error('cost setup failed');
+
+    const rejectUsedCategoryDeletion = await request(
+      'PUT',
+      `/api/v1/wedding-plans/${planId}/money-budget`,
+      { totalBudget: '1000000', currency: 'YER', categories: [] },
+      owner.token,
+    );
+    check(
+      'empty category replacement cannot delete a category used by a cost',
+      rejectUsedCategoryDeletion.status === 409,
+    );
 
     const listForViewer = await request(
       'GET',

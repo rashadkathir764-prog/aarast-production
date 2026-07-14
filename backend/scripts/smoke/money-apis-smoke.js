@@ -148,12 +148,12 @@ async function run() {
         budgetCategoryId: categoryId,
         title: 'Hall agreement',
         totalAmount: '500',
-        dueDate: dateOffsetIso(20),
       },
       owner.token,
     );
     check('canonical wedding cost is created', cost.status === 201 && typeof cost.body?.id === 'string');
     check('new cost starts unpaid and open', cost.body?.paidAmount === '0' && cost.body?.remainingAmount === '500' && cost.body?.status === 'OPEN');
+    check('wedding cost exposes no redundant due date', !Object.prototype.hasOwnProperty.call(cost.body ?? {}, 'dueDate'));
     const costId = cost.body?.id;
     if (!costId) throw new Error('cost setup failed');
 
@@ -179,6 +179,99 @@ async function run() {
       owner.token,
     );
     check('negative cost amount is rejected', invalidCost.status === 400);
+    const costWithLegacyDueDate = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Legacy due date must be rejected',
+        totalAmount: '10',
+        dueDate: dateOffsetIso(5),
+      },
+      owner.token,
+    );
+    check('legacy wedding-cost dueDate is rejected', costWithLegacyDueDate.status === 400);
+
+    const reminderOnlyCost = await request(
+      'POST',
+      `/api/v1/wedding-plans/${planId}/costs`,
+      {
+        budgetCategoryId: categoryId,
+        title: 'Reminder-only cost',
+        totalAmount: '400',
+      },
+      owner.token,
+    );
+    const reminderOnlyCostId = reminderOnlyCost.body?.id;
+    check('reminder-only cost is created', reminderOnlyCost.status === 201 && typeof reminderOnlyCostId === 'string');
+    const reminderA = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      { amount: '300', dueDate: dateOffsetIso(4) },
+      owner.token,
+    );
+    const reminderB = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      { amount: '300', dueDate: dateOffsetIso(8) },
+      owner.token,
+    );
+    check('reminders do not reserve or divide the outstanding balance', reminderA.status === 201 && reminderB.status === 201);
+    const reminderWarningSummary = await request(
+      'GET',
+      `/api/v1/wedding-plans/${planId}/money-summary`,
+      null,
+      owner.token,
+    );
+    const reminderWarning = reminderWarningSummary.body?.warnings?.find(
+      (item) => item.type === 'PAYMENT_SCHEDULE_DUE_SOON',
+    );
+    check(
+      'overlapping reminder warning exposes count without a misleading amount',
+      reminderWarningSummary.status === 200 &&
+        reminderWarning?.count === 2 &&
+        reminderWarning?.amount === null,
+    );
+    const oversizedReminder = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      { amount: '400.01', dueDate: dateOffsetIso(12) },
+      owner.token,
+    );
+    check('each reminder is still bounded by the current remaining cost', oversizedReminder.status === 400);
+    const settlingPayment = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/payments`,
+      { amount: '400', paidAt: dateOffsetIso(0) },
+      owner.token,
+    );
+    check('a direct payment can settle a cost despite pending reminders', settlingPayment.status === 201 && settlingPayment.body?.amount === '400');
+    const cancelledReminders = await request(
+      'GET',
+      `/api/v1/costs/${reminderOnlyCostId}/payment-schedules`,
+      null,
+      owner.token,
+    );
+    check(
+      'settling a cost cancels every pending reminder',
+      cancelledReminders.status === 200 &&
+        cancelledReminders.body?.length === 2 &&
+        cancelledReminders.body.every((item) => item.status === 'CANCELLED'),
+    );
+    const reopenReminderOnlyCost = await request(
+      'POST',
+      `/api/v1/cost-payments/${settlingPayment.body?.id}/reverse`,
+      { reason: 'Remove reminder-only smoke fixture from active totals' },
+      owner.token,
+    );
+    check('settling payment can be reversed for cleanup', reopenReminderOnlyCost.status === 201);
+    const cancelReminderOnlyCost = await request(
+      'POST',
+      `/api/v1/costs/${reminderOnlyCostId}/cancel`,
+      {},
+      owner.token,
+    );
+    check('reminder-only smoke cost can be cancelled after reversal', cancelReminderOnlyCost.status === 201 && cancelReminderOnlyCost.body?.status === 'CANCELLED');
 
     const schedule = await request(
       'POST',

@@ -227,7 +227,6 @@ async function run() {
       title: 'Completion scheduled cost',
       totalAmount: '300000',
       initialPaymentAmount: '50000',
-      dueDate: dateOffsetIso(30),
     }, owner.token);
     check('POST scheduled cost - HTTP 201', res.status === 201);
     check('scheduled cost starts partially paid', res.body?.status === 'PARTIALLY_PAID');

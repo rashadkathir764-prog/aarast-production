@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   CostPaymentType,
   PaymentScheduleStatus,
@@ -27,40 +27,73 @@ export class MoneySummaryService {
       weddingPlanId,
       currentUser,
     );
-    const [categories, costs, payments, schedules] = await Promise.all([
-      this.prisma.budgetCategory.findMany({
-        where: { weddingPlanId },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      }),
-      this.prisma.weddingCost.findMany({
-        where: { weddingPlanId, status: { not: WeddingCostStatus.CANCELLED } },
-        select: {
-          id: true,
-          budgetCategoryId: true,
-          totalAmount: true,
-          title: true,
+    const [plan, categories, costs, payments, schedules] =
+      await this.prisma.$transaction(
+        async (tx) => {
+          const [
+            snapshotPlan,
+            snapshotCategories,
+            snapshotCosts,
+            snapshotPayments,
+            snapshotSchedules,
+          ] = await Promise.all([
+            tx.weddingPlan.findUnique({
+              where: { id: weddingPlanId },
+              select: { estimatedBudget: true, currency: true },
+            }),
+            tx.budgetCategory.findMany({
+              where: { weddingPlanId },
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            }),
+            tx.weddingCost.findMany({
+              where: {
+                weddingPlanId,
+                status: { not: WeddingCostStatus.CANCELLED },
+              },
+              select: {
+                id: true,
+                budgetCategoryId: true,
+                totalAmount: true,
+                title: true,
+              },
+            }),
+            tx.costPayment.findMany({
+              where: {
+                weddingCost: {
+                  weddingPlanId,
+                  status: { not: WeddingCostStatus.CANCELLED },
+                },
+              },
+              select: { weddingCostId: true, amount: true, entryType: true },
+            }),
+            tx.paymentSchedule.findMany({
+              where: {
+                weddingCost: {
+                  weddingPlanId,
+                  status: { not: WeddingCostStatus.CANCELLED },
+                },
+              },
+              include: {
+                weddingCost: { select: { budgetCategoryId: true } },
+              },
+              orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+            }),
+          ]);
+
+          if (!snapshotPlan) {
+            throw new NotFoundException("Wedding plan not found");
+          }
+
+          return [
+            snapshotPlan,
+            snapshotCategories,
+            snapshotCosts,
+            snapshotPayments,
+            snapshotSchedules,
+          ] as const;
         },
-      }),
-      this.prisma.costPayment.findMany({
-        where: {
-          weddingCost: {
-            weddingPlanId,
-            status: { not: WeddingCostStatus.CANCELLED },
-          },
-        },
-        select: { weddingCostId: true, amount: true, entryType: true },
-      }),
-      this.prisma.paymentSchedule.findMany({
-        where: {
-          weddingCost: {
-            weddingPlanId,
-            status: { not: WeddingCostStatus.CANCELLED },
-          },
-        },
-        include: { weddingCost: { select: { budgetCategoryId: true } } },
-        orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-      }),
-    ]);
+        { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+      );
 
     const zero = () => new Prisma.Decimal(0);
     const totalCost = costs.reduce(
@@ -86,7 +119,7 @@ export class MoneySummaryService {
       (sum, category) => sum.plus(category.allocatedAmount ?? zero()),
       zero(),
     );
-    const totalBudget = access.plan.estimatedBudget;
+    const totalBudget = plan.estimatedBudget;
     const now = new Date();
     const today = this.startOfTodayInRiyadh(now);
     const dueSoonEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -169,9 +202,7 @@ export class MoneySummaryService {
         type: "PAYMENT_SCHEDULE_OVERDUE",
         severity: "DANGER",
         count: overdueSchedules.length,
-        amount: overdueSchedules
-          .reduce((sum, schedule) => sum.plus(schedule.amount), zero())
-          .toString(),
+        amount: null,
       });
     }
     if (dueSoonSchedules.length > 0) {
@@ -179,16 +210,14 @@ export class MoneySummaryService {
         type: "PAYMENT_SCHEDULE_DUE_SOON",
         severity: "WARNING",
         count: dueSoonSchedules.length,
-        amount: dueSoonSchedules
-          .reduce((sum, schedule) => sum.plus(schedule.amount), zero())
-          .toString(),
+        amount: null,
       });
     }
 
     const next = pendingSchedules[0] ?? null;
     return {
       weddingPlanId,
-      currency: access.plan.currency,
+      currency: plan.currency,
       budget: {
         total: totalBudget?.toString() ?? null,
         allocated: allocated.toString(),

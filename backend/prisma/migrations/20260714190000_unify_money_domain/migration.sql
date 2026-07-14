@@ -155,7 +155,6 @@ CREATE TABLE "WeddingCost" (
   "partyPhone" TEXT,
   "totalAmount" DECIMAL(14,2) NOT NULL,
   "paidAmount" DECIMAL(14,2) NOT NULL DEFAULT 0,
-  "dueDate" TIMESTAMP(3),
   "agreementDate" TIMESTAMP(3),
   "status" "WeddingCostStatus" NOT NULL DEFAULT 'OPEN',
   "note" TEXT,
@@ -528,24 +527,55 @@ AFTER UPDATE ON "WeddingPlan"
 DEFERRABLE INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION "aarast_validate_money_budget"();
 
--- Pending reminders reserve no paid money, but their combined amount must fit
--- the outstanding balance and a cancelled cost may not retain active reminders.
-CREATE FUNCTION "aarast_validate_cost_schedule_capacity"()
+-- Validate one reminder against the balance visible at that reminder write.
+-- This trigger intentionally never sums reminders and never runs when a later
+-- payment reduces the balance. The shared lock serializes this check with cost
+-- balance updates while service transactions keep a consistent cost-first
+-- lock order.
+CREATE FUNCTION "aarast_validate_payment_schedule_amount_at_write"()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  remaining_amount DECIMAL(14,2);
+BEGIN
+  IF NEW."status" <> 'PENDING' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT cost."totalAmount" - cost."paidAmount"
+  INTO remaining_amount
+  FROM "WeddingCost" cost
+  WHERE cost."id" = NEW."weddingCostId"
+  FOR SHARE;
+
+  IF FOUND AND NEW."amount" > remaining_amount THEN
+    RAISE EXCEPTION 'payment schedule amount exceeds the remaining cost %', NEW."weddingCostId";
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER "PaymentSchedule_amount_at_write_integrity"
+BEFORE INSERT OR UPDATE ON "PaymentSchedule"
+FOR EACH ROW EXECUTE FUNCTION "aarast_validate_payment_schedule_amount_at_write"();
+
+-- A payment schedule is a non-reserving reminder: multiple reminders may each
+-- reference the full outstanding balance. The final state must still be
+-- coherent, so a paid or cancelled cost cannot retain a pending reminder.
+-- This is deferred to let service transactions update the cost and reminders
+-- in either order, including an atomic payment reversal.
+CREATE FUNCTION "aarast_validate_payment_schedule_cost_status"()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
   cost_id TEXT;
   affected_cost_ids TEXT[];
-  cost_row "WeddingCost"%ROWTYPE;
-  pending_total DECIMAL(14,2);
 BEGIN
   IF TG_TABLE_NAME = 'WeddingCost' THEN
     affected_cost_ids := ARRAY[NEW."id"]::TEXT[];
   ELSIF TG_OP = 'INSERT' THEN
     affected_cost_ids := ARRAY[NEW."weddingCostId"]::TEXT[];
-  ELSIF TG_OP = 'DELETE' THEN
-    affected_cost_ids := ARRAY[OLD."weddingCostId"]::TEXT[];
   ELSE
     affected_cost_ids := ARRAY[OLD."weddingCostId", NEW."weddingCostId"]::TEXT[];
   END IF;
@@ -553,33 +583,31 @@ BEGIN
   FOR cost_id IN
     SELECT DISTINCT value FROM unnest(affected_cost_ids) AS value
   LOOP
-    SELECT * INTO cost_row FROM "WeddingCost" WHERE "id" = cost_id;
-    IF FOUND THEN
-      SELECT COALESCE(SUM("amount"), 0)
-      INTO pending_total
-      FROM "PaymentSchedule"
-      WHERE "weddingCostId" = cost_id AND "status" = 'PENDING';
-
-      IF pending_total > cost_row."totalAmount" - cost_row."paidAmount"
-         OR (cost_row."status" = 'CANCELLED' AND pending_total > 0) THEN
-        RAISE EXCEPTION 'payment schedules exceed the remaining cost %', cost_id;
-      END IF;
+    IF EXISTS (
+      SELECT 1
+      FROM "WeddingCost" cost
+      JOIN "PaymentSchedule" schedule
+        ON schedule."weddingCostId" = cost."id"
+      WHERE cost."id" = cost_id
+        AND cost."status" IN ('PAID', 'CANCELLED')
+        AND schedule."status" = 'PENDING'
+    ) THEN
+      RAISE EXCEPTION 'paid or cancelled wedding cost % cannot retain pending payment schedules', cost_id;
     END IF;
   END LOOP;
 
-  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
   RETURN NEW;
 END $$;
 
-CREATE CONSTRAINT TRIGGER "PaymentSchedule_capacity_integrity"
-AFTER INSERT OR UPDATE OR DELETE ON "PaymentSchedule"
+CREATE CONSTRAINT TRIGGER "PaymentSchedule_cost_status_integrity"
+AFTER INSERT OR UPDATE ON "PaymentSchedule"
 DEFERRABLE INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION "aarast_validate_cost_schedule_capacity"();
+FOR EACH ROW EXECUTE FUNCTION "aarast_validate_payment_schedule_cost_status"();
 
-CREATE CONSTRAINT TRIGGER "WeddingCost_schedule_capacity_integrity"
+CREATE CONSTRAINT TRIGGER "WeddingCost_pending_schedule_integrity"
 AFTER INSERT OR UPDATE ON "WeddingCost"
 DEFERRABLE INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION "aarast_validate_cost_schedule_capacity"();
+FOR EACH ROW EXECUTE FUNCTION "aarast_validate_payment_schedule_cost_status"();
 
 ALTER TABLE "SharedMember"
   ADD COLUMN "canViewMoney" BOOLEAN NOT NULL DEFAULT false,
@@ -613,7 +641,9 @@ ALTER TABLE "PlanInvite"
 
 -- Old reminders point at records intentionally discarded above. Delete them;
 -- never rewrite their IDs to a new route that cannot resolve them.
-DELETE FROM "Notification"
+CREATE TEMP TABLE "aarast_removed_finance_notification" ON COMMIT DROP AS
+SELECT "id"
+FROM "Notification"
 WHERE "type"::text IN ('INSTALLMENT_DUE_SOON', 'INSTALLMENT_OVERDUE', 'DEBT_DUE_SOON')
    OR "entityType" IN (
      'financial_installment', 'financial_commitment', 'expense', 'debt', 'installment'
@@ -623,6 +653,17 @@ WHERE "type"::text IN ('INSTALLMENT_DUE_SOON', 'INSTALLMENT_OVERDUE', 'DEBT_DUE_
    OR "routeTarget" LIKE '%/finance/%'
    OR "routeTarget" LIKE '%/debts/%'
    OR "routeTarget" LIKE '%/expenses/%';
+
+DELETE FROM "OutboxEvent"
+WHERE "aggregateType" = 'notification'
+  AND "aggregateId" IN (
+    SELECT "id" FROM "aarast_removed_finance_notification"
+  );
+
+DELETE FROM "Notification"
+WHERE "id" IN (
+  SELECT "id" FROM "aarast_removed_finance_notification"
+);
 
 ALTER TYPE "NotificationType" RENAME TO "NotificationType_old";
 CREATE TYPE "NotificationType" AS ENUM (
@@ -670,6 +711,30 @@ BEGIN
     RAISE EXCEPTION 'invalid plan budget or currency after finance reset';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'PaymentSchedule_amount_at_write_integrity'
+      AND tgrelid = '"PaymentSchedule"'::regclass
+      AND NOT tgdeferrable
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'PaymentSchedule_cost_status_integrity'
+      AND tgrelid = '"PaymentSchedule"'::regclass
+      AND tgdeferrable
+      AND tginitdeferred
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'WeddingCost_pending_schedule_integrity'
+      AND tgrelid = '"WeddingCost"'::regclass
+      AND tgdeferrable
+      AND tginitdeferred
+  ) THEN
+    RAISE EXCEPTION 'payment schedule database integrity triggers are missing';
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM "BudgetCategory"
     WHERE trim("name") = ''
@@ -704,6 +769,17 @@ BEGIN
        OR "routeTarget" LIKE '%/expenses/%'
   ) THEN
     RAISE EXCEPTION 'old finance notifications remain after reset';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM "OutboxEvent"
+    WHERE "aggregateType" = 'notification'
+      AND "aggregateId" IN (
+        SELECT "id" FROM "aarast_removed_finance_notification"
+      )
+  ) THEN
+    RAISE EXCEPTION 'old finance notification outbox events remain after reset';
   END IF;
 
   IF to_regclass('"Expense"') IS NOT NULL

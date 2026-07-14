@@ -3,20 +3,36 @@ import { PrismaService } from "../../prisma/prisma.service";
 
 const DEFAULT_ATTEMPTS = 4;
 
+export interface RetryableTransactionOptions {
+  maxAttempts?: number;
+  maxWait?: number;
+  timeout?: number;
+  isolationLevel?: Prisma.TransactionIsolationLevel;
+}
+
 /**
- * Runs a money-domain transaction at SERIALIZABLE isolation and retries only
- * PostgreSQL serialization/deadlock failures. Business errors are never
- * swallowed or retried.
+ * Runs an interactive transaction and retries only PostgreSQL
+ * serialization/deadlock failures. Callers that need READ COMMITTED semantics
+ * (for example, an advisory-lock snapshot hand-off) can omit isolationLevel.
  */
-export async function runSerializableTransaction<T>(
+export async function runRetryableTransaction<T>(
   prisma: PrismaService,
   operation: (tx: Prisma.TransactionClient) => Promise<T>,
-  maxAttempts = DEFAULT_ATTEMPTS,
+  options: RetryableTransactionOptions = {},
 ): Promise<T> {
+  const {
+    maxAttempts = DEFAULT_ATTEMPTS,
+    maxWait,
+    timeout,
+    isolationLevel,
+  } = options;
+
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
       return await prisma.$transaction(operation, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        ...(maxWait !== undefined ? { maxWait } : {}),
+        ...(timeout !== undefined ? { timeout } : {}),
+        ...(isolationLevel !== undefined ? { isolationLevel } : {}),
       });
     } catch (error) {
       if (!isRetryableTransactionError(error) || attempt === maxAttempts) {
@@ -27,7 +43,23 @@ export async function runSerializableTransaction<T>(
       );
     }
   }
-  throw new Error("Serializable transaction retry loop exhausted");
+  throw new Error("Retryable transaction retry loop exhausted");
+}
+
+/**
+ * Runs a money-domain transaction at SERIALIZABLE isolation and retries only
+ * PostgreSQL serialization/deadlock failures. Business errors are never
+ * swallowed or retried.
+ */
+export async function runSerializableTransaction<T>(
+  prisma: PrismaService,
+  operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  maxAttempts = DEFAULT_ATTEMPTS,
+): Promise<T> {
+  return runRetryableTransaction(prisma, operation, {
+    maxAttempts,
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  });
 }
 
 function isRetryableTransactionError(error: unknown): boolean {

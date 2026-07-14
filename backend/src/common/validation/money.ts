@@ -9,9 +9,14 @@ import { BadRequestException } from '@nestjs/common';
 const MONEY_PATTERN = /^\d{1,12}(\.\d{1,2})?$/;
 
 export function requiredMoneyAmount(
-  value: string | number,
+  value: unknown,
   field: string,
 ): string {
+  if (typeof value !== 'string' && typeof value !== 'number') {
+    throw new BadRequestException(
+      `${field} must be a non-negative amount with at most 12 digits and 2 decimal places`,
+    );
+  }
   const normalized = String(value).trim();
   if (!normalized || !MONEY_PATTERN.test(normalized)) {
     throw new BadRequestException(
@@ -22,7 +27,7 @@ export function requiredMoneyAmount(
 }
 
 export function optionalMoneyAmount(
-  value: string | number | undefined,
+  value: unknown,
   field: string,
 ): string | null {
   if (value === undefined) return null;

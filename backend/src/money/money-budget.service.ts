@@ -193,7 +193,11 @@ export class MoneyBudgetService {
   }
 
   private totalBudget(value: string | number | null | undefined) {
-    if (value === null || value === undefined || String(value).trim() === "")
+    if (
+      value === null ||
+      value === undefined ||
+      (typeof value === "string" && value.trim() === "")
+    )
       return null;
     const amount = new Prisma.Decimal(
       requiredMoneyAmount(value, "totalBudget"),
@@ -221,7 +225,7 @@ export class MoneyBudgetService {
     const parsed =
       rawAllocation === null ||
       rawAllocation === undefined ||
-      String(rawAllocation).trim() === ""
+      (typeof rawAllocation === "string" && rawAllocation.trim() === "")
         ? null
         : new Prisma.Decimal(
             requiredMoneyAmount(rawAllocation, "allocatedAmount"),

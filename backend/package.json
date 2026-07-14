@@ -83,7 +83,7 @@
     "multer": "2.2.0"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^24.10.1",
     "@types/passport-jwt": "^4.0.1",
     "ts-node": "^10.9.2",

@@ -20,13 +20,9 @@ class AarastMoneyGlanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = parseAmount(summary.totalBudgetForDisplay);
-    final spent = parseAmount(summary.spentTotalForDisplay) ?? 0;
-    final commitments = parseAmount(summary.commitmentTotalForDisplay) ?? 0;
+    final confirmed = parseAmount(summary.confirmedCostForDisplay) ?? 0;
     final reportedRemaining = parseAmount(summary.remainingBudgetForDisplay);
     final hasBudget = total != null && total > 0;
-    final confirmed = reportedRemaining != null && hasBudget
-        ? total - reportedRemaining
-        : spent + commitments;
     final remaining = reportedRemaining ?? (hasBudget ? total - confirmed : 0);
     final usedRatio = hasBudget ? (confirmed / total).clamp(0.0, 1.0) : 0.0;
     final currencyLabel = currencyLabelAr(summary.currency);
@@ -131,13 +127,13 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                 Row(
                   children: [
                     _MoneyFigure(
-                      label: 'المخصص',
+                      label: 'الميزانية',
                       value: formatAmount(total),
                       currencyLabel: currencyLabel,
                       color: AarastDesignTokens.ink,
                     ),
                     _MoneyFigure(
-                      label: 'المؤكد',
+                      label: 'التكاليف المؤكدة',
                       value: formatAmount(confirmed),
                       currencyLabel: currencyLabel,
                       color: AarastDesignTokens.burgundy,
@@ -178,7 +174,7 @@ class AarastMoneyGlanceCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   nearLimit
-                      ? 'مستخدم ${(usedRatio * 100).round()}% — اقتربت من حد الميزانية، فراجع البنود قبل أي دفعة جديدة.'
+                      ? 'مستخدم ${(usedRatio * 100).round()}% — اقتربت من حد الميزانية، فراجعها قبل إضافة تكلفة جديدة.'
                       : 'مستخدم ${(usedRatio * 100).round()}% من الميزانية',
                   style: textTheme.labelSmall?.copyWith(
                     color: nearLimit

@@ -57,11 +57,11 @@ class LocalGuestDashboardSummary {
     required this.declinedGuestCount,
     required this.incompleteGuestCount,
     required this.providerCount,
-    required this.spentTotal,
-    required this.commitmentTotal,
-    required this.commitmentPaidTotal,
-    required this.commitmentOutstandingTotal,
-    required this.dueInstallmentsCount,
+    required this.confirmedCostTotal,
+    required this.paidTotal,
+    required this.outstandingTotal,
+    required this.duePaymentSchedulesCount,
+    required this.nextPaymentScheduleDue,
     required this.localImportantItems,
     required this.localRecentActivity,
     required this.financialWarnings,
@@ -81,11 +81,11 @@ class LocalGuestDashboardSummary {
   final int declinedGuestCount;
   final int incompleteGuestCount;
   final int providerCount;
-  final String spentTotal;
-  final String commitmentTotal;
-  final String commitmentPaidTotal;
-  final String commitmentOutstandingTotal;
-  final int dueInstallmentsCount;
+  final String confirmedCostTotal;
+  final String paidTotal;
+  final String outstandingTotal;
+  final int duePaymentSchedulesCount;
+  final DashboardNextPaymentSchedule? nextPaymentScheduleDue;
   final List<DashboardImportantItem> localImportantItems;
   final List<DashboardImportantItem> localRecentActivity;
   final List<DashboardFinancialWarning> financialWarnings;
@@ -120,13 +120,11 @@ class LocalGuestDashboardSummary {
       declinedGuestCount: metrics.declinedGuestCount,
       incompleteGuestCount: metrics.incompleteGuestCount,
       providerCount: 0,
-      spentTotal: _amountString(metrics.spentTotal),
-      commitmentTotal: _amountString(metrics.commitmentTotal),
-      commitmentPaidTotal: _amountString(metrics.commitmentPaidTotal),
-      commitmentOutstandingTotal: _amountString(
-        metrics.commitmentOutstandingTotal,
-      ),
-      dueInstallmentsCount: metrics.dueInstallmentsCount,
+      confirmedCostTotal: _amountString(metrics.confirmedCostTotal),
+      paidTotal: _amountString(metrics.paidTotal),
+      outstandingTotal: _amountString(metrics.outstandingTotal),
+      duePaymentSchedulesCount: metrics.duePaymentSchedulesCount,
+      nextPaymentScheduleDue: metrics.nextPaymentScheduleDue,
       localImportantItems: metrics.importantItems,
       localRecentActivity: metrics.recentActivity,
       financialWarnings: metrics.financialWarnings(
@@ -140,11 +138,7 @@ class LocalGuestDashboardSummary {
     final budget = _cleanAmount(plan.estimatedBudget);
     final remainingBudget = budget == null
         ? null
-        : _amountString(
-            _moneyValue(budget) -
-                _moneyValue(spentTotal) -
-                _moneyValue(commitmentTotal),
-          );
+        : _amountString(_moneyValue(budget) - _moneyValue(confirmedCostTotal));
     return DashboardSummary(
       dataScope: 'LOCAL',
       accountBacked: false,
@@ -158,12 +152,11 @@ class LocalGuestDashboardSummary {
       daysRemaining: daysRemaining,
       progressPercentage: progressPercent,
       budgetTotal: budget,
-      spentTotal: spentTotal,
+      confirmedCostTotal: confirmedCostTotal,
+      paidTotal: paidTotal,
+      outstandingTotal: outstandingTotal,
       remainingBudget: remainingBudget ?? budget,
-      commitmentTotal: commitmentTotal,
-      commitmentPaidTotal: commitmentPaidTotal,
-      commitmentOutstandingTotal: commitmentOutstandingTotal,
-      dueInstallmentsCount: dueInstallmentsCount,
+      duePaymentSchedulesCount: duePaymentSchedulesCount,
       totalTasks: taskCount,
       completedTasks: completedTaskCount,
       overdueTasks: overdueTaskCount,
@@ -191,14 +184,16 @@ class LocalGuestDashboardSummary {
       recentActivity: localRecentActivity,
       planProviders: const [],
       importantNotifications: const [],
+      nextPaymentScheduleDue: nextPaymentScheduleDue,
       moneySummary: DashboardMoneySummary(
         totalBudget: budget,
-        totalSpent: spentTotal,
+        confirmedCost: confirmedCostTotal,
+        paid: paidTotal,
+        outstanding: outstandingTotal,
         remainingBudget: remainingBudget ?? budget,
-        totalCommitments: commitmentTotal,
         overBudget: budget == null
             ? null
-            : _moneyValue(spentTotal) > _moneyValue(budget),
+            : _moneyValue(confirmedCostTotal) > _moneyValue(budget),
       ),
       financialWarnings: financialWarnings,
       generatedAt: plan.createdAt,
@@ -206,12 +201,10 @@ class LocalGuestDashboardSummary {
       permissions: const DashboardPermissionSummary(
         isOwner: true,
         role: 'GUEST_LOCAL',
-        canViewBudget: true,
-        canViewExpenses: true,
-        canViewFinancialRecords: true,
+        canViewMoney: true,
         canManageTasks: true,
         canManageGuests: true,
-        canManageFinancialRecords: true,
+        canManageMoney: true,
         canManagePlan: true,
       ),
     );
@@ -253,11 +246,13 @@ class LocalDashboardMetrics {
     required this.pendingGuestCount,
     required this.declinedGuestCount,
     required this.incompleteGuestCount,
-    required this.spentTotal,
-    required this.commitmentTotal,
-    required this.commitmentPaidTotal,
-    required this.commitmentOutstandingTotal,
-    required this.dueInstallmentsCount,
+    required this.confirmedCostTotal,
+    required this.paidTotal,
+    required this.outstandingTotal,
+    required this.duePaymentSchedulesCount,
+    required this.overduePaymentSchedulesCount,
+    required this.dueSoonPaymentSchedulesCount,
+    required this.nextPaymentScheduleDue,
     required this.importantItems,
     required this.recentActivity,
   });
@@ -272,11 +267,13 @@ class LocalDashboardMetrics {
     pendingGuestCount: 0,
     declinedGuestCount: 0,
     incompleteGuestCount: 0,
-    spentTotal: 0,
-    commitmentTotal: 0,
-    commitmentPaidTotal: 0,
-    commitmentOutstandingTotal: 0,
-    dueInstallmentsCount: 0,
+    confirmedCostTotal: 0,
+    paidTotal: 0,
+    outstandingTotal: 0,
+    duePaymentSchedulesCount: 0,
+    overduePaymentSchedulesCount: 0,
+    dueSoonPaymentSchedulesCount: 0,
+    nextPaymentScheduleDue: null,
     importantItems: [],
     recentActivity: [],
   );
@@ -290,11 +287,13 @@ class LocalDashboardMetrics {
   final int pendingGuestCount;
   final int declinedGuestCount;
   final int incompleteGuestCount;
-  final num spentTotal;
-  final num commitmentTotal;
-  final num commitmentPaidTotal;
-  final num commitmentOutstandingTotal;
-  final int dueInstallmentsCount;
+  final num confirmedCostTotal;
+  final num paidTotal;
+  final num outstandingTotal;
+  final int duePaymentSchedulesCount;
+  final int overduePaymentSchedulesCount;
+  final int dueSoonPaymentSchedulesCount;
+  final DashboardNextPaymentSchedule? nextPaymentScheduleDue;
   final List<DashboardImportantItem> importantItems;
   final List<DashboardImportantItem> recentActivity;
 
@@ -317,18 +316,13 @@ class LocalDashboardMetrics {
       parentColumn: 'planId',
       parentId: planId,
     );
-    final expenses = await database.readCachedList(
-      table: OfflineTables.cachedBudgetItems,
+    final costs = await database.readCachedList(
+      table: OfflineTables.cachedCosts,
       parentColumn: 'planId',
       parentId: planId,
     );
-    final commitments = await database.readCachedList(
-      table: OfflineTables.cachedFinancialCommitments,
-      parentColumn: 'planId',
-      parentId: planId,
-    );
-    final installments = await database.readCachedList(
-      table: OfflineTables.cachedFinancialInstallments,
+    final paymentSchedules = await database.readCachedList(
+      table: OfflineTables.cachedPaymentSchedules,
       parentColumn: 'planId',
       parentId: planId,
     );
@@ -353,34 +347,53 @@ class LocalDashboardMetrics {
           _dateOnly(dueDate) == today;
     }).length;
 
-    final activeExpenses = expenses.where((expense) {
-      return _statusOf(expense) != 'CANCELLED';
+    final activeCosts = costs.where((cost) {
+      return _statusOf(cost) != 'CANCELLED';
     }).toList();
-    final spentTotal = activeExpenses.fold<num>(
+    final confirmedCostTotal = activeCosts.fold<num>(
       0,
-      (sum, expense) => sum + _moneyValue(expense['amount']),
+      (sum, cost) => sum + _moneyValue(cost['totalAmount']),
     );
-
-    final activeCommitments = commitments.where((commitment) {
-      return _statusOf(commitment) != 'CANCELLED';
+    final paidTotal = activeCosts.fold<num>(
+      0,
+      (sum, cost) => sum + _moneyValue(cost['paidAmount']),
+    );
+    final outstandingTotal = (confirmedCostTotal - paidTotal).clamp(
+      0,
+      confirmedCostTotal,
+    );
+    final activeCostIds = activeCosts
+        .map((cost) => cost['id']?.toString())
+        .whereType<String>()
+        .toSet();
+    final pendingSchedules =
+        paymentSchedules.where((schedule) {
+          final costId = schedule['costId']?.toString();
+          return _statusOf(schedule) == 'PENDING' &&
+              costId != null &&
+              activeCostIds.contains(costId) &&
+              _dateTimeOrNull(schedule['dueDate']) != null;
+        }).toList()..sort(
+          (a, b) => _dateTimeOrNull(
+            a['dueDate'],
+          )!.compareTo(_dateTimeOrNull(b['dueDate'])!),
+        );
+    final dueSoonEnd = today.add(const Duration(days: 7));
+    final overduePaymentSchedulesCount = pendingSchedules.where((schedule) {
+      return _dateOnly(_dateTimeOrNull(schedule['dueDate'])!).isBefore(today);
+    }).length;
+    final dueSoonPaymentSchedulesCount = pendingSchedules.where((schedule) {
+      final dueDate = _dateOnly(_dateTimeOrNull(schedule['dueDate'])!);
+      return !dueDate.isBefore(today) && !dueDate.isAfter(dueSoonEnd);
+    }).length;
+    final actionableSchedules = pendingSchedules.where((schedule) {
+      return !_dateOnly(
+        _dateTimeOrNull(schedule['dueDate'])!,
+      ).isAfter(dueSoonEnd);
     }).toList();
-    final commitmentTotal = activeCommitments.fold<num>(
-      0,
-      (sum, commitment) => sum + _moneyValue(commitment['totalAmount']),
-    );
-    final commitmentPaidTotal = activeCommitments.fold<num>(
-      0,
-      (sum, commitment) => sum + _moneyValue(commitment['paidAmount']),
-    );
-    final commitmentOutstandingTotal = (commitmentTotal - commitmentPaidTotal)
-        .clamp(0, commitmentTotal);
-    final dueInstallments = installments.where((installment) {
-      final status = _statusOf(installment);
-      return status != 'PAID' &&
-          status != 'CANCELLED' &&
-          _dateTimeOrNull(installment['dueDate']) != null;
-    }).toList();
-    final dueInstallmentsCount = dueInstallments.length;
+    final nextPaymentScheduleDue = pendingSchedules.isEmpty
+        ? null
+        : _toNextPaymentSchedule(pendingSchedules.first, activeCosts);
     final incompleteGuestCount = guests.where(_isIncompleteGuest).length;
 
     return LocalDashboardMetrics(
@@ -399,21 +412,23 @@ class LocalDashboardMetrics {
           .where((guest) => _statusOf(guest) == 'DECLINED')
           .length,
       incompleteGuestCount: incompleteGuestCount,
-      spentTotal: spentTotal,
-      commitmentTotal: commitmentTotal,
-      commitmentPaidTotal: commitmentPaidTotal,
-      commitmentOutstandingTotal: commitmentOutstandingTotal,
-      dueInstallmentsCount: dueInstallmentsCount,
+      confirmedCostTotal: confirmedCostTotal,
+      paidTotal: paidTotal,
+      outstandingTotal: outstandingTotal,
+      duePaymentSchedulesCount: actionableSchedules.length,
+      overduePaymentSchedulesCount: overduePaymentSchedulesCount,
+      dueSoonPaymentSchedulesCount: dueSoonPaymentSchedulesCount,
+      nextPaymentScheduleDue: nextPaymentScheduleDue,
       importantItems: _localPriorityItems(
         guests: guests,
         tasks: activeTasks,
-        installments: dueInstallments,
+        paymentSchedules: actionableSchedules,
+        costs: activeCosts,
       ),
       recentActivity: _localActivityItems(
         guests: guests,
         tasks: activeTasks,
-        expenses: activeExpenses,
-        commitments: activeCommitments,
+        costs: activeCosts,
       ),
     );
   }
@@ -441,13 +456,13 @@ class LocalDashboardMetrics {
           message: 'أضف الميزانية المتوقعة حتى نعرض المتبقي بدقة.',
         ),
       );
-    } else if (spentTotal > budgetValue) {
+    } else if (confirmedCostTotal > budgetValue) {
       warnings.add(
         DashboardFinancialWarning(
           type: 'BUDGET_EXCEEDED',
           severity: 'DANGER',
-          message: 'المصروفات أعلى من الميزانية الحالية.',
-          amount: _amountString(spentTotal - budgetValue),
+          message: 'التكاليف المؤكدة تجاوزت الميزانية العامة.',
+          amount: _amountString(confirmedCostTotal - budgetValue),
         ),
       );
     }
@@ -461,13 +476,23 @@ class LocalDashboardMetrics {
         ),
       );
     }
-    if (dueInstallmentsCount > 0) {
+    if (overduePaymentSchedulesCount > 0) {
       warnings.add(
         DashboardFinancialWarning(
-          type: 'INSTALLMENT_DUE_SOON',
+          type: 'PAYMENT_SCHEDULE_OVERDUE',
+          severity: 'DANGER',
+          message: 'لديك مواعيد دفع متأخرة تحتاج متابعة.',
+          count: overduePaymentSchedulesCount,
+        ),
+      );
+    }
+    if (dueSoonPaymentSchedulesCount > 0) {
+      warnings.add(
+        DashboardFinancialWarning(
+          type: 'PAYMENT_SCHEDULE_DUE_SOON',
           severity: 'WARNING',
-          message: 'هناك أقساط قادمة ضمن الخطة.',
-          count: dueInstallmentsCount,
+          message: 'لديك مواعيد دفع خلال الأيام السبعة القادمة.',
+          count: dueSoonPaymentSchedulesCount,
         ),
       );
     }
@@ -488,7 +513,8 @@ class LocalDashboardMetrics {
 List<DashboardImportantItem> _localPriorityItems({
   required List<Map<String, dynamic>> guests,
   required List<Map<String, dynamic>> tasks,
-  required List<Map<String, dynamic>> installments,
+  required List<Map<String, dynamic>> paymentSchedules,
+  required List<Map<String, dynamic>> costs,
 }) {
   final today = _dateOnly(DateTime.now());
   final priorities = <DashboardImportantItem>[];
@@ -516,20 +542,29 @@ List<DashboardImportantItem> _localPriorityItems({
     );
   }
 
-  final nextInstallment = _firstOrNull(installments);
-  if (nextInstallment != null) {
+  final nextPaymentSchedule = _firstOrNull(paymentSchedules);
+  if (nextPaymentSchedule != null) {
+    final cost = _costForSchedule(nextPaymentSchedule, costs);
+    final dueDate = _dateTimeOrNull(nextPaymentSchedule['dueDate'])!;
+    final overdue = _dateOnly(dueDate).isBefore(today);
     priorities.add(
       DashboardImportantItem(
-        id: nextInstallment['id']?.toString() ?? 'local-due-installment',
-        type: 'INSTALLMENT_DUE',
-        title: 'قسط قادم في الخطة',
-        subtitle: 'استحقاق مالي',
+        id: nextPaymentSchedule['id']?.toString() ?? 'local-payment-schedule',
+        type: 'PAYMENT_SCHEDULE_DUE',
+        title: overdue ? 'موعد دفع متأخر' : 'موعد دفع قريب',
+        subtitle: _textValue(cost?['title'], fallback: 'تكلفة ضمن الخطة'),
         icon: 'wallet',
-        tone: 'warning',
-        priority: 'HIGH',
-        actionLabel: 'عرض المال',
-        amount: _amountString(_moneyValue(nextInstallment['amount'])),
-        data: const {'source': 'guest_local'},
+        tone: overdue ? 'danger' : 'warning',
+        priority: overdue ? 'URGENT' : 'HIGH',
+        actionLabel: 'عرض موعد الدفع',
+        dueDate: dueDate,
+        amount: _amountString(_moneyValue(nextPaymentSchedule['amount'])),
+        entityId: nextPaymentSchedule['id']?.toString(),
+        data: {
+          'source': 'guest_local',
+          'weddingCostId': cost?['id']?.toString(),
+          'paymentScheduleId': nextPaymentSchedule['id']?.toString(),
+        },
       ),
     );
   }
@@ -558,8 +593,7 @@ List<DashboardImportantItem> _localPriorityItems({
 List<DashboardImportantItem> _localActivityItems({
   required List<Map<String, dynamic>> guests,
   required List<Map<String, dynamic>> tasks,
-  required List<Map<String, dynamic>> expenses,
-  required List<Map<String, dynamic>> commitments,
+  required List<Map<String, dynamic>> costs,
 }) {
   final rows = <_LocalActivityRow>[
     for (final task in tasks)
@@ -572,29 +606,16 @@ List<DashboardImportantItem> _localActivityItems({
         tone: 'info',
         actionLabel: 'عرض المهام',
       ),
-    for (final expense in expenses)
+    for (final cost in costs)
       _LocalActivityRow(
-        json: expense,
-        type: 'LOCAL_MONEY_EXPENSE',
-        title:
-            'مصروف محفوظ: ${_textValue(expense['title'], fallback: 'مصروف')}',
+        json: cost,
+        type: 'LOCAL_MONEY_COST',
+        title: 'تكلفة محفوظة: ${_textValue(cost['title'], fallback: 'تكلفة')}',
         subtitle: 'نشاط محلي',
         icon: 'wallet',
         tone: 'warning',
-        actionLabel: 'عرض المال',
-        amount: _amountString(_moneyValue(expense['amount'])),
-      ),
-    for (final commitment in commitments)
-      _LocalActivityRow(
-        json: commitment,
-        type: 'LOCAL_MONEY_COMMITMENT',
-        title:
-            'مستحق محفوظ: ${_textValue(commitment['title'], fallback: 'مستحق')}',
-        subtitle: 'نشاط محلي',
-        icon: 'wallet',
-        tone: 'danger',
-        actionLabel: 'عرض المستحقات',
-        amount: _amountString(_moneyValue(commitment['totalAmount'])),
+        actionLabel: 'عرض التكلفة',
+        amount: _amountString(_moneyValue(cost['totalAmount'])),
       ),
     for (final guest in guests)
       _LocalActivityRow(
@@ -666,6 +687,29 @@ bool _isIncompleteGuest(Map<String, dynamic> guest) {
 T? _firstOrNull<T>(Iterable<T> values) {
   final iterator = values.iterator;
   return iterator.moveNext() ? iterator.current : null;
+}
+
+DashboardNextPaymentSchedule _toNextPaymentSchedule(
+  Map<String, dynamic> schedule,
+  List<Map<String, dynamic>> costs,
+) {
+  final cost = _costForSchedule(schedule, costs);
+  return DashboardNextPaymentSchedule(
+    id: schedule['id']?.toString() ?? '',
+    weddingCostId: schedule['costId']?.toString() ?? '',
+    title: _textValue(cost?['title'], fallback: 'تكلفة ضمن الخطة'),
+    amount: _amountString(_moneyValue(schedule['amount'])),
+    dueDate: _dateTimeOrNull(schedule['dueDate'])!,
+    status: 'PENDING',
+  );
+}
+
+Map<String, dynamic>? _costForSchedule(
+  Map<String, dynamic> schedule,
+  List<Map<String, dynamic>> costs,
+) {
+  final costId = schedule['costId']?.toString();
+  return _firstOrNull(costs.where((cost) => cost['id']?.toString() == costId));
 }
 
 String _textValue(Object? value, {required String fallback}) {

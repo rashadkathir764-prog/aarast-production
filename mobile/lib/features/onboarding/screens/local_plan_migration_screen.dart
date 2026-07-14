@@ -228,7 +228,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                           _CountChip(
                             icon: LucideIcons.wallet,
                             label: 'المصاريف',
-                            count: widget.snapshot.expenses.length,
+                            count: widget.snapshot.costs.length,
                           ),
                           _CountChip(
                             icon: LucideIcons.listChecks,

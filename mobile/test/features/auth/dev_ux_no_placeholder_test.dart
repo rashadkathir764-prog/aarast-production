@@ -1,8 +1,8 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
-import 'package:aarast_mobile/features/finance/screens/budget_expense_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
@@ -25,7 +25,7 @@ void main() {
   ) async {
     await _pumpWithProviders(
       tester,
-      const BudgetExpenseScreen(weddingPlanId: localPlanId),
+      const MoneyOverviewScreen(weddingPlanId: localPlanId),
     );
 
     expect(find.text('المال'), findsOneWidget);
@@ -92,7 +92,7 @@ Future<void> _pumpWithProviders(WidgetTester tester, Widget child) async {
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
         ChangeNotifierProvider<FinanceProvider>(
-          create: (_) => FinanceProvider(BudgetExpenseApi(apiClient)),
+          create: (_) => FinanceProvider(FinanceApi(apiClient)),
         ),
         ChangeNotifierProvider<TaskTimelineProvider>(
           create: (_) => TaskTimelineProvider(TaskTimelineApi(apiClient)),

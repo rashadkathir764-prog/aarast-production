@@ -197,15 +197,13 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       phone: _phoneController.text,
       name: provider.lookupUser?.name,
       role: _role,
-      canViewBudget: _permissions.canViewBudget,
-      canViewExpenses: _permissions.canViewExpenses,
-      canViewFinancialRecords: _permissions.canViewFinancialRecords,
+      canViewMoney: _permissions.canViewMoney,
       canEditPlan: _permissions.canEditPlan,
       canManageTasks: _permissions.canManageTasks,
       canManageGuests: _permissions.canManageGuests,
       canManageProviders: _permissions.canManageProviders,
       canInviteMembers: _permissions.canInviteMembers,
-      canManageFinancialRecords: _permissions.canManageFinancialRecords,
+      canManageMoney: _permissions.canManageMoney,
       receiveNotifications: _permissions.receiveNotifications,
     );
 

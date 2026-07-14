@@ -9,11 +9,9 @@
   static const cachedGuests = 'cached_guests';
   static const cachedTasks = 'cached_tasks';
   static const cachedBudgetCategories = 'cached_budget_categories';
-  static const cachedBudgetItems = 'cached_budget_items';
-  static const cachedFinancialCommitments = 'cached_financial_commitments';
-  static const cachedFinancialPaymentRecords =
-      'cached_financial_payment_records';
-  static const cachedFinancialInstallments = 'cached_financial_installments';
+  static const cachedCosts = 'cached_costs';
+  static const cachedCostPayments = 'cached_cost_payments';
+  static const cachedPaymentSchedules = 'cached_payment_schedules';
   static const cachedProviderCategories = 'cached_provider_categories';
   static const cachedCities = 'cached_cities';
   static const cachedProviders = 'cached_providers';
@@ -29,10 +27,9 @@
     cachedGuests,
     cachedTasks,
     cachedBudgetCategories,
-    cachedBudgetItems,
-    cachedFinancialCommitments,
-    cachedFinancialPaymentRecords,
-    cachedFinancialInstallments,
+    cachedCosts,
+    cachedCostPayments,
+    cachedPaymentSchedules,
     cachedProviderCategories,
     cachedCities,
     cachedProviders,
@@ -50,10 +47,9 @@
       'guest' => cachedGuests,
       'task' => cachedTasks,
       'budget_category' => cachedBudgetCategories,
-      'expense' => cachedBudgetItems,
-      'financial_commitment' => cachedFinancialCommitments,
-      'financial_payment_record' => cachedFinancialPaymentRecords,
-      'financial_installment' => cachedFinancialInstallments,
+      'cost' => cachedCosts,
+      'cost_payment' => cachedCostPayments,
+      'payment_schedule' => cachedPaymentSchedules,
       'provider_category' => cachedProviderCategories,
       'city' => cachedCities,
       'provider' => cachedProviders,

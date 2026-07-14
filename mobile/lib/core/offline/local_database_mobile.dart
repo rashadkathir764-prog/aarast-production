@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
@@ -35,7 +35,7 @@ class SqliteLocalDatabase implements LocalDatabase {
 
   static const _legacyDatabaseName = 'aarast_offline.db';
   static const _databaseName = 'aarast_offline_secure_v1.db';
-  static const _databaseVersion = 4;
+  static const _databaseVersion = 5;
 
   final SharedPreferences _preferences;
   final OfflineDatabaseKeyVault _keyVault;
@@ -72,6 +72,9 @@ class SqliteLocalDatabase implements LocalDatabase {
         if (oldVersion < 4) {
           await db.execute('DROP TABLE IF EXISTS cached_installments');
           await db.execute('DROP TABLE IF EXISTS cached_debts');
+        }
+        if (oldVersion < 5) {
+          await _replaceLegacyFinanceSchema(db);
         }
       },
     );
@@ -137,14 +140,17 @@ class SqliteLocalDatabase implements LocalDatabase {
     required List<Map<String, dynamic>> items,
     String? parentColumn,
     String? parentId,
+    bool preserveDirty = true,
   }) async {
     await _db.transaction((txn) async {
       if (parentColumn == null) {
-        await txn.delete(table, where: 'dirty = 0');
+        await txn.delete(table, where: preserveDirty ? 'dirty = 0' : null);
       } else {
         await txn.delete(
           table,
-          where: 'dirty = 0 AND $parentColumn = ?',
+          where: preserveDirty
+              ? 'dirty = 0 AND $parentColumn = ?'
+              : '$parentColumn = ?',
           whereArgs: [parentId],
         );
       }
@@ -228,10 +234,20 @@ class SqliteLocalDatabase implements LocalDatabase {
     required String method,
     required Map<String, dynamic> payload,
     String? localEntityId,
+    bool replacePendingForEntity = false,
+    String? clientRequestId,
   }) async {
-    final now = DateTime.now();
+    final now = nextSyncQueueTimestamp();
+    final normalizedRequestId = clientRequestId?.trim();
+    if (clientRequestId != null && normalizedRequestId!.isEmpty) {
+      throw ArgumentError.value(
+        clientRequestId,
+        'clientRequestId',
+        'must not be empty',
+      );
+    }
     final item = SyncQueueItem(
-      id: 'sync-${now.microsecondsSinceEpoch}',
+      id: normalizedRequestId ?? syncQueueIdFor(now),
       entityType: entityType,
       operation: operation,
       endpoint: endpoint,
@@ -243,7 +259,18 @@ class SqliteLocalDatabase implements LocalDatabase {
       createdAt: now,
       updatedAt: now,
     );
-    await _db.insert(OfflineTables.syncQueue, item.toRow());
+    await _db.transaction((txn) async {
+      if (replacePendingForEntity) {
+        await txn.delete(
+          OfflineTables.syncQueue,
+          where:
+              'entityType = ? AND operation = ? AND '
+              'localEntityId ${localEntityId == null ? 'IS NULL' : '= ?'}',
+          whereArgs: [entityType, operation, ?localEntityId],
+        );
+      }
+      await txn.insert(OfflineTables.syncQueue, item.toRow());
+    });
     return item;
   }
 
@@ -323,6 +350,8 @@ class SqliteLocalDatabase implements LocalDatabase {
           {
             'payloadJson': payload.replaceAll(localId, remoteId),
             'endpoint': endpoint.replaceAll(localId, remoteId),
+            if (row['localEntityId']?.toString() == localId)
+              'localEntityId': remoteId,
             'updatedAt': DateTime.now().toIso8601String(),
           },
           where: 'id = ?',
@@ -335,8 +364,9 @@ class SqliteLocalDatabase implements LocalDatabase {
   @override
   Future<int> pendingSyncCount() async {
     final rows = await _db.rawQuery(
-      'SELECT COUNT(*) AS count FROM ${OfflineTables.syncQueue} WHERE status != ?',
-      [SyncQueueItem.synced],
+      'SELECT COUNT(*) AS count FROM ${OfflineTables.syncQueue} '
+      'WHERE status != ? AND status != ?',
+      [SyncQueueItem.synced, SyncQueueItem.blocked],
     );
     return _intOrZero(rows.first['count']);
   }
@@ -346,8 +376,8 @@ class SqliteLocalDatabase implements LocalDatabase {
     final rows = await _db.query(
       OfflineTables.syncQueue,
       columns: ['entityType', 'localEntityId'],
-      where: 'status != ? AND localEntityId IS NOT NULL',
-      whereArgs: [SyncQueueItem.synced],
+      where: 'status != ? AND status != ? AND localEntityId IS NOT NULL',
+      whereArgs: [SyncQueueItem.synced, SyncQueueItem.blocked],
     );
     return {
       for (final row in rows) '${row['entityType']}:${row['localEntityId']}',
@@ -427,12 +457,7 @@ CREATE TABLE ${OfflineTables.syncQueue} (
     _cacheTable(
       batch,
       OfflineTables.cachedBudgetCategories,
-      'planId TEXT, name TEXT, targetAmount TEXT',
-    );
-    _cacheTable(
-      batch,
-      OfflineTables.cachedBudgetItems,
-      'planId TEXT, category TEXT, amount TEXT, paidAmount TEXT, status TEXT',
+      'planId TEXT, name TEXT, allocatedAmount TEXT',
     );
     _createFinancialCacheTables(batch);
     _cacheTable(
@@ -472,18 +497,65 @@ CREATE TABLE ${OfflineTables.syncQueue} (
   static void _createFinancialCacheTables(Batch batch) {
     _cacheTable(
       batch,
-      OfflineTables.cachedFinancialCommitments,
+      OfflineTables.cachedCosts,
       'planId TEXT, categoryId TEXT, providerId TEXT, title TEXT, totalAmount TEXT, paidAmount TEXT, status TEXT',
     );
     _cacheTable(
       batch,
-      OfflineTables.cachedFinancialPaymentRecords,
-      'planId TEXT, commitmentId TEXT, categoryId TEXT, amount TEXT, paidAt TEXT',
+      OfflineTables.cachedCostPayments,
+      'planId TEXT, costId TEXT, amount TEXT, paidAt TEXT',
     );
     _cacheTable(
       batch,
-      OfflineTables.cachedFinancialInstallments,
-      'planId TEXT, commitmentId TEXT, categoryId TEXT, amount TEXT, dueDate TEXT, status TEXT',
+      OfflineTables.cachedPaymentSchedules,
+      'planId TEXT, costId TEXT, amount TEXT, dueDate TEXT, status TEXT',
+    );
+  }
+
+  static Future<void> _replaceLegacyFinanceSchema(Database db) async {
+    const legacyTables = [
+      'cached_budget_items',
+      'cached_financial_commitments',
+      'cached_financial_payment_records',
+      'cached_financial_installments',
+      'cached_costs',
+      'cached_cost_payments',
+      'cached_payment_schedules',
+    ];
+    for (final table in legacyTables) {
+      await db.execute('DROP TABLE IF EXISTS $table');
+    }
+
+    // Category allocation changed contract. Cached rows and queued writes from
+    // the former targetAmount payload must never be replayed against the new
+    // API, so this cache is intentionally rebuilt.
+    await db.execute(
+      'DROP TABLE IF EXISTS ${OfflineTables.cachedBudgetCategories}',
+    );
+    final batch = db.batch();
+    _cacheTable(
+      batch,
+      OfflineTables.cachedBudgetCategories,
+      'planId TEXT, name TEXT, allocatedAmount TEXT',
+    );
+    _createFinancialCacheTables(batch);
+    await batch.commit();
+
+    await db.delete(
+      OfflineTables.syncQueue,
+      where: 'entityType IN (?, ?, ?, ?, ?)',
+      whereArgs: const [
+        'budget_category',
+        'expense',
+        'financial_commitment',
+        'financial_payment_record',
+        'financial_installment',
+      ],
+    );
+    await db.delete(
+      OfflineTables.localMeta,
+      where: 'key LIKE ? OR key LIKE ?',
+      whereArgs: const ['expense_summary:%', 'money_summary:%'],
     );
   }
 

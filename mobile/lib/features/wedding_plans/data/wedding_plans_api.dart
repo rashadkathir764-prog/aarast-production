@@ -33,7 +33,7 @@ class WeddingPlansApi {
   }
 
   /// One-shot idempotent migration of a guest-mode local plan (seed +
-  /// expenses + tasks + guests) into the authenticated account.
+  /// costs, nested payments/schedules, tasks and guests) into the account.
   Future<OnboardingCompleteResponse> importLocalPlan(
     Map<String, dynamic> payload,
   ) async {

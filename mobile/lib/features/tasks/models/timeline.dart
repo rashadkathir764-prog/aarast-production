@@ -1,17 +1,12 @@
-﻿class Timeline {
+class Timeline {
   const Timeline({
     required this.upcomingTasks,
-    required this.dueCommitments,
-    required this.dueInstallments,
+    required this.paymentSchedules,
     this.weddingDate,
   });
 
   factory Timeline.empty() {
-    return const Timeline(
-      upcomingTasks: [],
-      dueCommitments: [],
-      dueInstallments: [],
-    );
+    return const Timeline(upcomingTasks: [], paymentSchedules: []);
   }
 
   factory Timeline.fromJson(Map<String, dynamic> json) {
@@ -21,21 +16,16 @@
         json['upcomingTasks'],
         (item) => TimelineTask.fromJson(item),
       ),
-      dueCommitments: _listFromJson(
-        json['dueCommitments'],
-        (item) => TimelineCommitment.fromJson(item),
-      ),
-      dueInstallments: _listFromJson(
-        json['dueInstallments'],
-        (item) => TimelineInstallment.fromJson(item),
+      paymentSchedules: _listFromJson(
+        json['paymentSchedules'],
+        (item) => TimelinePaymentSchedule.fromJson(item),
       ),
     );
   }
 
   final DateTime? weddingDate;
   final List<TimelineTask> upcomingTasks;
-  final List<TimelineCommitment> dueCommitments;
-  final List<TimelineInstallment> dueInstallments;
+  final List<TimelinePaymentSchedule> paymentSchedules;
 }
 
 class TimelineTask {
@@ -70,71 +60,33 @@ class TimelineTask {
   final String priority;
 }
 
-class TimelineCommitment {
-  const TimelineCommitment({
+class TimelinePaymentSchedule {
+  const TimelinePaymentSchedule({
     required this.id,
-    required this.weddingPlanId,
-    this.partyName,
-    required this.title,
-    required this.totalAmount,
-    required this.paidAmount,
-    required this.status,
-    this.dueDate,
-  });
-
-  factory TimelineCommitment.fromJson(Map<String, dynamic> json) {
-    return TimelineCommitment(
-      id: json['id'].toString(),
-      weddingPlanId: json['weddingPlanId'].toString(),
-      partyName: json['partyName']?.toString(),
-      title: json['title'].toString(),
-      totalAmount: json['totalAmount'].toString(),
-      paidAmount: json['paidAmount'].toString(),
-      dueDate: _dateTimeOrNull(json['dueDate']),
-      status: json['status']?.toString() ?? 'OPEN',
-    );
-  }
-
-  final String id;
-  final String weddingPlanId;
-  final String? partyName;
-  final String title;
-  final String totalAmount;
-  final String paidAmount;
-  final DateTime? dueDate;
-  final String status;
-
-  String get remainingAmount {
-    final total = num.tryParse(totalAmount) ?? 0;
-    final paid = num.tryParse(paidAmount) ?? 0;
-    final remaining = total - paid;
-    return remaining < 0 ? '0' : remaining.toStringAsFixed(2);
-  }
-}
-
-class TimelineInstallment {
-  const TimelineInstallment({
-    required this.id,
-    required this.financialCommitmentId,
+    required this.weddingCostId,
+    required this.costTitle,
     required this.amount,
+    required this.dueDate,
     required this.status,
-    this.dueDate,
   });
 
-  factory TimelineInstallment.fromJson(Map<String, dynamic> json) {
-    return TimelineInstallment(
+  factory TimelinePaymentSchedule.fromJson(Map<String, dynamic> json) {
+    return TimelinePaymentSchedule(
       id: json['id'].toString(),
-      financialCommitmentId: json['financialCommitmentId'].toString(),
+      weddingCostId:
+          json['weddingCostId']?.toString() ?? json['costId']?.toString() ?? '',
+      costTitle: json['costTitle']?.toString() ?? '',
       amount: json['amount'].toString(),
-      dueDate: _dateTimeOrNull(json['dueDate']),
+      dueDate: DateTime.parse(json['dueDate'].toString()),
       status: json['status']?.toString() ?? 'PENDING',
     );
   }
 
   final String id;
-  final String financialCommitmentId;
+  final String weddingCostId;
+  final String costTitle;
   final String amount;
-  final DateTime? dueDate;
+  final DateTime dueDate;
   final String status;
 }
 

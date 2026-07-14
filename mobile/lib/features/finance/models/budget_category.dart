@@ -1,38 +1,59 @@
-﻿class BudgetCategory {
+class BudgetCategory {
   const BudgetCategory({
     required this.id,
     required this.weddingPlanId,
     required this.name,
-    required this.createdAt,
-    required this.updatedAt,
-    this.targetAmount,
+    this.clientId,
+    this.allocatedAmount,
+    this.confirmedCost = '0',
+    this.paid = '0',
+    this.outstanding = '0',
+    this.remainingAllocation,
+    this.costsCount = 0,
+    this.createdAt,
+    this.updatedAt,
   });
 
   factory BudgetCategory.fromJson(Map<String, dynamic> json) {
     return BudgetCategory(
-      id: json['id'].toString(),
-      weddingPlanId: json['weddingPlanId'].toString(),
-      name: json['name'].toString(),
-      targetAmount: json['targetAmount']?.toString(),
-      createdAt: _dateTimeOrNow(json['createdAt']),
-      updatedAt: _dateTimeOrNow(json['updatedAt']),
+      id: json['id']?.toString() ?? '',
+      weddingPlanId: json['weddingPlanId']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      clientId: json['clientId']?.toString(),
+      allocatedAmount: json['allocatedAmount']?.toString(),
+      confirmedCost: json['confirmedCost']?.toString() ?? '0',
+      paid: json['paid']?.toString() ?? '0',
+      outstanding: json['outstanding']?.toString() ?? '0',
+      remainingAllocation: json['remainingAllocation']?.toString(),
+      costsCount: _intOrZero(json['costsCount']),
+      createdAt: _dateTimeOrNull(json['createdAt']),
+      updatedAt: _dateTimeOrNull(json['updatedAt']),
     );
   }
 
   final String id;
   final String weddingPlanId;
   final String name;
-  final String? targetAmount;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final String? clientId;
+  final String? allocatedAmount;
+  final String confirmedCost;
+  final String paid;
+  final String outstanding;
+  final String? remainingAllocation;
+  final int costsCount;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
-  bool get hasTargetAmount =>
-      targetAmount != null && targetAmount!.trim().isNotEmpty;
+  bool get hasAllocation =>
+      allocatedAmount != null && allocatedAmount!.trim().isNotEmpty;
 }
 
-DateTime _dateTimeOrNow(Object? value) {
-  if (value == null) {
-    return DateTime.now();
-  }
-  return DateTime.tryParse(value.toString()) ?? DateTime.now();
+DateTime? _dateTimeOrNull(Object? value) {
+  if (value == null) return null;
+  return DateTime.tryParse(value.toString());
+}
+
+int _intOrZero(Object? value) {
+  if (value is int) return value;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }

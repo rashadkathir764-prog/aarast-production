@@ -103,6 +103,7 @@ class ApiClient {
   final Dio dio;
   final Dio _uploadDio;
   final TokenProvider _tokenProvider;
+  static const clientRequestIdHeader = 'X-Client-Request-Id';
   static const _refreshRetryKey = 'aarast_refresh_retried';
   Future<bool>? _refreshInFlight;
   int _sessionGeneration = 0;
@@ -226,6 +227,51 @@ class ApiClient {
     }
   }
 
+  Future<Map<String, dynamic>> putJson(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await dio.put<Object?>(path, data: data);
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
+  /// Sends one authenticated mutation with a caller-owned idempotency key.
+  ///
+  /// The caller must persist [clientRequestId] if a lost response is queued,
+  /// so the offline replay reaches the server with the exact same key.
+  Future<Map<String, dynamic>> mutateJson(
+    String path,
+    Map<String, dynamic> data, {
+    required String method,
+    required String clientRequestId,
+  }) async {
+    final normalizedRequestId = clientRequestId.trim();
+    if (normalizedRequestId.isEmpty) {
+      throw ArgumentError.value(
+        clientRequestId,
+        'clientRequestId',
+        'must not be empty',
+      );
+    }
+    try {
+      final response = await dio.request<Object?>(
+        path,
+        data: data,
+        options: Options(
+          method: method.toUpperCase(),
+          headers: {clientRequestIdHeader: normalizedRequestId},
+        ),
+      );
+      return _asJsonMap(response.data);
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Future<Map<String, dynamic>> deleteJson(String path) async {
     try {
       final response = await dio.delete<Object?>(path);
@@ -317,6 +363,7 @@ class ApiException implements Exception {
     }
 
     if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.connectionError) {
       return const ApiException(
@@ -325,7 +372,10 @@ class ApiException implements Exception {
       );
     }
 
-    return const ApiException('حدث خطأ، يرجى المحاولة مرة أخرى.');
+    return ApiException(
+      'حدث خطأ، يرجى المحاولة مرة أخرى.',
+      statusCode: statusCode,
+    );
   }
 
   final String message;
@@ -334,6 +384,17 @@ class ApiException implements Exception {
 
   bool get isUnauthorized {
     return statusCode == 401 || message.contains('بيانات الدخول');
+  }
+
+  /// Whether a mutating request may have reached the server without the
+  /// client receiving a durable result. Retrying these failures with the same
+  /// client request id is the only safe option for financial writes.
+  ///
+  /// Client errors are deliberately excluded: validation/permission failures
+  /// must be surfaced, not hidden inside the offline queue.
+  bool get isAmbiguousMutationFailure {
+    final code = statusCode;
+    return isNetworkFailure || (code != null && code >= 500 && code <= 599);
   }
 
   @override

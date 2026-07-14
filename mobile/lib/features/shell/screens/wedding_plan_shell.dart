@@ -22,7 +22,7 @@ class WeddingPlanShell extends StatelessWidget {
 
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.endsWith('/finance') || location.contains('/finance/')) {
+    if (location.endsWith('/money') || location.contains('/money/')) {
       return 1;
     }
     if (location.endsWith('/tasks')) return 2;
@@ -34,7 +34,7 @@ class WeddingPlanShell extends StatelessWidget {
   }
 
   void _onNavigate(BuildContext context, int index) {
-    final routes = ['dashboard', 'finance', 'tasks', 'guests', 'providers'];
+    final routes = ['dashboard', 'money', 'tasks', 'guests', 'providers'];
     if (index >= 0 && index < routes.length) {
       final current = _calculateSelectedIndex(context);
       if (current == index) return;
@@ -84,7 +84,7 @@ class WeddingPlanShell extends StatelessWidget {
                 context.go(AppRouter.planProviders(planId));
               }
             : null,
-        refreshDashboardOnExpense: true,
+        refreshDashboardOnMoney: true,
       ),
     );
   }
@@ -94,13 +94,15 @@ class WeddingPlanShell extends StatelessWidget {
     final currentIndex = _calculateSelectedIndex(context);
     final location = GoRouterState.of(context).uri.path;
     final finance = context.watch<FinanceProvider?>();
+    final canManageCurrentMoney =
+        finance?.loadedPlanId == weddingPlanId &&
+        (finance?.canManageMoney ?? false);
 
-    final isMoneyRoot = location.endsWith('/finance');
+    final isMoneyRoot = location.endsWith('/money');
     final showQuickFab = shouldShowPlanQuickAdd(
       tabIndex: currentIndex,
       isRootDestination: currentIndex != 1 || isMoneyRoot,
-      canManageFinancialRecords:
-          currentIndex != 1 || (finance?.canManageFinancialRecords ?? true),
+      canManageMoney: currentIndex != 1 || canManageCurrentMoney,
     );
 
     return PlanShellChrome(

@@ -249,7 +249,7 @@ void main() {
         );
 
         expect(find.textContaining('اسم عضو طويل'), findsOneWidget);
-        expect(find.text('إدارة السجلات المالية'), findsOneWidget);
+        expect(find.text('إدارة المال'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         await tester.scrollUntilVisible(
@@ -481,9 +481,11 @@ final _localSnapshot = LocalPlanSnapshot(
     estimatedBudget: '1000000',
     selectedCategoryKeys: const ['التصوير'],
   ),
-  expenses: const [
-    {'id': 'expense-1'},
+  costs: const [
+    {'id': 'cost-1'},
   ],
+  costPayments: const [],
+  paymentSchedules: const [],
   tasks: const [
     {'id': 'task-1'},
   ],
@@ -545,11 +547,9 @@ final _sharedMember = SharedMember(
     phone: '+967777123456',
   ),
   role: 'CONTRIBUTOR',
-  canViewBudget: true,
-  canViewExpenses: true,
-  canViewFinancialRecords: false,
+  canViewMoney: true,
   canManageTasks: true,
-  canManageFinancialRecords: false,
+  canManageMoney: false,
   createdAt: _fixedDate,
   updatedAt: _fixedDate,
 );

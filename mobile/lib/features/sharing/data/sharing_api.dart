@@ -72,21 +72,17 @@ class SharingApi {
     String? userId,
     String? phone,
     required String role,
-    required bool canViewBudget,
-    required bool canViewExpenses,
-    required bool canViewFinancialRecords,
+    required bool canViewMoney,
     required bool canManageTasks,
-    required bool canManageFinancialRecords,
+    required bool canManageMoney,
   }) async {
     final normalizedPhone = _normalizeOptionalPhone(phone);
     final payload = {
       if (userId != null && userId.trim().isNotEmpty) 'userId': userId.trim(),
       'role': role,
-      'canViewBudget': canViewBudget,
-      'canViewExpenses': canViewExpenses,
-      'canViewFinancialRecords': canViewFinancialRecords,
+      'canViewMoney': canViewMoney || canManageMoney,
       'canManageTasks': canManageTasks,
-      'canManageFinancialRecords': canManageFinancialRecords,
+      'canManageMoney': canManageMoney,
     };
     if (normalizedPhone != null) {
       payload['phone'] = normalizedPhone;
@@ -110,15 +106,13 @@ class SharingApi {
     required String phone,
     String? name,
     required String role,
-    required bool canViewBudget,
-    required bool canViewExpenses,
-    required bool canViewFinancialRecords,
+    required bool canViewMoney,
     required bool canEditPlan,
     required bool canManageTasks,
     required bool canManageGuests,
     required bool canManageProviders,
     required bool canInviteMembers,
-    required bool canManageFinancialRecords,
+    required bool canManageMoney,
     required bool receiveNotifications,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
@@ -127,15 +121,13 @@ class SharingApi {
           'phone': normalizedPhone,
           if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
           'role': role,
-          'canViewBudget': canViewBudget,
-          'canViewExpenses': canViewExpenses,
-          'canViewFinancialRecords': canViewFinancialRecords,
+          'canViewMoney': canViewMoney || canManageMoney,
           'canEditPlan': canEditPlan,
           'canManageTasks': canManageTasks,
           'canManageGuests': canManageGuests,
           'canManageProviders': canManageProviders,
           'canInviteMembers': canInviteMembers,
-          'canManageFinancialRecords': canManageFinancialRecords,
+          'canManageMoney': canManageMoney,
           'receiveNotifications': receiveNotifications,
         });
     return PlanInvite.fromJson(json);

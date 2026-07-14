@@ -19,6 +19,7 @@ class PlanManagementView extends StatelessWidget {
     required this.onEditLocation,
     required this.onManageSharing,
     required this.onArchive,
+    this.quoteSection,
     this.onBack,
     super.key,
   });
@@ -34,6 +35,7 @@ class PlanManagementView extends StatelessWidget {
   final VoidCallback onEditLocation;
   final VoidCallback onManageSharing;
   final VoidCallback? onArchive;
+  final Widget? quoteSection;
   final VoidCallback? onBack;
 
   @override
@@ -81,6 +83,10 @@ class PlanManagementView extends StatelessWidget {
           canManagePlan: canManagePlan,
           onEdit: onEditLocation,
         ),
+        if (quoteSection != null) ...[
+          const SizedBox(height: 14),
+          quoteSection!,
+        ],
         const SizedBox(height: 14),
         _SectionCard(
           title: 'المشاركون والصلاحيات',

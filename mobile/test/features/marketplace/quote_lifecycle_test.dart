@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/features/marketplace/models/accepted_quote_cost_draft.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/quote_status_chip.dart';
 import 'package:flutter/material.dart';
@@ -13,10 +14,7 @@ void main() {
       'lifecycleStatus': 'RECEIVED',
       'contactName': 'رشاد',
       'contactNormalizedPhone': '+967777758200',
-      'location': {
-        'governorate': 'صنعاء',
-        'cityOrDistrict': 'أمانة العاصمة',
-      },
+      'location': {'governorate': 'صنعاء', 'cityOrDistrict': 'أمانة العاصمة'},
       'offers': [
         {
           'id': 'offer-1',
@@ -32,6 +30,55 @@ void main() {
     expect(quote.contactPhone, '+967777758200');
     expect(quote.pendingOffer?.amount, '250000');
     expect(quote.canAcceptOrReject, isTrue);
+  });
+
+  test('accepted quote exposes an optional canonical cost suggestion', () {
+    final quote = QuoteRequest.fromJson({
+      'id': 'quote-accepted',
+      'providerId': 'provider-1',
+      'weddingPlanId': 'plan-1',
+      'status': 'ACCEPTED',
+      'lifecycleStatus': 'ACCEPTED',
+      'offers': [
+        {
+          'id': 'offer-accepted',
+          'status': 'ACCEPTED',
+          'title': 'خدمة القاعة',
+          'amount': '250000',
+          'currency': 'YER',
+        },
+      ],
+      'costSuggestion': {
+        'providerId': 'provider-1',
+        'providerName': 'قاعة السعادة',
+        'category': 'القاعات',
+        'quotedAmount': '250000',
+        'currency': 'YER',
+        'suggestedAction': 'CREATE_COST',
+        'availableActions': ['CREATE_COST'],
+        'quoteOfferId': 'offer-accepted',
+        'automaticCostCreated': false,
+      },
+    });
+
+    expect(quote.costSuggestion?.providerId, 'provider-1');
+    expect(quote.costSuggestion?.quotedAmount, '250000');
+    expect(quote.costSuggestion?.quoteOfferId, 'offer-accepted');
+    expect(quote.costSuggestion?.automaticCostCreated, isFalse);
+    expect(quote.costSuggestion?.canCreateCost, isTrue);
+
+    final intent = costDraftIntentFromAcceptedQuote(
+      quote,
+      fallbackCurrency: 'SAR',
+    );
+    expect(intent, isNotNull);
+    expect(intent?.title, 'خدمة القاعة');
+    expect(intent?.totalAmount, '250000');
+    expect(intent?.providerId, 'provider-1');
+    expect(intent?.providerName, 'قاعة السعادة');
+    expect(intent?.quoteOfferId, 'offer-accepted');
+    expect(intent?.currency, 'YER');
+    expect(intent?.cameFromAcceptedQuote, isTrue);
   });
 
   testWidgets('quote status chip uses truthful Arabic lifecycle labels', (

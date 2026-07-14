@@ -208,7 +208,7 @@ class _WeddingPlanDashboardScreenState
               onProfile: () => context.push(AppRouter.more),
               onOpenPlan: () =>
                   context.push(AppRouter.planCenter(summary.planId)),
-              onOpenMoney: () => context.go(AppRouter.finance(summary.planId)),
+              onOpenMoney: () => context.go(AppRouter.money(summary.planId)),
               onOpenTasks: () => context.go(AppRouter.tasks(summary.planId)),
               onOpenProviders: () =>
                   context.go(AppRouter.planProviders(summary.planId)),
@@ -267,8 +267,8 @@ class _WeddingPlanDashboardScreenState
       _openDashboardItem(item);
       return;
     }
-    if ((summary.dueInstallmentsCount ?? 0) > 0) {
-      context.go(AppRouter.finance(summary.planId));
+    if ((summary.duePaymentSchedulesCount ?? 0) > 0) {
+      context.go(AppRouter.money(summary.planId));
     } else if (summary.overdueTasks > 0 || summary.todayTasks > 0) {
       context.go(AppRouter.tasks(summary.planId));
     } else if (summary.quoteRequestsCount > 0 ||
@@ -280,10 +280,11 @@ class _WeddingPlanDashboardScreenState
   }
 
   void _openNextStepForType(String type) {
-    if (type.contains('INSTALLMENT') ||
+    if (type.contains('PAYMENT_SCHEDULE') ||
+        type.contains('COST') ||
         type.contains('BUDGET') ||
         type.contains('MONEY')) {
-      context.go(AppRouter.finance(widget.weddingPlanId));
+      context.go(AppRouter.money(widget.weddingPlanId));
       return;
     }
     if (type.contains('TASK')) {

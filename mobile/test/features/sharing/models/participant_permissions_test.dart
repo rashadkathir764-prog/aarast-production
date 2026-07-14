@@ -6,10 +6,8 @@ void main() {
   test('family and helper presets do not expose money by default', () {
     for (final role in ['FAMILY', 'HELPER']) {
       final permissions = PlanRolePermissions.forRole(role);
-      expect(permissions.canViewBudget, isFalse);
-      expect(permissions.canViewExpenses, isFalse);
-      expect(permissions.canViewFinancialRecords, isFalse);
-      expect(permissions.canManageFinancialRecords, isFalse);
+      expect(permissions.canViewMoney, isFalse);
+      expect(permissions.canManageMoney, isFalse);
       expect(permissions.canManageTasks, isTrue);
       expect(permissions.canManageGuests, isTrue);
     }
@@ -20,8 +18,27 @@ void main() {
       final permissions = PlanRolePermissions.forRole(role);
       expect(permissions.canEditPlan, isTrue);
       expect(permissions.canManageProviders, isTrue);
-      expect(permissions.canManageFinancialRecords, isTrue);
+      expect(permissions.canManageMoney, isTrue);
     }
+  });
+
+  test('money management always grants money visibility', () {
+    final permissions = PlanRolePermissions.forRole(
+      'VIEWER',
+    ).copyWith(canManageMoney: true);
+
+    expect(permissions.canViewMoney, isTrue);
+    expect(permissions.canManageMoney, isTrue);
+
+    final member = SharedMember.fromJson({
+      'id': 'member-1',
+      'weddingPlanId': 'plan-1',
+      'userId': 'user-1',
+      'role': 'VIEWER',
+      'canManageMoney': true,
+    });
+    expect(member.canViewMoney, isTrue);
+    expect(member.canManageMoney, isTrue);
   });
 
   test('pending plan invitation parses role and participant identity', () {

@@ -10,20 +10,24 @@ import 'guest_onboarding_storage.dart';
 class LocalPlanSnapshot {
   const LocalPlanSnapshot({
     required this.draft,
-    required this.expenses,
+    required this.costs,
+    required this.costPayments,
+    required this.paymentSchedules,
     required this.tasks,
     required this.guests,
     required this.categoryNameById,
   });
 
   final GuestOnboardingDraft draft;
-  final List<Map<String, dynamic>> expenses;
+  final List<Map<String, dynamic>> costs;
+  final List<Map<String, dynamic>> costPayments;
+  final List<Map<String, dynamic>> paymentSchedules;
   final List<Map<String, dynamic>> tasks;
   final List<Map<String, dynamic>> guests;
   final Map<String, String> categoryNameById;
 
   bool get hasAnyRecords =>
-      expenses.isNotEmpty || tasks.isNotEmpty || guests.isNotEmpty;
+      costs.isNotEmpty || tasks.isNotEmpty || guests.isNotEmpty;
 }
 
 /// Migrates a guest-mode local plan into the authenticated account.
@@ -42,7 +46,6 @@ class LocalPlanMigrationService {
   final WeddingPlansApi weddingPlansApi;
   final LocalDatabase? database;
 
-  static const _expenseStatuses = {'PLANNED', 'PAID', 'CANCELLED'};
   static const _taskStatuses = {'TODO', 'IN_PROGRESS', 'DONE', 'CANCELLED'};
   static const _taskPriorities = {'LOW', 'MEDIUM', 'HIGH', 'URGENT'};
   static const _guestSides = {'GROOM', 'BRIDE', 'FAMILY', 'FRIEND', 'OTHER'};
@@ -65,7 +68,12 @@ class LocalPlanMigrationService {
 
     return LocalPlanSnapshot(
       draft: draft,
-      expenses: await _rows(OfflineTables.cachedBudgetItems, planId),
+      costs: await _rows(OfflineTables.cachedCosts, planId),
+      costPayments: await _rows(OfflineTables.cachedCostPayments, planId),
+      paymentSchedules: await _rows(
+        OfflineTables.cachedPaymentSchedules,
+        planId,
+      ),
       tasks: await _rows(OfflineTables.cachedTasks, planId),
       guests: await _rows(OfflineTables.cachedGuests, planId),
       categoryNameById: {
@@ -91,6 +99,11 @@ class LocalPlanMigrationService {
     final location = draft.weddingLocation;
     final city = _text(location.cityOrDistrict);
 
+    final reversedPaymentIds = _reversedPaymentIds(snapshot.costPayments);
+    final costs = [
+      for (final row in snapshot.costs)
+        ?_costPayload(row, snapshot, reversedPaymentIds),
+    ];
     final payload = <String, dynamic>{
       'clientMigrationId': draft.guestPlanId,
       'path': 'USER',
@@ -109,10 +122,7 @@ class LocalPlanMigrationService {
       'currency': draft.currency ?? 'YER',
       if (draft.selectedCategoryKeys.isNotEmpty)
         'selectedCategories': draft.selectedCategoryKeys,
-      if (snapshot.expenses.isNotEmpty)
-        'expenses': [
-          for (final row in snapshot.expenses) _expensePayload(row, snapshot),
-        ],
+      if (costs.isNotEmpty) 'costs': costs,
       if (snapshot.tasks.isNotEmpty)
         'tasks': [for (final row in snapshot.tasks) _taskPayload(row)],
       if (snapshot.guests.isNotEmpty)
@@ -122,20 +132,85 @@ class LocalPlanMigrationService {
     return payload;
   }
 
-  Map<String, dynamic> _expensePayload(
+  Map<String, dynamic>? _costPayload(
     Map<String, dynamic> row,
     LocalPlanSnapshot snapshot,
+    Set<String> reversedPaymentIds,
   ) {
+    if (_text(row['status'])?.toUpperCase() == 'CANCELLED') return null;
+    final totalAmount = _positiveMoney(row['totalAmount']);
+    if (totalAmount == null) return null;
+    final costId = _text(row['id']);
+    if (costId == null) return null;
     final categoryName =
-        snapshot.categoryNameById[_text(row['budgetCategoryId'])];
-    final status = _enumOrNull(row['status'], _expenseStatuses);
+        snapshot.categoryNameById[_text(row['budgetCategoryId'])] ??
+        _text(row['categoryName']) ??
+        'أخرى';
+    final activePayments = snapshot.costPayments
+        .where((payment) {
+          if (_text(payment['costId']) != costId) return false;
+          if (_text(payment['entryType'])?.toUpperCase() == 'REVERSAL') {
+            return false;
+          }
+          final id = _text(payment['id']);
+          return id != null &&
+              !reversedPaymentIds.contains(id) &&
+              _positiveMoney(payment['amount']) != null;
+        })
+        .toList(growable: false);
+    final paidScheduleIds = {
+      for (final payment in activePayments)
+        ?_text(payment['paymentScheduleId']),
+    };
+    final pendingSchedules = snapshot.paymentSchedules
+        .where((schedule) {
+          if (_text(schedule['costId']) != costId) return false;
+          final id = _text(schedule['id']);
+          return _text(schedule['status'])?.toUpperCase() == 'PENDING' &&
+              _text(schedule['paidAt']) == null &&
+              (id == null || !paidScheduleIds.contains(id)) &&
+              _positiveMoney(schedule['amount']) != null &&
+              _text(schedule['dueDate']) != null;
+        })
+        .toList(growable: false);
     return {
-      'title': _text(row['title']) ?? 'مصروف',
-      'amount': _text(row['amount']) ?? '0',
-      'categoryName': ?categoryName,
-      'status': ?status,
-      'expenseDate': ?_text(row['expenseDate']),
+      'title': _text(row['title']) ?? 'تكلفة',
+      'totalAmount': totalAmount,
+      'categoryName': categoryName,
+      'partyName': ?(_text(row['partyName']) ?? _text(row['providerName'])),
+      'partyPhone': ?_text(row['partyPhone']),
+      'agreementDate': ?_text(row['agreementDate']),
+      'dueDate': ?_text(row['dueDate']),
       'note': ?_text(row['note']),
+      if (activePayments.isNotEmpty)
+        'payments': [
+          for (final payment in activePayments)
+            {
+              'amount': _positiveMoney(payment['amount']),
+              'paidAt': ?_text(payment['paidAt']),
+              'method': ?_text(payment['method']),
+              'note': ?_text(payment['note']),
+            },
+        ],
+      if (pendingSchedules.isNotEmpty)
+        'paymentSchedules': [
+          for (final schedule in pendingSchedules)
+            {
+              'amount': _positiveMoney(schedule['amount']),
+              'dueDate': _text(schedule['dueDate']),
+              'note': ?_text(schedule['note']),
+            },
+        ],
+    };
+  }
+
+  static Set<String> _reversedPaymentIds(List<Map<String, dynamic>> payments) {
+    return {
+      for (final payment in payments)
+        if (_text(payment['entryType'])?.toUpperCase() == 'REVERSAL')
+          ?_text(payment['reversalOfId']),
+      for (final payment in payments)
+        if (_text(payment['reversedById']) != null) ?_text(payment['id']),
     };
   }
 
@@ -178,6 +253,12 @@ class LocalPlanMigrationService {
   static String? _budget(GuestOnboardingDraft draft) {
     final raw = draft.estimatedBudget?.replaceAll(',', '').trim();
     return raw == null || raw.isEmpty ? null : raw;
+  }
+
+  static String? _positiveMoney(Object? value) {
+    final text = _text(value)?.replaceAll(',', '');
+    final parsed = num.tryParse(text ?? '');
+    return parsed != null && parsed > 0 ? text : null;
   }
 
   static String? _enumOrNull(Object? value, Set<String> allowed) {

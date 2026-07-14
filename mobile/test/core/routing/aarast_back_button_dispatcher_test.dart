@@ -54,9 +54,9 @@ void main() {
   test('deep-link routes have a logical back fallback', () {
     expect(
       AarastBackButtonDispatcher.fallbackLocationFor(
-        Uri.parse('/wedding-plans/plan-1/expenses/create'),
+        Uri.parse('/wedding-plans/plan-1/money/costs/create'),
       ),
-      AppRouter.finance('plan-1'),
+      AppRouter.money('plan-1'),
     );
     expect(
       AarastBackButtonDispatcher.fallbackLocationFor(

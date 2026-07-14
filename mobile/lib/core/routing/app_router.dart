@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
 import '../../features/welcome_gateway/screens/smart_welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -9,20 +10,19 @@ import '../../features/auth/screens/splash_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/chat/screens/quote_conversation_entry_screen.dart';
 import '../../features/chat/widgets/conversation_list_view.dart';
-import '../../features/finance/screens/budget_expense_screen.dart';
+import '../../features/finance/models/budget_category.dart';
+import '../../features/finance/models/cost_draft_intent.dart';
+import '../../features/finance/models/wedding_cost.dart';
+import '../../features/finance/providers/finance_provider.dart';
 import '../../features/finance/screens/budget_category_details_screen.dart';
-import '../../features/finance/screens/budget_setup_screen.dart';
-import '../../features/finance/screens/create_budget_category_screen.dart';
-import '../../features/finance/screens/create_expense_screen.dart';
-import '../../features/finance/screens/create_financial_commitment_screen.dart';
-import '../../features/finance/screens/expenses_screen.dart';
-import '../../features/finance/screens/financial_commitment_details_screen.dart';
-import '../../features/finance/screens/financial_payables_screen.dart';
-import '../../features/finance/screens/financial_payment_record_details_screen.dart';
-import '../../features/finance/screens/record_payment_screen.dart';
-import '../../features/finance/models/expense_form_intent.dart';
-import '../../features/finance/models/expense.dart';
-import '../../features/finance/models/financial_commitment.dart';
+import '../../features/finance/screens/budget_category_form_screen.dart';
+import '../../features/finance/screens/cost_details_screen.dart';
+import '../../features/finance/screens/cost_form_screen.dart';
+import '../../features/finance/screens/cost_payment_screens.dart';
+import '../../features/finance/screens/costs_screen.dart';
+import '../../features/finance/screens/money_budget_screen.dart';
+import '../../features/finance/screens/money_overview_screen.dart';
+import '../../features/finance/screens/payment_schedule_screens.dart';
 import '../../features/guests/screens/guest_list_screen.dart';
 import '../../features/marketplace/screens/add_provider_package_screen.dart';
 import '../../features/marketplace/screens/add_provider_service_screen.dart';
@@ -56,7 +56,6 @@ import '../../features/wedding_plans/models/dashboard_summary.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../../features/shell/screens/wedding_plan_shell.dart';
-import '../../shared/models/quote_finance_context.dart';
 import '../config/app_feature_flags.dart';
 
 class AppRouter {
@@ -131,68 +130,96 @@ class AppRouter {
     return '/wedding-plans/$id/plan-center';
   }
 
-  static String finance(String id) {
-    return '/wedding-plans/$id/finance';
+  static String money(String id) {
+    return '/wedding-plans/$id/money';
   }
 
-  static String createBudgetCategory(String id) {
-    return '/wedding-plans/$id/budget-categories/create';
+  static String moneyBudget(String id) {
+    return '/wedding-plans/$id/money/budget';
   }
 
-  static String budgetSetup(String id) {
-    return '/wedding-plans/$id/budget/setup';
+  static String moneyCategoryCreate(String id) {
+    return '/wedding-plans/$id/money/categories/create';
   }
 
-  static String budgetCategoryDetails(String weddingPlanId, String categoryId) {
-    return '/wedding-plans/$weddingPlanId/budget-categories/$categoryId';
+  static String moneyCategoryDetails(String planId, String categoryId) {
+    return '/wedding-plans/$planId/money/categories/$categoryId';
   }
 
-  static String createExpense(String id) {
-    return '/wedding-plans/$id/expenses/create';
+  static String moneyCategoryEdit(String planId, String categoryId) {
+    return '/wedding-plans/$planId/money/categories/$categoryId/edit';
   }
 
-  static String createFinancialCommitment(
-    String id, {
-    String sourceType = 'MANUAL_COMMITMENT',
+  static String moneyCosts(String planId, {String? categoryId}) {
+    return Uri(
+      path: '/wedding-plans/$planId/money/costs',
+      queryParameters: categoryId == null ? null : {'categoryId': categoryId},
+    ).toString();
+  }
+
+  static String moneyCostCreate(String planId, {String? categoryId}) {
+    return Uri(
+      path: '/wedding-plans/$planId/money/costs/create',
+      queryParameters: categoryId == null ? null : {'categoryId': categoryId},
+    ).toString();
+  }
+
+  static String moneyCostEdit(String planId, String costId) {
+    return '/wedding-plans/$planId/money/costs/$costId/edit';
+  }
+
+  static String moneyCostDetails(String planId, String costId) {
+    return '/wedding-plans/$planId/money/costs/$costId';
+  }
+
+  static String moneyPaymentCreate(String planId, String costId) {
+    return '/wedding-plans/$planId/money/costs/$costId/payments/create';
+  }
+
+  static String moneyPaymentDetails(
+    String planId,
+    String paymentId, {
+    String? costId,
   }) {
-    return '/wedding-plans/$id/financial-commitments/create?sourceType=$sourceType';
+    return Uri(
+      path: '/wedding-plans/$planId/money/payments/$paymentId',
+      queryParameters: costId == null ? null : {'costId': costId},
+    ).toString();
   }
 
-  static String financialPayables(String id) {
-    return '/wedding-plans/$id/finance/payables';
+  static String moneySchedules(String planId, {String? costId}) {
+    return Uri(
+      path: '/wedding-plans/$planId/money/schedules',
+      queryParameters: costId == null ? null : {'costId': costId},
+    ).toString();
   }
 
-  static String financialCommitmentDetails(
-    String weddingPlanId,
-    String commitmentId,
+  static String moneyScheduleCreate(String planId, String costId) {
+    return '/wedding-plans/$planId/money/costs/$costId/schedules/create';
+  }
+
+  static String moneyScheduleDetails(
+    String planId,
+    String costId,
+    String scheduleId,
   ) {
-    return '/wedding-plans/$weddingPlanId/finance/commitments/$commitmentId';
+    return '/wedding-plans/$planId/money/costs/$costId/schedules/$scheduleId';
   }
 
-  static String editFinancialCommitment(
-    String weddingPlanId,
-    String commitmentId,
+  static String moneyScheduleEdit(
+    String planId,
+    String costId,
+    String scheduleId,
   ) {
-    return '/wedding-plans/$weddingPlanId/finance/commitments/$commitmentId/edit';
+    return '/wedding-plans/$planId/money/costs/$costId/schedules/$scheduleId/edit';
   }
 
-  static String financialPaymentRecordDetails(
-    String weddingPlanId,
-    String paymentRecordId,
+  static String moneySchedulePay(
+    String planId,
+    String costId,
+    String scheduleId,
   ) {
-    return '/wedding-plans/$weddingPlanId/finance/payments/$paymentRecordId';
-  }
-
-  static String recordPayment(String id) {
-    return '/wedding-plans/$id/payments/record';
-  }
-
-  static String expenses(String id) {
-    return '/wedding-plans/$id/expenses';
-  }
-
-  static String editExpense(String weddingPlanId, String expenseId) {
-    return '/wedding-plans/$weddingPlanId/expenses/$expenseId/edit';
+    return '/wedding-plans/$planId/money/costs/$costId/schedules/$scheduleId/pay';
   }
 
   static String tasks(String id) {
@@ -480,13 +507,13 @@ class AppRouter {
               },
             ),
             GoRoute(
-              path: '/wedding-plans/:id/finance',
+              path: '/wedding-plans/:id/money',
               builder: (context, state) {
                 final id = state.pathParameters['id'] ?? '';
                 final sharedMember = state.extra is SharedMember
                     ? state.extra! as SharedMember
                     : null;
-                return BudgetExpenseScreen(
+                return MoneyOverviewScreen(
                   weddingPlanId: id,
                   sharedMember: sharedMember,
                   embedded: true,
@@ -494,38 +521,168 @@ class AppRouter {
               },
             ),
             GoRoute(
-              path: '/wedding-plans/:id/finance/payables',
+              path: '/wedding-plans/:id/money/budget',
               builder: (context, state) {
                 final id = state.pathParameters['id'] ?? '';
-                final sharedMember = state.extra is SharedMember
-                    ? state.extra! as SharedMember
-                    : null;
-                return FinancialPayablesScreen(
+                return MoneyBudgetScreen(weddingPlanId: id);
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/categories/create',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                return BudgetCategoryFormScreen(
                   weddingPlanId: id,
-                  sharedMember: sharedMember,
+                  initialName: state.extra is String
+                      ? state.extra! as String
+                      : null,
                 );
               },
             ),
             GoRoute(
-              path: '/wedding-plans/:id/finance/commitments/:commitmentId',
+              path: '/wedding-plans/:id/money/categories/:categoryId',
               builder: (context, state) {
                 final id = state.pathParameters['id'] ?? '';
-                final commitmentId = state.pathParameters['commitmentId'] ?? '';
-                return FinancialCommitmentDetailsScreen(
+                final categoryId = state.pathParameters['categoryId'] ?? '';
+                return BudgetCategoryDetailsScreen(
                   weddingPlanId: id,
-                  commitmentId: commitmentId,
+                  categoryId: categoryId,
                 );
               },
             ),
             GoRoute(
-              path: '/wedding-plans/:id/finance/payments/:paymentRecordId',
+              path: '/wedding-plans/:id/money/categories/:categoryId/edit',
               builder: (context, state) {
                 final id = state.pathParameters['id'] ?? '';
-                final paymentRecordId =
-                    state.pathParameters['paymentRecordId'] ?? '';
-                return FinancialPaymentRecordDetailsScreen(
+                final categoryId = state.pathParameters['categoryId'] ?? '';
+                final category = state.extra is BudgetCategory
+                    ? state.extra! as BudgetCategory
+                    : context.read<FinanceProvider>().categoryById(categoryId);
+                if (category == null) {
+                  return BudgetCategoryDetailsScreen(
+                    weddingPlanId: id,
+                    categoryId: categoryId,
+                  );
+                }
+                return BudgetCategoryFormScreen(
                   weddingPlanId: id,
-                  paymentRecordId: paymentRecordId,
+                  category: category,
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/costs',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                return CostsScreen(
+                  weddingPlanId: id,
+                  initialCategoryId: state.uri.queryParameters['categoryId'],
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/costs/create',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                return CostFormScreen(
+                  weddingPlanId: id,
+                  intent: state.extra is CostDraftIntent
+                      ? state.extra! as CostDraftIntent
+                      : null,
+                  initialCategoryId: state.uri.queryParameters['categoryId'],
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/costs/:costId/edit',
+              builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
+                final costId = state.pathParameters['costId'] ?? '';
+                final cost = state.extra is WeddingCost
+                    ? state.extra! as WeddingCost
+                    : context.read<FinanceProvider>().costById(costId);
+                if (cost == null) {
+                  return CostsScreen(weddingPlanId: id);
+                }
+                return CostFormScreen(weddingPlanId: id, cost: cost);
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/costs/:costId/payments/create',
+              builder: (context, state) {
+                return RecordCostPaymentScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.pathParameters['costId'] ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/payments/:paymentId',
+              builder: (context, state) {
+                return CostPaymentDetailsScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.uri.queryParameters['costId'],
+                  paymentId: state.pathParameters['paymentId'] ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/schedules',
+              builder: (context, state) {
+                return PaymentSchedulesScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.uri.queryParameters['costId'],
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/costs/:costId/schedules/create',
+              builder: (context, state) {
+                return PaymentScheduleFormScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.pathParameters['costId'] ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path:
+                  '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/edit',
+              builder: (context, state) {
+                return PaymentScheduleFormScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.pathParameters['costId'] ?? '',
+                  scheduleId: state.pathParameters['scheduleId'] ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path:
+                  '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+              builder: (context, state) {
+                return PayPaymentScheduleScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.pathParameters['costId'] ?? '',
+                  scheduleId: state.pathParameters['scheduleId'] ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path:
+                  '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId',
+              builder: (context, state) {
+                return PaymentScheduleDetailsScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.pathParameters['costId'] ?? '',
+                  scheduleId: state.pathParameters['scheduleId'] ?? '',
+                );
+              },
+            ),
+            GoRoute(
+              path: '/wedding-plans/:id/money/costs/:costId',
+              builder: (context, state) {
+                return CostDetailsScreen(
+                  weddingPlanId: state.pathParameters['id'] ?? '',
+                  costId: state.pathParameters['costId'] ?? '',
                 );
               },
             ),
@@ -587,128 +744,6 @@ class AppRouter {
               weddingPlanId: id,
               sharedMember: sharedMember,
               initialSummary: initialSummary,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/budget/setup',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            return BudgetSetupScreen(weddingPlanId: id);
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/budget-categories/create',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final initialName = state.extra is String
-                ? state.extra! as String
-                : null;
-            return CreateBudgetCategoryScreen(
-              weddingPlanId: id,
-              initialName: initialName,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/budget-categories/:categoryId',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final categoryId = state.pathParameters['categoryId'] ?? '';
-            return BudgetCategoryDetailsScreen(
-              weddingPlanId: id,
-              budgetCategoryId: categoryId,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/expenses',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final initialBudgetCategoryId = state.extra is String
-                ? state.extra! as String
-                : null;
-            return ExpensesScreen(
-              weddingPlanId: id,
-              initialBudgetCategoryId: initialBudgetCategoryId,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/expenses/create',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final quoteContext = state.extra is QuoteFinanceContext
-                ? state.extra! as QuoteFinanceContext
-                : null;
-            final formIntent = state.extra is ExpenseFormIntent
-                ? state.extra! as ExpenseFormIntent
-                : null;
-            return CreateExpenseScreen(
-              weddingPlanId: id,
-              quoteContext: quoteContext,
-              initialBudgetCategoryId: formIntent?.budgetCategoryId,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/financial-commitments/create',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final sourceType =
-                state.uri.queryParameters['sourceType'] ?? 'MANUAL_COMMITMENT';
-            final initialCategoryId = state.extra is String
-                ? state.extra! as String
-                : null;
-            return CreateFinancialCommitmentScreen(
-              weddingPlanId: id,
-              initialSourceType: sourceType,
-              initialBudgetCategoryId: initialCategoryId,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/finance/commitments/:commitmentId/edit',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final commitmentId = state.pathParameters['commitmentId'] ?? '';
-            final sourceType =
-                state.uri.queryParameters['sourceType'] ?? 'MANUAL_COMMITMENT';
-            return CreateFinancialCommitmentScreen(
-              weddingPlanId: id,
-              commitmentId: commitmentId,
-              initialSourceType: sourceType,
-              initialCommitment: state.extra is FinancialCommitment
-                  ? state.extra! as FinancialCommitment
-                  : null,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/payments/record',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final initialCommitmentId = state.extra is String
-                ? state.extra! as String
-                : null;
-            return RecordPaymentScreen(
-              weddingPlanId: id,
-              initialCommitmentId: initialCommitmentId,
-            );
-          },
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/expenses/:expenseId/edit',
-          builder: (context, state) {
-            final id = state.pathParameters['id'] ?? '';
-            final expenseId = state.pathParameters['expenseId'] ?? '';
-            final expense = state.extra is Expense
-                ? state.extra! as Expense
-                : null;
-            return CreateExpenseScreen(
-              weddingPlanId: id,
-              expenseId: expenseId,
-              initialExpense: expense,
             );
           },
         ),

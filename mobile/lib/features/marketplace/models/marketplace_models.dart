@@ -352,7 +352,7 @@ class QuoteRequest {
     this.budgetMin,
     this.budgetMax,
     this.offers = const [],
-    this.financialSuggestion,
+    this.costSuggestion,
   });
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
@@ -397,9 +397,9 @@ class QuoteRequest {
                 )
                 .toList()
           : const [],
-      financialSuggestion: _mapOrNull(
-        json['financialSuggestion'],
-        QuoteFinancialSuggestion.fromJson,
+      costSuggestion: _mapOrNull(
+        json['costSuggestion'],
+        QuoteCostSuggestion.fromJson,
       ),
     );
   }
@@ -424,7 +424,7 @@ class QuoteRequest {
   final String status;
   final String lifecycleStatus;
   final List<QuoteOffer> offers;
-  final QuoteFinancialSuggestion? financialSuggestion;
+  final QuoteCostSuggestion? costSuggestion;
 
   QuoteOffer? get acceptedOffer {
     for (final offer in offers) {
@@ -479,36 +479,60 @@ class QuoteOffer {
   final DateTime? validUntil;
 }
 
-class QuoteFinancialSuggestion {
-  const QuoteFinancialSuggestion({
+class QuoteCostSuggestion {
+  const QuoteCostSuggestion({
+    required this.providerId,
     required this.providerName,
     required this.suggestedAction,
+    required this.automaticCostCreated,
     this.category,
     this.quotedAmount,
     this.currency,
+    this.quoteOfferId,
+    this.costId,
     this.availableActions = const [],
   });
 
-  factory QuoteFinancialSuggestion.fromJson(Map<String, dynamic> json) {
+  factory QuoteCostSuggestion.fromJson(Map<String, dynamic> json) {
     final actions = json['availableActions'];
-    return QuoteFinancialSuggestion(
+    return QuoteCostSuggestion(
+      providerId: json['providerId']?.toString() ?? '',
       providerName: json['providerName']?.toString() ?? '',
       category: json['category']?.toString(),
       quotedAmount: json['quotedAmount']?.toString(),
       currency: json['currency']?.toString(),
       suggestedAction: json['suggestedAction']?.toString() ?? 'NONE',
+      automaticCostCreated: json['automaticCostCreated'] == true,
+      quoteOfferId: json['quoteOfferId']?.toString(),
+      costId: json['costId']?.toString(),
       availableActions: actions is List
           ? actions.map((item) => item.toString()).toList()
           : const [],
     );
   }
 
+  final String providerId;
   final String providerName;
   final String? category;
   final String? quotedAmount;
   final String? currency;
   final String suggestedAction;
+  final bool automaticCostCreated;
+  final String? quoteOfferId;
+  final String? costId;
   final List<String> availableActions;
+
+  bool get canCreateCost =>
+      !automaticCostCreated &&
+      suggestedAction == 'CREATE_COST' &&
+      availableActions.contains('CREATE_COST') &&
+      providerId.trim().isNotEmpty &&
+      quotedAmount?.trim().isNotEmpty == true &&
+      quoteOfferId?.trim().isNotEmpty == true;
+
+  bool get canViewCost =>
+      availableActions.contains('VIEW_COST') &&
+      costId?.trim().isNotEmpty == true;
 }
 
 String _quoteLifecycleStatus(String? status) {

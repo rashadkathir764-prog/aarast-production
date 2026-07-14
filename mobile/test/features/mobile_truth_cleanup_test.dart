@@ -41,8 +41,16 @@ void main() {
       for (final removedPath in <String>[
         'lib/core/widgets/primary_action_button.dart',
         'lib/features/finance/widgets/budget_category_card.dart',
+        'lib/features/finance/data/budget_expense_api.dart',
+        'lib/features/finance/models/expense.dart',
+        'lib/features/finance/models/financial_commitment.dart',
+        'lib/features/finance/screens/budget_expense_screen.dart',
+        'lib/features/finance/screens/financial_payables_screen.dart',
+        'lib/features/finance/widgets/premium/budget_pulse_hero.dart',
         'test/goldens/premium_debts_on_track.png',
         'test/goldens/premium_debts_overdue.png',
+        'test/goldens/premium_finance_healthy.png',
+        'test/goldens/premium_finance_no_budget.png',
       ]) {
         expect(
           File('$mobileRoot$removedPath').existsSync(),

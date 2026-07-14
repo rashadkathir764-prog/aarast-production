@@ -9,6 +9,10 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../../marketplace/models/accepted_quote_cost_draft.dart';
+import '../../marketplace/models/marketplace_models.dart';
+import '../../marketplace/providers/marketplace_provider.dart';
+import '../../marketplace/widgets/plan_quote_requests_section.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/guest_onboarding_draft.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
@@ -73,6 +77,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
       ),
+      context.read<ProviderMarketplaceProvider>().loadMyQuoteRequests(),
     ]);
   }
 
@@ -105,6 +110,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final weddingPlans = context.watch<WeddingPlansProvider>();
     final dashboard = context.watch<DashboardSummaryProvider>();
     final auth = context.watch<AuthController>();
+    final marketplace = _isLocalPlan
+        ? null
+        : context.watch<ProviderMarketplaceProvider>();
     final serverPlan = weddingPlans.selectedPlan?.id == widget.weddingPlanId
         ? weddingPlans.selectedPlan
         : null;
@@ -115,6 +123,13 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final error = _isLocalPlan
         ? _localError
         : weddingPlans.errorMessage ?? dashboard.errorMessage;
+    final quotes = marketplace?.quotesForPlan(widget.weddingPlanId) ?? const [];
+    final canManageProviders = plan == null
+        ? false
+        : _canManageProviders(auth, dashboard, plan);
+    final canManageMoney = plan == null
+        ? false
+        : _canManageMoney(auth, dashboard, plan);
 
     return AarastScreenFrame(
       maxWidth: 560,
@@ -148,6 +163,20 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                     _showEditPlan(plan, requireCompleteLocation: true),
                 onManageSharing: () => context.push(AppRouter.sharing(plan.id)),
                 onArchive: _isLocalPlan ? null : () => _confirmArchive(plan),
+                quoteSection: quotes.isEmpty
+                    ? null
+                    : PlanQuoteRequestsSection(
+                        quotes: quotes,
+                        canManageProviders: canManageProviders,
+                        canManageMoney: canManageMoney,
+                        isSubmitting: marketplace?.isSubmitting ?? false,
+                        onOpenConversation: (quote) =>
+                            context.push(AppRouter.quoteConversation(quote.id)),
+                        onAccept: _acceptQuote,
+                        onReject: _rejectQuote,
+                        onCreateCost: (quote) =>
+                            _openCostFromAcceptedQuote(plan, quote),
+                      ),
               ),
             ),
     );
@@ -162,6 +191,78 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     return dashboard.summary?.permissions.canManagePlan == true ||
         auth.user?.id == plan.ownerUserId ||
         widget.sharedMember?.role == 'MANAGER';
+  }
+
+  bool _canManageProviders(
+    AuthController auth,
+    DashboardSummaryProvider dashboard,
+    WeddingPlan plan,
+  ) {
+    if (_isLocalPlan) return false;
+    final permissions =
+        dashboard.summary?.permissions ?? widget.initialSummary?.permissions;
+    return auth.user?.id == plan.ownerUserId ||
+        permissions?.canManageProviders == true ||
+        widget.sharedMember?.canManageProviders == true;
+  }
+
+  bool _canManageMoney(
+    AuthController auth,
+    DashboardSummaryProvider dashboard,
+    WeddingPlan plan,
+  ) {
+    if (_isLocalPlan) return true;
+    final permissions =
+        dashboard.summary?.permissions ?? widget.initialSummary?.permissions;
+    return auth.user?.id == plan.ownerUserId ||
+        permissions?.canManageMoney == true ||
+        widget.sharedMember?.canManageMoney == true;
+  }
+
+  Future<void> _acceptQuote(QuoteRequest quote) async {
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final accepted = await marketplace.acceptQuote(quote);
+    if (!mounted) return;
+    if (!accepted) {
+      _showError(marketplace.errorMessage ?? 'تعذر قبول عرض السعر.');
+      return;
+    }
+    _showSuccess(
+      'تم قبول العرض وربط المورد بالخطة. لم تُنشأ تكلفة أو دفعة تلقائيًا.',
+    );
+  }
+
+  Future<void> _rejectQuote(QuoteRequest quote) async {
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final rejected = await marketplace.rejectQuote(quote);
+    if (!mounted) return;
+    if (!rejected) {
+      _showError(marketplace.errorMessage ?? 'تعذر رفض عرض السعر.');
+      return;
+    }
+    _showSuccess('تم رفض العرض.');
+  }
+
+  Future<void> _openCostFromAcceptedQuote(
+    WeddingPlan plan,
+    QuoteRequest quote,
+  ) async {
+    final intent = costDraftIntentFromAcceptedQuote(
+      quote,
+      fallbackCurrency: plan.currency,
+    );
+    if (intent == null) {
+      _showError('لا يمكن إنشاء تكلفة من هذا العرض الآن.');
+      return;
+    }
+    final result = await context.push<bool>(
+      AppRouter.moneyCostCreate(plan.id),
+      extra: intent,
+    );
+    if (result != true || !mounted) return;
+
+    await context.read<ProviderMarketplaceProvider>().loadMyQuoteRequests();
+    if (mounted) _showSuccess('تمت إضافة التكلفة إلى تبويب المال.');
   }
 
   String _ownerName(AuthController auth, WeddingPlan plan) {
@@ -351,7 +452,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
       activeIndex: 0,
       onHome: () => context.go(AppRouter.weddingPlanDashboard(planId)),
       onMoney: () =>
-          context.go(AppRouter.finance(planId), extra: widget.sharedMember),
+          context.go(AppRouter.money(planId), extra: widget.sharedMember),
       onTasks: () => context.go(AppRouter.tasks(planId)),
       onGuests: () => context.go(AppRouter.guestList(planId)),
       onProviders: () => context.go(AppRouter.planProviders(planId)),

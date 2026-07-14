@@ -11,15 +11,59 @@ class JsonLocalDatabase implements LocalDatabase {
   JsonLocalDatabase(this._preferences);
 
   static const _prefix = 'aarast_offline';
+  static const _financeSchemaMarker = 'aarast_offline:finance_schema_version';
+  static const _currentFinanceSchemaVersion = 2;
 
   final SharedPreferences _preferences;
 
   @override
   Future<void> initialize() async {
+    if ((_preferences.getInt(_financeSchemaMarker) ?? 0) <
+        _currentFinanceSchemaVersion) {
+      await _removeLegacyFinanceState();
+      await _preferences.setInt(
+        _financeSchemaMarker,
+        _currentFinanceSchemaVersion,
+      );
+    }
     for (final table in OfflineTables.cacheTables) {
       await _ensureList(_tableKey(table));
     }
     await _ensureList(_tableKey(OfflineTables.syncQueue));
+  }
+
+  Future<void> _removeLegacyFinanceState() async {
+    const legacyTables = [
+      'cached_budget_items',
+      'cached_financial_commitments',
+      'cached_financial_payment_records',
+      'cached_financial_installments',
+      'cached_budget_categories',
+    ];
+    for (final table in legacyTables) {
+      await _preferences.remove(_tableKey(table));
+    }
+
+    final queueKey = _tableKey(OfflineTables.syncQueue);
+    final queue = _readList(queueKey)
+      ..removeWhere(
+        (row) => const {
+          'budget_category',
+          'expense',
+          'financial_commitment',
+          'financial_payment_record',
+          'financial_installment',
+        }.contains(row['entityType']?.toString()),
+      );
+    await _writeList(queueKey, queue);
+
+    final meta = _readMap(_metaKey)
+      ..removeWhere(
+        (key, _) =>
+            key.startsWith('expense_summary:') ||
+            key.startsWith('money_summary:'),
+      );
+    await _writeMap(_metaKey, meta);
   }
 
   @override
@@ -70,11 +114,12 @@ class JsonLocalDatabase implements LocalDatabase {
     required List<Map<String, dynamic>> items,
     String? parentColumn,
     String? parentId,
+    bool preserveDirty = true,
   }) async {
     final rows = _readList(_tableKey(table));
     final nextRows = rows.where((row) {
       final isDirty = row['dirty'] == 1;
-      if (isDirty) return true;
+      if (preserveDirty && isDirty) return true;
       if (parentColumn == null) return false;
       return row[parentColumn]?.toString() != parentId;
     }).toList();
@@ -163,10 +208,20 @@ class JsonLocalDatabase implements LocalDatabase {
     required String method,
     required Map<String, dynamic> payload,
     String? localEntityId,
+    bool replacePendingForEntity = false,
+    String? clientRequestId,
   }) async {
-    final now = DateTime.now();
+    final now = nextSyncQueueTimestamp();
+    final normalizedRequestId = clientRequestId?.trim();
+    if (clientRequestId != null && normalizedRequestId!.isEmpty) {
+      throw ArgumentError.value(
+        clientRequestId,
+        'clientRequestId',
+        'must not be empty',
+      );
+    }
     final item = SyncQueueItem(
-      id: 'sync-${now.microsecondsSinceEpoch}',
+      id: normalizedRequestId ?? syncQueueIdFor(now),
       entityType: entityType,
       operation: operation,
       endpoint: endpoint,
@@ -179,6 +234,14 @@ class JsonLocalDatabase implements LocalDatabase {
       updatedAt: now,
     );
     final rows = _readList(_tableKey(OfflineTables.syncQueue));
+    if (replacePendingForEntity) {
+      rows.removeWhere(
+        (row) =>
+            row['entityType'] == entityType &&
+            row['operation'] == operation &&
+            row['localEntityId'] == localEntityId,
+      );
+    }
     rows.add(item.toRow());
     await _writeList(_tableKey(OfflineTables.syncQueue), rows);
     return item;
@@ -249,9 +312,15 @@ class JsonLocalDatabase implements LocalDatabase {
       if (row['status'] == SyncQueueItem.synced) continue;
       final payload = row['payloadJson']?.toString() ?? '';
       final endpoint = row['endpoint']?.toString() ?? '';
-      if (!payload.contains(localId) && !endpoint.contains(localId)) continue;
+      final localEntityId = row['localEntityId']?.toString();
+      if (!payload.contains(localId) &&
+          !endpoint.contains(localId) &&
+          localEntityId != localId) {
+        continue;
+      }
       row['payloadJson'] = payload.replaceAll(localId, remoteId);
       row['endpoint'] = endpoint.replaceAll(localId, remoteId);
+      if (localEntityId == localId) row['localEntityId'] = remoteId;
       row['updatedAt'] = now;
       changed = true;
     }

@@ -1,291 +1,234 @@
+import 'wedding_cost.dart';
+
 class MoneySummary {
   const MoneySummary({
-    required this.weddingPlanId,
+    required this.planId,
     this.currency = 'YER',
-    this.totalBudget,
-    this.totalSpent,
-    this.remainingBudget,
-    this.confirmedCostTotal,
-    this.paidTotal,
-    this.outstandingTotal,
-    this.commitmentTotal,
-    this.commitmentPaidTotal,
-    this.commitmentRemainingTotal,
-    this.providerCommitmentTotal,
-    this.manualPayableCommitmentTotal,
-    this.deficitOrSurplus,
-    this.paidInstallmentsCount,
-    this.remainingInstallmentsCount,
-    this.overdueInstallmentsCount,
-    this.dueInstallmentsCount,
-    this.nextInstallment,
-    this.categorySummaries = const [],
-    this.financialWarnings = const [],
-    this.categoriesCount,
-    this.expensesCount,
-    this.commitmentsCount,
-    this.installmentsCount,
+    this.budget = const MoneyBudgetSummary(),
+    this.costs = const MoneyCostsSummary(),
+    this.paymentSchedules = const MoneySchedulesSummary(),
+    this.categories = const [],
+    this.warnings = const [],
+    this.permissions = const MoneyPermissions(),
   });
 
-  factory MoneySummary.empty(String weddingPlanId) {
-    return MoneySummary(weddingPlanId: weddingPlanId);
+  factory MoneySummary.empty(String planId, {String currency = 'YER'}) {
+    return MoneySummary(planId: planId, currency: currency);
   }
 
   factory MoneySummary.fromJson(Map<String, dynamic> json) {
     return MoneySummary(
-      weddingPlanId: json['weddingPlanId']?.toString() ?? '',
+      planId:
+          json['planId']?.toString() ?? json['weddingPlanId']?.toString() ?? '',
       currency: json['currency']?.toString() ?? 'YER',
-      totalBudget: _nullableString(json['totalBudget'] ?? json['budgetTotal']),
-      totalSpent: _nullableString(json['totalSpent'] ?? json['spentTotal']),
-      remainingBudget: _nullableString(json['remainingBudget']),
-      confirmedCostTotal: _nullableString(
-        json['confirmedCostTotal'] ?? json['totalConfirmedCost'],
+      budget: MoneyBudgetSummary.fromJson(_map(json['budget'])),
+      costs: MoneyCostsSummary.fromJson(_map(json['costs'])),
+      paymentSchedules: MoneySchedulesSummary.fromJson(
+        _map(json['paymentSchedules']),
       ),
-      paidTotal: _nullableString(json['paidTotal']),
-      outstandingTotal: _nullableString(json['outstandingTotal']),
-      commitmentTotal: _nullableString(json['commitmentTotal']),
-      commitmentPaidTotal: _nullableString(json['commitmentPaidTotal']),
-      commitmentRemainingTotal: _nullableString(
-        json['commitmentRemainingTotal'],
-      ),
-      providerCommitmentTotal: _nullableString(json['providerCommitmentTotal']),
-      manualPayableCommitmentTotal: _nullableString(
-        json['manualPayableCommitmentTotal'],
-      ),
-      deficitOrSurplus: _nullableString(json['deficitOrSurplus']),
-      paidInstallmentsCount: _intOrNull(json['paidInstallmentsCount']),
-      remainingInstallmentsCount: _intOrNull(
-        json['remainingInstallmentsCount'],
-      ),
-      overdueInstallmentsCount: _intOrNull(json['overdueInstallmentsCount']),
-      dueInstallmentsCount: _intOrNull(json['dueInstallmentsCount']),
-      nextInstallment: MoneyNextInstallment.fromJsonOrNull(
-        json['nextInstallment'],
-      ),
-      categorySummaries: _listOfMaps(
-        json['categorySummaries'],
+      categories: _listOfMaps(
+        json['categories'],
       ).map(MoneyCategorySummary.fromJson).toList(),
-      financialWarnings: _listOfMaps(
-        json['financialWarnings'],
-      ).map(MoneyFinancialWarning.fromJson).toList(),
-      categoriesCount: _intOrNull(json['categoriesCount']),
-      expensesCount: _intOrNull(json['expensesCount']),
-      commitmentsCount: _intOrNull(json['commitmentsCount']),
-      installmentsCount: _intOrNull(json['installmentsCount']),
+      warnings: _listOfMaps(
+        json['warnings'],
+      ).map(MoneyWarning.fromJson).toList(),
+      permissions: MoneyPermissions.fromJson(_map(json['permissions'])),
     );
   }
 
-  final String weddingPlanId;
+  final String planId;
   final String currency;
-  final String? totalBudget;
-  final String? totalSpent;
-  final String? remainingBudget;
-  final String? confirmedCostTotal;
-  final String? paidTotal;
-  final String? outstandingTotal;
-  final String? commitmentTotal;
-  final String? commitmentPaidTotal;
-  final String? commitmentRemainingTotal;
-  final String? providerCommitmentTotal;
-  final String? manualPayableCommitmentTotal;
-  final String? deficitOrSurplus;
-  final int? paidInstallmentsCount;
-  final int? remainingInstallmentsCount;
-  final int? overdueInstallmentsCount;
-  final int? dueInstallmentsCount;
-  final MoneyNextInstallment? nextInstallment;
-  final List<MoneyCategorySummary> categorySummaries;
-  final List<MoneyFinancialWarning> financialWarnings;
-  final int? categoriesCount;
-  final int? expensesCount;
-  final int? commitmentsCount;
-  final int? installmentsCount;
+  final MoneyBudgetSummary budget;
+  final MoneyCostsSummary costs;
+  final MoneySchedulesSummary paymentSchedules;
+  final List<MoneyCategorySummary> categories;
+  final List<MoneyWarning> warnings;
+  final MoneyPermissions permissions;
 
-  bool get hasAnyData {
-    return _moneyValue(totalBudget) > 0 ||
-        _moneyValue(confirmedCostTotal) > 0 ||
-        _moneyValue(outstandingTotal) > 0 ||
-        _moneyValue(totalSpent) > 0 ||
-        categorySummaries.isNotEmpty ||
-        financialWarnings.isNotEmpty ||
-        nextInstallment != null;
+  String get weddingPlanId => planId;
+  bool get hasAnyData =>
+      moneyValue(budget.total) > 0 ||
+      moneyValue(costs.total) > 0 ||
+      categories.isNotEmpty ||
+      paymentSchedules.upcomingCount > 0 ||
+      paymentSchedules.overdueCount > 0;
+  bool get hasBudget => budget.total != null;
+  double get confirmedRatio {
+    final total = moneyValue(budget.total);
+    if (total <= 0) return 0;
+    return (moneyValue(budget.confirmedCost) / total).clamp(0.0, 10.0);
   }
 
-  double get spendingRatio {
-    final budget = _moneyValue(totalBudget);
-    if (budget <= 0) return 0;
-    return (_moneyValue(totalSpent) / budget).clamp(0.0, 10.0);
-  }
-
-  double get commitmentRatio {
-    final budget = _moneyValue(totalBudget);
-    if (budget <= 0) return 0;
-    return (_moneyValue(confirmedCostTotal) / budget).clamp(0.0, 10.0);
-  }
-
-  bool get hasUsableBudget => _moneyValue(totalBudget) > 0;
-
-  bool get hasSpendingWithoutBudget {
-    return !hasUsableBudget &&
-        (_moneyValue(totalSpent) > 0 || _moneyValue(confirmedCostTotal) > 0);
-  }
-
-  String get budgetStatus {
-    if (hasSpendingWithoutBudget) return 'OVER_BUDGET';
-    if (!hasUsableBudget) return 'NO_BUDGET';
-    if (commitmentRatio > 1 || spendingRatio > 1) return 'OVER_BUDGET';
-    if (financialWarnings.any((warning) => warning.severity == 'DANGER')) {
+  String get healthStatus {
+    if (!hasBudget) return 'UNSET';
+    if (moneyValue(budget.remaining) < 0) return 'OVER_BUDGET';
+    if (warnings.any((warning) => warning.severity == 'DANGER')) {
       return 'DANGER';
     }
-    if (commitmentRatio >= .85 ||
-        spendingRatio >= .85 ||
-        financialWarnings.any((warning) => warning.severity == 'WARNING')) {
+    if (confirmedRatio >= .85 ||
+        warnings.any((warning) => warning.severity == 'WARNING')) {
       return 'WARNING';
     }
     return 'SAFE';
   }
 }
 
+class MoneyBudgetSummary {
+  const MoneyBudgetSummary({
+    this.total,
+    this.allocated = '0',
+    this.unallocated,
+    this.confirmedCost = '0',
+    this.remaining,
+  });
+
+  factory MoneyBudgetSummary.fromJson(Map<String, dynamic> json) {
+    return MoneyBudgetSummary(
+      total: _nullableString(json['total'] ?? json['amount']),
+      allocated: json['allocated']?.toString() ?? '0',
+      unallocated: _nullableString(json['unallocated']),
+      confirmedCost: json['confirmedCost']?.toString() ?? '0',
+      remaining: _nullableString(json['remaining']),
+    );
+  }
+
+  final String? total;
+  final String allocated;
+  final String? unallocated;
+  final String confirmedCost;
+  final String? remaining;
+}
+
+class MoneyCostsSummary {
+  const MoneyCostsSummary({
+    this.total = '0',
+    this.paid = '0',
+    this.outstanding = '0',
+    this.count = 0,
+  });
+
+  factory MoneyCostsSummary.fromJson(Map<String, dynamic> json) {
+    return MoneyCostsSummary(
+      total: json['total']?.toString() ?? '0',
+      paid: json['paid']?.toString() ?? '0',
+      outstanding: json['outstanding']?.toString() ?? '0',
+      count: intOrNull(json['count']) ?? 0,
+    );
+  }
+
+  final String total;
+  final String paid;
+  final String outstanding;
+  final int count;
+}
+
+class MoneySchedulesSummary {
+  const MoneySchedulesSummary({
+    this.upcomingCount = 0,
+    this.overdueCount = 0,
+    this.next,
+  });
+
+  factory MoneySchedulesSummary.fromJson(Map<String, dynamic> json) {
+    return MoneySchedulesSummary(
+      upcomingCount: intOrNull(json['upcomingCount']) ?? 0,
+      overdueCount: intOrNull(json['overdueCount']) ?? 0,
+      next: json['next'] is Map
+          ? PaymentSchedule.fromJson(
+              Map<String, dynamic>.from(json['next'] as Map),
+            )
+          : null,
+    );
+  }
+
+  final int upcomingCount;
+  final int overdueCount;
+  final PaymentSchedule? next;
+}
+
 class MoneyCategorySummary {
   const MoneyCategorySummary({
     required this.categoryId,
     required this.name,
-    this.allocated,
-    this.spent,
-    this.confirmedCost,
-    this.paid,
-    this.outstanding,
-    this.budgetRemaining,
-    this.remaining,
-    this.expensesCount,
-    this.commitmentsCount,
-    this.installmentsCount,
-    this.overBudget,
+    this.allocatedAmount,
+    this.confirmedCost = '0',
+    this.paid = '0',
+    this.outstanding = '0',
+    this.remainingAllocation,
+    this.costsCount = 0,
   });
 
   factory MoneyCategorySummary.fromJson(Map<String, dynamic> json) {
     return MoneyCategorySummary(
-      categoryId:
-          json['categoryId']?.toString() ?? json['id']?.toString() ?? '',
+      categoryId: json['categoryId']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
-      allocated: _nullableString(json['allocated'] ?? json['targetAmount']),
-      spent: _nullableString(json['spent']),
-      confirmedCost: _nullableString(json['confirmedCost']),
-      paid: _nullableString(json['paid']),
-      outstanding: _nullableString(json['outstanding']),
-      budgetRemaining: _nullableString(json['budgetRemaining']),
-      remaining: _nullableString(json['remaining']),
-      expensesCount: _intOrNull(json['expensesCount']),
-      commitmentsCount: _intOrNull(json['commitmentsCount']),
-      installmentsCount: _intOrNull(json['installmentsCount']),
-      overBudget: json['overBudget'] is bool
-          ? json['overBudget'] as bool
-          : null,
+      allocatedAmount: _nullableString(json['allocatedAmount']),
+      confirmedCost: json['confirmedCost']?.toString() ?? '0',
+      paid: json['paid']?.toString() ?? '0',
+      outstanding: json['outstanding']?.toString() ?? '0',
+      remainingAllocation: _nullableString(json['remainingAllocation']),
+      costsCount: intOrNull(json['costsCount']) ?? 0,
     );
   }
 
   final String categoryId;
   final String name;
-  final String? allocated;
-  final String? spent;
-  final String? confirmedCost;
-  final String? paid;
-  final String? outstanding;
-  final String? budgetRemaining;
-  final String? remaining;
-  final int? expensesCount;
-  final int? commitmentsCount;
-  final int? installmentsCount;
-  final bool? overBudget;
-
-  double get percentUsed {
-    final allocatedValue = _moneyValue(allocated);
-    if (allocatedValue <= 0) return 0;
-    return (_moneyValue(confirmedCost ?? spent) / allocatedValue).clamp(
-      0.0,
-      10.0,
-    );
-  }
+  final String? allocatedAmount;
+  final String confirmedCost;
+  final String paid;
+  final String outstanding;
+  final String? remainingAllocation;
+  final int costsCount;
 }
 
-class MoneyNextInstallment {
-  const MoneyNextInstallment({
-    required this.id,
-    required this.financialCommitmentId,
-    required this.amount,
-    this.dueAt,
-    this.status,
-    this.commitmentTitle,
-    this.partyName,
-  });
-
-  factory MoneyNextInstallment.fromJson(Map<String, dynamic> json) {
-    return MoneyNextInstallment(
-      id: json['id']?.toString() ?? '',
-      financialCommitmentId: json['financialCommitmentId']?.toString() ?? '',
-      amount: json['amount']?.toString() ?? '0',
-      dueAt: _dateTimeOrNull(json['dueAt'] ?? json['dueDate']),
-      status: json['status']?.toString(),
-      commitmentTitle: json['title']?.toString(),
-      partyName: json['partyName']?.toString(),
-    );
-  }
-
-  static MoneyNextInstallment? fromJsonOrNull(Object? value) {
-    if (value is! Map) return null;
-    return MoneyNextInstallment.fromJson(Map<String, dynamic>.from(value));
-  }
-
-  final String id;
-  final String financialCommitmentId;
-  final String amount;
-  final DateTime? dueAt;
-  final String? status;
-  final String? commitmentTitle;
-  final String? partyName;
-
-  bool get isPaid => status == 'PAID';
-}
-
-class MoneyFinancialWarning {
-  const MoneyFinancialWarning({
+class MoneyWarning {
+  const MoneyWarning({
     required this.type,
     required this.severity,
-    required this.message,
-    this.count,
+    this.categoryId,
     this.amount,
+    this.count,
+    this.message,
   });
 
-  factory MoneyFinancialWarning.fromJson(Map<String, dynamic> json) {
-    return MoneyFinancialWarning(
+  factory MoneyWarning.fromJson(Map<String, dynamic> json) {
+    return MoneyWarning(
       type: json['type']?.toString() ?? '',
       severity: json['severity']?.toString() ?? 'WARNING',
-      message: json['message']?.toString() ?? '',
-      count: _intOrNull(json['count']),
+      categoryId: _nullableString(json['categoryId']),
       amount: _nullableString(json['amount']),
+      count: intOrNull(json['count']),
+      message: _nullableString(json['message']),
     );
   }
 
   final String type;
   final String severity;
-  final String message;
-  final int? count;
+  final String? categoryId;
   final String? amount;
+  final int? count;
+  final String? message;
 }
 
-String? _nullableString(Object? value) {
-  final text = value?.toString().trim();
-  return text == null || text.isEmpty ? null : text;
+class MoneyPermissions {
+  const MoneyPermissions({
+    this.canViewMoney = false,
+    this.canManageMoney = false,
+  });
+
+  factory MoneyPermissions.fromJson(Map<String, dynamic> json) {
+    return MoneyPermissions(
+      canViewMoney: json['canViewMoney'] == true,
+      canManageMoney: json['canManageMoney'] == true,
+    );
+  }
+
+  final bool canViewMoney;
+  final bool canManageMoney;
 }
 
-int? _intOrNull(Object? value) {
-  if (value is int) return value;
-  return int.tryParse(value?.toString() ?? '');
-}
-
-DateTime? _dateTimeOrNull(Object? value) {
-  if (value == null) return null;
-  return DateTime.tryParse(value.toString());
+Map<String, dynamic> _map(Object? value) {
+  return value is Map ? Map<String, dynamic>.from(value) : const {};
 }
 
 List<Map<String, dynamic>> _listOfMaps(Object? value) {
@@ -296,6 +239,7 @@ List<Map<String, dynamic>> _listOfMaps(Object? value) {
       .toList();
 }
 
-double _moneyValue(String? value) {
-  return double.tryParse(value?.replaceAll(',', '').trim() ?? '') ?? 0;
+String? _nullableString(Object? value) {
+  final text = value?.toString().trim();
+  return text == null || text.isEmpty ? null : text;
 }

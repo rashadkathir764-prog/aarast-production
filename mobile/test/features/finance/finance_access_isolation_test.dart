@@ -1,14 +1,11 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
-import 'package:aarast_mobile/features/finance/models/budget_category.dart';
-import 'package:aarast_mobile/features/finance/models/expense.dart';
-import 'package:aarast_mobile/features/finance/models/expense_summary.dart';
-import 'package:aarast_mobile/features/finance/models/financial_commitment.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
-import 'package:aarast_mobile/features/finance/screens/financial_commitment_details_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/financial_payables_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/create_financial_commitment_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/cost_form_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/costs_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:flutter/material.dart';
@@ -16,39 +13,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  test('financial-record access loads only commitment-backed resources', () async {
-    final financeApi = _CountingFinanceApi();
-    final permissionsApi = _FakeSharingApi(
-      const PlanAccessPermissions(
-        weddingPlanId: 'plan-financial-records',
-        isOwner: false,
-        canViewBudget: false,
-        canViewExpenses: false,
-        canViewFinancialRecords: true,
-        canManageFinancialRecords: false,
-      ),
-    );
-    final provider = FinanceProvider(
-      financeApi,
-      permissionsApi: permissionsApi,
-    );
+  test(
+    'view-only money access loads every canonical read resource once',
+    () async {
+      final financeApi = _CountingFinanceApi(withCost: true);
+      final provider = FinanceProvider(
+        financeApi,
+        permissionsApi: _FakeSharingApi(_viewer('plan-viewer')),
+      );
 
-    await provider.loadFinance('plan-financial-records');
+      await provider.loadMoney('plan-viewer');
 
-    expect(financeApi.budgetCalls, 0);
-    expect(financeApi.expenseCalls, 0);
-    expect(financeApi.expenseSummaryCalls, 0);
-    expect(financeApi.commitmentCalls, 1);
-    expect(financeApi.paymentCalls, 1);
-    expect(financeApi.installmentCalls, 1);
-    expect(provider.canManageFinancialRecords, isFalse);
-    expect(provider.access.canReadFinancialRecords, isTrue);
-  });
+      expect(financeApi.summaryCalls, 1);
+      expect(financeApi.costCalls, 1);
+      expect(financeApi.paymentCalls, 1);
+      expect(financeApi.scheduleCalls, 1);
+      expect(provider.costs, hasLength(1));
+      expect(provider.canViewMoney, isTrue);
+      expect(provider.canManageMoney, isFalse);
+    },
+  );
 
   test(
     'failed plan switch cannot leave the previous plan data visible',
     () async {
-      final financeApi = _CountingFinanceApi(failMoneySummaryFor: 'plan-b');
+      final financeApi = _CountingFinanceApi(
+        withCost: true,
+        failSummaryFor: 'plan-b',
+      );
       final permissionsApi = _FakeSharingApi(
         const PlanAccessPermissions.owner(weddingPlanId: 'plan-a'),
       );
@@ -57,135 +49,126 @@ void main() {
         permissionsApi: permissionsApi,
       );
 
-      await provider.loadFinance('plan-a');
-      expect(provider.budgetCategories, isNotEmpty);
+      await provider.loadMoney('plan-a');
+      expect(provider.costs, isNotEmpty);
 
       permissionsApi.permissions = const PlanAccessPermissions.owner(
         weddingPlanId: 'plan-b',
       );
-      await provider.loadFinance('plan-b');
+      await provider.loadMoney('plan-b');
 
-      expect(provider.loadedWeddingPlanId, 'plan-b');
-      expect(provider.budgetCategories, isEmpty);
-      expect(provider.expenses, isEmpty);
-      expect(provider.financialCommitments, isEmpty);
-      expect(provider.moneySummary.weddingPlanId, 'plan-b');
+      expect(provider.loadedPlanId, 'plan-b');
+      expect(provider.categories, isEmpty);
+      expect(provider.costs, isEmpty);
+      expect(provider.payments, isEmpty);
+      expect(provider.dueSchedules, isEmpty);
+      expect(provider.summary.planId, 'plan-b');
       expect(provider.errorMessage, isNotNull);
     },
   );
 
   test(
-    'revoked finance access clears previously loaded data for the same plan',
+    'revoked money access clears previously loaded data for the same plan',
     () async {
-      final financeApi = _CountingFinanceApi(withCommitment: true);
       final permissionsApi = _FakeSharingApi(
         const PlanAccessPermissions.owner(weddingPlanId: 'plan-a'),
       );
       final provider = FinanceProvider(
-        financeApi,
+        _CountingFinanceApi(withCost: true),
         permissionsApi: permissionsApi,
       );
 
-      await provider.loadFinance('plan-a');
-      expect(provider.budgetCategories, isNotEmpty);
-      expect(provider.financialCommitments, isNotEmpty);
+      await provider.loadMoney('plan-a');
+      expect(provider.costs, isNotEmpty);
 
       permissionsApi.failure = const ApiException(
         'لم تعد عضوًا في هذه الخطة.',
         statusCode: 404,
       );
-      await provider.loadFinance('plan-a');
+      await provider.loadMoney('plan-a');
 
       expect(provider.access.hasAnyFinanceAccess, isFalse);
-      expect(provider.budgetCategories, isEmpty);
-      expect(provider.expenses, isEmpty);
-      expect(provider.financialCommitments, isEmpty);
-      expect(provider.financialPaymentRecords, isEmpty);
-      expect(provider.dueFinancialInstallments, isEmpty);
-      expect(provider.moneySummary.hasAnyData, isFalse);
+      expect(provider.categories, isEmpty);
+      expect(provider.costs, isEmpty);
+      expect(provider.payments, isEmpty);
+      expect(provider.dueSchedules, isEmpty);
+      expect(provider.summary.hasAnyData, isFalse);
       expect(provider.errorMessage, isNotNull);
     },
   );
 
-  testWidgets('view-only member never sees payable write actions', (
+  testWidgets('view-only member sees costs without write actions', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(420, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
+    await _setPhoneView(tester);
     await tester.pumpWidget(
-      _financeScreen(
-        const FinancialPayablesScreen(weddingPlanId: 'plan-viewer'),
-      ),
+      _financeScreen(const CostsScreen(weddingPlanId: 'plan-viewer')),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('المستحق الأول'), findsOneWidget);
-    expect(find.text('إضافة مستحق'), findsNothing);
-    expect(find.text('تسجيل دفعة'), findsNothing);
+    expect(find.text('حجز الصالة'), findsOneWidget);
+    expect(find.byTooltip('إضافة تكلفة'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('view-only member sees details without edit actions', (
+  testWidgets('view-only member sees cost details without edit or payment', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(420, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
+    await _setPhoneView(tester);
     await tester.pumpWidget(
       _financeScreen(
-        const FinancialCommitmentDetailsScreen(
-          weddingPlanId: 'plan-viewer',
-          commitmentId: 'commitment-1',
-        ),
+        const CostDetailsScreen(weddingPlanId: 'plan-viewer', costId: 'cost-1'),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('المستحق الأول'), findsWidgets);
-    expect(find.text('تعديل'), findsNothing);
+    expect(find.text('حجز الصالة'), findsWidgets);
+    expect(find.textContaining('هذه التفاصيل للعرض فقط'), findsOneWidget);
+    expect(find.byTooltip('تعديل التكلفة'), findsNothing);
+    expect(find.text('تسجيل دفعة'), findsNothing);
     expect(find.text('حذف'), findsNothing);
-    expect(find.text('تسجيل دفعة'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('direct finance write route fails closed for a viewer', (
+  testWidgets('direct cost write route fails closed for a viewer', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(420, 1000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-
+    await _setPhoneView(tester);
     await tester.pumpWidget(
-      _financeScreen(
-        const CreateFinancialCommitmentScreen(weddingPlanId: 'plan-viewer'),
-      ),
+      _financeScreen(const CostFormScreen(weddingPlanId: 'plan-viewer')),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('العرض فقط'), findsOneWidget);
-    expect(find.text('حفظ المستحق'), findsNothing);
+    expect(find.text('حفظ التكلفة'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
+}
+
+Future<void> _setPhoneView(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(420, 1000);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
 }
 
 Widget _financeScreen(Widget child) {
   return ChangeNotifierProvider<FinanceProvider>(
     create: (_) => FinanceProvider(
-      _CountingFinanceApi(withCommitment: true),
-      permissionsApi: _FakeSharingApi(
-        const PlanAccessPermissions(
-          weddingPlanId: 'plan-viewer',
-          isOwner: false,
-          canViewBudget: false,
-          canViewExpenses: false,
-          canViewFinancialRecords: true,
-          canManageFinancialRecords: false,
-        ),
-      ),
+      _CountingFinanceApi(withCost: true),
+      permissionsApi: _FakeSharingApi(_viewer('plan-viewer')),
     ),
     child: MaterialApp(
       home: Directionality(textDirection: TextDirection.rtl, child: child),
     ),
+  );
+}
+
+PlanAccessPermissions _viewer(String planId) {
+  return PlanAccessPermissions(
+    weddingPlanId: planId,
+    isOwner: false,
+    canViewMoney: true,
+    canManageMoney: false,
   );
 }
 
@@ -197,94 +180,116 @@ class _FakeSharingApi extends SharingApi {
   ApiException? failure;
 
   @override
-  Future<PlanAccessPermissions> getMyPlanPermissions(
-    String weddingPlanId,
-  ) async {
+  Future<PlanAccessPermissions> getMyPlanPermissions(String planId) async {
     final error = failure;
     if (error != null) throw error;
     return permissions;
   }
 }
 
-class _CountingFinanceApi extends BudgetExpenseApi {
-  _CountingFinanceApi({this.failMoneySummaryFor, this.withCommitment = false})
+class _CountingFinanceApi extends FinanceApi {
+  _CountingFinanceApi({this.failSummaryFor, this.withCost = false})
     : super(ApiClient(tokenProvider: () async => null));
 
-  final String? failMoneySummaryFor;
-  final bool withCommitment;
-  int budgetCalls = 0;
-  int expenseCalls = 0;
-  int expenseSummaryCalls = 0;
-  int commitmentCalls = 0;
+  final String? failSummaryFor;
+  final bool withCost;
+  int summaryCalls = 0;
+  int costCalls = 0;
   int paymentCalls = 0;
-  int installmentCalls = 0;
+  int scheduleCalls = 0;
+
+  WeddingCost _cost(String planId) => WeddingCost(
+    id: 'cost-1',
+    weddingPlanId: planId,
+    budgetCategoryId: 'category-1',
+    title: 'حجز الصالة',
+    totalAmount: '1000',
+    paidAmount: '0',
+    remainingAmount: '1000',
+    status: 'OPEN',
+    createdAt: DateTime.utc(2026, 7, 11),
+    updatedAt: DateTime.utc(2026, 7, 11),
+  );
 
   @override
-  Future<List<BudgetCategory>> getBudgetCategories(String weddingPlanId) async {
-    budgetCalls++;
-    return [
-      BudgetCategory(
-        id: 'category-$weddingPlanId',
-        weddingPlanId: weddingPlanId,
-        name: 'الصالة',
-        createdAt: DateTime.utc(2026, 7, 11),
-        updatedAt: DateTime.utc(2026, 7, 11),
+  Future<MoneySummary> getMoneySummary(String planId) async {
+    summaryCalls += 1;
+    if (planId == failSummaryFor) throw Exception('failed');
+    return MoneySummary(
+      planId: planId,
+      currency: 'YER',
+      budget: const MoneyBudgetSummary(
+        total: '10000',
+        confirmedCost: '1000',
+        remaining: '9000',
       ),
-    ];
-  }
-
-  @override
-  Future<List<Expense>> getExpenses(String weddingPlanId) async {
-    expenseCalls++;
-    return const [];
-  }
-
-  @override
-  Future<ExpenseSummary> getExpenseSummary(String weddingPlanId) async {
-    expenseSummaryCalls++;
-    return ExpenseSummary.empty();
-  }
-
-  @override
-  Future<MoneySummary> getMoneySummary(String weddingPlanId) async {
-    if (weddingPlanId == failMoneySummaryFor) throw Exception('failed');
-    return MoneySummary(weddingPlanId: weddingPlanId);
-  }
-
-  @override
-  Future<List<FinancialCommitment>> getFinancialCommitments(
-    String weddingPlanId,
-  ) async {
-    commitmentCalls++;
-    if (!withCommitment) return const [];
-    return [
-      FinancialCommitment(
-        id: 'commitment-1',
-        weddingPlanId: weddingPlanId,
-        budgetCategoryId: 'category-1',
-        title: 'المستحق الأول',
-        totalAmount: '1000',
-        paidAmount: '0',
-        remainingAmount: '1000',
-        sourceType: 'MANUAL_COMMITMENT',
-        status: 'OPEN',
+      costs: MoneyCostsSummary(
+        total: withCost ? '1000' : '0',
+        outstanding: withCost ? '1000' : '0',
+        count: withCost ? 1 : 0,
       ),
-    ];
+      categories: const [
+        MoneyCategorySummary(
+          categoryId: 'category-1',
+          name: 'الصالة',
+          allocatedAmount: '5000',
+          costsCount: 1,
+        ),
+      ],
+    );
   }
 
   @override
-  Future<List<FinancialPaymentRecord>> getFinancialPaymentRecords(
-    String weddingPlanId,
-  ) async {
-    paymentCalls++;
+  Future<FinancePage<WeddingCost>> getCosts(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+    String? status,
+    String? categoryId,
+    String? search,
+  }) async {
+    costCalls += 1;
+    final items = withCost ? [_cost(planId)] : const <WeddingCost>[];
+    return FinancePage(
+      items: items,
+      page: page,
+      pageSize: limit,
+      total: items.length,
+      totalPages: 1,
+    );
+  }
+
+  @override
+  Future<FinancePage<CostPayment>> getPlanPayments(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+  }) async {
+    paymentCalls += 1;
+    return FinancePage(
+      items: const [],
+      page: page,
+      pageSize: limit,
+      total: 0,
+      totalPages: 1,
+    );
+  }
+
+  @override
+  Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async {
+    scheduleCalls += 1;
     return const [];
   }
 
   @override
-  Future<List<FinancialInstallment>> getDueFinancialInstallments(
-    String weddingPlanId,
-  ) async {
-    installmentCalls++;
-    return const [];
-  }
+  Future<List<CostPayment>> getCostPayments(
+    String costId, {
+    String? planId,
+  }) async => const [];
+
+  @override
+  Future<List<PaymentSchedule>> getCostSchedules(
+    String costId, {
+    String? planId,
+  }) async => const [];
 }

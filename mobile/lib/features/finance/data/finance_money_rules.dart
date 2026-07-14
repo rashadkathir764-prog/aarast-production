@@ -6,55 +6,72 @@ abstract final class FinanceMoneyRules {
         0;
   }
 
-  static num assertPositive(Object? value, String field) {
+  static num assertPositive(Object? value, String label) {
     final parsed = num.tryParse(
       value?.toString().replaceAll(',', '').trim() ?? '',
     );
     if (parsed == null || parsed <= 0) {
-      throw ApiException(
-        field == 'totalAmount'
-            ? 'التكلفة المتفق عليها يجب أن تكون أكبر من صفر.'
-            : 'المبلغ يجب أن يكون أكبر من صفر.',
-      );
+      throw ApiException('$label يجب أن يكون أكبر من صفر.');
     }
     return parsed;
   }
 
-  static num assertOptionalNonNegative(Object? value, String field) {
+  static num assertOptionalNonNegative(Object? value, String label) {
     final raw = value?.toString().replaceAll(',', '').trim() ?? '';
     if (raw.isEmpty) return 0;
     final parsed = num.tryParse(raw);
     if (parsed == null || parsed < 0) {
-      throw ApiException('$field غير صحيح.');
+      throw ApiException('$label غير صحيح.');
     }
     return parsed;
   }
 
-  static void assertCommitmentAmounts({
+  static void assertCostAmounts({
     required String totalAmount,
-    String? paidAmount,
+    String? initialPaymentAmount,
   }) {
-    final total = assertPositive(totalAmount, 'totalAmount');
-    final paid = assertOptionalNonNegative(paidAmount, 'paidAmount');
+    final total = assertPositive(totalAmount, 'إجمالي التكلفة');
+    final paid = assertOptionalNonNegative(
+      initialPaymentAmount,
+      'الدفعة الأولى',
+    );
     if (paid > total) {
-      throw const ApiException(
-        'المدفوع لا يمكن أن يتجاوز التكلفة المتفق عليها.',
-      );
+      throw const ApiException('الدفعة الأولى لا يمكن أن تتجاوز التكلفة.');
     }
   }
 
   static void assertPaymentWithinRemaining({
-    required Map<String, dynamic> commitment,
+    required Map<String, dynamic> cost,
     required num amount,
+    num pendingScheduledAmount = 0,
   }) {
-    if (commitment['status']?.toString() == 'CANCELLED') {
-      throw const ApiException('لا يمكن تسجيل دفعة على التزام ملغي.');
+    if (cost['status']?.toString() == 'CANCELLED') {
+      throw const ApiException('لا يمكن تسجيل دفعة على تكلفة ملغاة.');
     }
-    final total = value(commitment['totalAmount']);
-    final paid = value(commitment['paidAmount']);
+    final total = value(cost['totalAmount']);
+    final paid = value(cost['paidAmount']);
     final remaining = (total - paid).clamp(0, total);
-    if (amount > remaining) {
-      throw const ApiException('مبلغ الدفعة لا يمكن أن يتجاوز الباقي المستحق.');
+    final available = (remaining - pendingScheduledAmount).clamp(0, remaining);
+    if (amount > available) {
+      throw const ApiException(
+        'المبلغ يتجاوز الجزء غير المجدول من الباقي. ادفع موعدًا قائمًا أو عدّله أولًا.',
+      );
+    }
+  }
+
+  static void assertScheduleWithinAvailable({
+    required num amount,
+    required num remainingAmount,
+    required num otherPendingSchedules,
+  }) {
+    final available = (remainingAmount - otherPendingSchedules).clamp(
+      0,
+      remainingAmount,
+    );
+    if (amount > available) {
+      throw const ApiException(
+        'مبلغ الموعد يتجاوز المتاح للجدولة من باقي التكلفة.',
+      );
     }
   }
 
@@ -63,7 +80,7 @@ abstract final class FinanceMoneyRules {
     return value.toStringAsFixed(2);
   }
 
-  static String commitmentStatus(num total, num paid) {
+  static String costStatus(num total, num paid) {
     if (total <= 0 || paid <= 0) return 'OPEN';
     if (paid >= total) return 'PAID';
     return 'PARTIALLY_PAID';

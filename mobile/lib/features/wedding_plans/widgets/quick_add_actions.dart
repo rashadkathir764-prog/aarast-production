@@ -23,12 +23,12 @@ IconData planQuickAddIconForTab(int tabIndex) {
 bool shouldShowPlanQuickAdd({
   required int tabIndex,
   bool isRootDestination = true,
-  bool canManageFinancialRecords = true,
+  bool canManageMoney = false,
 }) {
   const moneyTabIndex = 1;
   const providersTabIndex = 4;
   return tabIndex != providersTabIndex &&
-      (tabIndex != moneyTabIndex || canManageFinancialRecords) &&
+      (tabIndex != moneyTabIndex || canManageMoney) &&
       (tabIndex != moneyTabIndex || isRootDestination);
 }
 
@@ -44,44 +44,33 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   BuildContext context, {
   required String planId,
   QuickAddContext contextOrder = QuickAddContext.dashboard,
-  bool refreshDashboardOnExpense = false,
+  bool refreshDashboardOnMoney = false,
   VoidCallback? onRequestQuote,
   required Future<void> Function(String route, {bool refreshDashboard})
   openRoute,
 }) {
+  final cost = RoyalHomeAction(
+    icon: LucideIcons.receipt,
+    label: 'إضافة تكلفة',
+    onTap: () => openRoute(
+      AppRouter.moneyCostCreate(planId),
+      refreshDashboard: refreshDashboardOnMoney,
+    ),
+  );
   final category = RoyalHomeAction(
     icon: LucideIcons.folderPlus,
-    label: 'إضافة بند ميزانية',
+    label: 'إضافة تصنيف',
     onTap: () => openRoute(
-      AppRouter.createBudgetCategory(planId),
-      refreshDashboard: refreshDashboardOnExpense,
+      AppRouter.moneyCategoryCreate(planId),
+      refreshDashboard: refreshDashboardOnMoney,
     ),
   );
-  final commitment = RoyalHomeAction(
-    icon: LucideIcons.briefcase,
-    label: 'حجز مورد / تكلفة خدمة',
+  final budget = RoyalHomeAction(
+    icon: LucideIcons.walletCards,
+    label: 'إدارة الميزانية',
     onTap: () => openRoute(
-      AppRouter.createFinancialCommitment(
-        planId,
-        sourceType: 'PROVIDER_SERVICE',
-      ),
-      refreshDashboard: refreshDashboardOnExpense,
-    ),
-  );
-  final payable = RoyalHomeAction(
-    icon: LucideIcons.wallet,
-    label: 'إضافة مستحق',
-    onTap: () => openRoute(
-      AppRouter.createFinancialCommitment(planId),
-      refreshDashboard: refreshDashboardOnExpense,
-    ),
-  );
-  final payment = RoyalHomeAction(
-    icon: LucideIcons.banknote,
-    label: 'تسجيل دفعة',
-    onTap: () => openRoute(
-      AppRouter.recordPayment(planId),
-      refreshDashboard: refreshDashboardOnExpense,
+      AppRouter.moneyBudget(planId),
+      refreshDashboard: refreshDashboardOnMoney,
     ),
   );
   final task = RoyalHomeAction(
@@ -101,10 +90,10 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   );
 
   return switch (contextOrder) {
-    QuickAddContext.money => [category, payable, payment],
-    QuickAddContext.tasks => [task, payment, guest, commitment, quote],
-    QuickAddContext.guests => [guest, task, payment, commitment, quote],
-    QuickAddContext.providers => [quote, commitment, payment, task, guest],
-    QuickAddContext.dashboard => [commitment, payment, task, guest, quote],
+    QuickAddContext.money => [cost, category, budget],
+    QuickAddContext.tasks => [task, cost, guest, quote],
+    QuickAddContext.guests => [guest, task, cost, quote],
+    QuickAddContext.providers => [quote, cost, task, guest],
+    QuickAddContext.dashboard => [cost, task, guest, quote],
   };
 }

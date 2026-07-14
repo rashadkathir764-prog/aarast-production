@@ -19,4 +19,10 @@ class CachePolicy {
   static bool shouldQueueWrite(Object error) {
     return error is ApiException && error.isNetworkFailure;
   }
+
+  /// Idempotent writes can also preserve an ambiguous 5xx outcome because the
+  /// caller owns one request id from the first attempt through queue replay.
+  static bool shouldQueueReplay(Object error) {
+    return error is ApiException && error.isAmbiguousMutationFailure;
+  }
 }

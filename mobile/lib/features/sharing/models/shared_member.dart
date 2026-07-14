@@ -8,15 +8,13 @@ class SharedMember {
     required this.userId,
     this.user,
     required this.role,
-    required this.canViewBudget,
-    required this.canViewExpenses,
-    required this.canViewFinancialRecords,
+    required this.canViewMoney,
     this.canEditPlan = false,
     required this.canManageTasks,
     this.canManageGuests = false,
     this.canManageProviders = false,
     this.canInviteMembers = false,
-    required this.canManageFinancialRecords,
+    required this.canManageMoney,
     this.receiveNotifications = true,
     this.isOwner = false,
     required this.createdAt,
@@ -30,15 +28,14 @@ class SharedMember {
       userId: json['userId'].toString(),
       user: _sharedMemberUserOrNull(json),
       role: json['role']?.toString() ?? 'VIEWER',
-      canViewBudget: json['canViewBudget'] == true,
-      canViewExpenses: json['canViewExpenses'] == true,
-      canViewFinancialRecords: json['canViewFinancialRecords'] == true,
+      canViewMoney:
+          json['canViewMoney'] == true || json['canManageMoney'] == true,
       canEditPlan: json['canEditPlan'] == true,
       canManageTasks: json['canManageTasks'] == true,
       canManageGuests: json['canManageGuests'] == true,
       canManageProviders: json['canManageProviders'] == true,
       canInviteMembers: json['canInviteMembers'] == true,
-      canManageFinancialRecords: json['canManageFinancialRecords'] == true,
+      canManageMoney: json['canManageMoney'] == true,
       receiveNotifications: json['receiveNotifications'] != false,
       isOwner: json['isOwner'] == true || json['role'] == 'OWNER',
       createdAt: _dateTimeOrNow(json['createdAt']),
@@ -51,32 +48,19 @@ class SharedMember {
   final String userId;
   final SharedMemberUser? user;
   final String role;
-  final bool canViewBudget;
-  final bool canViewExpenses;
-  final bool canViewFinancialRecords;
+  final bool canViewMoney;
   final bool canEditPlan;
   final bool canManageTasks;
   final bool canManageGuests;
   final bool canManageProviders;
   final bool canInviteMembers;
-  final bool canManageFinancialRecords;
+  final bool canManageMoney;
   final bool receiveNotifications;
   final bool isOwner;
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  bool get hasFinancialAccess =>
-      canViewBudget ||
-      canViewExpenses ||
-      canViewFinancialRecords ||
-      canManageFinancialRecords;
-
-  bool get canReadBudget => canViewBudget || canManageFinancialRecords;
-
-  bool get canReadExpenses => canViewExpenses || canManageFinancialRecords;
-
-  bool get canReadFinancialRecords =>
-      canViewFinancialRecords || canManageFinancialRecords;
+  bool get hasFinancialAccess => canViewMoney;
 
   String get displayName {
     final name = user?.name.trim();
@@ -102,32 +86,26 @@ class SharedMember {
 
   List<String> get permissionLabels {
     final labels = <String>[];
-    if (canViewBudget) labels.add('يمكنه رؤية الميزانية');
-    if (canViewExpenses) labels.add('يمكنه رؤية المصاريف');
-    if (canViewFinancialRecords) {
-      labels.add('يمكنه رؤية المستحقات والدفعات');
-    }
+    if (canViewMoney) labels.add('يمكنه مشاهدة المال');
     if (canManageTasks) labels.add('يمكنه إدارة المهام');
     if (canManageGuests) labels.add('يمكنه إدارة الضيوف');
     if (canManageProviders) labels.add('يمكنه إدارة الموردين والعروض');
     if (canEditPlan) labels.add('يمكنه تعديل الخطة');
     if (canInviteMembers) labels.add('يمكنه دعوة المشاركين');
-    if (canManageFinancialRecords) labels.add('يمكنه إدارة السجلات المالية');
+    if (canManageMoney) labels.add('يمكنه إدارة المال');
     return labels;
   }
 
   /// لقطة الصلاحيات الحالية كقيمة قابلة للتعديل في محرر الصلاحيات.
   PlanRolePermissions toPermissions() {
     return PlanRolePermissions(
-      canViewBudget: canViewBudget,
-      canViewExpenses: canViewExpenses,
-      canViewFinancialRecords: canViewFinancialRecords,
+      canViewMoney: canViewMoney,
       canEditPlan: canEditPlan,
       canManageTasks: canManageTasks,
       canManageGuests: canManageGuests,
       canManageProviders: canManageProviders,
       canInviteMembers: canInviteMembers,
-      canManageFinancialRecords: canManageFinancialRecords,
+      canManageMoney: canManageMoney,
       receiveNotifications: receiveNotifications,
     );
   }
@@ -191,15 +169,13 @@ class PlanInvite {
     required this.role,
     required this.status,
     required this.expiresAt,
-    required this.canViewBudget,
-    required this.canViewExpenses,
-    required this.canViewFinancialRecords,
+    required this.canViewMoney,
     required this.canEditPlan,
     required this.canManageTasks,
     required this.canManageGuests,
     required this.canManageProviders,
     required this.canInviteMembers,
-    required this.canManageFinancialRecords,
+    required this.canManageMoney,
     this.name,
     this.phone,
     this.email,
@@ -216,15 +192,14 @@ class PlanInvite {
       token: json['token']?.toString() ?? '',
       role: json['role']?.toString() ?? 'VIEWER',
       status: json['status']?.toString() ?? 'PENDING',
-      canViewBudget: json['canViewBudget'] == true,
-      canViewExpenses: json['canViewExpenses'] == true,
-      canViewFinancialRecords: json['canViewFinancialRecords'] == true,
+      canViewMoney:
+          json['canViewMoney'] == true || json['canManageMoney'] == true,
       canEditPlan: json['canEditPlan'] == true,
       canManageTasks: json['canManageTasks'] == true,
       canManageGuests: json['canManageGuests'] == true,
       canManageProviders: json['canManageProviders'] == true,
       canInviteMembers: json['canInviteMembers'] == true,
-      canManageFinancialRecords: json['canManageFinancialRecords'] == true,
+      canManageMoney: json['canManageMoney'] == true,
       expiresAt:
           _dateTimeOrNull(json['expiresAt']) ??
           DateTime.now().add(const Duration(days: 14)),
@@ -242,15 +217,13 @@ class PlanInvite {
   final String role;
   final String status;
   final DateTime expiresAt;
-  final bool canViewBudget;
-  final bool canViewExpenses;
-  final bool canViewFinancialRecords;
+  final bool canViewMoney;
   final bool canEditPlan;
   final bool canManageTasks;
   final bool canManageGuests;
   final bool canManageProviders;
   final bool canInviteMembers;
-  final bool canManageFinancialRecords;
+  final bool canManageMoney;
   final String? name;
   final String? phone;
   final String? email;
@@ -266,10 +239,10 @@ class PlanInvite {
     if (canManageGuests) labels.add('الضيوف');
     if (canManageProviders) labels.add('الخدمات والموردون');
     if (canInviteMembers) labels.add('دعوة أعضاء');
-    if (canManageFinancialRecords) {
+    if (canManageMoney) {
       labels.add('إدارة المال');
-    } else if (canViewBudget || canViewExpenses || canViewFinancialRecords) {
-      labels.add('عرض مالي محدود');
+    } else if (canViewMoney) {
+      labels.add('مشاهدة المال');
     }
     return labels;
   }

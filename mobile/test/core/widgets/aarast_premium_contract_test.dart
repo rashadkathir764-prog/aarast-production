@@ -222,17 +222,13 @@ void main() {
         'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
         'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
         'lib/features/wedding_plans/screens/plan_management_screen.dart',
-        'lib/features/finance/screens/budget_expense_screen.dart',
-        'lib/features/finance/screens/budget_setup_screen.dart',
+        'lib/features/finance/screens/money_overview_screen.dart',
+        'lib/features/finance/screens/money_budget_screen.dart',
         'lib/features/finance/screens/budget_category_details_screen.dart',
-        'lib/features/finance/screens/create_budget_category_screen.dart',
-        'lib/features/finance/screens/create_expense_screen.dart',
-        'lib/features/finance/screens/create_financial_commitment_screen.dart',
-        'lib/features/finance/screens/financial_commitment_details_screen.dart',
-        'lib/features/finance/screens/financial_payables_screen.dart',
-        'lib/features/finance/screens/financial_payment_record_details_screen.dart',
-        'lib/features/finance/screens/expenses_screen.dart',
-        'lib/features/finance/screens/record_payment_screen.dart',
+        'lib/features/finance/screens/budget_category_form_screen.dart',
+        'lib/features/finance/screens/costs_screen.dart',
+        'lib/features/finance/screens/cost_form_screen.dart',
+        'lib/features/finance/screens/cost_details_screen.dart',
         'lib/features/tasks/screens/task_timeline_screen.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
         'lib/features/guests/screens/guest_list_screen.dart',
@@ -418,27 +414,28 @@ void main() {
       }
     });
 
-    test(
-      'keeps a Phase A audit matrix for the highest-risk mobile screens',
-      () {
-        final text = File(
-          '../docs/frontend/PREMIUM_ROADMAP.md',
-        ).readAsStringSync();
+    test('keeps the active premium roadmap on the canonical money domain', () {
+      final text = File(
+        '../docs/frontend/PREMIUM_ROADMAP.md',
+      ).readAsStringSync();
 
-        for (final expected in [
-          'more_screen.dart',
-          'budget_expense_screen',
-          'plan_center_screen.dart',
-          'provider_dashboard_screen.dart',
-          'sharing_screen.dart',
-          'create_financial_commitment_screen.dart',
-        ]) {
-          expect(text, contains(expected), reason: expected);
-        }
+      for (final expected in [
+        'Wedding Financial OS',
+        'WeddingCost',
+        'CostPayment',
+        'PaymentSchedule',
+        'Definition Of Done',
+        '320px',
+      ]) {
+        expect(text, contains(expected), reason: expected);
+      }
 
-        expect(text, contains('Definition of Done'));
-        expect(text, contains('المرحلة أ'));
-      },
-    );
+      for (final removed in [
+        'budget_expense_screen',
+        'create_financial_commitment_screen',
+      ]) {
+        expect(text, isNot(contains(removed)), reason: removed);
+      }
+    });
   });
 }

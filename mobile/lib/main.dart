@@ -21,7 +21,7 @@ import 'features/auth/providers/auth_controller.dart';
 import 'features/chat/data/chat_api.dart';
 import 'features/chat/data/chat_realtime_client.dart';
 import 'features/chat/providers/chat_provider.dart';
-import 'features/finance/data/budget_expense_api.dart';
+import 'features/finance/data/finance_api.dart';
 import 'features/finance/providers/finance_provider.dart';
 import 'features/guests/data/guests_api.dart';
 import 'features/guests/providers/guests_provider.dart';
@@ -77,7 +77,7 @@ Future<void> main() async {
     apiClient,
     offline: offlineSyncService,
   );
-  final budgetExpenseApi = BudgetExpenseApi(
+  final financeApi = FinanceApi(
     apiClient,
     offline: offlineSyncService,
     localPlanContextLoader: (weddingPlanId) async {
@@ -120,7 +120,7 @@ Future<void> main() async {
         ),
         Provider<AuthRepository>.value(value: authRepository),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
-        Provider<BudgetExpenseApi>.value(value: budgetExpenseApi),
+        Provider<FinanceApi>.value(value: financeApi),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         Provider<SharingApi>.value(value: sharingApi),
         Provider<MarketplaceApi>.value(value: marketplaceApi),
@@ -151,7 +151,7 @@ Future<void> main() async {
       child: _AarastSessionProviders(
         authStorage: authStorage,
         weddingPlansApi: weddingPlansApi,
-        budgetExpenseApi: budgetExpenseApi,
+        financeApi: financeApi,
         taskTimelineApi: taskTimelineApi,
         sharingApi: sharingApi,
         marketplaceApi: marketplaceApi,
@@ -214,7 +214,7 @@ class _AarastSessionProviders extends StatelessWidget {
   const _AarastSessionProviders({
     required this.authStorage,
     required this.weddingPlansApi,
-    required this.budgetExpenseApi,
+    required this.financeApi,
     required this.taskTimelineApi,
     required this.sharingApi,
     required this.marketplaceApi,
@@ -228,7 +228,7 @@ class _AarastSessionProviders extends StatelessWidget {
 
   final AuthStorage authStorage;
   final WeddingPlansApi weddingPlansApi;
-  final BudgetExpenseApi budgetExpenseApi;
+  final FinanceApi financeApi;
   final TaskTimelineApi taskTimelineApi;
   final SharingApi sharingApi;
   final MarketplaceApi marketplaceApi;
@@ -299,14 +299,13 @@ class _AarastSessionProviders extends StatelessWidget {
           ),
           ChangeNotifierProxyProvider<WeddingPlansProvider, FinanceProvider>(
             create: (_) => _bindPlanScope(
-              FinanceProvider(budgetExpenseApi, permissionsApi: sharingApi),
+              FinanceProvider(financeApi, permissionsApi: sharingApi),
               _unselectedPlanScope,
             ),
             update: (_, plans, current) => _forPlanScope(
               current,
               _planScope(plans),
-              () =>
-                  FinanceProvider(budgetExpenseApi, permissionsApi: sharingApi),
+              () => FinanceProvider(financeApi, permissionsApi: sharingApi),
             ),
           ),
           ChangeNotifierProxyProvider<

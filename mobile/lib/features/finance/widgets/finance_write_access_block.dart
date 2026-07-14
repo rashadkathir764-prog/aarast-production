@@ -11,7 +11,7 @@ Widget? financeWriteAccessBlock({
   required String weddingPlanId,
 }) {
   if (AuthActionGuard.isLocalGuestPlanId(weddingPlanId)) return null;
-  if (provider.loadedWeddingPlanId != weddingPlanId || provider.isLoading) {
+  if (provider.loadedPlanId != weddingPlanId || provider.isLoading) {
     return const AarastScreenLoading(
       label: 'جاري التحقق من صلاحية تعديل المال',
     );
@@ -23,18 +23,18 @@ Widget? financeWriteAccessBlock({
         child: AarastErrorState(
           title: 'تعذر التحقق من الصلاحيات',
           message: provider.errorMessage!,
-          onRetry: () => provider.loadFinance(weddingPlanId),
+          onRetry: () => provider.loadMoney(weddingPlanId),
         ),
       ),
     );
   }
-  if (!provider.canManageFinancialRecords) {
+  if (!provider.canManageMoney) {
     return const AarastScreenFrame(
       maxWidth: 520,
       child: Center(
         child: AarastEmptyState(
           title: 'العرض فقط',
-          message: 'لا تملك صلاحية تعديل السجلات المالية لهذه الخطة.',
+          message: 'لا تملك صلاحية إدارة المال في هذه الخطة.',
           icon: LucideIcons.lock,
         ),
       ),

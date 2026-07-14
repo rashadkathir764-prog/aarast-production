@@ -20,16 +20,16 @@ void main() {
     () async {
       final database = await buildDatabase();
       await database.enqueueSync(
-        entityType: 'expense',
+        entityType: 'cost',
         operation: 'create',
-        endpoint: '/wedding-plans/plan-1/expenses',
+        endpoint: '/api/v1/wedding-plans/plan-1/costs',
         method: 'POST',
         payload: {
-          'title': 'دفعة القاعة',
-          'amount': '200000',
+          'title': 'حجز القاعة',
+          'totalAmount': '200000',
           'budgetCategoryId': 'local-budget-category-7',
         },
-        localEntityId: 'local-expense-1',
+        localEntityId: 'local-cost-1',
       );
       await database.enqueueSync(
         entityType: 'budget_category',
@@ -46,11 +46,11 @@ void main() {
       );
 
       final items = await database.pendingSyncItems();
-      final expense = items.firstWhere((item) => item.entityType == 'expense');
+      final cost = items.firstWhere((item) => item.entityType == 'cost');
       final category = items.firstWhere(
         (item) => item.entityType == 'budget_category',
       );
-      expect(expense.payload['budgetCategoryId'], 'srv-cat-99');
+      expect(cost.payload['budgetCategoryId'], 'srv-cat-99');
       expect(category.endpoint, '/budget-categories/srv-cat-99');
     },
   );
@@ -58,12 +58,12 @@ void main() {
   test('blocked items are excluded from automatic replay', () async {
     final database = await buildDatabase();
     final item = await database.enqueueSync(
-      entityType: 'expense',
+      entityType: 'cost',
       operation: 'create',
-      endpoint: '/expenses',
+      endpoint: '/api/v1/wedding-plans/plan-1/costs',
       method: 'POST',
-      payload: {'amount': 'not-a-number'},
-      localEntityId: 'local-expense-2',
+      payload: {'totalAmount': 'not-a-number'},
+      localEntityId: 'local-cost-2',
     );
 
     await database.markSyncItemBlocked(item.id, 'amount must be valid');
@@ -74,12 +74,12 @@ void main() {
   test('failed items keep retrying until blocked', () async {
     final database = await buildDatabase();
     final item = await database.enqueueSync(
-      entityType: 'expense',
+      entityType: 'cost',
       operation: 'create',
-      endpoint: '/expenses',
+      endpoint: '/api/v1/wedding-plans/plan-1/costs',
       method: 'POST',
-      payload: {'amount': '100'},
-      localEntityId: 'local-expense-3',
+      payload: {'totalAmount': '100'},
+      localEntityId: 'local-cost-3',
     );
 
     await database.markSyncItemFailed(item.id, 'server hiccup');

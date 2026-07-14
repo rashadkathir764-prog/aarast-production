@@ -331,20 +331,67 @@ class TaskTimelineApi {
   }
 
   Future<Timeline> _timelineFromCachedTasks(String weddingPlanId) async {
-    final tasks = await _offline?.database.readCachedList(
-      table: OfflineTables.cachedTasks,
-      parentColumn: 'planId',
-      parentId: weddingPlanId,
-    );
-    if (tasks == null || tasks.isEmpty) return Timeline.empty();
+    final database = _offline?.database;
+    if (database == null) return Timeline.empty();
+    final results = await Future.wait([
+      database.readCachedList(
+        table: OfflineTables.cachedTasks,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      ),
+      database.readCachedList(
+        table: OfflineTables.cachedPaymentSchedules,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      ),
+      database.readCachedList(
+        table: OfflineTables.cachedCosts,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      ),
+    ]);
+    final tasks = results[0];
+    final schedules = results[1];
+    final costs = results[2];
+    final costTitleById = {
+      for (final cost in costs)
+        if (cost['id'] != null)
+          cost['id'].toString(): cost['title']?.toString() ?? '',
+    };
     final upcoming = tasks
         .where((task) => task['status'] != 'DONE' && task['dueDate'] != null)
         .take(5)
         .toList();
+    final paymentSchedules =
+        schedules
+            .where(
+              (schedule) =>
+                  schedule['status'] == 'PENDING' &&
+                  schedule['dueDate'] != null,
+            )
+            .map((schedule) {
+              final costId =
+                  schedule['weddingCostId']?.toString() ??
+                  schedule['costId']?.toString() ??
+                  '';
+              return {
+                ...schedule,
+                'weddingCostId': costId,
+                'costTitle':
+                    schedule['costTitle']?.toString() ??
+                    costTitleById[costId] ??
+                    '',
+              };
+            })
+            .toList()
+          ..sort(
+            (left, right) => DateTime.parse(
+              left['dueDate'].toString(),
+            ).compareTo(DateTime.parse(right['dueDate'].toString())),
+          );
     return Timeline.fromJson({
       'upcomingTasks': upcoming,
-      'dueCommitments': const [],
-      'dueInstallments': const [],
+      'paymentSchedules': paymentSchedules,
     });
   }
 

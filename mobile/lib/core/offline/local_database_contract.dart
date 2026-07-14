@@ -20,6 +20,7 @@ abstract class LocalDatabase {
     required List<Map<String, dynamic>> items,
     String? parentColumn,
     String? parentId,
+    bool preserveDirty = true,
   });
 
   Future<List<Map<String, dynamic>>> readCachedList({
@@ -52,6 +53,8 @@ abstract class LocalDatabase {
     required String method,
     required Map<String, dynamic> payload,
     String? localEntityId,
+    bool replacePendingForEntity = false,
+    String? clientRequestId,
   });
 
   Future<List<SyncQueueItem>> pendingSyncItems();

@@ -55,11 +55,19 @@ void main() {
       ),
       _notification(
         id: 'n-2',
-        type: 'INSTALLMENT_DUE',
-        title: 'قسط قريب الاستحقاق',
-        body: 'لديك قسط بقيمة 100,000 ريال يستحق خلال 3 أيام.',
+        type: 'PAYMENT_SCHEDULE_DUE_SOON',
+        title: 'موعد دفع قريب',
+        body: 'دفعة القاعة بقيمة 100,000 ريال تستحق خلال 3 أيام.',
         unread: false,
         hoursAgo: 4,
+        weddingPlanId: 'plan-1',
+        entityType: 'payment_schedule',
+        entityId: 'schedule-1',
+        data: const {
+          'weddingPlanId': 'plan-1',
+          'weddingCostId': 'cost-1',
+          'paymentScheduleId': 'schedule-1',
+        },
       ),
       _notification(
         id: 'n-3',
@@ -71,12 +79,20 @@ void main() {
       ),
       _notification(
         id: 'n-4',
-        type: 'INSTALLMENT_OVERDUE',
-        title: 'قسط متأخر',
-        body: 'تجاوز قسط القاعة موعد استحقاقه. يرجى المتابعة.',
+        type: 'PAYMENT_SCHEDULE_OVERDUE',
+        title: 'موعد دفع متأخر',
+        body: 'تجاوز موعد دفع القاعة تاريخ الاستحقاق. يرجى المتابعة.',
         priority: 'URGENT',
         unread: true,
         hoursAgo: 30,
+        weddingPlanId: 'plan-1',
+        entityType: 'payment_schedule',
+        entityId: 'schedule-2',
+        data: const {
+          'weddingPlanId': 'plan-1',
+          'weddingCostId': 'cost-1',
+          'paymentScheduleId': 'schedule-2',
+        },
       ),
     ]);
 
@@ -101,7 +117,7 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
 
     expect(find.text('عرض سعر جديد'), findsOneWidget);
-    expect(find.text('قسط متأخر'), findsOneWidget);
+    expect(find.text('موعد دفع متأخر'), findsOneWidget);
 
     await expectLater(
       find.byType(Scaffold),
@@ -118,6 +134,10 @@ AarastNotification _notification({
   required bool unread,
   required int hoursAgo,
   String priority = 'NORMAL',
+  String? weddingPlanId,
+  String? entityType,
+  String? entityId,
+  Map<String, dynamic>? data,
 }) {
   final createdAt = DateTime(
     2026,
@@ -128,10 +148,14 @@ AarastNotification _notification({
   return AarastNotification(
     id: id,
     userId: 'user-1',
+    weddingPlanId: weddingPlanId,
     type: type,
     title: title,
     body: body,
     priority: priority,
+    entityType: entityType,
+    entityId: entityId,
+    data: data,
     createdAt: createdAt,
     updatedAt: createdAt,
     readAt: unread ? null : createdAt,

@@ -48,12 +48,9 @@ LocalCacheRow buildCacheRow({
         'phone': _memberPhone(json),
         'role': _string(json['role']),
         'permissionsJson': jsonEncode({
-          'canViewBudget': json['canViewBudget'] == true,
-          'canViewExpenses': json['canViewExpenses'] == true,
-          'canViewFinancialRecords': json['canViewFinancialRecords'] == true,
+          'canViewMoney': json['canViewMoney'] == true,
           'canManageTasks': json['canManageTasks'] == true,
-          'canManageFinancialRecords':
-              json['canManageFinancialRecords'] == true,
+          'canManageMoney': json['canManageMoney'] == true,
         }),
       });
     case OfflineTables.cachedGuests:
@@ -76,17 +73,9 @@ LocalCacheRow buildCacheRow({
       base.addAll({
         'planId': _string(json['weddingPlanId']),
         'name': _string(json['name']),
-        'targetAmount': _string(json['targetAmount']),
+        'allocatedAmount': _string(json['allocatedAmount']),
       });
-    case OfflineTables.cachedBudgetItems:
-      base.addAll({
-        'planId': _string(json['weddingPlanId']),
-        'category': _string(json['category']) ?? _string(json['title']),
-        'amount': _string(json['amount']),
-        'paidAmount': json['status'] == 'PAID' ? _string(json['amount']) : null,
-        'status': _string(json['status']) ?? 'PAID',
-      });
-    case OfflineTables.cachedFinancialCommitments:
+    case OfflineTables.cachedCosts:
       base.addAll({
         'planId': _string(json['weddingPlanId']),
         'categoryId': _string(json['budgetCategoryId']),
@@ -96,19 +85,17 @@ LocalCacheRow buildCacheRow({
         'paidAmount': _string(json['paidAmount']),
         'status': _string(json['status']) ?? 'OPEN',
       });
-    case OfflineTables.cachedFinancialPaymentRecords:
+    case OfflineTables.cachedCostPayments:
       base.addAll({
         'planId': _string(json['weddingPlanId']),
-        'commitmentId': _string(json['financialCommitmentId']),
-        'categoryId': _string(json['budgetCategoryId']),
+        'costId': _string(json['costId']),
         'amount': _string(json['amount']),
         'paidAt': _string(json['paidAt']),
       });
-    case OfflineTables.cachedFinancialInstallments:
+    case OfflineTables.cachedPaymentSchedules:
       base.addAll({
         'planId': _string(json['weddingPlanId']),
-        'commitmentId': _string(json['financialCommitmentId']),
-        'categoryId': _string(json['budgetCategoryId']),
+        'costId': _string(json['costId']),
         'amount': _string(json['amount']),
         'dueDate': _string(json['dueDate']),
         'status': _string(json['status']) ?? 'PENDING',

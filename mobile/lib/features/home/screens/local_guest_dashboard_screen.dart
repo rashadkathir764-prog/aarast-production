@@ -171,7 +171,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
   }) async {
     switch (area) {
       case 'المال':
-        await context.push(AppRouter.finance(planId));
+        await context.push(AppRouter.money(planId));
         await _refreshSummary();
         return;
       case 'المهام':
@@ -212,7 +212,8 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       _openLocalBrowse(context, planId, area: 'الضيوف');
       return;
     }
-    if (item.type.contains('INSTALLMENT') ||
+    if (item.type.contains('PAYMENT_SCHEDULE') ||
+        item.type.contains('COST') ||
         item.type.contains('BUDGET') ||
         item.type.contains('MONEY')) {
       _openLocalBrowse(context, planId, area: 'المال');
@@ -230,7 +231,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       _openLocalDashboardItem(context, planId, summary.importantItems.first);
       return;
     }
-    if ((summary.dueInstallmentsCount ?? 0) > 0) {
+    if ((summary.duePaymentSchedulesCount ?? 0) > 0) {
       _openLocalBrowse(context, planId, area: 'المال');
       return;
     }

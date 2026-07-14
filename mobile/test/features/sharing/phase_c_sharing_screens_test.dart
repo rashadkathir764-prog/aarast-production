@@ -49,7 +49,7 @@ void main() {
       _setTallView(tester);
       final api = _FakeSharingApi(
         members: [
-          _member(id: 'member-1', userName: 'أمينة', canViewBudget: true),
+          _member(id: 'member-1', userName: 'أمينة', canViewMoney: true),
         ],
         invites: [_invite()],
       );
@@ -68,8 +68,8 @@ void main() {
       expect(find.text('المشاركون (1)'), findsOneWidget);
       expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
       expect(find.text('أمينة'), findsOneWidget);
-      // ملخص صلاحيات صادق: مشاهدة فقط مع اطلاع مالي (canViewBudget).
-      expect(find.text('عرض فقط · اطلاع مالي محدود'), findsOneWidget);
+      // ملخص صلاحيات صادق: مشاهدة فقط مع اطلاع مالي (canViewMoney).
+      expect(find.text('عرض فقط · يشاهد المال'), findsOneWidget);
       expect(find.text('مساعد · بانتظار القبول'), findsOneWidget);
       expect(api.getSharedMembersCalls, 1);
       expect(api.getPlanInvitesCalls, 1);
@@ -142,7 +142,7 @@ Future<void> _pumpWithAuth(
 SharedMember _member({
   required String id,
   required String userName,
-  bool canViewBudget = false,
+  bool canViewMoney = false,
 }) {
   return SharedMember(
     id: id,
@@ -154,11 +154,9 @@ SharedMember _member({
       phone: '+967777123456',
     ),
     role: 'VIEWER',
-    canViewBudget: canViewBudget,
-    canViewExpenses: false,
-    canViewFinancialRecords: false,
+    canViewMoney: canViewMoney,
     canManageTasks: false,
-    canManageFinancialRecords: false,
+    canManageMoney: false,
     createdAt: DateTime(2026, 7, 5),
     updatedAt: DateTime(2026, 7, 5),
   );
@@ -172,15 +170,13 @@ PlanInvite _invite() {
     role: 'HELPER',
     status: 'PENDING',
     expiresAt: DateTime(2026, 7, 20),
-    canViewBudget: false,
-    canViewExpenses: false,
-    canViewFinancialRecords: false,
+    canViewMoney: false,
     canEditPlan: false,
     canManageTasks: true,
     canManageGuests: true,
     canManageProviders: false,
     canInviteMembers: false,
-    canManageFinancialRecords: false,
+    canManageMoney: false,
     phone: '+967777123456',
     name: 'خالد',
   );

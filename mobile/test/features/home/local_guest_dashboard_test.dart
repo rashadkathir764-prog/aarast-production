@@ -1,8 +1,8 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/home/data/dashboard_summary_sources.dart';
 import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen.dart';
@@ -84,34 +84,35 @@ void main() {
         apiClient,
         offline: offline,
       ).createTask(weddingPlanId: planId, title: 'حجز القاعة');
-      final category = await BudgetExpenseApi(apiClient, offline: offline)
-          .createBudgetCategory(
-            weddingPlanId: planId,
-            name: 'الصالة',
-            targetAmount: '2500000',
-          );
-      await BudgetExpenseApi(apiClient, offline: offline).createExpense(
-        weddingPlanId: planId,
-        title: 'دفعة القاعة',
-        amount: '500000',
-        budgetCategoryId: category.id,
+      final now = DateTime.now();
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCosts,
+        json: {
+          'id': 'cost-hall',
+          'planId': planId,
+          'weddingPlanId': planId,
+          'budgetCategoryId': 'category-hall',
+          'title': 'القاعة',
+          'totalAmount': '2500000',
+          'paidAmount': '500000',
+          'status': 'PARTIALLY_PAID',
+          'createdAt': now.toIso8601String(),
+          'updatedAt': now.toIso8601String(),
+        },
       );
-      final commitment = await BudgetExpenseApi(apiClient, offline: offline)
-          .createFinancialCommitment(
-            weddingPlanId: planId,
-            budgetCategoryId: category.id,
-            partyName: 'القاعة',
-            title: 'باقي القاعة',
-            totalAmount: '2000000',
-            sourceType: 'MANUAL_PAYABLE',
-          );
-      await BudgetExpenseApi(
-        apiClient,
-        offline: offline,
-      ).createFinancialInstallment(
-        commitmentId: commitment.id,
-        amount: '2000000',
-        dueDate: DateTime.now().add(const Duration(days: 7)),
+      await database.saveCachedItem(
+        table: OfflineTables.cachedPaymentSchedules,
+        json: {
+          'id': 'schedule-hall',
+          'planId': planId,
+          'weddingPlanId': planId,
+          'costId': 'cost-hall',
+          'amount': '2000000',
+          'dueDate': now.add(const Duration(days: 7)).toIso8601String(),
+          'status': 'PENDING',
+          'createdAt': now.toIso8601String(),
+          'updatedAt': now.toIso8601String(),
+        },
       );
 
       final summary = await LocalGuestDashboardSummarySource(
@@ -123,26 +124,21 @@ void main() {
       expect(summary.guestCount, 2);
       expect(summary.incompleteGuestCount, 1);
       expect(summary.taskCount, 1);
-      expect(summary.spentTotal, '500000');
-      expect(summary.commitmentTotal, '2000000');
-      expect(summary.commitmentOutstandingTotal, '2000000');
-      expect(summary.dueInstallmentsCount, 1);
+      expect(summary.confirmedCostTotal, '2500000');
+      expect(summary.paidTotal, '500000');
+      expect(summary.outstandingTotal, '2000000');
+      expect(summary.duePaymentSchedulesCount, 1);
       expect(royalSummary.remainingBudget, '-1500000');
       expect(royalSummary.incompleteGuestsCount, 1);
       expect(royalSummary.unreadNotificationsCount, 0);
       expect(royalSummary.importantNotifications, isEmpty);
       expect(
         royalSummary.importantItems.map((item) => item.type),
-        contains('INSTALLMENT_DUE'),
+        contains('PAYMENT_SCHEDULE_DUE'),
       );
       expect(
         royalSummary.recentActivity.map((item) => item.type),
-        containsAll([
-          'LOCAL_GUEST',
-          'LOCAL_TASK',
-          'LOCAL_MONEY_EXPENSE',
-          'LOCAL_MONEY_COMMITMENT',
-        ]),
+        containsAll(['LOCAL_GUEST', 'LOCAL_TASK', 'LOCAL_MONEY_COST']),
       );
     },
   );
@@ -256,7 +252,7 @@ void main() {
               LocalGuestDashboardScreen(summary: summary),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/finance',
+          path: '/wedding-plans/:id/money',
           builder: (context, state) =>
               const Scaffold(body: Text('money-opened')),
         ),

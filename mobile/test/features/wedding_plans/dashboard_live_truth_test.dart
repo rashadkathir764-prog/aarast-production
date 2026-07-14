@@ -48,14 +48,12 @@ void main() {
       'importantNotifications': const [],
       'permissions': {
         'isOwner': true,
-        'canViewBudget': true,
-        'canViewExpenses': true,
-        'canViewFinancialRecords': true,
+        'canViewMoney': true,
         'canManageTasks': true,
         'canManageGuests': true,
         'canManageProviders': true,
         'canManageMembers': true,
-        'canManageFinancialRecords': true,
+        'canManageMoney': true,
         'canManagePlan': true,
       },
     });
@@ -75,9 +73,16 @@ void main() {
     );
   });
 
-  testWidgets('money glance includes commitments and uses the plan currency', (
+  testWidgets('money glance shows the unified three figures at 320px', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(320, 720);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
     final summary = DashboardSummary.fromJson({
       'planId': 'plan-1',
       'title': 'خطة',
@@ -96,17 +101,16 @@ void main() {
       'nextBestActions': const [],
       'moneySummary': {
         'totalBudget': '1000000',
-        'totalSpent': '0',
+        'confirmedCost': '900000',
+        'paid': '400000',
+        'outstanding': '500000',
         'remainingBudget': '100000',
-        'totalCommitments': '900000',
       },
       'permissions': {
         'isOwner': true,
-        'canViewBudget': true,
-        'canViewExpenses': true,
-        'canViewFinancialRecords': true,
+        'canViewMoney': true,
         'canManageTasks': true,
-        'canManageFinancialRecords': true,
+        'canManageMoney': true,
         'canManagePlan': true,
       },
     });
@@ -120,7 +124,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('المؤكد'), findsOneWidget);
+    expect(find.text('الميزانية'), findsAtLeastNWidgets(1));
+    expect(find.text('التكاليف المؤكدة'), findsOneWidget);
+    expect(find.text('المتبقي'), findsOneWidget);
     expect(find.textContaining('مستخدم 90%'), findsOneWidget);
     final moneyFigures = tester
         .widgetList<RichText>(find.byType(RichText))
@@ -147,11 +153,9 @@ void main() {
       'nextBestActions': const [],
       'permissions': {
         'isOwner': true,
-        'canViewBudget': true,
-        'canViewExpenses': true,
-        'canViewFinancialRecords': true,
+        'canViewMoney': true,
         'canManageTasks': true,
-        'canManageFinancialRecords': true,
+        'canManageMoney': true,
         'canManagePlan': true,
       },
     });
@@ -161,7 +165,7 @@ void main() {
     expect(summary.importantNotifications, isEmpty);
   });
 
-  test('dashboard parses Super 1 backend contract fields', () {
+  test('dashboard parses the unified money backend contract', () {
     final summary = DashboardSummary.fromJson({
       'dataScope': 'ACCOUNT_BACKED',
       'accountBacked': true,
@@ -171,9 +175,10 @@ void main() {
       'progressPercentage': 0,
       'moneySummary': {
         'totalBudget': '1000000',
-        'totalSpent': '250000',
+        'confirmedCost': '250000',
+        'paid': '100000',
+        'outstanding': '150000',
         'remainingBudget': '750000',
-        'totalDebts': '300000',
         'overBudget': false,
       },
       'taskSummary': {'total': 4, 'completed': 1, 'overdue': 2, 'dueToday': 1},
@@ -193,15 +198,17 @@ void main() {
         'accepted': 1,
         'rejectedClosed': 0,
       },
-      'nextInstallmentDue': {
-        'id': 'installment-1',
-        'financialCommitmentId': 'commitment-1',
+      'nextPaymentScheduleDue': {
+        'id': 'schedule-1',
+        'weddingCostId': 'cost-1',
+        'title': 'القاعة',
         'amount': '50000',
+        'dueDate': '2026-08-01T00:00:00.000Z',
         'status': 'PENDING',
       },
       'financialWarnings': [
         {
-          'type': 'INSTALLMENT_DUE_SOON',
+          'type': 'PAYMENT_SCHEDULE_DUE_SOON',
           'severity': 'WARNING',
           'message': 'ØªÙ†Ø¨ÙŠÙ‡ Ù…Ø§Ù„ÙŠ',
           'count': 1,
@@ -216,11 +223,9 @@ void main() {
       'notificationSummary': {'unread': 2, 'highPriority': 1},
       'permissions': {
         'isOwner': true,
-        'canViewBudget': true,
-        'canViewExpenses': true,
-        'canViewFinancialRecords': true,
+        'canViewMoney': true,
         'canManageTasks': true,
-        'canManageFinancialRecords': true,
+        'canManageMoney': true,
         'canManagePlan': true,
       },
     });
@@ -233,7 +238,11 @@ void main() {
     expect(summary.incompleteGuestsCount, 3);
     expect(summary.quoteStatusBreakdown['offered'], 1);
     expect(summary.acceptedProviders, 1);
-    expect(summary.nextInstallmentDue?.amount, '50000');
+    expect(summary.confirmedCostForDisplay, '250000');
+    expect(summary.paidForDisplay, '100000');
+    expect(summary.outstandingForDisplay, '150000');
+    expect(summary.nextPaymentScheduleDue?.amount, '50000');
+    expect(summary.nextPaymentScheduleDue?.weddingCostId, 'cost-1');
     expect(summary.financialWarnings, hasLength(1));
     expect(summary.participantCount, 2);
     expect(summary.pendingInvites, 1);

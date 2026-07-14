@@ -17,14 +17,12 @@ import 'support/preview_fonts.dart';
 
 const _permissions = DashboardPermissionSummary(
   isOwner: true,
-  canViewBudget: true,
-  canViewExpenses: true,
-  canViewFinancialRecords: true,
+  canViewMoney: true,
   canManageTasks: true,
   canManageGuests: true,
   canManageProviders: true,
   canManageMembers: true,
-  canManageFinancialRecords: true,
+  canManageMoney: true,
   canManagePlan: true,
 );
 
@@ -38,9 +36,11 @@ DashboardSummary _activePlanSummary() {
     daysRemaining: 57,
     city: 'صنعاء همدان',
     budgetTotal: '10,000,000',
-    spentTotal: '3,400,000',
+    confirmedCostTotal: '3,400,000',
+    paidTotal: '1,400,000',
+    outstandingTotal: '2,000,000',
     remainingBudget: '6,600,000',
-    dueInstallmentsCount: 1,
+    duePaymentSchedulesCount: 1,
     totalTasks: 8,
     completedTasks: 5,
     overdueTasks: 1,

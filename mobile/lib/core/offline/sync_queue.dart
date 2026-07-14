@@ -1,5 +1,21 @@
 ﻿import 'dart:convert';
 
+int _lastSyncQueueMicros = 0;
+
+/// Returns a process-monotonic timestamp even on platforms whose wall-clock
+/// resolution is coarser than a microsecond. Queue ids and ordering must never
+/// collide when dependent offline writes are enqueued in the same clock tick.
+DateTime nextSyncQueueTimestamp() {
+  final now = DateTime.now();
+  var micros = now.microsecondsSinceEpoch;
+  if (micros <= _lastSyncQueueMicros) micros = _lastSyncQueueMicros + 1;
+  _lastSyncQueueMicros = micros;
+  return DateTime.fromMicrosecondsSinceEpoch(micros, isUtc: now.isUtc);
+}
+
+String syncQueueIdFor(DateTime timestamp) =>
+    'sync-${timestamp.microsecondsSinceEpoch}';
+
 class SyncQueueItem {
   const SyncQueueItem({
     required this.id,

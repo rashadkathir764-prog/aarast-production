@@ -10,7 +10,7 @@ import '../../core/widgets/aarast_toast.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../home/screens/home_screen.dart';
 import '../home/data/dashboard_summary_sources.dart';
-import '../finance/screens/budget_expense_screen.dart';
+import '../finance/screens/money_overview_screen.dart';
 import '../finance/providers/finance_provider.dart';
 import '../guests/screens/guest_list_screen.dart';
 import '../marketplace/screens/provider_marketplace_screen.dart';
@@ -94,7 +94,7 @@ class _MainShellState extends State<MainShell> {
       context,
       planId: planId,
       contextOrder: _quickAddContextForIndex(_index),
-      refreshDashboardOnExpense: true,
+      refreshDashboardOnMoney: true,
       openRoute: open,
     );
   }
@@ -113,12 +113,14 @@ class _MainShellState extends State<MainShell> {
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
     final finance = context.watch<FinanceProvider?>();
+    final canManageCurrentMoney =
+        finance?.loadedPlanId == _activePlanId &&
+        (finance?.canManageMoney ?? false);
     final showQuickFab =
         _activePlanId != null &&
         shouldShowPlanQuickAdd(
           tabIndex: _index,
-          canManageFinancialRecords:
-              _index != 1 || (finance?.canManageFinancialRecords ?? true),
+          canManageMoney: _index != 1 || canManageCurrentMoney,
         );
 
     return RootTabBackScope(
@@ -151,7 +153,7 @@ class _MainShellState extends State<MainShell> {
               _buildLazyTab(
                 1,
                 _activePlanId != null
-                    ? BudgetExpenseScreen(
+                    ? MoneyOverviewScreen(
                         key: ValueKey('money-$_activePlanId'),
                         weddingPlanId: _activePlanId!,
                         embedded: true,

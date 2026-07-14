@@ -137,11 +137,9 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     String? userId,
     String? phone,
     required String role,
-    required bool canViewBudget,
-    required bool canViewExpenses,
-    required bool canViewFinancialRecords,
+    required bool canViewMoney,
     required bool canManageTasks,
-    required bool canManageFinancialRecords,
+    required bool canManageMoney,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -154,11 +152,9 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         userId: userId,
         phone: phone,
         role: role,
-        canViewBudget: canViewBudget,
-        canViewExpenses: canViewExpenses,
-        canViewFinancialRecords: canViewFinancialRecords,
+        canViewMoney: canViewMoney,
         canManageTasks: canManageTasks,
-        canManageFinancialRecords: canManageFinancialRecords,
+        canManageMoney: canManageMoney,
       );
       _members = [member, ..._members.where((item) => item.id != member.id)];
       _selectedMember = member;
@@ -189,15 +185,13 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String phone,
     String? name,
     required String role,
-    required bool canViewBudget,
-    required bool canViewExpenses,
-    required bool canViewFinancialRecords,
+    required bool canViewMoney,
     required bool canEditPlan,
     required bool canManageTasks,
     required bool canManageGuests,
     required bool canManageProviders,
     required bool canInviteMembers,
-    required bool canManageFinancialRecords,
+    required bool canManageMoney,
     required bool receiveNotifications,
   }) async {
     _isSubmitting = true;
@@ -210,15 +204,13 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         phone: phone,
         name: name,
         role: role,
-        canViewBudget: canViewBudget,
-        canViewExpenses: canViewExpenses,
-        canViewFinancialRecords: canViewFinancialRecords,
+        canViewMoney: canViewMoney,
         canEditPlan: canEditPlan,
         canManageTasks: canManageTasks,
         canManageGuests: canManageGuests,
         canManageProviders: canManageProviders,
         canInviteMembers: canInviteMembers,
-        canManageFinancialRecords: canManageFinancialRecords,
+        canManageMoney: canManageMoney,
         receiveNotifications: receiveNotifications,
       );
       _invites = [invite, ..._invites.where((item) => item.id != invite.id)];
@@ -351,19 +343,17 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
 
     try {
-      // الباك إند يقبل الصلاحيات العشر كاملة — نرسلها كلها حتى لا تضيع
-      // تخصيصات المحرر (كانت الشاشة القديمة ترسل 5 فقط).
+      // Send the complete permission snapshot so editing one permission never
+      // silently resets another.
       final member = await _api.updateSharedMember(weddingPlanId, id, {
         'role': role,
-        'canViewBudget': permissions.canViewBudget,
-        'canViewExpenses': permissions.canViewExpenses,
-        'canViewFinancialRecords': permissions.canViewFinancialRecords,
+        'canViewMoney': permissions.canViewMoney,
         'canEditPlan': permissions.canEditPlan,
         'canManageTasks': permissions.canManageTasks,
         'canManageGuests': permissions.canManageGuests,
         'canManageProviders': permissions.canManageProviders,
         'canInviteMembers': permissions.canInviteMembers,
-        'canManageFinancialRecords': permissions.canManageFinancialRecords,
+        'canManageMoney': permissions.canManageMoney,
         'receiveNotifications': permissions.receiveNotifications,
       });
       _members = [

@@ -91,10 +91,8 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
         segments[1].isNotEmpty) {
       final planId = segments[1];
       final section = segments[2];
-      if (section == 'finance' || section == 'dashboard') {
-        return section == 'dashboard'
-            ? AppRouter.home
-            : AppRouter.weddingPlanDashboard(planId);
+      if (section == 'dashboard') {
+        return AppRouter.home;
       }
       if (section == 'tasks') {
         return segments.length > 3
@@ -109,10 +107,10 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
       if (section == 'providers') {
         return AppRouter.weddingPlanDashboard(planId);
       }
-      if (section == 'expenses' ||
-          section == 'budget' ||
-          section == 'budget-categories') {
-        return AppRouter.finance(planId);
+      if (section == 'money') {
+        return segments.length > 3
+            ? AppRouter.money(planId)
+            : AppRouter.weddingPlanDashboard(planId);
       }
       return AppRouter.weddingPlanDashboard(planId);
     }

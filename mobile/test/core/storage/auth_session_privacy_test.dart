@@ -221,22 +221,22 @@ void main() {
     test('clearLocalData wipes cached rows and queued writes', () async {
       final service = await buildService();
       await service.database.saveCachedItem(
-        table: OfflineTables.cachedBudgetItems,
-        json: {'id': 'exp-1', 'amount': '5000'},
+        table: OfflineTables.cachedCosts,
+        json: {'id': 'cost-1', 'totalAmount': '5000'},
       );
       await service.database.enqueueSync(
-        entityType: 'expense',
+        entityType: 'cost',
         operation: 'create',
-        endpoint: '/expenses',
+        endpoint: '/api/v1/wedding-plans/plan-1/costs',
         method: 'POST',
-        payload: {'amount': '5000'},
-        localEntityId: 'exp-1',
+        payload: {'totalAmount': '5000'},
+        localEntityId: 'cost-1',
       );
 
       await service.clearLocalData();
 
       final rows = await service.database.readCachedList(
-        table: OfflineTables.cachedBudgetItems,
+        table: OfflineTables.cachedCosts,
       );
       expect(rows, isEmpty);
       expect(await service.database.pendingSyncCount(), 0);
@@ -248,14 +248,14 @@ void main() {
         final service = await buildService();
         await service.ensureCacheOwner('user-a');
         await service.database.saveCachedItem(
-          table: OfflineTables.cachedFinancialCommitments,
-          json: {'id': 'commitment-1', 'totalAmount': '200000'},
+          table: OfflineTables.cachedCosts,
+          json: {'id': 'cost-1', 'totalAmount': '200000'},
         );
 
         await service.ensureCacheOwner('user-b');
 
         final rows = await service.database.readCachedList(
-          table: OfflineTables.cachedFinancialCommitments,
+          table: OfflineTables.cachedCosts,
         );
         expect(
           rows,
@@ -269,14 +269,14 @@ void main() {
       final service = await buildService();
       await service.ensureCacheOwner('user-a');
       await service.database.saveCachedItem(
-        table: OfflineTables.cachedFinancialCommitments,
-        json: {'id': 'commitment-1', 'totalAmount': '200000'},
+        table: OfflineTables.cachedCosts,
+        json: {'id': 'cost-1', 'totalAmount': '200000'},
       );
 
       await service.ensureCacheOwner('user-a');
 
       final rows = await service.database.readCachedList(
-        table: OfflineTables.cachedFinancialCommitments,
+        table: OfflineTables.cachedCosts,
       );
       expect(rows, hasLength(1));
     });

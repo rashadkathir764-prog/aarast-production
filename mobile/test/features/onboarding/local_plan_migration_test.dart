@@ -56,17 +56,107 @@ void main() {
       dirty: true,
     );
     await database.saveCachedItem(
-      table: OfflineTables.cachedBudgetItems,
+      table: OfflineTables.cachedCosts,
       json: {
-        'id': 'local-expense-1',
+        'id': 'local-cost-1',
         'weddingPlanId': guestPlanId,
-        'title': 'دفعة المصور',
-        'amount': '50000',
+        'title': 'تكلفة المصور',
+        'totalAmount': '100000',
+        'paidAmount': '40000',
         'budgetCategoryId': 'local-budget-category-9',
-        'status': 'PAID',
+        'partyName': 'استديو النور',
+        'status': 'PARTIALLY_PAID',
       },
       dirty: true,
     );
+    await database.saveCachedItem(
+      table: OfflineTables.cachedCosts,
+      json: {
+        'id': 'local-cost-cancelled',
+        'weddingPlanId': guestPlanId,
+        'title': 'تكلفة ملغية',
+        'totalAmount': '50000',
+        'paidAmount': '0',
+        'budgetCategoryId': 'local-budget-category-9',
+        'status': 'CANCELLED',
+      },
+      dirty: true,
+    );
+    for (final payment in [
+      {
+        'id': 'payment-active',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '30000',
+        'entryType': 'PAYMENT',
+        'paidAt': '2026-01-10T10:00:00.000Z',
+      },
+      {
+        'id': 'payment-from-schedule',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '10000',
+        'entryType': 'PAYMENT',
+        'paymentScheduleId': 'schedule-paid',
+        'paidAt': '2026-01-11T10:00:00.000Z',
+      },
+      {
+        'id': 'payment-reversed',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '20000',
+        'entryType': 'PAYMENT',
+        'paidAt': '2026-01-12T10:00:00.000Z',
+      },
+      {
+        'id': 'reversal-1',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '20000',
+        'entryType': 'REVERSAL',
+        'reversalOfId': 'payment-reversed',
+        'paidAt': '2026-01-13T10:00:00.000Z',
+      },
+    ]) {
+      await database.saveCachedItem(
+        table: OfflineTables.cachedCostPayments,
+        json: payment,
+        dirty: true,
+      );
+    }
+    for (final schedule in [
+      {
+        'id': 'schedule-pending',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '40000',
+        'dueDate': '2026-09-01',
+        'status': 'PENDING',
+      },
+      {
+        'id': 'schedule-paid',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '10000',
+        'dueDate': '2026-08-01',
+        'status': 'PAID',
+        'paidAt': '2026-01-11T10:00:00.000Z',
+      },
+      {
+        'id': 'schedule-cancelled',
+        'weddingPlanId': guestPlanId,
+        'costId': 'local-cost-1',
+        'amount': '10000',
+        'dueDate': '2026-07-01',
+        'status': 'CANCELLED',
+      },
+    ]) {
+      await database.saveCachedItem(
+        table: OfflineTables.cachedPaymentSchedules,
+        json: schedule,
+        dirty: true,
+      );
+    }
     await database.saveCachedItem(
       table: OfflineTables.cachedTasks,
       json: {
@@ -105,7 +195,9 @@ void main() {
     final snapshot = await service.loadSnapshot();
 
     expect(snapshot, isNotNull);
-    expect(snapshot!.expenses, hasLength(1));
+    expect(snapshot!.costs, hasLength(2));
+    expect(snapshot.costPayments, hasLength(4));
+    expect(snapshot.paymentSchedules, hasLength(3));
     expect(snapshot.tasks, hasLength(1));
     expect(snapshot.guests, hasLength(1));
     expect(snapshot.categoryNameById['local-budget-category-9'], 'التصوير');
@@ -124,12 +216,32 @@ void main() {
     expect(payload['estimatedBudget'], '1500000');
     expect(payload['currency'], 'YER');
 
-    final expenses = payload['expenses'] as List;
-    final expense = expenses.single as Map<String, dynamic>;
+    expect(payload.containsKey('expenses'), isFalse);
+    final costs = payload['costs'] as List;
+    final cost = costs.single as Map<String, dynamic>;
+    // Cancelled costs are not resurrected in the new account.
+    expect(cost['title'], 'تكلفة المصور');
     // Local category ids are meaningless server-side: mapped to NAME.
-    expect(expense['categoryName'], 'التصوير');
-    expect(expense.containsKey('budgetCategoryId'), isFalse);
-    expect(expense['amount'], '50000');
+    expect(cost['categoryName'], 'التصوير');
+    expect(cost.containsKey('budgetCategoryId'), isFalse);
+    expect(cost['totalAmount'], '100000');
+
+    final payments = cost['payments'] as List;
+    expect(payments, hasLength(2));
+    expect(
+      payments.map((item) => (item as Map)['amount']),
+      unorderedEquals(['30000', '10000']),
+    );
+    expect(
+      payments.any((item) => (item as Map)['amount'] == '20000'),
+      isFalse,
+      reason: 'the original and its reversal net to zero',
+    );
+
+    final schedules = cost['paymentSchedules'] as List;
+    expect(schedules, hasLength(1));
+    expect((schedules.single as Map)['amount'], '40000');
+    expect((schedules.single as Map)['dueDate'], '2026-09-01');
 
     final tasks = payload['tasks'] as List;
     final task = tasks.single as Map<String, dynamic>;

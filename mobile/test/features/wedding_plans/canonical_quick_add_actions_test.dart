@@ -19,9 +19,10 @@ void main() {
   group('buildCanonicalQuickAddActions', () {
     test('keeps quick-add visibility aligned across both shells', () {
       expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
-      expect(shouldShowPlanQuickAdd(tabIndex: 1), isTrue);
+      expect(shouldShowPlanQuickAdd(tabIndex: 1), isFalse);
+      expect(shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: true), isTrue);
       expect(
-        shouldShowPlanQuickAdd(tabIndex: 1, canManageFinancialRecords: false),
+        shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: false),
         isFalse,
       );
       expect(
@@ -45,10 +46,9 @@ void main() {
         openRoute: open,
       );
 
-      expect(actions.length, 5);
+      expect(actions.length, 4);
       expect(actions.map((a) => a.label).toList(), <String>[
-        'حجز مورد / تكلفة خدمة',
-        'تسجيل دفعة',
+        'إضافة تكلفة',
         'إضافة مهمة',
         'إضافة ضيف',
         'طلب عرض سعر',
@@ -72,11 +72,7 @@ void main() {
       }
 
       expect(calls, <String>[
-        AppRouter.createFinancialCommitment(
-          'plan-7',
-          sourceType: 'PROVIDER_SERVICE',
-        ),
-        AppRouter.recordPayment('plan-7'),
+        AppRouter.moneyCostCreate('plan-7'),
         AppRouter.createTask('plan-7'),
         AppRouter.guestListAdd('plan-7'),
         AppRouter.planProviders('plan-7'),
@@ -85,8 +81,8 @@ void main() {
 
     test('keeps budget setup as a first-time money route', () {
       expect(
-        AppRouter.budgetSetup('plan-7'),
-        '/wedding-plans/plan-7/budget/setup',
+        AppRouter.moneyBudget('plan-7'),
+        '/wedding-plans/plan-7/money/budget',
       );
     });
 
@@ -104,9 +100,9 @@ void main() {
       );
 
       expect(actions.map((a) => a.label).toList(), <String>[
-        'إضافة بند ميزانية',
-        'إضافة مستحق',
-        'تسجيل دفعة',
+        'إضافة تكلفة',
+        'إضافة تصنيف',
+        'إدارة الميزانية',
       ]);
 
       for (final action in actions) {
@@ -114,13 +110,13 @@ void main() {
       }
 
       expect(calls, <String>[
-        AppRouter.createBudgetCategory('plan-money'),
-        AppRouter.createFinancialCommitment('plan-money'),
-        AppRouter.recordPayment('plan-money'),
+        AppRouter.moneyCostCreate('plan-money'),
+        AppRouter.moneyCategoryCreate('plan-money'),
+        AppRouter.moneyBudget('plan-money'),
       ]);
     });
 
-    test('forwards refreshDashboardOnExpense to money-changing opens', () {
+    test('forwards refreshDashboardOnMoney to money-changing opens', () {
       final calls = <String>[];
       Future<void> open(String route, {bool refreshDashboard = false}) async {
         calls.add('$route|rf=$refreshDashboard');
@@ -129,7 +125,7 @@ void main() {
       final actions = buildCanonicalQuickAddActions(
         _DummyContext(),
         planId: 'plan-r',
-        refreshDashboardOnExpense: true,
+        refreshDashboardOnMoney: true,
         openRoute: open,
       );
 
@@ -137,11 +133,9 @@ void main() {
         action.onTap();
       }
 
-      // The dashboard finance actions propagate refreshDashboard=true.
-      for (var i = 0; i < 2; i++) {
-        expect(calls[i].endsWith('|rf=true'), isTrue, reason: calls[i]);
-      }
-      for (var i = 2; i < calls.length; i++) {
+      // The single dashboard money action propagates refreshDashboard=true.
+      expect(calls.first.endsWith('|rf=true'), isTrue, reason: calls.first);
+      for (var i = 1; i < calls.length; i++) {
         expect(calls[i].endsWith('|rf=false'), isTrue, reason: calls[i]);
       }
     });
@@ -156,7 +150,7 @@ void main() {
           contextOrder: QuickAddContext.money,
           openRoute: open,
         ).first.label,
-        'إضافة بند ميزانية',
+        'إضافة تكلفة',
       );
       expect(
         buildCanonicalQuickAddActions(
@@ -217,17 +211,15 @@ void main() {
       }
     });
 
-    testWidgets('finance subpages hide the root money smart FAB', (
-      tester,
-    ) async {
+    testWidgets('money subpages hide the root money smart FAB', (tester) async {
       final router = _buildPlanShellRouter(
-        initialLocation: AppRouter.financialPayables('plan-7'),
+        initialLocation: AppRouter.moneyCosts('plan-7'),
       );
 
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pump();
 
-      expect(find.text('payables'), findsOneWidget);
+      expect(find.text('costs'), findsOneWidget);
       expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
     });
 
@@ -267,8 +259,8 @@ void main() {
       expect(find.byIcon(Icons.more_vert), findsNothing);
 
       await _tapNavIcon(tester, LucideIcons.wallet);
-      expect(router.state.uri.path, AppRouter.finance('plan-7'));
-      expect(find.byKey(const ValueKey('royal-smart-fab')), findsOneWidget);
+      expect(router.state.uri.path, AppRouter.money('plan-7'));
+      expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.listChecks);
@@ -354,11 +346,11 @@ void main() {
         'lib/features/wedding_plans/screens/plan_management_screen.dart',
       ).readAsStringSync();
 
-      expect(source, isNot(contains('context.push(AppRouter.finance')));
+      expect(source, isNot(contains('context.push(AppRouter.money')));
       expect(source, isNot(contains('context.push(AppRouter.tasks')));
       expect(source, isNot(contains('context.push(AppRouter.guestList')));
       expect(source, isNot(contains('context.push(AppRouter.planProviders')));
-      expect(source, contains('context.go(AppRouter.finance'));
+      expect(source, contains('context.go(AppRouter.money'));
       expect(source, contains('context.go(AppRouter.tasks'));
       expect(source, contains('context.go(AppRouter.guestList'));
       expect(source, contains('context.go(AppRouter.planProviders'));
@@ -387,12 +379,12 @@ GoRouter _buildPlanShellRouter({
                 const Scaffold(body: Text('dashboard')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/finance',
-            builder: (context, state) => const Scaffold(body: Text('finance')),
+            path: '/wedding-plans/:id/money',
+            builder: (context, state) => const Scaffold(body: Text('money')),
           ),
           GoRoute(
-            path: '/wedding-plans/:id/finance/payables',
-            builder: (context, state) => const Scaffold(body: Text('payables')),
+            path: '/wedding-plans/:id/money/costs',
+            builder: (context, state) => const Scaffold(body: Text('costs')),
           ),
           GoRoute(
             path: '/wedding-plans/:id/tasks',

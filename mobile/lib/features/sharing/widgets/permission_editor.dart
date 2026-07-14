@@ -173,30 +173,28 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                 ),
                 const _GroupLabel('المال · خاص', color: AppTheme.gold),
                 _PermissionRow(
-                  title: 'عرض الميزانية',
-                  value: value.canViewBudget,
+                  title: 'مشاهدة المال',
+                  value: value.canViewMoney,
                   enabled: widget.enabled,
-                  onChanged: (v) => _emit(value.copyWith(canViewBudget: v)),
+                  onChanged: (v) {
+                    _emit(
+                      value.copyWith(
+                        canViewMoney: v,
+                        canManageMoney: v ? null : false,
+                      ),
+                    );
+                  },
                 ),
                 _PermissionRow(
-                  title: 'عرض المصاريف',
-                  value: value.canViewExpenses,
+                  title: 'إدارة المال',
+                  value: value.canManageMoney,
                   enabled: widget.enabled,
-                  onChanged: (v) => _emit(value.copyWith(canViewExpenses: v)),
-                ),
-                _PermissionRow(
-                  title: 'عرض المستحقات والدفعات',
-                  value: value.canViewFinancialRecords,
-                  enabled: widget.enabled,
-                  onChanged: (v) =>
-                      _emit(value.copyWith(canViewFinancialRecords: v)),
-                ),
-                _PermissionRow(
-                  title: 'إدارة السجلات المالية',
-                  value: value.canManageFinancialRecords,
-                  enabled: widget.enabled,
-                  onChanged: (v) =>
-                      _emit(value.copyWith(canManageFinancialRecords: v)),
+                  onChanged: (v) => _emit(
+                    value.copyWith(
+                      canManageMoney: v,
+                      canViewMoney: v ? true : null,
+                    ),
+                  ),
                 ),
                 const _GroupLabel('التنبيهات'),
                 _PermissionRow(

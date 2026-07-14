@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
@@ -156,7 +157,22 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
 
       var blockedAny = false;
       var sessionChanged = false;
-      for (final item in items) {
+      var stopForNetworkFailure = false;
+      final processedItemIds = <String>{};
+      while (!stopForNetworkFailure) {
+        // Re-read after every successful item. A just-synced parent may have
+        // rewritten local ids inside dependent endpoints/payloads, and using
+        // the original snapshot would immediately replay those stale ids.
+        final refreshedItems = await database.pendingSyncItems();
+        SyncQueueItem? item;
+        for (final candidate in refreshedItems) {
+          if (!processedItemIds.contains(candidate.id)) {
+            item = candidate;
+            break;
+          }
+        }
+        if (item == null) break;
+        processedItemIds.add(item.id);
         if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
           sessionChanged = true;
           break;
@@ -171,7 +187,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
                 'Authorization': 'Bearer $accessToken',
                 // Server-side replay protection: a retry after a lost
                 // response returns the original result, never a duplicate.
-                'X-Client-Request-Id': item.id,
+                ApiClient.clientRequestIdHeader: item.id,
               },
             ),
           );
@@ -188,7 +204,7 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
           }
           final apiError = ApiException.fromDio(error);
           blockedAny = await _handleSyncError(item, apiError) || blockedAny;
-          if (apiError.isNetworkFailure) break;
+          if (apiError.isNetworkFailure) stopForNetworkFailure = true;
         } on Object catch (error) {
           if (!_isCurrentSession(sessionGeneration, cacheOwnerUserId)) {
             sessionChanged = true;
@@ -273,10 +289,26 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _cacheSyncedResponse(SyncQueueItem item, Object? data) async {
+    if (item.entityType == 'money_budget') {
+      await _cacheMoneyBudgetResponse(item, data);
+      return;
+    }
     final table = OfflineTables.tableForEntityType(item.entityType);
     if (table == null) return;
+    if (item.operation == 'delete') {
+      await _preserveSyncedDeletion(item, table);
+      return;
+    }
+    if (item.entityType == 'payment_schedule' && item.operation == 'pay') {
+      await _cachePaidScheduleResponse(item, data);
+      return;
+    }
     final json = _jsonMap(data);
     if (json == null || json.isEmpty) return;
+
+    if (item.entityType == 'cost' && item.operation == 'create') {
+      await _mapInitialPaymentCreatedWithCost(item, json);
+    }
 
     if (item.localEntityId != null && json['id'] != item.localEntityId) {
       await database.replaceCachedItemId(
@@ -284,15 +316,20 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         localId: item.localEntityId!,
         remoteJson: json,
       );
-      // Dependent queued writes (e.g. an expense created offline against a
-      // local category id) must now point at the real server id.
+      // Dependent queued writes (e.g. a cost created offline against a local
+      // category id) must now point at the real server id.
       final remoteId = json['id']?.toString();
       if (remoteId != null && remoteId.isNotEmpty) {
         await database.rewriteQueuedReferences(
           localId: item.localEntityId!,
           remoteId: remoteId,
         );
+        await _rewriteCachedMoneyReferences(
+          localId: item.localEntityId!,
+          remoteId: remoteId,
+        );
       }
+      await _markPaymentDerivedRowsClean(item, json);
       return;
     }
 
@@ -303,13 +340,331 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         id: id,
         remoteJson: json,
       );
+      await _markPaymentDerivedRowsClean(item, json);
     }
+  }
+
+  Future<void> _preserveSyncedDeletion(SyncQueueItem item, String table) async {
+    final id = item.localEntityId?.trim();
+    if (id == null || id.isEmpty) return;
+    final cached = await database.readCachedItem(table: table, id: id);
+    if (cached == null) return;
+    await database.saveCachedItem(
+      table: table,
+      json: cached,
+      dirty: true,
+      deletedLocally: true,
+    );
+  }
+
+  Future<void> _cachePaidScheduleResponse(
+    SyncQueueItem item,
+    Object? data,
+  ) async {
+    final wrapper = _jsonMap(data);
+    final payment = _jsonMap(wrapper?['payment']);
+    final schedule = _jsonMap(wrapper?['schedule']);
+    final paymentId = payment?['id']?.toString().trim();
+    final scheduleId = schedule?['id']?.toString().trim();
+    if (wrapper == null ||
+        payment == null ||
+        schedule == null ||
+        paymentId == null ||
+        paymentId.isEmpty ||
+        scheduleId == null ||
+        scheduleId.isEmpty) {
+      throw const FormatException('Invalid payment schedule pay response.');
+    }
+
+    final localPaymentId = item.localEntityId?.trim();
+    if (localPaymentId != null &&
+        localPaymentId.isNotEmpty &&
+        localPaymentId != paymentId) {
+      await database.replaceCachedItemId(
+        table: OfflineTables.cachedCostPayments,
+        localId: localPaymentId,
+        remoteJson: payment,
+      );
+      await database.rewriteQueuedReferences(
+        localId: localPaymentId,
+        remoteId: paymentId,
+      );
+      await _rewriteCachedMoneyReferences(
+        localId: localPaymentId,
+        remoteId: paymentId,
+      );
+    } else {
+      await database.markCachedItemClean(
+        table: OfflineTables.cachedCostPayments,
+        id: paymentId,
+        remoteJson: payment,
+      );
+    }
+    await database.markCachedItemClean(
+      table: OfflineTables.cachedPaymentSchedules,
+      id: scheduleId,
+      remoteJson: schedule,
+    );
+    await _markPaymentDerivedRowsClean(item, payment);
+  }
+
+  Future<void> _mapInitialPaymentCreatedWithCost(
+    SyncQueueItem item,
+    Map<String, dynamic> cost,
+  ) async {
+    final localCostId = item.localEntityId?.trim();
+    final remoteCostId = cost['id']?.toString().trim();
+    final initialAmount = _positiveNumber(item.payload['initialPaymentAmount']);
+    if (localCostId == null ||
+        localCostId.isEmpty ||
+        remoteCostId == null ||
+        remoteCostId.isEmpty ||
+        initialAmount == null) {
+      return;
+    }
+
+    final cachedPayments = await database.readCachedList(
+      table: OfflineTables.cachedCostPayments,
+    );
+    Map<String, dynamic>? localInitial;
+    for (final payment in cachedPayments) {
+      if (payment['costId']?.toString() == localCostId &&
+          payment['entryType']?.toString() == 'PAYMENT' &&
+          payment['note']?.toString() == 'دفعة أولى' &&
+          _numbersEqual(payment['amount'], initialAmount)) {
+        localInitial = payment;
+        break;
+      }
+    }
+    if (localInitial == null) return;
+
+    final remoteItems = await apiClient.getJsonList(
+      '/api/v1/costs/$remoteCostId/payments',
+    );
+    Map<String, dynamic>? remoteInitial;
+    for (final raw in remoteItems.whereType<Map>()) {
+      final payment = Map<String, dynamic>.from(raw);
+      if (payment['entryType']?.toString() == 'PAYMENT' &&
+          payment['note']?.toString() == 'دفعة أولى' &&
+          _numbersEqual(payment['amount'], initialAmount)) {
+        remoteInitial = payment;
+        break;
+      }
+    }
+    final localPaymentId = localInitial['id']?.toString().trim();
+    final remotePaymentId = remoteInitial?['id']?.toString().trim();
+    if (remoteInitial == null ||
+        localPaymentId == null ||
+        localPaymentId.isEmpty ||
+        remotePaymentId == null ||
+        remotePaymentId.isEmpty) {
+      throw const FormatException(
+        'Initial payment was not returned after cost creation.',
+      );
+    }
+    await database.replaceCachedItemId(
+      table: OfflineTables.cachedCostPayments,
+      localId: localPaymentId,
+      remoteJson: remoteInitial,
+    );
+    await database.rewriteQueuedReferences(
+      localId: localPaymentId,
+      remoteId: remotePaymentId,
+    );
+    await _rewriteCachedMoneyReferences(
+      localId: localPaymentId,
+      remoteId: remotePaymentId,
+    );
+  }
+
+  Future<void> _markPaymentDerivedRowsClean(
+    SyncQueueItem item,
+    Map<String, dynamic> payment,
+  ) async {
+    if (item.entityType != 'cost_payment' && item.operation != 'pay') return;
+    final costId = payment['costId']?.toString().trim();
+    if (costId != null && costId.isNotEmpty) {
+      await database.markCachedItemClean(
+        table: OfflineTables.cachedCosts,
+        id: costId,
+      );
+    }
+    final reversalOfId = payment['reversalOfId']?.toString().trim();
+    if (reversalOfId != null && reversalOfId.isNotEmpty) {
+      final source = await database.readCachedItem(
+        table: OfflineTables.cachedCostPayments,
+        id: reversalOfId,
+      );
+      if (source != null) {
+        await database.markCachedItemClean(
+          table: OfflineTables.cachedCostPayments,
+          id: reversalOfId,
+          remoteJson: {
+            ...source,
+            'reversedById': payment['id'],
+            'reversible': false,
+          },
+        );
+        final scheduleId = source['paymentScheduleId']?.toString().trim();
+        if (scheduleId != null && scheduleId.isNotEmpty) {
+          final schedule = await database.readCachedItem(
+            table: OfflineTables.cachedPaymentSchedules,
+            id: scheduleId,
+          );
+          if (schedule != null) {
+            await database.markCachedItemClean(
+              table: OfflineTables.cachedPaymentSchedules,
+              id: scheduleId,
+              remoteJson: {...schedule, 'status': 'PENDING', 'paidAt': null},
+            );
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _cacheMoneyBudgetResponse(
+    SyncQueueItem item,
+    Object? data,
+  ) async {
+    final wrapper = _jsonMap(data);
+    final summary = _jsonMap(wrapper?['summary']);
+    final budget = _jsonMap(summary?['budget']);
+    final rawCategories = wrapper?['categories'];
+    final rawIdMap = wrapper?['idMap'];
+    final planId = item.localEntityId?.trim();
+    final currency = summary?['currency']?.toString().trim();
+    if (wrapper == null ||
+        summary == null ||
+        budget == null ||
+        rawCategories is! List ||
+        rawIdMap is! Map ||
+        planId == null ||
+        planId.isEmpty ||
+        currency == null ||
+        currency.isEmpty) {
+      throw const FormatException('Invalid money budget sync response.');
+    }
+
+    final categories = rawCategories
+        .whereType<Map>()
+        .map((category) => Map<String, dynamic>.from(category))
+        .toList(growable: false);
+    if (categories.length != rawCategories.length) {
+      throw const FormatException('Invalid money budget categories.');
+    }
+    final remoteCategories = {
+      for (final category in categories)
+        if (category['id'] != null) category['id'].toString(): category,
+    };
+
+    for (final entry in rawIdMap.entries) {
+      final clientId = entry.key.toString().trim();
+      final remoteId = entry.value.toString().trim();
+      if (clientId.isEmpty || remoteId.isEmpty) {
+        throw const FormatException('Invalid money budget id map.');
+      }
+      final localId = 'local-budget-category-$clientId';
+      final remoteCategory = remoteCategories[remoteId];
+      if (remoteCategory == null) {
+        throw const FormatException('Money budget id map is incomplete.');
+      }
+      await database.replaceCachedItemId(
+        table: OfflineTables.cachedBudgetCategories,
+        localId: localId,
+        remoteJson: remoteCategory,
+      );
+      await database.rewriteQueuedReferences(
+        localId: localId,
+        remoteId: remoteId,
+      );
+      await _rewriteCachedMoneyReferences(localId: localId, remoteId: remoteId);
+    }
+
+    await database.setMeta(
+      'money_budget:$planId',
+      jsonEncode({
+        'totalBudget': budget['total']?.toString(),
+        'currency': currency.toUpperCase(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }),
+    );
+    await database.replaceCachedList(
+      table: OfflineTables.cachedBudgetCategories,
+      items: categories,
+      parentColumn: 'planId',
+      parentId: planId,
+      preserveDirty: false,
+    );
+  }
+
+  Future<void> _rewriteCachedMoneyReferences({
+    required String localId,
+    required String remoteId,
+  }) async {
+    if (localId.isEmpty || localId == remoteId) return;
+    for (final table in const [
+      OfflineTables.cachedCosts,
+      OfflineTables.cachedCostPayments,
+      OfflineTables.cachedPaymentSchedules,
+    ]) {
+      final rows = await database.readCachedList(table: table);
+      for (final row in rows) {
+        final rewritten = _replaceExactString(row, localId, remoteId);
+        if (!identical(rewritten, row)) {
+          await database.saveCachedItem(
+            table: table,
+            json: Map<String, dynamic>.from(rewritten as Map),
+            dirty: true,
+          );
+        }
+      }
+    }
+  }
+
+  Object? _replaceExactString(Object? value, String localId, String remoteId) {
+    if (value is String) return value == localId ? remoteId : value;
+    if (value is List) {
+      var changed = false;
+      final next = <Object?>[];
+      for (final item in value) {
+        final rewritten = _replaceExactString(item, localId, remoteId);
+        changed = changed || !identical(rewritten, item);
+        next.add(rewritten);
+      }
+      return changed ? next : value;
+    }
+    if (value is Map) {
+      var changed = false;
+      final next = <String, dynamic>{};
+      for (final entry in value.entries) {
+        final rewritten = _replaceExactString(entry.value, localId, remoteId);
+        changed = changed || !identical(rewritten, entry.value);
+        next[entry.key.toString()] = rewritten;
+      }
+      return changed ? next : value;
+    }
+    return value;
   }
 
   Map<String, dynamic>? _jsonMap(Object? data) {
     if (data is Map<String, dynamic>) return data;
     if (data is Map) return Map<String, dynamic>.from(data);
     return null;
+  }
+
+  num? _positiveNumber(Object? value) {
+    final number = num.tryParse(
+      value?.toString().replaceAll(',', '').trim() ?? '',
+    );
+    return number != null && number > 0 ? number : null;
+  }
+
+  bool _numbersEqual(Object? value, num expected) {
+    final number = num.tryParse(
+      value?.toString().replaceAll(',', '').trim() ?? '',
+    );
+    return number != null && (number - expected).abs() < 0.000001;
   }
 
   Future<void> _markSyncedNow() async {

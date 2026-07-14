@@ -231,9 +231,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) async {
     final marked = await provider.markRead(notification);
     if (!mounted || !marked) return;
-    final target = notification.routeTarget?.trim();
+    final target = resolveNotificationRouteTarget(notification);
     if (target == null || !isSafeNotificationRouteTarget(target)) return;
-    if (_isPlanShellRouteTarget(target)) {
+    if (isPlanShellNotificationRouteTarget(target)) {
       context.go(target);
       return;
     }
@@ -389,29 +389,30 @@ class _NotificationTone {
 }
 
 _NotificationTone _tone(String type) {
-  if (type.contains('QUOTE')) {
+  final upperType = type.toUpperCase();
+  if (upperType.contains('QUOTE')) {
     return const _NotificationTone(
       icon: LucideIcons.mailOpen,
       color: AppTheme.burgundy,
       background: AppTheme.burgundySoft,
     );
   }
-  // المتأخر يُفحص قبل القسط: INSTALLMENT_OVERDUE نبرة خطر لا نبرة قسط عادي.
-  if (type.contains('OVERDUE')) {
+  // موعد الدفع المتأخر يبقى تنبيه خطر، لا تنبيه موعد عادي.
+  if (upperType.contains('OVERDUE')) {
     return const _NotificationTone(
       icon: LucideIcons.alertTriangle,
       color: AppTheme.danger,
       background: AppTheme.burgundySoft,
     );
   }
-  if (type.contains('INSTALLMENT')) {
+  if (upperType.contains('PAYMENT_SCHEDULE')) {
     return const _NotificationTone(
-      icon: LucideIcons.creditCard,
+      icon: LucideIcons.calendarClock,
       color: AppTheme.gold,
       background: AppTheme.ivory,
     );
   }
-  if (type.contains('SHARING')) {
+  if (upperType.contains('SHARING')) {
     return const _NotificationTone(
       icon: LucideIcons.userPlus,
       color: AppTheme.success,
@@ -423,26 +424,6 @@ _NotificationTone _tone(String type) {
     color: AppTheme.burgundy,
     background: AppTheme.burgundySoft,
   );
-}
-
-bool _isPlanShellRouteTarget(String target) {
-  final uri = Uri.tryParse(target);
-  final segments = uri?.pathSegments;
-  if (segments == null ||
-      segments.length < 3 ||
-      segments[0] != 'wedding-plans') {
-    return false;
-  }
-
-  final area = segments[2];
-  if (segments.length == 3) {
-    return area == 'dashboard' ||
-        area == 'finance' ||
-        area == 'tasks' ||
-        area == 'guests' ||
-        area == 'providers';
-  }
-  return area == 'guests' && segments.length == 4 && segments[3] == 'add';
 }
 
 String _dateLabel(DateTime date) {

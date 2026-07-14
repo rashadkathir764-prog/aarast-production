@@ -3,10 +3,10 @@ import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
-import 'package:aarast_mobile/features/finance/data/budget_expense_api.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
-import 'package:aarast_mobile/features/finance/screens/budget_expense_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/create_expense_screen.dart';
+import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
@@ -123,15 +123,19 @@ void main() {
         harness.apiClient,
         offline: harness.offline,
       );
-      final financeApi = BudgetExpenseApi(
+      final financeApi = FinanceApi(
         harness.apiClient,
         offline: harness.offline,
       );
-      final category = await financeApi.createBudgetCategory(
-        weddingPlanId: localPlanId,
-        name: 'الصالة',
-        targetAmount: '2500000',
+      final budget = await financeApi.replaceMoneyBudget(
+        planId: localPlanId,
+        totalBudget: '2500000',
+        currency: 'YER',
+        categories: const [
+          (id: null, name: 'الصالة', allocatedAmount: '2500000'),
+        ],
       );
+      final category = budget.categories.single;
 
       await guestsApi.createGuest(
         weddingPlanId: localPlanId,
@@ -142,10 +146,11 @@ void main() {
         seatsCount: 1,
       );
       await taskApi.createTask(weddingPlanId: localPlanId, title: 'حجز القاعة');
-      await financeApi.createExpense(
-        weddingPlanId: localPlanId,
+      await financeApi.createCost(
+        planId: localPlanId,
         title: 'دفعة القاعة',
-        amount: '500000',
+        totalAmount: '500000',
+        initialPaymentAmount: '500000',
         budgetCategoryId: category.id,
       );
 
@@ -168,136 +173,95 @@ void main() {
       await _pumpLocalScreen(
         tester,
         harness,
-        const BudgetExpenseScreen(weddingPlanId: localPlanId),
+        const MoneyOverviewScreen(weddingPlanId: localPlanId),
       );
       await tester.scrollUntilVisible(
-        find.text('دفعة القاعة'),
+        find.text('دفعة القاعة').first,
         240,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('دفعة القاعة'), findsOneWidget);
+      expect(find.text('دفعة القاعة'), findsWidgets);
       expect(find.text(cloudMessage), findsNothing);
 
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('guest/local can add expense without login', (tester) async {
-    _setTallView(tester);
-    final harness = await _createHarness();
-    final financeProvider = FinanceProvider(
-      BudgetExpenseApi(harness.apiClient, offline: harness.offline),
-    );
-    await financeProvider.createBudgetCategory(
-      weddingPlanId: localPlanId,
-      name: 'مصروفات عامة',
-      targetAmount: '500000',
-    );
-    final category = financeProvider.budgetCategories.single;
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>.value(value: harness.authStorage),
-          ChangeNotifierProvider<FinanceProvider>.value(value: financeProvider),
-        ],
-        child: MaterialApp.router(
-          routerConfig: _router(
-            start: CreateExpenseScreen(
-              weddingPlanId: localPlanId,
-              initialBudgetCategoryId: category.id,
-            ),
-            targetPath: '/wedding-plans/:id/finance',
-            targetText: 'finance-target',
-          ),
+  test(
+    'guest/local can add a cost with an initial payment without login',
+    () async {
+      final harness = await _createHarness();
+      final financeProvider = FinanceProvider(
+        FinanceApi(harness.apiClient, offline: harness.offline),
+      );
+      await financeProvider.loadMoney(localPlanId);
+      expect(
+        await financeProvider.saveBudget(
+          planId: localPlanId,
+          totalBudget: '500000',
+          currency: 'YER',
+          categories: const [
+            (id: null, name: 'تكاليف عامة', allocatedAmount: '500000'),
+          ],
         ),
-      ),
-    );
+        isTrue,
+      );
+      final category = financeProvider.categories.single;
 
-    await tester.enterText(
-      _textFormFieldWithLabel('عنوان المصروف المدفوع'),
-      'دفعة القاعة',
-    );
-    await tester.enterText(_textFormFieldWithLabel('المبلغ المدفوع'), '500000');
-    final submit = find.text('حفظ المصروف');
-    await tester.ensureVisible(submit);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
+      final cost = await financeProvider.createCost(
+        planId: localPlanId,
+        budgetCategoryId: category.id,
+        title: 'دفعة القاعة',
+        totalAmount: '500000',
+        initialPaymentAmount: '500000',
+      );
 
-    expect(financeProvider.expenses, hasLength(1));
-    expect(financeProvider.expenses.single.title, 'دفعة القاعة');
-    expect(financeProvider.expenses.single.amount, '500000');
-    expect(financeProvider.expenses.single.budgetCategoryId, category.id);
-    expect(financeProvider.noticeMessage, localMessage);
-    expect(find.text(cloudMessage), findsNothing);
-    expect(find.text('finance-target'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(cost, isNotNull);
+      expect(financeProvider.costs, hasLength(1));
+      expect(financeProvider.costs.single.title, 'دفعة القاعة');
+      expect(moneyValue(financeProvider.costs.single.paidAmount), 500000);
+      expect(moneyValue(financeProvider.costs.single.remainingAmount), 0);
+      expect(financeProvider.costs.single.budgetCategoryId, category.id);
+      expect(financeProvider.noticeMessage, localMessage);
+    },
+  );
 
-  testWidgets('hall category records paid expense without remaining reminder', (
-    tester,
-  ) async {
-    _setTallView(tester);
-    final harness = await _createHarness();
-    final financeProvider = FinanceProvider(
-      BudgetExpenseApi(harness.apiClient, offline: harness.offline),
-    );
-    await financeProvider.createBudgetCategory(
-      weddingPlanId: localPlanId,
-      name: 'الصالة',
-      targetAmount: '800000',
-    );
-    final hallCategory = financeProvider.budgetCategories.single;
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>.value(value: harness.authStorage),
-          ChangeNotifierProvider<FinanceProvider>.value(value: financeProvider),
-        ],
-        child: MaterialApp.router(
-          routerConfig: _router(
-            start: CreateExpenseScreen(
-              weddingPlanId: localPlanId,
-              initialBudgetCategoryId: hallCategory.id,
-            ),
-            targetPath: '/wedding-plans/:id/finance',
-            targetText: 'finance-target',
-          ),
+  test(
+    'creating a cost does not create a payment schedule implicitly',
+    () async {
+      final harness = await _createHarness();
+      final financeProvider = FinanceProvider(
+        FinanceApi(harness.apiClient, offline: harness.offline),
+      );
+      await financeProvider.loadMoney(localPlanId);
+      expect(
+        await financeProvider.saveBudget(
+          planId: localPlanId,
+          totalBudget: '800000',
+          currency: 'YER',
+          categories: const [
+            (id: null, name: 'الصالة', allocatedAmount: '800000'),
+          ],
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+        isTrue,
+      );
+      final hallCategory = financeProvider.categories.single;
 
-    expect(find.text('اسم الصالة'), findsNothing);
-    expect(find.text('مبلغ هذه الدفعة'), findsNothing);
-    expect(find.text('ذكرني بدفع الباقي'), findsNothing);
-    expect(
-      find.text('يُحفظ هذا السجل كمصروف مدفوع فعلاً فقط.'),
-      findsOneWidget,
-    );
+      final cost = await financeProvider.createCost(
+        planId: localPlanId,
+        budgetCategoryId: hallCategory.id,
+        title: 'حجز صالة الأفراح',
+        totalAmount: '800000',
+      );
 
-    await tester.enterText(
-      _textFormFieldWithLabel('عنوان المصروف المدفوع'),
-      'دفعة صالة الأفراح',
-    );
-    await tester.enterText(_textFormFieldWithLabel('المبلغ المدفوع'), '200000');
-    final submit = find.text('حفظ المصروف');
-    await tester.ensureVisible(submit);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
-
-    expect(financeProvider.expenses, hasLength(1));
-    expect(financeProvider.expenses.single.title, 'دفعة صالة الأفراح');
-    expect(financeProvider.expenses.single.amount, '200000');
-    expect(financeProvider.expenses.single.budgetCategoryId, hallCategory.id);
-    expect(find.text(cloudMessage), findsNothing);
-    expect(find.text('finance-target'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+      expect(cost, isNotNull);
+      expect(moneyValue(financeProvider.costs.single.paidAmount), 0);
+      expect(moneyValue(financeProvider.costs.single.remainingAmount), 800000);
+      expect(financeProvider.payments, isEmpty);
+      expect(financeProvider.dueSchedules, isEmpty);
+    },
+  );
 
   testWidgets('protected share invite shows login gate for local plan', (
     tester,
@@ -369,7 +333,7 @@ Future<void> _pumpLocalScreen(
         ),
         ChangeNotifierProvider<FinanceProvider>(
           create: (_) => FinanceProvider(
-            BudgetExpenseApi(harness.apiClient, offline: harness.offline),
+            FinanceApi(harness.apiClient, offline: harness.offline),
           ),
         ),
       ],

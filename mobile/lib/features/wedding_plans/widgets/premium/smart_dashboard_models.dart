@@ -45,7 +45,7 @@ class SmartAction {
   final DashboardImportantItem? item;
 }
 
-/// يحسب أهم خطوة الآن بأولوية: مال مستحق ← مهام متأخرة ← عروض وصلت ← مهام اليوم.
+/// يحسب أهم خطوة الآن بأولوية: موعد دفع ← مهام متأخرة ← عروض وصلت ← مهام اليوم.
 SmartAction? resolveSmartAction(DashboardSummary summary) {
   final backendItem = summary.importantItems.isNotEmpty
       ? summary.importantItems.first
@@ -60,11 +60,10 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
     );
   }
 
-  if ((summary.dueInstallmentsCount ?? 0) > 0) {
+  if ((summary.duePaymentSchedulesCount ?? 0) > 0) {
     return SmartAction(
-      title: 'قسط مستحق ينتظرك',
-      reason:
-          'لديك ${summary.dueInstallmentsCount} قسط حان موعده — سدّده قبل ما يتراكم.',
+      title: 'موعد دفع ينتظرك',
+      reason: 'لديك ${summary.duePaymentSchedulesCount} موعد دفع يحتاج متابعة.',
       icon: LucideIcons.calendarClock,
       tone: SmartActionTone.urgent,
     );
@@ -109,10 +108,10 @@ SmartAction? resolveSmartAction(DashboardSummary summary) {
 
 IconData _iconForType(String type) {
   final upper = type.toUpperCase();
-  if (upper.contains('INSTALLMENT') ||
+  if (upper.contains('PAYMENT_SCHEDULE') ||
       upper.contains('MONEY') ||
       upper.contains('BUDGET') ||
-      upper.contains('EXPENSE')) {
+      upper.contains('COST')) {
     return LucideIcons.wallet;
   }
   if (upper.contains('TASK')) return LucideIcons.listChecks;

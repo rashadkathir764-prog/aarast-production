@@ -190,7 +190,9 @@ void main() {
         expect(summary.progressPercentage, 68);
         expect(summary.daysRemaining, 30);
         expect(summary.budgetTotal, '120000.00');
-        expect(summary.spentTotal, '28450.00');
+        expect(summary.confirmedCostTotal, '28450.00');
+        expect(summary.paidTotal, '10000.00');
+        expect(summary.outstandingTotal, '18450.00');
         expect(summary.totalTasks, 29);
         expect(summary.completedTasks, 20);
         expect(summary.guestCount, 186);
@@ -199,27 +201,25 @@ void main() {
       },
     );
 
-    test('DashboardSummary parses hidden finance permissions safely', () {
+    test('DashboardSummary parses hidden money permissions safely', () {
       final summary = DashboardSummary.fromJson({
         ..._dashboardSummaryJson(),
         'budgetTotal': null,
-        'spentTotal': null,
+        'confirmedCostTotal': null,
+        'paidTotal': null,
+        'outstandingTotal': null,
         'remainingBudget': null,
-        'commitmentTotal': null,
-        'commitmentPaidTotal': null,
-        'commitmentOutstandingTotal': null,
-        'dueInstallmentsCount': null,
+        'duePaymentSchedulesCount': null,
         'permissions': {
           ..._permissionsJson(),
-          'canViewBudget': false,
-          'canViewExpenses': false,
-          'canViewFinancialRecords': false,
+          'canViewMoney': false,
+          'canManageMoney': false,
         },
       });
 
       expect(summary.canViewMoney, isFalse);
       expect(summary.budgetTotal, isNull);
-      expect(summary.dueInstallmentsCount, isNull);
+      expect(summary.duePaymentSchedulesCount, isNull);
     });
   });
 }
@@ -257,7 +257,7 @@ Map<String, dynamic> _onboardingResponseJson() {
         'id': 'category-1',
         'weddingPlanId': 'plan-1',
         'name': 'القاعة',
-        'targetAmount': null,
+        'allocatedAmount': null,
         'createdAt': '2026-06-19T10:00:00.000Z',
         'updatedAt': '2026-06-19T10:00:00.000Z',
       },
@@ -265,7 +265,7 @@ Map<String, dynamic> _onboardingResponseJson() {
         'id': 'category-2',
         'weddingPlanId': 'plan-1',
         'name': 'التصوير',
-        'targetAmount': null,
+        'allocatedAmount': null,
         'createdAt': '2026-06-19T10:00:00.000Z',
         'updatedAt': '2026-06-19T10:00:00.000Z',
       },
@@ -306,12 +306,11 @@ Map<String, dynamic> _dashboardSummaryJson() {
     'daysRemaining': 30,
     'progressPercentage': 68,
     'budgetTotal': '120000.00',
-    'spentTotal': '28450.00',
+    'confirmedCostTotal': '28450.00',
+    'paidTotal': '10000.00',
+    'outstandingTotal': '18450.00',
     'remainingBudget': '91550.00',
-    'commitmentTotal': '3500.00',
-    'commitmentPaidTotal': '0.00',
-    'commitmentOutstandingTotal': '3500.00',
-    'dueInstallmentsCount': 1,
+    'duePaymentSchedulesCount': 1,
     'totalTasks': 29,
     'completedTasks': 20,
     'overdueTasks': 1,
@@ -330,11 +329,9 @@ Map<String, dynamic> _permissionsJson() {
   return {
     'isOwner': true,
     'role': 'OWNER',
-    'canViewBudget': true,
-    'canViewExpenses': true,
-    'canViewFinancialRecords': true,
+    'canViewMoney': true,
     'canManageTasks': true,
-    'canManageFinancialRecords': true,
+    'canManageMoney': true,
     'canManagePlan': true,
   };
 }

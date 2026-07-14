@@ -12,12 +12,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/widgets/aarast_otp_field.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 
 import 'support/preview_fonts.dart';
 
-Future<void> _pump(WidgetTester tester, Widget child, {required Size size}) async {
+Future<void> _pump(
+  WidgetTester tester,
+  Widget child, {
+  required Size size,
+}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -88,7 +93,10 @@ Widget _loginBody() {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 4,
+                    ),
                     child: Text(
                       'نسيت كلمة المرور؟',
                       style: textTheme.labelMedium?.copyWith(
@@ -123,15 +131,10 @@ Widget _otpBody() {
   return Builder(
     builder: (context) {
       final textTheme = Theme.of(context).textTheme;
-      const code = ['1', '2', '3', '4', '5', '6'];
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 12),
-          const AuthBrandMark(compact: true),
-          const SizedBox(height: 24),
-          const WeddingRingsBadge(size: 88),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Text(
             'تأكيد رقم الهاتف',
             textAlign: TextAlign.center,
@@ -156,41 +159,9 @@ Widget _otpBody() {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Row(
-                    children: List.generate(code.length, (index) {
-                      return Expanded(
-                        child: Padding(
-                          padding: EdgeInsetsDirectional.only(
-                            end: index == code.length - 1 ? 0 : 6,
-                          ),
-                          child: SizedBox(
-                            height: 58,
-                            child: TextFormField(
-                              controller: TextEditingController(text: code[index]),
-                              textAlign: TextAlign.center,
-                              style: textTheme.titleLarge?.copyWith(
-                                color: AppTheme.burgundyDeep,
-                                fontWeight: FontWeight.w900,
-                              ),
-                              maxLength: 1,
-                              decoration: InputDecoration(
-                                counterText: '',
-                                filled: true,
-                                fillColor: AppTheme.surfaceElevated,
-                                contentPadding: EdgeInsets.zero,
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                                  borderSide: const BorderSide(color: AppTheme.border),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
+                AarastOtpField(
+                  controller: TextEditingController(text: '123456'),
+                  enabled: false,
                 ),
                 const SizedBox(height: 22),
                 AarastButton(

@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
@@ -55,16 +55,10 @@ class _OtpScreenState extends State<OtpScreen> {
   static const _codeLength = 6;
   static const _resendCooldown = 60;
 
-  final List<TextEditingController> _controllers = List.generate(
-    _codeLength,
-    (_) => TextEditingController(),
-  );
-  final List<FocusNode> _focusNodes = List.generate(
-    _codeLength,
-    (_) => FocusNode(),
-  );
+  final TextEditingController _codeController = TextEditingController();
 
   bool _isVerifying = false;
+  AarastOtpFieldState _fieldState = AarastOtpFieldState.idle;
   String? _devOtpMessage;
   Timer? _resendTimer;
   int _resendSeconds = _resendCooldown;
@@ -79,12 +73,7 @@ class _OtpScreenState extends State<OtpScreen> {
   @override
   void dispose() {
     _resendTimer?.cancel();
-    for (final controller in _controllers) {
-      controller.dispose();
-    }
-    for (final node in _focusNodes) {
-      node.dispose();
-    }
+    _codeController.dispose();
     super.dispose();
   }
 
@@ -122,32 +111,26 @@ class _OtpScreenState extends State<OtpScreen> {
       purpose: purpose,
     );
     if (!mounted || result == null) return;
-    if (result.localDevMessage != null) {
-      setState(() => _devOtpMessage = result.localDevMessage);
-    }
+    _codeController.clear();
+    setState(() {
+      _fieldState = AarastOtpFieldState.idle;
+      _devOtpMessage = result.localDevMessage;
+    });
     _startResendCooldown(notify: true);
     AarastToast.showSuccess(context, 'تم إعادة إرسال الرمز');
   }
 
-  void _onChanged(String value, int index) {
-    if (value.isEmpty) {
-      if (index > 0) {
-        FocusScope.of(context).requestFocus(_focusNodes[index - 1]);
-      }
-      return;
+  void _onCodeChanged(String value) {
+    if (value.isEmpty) return;
+    if (_fieldState == AarastOtpFieldState.error) {
+      setState(() => _fieldState = AarastOtpFieldState.idle);
     }
-
-    if (index < _codeLength - 1) {
-      FocusScope.of(context).requestFocus(_focusNodes[index + 1]);
-      return;
-    }
-
-    _focusNodes[index].unfocus();
-    _verifyOtp();
+    final auth = context.read<AuthController>();
+    if (auth.errorMessage != null) auth.clearError();
   }
 
   Future<void> _verifyOtp() async {
-    final code = _controllers.map((controller) => controller.text).join();
+    final code = _codeController.text;
     if (code.length < _codeLength || _isVerifying) return;
     final auth = context.read<AuthController>();
     final phone = widget.phone ?? auth.otpRequest?.phone;
@@ -172,9 +155,17 @@ class _OtpScreenState extends State<OtpScreen> {
 
     if (!mounted) return;
     if (!success) {
-      setState(() => _isVerifying = false);
+      setState(() {
+        _isVerifying = false;
+        _fieldState = AarastOtpFieldState.error;
+      });
       return;
     }
+
+    // نجاح: لوحة تأكيد قصيرة قبل المتابعة (تُتخطى مع تقليل الحركة).
+    setState(() => _fieldState = AarastOtpFieldState.success);
+    await Future<void>.delayed(AarastOtpField.successHold(context));
+    if (!mounted) return;
 
     final providerApplication = registration?.providerApplication;
     if (providerApplication != null) {
@@ -225,11 +216,7 @@ class _OtpScreenState extends State<OtpScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 12),
-          const AuthBrandMark(compact: true),
-          const SizedBox(height: 24),
-          const WeddingRingsBadge(size: 88),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
           Text(
             'تأكيد رقم الهاتف',
             textAlign: TextAlign.center,
@@ -251,80 +238,42 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           const SizedBox(height: 28),
           AuthPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (devOtpMessage != null) ...[
-                  _DevOtpNotice(message: devOtpMessage),
-                  const SizedBox(height: 16),
-                ],
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Row(
-                    children: List.generate(_codeLength, (index) {
-                      return Expanded(
-                        child: Padding(
-                          padding: EdgeInsetsDirectional.only(
-                            end: index == _codeLength - 1 ? 0 : 6,
-                          ),
-                          child: SizedBox(
-                            height: 58,
-                            child: TextFormField(
-                              controller: _controllers[index],
-                              focusNode: _focusNodes[index],
-                              keyboardType: TextInputType.number,
-                              textAlign: TextAlign.center,
-                              style: textTheme.titleLarge?.copyWith(
-                                color: AppTheme.burgundyDeep,
-                                fontWeight: FontWeight.w900,
-                              ),
-                              maxLength: 1,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                              ],
-                              decoration: InputDecoration(
-                                counterText: '',
-                                filled: true,
-                                fillColor: AppTheme.surfaceElevated,
-                                contentPadding: EdgeInsets.zero,
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusLg,
-                                  ),
-                                  borderSide: const BorderSide(
-                                    color: AppTheme.border,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    AppTheme.radiusLg,
-                                  ),
-                                  borderSide: const BorderSide(
-                                    color: AppTheme.burgundy,
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                              onChanged: (value) => _onChanged(value, index),
-                            ),
-                          ),
+            // عند نجاح الرمز تتحوّل البطاقة كاملة إلى لوحة ✓ الخضراء.
+            child: AnimatedSwitcher(
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 280),
+              child: _fieldState == AarastOtpFieldState.success
+                  ? const AarastOtpSuccessPanel()
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (devOtpMessage != null) ...[
+                          _DevOtpNotice(message: devOtpMessage),
+                          const SizedBox(height: 16),
+                        ],
+                        AarastOtpField(
+                          controller: _codeController,
+                          length: _codeLength,
+                          state: _fieldState,
+                          enabled: !_isVerifying,
+                          fieldKey: const Key('otp-code-field'),
+                          onChanged: _onCodeChanged,
+                          onCompleted: (_) => _verifyOtp(),
                         ),
-                      );
-                    }),
-                  ),
-                ),
-                const SizedBox(height: 22),
-                if (auth.errorMessage != null) ...[
-                  AuthInlineError(message: auth.errorMessage!),
-                  const SizedBox(height: 14),
-                ],
-                AarastButton(
-                  label: 'تأكيد الرمز',
-                  icon: LucideIcons.badgeCheck,
-                  isLoading: _isVerifying || auth.isSubmitting,
-                  onPressed: _verifyOtp,
-                ),
-              ],
+                        const SizedBox(height: 22),
+                        if (auth.errorMessage != null) ...[
+                          AuthInlineError(message: auth.errorMessage!),
+                          const SizedBox(height: 14),
+                        ],
+                        AarastButton(
+                          label: 'تأكيد الرمز',
+                          icon: LucideIcons.badgeCheck,
+                          isLoading: _isVerifying || auth.isSubmitting,
+                          onPressed: _verifyOtp,
+                        ),
+                      ],
+                    ),
             ),
           ),
           const SizedBox(height: 18),

@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -26,13 +28,18 @@ class InviteDecisionScreen extends StatefulWidget {
 class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   static const _otpLength = 6;
   static const _otpPurpose = 'LOGIN';
+  static const _resendCooldown = 60;
 
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
 
   _InviteAccessStep _step = _InviteAccessStep.phone;
+  AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
+  bool _isVerifying = false;
   String? _devOtpMessage;
   PlanInvite? _openedInvite;
+  Timer? _resendTimer;
+  int _resendSeconds = 0;
 
   String? get _token {
     final value = widget.token?.trim();
@@ -53,46 +60,69 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _phoneController.dispose();
     _otpController.dispose();
     super.dispose();
   }
 
   Future<void> _requestOtp() async {
+    final auth = context.read<AuthController>();
+    if (auth.isSubmitting) return;
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
       _showError('أدخل الرقم الذي وصلت إليه الدعوة.');
       return;
     }
 
-    final result = await context.read<AuthController>().requestOtp(
-      phone: phone,
-      purpose: _otpPurpose,
-    );
+    final result = await auth.requestOtp(phone: phone, purpose: _otpPurpose);
     if (!mounted || result == null) return;
+    _otpController.clear();
     setState(() {
       _step = _InviteAccessStep.otp;
+      _otpFieldState = AarastOtpFieldState.idle;
       _devOtpMessage = result.localDevMessage;
     });
+    _startResendCooldown();
+  }
+
+  Future<void> _resendOtp() async {
+    if (_resendSeconds > 0) return;
+    await _requestOtp();
   }
 
   Future<void> _verifyOtp() async {
     final code = _otpController.text.trim();
     if (code.length != _otpLength) {
+      setState(() => _otpFieldState = AarastOtpFieldState.error);
       _showError('رمز التحقق غير صحيح.');
       return;
     }
+    if (_isVerifying) return;
 
     final auth = context.read<AuthController>();
+    setState(() => _isVerifying = true);
     final success = await auth.verifyOtp(
       phone: _phoneController.text.trim(),
       purpose: _otpPurpose,
       code: code,
     );
-    if (!mounted || !success) return;
+    if (!mounted) return;
+    if (!success) {
+      setState(() {
+        _isVerifying = false;
+        _otpFieldState = AarastOtpFieldState.error;
+      });
+      return;
+    }
+    _resendTimer?.cancel();
+    setState(() => _otpFieldState = AarastOtpFieldState.success);
+    await Future<void>.delayed(AarastOtpField.successHold(context));
+    if (!mounted) return;
     if (auth.status != AuthStatus.authenticated) {
       context.read<SharingProvider>().clearInviteAccessState();
       setState(() {
+        _isVerifying = false;
         _step = _InviteAccessStep.invites;
         _openedInvite = null;
       });
@@ -106,8 +136,50 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     await provider.loadMyInvites(token: _token);
     if (!mounted) return;
     setState(() {
+      _isVerifying = false;
       _step = _InviteAccessStep.invites;
       _openedInvite = provider.selectedInvite;
+    });
+  }
+
+  void _onOtpChanged(String value) {
+    if (value.isEmpty) return;
+    if (_otpFieldState == AarastOtpFieldState.error) {
+      setState(() => _otpFieldState = AarastOtpFieldState.idle);
+    }
+    final auth = context.read<AuthController>();
+    if (auth.errorMessage != null) auth.clearError();
+  }
+
+  void _returnToPhone() {
+    _resendTimer?.cancel();
+    final auth = context.read<AuthController>();
+    if (auth.errorMessage != null) auth.clearError();
+    _otpController.clear();
+    setState(() {
+      _openedInvite = null;
+      _otpFieldState = AarastOtpFieldState.idle;
+      _isVerifying = false;
+      _resendSeconds = 0;
+      _step = _InviteAccessStep.phone;
+    });
+  }
+
+  void _startResendCooldown() {
+    _resendTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _resendSeconds = _resendCooldown);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_resendSeconds <= 1) {
+        timer.cancel();
+        setState(() => _resendSeconds = 0);
+        return;
+      }
+      setState(() => _resendSeconds -= 1);
     });
   }
 
@@ -165,13 +237,13 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         ),
         _InviteAccessStep.otp => _OtpStep(
           controller: _otpController,
+          state: _otpFieldState,
+          resendSeconds: _resendSeconds,
           devOtpMessage: _devOtpMessage,
+          onCodeChanged: _onOtpChanged,
           onVerify: _verifyOtp,
-          onResend: _requestOtp,
-          onChangePhone: () => setState(() {
-            _otpController.clear();
-            _step = _InviteAccessStep.phone;
-          }),
+          onResend: _resendOtp,
+          onChangePhone: _returnToPhone,
         ),
         _InviteAccessStep.invites => _InvitesStep(
           openedInvite: _openedInvite,
@@ -180,11 +252,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           onAccept: (invite) => _respond(invite, accept: true),
           onDecline: (invite) => _respond(invite, accept: false),
           onOpenAcceptedPlan: _openAcceptedPlan,
-          onChangePhone: () => setState(() {
-            _openedInvite = null;
-            _otpController.clear();
-            _step = _InviteAccessStep.phone;
-          }),
+          onChangePhone: _returnToPhone,
           onRetry: _loadVerifiedInvites,
         ),
       },
@@ -193,7 +261,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
 
   void _handleBack() {
     if (_step == _InviteAccessStep.otp) {
-      setState(() => _step = _InviteAccessStep.phone);
+      _returnToPhone();
       return;
     }
     if (_step == _InviteAccessStep.invites && _openedInvite != null) {
@@ -268,6 +336,9 @@ class _PhoneStep extends StatelessWidget {
 class _OtpStep extends StatelessWidget {
   const _OtpStep({
     required this.controller,
+    required this.state,
+    required this.resendSeconds,
+    required this.onCodeChanged,
     required this.onVerify,
     required this.onResend,
     required this.onChangePhone,
@@ -275,6 +346,9 @@ class _OtpStep extends StatelessWidget {
   });
 
   final TextEditingController controller;
+  final AarastOtpFieldState state;
+  final int resendSeconds;
+  final ValueChanged<String> onCodeChanged;
   final VoidCallback onVerify;
   final VoidCallback onResend;
   final VoidCallback onChangePhone;
@@ -294,65 +368,68 @@ class _OtpStep extends StatelessWidget {
           const SizedBox(height: 16),
         ],
         AarastCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _FieldLabel('رمز التحقق'),
-              Directionality(
-                textDirection: TextDirection.ltr,
-                child: TextField(
-                  key: const Key('invite-otp-field'),
-                  controller: controller,
-                  maxLength: 6,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.burgundy,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
+          // عند نجاح الرمز تتحوّل البطاقة كاملة إلى لوحة ✓ الخضراء.
+          child: AnimatedSwitcher(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 280),
+            child: state == AarastOtpFieldState.success
+                ? const AarastOtpSuccessPanel(
+                    subtitle: 'تم توثيق رقمك — جارٍ فتح دعواتك.',
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _FieldLabel('رمز التحقق'),
+                      AarastOtpField(
+                        controller: controller,
+                        state: state,
+                        enabled: !auth.isSubmitting,
+                        fieldKey: const Key('invite-otp-field'),
+                        onChanged: onCodeChanged,
+                        onCompleted: (_) => onVerify(),
+                      ),
+                      if (auth.errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        const _InlineError('رمز التحقق غير صحيح.'),
+                      ],
+                      const SizedBox(height: 18),
+                      AarastButton(
+                        key: const Key('invite-verify-otp-button'),
+                        label: 'تأكيد الرمز',
+                        icon: LucideIcons.checkCircle2,
+                        isLoading: auth.isSubmitting,
+                        onPressed: auth.isSubmitting ? null : onVerify,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AarastButton(
+                              key: const ValueKey('invite-otp-resend-button'),
+                              label: resendSeconds > 0
+                                  ? 'إعادة الإرسال خلال $resendSeconds ث'
+                                  : 'إعادة إرسال الرمز',
+                              variant: AarastButtonVariant.secondary,
+                              onPressed: auth.isSubmitting || resendSeconds > 0
+                                  ? null
+                                  : onResend,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: AarastButton(
+                              label: 'تغيير الرقم',
+                              variant: AarastButtonVariant.ghost,
+                              onPressed: auth.isSubmitting
+                                  ? null
+                                  : onChangePhone,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  decoration: const InputDecoration(
-                    counterText: '',
-                    hintText: '000000',
-                    prefixIcon: Icon(LucideIcons.shieldCheck),
-                  ),
-                  onSubmitted: (_) => onVerify(),
-                ),
-              ),
-              if (auth.errorMessage != null) ...[
-                const SizedBox(height: 12),
-                const _InlineError('رمز التحقق غير صحيح.'),
-              ],
-              const SizedBox(height: 18),
-              AarastButton(
-                key: const Key('invite-verify-otp-button'),
-                label: 'تأكيد الرمز',
-                icon: LucideIcons.checkCircle2,
-                isLoading: auth.isSubmitting,
-                onPressed: auth.isSubmitting ? null : onVerify,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: AarastButton(
-                      label: 'إعادة إرسال الرمز',
-                      variant: AarastButtonVariant.secondary,
-                      onPressed: auth.isSubmitting ? null : onResend,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AarastButton(
-                      label: 'تغيير الرقم',
-                      variant: AarastButtonVariant.ghost,
-                      onPressed: auth.isSubmitting ? null : onChangePhone,
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ),
         ),
       ],

@@ -116,4 +116,32 @@ describe('secure admin browser session', () => {
       'بيانات الدخول غير صحيحة',
     );
   });
+
+  it('distinguishes login throttling from invalid credentials', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(429, { message: 'Too many failed login attempts' }),
+    );
+
+    await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
+      'محاولات دخول كثيرة. انتظر قليلًا ثم حاول مرة أخرى.',
+    );
+  });
+
+  it('distinguishes an unavailable OTP transport from a network failure', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(503, { message: 'OTP delivery is temporarily unavailable' }),
+    );
+
+    await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
+      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+    );
+  });
+
+  it('keeps an actual fetch failure as a connection error', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
+      'تعذر الاتصال بالخادم',
+    );
+  });
 });

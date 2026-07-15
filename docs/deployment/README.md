@@ -45,6 +45,19 @@ post-build gate if a loopback API or the current MFA login route is missing.
 - Container health and admin startup dependency use `/ready`, so traffic is not
   sent to an API whose required dependencies are down.
 
+## Admin Account Operations
+
+Production administrator creation and password rotation use the same explicit,
+idempotent operation: `npm run prod:provision-admin` from the backend runtime.
+The operator must provide `PROVISION_ADMIN_PHONE`, `PROVISION_ADMIN_PASSWORD`,
+`PROVISION_ADMIN_NAME`, and
+`PROVISION_ADMIN_CONFIRM=PROVISION_AARAST_ADMIN` through the private runtime
+environment. The operation requires a 12-to-72-character password containing
+letters and digits, never prints the phone or password, promotes only the
+target account, and revokes its previous sessions, MFA challenges, and login
+lock before completion. These variables are one-time operator inputs and must
+not be committed or left in the persistent deployment environment.
+
 ## OTP Release Gate
 
 The approved production path uses `AUTH_OTP_MODE=whatsapp`. Dokploy must

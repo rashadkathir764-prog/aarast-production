@@ -98,7 +98,13 @@ function mapLoginError(error: unknown): Error {
     if (error.status === 401 || error.status === 400) {
       return new Error('بيانات الدخول غير صحيحة');
     }
-    return new Error('تعذر الاتصال بالخادم');
+    if (error.status === 429) {
+      return new Error('محاولات دخول كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
+    }
+    if (error.status === 503) {
+      return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
+    }
+    return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
   }
   if (error instanceof Error && error.message === 'تعذر بدء التحقق بخطوتين') {
     return error;
@@ -109,6 +115,12 @@ function mapLoginError(error: unknown): Error {
 function mapMfaError(error: unknown): Error {
   if (error instanceof ApiError && [400, 401, 409].includes(error.status ?? 0)) {
     return new Error('رمز التحقق غير صحيح أو انتهت صلاحيته');
+  }
+  if (error instanceof ApiError && error.status === 429) {
+    return new Error('محاولات تحقق كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
+  }
+  if (error instanceof ApiError && error.status === 503) {
+    return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
   }
   return new Error('تعذر إكمال التحقق. حاول مرة أخرى.');
 }

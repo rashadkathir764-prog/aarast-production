@@ -81,3 +81,22 @@ For the Docs Foundation task:
   references only and must not be treated as active source-of-truth docs.
 
 ## Imported Claude Cowork project instructions
+
+## Universal Agent Engineering Instructions
+
+1. Reproduce before fixing; if reproduction is impossible, provide concrete evidence and state the blocker.
+2. Fix the root cause, not the symptom; reject band-aids, silent fallbacks, and cosmetic patches.
+3. Do not introduce workarounds, hacks, or compatibility layers without explicit approval and a removal plan.
+4. Verify before claiming completion; report the exact checks performed, results obtained, and remaining uncertainty.
+5. Think like a production engineer, not a code generator; prioritize correctness, simplicity, safety, maintainability, and operability.
+6. Reconfirm the objective, constraints, and definition of done before major changes or after any context reset.
+7. Read all applicable repository instructions, follow them throughout the task, and demonstrate compliance in the final report.
+8. Protect existing tests; never delete, skip, weaken, or rewrite them merely to make the implementation pass.
+9. Fix the earliest incorrect source or system boundary instead of patching the same symptom across downstream consumers.
+10. Keep the design minimal; add abstractions, layers, dependencies, or future-proofing only for a concrete current need.
+11. Handle success, failure, timeout, retry, invalid input, duplication, and other relevant edge cases—not only the happy path.
+12. Never hide errors, warnings, or failed checks; classify, handle, log, or propagate them explicitly.
+13. Declare the expected change surface first, minimize unrelated edits, and justify every additional file or component changed.
+14. Do not preserve old and new implementations together unless a real consumer requires compatibility and removal is scheduled.
+15. Do not treat passing tests as sufficient; also review architecture, security, performance, concurrency, and maintainability.
+16. Finish with an evidence-based completion receipt covering the diff, tests, type checks, lint, build, migrations, documentation, and remaining risks.

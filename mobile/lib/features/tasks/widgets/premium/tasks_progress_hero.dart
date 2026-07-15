@@ -7,17 +7,19 @@ import '../../models/task_summary.dart';
 
 /// بطل المهام — حلقة إنجاز + نبض ذكي.
 ///
-/// بدل شبكة الأصفار الأربعة، نعرض ما يهم فقط: نسبة الإنجاز في حلقة،
-/// وثلاث نوافذ حية (متأخرة/اليوم/مكتملة). المستخدم الجديد يرى دعوة، لا أصفارًا.
+/// الحلقة تلخص التقدم، و`footer` فتحة تضع فيها الشاشة شرائح الفلترة
+/// الحية فيصير الهيرو هو لوحة التحكم بدل صناديق أرقام جامدة.
 class TasksProgressHero extends StatelessWidget {
   const TasksProgressHero({
     required this.summary,
     this.isLocalPlan = false,
+    this.footer,
     super.key,
   });
 
   final TaskSummary summary;
   final bool isLocalPlan;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -65,18 +67,16 @@ class TasksProgressHero extends StatelessWidget {
                   children: [
                     Text(
                       '${summary.completionPercent}%',
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AarastDesignTokens.title,
                         fontSize: 19,
-                        fontWeight: FontWeight.w800,
                         height: 1,
                       ),
                     ),
-                    const Text(
+                    Text(
                       'إنجاز',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AarastDesignTokens.muted,
-                        fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -88,11 +88,10 @@ class TasksProgressHero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'إنجاز المهام',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AarastDesignTokens.title,
-                        fontSize: 16.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -105,9 +104,8 @@ class TasksProgressHero extends StatelessWidget {
                           : summary.dueToday > 0
                           ? 'اليوم عندك ${summary.dueToday} مهمة — بالتوفيق.'
                           : 'أنجزت ${summary.completed} من ${summary.total} — استمر.',
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AarastDesignTokens.muted,
-                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                         height: 1.45,
                       ),
@@ -125,22 +123,22 @@ class TasksProgressHero extends StatelessWidget {
                             AarastDesignTokens.radiusPill,
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            const Icon(
                               LucideIcons.smartphone,
                               size: 11,
                               color: AarastDesignTokens.warning,
                             ),
-                            SizedBox(width: 4),
+                            const SizedBox(width: 4),
                             Text(
                               'تخطيط محلي',
-                              style: TextStyle(
-                                color: AarastDesignTokens.ink,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: AarastDesignTokens.ink,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                             ),
                           ],
                         ),
@@ -151,106 +149,8 @@ class TasksProgressHero extends StatelessWidget {
               ),
             ],
           ),
-          if (!isFresh) ...[
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _TaskStat(
-                  label: 'متأخرة',
-                  value: summary.overdue,
-                  icon: LucideIcons.alarmClock,
-                  color: summary.overdue > 0
-                      ? AarastDesignTokens.danger
-                      : AarastDesignTokens.muted,
-                  emphasize: summary.overdue > 0,
-                ),
-                const SizedBox(width: 10),
-                _TaskStat(
-                  label: 'اليوم',
-                  value: summary.dueToday,
-                  icon: LucideIcons.calendarDays,
-                  color: AarastDesignTokens.burgundy,
-                ),
-                const SizedBox(width: 10),
-                _TaskStat(
-                  label: 'مكتملة',
-                  value: summary.completed,
-                  icon: LucideIcons.checkCheck,
-                  color: AarastDesignTokens.success,
-                ),
-              ],
-            ),
-          ],
+          if (footer != null) ...[const SizedBox(height: 14), footer!],
         ],
-      ),
-    );
-  }
-}
-
-class _TaskStat extends StatelessWidget {
-  const _TaskStat({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-    this.emphasize = false,
-  });
-
-  final String label;
-  final int value;
-  final IconData icon;
-  final Color color;
-  final bool emphasize;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-        decoration: BoxDecoration(
-          color: emphasize
-              ? color.withValues(alpha: 0.08)
-              : AarastDesignTokens.ivory,
-          borderRadius: BorderRadius.circular(AarastDesignTokens.radiusMd),
-          border: Border.all(
-            color: emphasize
-                ? color.withValues(alpha: 0.25)
-                : AarastDesignTokens.border,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 14, color: color),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AarastDesignTokens.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$value',
-              style: TextStyle(
-                color: emphasize ? color : AarastDesignTokens.ink,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                height: 1,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

@@ -25,46 +25,30 @@ class AuthWeddingScaffold extends StatelessWidget {
       EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom + 28),
     );
 
+    // خلفية عاجية نظيفة مثل بقية التطبيق — لا زخارف مرسومة.
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: AppTheme.ivory,
-        body: Stack(
-          children: [
-            const Positioned.fill(child: AuthWeddingBackground()),
-            SafeArea(
-              child: Stack(
-                children: [
-                  Center(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: maxWidth),
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: effectivePadding,
-                        child: AarastFadeSlide(child: child),
-                      ),
-                    ),
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: effectivePadding,
+                    child: AarastFadeSlide(child: child),
                   ),
-                  if (leading != null)
-                    Positioned(top: 8, right: 16, child: leading!),
-                ],
+                ),
               ),
-            ),
-          ],
+              if (leading != null)
+                Positioned(top: 8, right: 16, child: leading!),
+            ],
+          ),
         ),
       ),
-    );
-  }
-}
-
-class AuthWeddingBackground extends StatelessWidget {
-  const AuthWeddingBackground({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppTheme.ivory,
-      child: CustomPaint(painter: _AuthWeddingBackgroundPainter()),
     );
   }
 }
@@ -109,34 +93,32 @@ class AuthBrandMark extends StatelessWidget {
             ),
           ],
         ),
-        SizedBox(height: compact ? 8 : 12),
-        const _HeartRule(),
       ],
     );
   }
 }
 
-class WeddingRingsBadge extends StatelessWidget {
-  const WeddingRingsBadge({this.size = 82, super.key});
+/// زر إظهار/إخفاء كلمة المرور — مضغوط بحجم موحد عبر شاشات الدخول.
+class AuthObscureToggle extends StatelessWidget {
+  const AuthObscureToggle({
+    required this.obscured,
+    required this.onPressed,
+    super.key,
+  });
 
-  final double size;
+  final bool obscured;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    // Kept in a Center so a stretch-aligned parent (e.g. the OTP screen's
-    // Column) can't force the badge wider than [size] and distort the rings
-    // into an ellipse.
-    return Center(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppTheme.gold2.withAlpha(150)),
-          boxShadow: AppTheme.softShadow(opacity: 0.08),
-        ),
-        child: CustomPaint(painter: _RingsPainter()),
+    return IconButton(
+      tooltip: obscured ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
+      iconSize: 19,
+      icon: Icon(
+        obscured ? LucideIcons.eye : LucideIcons.eyeOff,
+        color: AppTheme.muted,
       ),
     );
   }
@@ -263,67 +245,6 @@ class AuthBackButton extends StatelessWidget {
   }
 }
 
-class AuthFeatureTile extends StatelessWidget {
-  const AuthFeatureTile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    super.key,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return AuthPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppTheme.burgundySoft.withAlpha(130),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppTheme.burgundy, size: 28),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  textAlign: TextAlign.right,
-                  style: textTheme.titleMedium?.copyWith(
-                    color: AppTheme.burgundyDeep,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  textAlign: TextAlign.right,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class AuthFooterLink extends StatelessWidget {
   const AuthFooterLink({
     required this.prefix,
@@ -338,173 +259,6 @@ class AuthFooterLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const _HeartRule(),
-        const SizedBox(height: 14),
-        TextButton(onPressed: onTap, child: Text('$prefix $action')),
-      ],
-    );
+    return TextButton(onPressed: onTap, child: Text('$prefix $action'));
   }
-}
-
-class _HeartRule extends StatelessWidget {
-  const _HeartRule();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(width: 38, height: 1, color: AppTheme.gold2),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Icon(LucideIcons.heart, color: AppTheme.gold, size: 12),
-        ),
-        Container(width: 38, height: 1, color: AppTheme.gold2),
-      ],
-    );
-  }
-}
-
-class _AuthWeddingBackgroundPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final archPaint = Paint()
-      ..color = AppTheme.gold2.withAlpha(48)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1;
-    final stemPaint = Paint()
-      ..color = AppTheme.gold.withAlpha(48)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1;
-    final petalPaint = Paint()
-      ..color = AppTheme.burgundySoft
-      ..style = PaintingStyle.fill;
-
-    final arch = Path()
-      ..moveTo(size.width * 0.20, size.height * 0.24)
-      ..quadraticBezierTo(
-        size.width * 0.50,
-        size.height * 0.02,
-        size.width * 0.80,
-        size.height * 0.24,
-      )
-      ..lineTo(size.width * 0.80, size.height * 0.48)
-      ..moveTo(size.width * 0.20, size.height * 0.24)
-      ..lineTo(size.width * 0.20, size.height * 0.48);
-    canvas.drawPath(arch, archPaint);
-
-    _drawFloralCluster(
-      canvas,
-      Offset(size.width * 0.10, size.height * 0.82),
-      -1,
-      stemPaint,
-      petalPaint,
-    );
-    _drawFloralCluster(
-      canvas,
-      Offset(size.width * 0.90, size.height * 0.12),
-      1,
-      stemPaint,
-      petalPaint,
-    );
-  }
-
-  void _drawFloralCluster(
-    Canvas canvas,
-    Offset origin,
-    int direction,
-    Paint stemPaint,
-    Paint petalPaint,
-  ) {
-    final stem = Path()
-      ..moveTo(origin.dx, origin.dy)
-      ..quadraticBezierTo(
-        origin.dx + direction * 26,
-        origin.dy - 44,
-        origin.dx + direction * 52,
-        origin.dy - 92,
-      );
-    canvas.drawPath(stem, stemPaint);
-
-    for (var i = 0; i < 5; i++) {
-      final y = origin.dy - 18.0 - (i * 16);
-      final x = origin.dx + direction * (16 + i * 7);
-      final leaf = Rect.fromCenter(center: Offset(x, y), width: 18, height: 9);
-      canvas.save();
-      canvas.translate(x, y);
-      canvas.rotate(direction * 0.55);
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: Offset.zero,
-          width: leaf.width,
-          height: leaf.height,
-        ),
-        petalPaint,
-      );
-      canvas.restore();
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _RingsPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppTheme.burgundy
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.045
-      ..strokeCap = StrokeCap.round;
-    final goldPaint = Paint()
-      ..color = AppTheme.gold
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = size.width * 0.035
-      ..strokeCap = StrokeCap.round;
-    final heartPaint = Paint()
-      ..color = AppTheme.burgundy
-      ..style = PaintingStyle.fill;
-
-    final center = Offset(size.width / 2, size.height / 2 + size.height * 0.06);
-    final radius = size.width * 0.18;
-    canvas.drawCircle(center.translate(-radius * 0.48, 0), radius, paint);
-    canvas.drawCircle(center.translate(radius * 0.48, 0), radius, paint);
-    canvas.drawArc(
-      Rect.fromCircle(
-        center: center.translate(0, -radius * 0.12),
-        radius: radius * 1.18,
-      ),
-      -0.15,
-      3.45,
-      false,
-      goldPaint,
-    );
-
-    final heart = Path()
-      ..moveTo(size.width / 2, size.height * 0.28)
-      ..cubicTo(
-        size.width * 0.37,
-        size.height * 0.18,
-        size.width * 0.24,
-        size.height * 0.34,
-        size.width / 2,
-        size.height * 0.46,
-      )
-      ..cubicTo(
-        size.width * 0.76,
-        size.height * 0.34,
-        size.width * 0.63,
-        size.height * 0.18,
-        size.width / 2,
-        size.height * 0.28,
-      );
-    canvas.drawPath(heart, heartPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

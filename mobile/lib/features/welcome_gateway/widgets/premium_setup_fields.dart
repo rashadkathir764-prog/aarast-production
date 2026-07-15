@@ -30,8 +30,7 @@ class PremiumTextField extends StatelessWidget {
           ? [FilteringTextInputFormatter.allow(RegExp(r'[0-9,]'))]
           : null,
       textInputAction: TextInputAction.next,
-      style: const TextStyle(
-        fontSize: 16,
+      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
         fontWeight: FontWeight.w700,
         color: AppTheme.ink,
       ),
@@ -108,11 +107,10 @@ class PremiumDateField extends StatelessWidget {
                         selectedDate == null
                             ? 'لم أحدد بعد'
                             : '${selectedDate!.year}/${selectedDate!.month.toString().padLeft(2, '0')}/${selectedDate!.day.toString().padLeft(2, '0')}',
-                        style: TextStyle(
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: selectedDate == null
                               ? AppTheme.muted
                               : AppTheme.ink,
-                          fontSize: 16,
                           fontWeight: selectedDate == null
                               ? FontWeight.normal
                               : FontWeight.bold,
@@ -243,11 +241,9 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                       size: 18,
                     ),
                   ),
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppTheme.burgundy,
                     fontWeight: FontWeight.bold,
-                    fontFamily: AppTheme.textFontFamily,
-                    fontSize: 16,
                   ),
                   dropdownColor: AppTheme.surface,
                   borderRadius: BorderRadius.circular(20),
@@ -305,12 +301,12 @@ class _PremiumBudgetFieldState extends State<PremiumBudgetField> {
                                 : _budgetWords,
                             textAlign: TextAlign.start,
                             softWrap: true,
-                            style: const TextStyle(
-                              color: AppTheme.muted,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 13,
-                              height: 1.25,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: AppTheme.muted,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.25,
+                                ),
                           ),
                         ),
                       ],
@@ -366,8 +362,7 @@ class PremiumLocationCard extends StatelessWidget {
                     textDirection: TextDirection.rtl,
                     textAlign: TextAlign.start,
                     textInputAction: TextInputAction.done,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: AppTheme.ink,
                     ),
@@ -387,10 +382,9 @@ class PremiumLocationCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     'اكتب المدينة أو المنطقة الآن، ويمكن تعديلها لاحقًا من الخطة.',
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: AppTheme.muted,
                       fontWeight: FontWeight.w700,
-                      fontSize: 12,
                       height: 1.3,
                     ),
                   ),

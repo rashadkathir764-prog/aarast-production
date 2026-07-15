@@ -158,9 +158,8 @@ class _ServiceManagementCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   service.title,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

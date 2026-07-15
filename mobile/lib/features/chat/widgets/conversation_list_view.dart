@@ -126,10 +126,9 @@ class _ConversationTile extends StatelessWidget {
                     conversation.counterpart.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
-                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -160,10 +159,9 @@ class _ConversationTile extends StatelessWidget {
                 child: Text(
                   '${conversation.unreadCount}',
                   textDirection: TextDirection.ltr,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: 11,
                   ),
                 ),
               )

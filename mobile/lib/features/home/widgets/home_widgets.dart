@@ -207,9 +207,8 @@ class _HeaderCircleIcon extends StatelessWidget {
                   child: Text(
                     '$badgeCount',
                     textDirection: TextDirection.ltr,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white,
-                      fontSize: 10,
                       fontWeight: FontWeight.w900,
                       height: 1,
                     ),
@@ -296,11 +295,9 @@ class HomeNoPlanWelcome extends StatelessWidget {
                       'حلم زفافك يبدأ هنا',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.title,
-                        fontSize: 20,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
                         height: 1.2,
                       ),
                     ),
@@ -310,12 +307,11 @@ class HomeNoPlanWelcome extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'أنشئ خطة زفافك الأولى وسنرتب لك الميزانية والمهام والضيوف ومزوّدي الخدمات في مكان واحد.',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppTheme.muted,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               height: 1.55,
             ),
           ),
@@ -347,22 +343,21 @@ class HomeNoPlanWelcome extends StatelessWidget {
                       children: [
                         Text(
                           feature.title,
-                          style: const TextStyle(
-                            color: AppTheme.ink,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: AppTheme.ink,
+                                fontWeight: FontWeight.w800,
+                              ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           feature.subtitle,
-                          style: const TextStyle(
-                            color: AppTheme.muted,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.muted,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
                         ),
                       ],
                     ),
@@ -385,12 +380,11 @@ class HomeNoPlanWelcome extends StatelessWidget {
               ),
               onPressed: () => context.push(AppRouter.createWeddingPlan),
               icon: const Icon(LucideIcons.plus, size: 22),
-              label: const Text(
+              label: Text(
                 'إنشاء خطة زفاف',
-                style: TextStyle(
-                  fontSize: 15,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Colors.white,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
                 ),
               ),
             ),
@@ -402,12 +396,10 @@ class HomeNoPlanWelcome extends StatelessWidget {
               foregroundColor: AppTheme.burgundy,
               minimumSize: const Size.fromHeight(40),
             ),
-            child: const Text(
+            child: Text(
               'عرض كل الخطط',
-              style: TextStyle(
-                fontSize: 13.5,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w800,
-                letterSpacing: 0,
               ),
             ),
           ),

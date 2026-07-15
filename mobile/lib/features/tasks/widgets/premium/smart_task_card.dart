@@ -9,10 +9,10 @@ import '../../../../core/widgets/aarast_ui.dart';
 import '../../models/wedding_task.dart';
 import '../../utils/task_display.dart';
 
-/// بطاقة المهمة الذكية — سطر نظيف، لا حساء chips.
+/// بطاقة المهمة الذكية — صف نحيف: عنوان + سطر ميتا واحد.
 ///
-/// الأولوية تُقرأ من العمود اللوني، الحالة من الـ checkbox والشطب،
-/// التصنيف كنص خافت، ويبقى chip واحد فقط: الموعد.
+/// الأولوية تُقرأ من العمود اللوني وشعلة صغيرة، الحالة من الـ checkbox
+/// والشطب، والتصنيف والموعد والمسؤول كلها في سطر ميتا واحد.
 class SmartTaskCard extends StatelessWidget {
   const SmartTaskCard({
     required this.task,
@@ -69,7 +69,7 @@ class SmartTaskCard extends StatelessWidget {
                   child: Container(width: 4, color: spineColor),
                 ),
                 Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
+                  padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 10),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -84,59 +84,51 @@ class SmartTaskCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  taskCategoryIcon(task.taskCategory),
-                                  size: 13,
-                                  color: AarastDesignTokens.muted,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  taskCategoryLabel(task.taskCategory),
-                                  style: const TextStyle(
-                                    color: AarastDesignTokens.muted,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
+                                Expanded(
+                                  child: Text(
+                                    task.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          color: isDone
+                                              ? AarastDesignTokens.muted
+                                              : AarastDesignTokens.ink,
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.3,
+                                          decoration: isDone
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          decorationColor:
+                                              AarastDesignTokens.muted,
+                                        ),
                                   ),
                                 ),
                                 if (task.priority == 'HIGH' ||
                                     task.priority == 'URGENT') ...[
                                   const SizedBox(width: 6),
-                                  Icon(
-                                    LucideIcons.flame,
-                                    size: 12,
-                                    color: taskPriorityColor(task.priority),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 3),
+                                    child: Icon(
+                                      LucideIcons.flame,
+                                      size: 14,
+                                      color: taskPriorityColor(task.priority),
+                                    ),
                                   ),
                                 ],
                               ],
                             ),
-                            const SizedBox(height: 3),
-                            Text(
-                              task.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isDone
-                                    ? AarastDesignTokens.muted
-                                    : AarastDesignTokens.ink,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                                height: 1.3,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                decorationColor: AarastDesignTokens.muted,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             _MetaRow(
                               task: task,
                               isDone: isDone,
                               isLate: isLate,
                               now: now,
                             ),
-                            const SizedBox(height: 8),
-                            _ResponsibleLine(task: task, isDone: isDone),
                           ],
                         ),
                       ),
@@ -182,110 +174,92 @@ class _MetaRow extends StatelessWidget {
     final dueLabel = task.dueDate == null
         ? 'بدون موعد'
         : taskRelativeDueLabel(task.dueDate!, now: now);
+    final phone = task.responsiblePhoneDisplay;
+    final metaStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: AarastDesignTokens.muted,
+      fontWeight: FontWeight.w700,
+    );
 
+    // سطر ميتا واحد: التصنيف · الموعد · المسؤول (ورقمه للتنسيق الهاتفي).
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: 8,
+      runSpacing: 5,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        _DueChip(label: dueLabel, color: dueColor, isDone: isDone),
-        OfflinePendingBadge(entityType: 'task', entityId: task.id),
-      ],
-    );
-  }
-}
-
-/// سطر المسؤول — من يتابع المهمة + رقمه للتواصل + شارة المشارك.
-/// عنصر تنسيق حقيقي (اتصال هاتفي هو أساس تنسيق الأعراس اليمنية).
-class _ResponsibleLine extends StatelessWidget {
-  const _ResponsibleLine({required this.task, required this.isDone});
-
-  final WeddingTask task;
-  final bool isDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final phone = task.responsiblePhoneDisplay;
-    final textColor = isDone
-        ? AarastDesignTokens.muted
-        : AarastDesignTokens.ink;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AarastDesignTokens.ivory,
-        borderRadius: BorderRadius.circular(AarastDesignTokens.radiusMd),
-        border: Border.all(
-          color: AarastDesignTokens.gold.withValues(alpha: 0.13),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              taskCategoryIcon(task.taskCategory),
+              size: 12,
+              color: AarastDesignTokens.muted,
+            ),
+            const SizedBox(width: 4),
+            Text(taskCategoryLabel(task.taskCategory), style: metaStyle),
+          ],
         ),
-      ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Icon(
-            LucideIcons.user,
-            size: 15,
-            color: isDone
-                ? AarastDesignTokens.muted
-                : AarastDesignTokens.burgundy,
-          ),
-          Text(
-            'المسؤول: ${task.responsibleLabel}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+        _DueChip(label: dueLabel, color: dueColor, isDone: isDone),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              LucideIcons.user,
+              size: 12,
+              color: isDone
+                  ? AarastDesignTokens.muted
+                  : AarastDesignTokens.burgundy,
             ),
-          ),
-          if (phone != null)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  LucideIcons.phone,
-                  size: 13,
-                  color: AarastDesignTokens.muted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  phone,
-                  textDirection: TextDirection.ltr,
-                  style: const TextStyle(
-                    color: AarastDesignTokens.muted,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          if (task.hasResponsibleParticipant)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AarastDesignTokens.goldSoft,
-                borderRadius: BorderRadius.circular(
-                  AarastDesignTokens.radiusPill,
-                ),
-                border: Border.all(
-                  color: AarastDesignTokens.gold.withValues(alpha: 0.26),
-                ),
-              ),
-              child: const Text(
-                'مشارك في الخطة',
-                style: TextStyle(
-                  color: AarastDesignTokens.burgundy,
-                  fontSize: 10.5,
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                'المسؤول: ${task.responsibleLabel}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: metaStyle?.copyWith(
+                  color: isDone
+                      ? AarastDesignTokens.muted
+                      : AarastDesignTokens.ink,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-        ],
-      ),
+          ],
+        ),
+        if (phone != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.phone,
+                size: 12,
+                color: AarastDesignTokens.muted,
+              ),
+              const SizedBox(width: 4),
+              Text(phone, textDirection: TextDirection.ltr, style: metaStyle),
+            ],
+          ),
+        if (task.hasResponsibleParticipant)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AarastDesignTokens.goldSoft,
+              borderRadius: BorderRadius.circular(
+                AarastDesignTokens.radiusPill,
+              ),
+              border: Border.all(
+                color: AarastDesignTokens.gold.withValues(alpha: 0.26),
+              ),
+            ),
+            child: Text(
+              'مشارك في الخطة',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AarastDesignTokens.burgundy,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        OfflinePendingBadge(entityType: 'task', entityId: task.id),
+      ],
     );
   }
 }
@@ -317,9 +291,8 @@ class _DueChip extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: effective,
-              fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
           ),

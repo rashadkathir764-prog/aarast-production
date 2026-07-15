@@ -1,6 +1,6 @@
-// Full-screen visual preview for the welcome gateway path-selection step —
-// the royal burgundy hero + the three color-coded premium path cards + the
-// login prompt, exactly as a first-time visitor sees it.
+// Full-screen visual previews for the welcome gateway, exactly as a first-time
+// visitor sees it: the text-only hero that owns every heading, and the unified
+// premium path cards serving both the path step and the role step.
 //
 // Regenerate with:
 //   flutter test test/welcome_gateway_preview_test.dart --update-goldens
@@ -19,37 +19,55 @@ import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_scr
 
 import 'support/preview_fonts.dart';
 
+Future<void> _pumpGateway(WidgetTester tester) async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+
+  tester.view.physicalSize = const Size(390, 860);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<AuthStorage>(create: (_) => AuthStorage(prefs)),
+        Provider<GuestOnboardingStorage>(
+          create: (_) => GuestOnboardingStorage(prefs),
+        ),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        home: const SmartWelcomeScreen(),
+      ),
+    ),
+  );
+  await tester.pump(const Duration(milliseconds: 600));
+}
+
 void main() {
   setUpAll(loadPreviewAppFonts);
 
   testWidgets('welcome gateway — path selection (390)', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-
-    tester.view.physicalSize = const Size(390, 860);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(prefs)),
-          Provider<GuestOnboardingStorage>(
-            create: (_) => GuestOnboardingStorage(prefs),
-          ),
-        ],
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          home: const SmartWelcomeScreen(),
-        ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 600));
+    await _pumpGateway(tester);
 
     await expectLater(
       find.byType(SmartWelcomeScreen),
       matchesGoldenFile('goldens/welcome_gateway_pathselection.png'),
+    );
+  });
+
+  testWidgets('welcome gateway — role selection (390)', (tester) async {
+    await _pumpGateway(tester);
+
+    await tester.tap(find.text('إنشاء خطتك'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('العريس'));
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(SmartWelcomeScreen),
+      matchesGoldenFile('goldens/welcome_gateway_roleselection.png'),
     );
   });
 }

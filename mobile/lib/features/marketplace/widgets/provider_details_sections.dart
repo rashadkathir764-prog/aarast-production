@@ -310,10 +310,9 @@ class _PackageTile extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         color: AppTheme.ink,
                         fontWeight: FontWeight.w900,
-                        fontSize: 15,
                       ),
                     ),
                     if (item.serviceTitle?.trim().isNotEmpty == true) ...[
@@ -322,11 +321,8 @@ class _PackageTile extends StatelessWidget {
                         item.serviceTitle!.trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppTheme.muted,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppTheme.muted),
                       ),
                     ],
                   ],
@@ -387,10 +383,8 @@ class _FeatureChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: AppTheme.ink,
-              fontWeight: FontWeight.w700,
-              fontSize: 12,
             ),
           ),
         ],

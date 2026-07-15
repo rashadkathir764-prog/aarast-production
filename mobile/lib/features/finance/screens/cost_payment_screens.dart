@@ -589,7 +589,10 @@ class _ReversalReasonDialogState extends State<_ReversalReasonDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('رجوع'),
         ),
-        ElevatedButton(
+        AarastButton(
+          label: 'تسجيل العكس',
+          expand: false,
+          variant: AarastButtonVariant.danger,
           onPressed: () {
             final reason = _controller.text.trim();
             if (reason.isEmpty) {
@@ -598,8 +601,6 @@ class _ReversalReasonDialogState extends State<_ReversalReasonDialog> {
             }
             Navigator.pop(context, reason);
           },
-          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
-          child: const Text('تسجيل العكس'),
         ),
       ],
     );

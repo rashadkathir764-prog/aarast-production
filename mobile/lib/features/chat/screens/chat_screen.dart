@@ -295,17 +295,19 @@ class _ChatHeader extends StatelessWidget {
                     conversation?.counterpart.name ?? 'المحادثة',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       color: AppTheme.ink,
                       fontWeight: FontWeight.w900,
-                      fontSize: 16,
                     ),
                   ),
                   Text(
                     conversation?.serviceTitle ?? 'طلب عرض سعر',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppTheme.muted, fontSize: 12),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -391,18 +393,16 @@ class _MessageBubble extends StatelessWidget {
               const SizedBox(height: 5),
               Text(
                 'جارٍ الإرسال...',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: mine ? Colors.white70 : AppTheme.muted,
-                  fontSize: 10,
                 ),
               ),
             ] else if (read) ...[
               const SizedBox(height: 5),
               Text(
                 'تمت القراءة',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: mine ? Colors.white70 : AppTheme.muted,
-                  fontSize: 10,
                 ),
               ),
             ],

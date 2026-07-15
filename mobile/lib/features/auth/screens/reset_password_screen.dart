@@ -217,16 +217,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             icon: LucideIcons.lock,
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.next,
-            suffixIcon: IconButton(
-              tooltip: _obscurePassword
-                  ? 'إظهار كلمة المرور'
-                  : 'إخفاء كلمة المرور',
+            suffixIcon: AuthObscureToggle(
+              obscured: _obscurePassword,
               onPressed: () {
                 setState(() => _obscurePassword = !_obscurePassword);
               },
-              icon: Icon(
-                _obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff,
-              ),
             ),
             validator: (value) {
               if (value == null || value.isEmpty) {

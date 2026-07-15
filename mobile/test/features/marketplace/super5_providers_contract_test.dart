@@ -75,6 +75,10 @@ void main() {
         320,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(
+        find.byKey(const Key('quote-conversation-quote-user-1')),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const Key('quote-conversation-quote-user-1')),
       );

@@ -57,9 +57,8 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               children: [
                 Text(
                   profile.businessName,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 22,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

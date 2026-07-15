@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../sharing/models/shared_member.dart';
 import '../models/budget_category.dart';
@@ -67,6 +68,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             )
           else ...[
             _OverviewHeader(
+              summary: provider.summary,
               showBudgetAction:
                   provider.canManageMoney && provider.summary.hasBudget,
               onBudget: () =>
@@ -94,20 +96,13 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                     context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
               ),
               if (provider.dueSchedules.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                _SchedulesPreview(
+                const SizedBox(height: 14),
+                _NextScheduleStrip(
                   summary: provider.summary,
                   schedules: provider.dueSchedules,
                   currency: provider.summary.currency,
-                  onOpenAll: () => context.push(
+                  onOpen: () => context.push(
                     AppRouter.moneySchedules(widget.weddingPlanId),
-                  ),
-                  onOpen: (schedule) => context.push(
-                    AppRouter.moneyScheduleDetails(
-                      widget.weddingPlanId,
-                      schedule.costId,
-                      schedule.id,
-                    ),
                   ),
                 ),
               ],
@@ -269,39 +264,42 @@ class _MoneyNextStepCard extends StatelessWidget {
 
 class _OverviewHeader extends StatelessWidget {
   const _OverviewHeader({
+    required this.summary,
     required this.showBudgetAction,
     required this.onBudget,
   });
 
+  final MoneySummary summary;
   final bool showBudgetAction;
   final VoidCallback onBudget;
 
   @override
   Widget build(BuildContext context) {
+    // ترويسة مضغوطة: عنوان + شارة استخدام حية بدل سطر تسويقي.
+    final usedPercent = (summary.confirmedRatio * 100).round();
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'المال',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontFamily: AppTheme.displayFontFamily,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'ميزانيتك، تكاليفك، وما دفعته في مكان واحد.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: AppTheme.muted),
-              ),
-            ],
+          child: Text(
+            'المال',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontFamily: AppTheme.displayFontFamily,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
+        if (summary.hasBudget) ...[
+          const SizedBox(width: 10),
+          AarastStatusPill(
+            label: '$usedPercent% مستخدم',
+            color: AppTheme.goldDeep,
+            backgroundColor: AppTheme.goldSoft,
+            icon: LucideIcons.wallet,
+          ),
+        ],
         if (showBudgetAction)
           IconButton(
             onPressed: onBudget,
@@ -404,47 +402,48 @@ class _MoneyHero extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Builder(
-            builder: (context) {
-              final metrics = <Widget>[
-                _HeroMetric(
-                  label: 'الميزانية',
-                  amount: summary.budget.total,
-                  currency: summary.currency,
-                ),
-                _HeroMetric(
-                  label: 'التكاليف',
-                  amount: summary.costs.total,
-                  currency: summary.currency,
-                ),
-                _HeroMetric(
-                  label: 'المدفوع',
-                  amount: summary.costs.paid,
-                  currency: summary.currency,
-                ),
-                _HeroMetric(
-                  label: 'الباقي عليك',
-                  amount: summary.costs.outstanding,
-                  currency: summary.currency,
-                ),
-              ];
-              final textScale = MediaQuery.textScalerOf(context).scale(1);
-              return GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: metrics.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  mainAxisExtent: textScale > 1.15 ? 82 : 74,
-                ),
-                itemBuilder: (context, index) => metrics[index],
-              );
-            },
-          ),
+          _HeroMetricsRow(summary: summary),
         ],
       ),
+    );
+  }
+}
+
+/// صف مؤشرات واحد مقسوم بفواصل رفيعة بدل شبكة الصناديق 2×2.
+class _HeroMetricsRow extends StatelessWidget {
+  const _HeroMetricsRow({required this.summary});
+
+  final MoneySummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final divider = Container(
+      width: 1,
+      height: 30,
+      color: Colors.white.withValues(alpha: .16),
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _HeroMetric(
+          label: 'الميزانية',
+          amount: summary.budget.total,
+          currency: summary.currency,
+        ),
+        divider,
+        _HeroMetric(
+          label: 'المدفوع',
+          amount: summary.costs.paid,
+          currency: summary.currency,
+        ),
+        divider,
+        _HeroMetric(
+          label: 'الباقي عليك',
+          amount: summary.costs.outstanding,
+          currency: summary.currency,
+          valueColor: AppTheme.goldLight,
+        ),
+      ],
     );
   }
 }
@@ -454,95 +453,135 @@ class _HeroMetric extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.currency,
+    this.valueColor = Colors.white,
   });
 
   final String label;
   final Object? amount;
   final String currency;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: Colors.white70),
-          ),
-          const SizedBox(height: 3),
-          MoneyAmountText(
-            amount: amount,
-            currency: currency,
-            style: Theme.of(context).textTheme.labelLarge,
-            color: Colors.white,
-          ),
-        ],
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Column(
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: Colors.white70),
+              ),
+            ),
+            const SizedBox(height: 3),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: MoneyAmountText(
+                amount: amount,
+                currency: currency,
+                style: Theme.of(context).textTheme.labelLarge,
+                color: valueColor,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SchedulesPreview extends StatelessWidget {
-  const _SchedulesPreview({
+/// شريط واحد للموعد الأقرب — يفتح شاشة مواعيد الدفع الكاملة.
+/// يتحول للون الخطر تلقائيًا عند وجود مواعيد متأخرة.
+class _NextScheduleStrip extends StatelessWidget {
+  const _NextScheduleStrip({
     required this.summary,
     required this.schedules,
     required this.currency,
-    required this.onOpenAll,
     required this.onOpen,
   });
 
   final MoneySummary summary;
   final List<PaymentSchedule> schedules;
   final String currency;
-  final VoidCallback onOpenAll;
-  final ValueChanged<PaymentSchedule> onOpen;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AarastSectionHeader(
-          title: 'مواعيد الدفع',
-          icon: LucideIcons.calendarClock,
-          actionLabel: 'عرض الكل',
-          onAction: onOpenAll,
-        ),
-        const SizedBox(height: 10),
-        if (summary.paymentSchedules.overdueCount > 0) ...[
-          MoneyMessageBanner(
-            error: true,
-            message:
-                'لديك ${summary.paymentSchedules.overdueCount} موعد دفع متأخر يحتاج متابعة.',
-          ),
-          const SizedBox(height: 10),
-        ],
-        if (schedules.isEmpty)
-          const AarastEmptyState(
-            icon: LucideIcons.calendarCheck,
-            title: 'لا توجد مواعيد قريبة',
-            message: 'أضف موعد دفع من داخل أي تكلفة عند الحاجة.',
-          )
-        else
-          for (final schedule in schedules.take(2)) ...[
-            ScheduleCard(
-              schedule: schedule,
-              currency: currency,
-              onTap: () => onOpen(schedule),
+    final nearest = schedules.first;
+    final overdueCount = summary.paymentSchedules.overdueCount;
+    final isOverdue = overdueCount > 0;
+    final color = isOverdue ? AppTheme.danger : AppTheme.goldDeep;
+    final title = isOverdue
+        ? 'لديك $overdueCount موعد دفع متأخر يحتاج متابعة'
+        : 'الموعد القادم: ${nearest.costTitle ?? 'موعد دفع'}';
+
+    return AarastCard(
+      key: const ValueKey('money-next-schedule-strip'),
+      onTap: onOpen,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      color: isOverdue ? AppTheme.dangerSoft : AppTheme.goldSoft,
+      radius: AppTheme.radiusMd,
+      border: Border.all(color: color.withValues(alpha: .35)),
+      child: Row(
+        children: [
+          Icon(LucideIcons.calendarClock, size: 20, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        formatArabicCompactDate(nearest.dueDate),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      ' · ',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: color),
+                    ),
+                    Flexible(
+                      child: MoneyAmountText(
+                        amount: nearest.amount,
+                        currency: currency,
+                        style: Theme.of(context).textTheme.labelSmall,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-          ],
-      ],
+          ),
+          const SizedBox(width: 8),
+          Icon(LucideIcons.chevronLeft, size: 17, color: color),
+        ],
+      ),
     );
   }
 }
@@ -581,21 +620,36 @@ class _CategoriesPreview extends StatelessWidget {
             message: 'التصنيف يجعل كل تكلفة في مكانها الصحيح.',
           )
         else
-          for (final category in categories.take(4)) ...[
-            _CategoryCard(
-              category: category,
-              currency: currency,
-              onTap: () => onOpen(category),
-            ),
-            const SizedBox(height: 10),
-          ],
+          Builder(
+            builder: (context) {
+              final textScale = MediaQuery.textScalerOf(context).scale(1);
+              final visible = categories.take(4).toList();
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: visible.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  mainAxisExtent: textScale > 1.15 ? 108 : 92,
+                ),
+                itemBuilder: (context, index) => _CategoryTile(
+                  category: visible[index],
+                  currency: currency,
+                  onTap: () => onOpen(visible[index]),
+                ),
+              );
+            },
+          ),
       ],
     );
   }
 }
 
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({
+/// بلاطة تصنيف مضغوطة — أربعة تصنيفات في مساحة بطاقة واحدة قديمة.
+class _CategoryTile extends StatelessWidget {
+  const _CategoryTile({
     required this.category,
     required this.currency,
     required this.onTap,
@@ -609,28 +663,36 @@ class _CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final allocation = moneyValue(category.allocatedAmount);
     final confirmed = moneyValue(category.confirmedCost);
-    final ratio = allocation <= 0
+    final hasAllocation = category.allocatedAmount != null && allocation > 0;
+    final over = hasAllocation && confirmed > allocation;
+    final ratio = !hasAllocation
         ? 0.0
         : (confirmed / allocation).clamp(0.0, 1.0).toDouble();
+    final nameColor = over ? AppTheme.danger : AppTheme.ink;
+    final amountColor = over ? AppTheme.danger : AppTheme.muted;
+
     return AarastCard(
       onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      radius: AppTheme.radiusMd,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.tag, color: AppTheme.burgundy),
-              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   category.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: nameColor,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
+              const SizedBox(width: 6),
               Text(
                 '${category.costsCount} تكلفة',
                 style: Theme.of(
@@ -639,34 +701,49 @@ class _CategoryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: MoneyAmountText(
+          const SizedBox(height: 5),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Row(
+              children: [
+                MoneyAmountText(
                   amount: category.confirmedCost,
                   currency: currency,
+                  style: Theme.of(context).textTheme.labelSmall,
+                  color: amountColor,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                category.allocatedAmount == null ? 'بلا مخصص' : 'من المخصص',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
-              ),
-            ],
+                if (hasAllocation) ...[
+                  Text(
+                    ' / ',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
+                  ),
+                  MoneyAmountText(
+                    amount: category.allocatedAmount,
+                    currency: currency,
+                    style: Theme.of(context).textTheme.labelSmall,
+                    color: AppTheme.muted,
+                  ),
+                ] else
+                  Text(
+                    ' · بلا مخصص',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
+                  ),
+              ],
+            ),
           ),
-          if (category.allocatedAmount != null) ...[
-            const SizedBox(height: 10),
+          if (hasAllocation) ...[
+            const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(AppTheme.radiusPill),
               child: LinearProgressIndicator(
-                minHeight: 6,
-                value: ratio,
-                color: confirmed > allocation
-                    ? AppTheme.danger
-                    : AppTheme.burgundy,
+                minHeight: 4,
+                value: over ? 1 : ratio,
+                color: over ? AppTheme.danger : AppTheme.burgundy,
                 backgroundColor: AppTheme.empty,
               ),
             ),
@@ -755,7 +832,7 @@ class _PaymentsPreview extends StatelessWidget {
             message: 'تظهر هنا الدفعات المسجلة على التكاليف.',
           )
         else
-          for (final payment in payments.take(4)) ...[
+          for (final payment in payments.take(2)) ...[
             PaymentCard(
               payment: payment,
               currency: currency,

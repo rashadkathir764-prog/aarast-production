@@ -413,15 +413,13 @@ class _RoyalSheetHeader extends StatelessWidget {
               ),
             ),
           ),
-          const Positioned(
+          Positioned(
             bottom: 0,
             child: Text(
               'إجراء جديد',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: AppTheme.ink,
-                fontSize: 18,
                 fontWeight: FontWeight.w800,
-                letterSpacing: 0,
               ),
             ),
           ),
@@ -520,11 +518,9 @@ class _RoyalActionTile extends StatelessWidget {
                 action.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: AppTheme.burgundy,
-                  fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  letterSpacing: 0,
                 ),
               ),
             ),
@@ -588,9 +584,8 @@ class _RoyalNavItem extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: active ? activeColor : inactiveColor,
-                fontSize: 11.5,
                 fontWeight: active ? FontWeight.w900 : FontWeight.w700,
               ),
             ),

@@ -229,10 +229,9 @@ class _PhotoCounter extends StatelessWidget {
           Text(
             '1 / $count',
             textDirection: TextDirection.ltr,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
-              fontSize: 12,
             ),
           ),
         ],
@@ -392,12 +391,10 @@ class _PriceBlock extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   'الأسعار تقديرية وتتأكد عند طلب العرض',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
                   ),
                 ),
               ],
@@ -493,19 +490,19 @@ class _GalleryThumb extends StatelessWidget {
                         Text(
                           '+$overlayCount',
                           textDirection: TextDirection.ltr,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
                         ),
-                        const Text(
+                        Text(
                           'عرض الكل',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                       ],
                     ),

@@ -47,7 +47,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('hero includes outstanding money in a responsive 2x2 grid', (
+    testWidgets('hero shows outstanding in a compact metrics row', (
       tester,
     ) async {
       _setPhoneView(tester);
@@ -57,6 +57,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('الباقي عليك'), findsOneWidget);
+      expect(find.text('المدفوع'), findsOneWidget);
+      expect(find.text('التكاليف'), findsNothing);
       expect(find.byType(GridView), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

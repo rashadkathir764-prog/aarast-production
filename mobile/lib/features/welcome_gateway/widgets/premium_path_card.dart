@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/theme/app_theme.dart';
 
-/// نغمة بطاقة المسار — تمنح كل مسار لبنة أيقونة متدرّجة فاخرة متناسقة مع
-/// هوية أعرست (بورجندي ملكي + ذهب شمبانيا + وردي هادئ) بدل الحلقات
-/// الفارغة الباهتة السابقة. المسار الأساسي (النغمة الملكية) هو الأبرز.
-enum PremiumPathTone { hero, gold, rose }
+/// نغمة بطاقة المسار — تمنح كل مسار لبنة أيقونة متناسقة مع هوية أعرست.
+/// [hero] و [gold] لبنتان مصمتتان بنفس الحضور (المساران الأساسيان)، و [quiet]
+/// لبنة محدّدة بإطار: هدوءها مقصود لأنها فئة مختلفة، لا نسخة أضعف.
+enum PremiumPathTone { hero, gold, quiet }
 
+/// بطاقة واحدة تخدم دورين: بطاقة تنقّل ([selected] = null فتُذيّل بشيفرون)،
+/// وبطاقة اختيار ([selected] غير null فتُذيّل بعلامة تحديد أو حلقة فارغة).
+/// توحيدها يمنع تفاوت الفخامة بين خطوة المسار وخطوة الدور.
 class PremiumPathCard extends StatefulWidget {
   const PremiumPathCard({
     super.key,
@@ -15,6 +18,7 @@ class PremiumPathCard extends StatefulWidget {
     required this.icon,
     required this.onTap,
     this.tone = PremiumPathTone.gold,
+    this.selected,
   });
 
   final String title;
@@ -22,6 +26,7 @@ class PremiumPathCard extends StatefulWidget {
   final IconData icon;
   final VoidCallback onTap;
   final PremiumPathTone tone;
+  final bool? selected;
 
   @override
   State<PremiumPathCard> createState() => _PremiumPathCardState();
@@ -29,18 +34,18 @@ class PremiumPathCard extends StatefulWidget {
 
 class _PathStyle {
   const _PathStyle({
-    required this.tileGradient,
     required this.tileIconColor,
-    required this.tileGlow,
-    required this.chevronBg,
-    required this.chevronColor,
+    this.tileGradient,
+    this.tileColor,
+    this.tileBorder,
+    this.tileGlow,
   });
 
-  final Gradient tileGradient;
   final Color tileIconColor;
-  final Color tileGlow;
-  final Color chevronBg;
-  final Color chevronColor;
+  final Gradient? tileGradient;
+  final Color? tileColor;
+  final Color? tileBorder;
+  final Color? tileGlow;
 }
 
 class _PremiumPathCardState extends State<PremiumPathCard>
@@ -86,8 +91,6 @@ class _PremiumPathCardState extends State<PremiumPathCard>
           ),
           tileIconColor: Colors.white,
           tileGlow: AppTheme.burgundy,
-          chevronBg: AppTheme.goldSoft,
-          chevronColor: AppTheme.burgundy,
         );
       case PremiumPathTone.gold:
         return const _PathStyle(
@@ -98,31 +101,24 @@ class _PremiumPathCardState extends State<PremiumPathCard>
           ),
           tileIconColor: AppTheme.burgundyDark,
           tileGlow: AppTheme.gold,
-          chevronBg: AppTheme.goldSoft,
-          chevronColor: AppTheme.burgundy,
         );
-      case PremiumPathTone.rose:
+      case PremiumPathTone.quiet:
         return const _PathStyle(
-          tileGradient: LinearGradient(
-            begin: _tileGradientBegin,
-            end: _tileGradientEnd,
-            colors: [AppTheme.burgundySoft, AppTheme.dangerSoft],
-          ),
+          tileColor: AppTheme.empty,
+          tileBorder: AppTheme.border,
           tileIconColor: AppTheme.burgundy,
-          tileGlow: AppTheme.burgundy,
-          chevronBg: AppTheme.burgundySoft,
-          chevronColor: AppTheme.burgundy,
         );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSelected = widget.selected ?? false;
     final isHero = widget.tone == PremiumPathTone.hero;
     final style = _style;
-    final emphasised = isHero || _isHovered;
+    final emphasised = isSelected || isHero || _isHovered;
 
-    final borderColor = _isHovered
+    final borderColor = (isSelected || _isHovered)
         ? AppTheme.gold
         : (isHero ? AppTheme.gold.withValues(alpha: 0.55) : AppTheme.border);
 
@@ -142,18 +138,18 @@ class _PremiumPathCardState extends State<PremiumPathCard>
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: isSelected ? AppTheme.goldSoft : AppTheme.surface,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: borderColor,
-                width: emphasised ? 1.8 : 1.5,
+                width: isSelected ? 2.0 : (emphasised ? 1.8 : 1.5),
               ),
               boxShadow: [
                 BoxShadow(
                   color: emphasised
                       ? AppTheme.gold.withValues(alpha: 0.16)
                       : AppTheme.ink.withValues(alpha: 0.05),
-                  blurRadius: _isHovered ? 30 : (isHero ? 26 : 18),
+                  blurRadius: _isHovered ? 30 : (emphasised ? 26 : 18),
                   offset: Offset(0, _isHovered ? 15 : 12),
                 ),
               ],
@@ -166,14 +162,20 @@ class _PremiumPathCardState extends State<PremiumPathCard>
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     gradient: style.tileGradient,
+                    color: style.tileColor,
                     borderRadius: BorderRadius.circular(18),
-                    boxShadow: [
-                      BoxShadow(
-                        color: style.tileGlow.withValues(alpha: 0.32),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
+                    border: style.tileBorder == null
+                        ? null
+                        : Border.all(color: style.tileBorder!, width: 1.5),
+                    boxShadow: style.tileGlow == null
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: style.tileGlow!.withValues(alpha: 0.32),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                   ),
                   child: Icon(
                     widget.icon,
@@ -209,24 +211,45 @@ class _PremiumPathCardState extends State<PremiumPathCard>
                   ),
                 ),
                 const SizedBox(width: 12),
-                Container(
-                  width: 34,
-                  height: 34,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: style.chevronBg,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    LucideIcons.chevronLeft,
-                    size: 18,
-                    color: style.chevronColor,
-                  ),
-                ),
+                _PathTrailing(selected: widget.selected),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// ذيل البطاقة: شيفرون عارٍ للتنقّل (نفس لغة بقية التطبيق)، وعلامة تحديد
+/// أو حلقة فارغة للاختيار.
+class _PathTrailing extends StatelessWidget {
+  const _PathTrailing({required this.selected});
+
+  final bool? selected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selected == null) {
+      return const Icon(
+        LucideIcons.chevronLeft,
+        size: 20,
+        color: AppTheme.disabled,
+      );
+    }
+    if (selected!) {
+      return const Icon(
+        LucideIcons.checkCircle,
+        size: 24,
+        color: AppTheme.burgundy,
+      );
+    }
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.border, width: 1.5),
       ),
     );
   }

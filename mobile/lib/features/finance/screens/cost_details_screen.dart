@@ -292,12 +292,13 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('رجوع'),
           ),
-          ElevatedButton(
+          AarastButton(
+            label: actionLabel,
+            expand: false,
+            variant: danger
+                ? AarastButtonVariant.danger
+                : AarastButtonVariant.primary,
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: danger
-                ? ElevatedButton.styleFrom(backgroundColor: AppTheme.danger)
-                : null,
-            child: Text(actionLabel),
           ),
         ],
       ),

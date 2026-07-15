@@ -282,10 +282,9 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   onPressed: _isUploading ? null : _confirmDiscard,
                   child: Text(
                     'تجاهل الخطة المحلية',
-                    style: TextStyle(
+                    style: theme.textTheme.bodyMedium?.copyWith(
                       color: AppTheme.muted,
                       fontWeight: FontWeight.w800,
-                      fontSize: theme.textTheme.bodyMedium?.fontSize,
                     ),
                   ),
                 ),

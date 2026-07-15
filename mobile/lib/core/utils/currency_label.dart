@@ -2,6 +2,13 @@
 /// لا يجب أن يظهر "YER" أو رموز إنجليزية في واجهة عربية-أولًا.
 const defaultCurrencyCode = 'YER';
 
+/// خيارات العملة المدعومة في نماذج الخطة والميزانية (شرائح اختيار).
+const weddingCurrencyOptions = <(String, String)>[
+  ('YER', 'ريال يمني'),
+  ('SAR', 'ريال سعودي'),
+  ('USD', 'دولار أمريكي'),
+];
+
 String currencyLabelAr(String? code) {
   final normalized = code?.trim().toUpperCase();
   return switch (normalized) {

@@ -54,7 +54,6 @@ void main() {
       findsNothing,
     );
     expect(find.byType(AuthBrandMark), findsNothing);
-    expect(find.byType(WeddingRingsBadge), findsNothing);
   });
 
   testWidgets('OTP clears the stale server error when retry input starts', (

@@ -10,16 +10,19 @@ import '../../models/guest.dart';
 ///
 /// بدل "اكتمال البيانات 0%" المجرّد، نعرض الرقم الذي يهم اليمني فعلًا:
 /// **الحضور المتوقع** — عليه تُقاس تكلفة العرس. تحته شريط مقسّم
-/// (مؤكد/بانتظار/معتذر) وتقسيم الطرفين (العريس/العروسة).
+/// (مؤكد/بانتظار/معتذر) وتقسيم الطرفين، و`footer` فتحة تضع فيها
+/// الشاشة شرائح الفلترة الحية — نفس عقد بطل المهام.
 class GuestMeterHero extends StatelessWidget {
   const GuestMeterHero({
     required this.summary,
     this.isLocalPlan = false,
+    this.footer,
     super.key,
   });
 
   final GuestSummary summary;
   final bool isLocalPlan;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +34,7 @@ class GuestMeterHero extends StatelessWidget {
 
     final groomCount = summary.bySideForSuper['groom'] ?? 0;
     final brideCount = summary.bySideForSuper['bride'] ?? 0;
+    final textTheme = Theme.of(context).textTheme;
 
     return Container(
       decoration: BoxDecoration(
@@ -58,12 +62,10 @@ class GuestMeterHero extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'الحضور المتوقع',
-                            style: TextStyle(
+                            style: textTheme.labelMedium?.copyWith(
                               color: AarastDesignTokens.muted,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -73,23 +75,20 @@ class GuestMeterHero extends StatelessWidget {
                             children: [
                               _CountUp(
                                 value: expectedAttendance,
-                                style: const TextStyle(
+                                style: textTheme.displaySmall!.copyWith(
                                   color: AarastDesignTokens.title,
                                   fontSize: 34,
                                   fontWeight: FontWeight.w800,
                                   height: 1,
-                                  fontFamily: 'IBMPlexSansArabic',
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              const Padding(
-                                padding: EdgeInsets.only(bottom: 4),
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
                                 child: Text(
                                   'شخص',
-                                  style: TextStyle(
+                                  style: textTheme.labelMedium?.copyWith(
                                     color: AarastDesignTokens.muted,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ),
@@ -98,16 +97,14 @@ class GuestMeterHero extends StatelessWidget {
                           Text(
                             '$total ${total == 1 ? 'دعوة' : 'دعوة'}'
                             '${summary.companionsExpectedCount > 0 ? ' + ${summary.companionsExpectedCount} مرافق' : ''}',
-                            style: const TextStyle(
+                            style: textTheme.labelSmall?.copyWith(
                               color: AarastDesignTokens.muted,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (isLocalPlan) _localBadge(),
+                    if (isLocalPlan) _localBadge(context),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -175,12 +172,14 @@ class GuestMeterHero extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (footer != null) ...[const SizedBox(height: 14), footer!],
               ],
             ),
     );
   }
 
   Widget _buildFresh(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     return Row(
       children: [
         Container(
@@ -203,25 +202,23 @@ class GuestMeterHero extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'قائمة الضيوف',
-                      style: TextStyle(
+                      style: textTheme.titleMedium?.copyWith(
                         color: AarastDesignTokens.title,
-                        fontSize: 16.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                  if (isLocalPlan) _localBadge(),
+                  if (isLocalPlan) _localBadge(context),
                 ],
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'أضف أول ضيف، وسنحسب لك الحضور المتوقع لتقدّر التكلفة بدقة.',
-                style: TextStyle(
+                style: textTheme.bodySmall?.copyWith(
                   color: AarastDesignTokens.muted,
-                  fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   height: 1.45,
                 ),
@@ -233,27 +230,26 @@ class GuestMeterHero extends StatelessWidget {
     );
   }
 
-  Widget _localBadge() {
+  Widget _localBadge(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(
         color: AarastDesignTokens.goldSoft,
         borderRadius: BorderRadius.circular(AarastDesignTokens.radiusPill),
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
+          const Icon(
             LucideIcons.smartphone,
             size: 11,
             color: AarastDesignTokens.warning,
           ),
-          SizedBox(width: 4),
+          const SizedBox(width: 4),
           Text(
             'تخطيط محلي',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AarastDesignTokens.ink,
-              fontSize: 10.5,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -350,10 +346,8 @@ class _Legend extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             '$value',
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: AarastDesignTokens.ink,
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(width: 3),
@@ -362,10 +356,8 @@ class _Legend extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: AarastDesignTokens.muted,
-                fontSize: 11.5,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -398,9 +390,8 @@ class _SideChip extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AarastDesignTokens.muted,
-              fontSize: 11.5,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -408,10 +399,8 @@ class _SideChip extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           '$value',
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: AarastDesignTokens.ink,
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
           ),
         ),
       ],

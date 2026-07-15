@@ -313,11 +313,8 @@ class _LocalSyncNotice extends StatelessWidget {
                   needsSync ? 'مسودة محفوظة على هذا الجهاز' : 'المسودة جاهزة',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: AppTheme.burgundy,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
                   ),
                 ),
               ),
@@ -331,13 +328,11 @@ class _LocalSyncNotice extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'زامن',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: AppTheme.burgundy,
-                  fontSize: 13,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
                 ),
               ),
             ],

@@ -37,16 +37,15 @@ class PlanQuoteRequestsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(LucideIcons.fileCheck2, color: AppTheme.burgundy),
-              SizedBox(width: 8),
+              const Icon(LucideIcons.fileCheck2, color: AppTheme.burgundy),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'عروض الأسعار',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

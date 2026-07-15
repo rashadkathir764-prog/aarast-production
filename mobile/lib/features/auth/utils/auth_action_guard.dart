@@ -82,12 +82,11 @@ class AuthActionGuard {
                     color: AppTheme.burgundy,
                   ),
                   const SizedBox(height: 14),
-                  const Text(
+                  Text(
                     'هذه الخطوة تحتاج حساباً',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppTheme.ink,
-                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -210,9 +209,8 @@ class AuthGatePanel extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: AppTheme.ink,
-                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                 ),
               ),

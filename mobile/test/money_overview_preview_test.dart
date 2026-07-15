@@ -1,0 +1,204 @@
+// Visual preview for the redesigned money tab root (MoneyOverviewScreen):
+// compact hero metrics row, next-schedule strip, category grid, slim rows.
+//
+// Regenerate with:
+//   flutter test test/money_overview_preview_test.dart --update-goldens
+@Tags(['golden'])
+library;
+
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/money_summary.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
+import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+
+import 'support/preview_fonts.dart';
+
+const _planId = 'plan-money-preview';
+final _now = DateTime(2026, 7, 4);
+
+void main() {
+  setUpAll(loadPreviewAppFonts);
+
+  testWidgets('money — overview root (420)', (tester) async {
+    tester.view.physicalSize = const Size(420, 1500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<FinanceProvider>(
+        create: (_) => FinanceProvider(_FakeFinanceApi()),
+        child: MaterialApp(
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MoneyOverviewScreen(weddingPlanId: _planId),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await expectLater(
+      find.byType(MoneyOverviewScreen),
+      matchesGoldenFile('goldens/money_overview.png'),
+    );
+  });
+}
+
+class _FakeFinanceApi extends FinanceApi {
+  _FakeFinanceApi() : super(ApiClient(tokenProvider: () async => null));
+
+  @override
+  Future<MoneySummary> getMoneySummary(String planId) async {
+    return MoneySummary(
+      planId: planId,
+      currency: 'YER',
+      budget: const MoneyBudgetSummary(
+        total: '10000000',
+        allocated: '3850000',
+        unallocated: '6150000',
+        confirmedCost: '3400000',
+        remaining: '6600000',
+      ),
+      costs: const MoneyCostsSummary(
+        total: '3400000',
+        paid: '2100000',
+        outstanding: '1300000',
+        count: 3,
+      ),
+      paymentSchedules: const MoneySchedulesSummary(upcomingCount: 1),
+      categories: const [
+        MoneyCategorySummary(
+          categoryId: 'category-1',
+          name: 'القاعة',
+          allocatedAmount: '2000000',
+          confirmedCost: '1500000',
+          costsCount: 1,
+        ),
+        MoneyCategorySummary(
+          categoryId: 'category-2',
+          name: 'التصوير',
+          allocatedAmount: '800000',
+          confirmedCost: '600000',
+          costsCount: 1,
+        ),
+        MoneyCategorySummary(
+          categoryId: 'category-3',
+          name: 'الملابس',
+          allocatedAmount: '700000',
+          confirmedCost: '450000',
+          costsCount: 1,
+        ),
+        MoneyCategorySummary(
+          categoryId: 'category-4',
+          name: 'الدعوات',
+          allocatedAmount: '300000',
+          confirmedCost: '350000',
+          costsCount: 1,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<FinancePage<WeddingCost>> getCosts(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+    String? status,
+    String? categoryId,
+    String? search,
+  }) async => FinancePage(
+    items: [
+      WeddingCost(
+        id: 'cost-1',
+        weddingPlanId: _planId,
+        budgetCategoryId: 'category-1',
+        title: 'حجز صالة الأفراح',
+        totalAmount: '1500000',
+        paidAmount: '1000000',
+        remainingAmount: '500000',
+        status: 'PARTIALLY_PAID',
+        createdAt: _now,
+        updatedAt: _now,
+      ),
+      WeddingCost(
+        id: 'cost-2',
+        weddingPlanId: _planId,
+        budgetCategoryId: 'category-2',
+        title: 'باقة التصوير الذهبية',
+        totalAmount: '600000',
+        paidAmount: '0',
+        remainingAmount: '600000',
+        status: 'OPEN',
+        providerId: 'provider-1',
+        createdAt: _now,
+        updatedAt: _now,
+      ),
+      WeddingCost(
+        id: 'cost-3',
+        weddingPlanId: _planId,
+        budgetCategoryId: 'category-3',
+        title: 'بدلة العريس',
+        totalAmount: '450000',
+        paidAmount: '450000',
+        remainingAmount: '0',
+        status: 'PAID',
+        createdAt: _now,
+        updatedAt: _now,
+      ),
+    ],
+    page: page,
+    pageSize: limit,
+    total: 3,
+    totalPages: 1,
+  );
+
+  @override
+  Future<FinancePage<CostPayment>> getPlanPayments(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+  }) async => FinancePage(
+    items: [
+      CostPayment(
+        id: 'payment-1',
+        costId: 'cost-1',
+        amount: '1000000',
+        paidAt: _now.subtract(const Duration(days: 3)),
+        costTitle: 'حجز صالة الأفراح',
+      ),
+      CostPayment(
+        id: 'payment-2',
+        costId: 'cost-3',
+        amount: '300000',
+        paidAt: _now.subtract(const Duration(days: 7)),
+        costTitle: 'بدلة العريس',
+      ),
+    ],
+    page: page,
+    pageSize: limit,
+    total: 2,
+    totalPages: 1,
+  );
+
+  @override
+  Future<List<PaymentSchedule>> getDuePaymentSchedules(String planId) async =>
+      [
+        PaymentSchedule(
+          id: 'schedule-1',
+          costId: 'cost-1',
+          amount: '500000',
+          dueDate: _now.add(const Duration(days: 2)),
+          status: 'PENDING',
+          costTitle: 'حجز صالة الأفراح',
+        ),
+      ];
+}

@@ -14,7 +14,6 @@ import '../../wedding_plans/models/onboarding_complete.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
 
 import '../widgets/premium_path_card.dart';
-import '../widgets/premium_role_card.dart';
 import '../widgets/premium_setup_fields.dart';
 
 enum _WelcomeStep { pathSelection, roleSelection, quickSetup }
@@ -224,7 +223,16 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
-                    child: _WelcomeHero(step: _currentStep),
+                    child: _WelcomeHero(
+                      step: _currentStep,
+                      onBack: switch (_currentStep) {
+                        _WelcomeStep.pathSelection => null,
+                        _WelcomeStep.roleSelection => () =>
+                          _goTo(_WelcomeStep.pathSelection),
+                        _WelcomeStep.quickSetup => () =>
+                          _goTo(_WelcomeStep.roleSelection),
+                      },
+                    ),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -274,15 +282,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'اختر المسار المناسب لك',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 18),
           PremiumPathCard(
             title: 'إنشاء خطتك',
             subtitle: 'ابدأ خطة جديدة ثم خصصها حسب دورك.',
@@ -303,7 +302,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             title: 'أنا مزود خدمة',
             subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
             icon: LucideIcons.store,
-            tone: PremiumPathTone.rose,
+            tone: PremiumPathTone.quiet,
             onTap: () => context.go(AppRouter.providerApply),
           ),
           const SizedBox(height: 18),
@@ -321,50 +320,28 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildBackButton(() => _goTo(_WelcomeStep.pathSelection)),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'خلنا نتعرف عليك',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.ink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'لنصنع لك تجربة تليق باحتياجاتك',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
-              height: 1.45,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          PremiumRoleCard(
+          PremiumPathCard(
             title: 'العريس',
             subtitle: 'أتابع الخطة والميزانية',
             icon: LucideIcons.user,
-            isSelected: _selectedPersona == GuestPersona.groom,
+            tone: PremiumPathTone.hero,
+            selected: _selectedPersona == GuestPersona.groom,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.groom);
             },
           ),
-          const SizedBox(height: 10),
-          PremiumRoleCard(
+          const SizedBox(height: 14),
+          PremiumPathCard(
             title: 'العروسة',
             subtitle: 'أرتب التفاصيل والاختيارات',
             icon: LucideIcons.flower2,
-            isSelected: _selectedPersona == GuestPersona.bride,
+            tone: PremiumPathTone.gold,
+            selected: _selectedPersona == GuestPersona.bride,
             onTap: () {
               setState(() => _selectedPersona = GuestPersona.bride);
             },
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           AarastButton(
             label: 'التالي',
             icon: LucideIcons.arrowLeft,
@@ -385,31 +362,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: _buildBackButton(() => _goTo(_WelcomeStep.roleSelection)),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'أكمل بيانات خطتك',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.title,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'خطوة أخيرة صغيرة — بهذه البيانات نفتح لك لوحة واضحة تبدأ بها بثقة.',
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.muted,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
               color: AppTheme.surface,
@@ -517,47 +469,20 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       padding: const EdgeInsets.only(bottom: 6.0, right: 4.0),
       child: Text(
         text,
-        style: const TextStyle(
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
           color: AppTheme.ink,
-          fontWeight: FontWeight.w800,
-          fontSize: 15,
         ),
       ),
     );
   }
 
-  Widget _buildBackButton(VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.border, width: 1.0),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.ink.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: const Icon(
-          LucideIcons.arrowRight,
-          color: AppTheme.ink,
-          size: 20,
-        ),
-      ),
-    );
-  }
 }
 
 class _WelcomeHero extends StatelessWidget {
-  const _WelcomeHero({required this.step});
+  const _WelcomeHero({required this.step, this.onBack});
 
   final _WelcomeStep step;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -565,42 +490,31 @@ class _WelcomeHero extends StatelessWidget {
 
     return Column(
       children: [
-        // لبنة الأيقونة تخصّ خطوات المسار الخطّي فقط (الدور ← البيانات)؛
-        // شاشة اختيار المسار تبقى ترويسة نصّية خفيفة بلا شعار.
-        if (step != _WelcomeStep.pathSelection) ...[
-          Container(
-            width: 62,
-            height: 62,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [AppTheme.goldGlow, AppTheme.gold, AppTheme.goldDeep],
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.gold.withValues(alpha: 0.34),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
+        // زر الرجوع يجاور السطر التمهيدي في صفّ واحد بدل أن يطفو فوق
+        // المحتوى: يبقى العنوان متمركزًا ولا يتداخل مع الزر مهما كبر الخط.
+        Row(
+          children: [
+            SizedBox(
+              width: 40,
+              child: onBack == null
+                  ? null
+                  : _WelcomeBackButton(onTap: onBack!),
             ),
-            child: Icon(content.icon, color: AppTheme.burgundyDark, size: 30),
-          ),
-          const SizedBox(height: 14),
-        ],
-        Text(
-          content.eyebrow,
-          textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: AppTheme.burgundy,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.6,
-          ),
+            Expanded(
+              child: Text(
+                content.eyebrow,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: AppTheme.burgundy,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ),
+            const SizedBox(width: 40),
+          ],
         ),
         const SizedBox(height: 4),
         Text(
@@ -635,6 +549,23 @@ class _WelcomeHero extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _WelcomeBackButton extends StatelessWidget {
+  const _WelcomeBackButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      tooltip: 'رجوع',
+      visualDensity: VisualDensity.compact,
+      iconSize: 20,
+      icon: const Icon(LucideIcons.arrowRight, color: AppTheme.ink),
     );
   }
 }
@@ -675,12 +606,13 @@ class _WelcomeStepDots extends StatelessWidget {
   }
 }
 
+/// نص الترويسة هو المصدر الوحيد لعناوين الخطوة: سطر تمهيدي + عنوان + سطر
+/// إرشادي واحد. الخطوات لا تكرّر أيًّا منها في جسمها.
 class _WelcomeHeroContent {
   const _WelcomeHeroContent({
     required this.eyebrow,
     required this.title,
     required this.message,
-    required this.icon,
   });
 
   factory _WelcomeHeroContent.forStep(_WelcomeStep step) {
@@ -688,21 +620,18 @@ class _WelcomeHeroContent {
       _WelcomeStep.pathSelection => const _WelcomeHeroContent(
         eyebrow: 'مرحبًا بك',
         title: 'أعرست',
-        message: 'ابدأ أو تابع من المسار المناسب لك.',
-        icon: LucideIcons.gem,
+        message: 'اختر المسار المناسب لك',
       ),
       _WelcomeStep.roleSelection => const _WelcomeHeroContent(
         eyebrow: 'تخصيص التجربة',
         title: 'دورك يحدد التفاصيل',
         message: 'اختيار بسيط يساعدنا نرتب التجربة لك بوضوح.',
-        icon: LucideIcons.users,
       ),
       _WelcomeStep.quickSetup => const _WelcomeHeroContent(
         eyebrow: 'بيانات أساسية',
         title: 'افتح لوحة واضحة',
         message:
             'هذه البيانات مطلوبة قبل فتح لوحة التحكم حتى لا تبدأ الخطة ناقصة أو مربكة.',
-        icon: LucideIcons.calendarDays,
       ),
     };
   }
@@ -710,7 +639,6 @@ class _WelcomeHeroContent {
   final String eyebrow;
   final String title;
   final String message;
-  final IconData icon;
 }
 
 class _SetupErrorBanner extends StatelessWidget {

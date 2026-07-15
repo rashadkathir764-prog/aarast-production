@@ -142,9 +142,8 @@ class _ProviderIdentityHero extends StatelessWidget {
             profile.businessName,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               color: Colors.white,
-              fontSize: 26,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -207,9 +206,8 @@ class _ProviderMetrics extends StatelessWidget {
                   children: [
                     Text(
                       item.$1,
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         color: AppTheme.ink,
-                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -217,9 +215,9 @@ class _ProviderMetrics extends StatelessWidget {
                       item.$2,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: AppTheme.muted,
-                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

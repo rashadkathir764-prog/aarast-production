@@ -36,20 +36,28 @@ void main() {
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
+      const stripKey = ValueKey('money-next-schedule-strip');
       expect(find.byType(MoneyOverviewScreen), findsOneWidget);
       expect(find.text('المال'), findsOneWidget);
-      expect(find.byType(ScheduleCard), findsOneWidget);
+      expect(find.byKey(stripKey), findsOneWidget);
       _expectRtl(tester, find.byType(MoneyOverviewScreen));
       expect(tester.takeException(), isNull);
 
       await tester.scrollUntilVisible(
-        find.byType(ScheduleCard),
+        find.byKey(stripKey),
         220,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.ensureVisible(find.byType(ScheduleCard));
+      await tester.ensureVisible(find.byKey(stripKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(ScheduleCard));
+      await tester.tap(find.byKey(stripKey));
+      await tester.pumpAndSettle();
+      expect(harness.currentLocation, AppRouter.moneySchedules(_planId));
+      expect(find.byType(PaymentSchedulesScreen), findsOneWidget);
+      expect(find.byType(ScheduleCard), findsWidgets);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byType(ScheduleCard).first);
       await tester.pumpAndSettle();
       expect(
         harness.currentLocation,
@@ -58,6 +66,8 @@ void main() {
       expect(find.byType(PaymentScheduleDetailsScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
 
+      harness.router.pop();
+      await tester.pumpAndSettle();
       harness.router.pop();
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
@@ -649,6 +659,13 @@ class _MoneyProductHarness {
           path: '/wedding-plans/:id/money/budget',
           builder: (context, state) =>
               MoneyBudgetScreen(weddingPlanId: state.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/money/schedules',
+          builder: (context, state) => PaymentSchedulesScreen(
+            weddingPlanId: state.pathParameters['id']!,
+            costId: state.uri.queryParameters['costId'],
+          ),
         ),
         GoRoute(
           path: '/wedding-plans/:id/money/categories/create',

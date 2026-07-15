@@ -15,118 +15,85 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
     final offersReceived = _offersReceivedCount(quotes);
     final acceptedProviders = _acceptedProviderCount(quotes);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border),
-      ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (!embedded) ...[
-                _CircleButton(
-                  icon: LucideIcons.chevronRight,
-                  onTap: () {
-                    if (context.canPop()) context.pop();
-                  },
-                ),
-                const SizedBox(width: 10),
-              ],
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'الموردون والعروض',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: AppTheme.ink,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    AarastStatusPill(
-                      label: provider.includesAccountData
-                          ? 'حساب محفوظ'
-                          : 'تصفح عام',
-                      color: AppTheme.gold,
-                      backgroundColor: AppTheme.goldSoft,
-                      icon: provider.includesAccountData
-                          ? LucideIcons.shieldCheck
-                          : LucideIcons.eye,
-                    ),
-                  ],
-                ),
+    // ترويسة مكشوفة موحدة مع بقية التبويبات: عنوان + شارة + إجراءات.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (!embedded) ...[
+              _CircleButton(
+                icon: LucideIcons.chevronRight,
+                onTap: () {
+                  if (context.canPop()) context.pop();
+                },
               ),
+              const SizedBox(width: 10),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'تصفّح المزودين واطلب عرض سعر عند الحاجة. لا يوجد حجز أو دفع داخل هذه الشاشة.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (provider.includesAccountData) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _MiniStat(
-                    label: 'طلبات مرسلة',
-                    value: quotes.length.toString(),
-                    color: AppTheme.muted,
-                  ),
-                  _MiniStat(
-                    label: 'عروض وصلت',
-                    value: offersReceived.toString(),
-                    color: AppTheme.gold,
-                  ),
-                  _MiniStat(
-                    label: 'عروض مقبولة',
-                    value: acceptedProviders.toString(),
-                    color: AppTheme.success,
-                  ),
-                  _MiniStat(
-                    label: 'محفوظة',
-                    value: provider.favoriteProviderIds.length.toString(),
-                    color: AppTheme.burgundy,
-                  ),
-                ],
+            Expanded(
+              child: Text(
+                'الموردون والعروض',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
               ),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
+            const SizedBox(width: 10),
+            AarastStatusPill(
+              label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
+              color: AppTheme.gold,
+              backgroundColor: AppTheme.goldSoft,
+              icon: provider.includesAccountData
+                  ? LucideIcons.shieldCheck
+                  : LucideIcons.eye,
+            ),
+            if (provider.includesAccountData)
+              IconButton(
+                key: const Key('user-conversations-action'),
+                onPressed: () => context.push(AppRouter.conversations),
+                icon: const Icon(LucideIcons.messagesSquare),
+                tooltip: 'المحادثات',
+              ),
+          ],
+        ),
+        if (provider.includesAccountData) ...[
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
               children: [
-                FilledButton.icon(
-                  key: const Key('user-conversations-action'),
-                  onPressed: () => context.push(AppRouter.conversations),
-                  icon: const Icon(LucideIcons.messagesSquare, size: 18),
-                  label: const Text('المحادثات'),
+                _MiniStat(
+                  label: 'طلبات مرسلة',
+                  value: quotes.length.toString(),
+                  color: AppTheme.muted,
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => context.push(AppRouter.favoriteProviders),
-                  icon: const Icon(LucideIcons.heart, size: 18),
-                  label: const Text('فتح المحفوظات'),
+                _MiniStat(
+                  label: 'عروض وصلت',
+                  value: offersReceived.toString(),
+                  color: AppTheme.gold,
+                ),
+                _MiniStat(
+                  label: 'عروض مقبولة',
+                  value: acceptedProviders.toString(),
+                  color: AppTheme.success,
+                ),
+                _MiniStat(
+                  label: 'محفوظة',
+                  value: provider.favoriteProviderIds.length.toString(),
+                  color: AppTheme.burgundy,
+                  onTap: () => context.push(AppRouter.favoriteProviders),
                 ),
               ],
             ),
-          ] else
-            const _PublicBrowseNote(),
+          ),
+        ] else ...[
+          const SizedBox(height: 12),
+          const _PublicBrowseNote(),
         ],
-      ),
+      ],
     );
   }
 }
@@ -169,42 +136,48 @@ class _MiniStat extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       margin: const EdgeInsets.only(left: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Text(
             value,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w900,
-              fontSize: 13,
             ),
           ),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AppTheme.muted,
               fontWeight: FontWeight.w700,
-              fontSize: 11,
             ),
           ),
         ],
       ),
+    );
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+      child: content,
     );
   }
 }
@@ -410,14 +383,14 @@ class _FilterChips extends StatelessWidget {
         padding: EdgeInsets.zero,
         physics: const BouncingScrollPhysics(),
         children: [
-          _CategoryPill(
+          AarastFilterPill(
             label: 'الكل',
             selected: selectedCategory == null,
             onTap: () => provider.setCategory(null),
           ),
           for (final category in categories) ...[
             const SizedBox(width: 8),
-            _CategoryPill(
+            AarastFilterPill(
               label: category.nameAr,
               selected: selectedCategory == category.id,
               onTap: () => provider.setCategory(category.id),
@@ -426,59 +399,6 @@ class _FilterChips extends StatelessWidget {
           const SizedBox(width: 8),
           _CityFilterChip(provider: provider),
         ],
-      ),
-    );
-  }
-}
-
-class _CategoryPill extends StatelessWidget {
-  const _CategoryPill({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-        child: AnimatedContainer(
-          duration: AppTheme.motionFast,
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: selected ? AppTheme.burgundy : AppTheme.surface,
-            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-            border: Border.all(
-              color: selected ? AppTheme.burgundy : AppTheme.border,
-            ),
-            boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: AppTheme.burgundy.withValues(alpha: 0.22),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : AppTheme.ink,
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -533,10 +453,9 @@ class _CityFilterChip extends StatelessWidget {
               const SizedBox(width: 6),
               Text(
                 cityLabel,
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
                   color: AppTheme.burgundy,
                   fontWeight: FontWeight.w800,
-                  fontSize: 13,
                 ),
               ),
             ],

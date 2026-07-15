@@ -197,16 +197,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _submit(),
-                    suffixIcon: IconButton(
-                      tooltip: _obscurePassword
-                          ? 'إظهار كلمة المرور'
-                          : 'إخفاء كلمة المرور',
+                    suffixIcon: AuthObscureToggle(
+                      obscured: _obscurePassword,
                       onPressed: () {
                         setState(() => _obscurePassword = !_obscurePassword);
                       },
-                      icon: Icon(
-                        _obscurePassword ? LucideIcons.eye : LucideIcons.eyeOff,
-                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {

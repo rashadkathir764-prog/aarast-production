@@ -43,7 +43,6 @@ class MoneyAmountText extends StatelessWidget {
     );
   }
 }
-
 class MoneyMetricCard extends StatelessWidget {
   const MoneyMetricCard({
     required this.label,
@@ -92,6 +91,7 @@ class MoneyMetricCard extends StatelessWidget {
   }
 }
 
+/// صف تكلفة نحيف: أيقونة مصبوغة بالحالة + عنوان + سطر ميتا + المبلغ.
 class CostCard extends StatelessWidget {
   const CostCard({
     required this.cost,
@@ -108,97 +108,83 @@ class CostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final status = moneyStatusMeta(cost.status);
     final leading = Container(
-      width: 42,
-      height: 42,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
-        color: cost.isCancelled ? AppTheme.empty : AppTheme.burgundySoft,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        color: status.background,
+        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
       ),
       child: Icon(
         cost.providerId == null ? LucideIcons.receipt : LucideIcons.store,
-        color: cost.isCancelled ? AppTheme.muted : AppTheme.burgundy,
+        size: 18,
+        color: status.color,
       ),
     );
-    final identity = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          cost.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.ink,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        if (categoryName != null || cost.partyLabel != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            [?categoryName, ?cost.partyLabel].join(' · '),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
-          ),
-        ],
-      ],
-    );
-    final status = MoneyStatusBadge(status: cost.status);
+    final metaParts = [?categoryName, ?cost.partyLabel].join(' · ');
+
     return AarastCard(
       onTap: onTap,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      radius: AppTheme.radiusMd,
+      child: Row(
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final narrow = constraints.maxWidth < 280;
-              final identityRow = Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  leading,
-                  const SizedBox(width: 12),
-                  Expanded(child: identity),
-                  if (!narrow) ...[const SizedBox(width: 8), status],
-                ],
-              );
-              if (!narrow) return identityRow;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  identityRow,
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: status,
+          leading,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  cost.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: cost.isCancelled ? AppTheme.muted : AppTheme.ink,
+                    fontWeight: FontWeight.w800,
                   ),
-                ],
-              );
-            },
+                ),
+                const SizedBox(height: 3),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      if (metaParts.isNotEmpty)
+                        TextSpan(text: '$metaParts · '),
+                      TextSpan(
+                        text: status.label,
+                        style: TextStyle(
+                          color: status.color,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _LabeledAmount(
-                  label: 'الإجمالي',
-                  amount: cost.totalAmount,
-                  currency: currency,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _LabeledAmount(
-                  label: 'الباقي',
-                  amount: cost.remainingAmount,
-                  currency: currency,
-                  color: moneyValue(cost.remainingAmount) > 0
-                      ? AppTheme.warning
-                      : AppTheme.success,
-                ),
-              ),
-            ],
+          const SizedBox(width: 8),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 120),
+            child: MoneyAmountText(
+              amount: cost.totalAmount,
+              currency: currency,
+              style: Theme.of(context).textTheme.labelLarge,
+              color: cost.isCancelled ? AppTheme.muted : AppTheme.ink,
+              textAlign: TextAlign.end,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Icon(
+            LucideIcons.chevronLeft,
+            size: 16,
+            color: AppTheme.disabled,
           ),
         ],
       ),
@@ -225,17 +211,20 @@ class PaymentCard extends StatelessWidget {
     final reversal = payment.isReversal;
     return AarastCard(
       onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      radius: AppTheme.radiusMd,
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: reversal ? AppTheme.dangerSoft : AppTheme.successSoft,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
             ),
             child: Icon(
               reversal ? LucideIcons.undo2 : LucideIcons.banknote,
+              size: 16,
               color: reversal ? AppTheme.danger : AppTheme.success,
             ),
           ),
@@ -250,16 +239,17 @@ class PaymentCard extends StatelessWidget {
                       : (costTitle ?? payment.costTitle ?? 'دفعة'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: AppTheme.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   formatArabicCompactDate(payment.paidAt),
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: AppTheme.muted),
+                  ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
                 ),
               ],
             ),
@@ -270,6 +260,7 @@ class PaymentCard extends StatelessWidget {
             child: MoneyAmountText(
               amount: payment.signedAmount,
               currency: currency,
+              style: Theme.of(context).textTheme.labelLarge,
               color: reversal ? AppTheme.danger : AppTheme.success,
               textAlign: TextAlign.end,
             ),
@@ -349,6 +340,34 @@ class ScheduleCard extends StatelessWidget {
   }
 }
 
+/// حالة التكلفة كهوية موحدة: نص ولون وخلفية تُستهلك في الشارة والصفوف.
+({String label, Color color, Color background}) moneyStatusMeta(
+  String status,
+) {
+  return switch (status) {
+    'PAID' => (
+      label: 'مكتملة',
+      color: AppTheme.success,
+      background: AppTheme.successSoft,
+    ),
+    'PARTIALLY_PAID' => (
+      label: 'مدفوعة جزئيًا',
+      color: AppTheme.warning,
+      background: AppTheme.warningSoft,
+    ),
+    'CANCELLED' => (
+      label: 'ملغاة',
+      color: AppTheme.muted,
+      background: AppTheme.empty,
+    ),
+    _ => (
+      label: 'مفتوحة',
+      color: AppTheme.burgundy,
+      background: AppTheme.burgundySoft,
+    ),
+  };
+}
+
 class MoneyStatusBadge extends StatelessWidget {
   const MoneyStatusBadge({required this.status, super.key});
 
@@ -356,27 +375,18 @@ class MoneyStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, background) = switch (status) {
-      'PAID' => ('مكتملة', AppTheme.success, AppTheme.successSoft),
-      'PARTIALLY_PAID' => (
-        'مدفوعة جزئيًا',
-        AppTheme.warning,
-        AppTheme.warningSoft,
-      ),
-      'CANCELLED' => ('ملغاة', AppTheme.muted, AppTheme.empty),
-      _ => ('مفتوحة', AppTheme.burgundy, AppTheme.burgundySoft),
-    };
+    final meta = moneyStatusMeta(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: background,
+        color: meta.background,
         borderRadius: BorderRadius.circular(AppTheme.radiusPill),
       ),
       child: Text(
-        label,
+        meta.label,
         maxLines: 1,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
+          color: meta.color,
           fontWeight: FontWeight.w900,
         ),
       ),
@@ -426,37 +436,6 @@ class MoneyMessageBanner extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _LabeledAmount extends StatelessWidget {
-  const _LabeledAmount({
-    required this.label,
-    required this.amount,
-    required this.currency,
-    this.color,
-  });
-
-  final String label;
-  final Object? amount;
-  final String currency;
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.labelSmall?.copyWith(color: AppTheme.muted),
-        ),
-        const SizedBox(height: 3),
-        MoneyAmountText(amount: amount, currency: currency, color: color),
-      ],
     );
   }
 }

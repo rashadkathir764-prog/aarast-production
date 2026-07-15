@@ -401,12 +401,13 @@ class _PaymentScheduleDetailsScreenState
             onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('رجوع'),
           ),
-          ElevatedButton(
+          AarastButton(
+            label: action,
+            expand: false,
+            variant: danger
+                ? AarastButtonVariant.danger
+                : AarastButtonVariant.primary,
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: danger
-                ? ElevatedButton.styleFrom(backgroundColor: AppTheme.danger)
-                : null,
-            child: Text(action),
           ),
         ],
       ),

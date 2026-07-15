@@ -114,33 +114,30 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    key: ValueKey(_currency),
-                    initialValue: _currency,
-                    isExpanded: true,
-                    decoration: InputDecoration(
-                      labelText: 'العملة',
-                      helperText: currencyLocked
-                          ? 'لا يمكن تغيير العملة بعد تسجيل أول تكلفة.'
-                          : null,
-                      prefixIcon: const Icon(LucideIcons.coins),
+                  Text(
+                    'العملة',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w800,
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'YER', child: Text('ريال يمني')),
-                      DropdownMenuItem(value: 'SAR', child: Text('ريال سعودي')),
-                      DropdownMenuItem(
-                        value: 'USD',
-                        child: Text('دولار أمريكي'),
-                      ),
-                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  AarastChoicePillRow<String>(
+                    value: _currency,
+                    options: weddingCurrencyOptions,
                     onChanged: currencyLocked
                         ? null
-                        : (value) {
-                            if (value != null) {
-                              setState(() => _currency = value);
-                            }
-                          },
+                        : (value) => setState(() => _currency = value),
                   ),
+                  if (currencyLocked) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'لا يمكن تغيير العملة بعد تسجيل أول تكلفة.',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppTheme.muted,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   LayoutBuilder(
                     builder: (context, constraints) {

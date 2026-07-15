@@ -94,12 +94,12 @@ class PremiumVendorCard extends StatelessWidget {
                           businessName,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AarastDesignTokens.ink,
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            height: 1.22,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AarastDesignTokens.ink,
+                                fontWeight: FontWeight.w800,
+                                height: 1.22,
+                              ),
                         ),
                         if (hasCategory) ...[
                           const SizedBox(height: 2),
@@ -107,11 +107,11 @@ class PremiumVendorCard extends StatelessWidget {
                             categoryLabel!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AarastDesignTokens.burgundy,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: AarastDesignTokens.burgundy,
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
                         ],
                         if (hasRating || hasLocation) ...[
@@ -138,11 +138,11 @@ class PremiumVendorCard extends StatelessWidget {
                             priceLabel!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AarastDesignTokens.burgundy,
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: AarastDesignTokens.burgundy,
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
                         ],
                         if (hasBudget) ...[
@@ -167,11 +167,9 @@ class PremiumVendorCard extends StatelessWidget {
                                   AarastDesignTokens.radiusMd,
                                 ),
                               ),
-                              textStyle: const TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Tajawal',
-                              ),
+                              textStyle: Theme.of(
+                                context,
+                              ).textTheme.labelLarge,
                             ),
                             child: const Text('عرض التفاصيل'),
                           ),
@@ -294,11 +292,9 @@ class _VendorImagePlaceholder extends StatelessWidget {
       child: Center(
         child: Text(
           initial,
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
             color: AarastDesignTokens.goldDeep,
-            fontSize: 30,
             fontWeight: FontWeight.w800,
-            fontFamily: 'IBMPlexSansArabic',
           ),
         ),
       ),
@@ -326,16 +322,15 @@ class _FeaturedBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(LucideIcons.sparkles, size: 11, color: Colors.white),
-          SizedBox(width: 4),
+          const Icon(LucideIcons.sparkles, size: 11, color: Colors.white),
+          const SizedBox(width: 4),
           Text(
             'مميز',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: Colors.white,
-              fontSize: 10.5,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -361,9 +356,8 @@ class _RatingChip extends StatelessWidget {
         Text(
           '${average.toStringAsFixed(1)} ($count)',
           textDirection: TextDirection.ltr,
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: AarastDesignTokens.ink,
-            fontSize: 12,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -393,10 +387,8 @@ class _LocationLabel extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: AarastDesignTokens.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ),
@@ -429,9 +421,8 @@ class _BudgetChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: color,
-                fontSize: 11.5,
                 fontWeight: FontWeight.w800,
               ),
             ),

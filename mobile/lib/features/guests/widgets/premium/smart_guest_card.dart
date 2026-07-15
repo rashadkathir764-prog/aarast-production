@@ -86,11 +86,11 @@ class SmartGuestCard extends StatelessWidget {
                             ),
                             child: Text(
                               initial,
-                              style: TextStyle(
-                                color: color,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: color,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -104,13 +104,13 @@ class SmartGuestCard extends StatelessWidget {
                                       : guest.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: guest.name.trim().isEmpty
-                                        ? AarastDesignTokens.muted
-                                        : AarastDesignTokens.ink,
-                                    fontSize: 15.5,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
+                                        color: guest.name.trim().isEmpty
+                                            ? AarastDesignTokens.muted
+                                            : AarastDesignTokens.ink,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                 ),
                                 const SizedBox(height: 3),
                                 _MetaRow(guest: guest, groupLabel: groupLabel),
@@ -161,12 +161,12 @@ class SmartGuestCard extends StatelessWidget {
                           guest.notes!.trim(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AarastDesignTokens.muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AarastDesignTokens.muted,
+                                fontWeight: FontWeight.w600,
+                                height: 1.4,
+                              ),
                         ),
                       ],
                     ],
@@ -222,9 +222,8 @@ class _MetaItem extends StatelessWidget {
         const SizedBox(width: 3),
         Text(
           label,
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: AarastDesignTokens.muted,
-            fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -259,9 +258,8 @@ class _StatusChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: color,
-              fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -297,9 +295,8 @@ class _PhoneChip extends StatelessWidget {
           Text(
             phone,
             textDirection: TextDirection.ltr,
-            style: const TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: AarastDesignTokens.muted,
-              fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -335,9 +332,8 @@ class _AlertChip extends StatelessWidget {
           const SizedBox(width: 5),
           Text(
             label,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: color,
-              fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
           ),

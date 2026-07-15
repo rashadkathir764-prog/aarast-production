@@ -219,9 +219,8 @@ class _PlanIdentityCard extends StatelessWidget {
                   plan.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -364,20 +363,18 @@ class _CompletenessSection extends StatelessWidget {
             Expanded(
               child: Text(
                 completeness.isComplete ? 'مكتملة' : 'بيانات ناقصة',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: completeness.isComplete
                       ? AppTheme.success
                       : AppTheme.warning,
-                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                 ),
               ),
             ),
             Text(
               '${completeness.percent}%',
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: AppTheme.ink,
-                fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -474,9 +471,8 @@ class _SectionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

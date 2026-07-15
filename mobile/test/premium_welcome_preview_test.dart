@@ -1,6 +1,5 @@
-// Visual preview for the harmonized welcome gateway components
-// (phase/mobile-premium-screens-v1): PremiumPathCard, PremiumRoleCard and the
-// premium setup fields — now on the Lucide icon system.
+// Visual preview for the harmonized welcome gateway components: the unified
+// PremiumPathCard (navigation + choice modes) and the premium setup fields.
 //
 // Regenerate with:
 //   flutter test test/premium_welcome_preview_test.dart --update-goldens
@@ -13,7 +12,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_path_card.dart';
-import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_role_card.dart';
 import 'package:aarast_mobile/features/welcome_gateway/widgets/premium_setup_fields.dart';
 
 import 'support/preview_fonts.dart';
@@ -75,22 +73,25 @@ void main() {
             title: 'أنا مزود خدمة',
             subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
             icon: LucideIcons.store,
-            tone: PremiumPathTone.rose,
+            tone: PremiumPathTone.quiet,
             onTap: () {},
           ),
           const SizedBox(height: 22),
-          PremiumRoleCard(
+          PremiumPathCard(
             title: 'العريس',
             subtitle: 'أتابع الخطة والميزانية',
             icon: LucideIcons.user,
-            isSelected: true,
+            tone: PremiumPathTone.hero,
+            selected: true,
             onTap: () {},
           ),
-          const SizedBox(height: 10),
-          PremiumRoleCard(
+          const SizedBox(height: 14),
+          PremiumPathCard(
             title: 'العروسة',
             subtitle: 'أرتب التفاصيل والاختيارات',
             icon: LucideIcons.flower2,
+            tone: PremiumPathTone.gold,
+            selected: false,
             onTap: () {},
           ),
         ],

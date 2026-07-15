@@ -136,11 +136,12 @@ class _ProviderNavItem extends StatelessWidget {
                         alignment: Alignment.center,
                         child: Text(
                           badge > 9 ? '9+' : '$badge',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                              ),
                         ),
                       ),
                     ),
@@ -151,9 +152,8 @@ class _ProviderNavItem extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: color,
-                  fontSize: 10.5,
                   fontWeight: active ? FontWeight.w900 : FontWeight.w700,
                 ),
               ),

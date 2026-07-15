@@ -46,7 +46,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
                 EdgeInsets.symmetric(horizontal: 4),
               ),
               textStyle: WidgetStatePropertyAll(
-                TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                TextStyle(fontWeight: FontWeight.w800),
               ),
               visualDensity: VisualDensity.compact,
             ),
@@ -136,9 +136,8 @@ class _ProviderRequestCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   quote.service?.title ?? 'طلب عرض سعر',
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

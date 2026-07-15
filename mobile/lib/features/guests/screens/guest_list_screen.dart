@@ -309,17 +309,18 @@ class _GuestsHeader extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
-            ).textTheme.titleLarge?.copyWith(color: AppTheme.title),
+            ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
           ),
         ),
         const SizedBox(width: 10),
-        if (guestCount > 0)
-          AarastStatusPill(
-            label: '$guestCount ضيف',
-            color: AppTheme.burgundy,
-            backgroundColor: AppTheme.burgundySoft,
-            icon: LucideIcons.users,
-          ),
+        AarastStatusPill(
+          label: guestCount == 0
+              ? 'قائمة الحضور'
+              : _guestCountLabel(guestCount),
+          color: AppTheme.burgundy,
+          backgroundColor: AppTheme.burgundySoft,
+          icon: LucideIcons.users,
+        ),
       ],
     );
   }
@@ -409,15 +410,19 @@ class _GuestsContent extends StatelessWidget {
           _InlineError(message: provider.errorMessage!),
           const SizedBox(height: 14),
         ],
-        GuestMeterHero(summary: summary, isLocalPlan: isLocalPlan),
+        GuestMeterHero(
+          summary: summary,
+          isLocalPlan: isLocalPlan,
+          footer: guests.isEmpty
+              ? null
+              : _GuestFilterBar(selected: filter, onChanged: onFilterChanged),
+        ),
         const SizedBox(height: 12),
         _ImportantGuestsCard(
           issues: importantIssues,
           onOpenFilter: onFilterChanged,
         ),
-        const SizedBox(height: 14),
-        _GuestFilterBar(selected: filter, onChanged: onFilterChanged),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         AarastSectionHeader(title: _listTitle(filter), icon: LucideIcons.users),
         const SizedBox(height: 12),
         if (visibleGuests.isEmpty)
@@ -597,51 +602,21 @@ class _GuestFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 42,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _filterItems.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final item = _filterItems[index];
-          final isSelected = item.filter == selected;
-          return InkWell(
-            key: ValueKey('guest-filter-${item.filter.name}'),
-            onTap: () => onChanged(item.filter),
-            borderRadius: BorderRadius.circular(999),
-            child: AnimatedContainer(
-              duration: AppTheme.motionFast,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? AppTheme.burgundy : AppTheme.surface,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isSelected ? AppTheme.burgundy : AppTheme.border,
-                ),
-                boxShadow: isSelected ? AppTheme.cardShadow() : null,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    item.icon,
-                    size: 16,
-                    color: isSelected ? Colors.white : AppTheme.burgundy,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    item.label,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: isSelected ? Colors.white : AppTheme.ink,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final item in _filterItems) ...[
+            AarastFilterPill(
+              key: ValueKey('guest-filter-${item.filter.name}'),
+              label: item.label,
+              icon: item.icon,
+              selected: item.filter == selected,
+              onTap: () => onChanged(item.filter),
             ),
-          );
-        },
+            if (item != _filterItems.last) const SizedBox(width: 7),
+          ],
+        ],
       ),
     );
   }
@@ -727,6 +702,15 @@ enum _GuestFilter {
   incomplete,
   groom,
   bride,
+}
+
+String _guestCountLabel(int count) {
+  return switch (count) {
+    1 => 'ضيف واحد',
+    2 => 'ضيفان',
+    >= 3 && <= 10 => '$count ضيوف',
+    _ => '$count ضيف',
+  };
 }
 
 class _FilterItem {

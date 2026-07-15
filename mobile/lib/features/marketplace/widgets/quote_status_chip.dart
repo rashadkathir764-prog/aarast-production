@@ -38,11 +38,14 @@ class QuoteStatusChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             presentation.label,
-            style: TextStyle(
-              color: presentation.color,
-              fontSize: compact ? 11 : 12,
-              fontWeight: FontWeight.w900,
-            ),
+            style:
+                (compact
+                        ? Theme.of(context).textTheme.labelSmall
+                        : Theme.of(context).textTheme.labelMedium)
+                    ?.copyWith(
+                      color: presentation.color,
+                      fontWeight: FontWeight.w900,
+                    ),
           ),
         ],
       ),

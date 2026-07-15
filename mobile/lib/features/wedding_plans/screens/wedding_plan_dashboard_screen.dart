@@ -360,23 +360,19 @@ class _DashboardStateList extends StatelessWidget {
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: ink,
-                  fontSize: 21,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: muted,
-                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   height: 1.5,
-                  letterSpacing: 0,
                 ),
               ),
               const SizedBox(height: 18),

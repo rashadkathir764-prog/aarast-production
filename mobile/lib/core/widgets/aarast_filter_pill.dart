@@ -1,0 +1,127 @@
+import 'package:flutter/material.dart';
+
+import '../theme/app_theme.dart';
+
+/// شريحة الفلترة الموحدة عبر كل التبويبات (المهام/الضيوف/الموردون/المال).
+///
+/// المحدد = لون صلب بظل ناعم ونص أبيض؛ غير المحدد = خلفية ناعمة
+/// (`softColor`) بنص ملون، أو سطح أبيض بحدود عند تركها الافتراضية.
+class AarastFilterPill extends StatelessWidget {
+  const AarastFilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.icon,
+    this.color = AppTheme.burgundy,
+    this.softColor = AppTheme.surface,
+    super.key,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  final IconData? icon;
+  final Color color;
+  final Color softColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final onSurface = softColor == AppTheme.surface;
+    final disabled = onTap == null;
+    final foreground = selected
+        ? Colors.white
+        : disabled
+        ? AppTheme.disabled
+        : onSurface
+        ? AppTheme.ink
+        : color;
+    final borderColor = selected
+        ? color
+        : onSurface
+        ? AppTheme.border
+        : color.withValues(alpha: .28);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        child: AnimatedContainer(
+          duration: AppTheme.motionFast,
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected ? color : softColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            border: Border.all(color: borderColor),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.22),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 15,
+                  color: selected
+                      ? Colors.white
+                      : onSurface
+                      ? AppTheme.burgundy
+                      : color,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// صف اختيار مفرد من شرائح — بديل الهوية للقوائم المنسدلة الثابتة.
+class AarastChoicePillRow<T> extends StatelessWidget {
+  const AarastChoicePillRow({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    super.key,
+  });
+
+  final T value;
+  final List<(T, String)> options;
+  final ValueChanged<T>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final (option, label) in options)
+          AarastFilterPill(
+            key: ValueKey('choice-pill-$option'),
+            label: label,
+            selected: option == value,
+            onTap: onChanged == null ? null : () => onChanged!(option),
+          ),
+      ],
+    );
+  }
+}

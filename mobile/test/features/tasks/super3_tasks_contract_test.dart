@@ -209,7 +209,7 @@ void main() {
     },
   );
 
-  testWidgets('overdue task appears in Important Now and overdue filter', (
+  testWidgets('overdue task leads the grouped timeline and overdue filter', (
     tester,
   ) async {
     final harness = await _createHarness();
@@ -228,11 +228,9 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    await tester.drag(find.byType(ListView).first, const Offset(0, -360));
-    await tester.pumpAndSettle();
-    expect(find.text('أهم ما يحتاج تنفيذ اليوم'), findsOneWidget);
+    expect(find.text('متأخرة · 1'), findsOneWidget);
+    expect(find.text('لاحقًا · 1'), findsOneWidget);
     expect(find.text('مراجعة عقد القاعة'), findsWidgets);
-    expect(find.text('متأخرة وتحتاج متابعة'), findsOneWidget);
 
     await tester.ensureVisible(
       find.byKey(const ValueKey('task-filter-overdue')),
@@ -265,7 +263,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('مكتملة'), findsWidgets);
+    expect(find.textContaining('مكتملة'), findsWidgets);
     expect(find.text('100%'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

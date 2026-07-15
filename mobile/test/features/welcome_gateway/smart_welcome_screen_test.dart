@@ -54,8 +54,10 @@ void main() {
     await tester.tap(find.text('إنشاء خطتك'));
     await tester.pumpAndSettle();
 
-    expect(find.text('خلنا نتعرف عليك'), findsOneWidget);
-    expect(find.text('لنصنع لك تجربة تليق باحتياجاتك'), findsOneWidget);
+    // ترويسة الخطوة هي المصدر الوحيد للعنوان — لا عنوان مكرّر في جسم الخطوة.
+    expect(find.text('دورك يحدد التفاصيل'), findsOneWidget);
+    expect(find.text('اختيار بسيط يساعدنا نرتب التجربة لك بوضوح.'), findsOneWidget);
+    expect(find.text('خلنا نتعرف عليك'), findsNothing);
     expect(find.text('العريس'), findsOneWidget);
     expect(find.text('أتابع الخطة والميزانية'), findsOneWidget);
     expect(find.text('العروسة'), findsOneWidget);
@@ -204,7 +206,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify quick setup
-    expect(find.text('أكمل بيانات خطتك'), findsOneWidget);
+    expect(find.text('افتح لوحة واضحة'), findsOneWidget);
     expect(find.text('الميزانية والعملة'), findsOneWidget);
 
     await tester.enterText(find.byType(TextFormField).first, 'My Wedding');
@@ -317,7 +319,7 @@ void main() {
       await tester.tap(continueButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('أكمل بيانات خطتك'), findsOneWidget);
+      expect(find.text('افتح لوحة واضحة'), findsOneWidget);
 
       final startButton = find.text('حفظ ومتابعة');
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
@@ -406,7 +408,7 @@ void main() {
     await tester.tap(find.text('إنشاء خطتك'));
     await tester.pumpAndSettle();
 
-    expect(find.text('خلنا نتعرف عليك'), findsOneWidget);
+    expect(find.text('دورك يحدد التفاصيل'), findsOneWidget);
     expect(find.text('التالي'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

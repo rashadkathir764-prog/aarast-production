@@ -157,9 +157,8 @@ class _RoundIconButton extends StatelessWidget {
                   child: Text(
                     badge!,
                     textDirection: TextDirection.ltr,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: Colors.white,
-                      fontSize: 10,
                       fontWeight: FontWeight.w900,
                       height: 1,
                     ),

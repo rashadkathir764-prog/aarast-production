@@ -70,7 +70,10 @@ function createHarness() {
           users.find((user) =>
             clauses.some(
               (clause) =>
-                clause.phone?.in?.includes(user.phone) ||
+                (typeof clause.phone === 'string'
+                  ? clause.phone === user.phone
+                  : clause.phone?.equals === user.phone ||
+                    clause.phone?.in?.includes(user.phone)) ||
                 (clause.email?.equals ?? clause.email) === user.email,
             ),
           ) ?? null
@@ -226,6 +229,23 @@ test('password login never issues a session to an unverified legacy account', as
       /Phone verification is required/,
     );
     assert.equal(refreshTokens.length, 0);
+  });
+});
+
+test('password login prefers the canonical phone row over a legacy duplicate', async () => {
+  await withDevOtp(async () => {
+    const { service, users, addUser } = createHarness();
+    const legacy = await addUser('777123456', true);
+    legacy.passwordHash = await bcryptjs.hash('different-password', 4);
+    await addUser('+967777123456', true);
+
+    const response = await service.login({
+      phone: '777123456',
+      password: 'secret123',
+    });
+
+    assert.equal('accessToken' in response, true);
+    assert.equal(users.length, 2);
   });
 });
 

@@ -11,6 +11,10 @@ function normalizeYemeniPhone(value) {
   throw new Error('PROVISION_ADMIN_PHONE must be a Yemeni mobile number.');
 }
 
+function phoneVariants(phone) {
+  return [phone, phone.slice(4)];
+}
+
 function validatePassword(value) {
   if (value.length < 12 || value.length > 72) {
     throw new Error('PROVISION_ADMIN_PASSWORD must contain 12 to 72 characters.');
@@ -50,11 +54,15 @@ async function provisionAdmin(environment = process.env) {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const existing = await tx.user.findUnique({ where: { phone } });
+      const [canonicalPhone, legacyLocalPhone] = phoneVariants(phone);
+      const existing =
+        (await tx.user.findUnique({ where: { phone: canonicalPhone } })) ??
+        (await tx.user.findUnique({ where: { phone: legacyLocalPhone } }));
       const user = existing
         ? await tx.user.update({
             where: { id: existing.id },
             data: {
+              phone: canonicalPhone,
               name,
               role: 'ADMIN',
               adminRole: 'SUPER_ADMIN',
@@ -96,6 +104,7 @@ if (require.main === module) {
 
 module.exports = {
   normalizeYemeniPhone,
+  phoneVariants,
   provisionAdmin,
   throttleSubjectHash,
   validatePassword,

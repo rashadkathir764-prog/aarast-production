@@ -330,9 +330,15 @@ export class AuthService {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     await this.loginThrottle.assertAllowed(phone);
 
-    const user = await this.prisma.user.findFirst({
-      where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
-    });
+    // Prefer the canonical normalized row before consulting legacy variants.
+    // A pre-normalization database may still contain both `7xxxxxxxx` and
+    // `+9677xxxxxxxx`; one unordered `IN` query can otherwise authenticate
+    // against an arbitrary duplicate and reject the correct password.
+    const user =
+      (await this.prisma.user.findFirst({ where: { phone } })) ??
+      (await this.prisma.user.findFirst({
+        where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
+      }));
 
     const passwordMatch = await bcryptjs.compare(
       dto.password,

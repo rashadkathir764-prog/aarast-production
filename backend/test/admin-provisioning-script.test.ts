@@ -4,6 +4,7 @@ import { test } from 'node:test';
 
 const {
   normalizeYemeniPhone,
+  phoneVariants,
   throttleSubjectHash,
   validatePassword,
 } = require('../scripts/prod/provision-admin.cjs');
@@ -12,6 +13,13 @@ test('admin provisioning normalizes Yemeni local and international phones', () =
   assert.equal(normalizeYemeniPhone('777123456'), '+967777123456');
   assert.equal(normalizeYemeniPhone('+967 777 123 456'), '+967777123456');
   assert.throws(() => normalizeYemeniPhone('123'), /Yemeni mobile number/);
+});
+
+test('admin provisioning recognizes the legacy local phone variant', () => {
+  assert.deepEqual(phoneVariants('+967777123456'), [
+    '+967777123456',
+    '777123456',
+  ]);
 });
 
 test('admin provisioning rejects weak or bcrypt-truncated passwords', () => {

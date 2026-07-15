@@ -66,6 +66,11 @@ type NotificationPurgeClient = Pick<
   "notification" | "outboxEvent"
 >;
 
+type NotificationCreateClient = Pick<
+  Prisma.TransactionClient,
+  "notification" | "outboxEvent"
+>;
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -212,34 +217,9 @@ export class NotificationsService {
     }
 
     try {
-      const notification = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.notification.create({
-          data: {
-            userId: input.userId,
-            weddingPlanId: input.weddingPlanId ?? null,
-            type: input.type,
-            priority: input.priority ?? NotificationPriority.NORMAL,
-            title: input.title,
-            body: input.body,
-            entityType: input.entityType ?? null,
-            entityId: input.entityId ?? null,
-            routeTarget: input.routeTarget ?? null,
-            data: input.data,
-            dedupeKey: input.dedupeKey,
-          },
-        });
-        await this.outbox.enqueue(tx, {
-          type: OutboxEventTypes.notificationCreated,
-          aggregateType: "notification",
-          aggregateId: created.id,
-          payload: {
-            notificationId: created.id,
-            userId: created.userId,
-          },
-        });
-        return created;
-      });
-      return this.toResponse(notification);
+      return await this.prisma.$transaction((tx) =>
+        this.createNotificationInTransaction(tx, input),
+      );
     } catch (error) {
       if (
         input.dedupeKey &&
@@ -253,6 +233,37 @@ export class NotificationsService {
       }
       throw error;
     }
+  }
+
+  async createNotificationInTransaction(
+    client: NotificationCreateClient,
+    input: CreateNotificationInput,
+  ): Promise<NotificationResponse> {
+    const created = await client.notification.create({
+      data: {
+        userId: input.userId,
+        weddingPlanId: input.weddingPlanId ?? null,
+        type: input.type,
+        priority: input.priority ?? NotificationPriority.NORMAL,
+        title: input.title,
+        body: input.body,
+        entityType: input.entityType ?? null,
+        entityId: input.entityId ?? null,
+        routeTarget: input.routeTarget ?? null,
+        data: input.data,
+        dedupeKey: input.dedupeKey,
+      },
+    });
+    await this.outbox.enqueue(client, {
+      type: OutboxEventTypes.notificationCreated,
+      aggregateType: "notification",
+      aggregateId: created.id,
+      payload: {
+        notificationId: created.id,
+        userId: created.userId,
+      },
+    });
+    return this.toResponse(created);
   }
 
   async createForPlanParticipants(

@@ -53,6 +53,7 @@ import '../../features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import '../../features/wedding_plans/screens/my_wedding_plans_screen.dart';
 
 import '../../features/wedding_plans/models/dashboard_summary.dart';
+import '../../features/wedding_plans/providers/dashboard_summary_provider.dart';
 import '../../features/wedding_plans/screens/plan_center_screen.dart';
 import '../../features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import '../../features/shell/screens/wedding_plan_shell.dart';
@@ -513,10 +514,17 @@ class AppRouter {
                 final sharedMember = state.extra is SharedMember
                     ? state.extra! as SharedMember
                     : null;
+                final dashboard = context.read<DashboardSummaryProvider?>();
+                final summary = dashboard?.summary?.planId == id
+                    ? dashboard?.summary
+                    : null;
+                final contributorView =
+                    state.uri.queryParameters['view'] == 'contributor' ||
+                    (summary != null && !summary.permissions.isOwner);
                 return MoneyOverviewScreen(
                   weddingPlanId: id,
                   sharedMember: sharedMember,
-                  embedded: true,
+                  embedded: !contributorView,
                 );
               },
             ),
@@ -718,7 +726,7 @@ class AppRouter {
                     ? state.extra! as ProviderBudgetMatchIntent
                     : null;
                 return ProviderMarketplaceScreen(
-                  embedded: true,
+                  embedded: state.uri.queryParameters['view'] != 'contributor',
                   initialBudgetIntent: budgetIntent,
                 );
               },

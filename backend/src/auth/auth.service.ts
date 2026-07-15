@@ -708,7 +708,13 @@ export class AuthService {
 
       if (!user) {
         const invite = await this.prisma.planInvite.findFirst({
-          where: { normalizedPhone: phone },
+          where: {
+            normalizedPhone: phone,
+            acceptedAt: null,
+            declinedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
         });
         if (!invite) {
           return null;

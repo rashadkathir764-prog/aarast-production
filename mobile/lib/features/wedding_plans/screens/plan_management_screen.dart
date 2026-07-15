@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/providers/auth_controller.dart';
@@ -21,6 +22,7 @@ import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
+import '../widgets/contributor_workspace_view.dart';
 import '../widgets/plan_management_view.dart';
 import '../widgets/royal_home_chrome.dart';
 
@@ -117,9 +119,19 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
         ? weddingPlans.selectedPlan
         : null;
     final plan = _isLocalPlan ? _localPlan : serverPlan;
-    final isLoading = _isLocalPlan
-        ? _localLoading
-        : (weddingPlans.isLoading || dashboard.isLoading) && plan == null;
+    final activeSummary = dashboard.summary?.planId == widget.weddingPlanId
+        ? dashboard.summary
+        : widget.initialSummary?.planId == widget.weddingPlanId
+        ? widget.initialSummary
+        : null;
+    final isContributor =
+        plan != null && _isContributorPlan(auth, activeSummary, plan);
+    final isLoading =
+        (_isLocalPlan
+            ? _localLoading
+            : (weddingPlans.isLoading || dashboard.isLoading) &&
+                  plan == null) ||
+        (isContributor && activeSummary == null && dashboard.isLoading);
     final error = _isLocalPlan
         ? _localError
         : weddingPlans.errorMessage ?? dashboard.errorMessage;
@@ -130,6 +142,106 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     final canManageMoney = plan == null
         ? false
         : _canManageMoney(auth, dashboard, plan);
+
+    if (!isLoading && isContributor) {
+      final summary = activeSummary;
+      if (summary == null) {
+        return AarastPageScaffold(
+          title: 'الخطة المشتركة',
+          subtitle: 'تعذر تجهيز مساحة مساهمتك الآن.',
+          showBack: true,
+          onBack: _goBack,
+          child: AarastErrorState(
+            title: 'تعذر تحميل الخطة المشتركة',
+            message: error ?? 'يرجى المحاولة مرة أخرى.',
+            onRetry: _load,
+          ),
+        );
+      }
+
+      return AarastPageScaffold(
+        title: 'الخطة المشتركة',
+        subtitle: 'كل ما سمح به صاحب الخطة في مكان واحد.',
+        showBack: true,
+        onBack: _goBack,
+        actions: [
+          IconButton(
+            key: const Key('contributor-notifications-action'),
+            tooltip: 'التحديثات',
+            onPressed: () => _openContributorRoute(
+              AppRouter.planNotifications(summary.planId),
+            ),
+            icon: summary.unreadNotificationsCount > 0
+                ? Badge.count(
+                    count: summary.unreadNotificationsCount,
+                    backgroundColor: AppTheme.burgundy,
+                    child: const Icon(LucideIcons.bell),
+                  )
+                : const Icon(LucideIcons.bell),
+          ),
+          IconButton(
+            key: const Key('contributor-permissions-action'),
+            tooltip: 'صلاحياتي',
+            onPressed: () => _showContributorPermissions(summary),
+            icon: const Icon(LucideIcons.shieldCheck),
+          ),
+        ],
+        child: RefreshIndicator(
+          color: AppTheme.burgundy,
+          onRefresh: _load,
+          child: ContributorWorkspaceView(
+            summary: summary,
+            onOpenTasks: () =>
+                _openContributorRoute(AppRouter.tasks(summary.planId)),
+            onOpenNotifications: () => _openContributorRoute(
+              AppRouter.planNotifications(summary.planId),
+            ),
+            onShowPermissions: () => _showContributorPermissions(summary),
+            onOpenMoney: summary.permissions.canViewMoney
+                ? () => _openContributorRoute(
+                    AppRouter.money(summary.planId),
+                    extra: widget.sharedMember,
+                  )
+                : null,
+            onOpenGuests: summary.permissions.canManageGuests
+                ? () => _openContributorRoute(
+                    AppRouter.guestList(summary.planId),
+                    extra: widget.sharedMember,
+                  )
+                : null,
+            onOpenProviders: summary.permissions.canManageProviders
+                ? () => _openContributorRoute(
+                    AppRouter.planProviders(summary.planId),
+                    extra: widget.sharedMember,
+                  )
+                : null,
+            onOpenMembers: summary.permissions.canManageMembers
+                ? () => _openContributorRoute(
+                    AppRouter.sharing(summary.planId),
+                    extra: widget.sharedMember,
+                  )
+                : null,
+            onCreateTask: summary.permissions.canManageTasks
+                ? () => _openContributorRoute(
+                    AppRouter.createTask(summary.planId),
+                  )
+                : null,
+            onAddGuest: summary.permissions.canManageGuests
+                ? () => _openContributorRoute(
+                    AppRouter.guestListAdd(summary.planId),
+                    extra: widget.sharedMember,
+                  )
+                : null,
+            onAddCost: summary.permissions.canManageMoney
+                ? () => _openContributorRoute(
+                    AppRouter.moneyCostCreate(summary.planId),
+                    extra: widget.sharedMember,
+                  )
+                : null,
+          ),
+        ),
+      );
+    }
 
     return AarastScreenFrame(
       maxWidth: 560,
@@ -191,6 +303,147 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
     return dashboard.summary?.permissions.canManagePlan == true ||
         auth.user?.id == plan.ownerUserId ||
         widget.sharedMember?.role == 'MANAGER';
+  }
+
+  bool _isContributorPlan(
+    AuthController auth,
+    DashboardSummary? summary,
+    WeddingPlan plan,
+  ) {
+    if (_isLocalPlan) return false;
+    if (widget.sharedMember?.isOwner == true ||
+        summary?.permissions.isOwner == true ||
+        auth.user?.id == plan.ownerUserId) {
+      return false;
+    }
+    return widget.sharedMember != null || auth.user?.id != plan.ownerUserId;
+  }
+
+  Future<void> _openContributorRoute(String route, {Object? extra}) async {
+    await context.push(_withContributorView(route), extra: extra);
+    if (!mounted) return;
+    await context.read<DashboardSummaryProvider>().loadDashboard(
+      widget.weddingPlanId,
+      sharedMember: widget.sharedMember,
+    );
+  }
+
+  String _withContributorView(String route) {
+    final uri = Uri.parse(route);
+    return uri
+        .replace(
+          queryParameters: {...uri.queryParameters, 'view': 'contributor'},
+        )
+        .toString();
+  }
+
+  Future<void> _showContributorPermissions(DashboardSummary summary) {
+    final permissions = summary.permissions;
+    final labels = <String>[
+      'عرض الخطة والتحديثات',
+      permissions.canManageTasks ? 'إدارة المهام' : 'مشاهدة المهام',
+      if (permissions.canViewMoney)
+        permissions.canManageMoney ? 'إدارة المال' : 'مشاهدة المال',
+      if (permissions.canManageGuests) 'إدارة الضيوف',
+      if (permissions.canManageProviders) 'إدارة الموردين والعروض',
+      if (permissions.canManageMembers) 'إدارة المشاركين',
+      if (permissions.canManagePlan) 'تعديل بيانات الخطة',
+    ];
+
+    return showAarastBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.ivory,
+      builder: (sheetContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.border,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Icon(
+                  LucideIcons.shieldCheck,
+                  color: AppTheme.gold,
+                  size: 34,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'صلاحياتك في هذه الخطة',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: AppTheme.deepBurgundy,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'حدد مالك الخطة هذه الصلاحيات، وتظهر لك الواجهة على أساسها.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w600,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                for (final label in labels)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            LucideIcons.checkCircle2,
+                            color: AppTheme.success,
+                            size: 19,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.ink,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                FilledButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: const Text('تم'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   bool _canManageProviders(
@@ -354,12 +607,11 @@ class _PlanCenterScreenState extends State<PlanCenterScreen> {
                   size: 34,
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'أرشفة الخطة؟',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 19,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -577,11 +829,10 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'تعديل بيانات الخطة',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: AppTheme.ink,
-                    fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -601,22 +852,23 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _currency,
-                  decoration: const InputDecoration(labelText: 'العملة'),
-                  items: const [
-                    DropdownMenuItem(value: 'YER', child: Text('ريال يمني')),
-                    DropdownMenuItem(value: 'SAR', child: Text('ريال سعودي')),
-                    DropdownMenuItem(value: 'USD', child: Text('دولار أمريكي')),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) setState(() => _currency = value);
-                  },
+                Text(
+                  'العملة',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                AarastChoicePillRow<String>(
+                  value: _currency,
+                  options: weddingCurrencyOptions,
+                  onChanged: (value) => setState(() => _currency = value),
                 ),
                 const SizedBox(height: 18),
-                const Text(
+                Text(
                   'موقع الزفاف',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: AppTheme.ink,
                     fontWeight: FontWeight.w900,
                   ),

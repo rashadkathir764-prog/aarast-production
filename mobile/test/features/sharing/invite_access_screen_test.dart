@@ -6,6 +6,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
@@ -112,6 +113,122 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'verified contributor reviews real role and permissions before joining',
+    (tester) async {
+      final invite = _invite(
+        canManageTasks: true,
+        canManageGuests: true,
+        canViewMoney: false,
+      );
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      final sharingApi = _FakeSharingApi(invites: [invite]);
+
+      await _pumpInviteScreen(tester, harness, sharingApi: sharingApi);
+      await _openVerifiedInvite(tester);
+
+      expect(find.text('عرس رشاد وسارة'), findsOneWidget);
+      expect(find.text('الداعي: رشاد'), findsOneWidget);
+      expect(find.textContaining('مساهم'), findsWidgets);
+      expect(find.text('المهام'), findsOneWidget);
+      expect(find.text('الضيوف'), findsOneWidget);
+      expect(
+        find.text('الميزانية والتكاليف والدفعات خاصة ولن تظهر لك.'),
+        findsOneWidget,
+      );
+      await _scrollUntilVisible(
+        tester,
+        find.byKey(const Key('invite-accept-button')),
+      );
+      expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
+      expect(find.text('إنشاء خطة'), findsNothing);
+    },
+  );
+
+  testWidgets('accepting an invite shows success before entering the plan', (
+    tester,
+  ) async {
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    final sharingApi = _FakeSharingApi(
+      invites: [_invite(canManageTasks: true)],
+    );
+
+    await _pumpInviteScreen(tester, harness, sharingApi: sharingApi);
+    await _openVerifiedInvite(tester);
+    await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
+    await tester.pumpAndSettle();
+
+    expect(sharingApi.acceptCalls, 1);
+    expect(find.byKey(const Key('invite-joined-success')), findsOneWidget);
+    expect(find.text('تم الانضمام بنجاح'), findsOneWidget);
+    await _scrollUntilVisible(
+      tester,
+      find.byKey(const Key('invite-open-plan-button')),
+    );
+    expect(find.byKey(const Key('invite-open-plan-button')), findsOneWidget);
+  });
+
+  testWidgets('declining an invite requires explicit confirmation', (
+    tester,
+  ) async {
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    final sharingApi = _FakeSharingApi(invites: [_invite()]);
+
+    await _pumpInviteScreen(tester, harness, sharingApi: sharingApi);
+    await _openVerifiedInvite(tester);
+    await _tapVisible(tester, find.byKey(const Key('invite-decline-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تأكيد رفض الدعوة'), findsOneWidget);
+    expect(sharingApi.declineCalls, 0);
+
+    await tester.tap(find.byKey(const Key('invite-confirm-decline-button')));
+    await tester.pumpAndSettle();
+
+    expect(sharingApi.declineCalls, 1);
+    expect(find.text('مرفوضة'), findsOneWidget);
+  });
+
+  testWidgets('invite details are overflow-free at 320px and 1.3 scale', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    final sharingApi = _FakeSharingApi(
+      invites: [
+        _invite(
+          canViewMoney: true,
+          canManageTasks: true,
+          canManageGuests: true,
+          canManageProviders: true,
+          canInviteMembers: true,
+        ),
+      ],
+    );
+
+    await _pumpInviteScreen(
+      tester,
+      harness,
+      sharingApi: sharingApi,
+      textScale: 1.3,
+    );
+    await _openVerifiedInvite(tester);
+
+    await _scrollUntilVisible(
+      tester,
+      find.byKey(const Key('invite-accept-button')),
+    );
+    expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('invite permission labels keep financial access explicit', () {
     final helperInvite = _invite(canManageTasks: true);
     expect(helperInvite.permissionLabels, contains('عرض الخطة'));
@@ -135,9 +252,10 @@ Future<_AuthHarness> _authHarness() async {
 Future<void> _pumpInviteScreen(
   WidgetTester tester,
   _AuthHarness harness, {
+  SharingApi? sharingApi,
   double textScale = 1,
 }) async {
-  final sharing = SharingProvider(_FakeSharingApi());
+  final sharing = SharingProvider(sharingApi ?? _FakeSharingApi());
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -158,13 +276,38 @@ Future<void> _pumpInviteScreen(
   );
 }
 
+Future<void> _openVerifiedInvite(WidgetTester tester) async {
+  await _openOtpStep(tester);
+  await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
+  await tester.pump(const Duration(milliseconds: 1100));
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openOtpStep(WidgetTester tester) async {
   await tester.enterText(
     find.byKey(const Key('invite-phone-field')),
     '777123456',
   );
-  await tester.tap(find.byKey(const Key('invite-request-otp-button')));
+  await _tapVisible(tester, find.byKey(const Key('invite-request-otp-button')));
   await tester.pumpAndSettle();
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await _scrollUntilVisible(tester, finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+}
+
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      finder,
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
+  } else {
+    await tester.ensureVisible(finder);
+  }
 }
 
 class _AuthHarness {
@@ -197,6 +340,8 @@ PlanInvite _invite({
     canManageProviders: canManageProviders,
     canInviteMembers: canInviteMembers,
     canManageMoney: canManageMoney,
+    weddingPlanTitle: 'عرس رشاد وسارة',
+    inviterName: 'رشاد',
   );
 }
 
@@ -207,6 +352,7 @@ class _FakeAuthRepository extends AuthRepository {
   int requestCalls = 0;
   int verifyCalls = 0;
   bool failVerify = false;
+  bool authenticateOnVerify = false;
   Completer<void>? verifyGate;
 
   @override
@@ -234,10 +380,93 @@ class _FakeAuthRepository extends AuthRepository {
     if (failVerify) {
       throw const ApiException('OTP code is invalid or expired');
     }
-    return OtpVerifyResult(verified: true, phone: phone, purpose: purpose);
+    return OtpVerifyResult(
+      verified: true,
+      phone: phone,
+      purpose: purpose,
+      user: authenticateOnVerify
+          ? const SafeUser(
+              id: 'invitee-1',
+              name: 'أحمد',
+              phone: '+967777123456',
+              role: 'USER',
+              status: 'ACTIVE',
+            )
+          : null,
+      accessToken: authenticateOnVerify ? 'verified-access-token' : null,
+    );
   }
 }
 
 class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi() : super(ApiClient(tokenProvider: () async => null));
+  _FakeSharingApi({this.invites = const []})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final List<PlanInvite> invites;
+  int acceptCalls = 0;
+  int declineCalls = 0;
+
+  @override
+  Future<List<PlanInvite>> getMyInvites() async => invites;
+
+  @override
+  Future<PlanInvite> getInvite(String token) async {
+    return invites.singleWhere((invite) => invite.token == token);
+  }
+
+  @override
+  Future<AcceptedPlanInvite> acceptInvite(String token) async {
+    acceptCalls += 1;
+    final invite = _withStatus(
+      invites.singleWhere((item) => item.token == token),
+      'ACCEPTED',
+    );
+    final now = DateTime(2026);
+    return AcceptedPlanInvite(
+      invite: invite,
+      member: SharedMember(
+        id: 'member-1',
+        weddingPlanId: invite.weddingPlanId,
+        userId: 'invitee-1',
+        role: invite.role,
+        canViewMoney: invite.canViewMoney,
+        canManageTasks: invite.canManageTasks,
+        canManageMoney: invite.canManageMoney,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+  }
+
+  @override
+  Future<PlanInvite> declineInvite(String token) async {
+    declineCalls += 1;
+    return _withStatus(
+      invites.singleWhere((item) => item.token == token),
+      'DECLINED',
+    );
+  }
+}
+
+PlanInvite _withStatus(PlanInvite invite, String status) {
+  return PlanInvite(
+    id: invite.id,
+    weddingPlanId: invite.weddingPlanId,
+    token: invite.token,
+    role: invite.role,
+    status: status,
+    expiresAt: invite.expiresAt,
+    canViewMoney: invite.canViewMoney,
+    canEditPlan: invite.canEditPlan,
+    canManageTasks: invite.canManageTasks,
+    canManageGuests: invite.canManageGuests,
+    canManageProviders: invite.canManageProviders,
+    canInviteMembers: invite.canInviteMembers,
+    canManageMoney: invite.canManageMoney,
+    name: invite.name,
+    phone: invite.phone,
+    email: invite.email,
+    weddingPlanTitle: invite.weddingPlanTitle,
+    inviterName: invite.inviterName,
+  );
 }

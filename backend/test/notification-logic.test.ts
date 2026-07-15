@@ -117,6 +117,60 @@ test('notification creation preserves priority, entity, and route metadata', asy
   assert.equal(created.routeTarget, '/wedding-plans/plan-1/plan-center');
 });
 
+test('transaction-scoped notification creation reuses the caller transaction', async () => {
+  let outboxRows = 0;
+  const now = new Date();
+  const client = {
+    notification: {
+      create: async ({ data }: { data: Record<string, unknown> }) => ({
+        id: 'notification-invite',
+        userId: data.userId as string,
+        weddingPlanId: null,
+        type: data.type as NotificationType,
+        priority: NotificationPriority.NORMAL,
+        title: data.title as string,
+        body: data.body as string,
+        entityType: null,
+        entityId: null,
+        routeTarget: null,
+        data: null,
+        dedupeKey: (data.dedupeKey as string | null) ?? null,
+        readAt: null,
+        archivedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    },
+    outboxEvent: {
+      create: async () => {
+        outboxRows += 1;
+        return { id: 'outbox-invite' };
+      },
+    },
+  };
+  const prisma = {
+    $transaction: async () => {
+      throw new Error('nested transaction must not be opened');
+    },
+  } as unknown as PrismaService;
+  const service = new NotificationsService(
+    prisma,
+    {} as PermissionService,
+    new OutboxService(),
+  );
+
+  const created = await service.createNotificationInTransaction(client as any, {
+    userId: user.id,
+    type: NotificationType.SHARING_INVITE_ACCEPTED,
+    title: 'Invite accepted',
+    body: 'Participant accepted the invitation.',
+    dedupeKey: 'invite-accepted',
+  });
+
+  assert.equal(created.id, 'notification-invite');
+  assert.equal(outboxRows, 1);
+});
+
 test('notification dedupe returns the existing event', async () => {
   const { service, records } = createHarness();
   const input = {

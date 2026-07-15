@@ -103,7 +103,20 @@ class WeddingPlanShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _calculateSelectedIndex(context);
-    final location = GoRouterState.of(context).uri.path;
+    final routeState = GoRouterState.of(context);
+    final location = routeState.uri.path;
+    final dashboard = context.watch<DashboardSummaryProvider?>();
+    final activeSummary = dashboard?.summary?.planId == weddingPlanId
+        ? dashboard?.summary
+        : null;
+    final contributorView =
+        routeState.uri.queryParameters['view'] == 'contributor' ||
+        (activeSummary != null && !activeSummary.permissions.isOwner);
+
+    // المساهم يدخل الأقسام من مساحة واحدة. إبقاء شريط الخطة الخماسي هنا
+    // يصنع تطبيقًا ثانيًا داخليًا ويعرض له وجهات قد لا يملك صلاحيتها.
+    if (contributorView) return child;
+
     final finance = context.watch<FinanceProvider?>();
     final canManageCurrentMoney =
         finance?.loadedPlanId == weddingPlanId &&

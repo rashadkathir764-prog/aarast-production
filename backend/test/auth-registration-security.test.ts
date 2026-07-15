@@ -14,6 +14,7 @@ function createHarness() {
   const lookupEvents: string[] = [];
   let otpSequence = 0;
   let userSequence = 0;
+  let planInvite: any = null;
 
   const prisma: any = {
     otpCode: {
@@ -109,7 +110,20 @@ function createHarness() {
         return token;
       },
     },
-    planInvite: { findFirst: async () => null },
+    planInvite: {
+      findFirst: async ({ where }: any) => {
+        if (!planInvite || planInvite.normalizedPhone !== where.normalizedPhone) {
+          return null;
+        }
+        if (where.acceptedAt === null && planInvite.acceptedAt !== null) return null;
+        if (where.declinedAt === null && planInvite.declinedAt !== null) return null;
+        if (where.revokedAt === null && planInvite.revokedAt !== null) return null;
+        if (where.expiresAt?.gt && planInvite.expiresAt <= where.expiresAt.gt) {
+          return null;
+        }
+        return planInvite;
+      },
+    },
     $transaction: async (action: any) => action(prisma),
   };
 
@@ -138,6 +152,9 @@ function createHarness() {
           lastLoginAt: null,
         },
       }),
+    setPlanInvite: (value: any) => {
+      planInvite = value;
+    },
   };
 }
 
@@ -362,6 +379,68 @@ test('one OTP can create at most one concurrent LOGIN session', async () => {
     assert.equal(attempts.filter((result) => result.status === 'fulfilled').length, 1);
     assert.equal(attempts.filter((result) => result.status === 'rejected').length, 1);
     assert.equal(refreshTokens.length, 1);
+  });
+});
+
+test('LOGIN OTP provisions an invited participant only from a live pending invite', async () => {
+  await withDevOtp(async () => {
+    const { service, users, setPlanInvite } = createHarness();
+    setPlanInvite({
+      id: 'invite-active',
+      normalizedPhone: '+967777123456',
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.requestOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+    });
+    const result = await service.verifyOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+      code: '123456',
+    });
+
+    assert.equal('accessToken' in result, true);
+    assert.equal(users.length, 1);
+  });
+});
+
+test('historical invites cannot create a new participant account', async () => {
+  await withDevOtp(async () => {
+    const historicalStates = [
+      { acceptedAt: new Date(), declinedAt: null, revokedAt: null, expiresAt: new Date(Date.now() + 60_000) },
+      { acceptedAt: null, declinedAt: new Date(), revokedAt: null, expiresAt: new Date(Date.now() + 60_000) },
+      { acceptedAt: null, declinedAt: null, revokedAt: new Date(), expiresAt: new Date(Date.now() + 60_000) },
+      { acceptedAt: null, declinedAt: null, revokedAt: null, expiresAt: new Date(Date.now() - 60_000) },
+    ];
+
+    for (const [index, state] of historicalStates.entries()) {
+      const { service, users, setPlanInvite } = createHarness();
+      setPlanInvite({
+        id: `invite-historical-${index}`,
+        normalizedPhone: '+967777123456',
+        ...state,
+      });
+      await service.requestOtp({
+        phone: '777123456',
+        purpose: OtpPurpose.LOGIN,
+      });
+
+      await assert.rejects(
+        () =>
+          service.verifyOtp({
+            phone: '777123456',
+            purpose: OtpPurpose.LOGIN,
+            code: '123456',
+          }),
+        /OTP code is invalid or expired/,
+      );
+      assert.equal(users.length, 0);
+    }
   });
 });
 

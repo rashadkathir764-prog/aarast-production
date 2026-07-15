@@ -570,25 +570,25 @@ export class SharingService {
         throw new ConflictException("Invite is no longer pending");
       }
 
-      return { member, acceptedInvite };
-    });
-
-    await this.notifications.createNotification({
-      userId: invite.inviterUserId,
-      weddingPlanId: invite.weddingPlanId,
-      type: NotificationType.SHARING_INVITE_ACCEPTED,
-      priority: NotificationPriority.HIGH,
-      title: "تم قبول الدعوة",
-      body: `${currentUser.name} قبل دعوة المشاركة في خطة الزفاف.`,
-      entityType: "plan_invite",
-      entityId: invite.id,
-      routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
-      data: {
-        inviteId: invite.id,
-        sharedMemberId: result.member.id,
+      await this.notifications.createNotificationInTransaction(tx, {
+        userId: invite.inviterUserId,
         weddingPlanId: invite.weddingPlanId,
-      },
-      dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:accepted`,
+        type: NotificationType.SHARING_INVITE_ACCEPTED,
+        priority: NotificationPriority.HIGH,
+        title: "تم قبول الدعوة",
+        body: `${currentUser.name} قبل دعوة المشاركة في خطة الزفاف.`,
+        entityType: "plan_invite",
+        entityId: invite.id,
+        routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
+        data: {
+          inviteId: invite.id,
+          sharedMemberId: member.id,
+          weddingPlanId: invite.weddingPlanId,
+        },
+        dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:accepted`,
+      });
+
+      return { member, acceptedInvite };
     });
 
     return {
@@ -629,23 +629,23 @@ export class SharingService {
       if (!updated) {
         throw new ConflictException("Invite is no longer pending");
       }
-      return updated;
-    });
 
-    await this.notifications.createNotification({
-      userId: invite.inviterUserId,
-      weddingPlanId: invite.weddingPlanId,
-      type: NotificationType.SHARING_INVITE_DECLINED,
-      title: "تم رفض الدعوة",
-      body: `${currentUser.name} رفض دعوة المشاركة في خطة الزفاف.`,
-      entityType: "plan_invite",
-      entityId: invite.id,
-      routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
-      data: {
-        inviteId: invite.id,
+      await this.notifications.createNotificationInTransaction(tx, {
+        userId: invite.inviterUserId,
         weddingPlanId: invite.weddingPlanId,
-      },
-      dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:declined`,
+        type: NotificationType.SHARING_INVITE_DECLINED,
+        title: "تم رفض الدعوة",
+        body: `${currentUser.name} رفض دعوة المشاركة في خطة الزفاف.`,
+        entityType: "plan_invite",
+        entityId: invite.id,
+        routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
+        data: {
+          inviteId: invite.id,
+          weddingPlanId: invite.weddingPlanId,
+        },
+        dedupeKey: `${invite.inviterUserId}:plan-invite:${invite.id}:declined`,
+      });
+      return updated;
     });
 
     return this.toInviteResponse(declined);

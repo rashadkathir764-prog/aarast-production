@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const {
@@ -30,5 +31,17 @@ test('admin provisioning throttle hash is deterministic and peppered', () => {
   assert.throws(
     () => throttleSubjectHash('+967777123456', ''),
     /AUTH_LOGIN_THROTTLE_PEPPER/,
+  );
+});
+
+test('production backend image includes the admin provisioning operation', () => {
+  const dockerfile = readFileSync('Dockerfile', 'utf8');
+  assert.match(
+    dockerfile,
+    /COPY scripts\/prod\/provision-admin\.cjs \.\/scripts\/prod\/provision-admin\.cjs/,
+  );
+  assert.match(
+    dockerfile,
+    /COPY --from=build \/app\/scripts\/prod\/provision-admin\.cjs \.\/scripts\/prod\/provision-admin\.cjs/,
   );
 });

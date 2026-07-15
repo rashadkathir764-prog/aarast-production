@@ -10,6 +10,7 @@ RUN npm ci
 COPY prisma ./prisma
 COPY tsconfig*.json ./
 COPY scripts/clean-dist.cjs ./scripts/clean-dist.cjs
+COPY scripts/prod/provision-admin.cjs ./scripts/prod/provision-admin.cjs
 COPY src ./src
 
 RUN npx prisma generate
@@ -50,6 +51,7 @@ RUN apk add --no-cache openssl
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/scripts/prod/provision-admin.cjs ./scripts/prod/provision-admin.cjs
 COPY --from=build /app/dist ./dist
 
 USER node

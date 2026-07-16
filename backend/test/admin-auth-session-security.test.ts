@@ -93,7 +93,7 @@ test("admin guard requires both the ADMIN role and MFA assurance", () => {
   );
 });
 
-test("legacy password and OTP login paths explicitly reject admin sessions", () => {
+test("general admin password login is rejected and OTP never mints admin MFA", () => {
   const service = read("src/auth/auth.service.ts");
   const loginBlock = service.slice(
     service.indexOf("async login(dto:"),
@@ -104,8 +104,12 @@ test("legacy password and OTP login paths explicitly reject admin sessions", () 
     service.indexOf("async requestPasswordReset("),
   );
 
-  assert.match(loginBlock, /user\.role === UserRole\.ADMIN/);
-  assert.match(otpBlock, /user\?\.role === UserRole\.ADMIN/);
+  assert.match(
+    loginBlock,
+    /user\.role === UserRole\.ADMIN[\s\S]*?Admin accounts must use OTP login/,
+  );
+  assert.doesNotMatch(loginBlock, /createAuthResponse\([^)]*,\s*true/);
+  assert.doesNotMatch(otpBlock, /createAuthResponse\([^)]*,\s*true/);
   assert.match(read("src/admin/admin.guard.ts"), /adminMfa !== true/);
   assert.match(
     read("src/auth/jwt.strategy.ts"),

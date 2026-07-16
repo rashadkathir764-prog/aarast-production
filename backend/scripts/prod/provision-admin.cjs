@@ -1,5 +1,5 @@
 const { createHmac } = require('node:crypto');
-const { PrismaClient } = require('@prisma/client');
+const { Prisma, PrismaClient } = require('@prisma/client');
 const bcryptjs = require('bcryptjs');
 
 const confirmation = 'PROVISION_AARAST_ADMIN';
@@ -13,6 +13,15 @@ function normalizeYemeniPhone(value) {
 
 function phoneVariants(phone) {
   return [phone, phone.slice(4)];
+}
+
+function selectProvisioningIdentity(users) {
+  if (users.length > 1) {
+    throw new Error(
+      'Duplicate canonical and legacy administrator identities detected; merge them before provisioning.',
+    );
+  }
+  return users[0] ?? null;
 }
 
 function validatePassword(value) {
@@ -53,43 +62,57 @@ async function provisionAdmin(environment = process.env) {
   const prisma = new PrismaClient();
 
   try {
-    await prisma.$transaction(async (tx) => {
-      const [canonicalPhone, legacyLocalPhone] = phoneVariants(phone);
-      const existing =
-        (await tx.user.findUnique({ where: { phone: canonicalPhone } })) ??
-        (await tx.user.findUnique({ where: { phone: legacyLocalPhone } }));
-      const user = existing
-        ? await tx.user.update({
-            where: { id: existing.id },
-            data: {
-              phone: canonicalPhone,
-              name,
-              role: 'ADMIN',
-              adminRole: 'SUPER_ADMIN',
-              status: 'ACTIVE',
-              passwordHash,
+    await prisma.$transaction(
+      async (tx) => {
+        const [canonicalPhone, legacyLocalPhone] = phoneVariants(phone);
+        const existing = selectProvisioningIdentity(
+          await tx.user.findMany({
+            where: {
+              phone: { in: [canonicalPhone, legacyLocalPhone] },
             },
-          })
-        : await tx.user.create({
-            data: {
-              name,
-              phone,
-              role: 'ADMIN',
-              adminRole: 'SUPER_ADMIN',
-              status: 'ACTIVE',
-              passwordHash,
-            },
-          });
+          }),
+        );
+        const user = existing
+          ? await tx.user.update({
+              where: { id: existing.id },
+              data: {
+                phone: canonicalPhone,
+                name,
+                role: 'ADMIN',
+                adminRole: 'SUPER_ADMIN',
+                status: 'ACTIVE',
+                passwordHash,
+              },
+            })
+          : await tx.user.create({
+              data: {
+                name,
+                phone,
+                role: 'ADMIN',
+                adminRole: 'SUPER_ADMIN',
+                status: 'ACTIVE',
+                passwordHash,
+              },
+            });
 
-      const now = new Date();
-      await tx.refreshToken.updateMany({
-        where: { userId: user.id, revokedAt: null },
-        data: { revokedAt: now },
-      });
-      await tx.adminLoginChallenge.deleteMany({ where: { userId: user.id } });
-      await tx.loginThrottle.deleteMany({ where: { subjectHash } });
-    });
+        const now = new Date();
+        await tx.refreshToken.updateMany({
+          where: { userId: user.id, revokedAt: null },
+          data: { revokedAt: now },
+        });
+        await tx.adminLoginChallenge.deleteMany({ where: { userId: user.id } });
+        await tx.loginThrottle.deleteMany({ where: { subjectHash } });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
     console.log('SUPER_ADMIN provisioned; previous sessions and challenges were revoked.');
+  } catch (error) {
+    if (error?.code === 'P2002' || error?.code === 'P2034') {
+      throw new Error(
+        'Administrator provisioning conflicted with another identity update; no changes were applied.',
+      );
+    }
+    throw error;
   } finally {
     await prisma.$disconnect();
   }
@@ -106,6 +129,7 @@ module.exports = {
   normalizeYemeniPhone,
   phoneVariants,
   provisionAdmin,
+  selectProvisioningIdentity,
   throttleSubjectHash,
   validatePassword,
 };

@@ -33,9 +33,12 @@ import {
   WhatsAppOtpChannel,
 } from "./otp-channel";
 import {
+  createOpaqueTokenValue,
   createRefreshTokenValue,
   hashRefreshToken,
+  isRefreshTokenForScope,
   refreshTokenExpiry,
+  RefreshTokenScope,
 } from "./refresh-token-policy";
 import { SafeUser, toSafeUser } from "./safe-user";
 import { LoginThrottleService } from "./login-throttle.service";
@@ -179,9 +182,13 @@ export class AuthService {
 
   async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.validatePasswordCredentials(dto);
+    // A leaked administrator password must not become a bearer for destructive
+    // account APIs. Administrators may still enter the wedding application
+    // through the phone-OTP flow, while the browser administration surface
+    // continues to require its dedicated password-plus-OTP challenge.
     if (user.role === UserRole.ADMIN) {
       throw new UnauthorizedException(
-        "Admin accounts must use password and OTP login",
+        "Admin accounts must use OTP login in the wedding application",
       );
     }
     const updatedUser = await this.prisma.user.update({
@@ -207,7 +214,7 @@ export class AuthService {
       phone: user.phone!,
       purpose: OtpPurpose.LOGIN,
     }, context);
-    const challengeToken = createRefreshTokenValue();
+    const challengeToken = createOpaqueTokenValue();
     const now = new Date();
     const expiresAt = new Date(
       Math.min(otp.expiresAt.getTime(), now.getTime() + 10 * 60_000),
@@ -366,6 +373,11 @@ export class AuthService {
     dto: RefreshDto,
     requiredRole?: UserRole,
   ): Promise<AuthResponse> {
+    const refreshScope: RefreshTokenScope =
+      requiredRole === UserRole.ADMIN ? "admin" : "application";
+    if (!isRefreshTokenForScope(dto.refreshToken, refreshScope)) {
+      throw new UnauthorizedException("Session is invalid or expired");
+    }
     const tokenHash = hashRefreshToken(dto.refreshToken);
     const now = new Date();
 
@@ -391,7 +403,7 @@ export class AuthService {
         throw new UnauthorizedException("Session is invalid or expired");
       }
 
-      const nextToken = createRefreshTokenValue();
+      const nextToken = createRefreshTokenValue(refreshScope);
       const nextExpiresAt = refreshTokenExpiry(now);
       const replacement = await tx.refreshToken.create({
         data: {
@@ -416,7 +428,10 @@ export class AuthService {
         requiredRole === UserRole.ADMIN ? replacement.id : undefined;
 
       return {
-        user: toSafeUser(existing.user),
+        user: toSafeUser(
+          existing.user,
+          requiredRole === UserRole.ADMIN,
+        ),
         accessToken: this.signToken(
           existing.user.id,
           existing.user.phone,
@@ -568,11 +583,6 @@ export class AuthService {
     if (purpose === OtpPurpose.LOGIN && !user) {
       throw new BadRequestException("OTP code is invalid or expired");
     }
-    if (purpose === OtpPurpose.LOGIN && user?.role === UserRole.ADMIN) {
-      throw new UnauthorizedException(
-        "Admin accounts must use password and OTP login",
-      );
-    }
     const auth =
       purpose === OtpPurpose.LOGIN && user
         ? await this.createAuthResponse(user)
@@ -660,7 +670,9 @@ export class AuthService {
     if (user.status === "DISABLED" || !user.phoneVerifiedAt) {
       throw new UnauthorizedException("Phone verification is required");
     }
-    const refreshToken = createRefreshTokenValue();
+    const refreshToken = createRefreshTokenValue(
+      adminMfa ? "admin" : "application",
+    );
     const refreshTokenExpiresAt = refreshTokenExpiry();
     const refreshSession = await this.prisma.refreshToken.create({
       data: {
@@ -670,7 +682,7 @@ export class AuthService {
       },
     });
     return {
-      user: toSafeUser(user),
+      user: toSafeUser(user, adminMfa),
       accessToken: this.signToken(
         user.id,
         user.phone,
@@ -703,9 +715,13 @@ export class AuthService {
     purpose: OtpPurpose,
     now: Date,
   ): Promise<User | null> {
-    const user = await this.prisma.user.findFirst({
-      where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
-    });
+    // Keep OTP login deterministic for databases that still contain a legacy
+    // local-format row beside the canonical international-format row.
+    const user =
+      (await this.prisma.user.findFirst({ where: { phone } })) ??
+      (await this.prisma.user.findFirst({
+        where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
+      }));
 
     if (purpose === OtpPurpose.LOGIN) {
       if (user?.status === "DISABLED") {

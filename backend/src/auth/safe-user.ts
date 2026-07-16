@@ -26,11 +26,16 @@ export interface SafeUser {
   updatedAt: Date;
 }
 
-export function toSafeUser(user: AuthenticatedUser): SafeUser {
+export function toSafeUser(
+  user: AuthenticatedUser,
+  includeAdminMetadata = user.adminMfa === true,
+): SafeUser {
   const authenticated = toAuthenticatedUser(user);
+  const adminRole = includeAdminMetadata ? authenticated.adminRole : null;
   return {
     ...authenticated,
-    adminPermissions: permissionsForAdminRole(authenticated.adminRole),
+    adminRole,
+    adminPermissions: permissionsForAdminRole(adminRole),
   };
 }
 

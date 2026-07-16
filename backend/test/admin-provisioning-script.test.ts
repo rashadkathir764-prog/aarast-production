@@ -5,6 +5,7 @@ import { test } from 'node:test';
 const {
   normalizeYemeniPhone,
   phoneVariants,
+  selectProvisioningIdentity,
   throttleSubjectHash,
   validatePassword,
 } = require('../scripts/prod/provision-admin.cjs');
@@ -20,6 +21,34 @@ test('admin provisioning recognizes the legacy local phone variant', () => {
     '+967777123456',
     '777123456',
   ]);
+});
+
+test('admin provisioning fails closed when canonical and legacy identities both exist', () => {
+  const canonical = { id: 'canonical' };
+  const legacy = { id: 'legacy' };
+
+  assert.equal(selectProvisioningIdentity([]), null);
+  assert.equal(selectProvisioningIdentity([canonical]), canonical);
+  assert.throws(
+    () => selectProvisioningIdentity([canonical, legacy]),
+    /Duplicate canonical and legacy administrator identities/,
+  );
+});
+
+test('admin provisioning checks every phone variant before mutating in a serializable transaction', () => {
+  const source = readFileSync('scripts/prod/provision-admin.cjs', 'utf8');
+
+  assert.match(source, /user\.findMany/);
+  assert.match(source, /phone:\s*\{\s*in:\s*\[canonicalPhone,\s*legacyLocalPhone\]/);
+  assert.match(source, /selectProvisioningIdentity/);
+  assert.match(
+    source,
+    /isolationLevel:\s*Prisma\.TransactionIsolationLevel\.Serializable/,
+  );
+  assert.doesNotMatch(
+    source,
+    /findUnique\([\s\S]*?\)\s*\?\?\s*[\s\S]*?findUnique\(/,
+  );
 });
 
 test('admin provisioning rejects weak or bcrypt-truncated passwords', () => {

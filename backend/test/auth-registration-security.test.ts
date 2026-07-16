@@ -232,6 +232,52 @@ test('password login never issues a session to an unverified legacy account', as
   });
 });
 
+test('password-only login never gives an admin a wedding-app bearer', async () => {
+  await withDevOtp(async () => {
+    const { service, refreshTokens, addUser } = createHarness();
+    const admin = await addUser('+967777123456', true);
+    admin.role = 'ADMIN';
+    admin.adminRole = 'SUPER_ADMIN';
+
+    await assert.rejects(
+      () =>
+        service.login({
+          phone: '777123456',
+          password: 'secret123',
+        }),
+      /Admin accounts must use OTP login in the wedding application/,
+    );
+    assert.equal(refreshTokens.length, 0);
+  });
+});
+
+test('general OTP login gives an admin only a standard wedding-app session', async () => {
+  await withDevOtp(async () => {
+    const { service, refreshTokens, addUser } = createHarness();
+    const admin = await addUser('+967777123456', true);
+    admin.role = 'ADMIN';
+    admin.adminRole = 'SUPER_ADMIN';
+
+    await service.requestOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+    });
+
+    const response = await service.verifyOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+      code: '123456',
+    });
+
+    assert.ok(response.accessToken);
+    assert.ok(response.refreshToken);
+    assert.equal(response.user?.adminRole, null);
+    assert.deepEqual(response.user?.adminPermissions, []);
+    assert.match(response.refreshToken, /^aarast_app_/);
+    assert.equal(refreshTokens.length, 1);
+  });
+});
+
 test('password login prefers the canonical phone row over a legacy duplicate', async () => {
   await withDevOtp(async () => {
     const { service, users, addUser } = createHarness();
@@ -246,6 +292,28 @@ test('password login prefers the canonical phone row over a legacy duplicate', a
 
     assert.equal('accessToken' in response, true);
     assert.equal(users.length, 2);
+  });
+});
+
+test('OTP login prefers the canonical phone row over a legacy duplicate', async () => {
+  await withDevOtp(async () => {
+    const { service, refreshTokens, addUser } = createHarness();
+    const legacy = await addUser('777123456', true);
+    const canonical = await addUser('+967777123456', true);
+
+    await service.requestOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+    });
+    const response = await service.verifyOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+      code: '123456',
+    });
+
+    assert.equal(response.user?.id, canonical.id);
+    assert.notEqual(response.user?.id, legacy.id);
+    assert.equal(refreshTokens.length, 1);
   });
 });
 

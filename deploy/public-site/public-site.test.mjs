@@ -21,13 +21,8 @@ assert.doesNotMatch(dockerfile, /\bCOPY\s+\.\s+/i, "COPY . is forbidden.");
 assert.match(dockerfile, /^HEALTHCHECK /m, "The image must expose a runtime health check.");
 
 for (const asset of [
-  "index.html",
-  "contact.html",
-  "privacy.html",
   "invite.html",
-  "script.js",
   "invite.js",
-  "style.css",
   "invite.css",
   "invite-preview.png",
 ]) {
@@ -37,6 +32,10 @@ for (const asset of [
 }
 
 assert.match(nginx, /location \^~ \/invites\//);
+assert.match(nginx, /location = \/healthz/);
+assert.match(nginx, /location = \/invite\.css/);
+assert.match(nginx, /location = \/invite\.js/);
+assert.match(nginx, /location \/\s*\{\s*return 404;/);
 assert.match(nginx, /access_log off;/);
 assert.match(nginx, /Cache-Control "no-store"/);
 assert.match(nginx, /X-Robots-Tag "noindex, nofollow, noarchive"/);

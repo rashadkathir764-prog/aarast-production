@@ -1,7 +1,7 @@
-# Aarast Public Site
+# Aarast Participant Invite Landing
 
-This directory is the reproducible source for the public Aarast site served at
-`https://aarast.shadowgardn.com`.
+This directory is the reproducible source for the participant-invite landing
+served at `https://aarast.shadowgardn.com/invites/:token`.
 
 It contains only public static assets. The Docker build copies an explicit
 allowlist and must never copy the repository, `.env`, Git metadata, deployment
@@ -9,10 +9,12 @@ files, or runtime secrets into the image.
 
 ## Routes
 
-- `/` - current public landing page.
-- `/contact.html` - current contact page.
-- `/privacy.html` - current privacy policy.
+- `/healthz` - container health probe only.
 - `/invites/:token` - generic participant-invite landing page.
+- `/invite-preview.png` - generic social preview used by the landing page.
+
+Every other path returns `404`. Marketing, contact, legal, account, and API
+surfaces do not belong in this narrowly scoped image.
 
 The final Android and Apple association files are deliberately not generated
 from temporary QA identities. Until the store-signing phase supplies the real

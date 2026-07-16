@@ -326,6 +326,50 @@ test("signed upload presign responses bypass replay storage and stay fresh", asy
   assert.equal(store.row("u1", "req-presign"), undefined);
 });
 
+test("one-time invite bearer responses bypass replay storage and are never persisted", async () => {
+  for (const route of [
+    {
+      key: "req-invite-create",
+      routePath: "/api/v1/wedding-plans/:weddingPlanId/invites",
+      originalUrl: "/api/v1/wedding-plans/plan-1/invites",
+    },
+    {
+      key: "req-invite-reissue",
+      routePath:
+        "/api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue",
+      originalUrl:
+        "/api/v1/wedding-plans/plan-1/invites/invite-1/reissue",
+    },
+  ]) {
+    const store = new FakeIdempotencyStore();
+    const interceptor = new IdempotencyInterceptor(store as any);
+    let executions = 0;
+    const next = handler(() => {
+      executions++;
+      return of({
+        id: "invite-1",
+        token: `raw-one-time-bearer-${executions}`,
+      });
+    });
+    const inviteContext = () =>
+      context("u1", route.key, "POST", {
+        routePath: route.routePath,
+        originalUrl: route.originalUrl,
+      });
+
+    const first = await firstValueFrom(
+      interceptor.intercept(inviteContext(), next),
+    );
+    const second = await firstValueFrom(
+      interceptor.intercept(inviteContext(), next),
+    );
+
+    assert.equal(executions, 2);
+    assert.notDeepEqual(first, second);
+    assert.equal(store.row("u1", route.key), undefined);
+  }
+});
+
 test("expired signed URLs in durable mutation replays are never returned stale", async () => {
   const store = new FakeIdempotencyStore();
   const interceptor = new IdempotencyInterceptor(store as any);

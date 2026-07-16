@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { SharedMember, SharedMemberRole, WeddingPlan } from "@prisma/client";
+import {
+  Prisma,
+  SharedMember,
+  SharedMemberRole,
+  WeddingPlan,
+} from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PrismaService } from "../prisma/prisma.service";
 
@@ -17,7 +22,19 @@ export class PermissionService {
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext> {
-    const plan = await this.prisma.weddingPlan.findUnique({
+    return this.getPlanAccessContextWithClient(
+      this.prisma,
+      weddingPlanId,
+      currentUser,
+    );
+  }
+
+  private async getPlanAccessContextWithClient(
+    client: PrismaService | Prisma.TransactionClient,
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const plan = await client.weddingPlan.findUnique({
       where: { id: weddingPlanId },
     });
 
@@ -28,7 +45,7 @@ export class PermissionService {
     const isOwner = plan.ownerUserId === currentUser.id;
     const sharedMember = isOwner
       ? null
-      : await this.prisma.sharedMember.findUnique({
+      : await client.sharedMember.findUnique({
           where: {
             weddingPlanId_userId: {
               weddingPlanId,
@@ -136,6 +153,20 @@ export class PermissionService {
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext> {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
+    if (this.canManageMembers(context)) return context;
+    throw new NotFoundException("Wedding plan not found");
+  }
+
+  async assertMemberManageableInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<PlanAccessContext> {
+    const context = await this.getPlanAccessContextWithClient(
+      tx,
+      weddingPlanId,
+      currentUser,
+    );
     if (this.canManageMembers(context)) return context;
     throw new NotFoundException("Wedding plan not found");
   }

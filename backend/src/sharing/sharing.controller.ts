@@ -112,6 +112,19 @@ export class ApiV1WeddingPlanInvitesController {
       inviteId,
     );
   }
+
+  @Post(":inviteId/reissue")
+  reissueInvite(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Param("inviteId") inviteId: string,
+  ) {
+    return this.sharingService.reissueInvite(
+      currentUser,
+      weddingPlanId,
+      inviteId,
+    );
+  }
 }
 
 @Controller("api/v1/invites")

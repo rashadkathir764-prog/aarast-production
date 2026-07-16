@@ -118,10 +118,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
     }
 
     const path = requestRouteTemplate(request);
-    // Presigning creates no durable application record. Replaying its short-
-    // lived URL would hand the client an expired credential, so this one safe
-    // transient route deliberately generates a fresh signature every time.
-    if (isTransientPresignRoute(method, path)) {
+    // Presigning creates no durable application record, and invite
+    // create/reissue responses carry a raw bearer that must be presented only
+    // once. Neither response is eligible for durable replay storage.
+    if (
+      isTransientPresignRoute(method, path) ||
+      isOneTimeInviteBearerRoute(method, path)
+    ) {
       return next.handle();
     }
     const requestHash = requestFingerprint(request, method);
@@ -331,6 +334,16 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
 function isTransientPresignRoute(method: string, path: string): boolean {
   return method === 'POST' && /(?:^|\/)media\/uploads\/presign\/?$/.test(path);
+}
+
+function isOneTimeInviteBearerRoute(method: string, path: string): boolean {
+  if (method !== 'POST') return false;
+  return (
+    /^\/api\/v1\/wedding-plans\/:weddingPlanId\/invites\/?$/.test(path) ||
+    /^\/api\/v1\/wedding-plans\/:weddingPlanId\/invites\/:inviteId\/reissue\/?$/.test(
+      path,
+    )
+  );
 }
 
 function encodeStoredResponse(

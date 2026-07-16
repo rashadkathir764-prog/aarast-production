@@ -17,6 +17,7 @@ import {
 import { createHash, randomBytes } from "crypto";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
+import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
@@ -128,6 +129,11 @@ type PlanInviteWithRelations = PlanInvite & {
 };
 
 type PermissionFlags = PlanPermissionFlags;
+
+interface PresentedInvite {
+  invite: PlanInviteWithRelations;
+  token: string;
+}
 
 @Injectable()
 export class SharingService {
@@ -345,79 +351,106 @@ export class SharingService {
       );
     }
 
-    if (target.user) {
-      const existingMember = await this.prisma.sharedMember.findUnique({
-        where: {
-          weddingPlanId_userId: {
+    const created = await this.withUniqueInviteToken(async (token) =>
+      runSerializableTransaction(this.prisma, async (tx) => {
+        const transactionalAccess =
+          await this.permissions.assertMemberManageableInTransaction(
+            tx,
             weddingPlanId,
-            userId: target.user.id,
-          },
-        },
-      });
-      if (existingMember) {
-        throw new ConflictException(
-          "User is already shared on this wedding plan",
+            currentUser,
+          );
+        this.assertPermissionCeiling(
+          transactionalAccess,
+          role,
+          permissionData,
         );
-      }
-    }
+        if (target.user?.id === transactionalAccess.plan.ownerUserId) {
+          throw new BadRequestException(
+            "Owner cannot be invited to own wedding plan",
+          );
+        }
 
-    const duplicateInvite = await this.prisma.planInvite.findFirst({
-      where: {
-        weddingPlanId,
-        acceptedAt: null,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-        OR: [
-          ...(target.user ? [{ inviteeUserId: target.user.id }] : []),
-          ...(target.normalizedPhone
-            ? [{ normalizedPhone: target.normalizedPhone }]
-            : []),
-          ...(target.email ? [{ email: target.email }] : []),
-        ],
-      },
-    });
-    if (duplicateInvite) {
-      throw new ConflictException(
-        "A pending invitation already exists for this participant",
-      );
-    }
+        if (target.user) {
+          const existingMember = await tx.sharedMember.findUnique({
+            where: {
+              weddingPlanId_userId: {
+                weddingPlanId,
+                userId: target.user.id,
+              },
+            },
+          });
+          if (existingMember) {
+            throw new ConflictException(
+              "User is already shared on this wedding plan",
+            );
+          }
+        }
 
-    const createdInvite = await this.createInviteWithUniqueToken({
-      weddingPlanId,
-      inviterUserId: currentUser.id,
-      inviteeUserId: target.user?.id ?? null,
-      name: this.optionalText(dto.name) ?? target.user?.name ?? null,
-      phone: target.phone,
-      normalizedPhone: target.normalizedPhone,
-      email: target.email,
-      role,
-      ...permissionData,
-      expiresAt: this.expiresAt(dto.expiresInDays),
-    });
-    const invite = createdInvite.invite;
+        const now = new Date();
+        const duplicateInvite = await tx.planInvite.findFirst({
+          where: {
+            weddingPlanId,
+            acceptedAt: null,
+            declinedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: now },
+            OR: [
+              ...(target.user ? [{ inviteeUserId: target.user.id }] : []),
+              ...(target.normalizedPhone
+                ? [{ normalizedPhone: target.normalizedPhone }]
+                : []),
+              ...(target.email ? [{ email: target.email }] : []),
+            ],
+          },
+        });
+        if (duplicateInvite) {
+          throw new ConflictException(
+            "A pending invitation already exists for this participant",
+          );
+        }
 
-    if (target.user) {
-      await this.notifications.createNotification({
-        userId: target.user.id,
-        weddingPlanId,
-        type: NotificationType.SHARING_INVITATION,
-        priority: NotificationPriority.HIGH,
-        title: "دعوة للمشاركة في خطة زفاف",
-        body: `تلقيت دعوة للمشاركة في "${plan.title}".`,
-        entityType: "plan_invite",
-        entityId: invite.id,
-        routeTarget: `/invites/${invite.id}`,
-        data: {
-          inviteId: invite.id,
-          weddingPlanId,
-          role: invite.role,
-        },
-        dedupeKey: `${target.user.id}:plan-invite:${invite.id}`,
-      });
-    }
+        const invite = await tx.planInvite.create({
+          data: {
+            weddingPlanId,
+            inviterUserId: currentUser.id,
+            inviteeUserId: target.user?.id ?? null,
+            name: this.optionalText(dto.name) ?? target.user?.name ?? null,
+            phone: target.phone,
+            normalizedPhone: target.normalizedPhone,
+            email: target.email,
+            role,
+            ...permissionData,
+            expiresAt: this.expiresAt(dto.expiresInDays),
+            tokenHash: this.hashInviteToken(token),
+          },
+          include: this.inviteIncludes(),
+        });
 
-    return this.toInviteResponse(invite, createdInvite.token);
+        if (target.user) {
+          await this.notifications.createNotificationInTransaction(tx, {
+            userId: target.user.id,
+            weddingPlanId,
+            type: NotificationType.SHARING_INVITATION,
+            priority: NotificationPriority.HIGH,
+            title: "دعوة للمشاركة في خطة زفاف",
+            body: `تلقيت دعوة للمشاركة في "${transactionalAccess.plan.title}".`,
+            entityType: "plan_invite",
+            entityId: invite.id,
+            routeTarget: `/invites/${invite.id}`,
+            data: {
+              inviteId: invite.id,
+              weddingPlanId,
+              role: invite.role,
+            },
+            dedupeKey: `${target.user.id}:plan-invite:${invite.id}`,
+          });
+        }
+
+        return invite;
+      }),
+    );
+
+    return this.toInviteResponse(created.invite, created.token);
   }
 
   async findInvitesForCurrentUser(
@@ -500,6 +533,83 @@ export class SharingService {
     return this.toInviteResponse(cancelled);
   }
 
+  async reissueInvite(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    inviteId: string,
+  ): Promise<PlanInviteResponse> {
+    await this.permissions.assertMemberManageable(
+      weddingPlanId,
+      currentUser,
+    );
+
+    const reissued = await this.withUniqueInviteToken(async (token) =>
+      runSerializableTransaction(this.prisma, async (tx) => {
+        const transactionalAccess =
+          await this.permissions.assertMemberManageableInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const invite = await tx.planInvite.findFirst({
+          where: { id: inviteId, weddingPlanId },
+          include: this.inviteIncludes(),
+        });
+        if (!invite) {
+          throw new NotFoundException("Invite not found");
+        }
+        if (
+          !transactionalAccess.isOwner &&
+          invite.inviterUserId !== currentUser.id
+        ) {
+          throw new NotFoundException("Invite not found");
+        }
+        this.assertPermissionCeiling(
+          transactionalAccess,
+          invite.role,
+          this.permissionFlagsForRecord(invite),
+        );
+
+        const now = new Date();
+        if (
+          invite.acceptedAt ||
+          invite.declinedAt ||
+          invite.revokedAt ||
+          invite.expiresAt.getTime() <= now.getTime()
+        ) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+
+        const updated = await tx.planInvite.updateMany({
+          where: {
+            id: invite.id,
+            weddingPlanId,
+            tokenHash: invite.tokenHash,
+            acceptedAt: null,
+            declinedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
+          data: { tokenHash: this.hashInviteToken(token) },
+        });
+        if (updated.count !== 1) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+
+        const rotated = await tx.planInvite.findUnique({
+          where: { id: invite.id },
+          include: this.inviteIncludes(),
+        });
+        if (!rotated) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+        return rotated;
+      }),
+    );
+
+    return this.toInviteResponse(reissued.invite, reissued.token);
+  }
+
   async acceptInvite(
     currentUser: AuthenticatedUser,
     token: string,
@@ -512,6 +622,7 @@ export class SharingService {
       const claimed = await tx.planInvite.updateMany({
         where: {
           id: invite.id,
+          ...this.inviteClaimTokenFilter(invite, token),
           acceptedAt: null,
           declinedAt: null,
           revokedAt: null,
@@ -609,6 +720,7 @@ export class SharingService {
       const claimed = await tx.planInvite.updateMany({
         where: {
           id: invite.id,
+          ...this.inviteClaimTokenFilter(invite, token),
           acceptedAt: null,
           declinedAt: null,
           revokedAt: null,
@@ -866,11 +978,18 @@ export class SharingService {
       };
     }
 
-    const user = await this.prisma.user.findFirst({
-      where: phone
-        ? { phone: { in: PhoneNormalizer.lookupVariants(phone) } }
-        : { email },
-    });
+    const user = phone
+      ? ((await this.prisma.user.findUnique({ where: { phone } })) ??
+        (await this.prisma.user.findFirst({
+          where: {
+            phone: {
+              in: PhoneNormalizer.lookupVariants(phone).filter(
+                (candidate) => candidate !== phone,
+              ),
+            },
+          },
+        })))
+      : null;
     return {
       user,
       phone: phone ?? user?.phone ?? null,
@@ -880,18 +999,13 @@ export class SharingService {
     };
   }
 
-  private async createInviteWithUniqueToken(
-    data: Omit<Prisma.PlanInviteUncheckedCreateInput, "tokenHash">,
-  ): Promise<{ invite: PlanInvite; token: string }> {
+  private async withUniqueInviteToken(
+    operation: (token: string) => Promise<PlanInviteWithRelations>,
+  ): Promise<PresentedInvite> {
     for (let attempt = 0; attempt < 5; attempt++) {
       const token = randomBytes(32).toString("base64url");
       try {
-        const invite = await this.prisma.planInvite.create({
-          data: {
-            ...data,
-            tokenHash: this.hashInviteToken(token),
-          },
-        });
+        const invite = await operation(token);
         return { invite, token };
       } catch (error) {
         if (
@@ -928,6 +1042,19 @@ export class SharingService {
 
   private hashInviteToken(token: string): string {
     return createHash("sha256").update(token).digest("hex");
+  }
+
+  private inviteClaimTokenFilter(
+    invite: PlanInviteWithRelations,
+    presentedToken: string,
+  ): { tokenHash?: string } {
+    // Authenticated in-app notifications intentionally use the invite id as an
+    // identity-checked action handle. A raw external bearer, however, must
+    // still match the live fingerprint so reissue invalidates an in-flight old
+    // link before it can claim the invitation.
+    return presentedToken === invite.id
+      ? {}
+      : { tokenHash: this.hashInviteToken(presentedToken) };
   }
 
   private inviteIncludes() {

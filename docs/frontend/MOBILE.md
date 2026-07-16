@@ -40,8 +40,13 @@ conversations, signed image uploads, and rotating refresh sessions.
   development login bypass. Android refuses debug signing for Release.
 - Canonical invitation links are
   `https://aarast.shadowgardn.com/invites/TOKEN` and
-  `aarast://open/invites/TOKEN`; deployed association files and physical-device
-  validation remain release requirements.
+  `aarast://open/invites/TOKEN`. The create-invite flow keeps the one-time raw
+  token in screen memory only and offers manual WhatsApp delivery or copy-link
+  without routing invitations through the OTP/OpenWA service. The public HTTPS
+  landing exposes generic Open Graph metadata only; names, dates, permissions,
+  and plan details remain hidden until authenticated phone verification.
+  Deployed association files and physical-device validation remain release
+  requirements.
 - Native Android/iOS launcher and splash assets use the current Aarast brand
   mark rather than Flutter defaults.
 

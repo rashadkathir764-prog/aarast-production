@@ -134,6 +134,15 @@ Request:
 
 Response shape matches register.
 
+An administrator may use the wedding application only through the general
+phone-OTP login. Password-only application login is rejected for administrator
+accounts so a leaked administrator password cannot authorize destructive user
+APIs. The resulting OTP access token is still an ordinary application session
+without the `admin_mfa` assurance. Every administration route requires the
+dedicated admin password-plus-OTP flow and rejects the ordinary token through
+`AdminGuard`; the application response also omits the administrator-role
+metadata and permission list.
+
 Password login, refresh, and protected JWT routes reject accounts whose
 `phoneVerifiedAt` is null. Existing unverified accounts must prove phone
 ownership through OTP (or a password-reset OTP) before receiving a session.
@@ -152,6 +161,11 @@ Register, password login, and OTP login return an access token, opaque refresh
 token, and refresh expiry. Access JWTs default to 15 minutes; refresh sessions
 expire after 30 days and are stored as hashes.
 
+- Application and administration refresh tokens are separately scoped.
+  `/api/v1/auth/refresh` rejects administration tokens, and
+  `/api/v1/auth/admin/refresh` rejects application tokens. A general
+  application session can never be upgraded into an MFA-assured administrator
+  session through refresh.
 - `POST /api/v1/auth/refresh` rotates one valid refresh token and returns a new access
   and refresh pair. Reuse of a revoked/expired token is rejected.
 - `POST /api/v1/auth/logout` revokes the supplied refresh token; when omitted for an
@@ -703,13 +717,24 @@ Protected routes:
 - `PATCH /api/v1/wedding-plans/:weddingPlanId/members/:memberId`
 - `DELETE /api/v1/wedding-plans/:weddingPlanId/members/:memberId`
 - `POST /api/v1/wedding-plans/:weddingPlanId/invites`
+- `GET /api/v1/wedding-plans/:weddingPlanId/invites`
+- `POST /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue`
+- `DELETE /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId`
+- `GET /api/v1/invites/mine`
 - `GET /api/v1/invites/:token`
 - `POST /api/v1/invites/:token/accept`
+- `POST /api/v1/invites/:token/decline`
 - `GET /api/v1/wedding-plans/:weddingPlanId/permissions/me`
 
 Invite token preview is not a public endpoint. The invite detail route requires
 an authenticated user and returns only invitations targeted to that user id or
 an equivalent normalized phone number.
+
+The public web origin may serve a static
+`https://aarast.shadowgardn.com/invites/TOKEN` landing for link previews and
+the native-app CTA. That page is not an API route, performs no database lookup,
+and exposes only generic metadata. It must never reveal invite validity, plan
+names, dates, phone numbers, permissions, or participant data.
 
 External invite tokens are random bearer values returned only when an invite is
 created. PostgreSQL stores their SHA-256 fingerprints, never the raw value.
@@ -717,6 +742,27 @@ Authenticated invite lists use the invite id as an identity-checked action
 handle. Accept/decline uses a conditional single-row claim, so concurrent
 requests cannot both consume one invite. Access and error logs replace invite
 path tokens and sensitive query values with redacted placeholders.
+
+Creating an invitation runs the live-pending duplicate check, invite insert,
+and optional registered-user notification/outbox write inside one retryable
+`SERIALIZABLE` transaction. A notification failure therefore leaves no invite,
+and concurrent creates for the same plan/participant leave one pending invite.
+The transaction re-reads the inviter's current member-management authority and
+delegation ceiling, so a concurrent permission revocation fails closed. Phone
+target resolution prefers the exact canonical identity before any legacy local
+variant.
+The generic idempotency response store is not used for this route because it
+must never persist or replay the raw bearer token.
+
+`POST /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue`
+atomically replaces the SHA-256 fingerprint of an existing live pending invite
+and returns a new 43-character raw bearer once. The prior bearer stops working
+as soon as the transaction commits, including an accept/decline request that
+looked it up before the rotation but has not yet claimed it. Reissue preserves the original expiry and
+is rejected for expired, accepted, declined, or revoked invitations. Owners
+may reissue any manageable invite; a delegated inviter may reissue only their
+own invite and only while its effective permissions remain within their
+current delegation ceiling.
 
 Create shared member request:
 
@@ -1099,6 +1145,8 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
   the same database transaction.
 - Access to private resources that the user does not own or cannot access may return a not-found style response.
 - Login with a wrong password returns `401`.
+- An administrator's general application token never carries `admin_mfa` and
+  cannot access administration routes.
 
 ## MVP Exclusions
 
@@ -1307,6 +1355,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:weddingPlanId/invites` | `sharing.findInvites` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/invites` | `sharing.createInvite` | 🔒 |
 | DELETE | `/api/v1/wedding-plans/:weddingPlanId/invites/:inviteId` | `sharing.cancelInvite` | 🔒 |
+| POST | `/api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue` | `sharing.reissueInvite` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/members` | `sharing.findMembers` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/members` | `sharing.createMember` | 🔒 |
 | DELETE | `/api/v1/wedding-plans/:weddingPlanId/members/:memberId` | `sharing.removeMember` | 🔒 |

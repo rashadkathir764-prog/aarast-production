@@ -505,31 +505,64 @@ export class SharingService {
     weddingPlanId: string,
     inviteId: string,
   ): Promise<PlanInviteResponse> {
-    const access = await this.permissions.assertMemberManageable(
+    await this.permissions.assertMemberManageable(
       weddingPlanId,
       currentUser,
     );
-    const invite = await this.prisma.planInvite.findFirst({
-      where: { id: inviteId, weddingPlanId },
-      include: this.inviteIncludes(),
-    });
-    if (!invite) throw new NotFoundException("Invite not found");
-    if (!access.isOwner && invite.inviterUserId !== currentUser.id) {
-      throw new NotFoundException("Invite not found");
-    }
-    this.assertPermissionCeiling(
-      access,
-      invite.role,
-      this.permissionFlagsForRecord(invite),
+
+    const cancelled = await runSerializableTransaction(
+      this.prisma,
+      async (tx) => {
+        const transactionalAccess =
+          await this.permissions.assertMemberManageableInTransaction(
+            tx,
+            weddingPlanId,
+            currentUser,
+          );
+        const invite = await tx.planInvite.findFirst({
+          where: { id: inviteId, weddingPlanId },
+          include: this.inviteIncludes(),
+        });
+        if (!invite) throw new NotFoundException("Invite not found");
+        if (
+          !transactionalAccess.isOwner &&
+          invite.inviterUserId !== currentUser.id
+        ) {
+          throw new NotFoundException("Invite not found");
+        }
+        this.assertPermissionCeiling(
+          transactionalAccess,
+          invite.role,
+          this.permissionFlagsForRecord(invite),
+        );
+
+        const now = new Date();
+        const claimed = await tx.planInvite.updateMany({
+          where: {
+            id: invite.id,
+            weddingPlanId,
+            tokenHash: invite.tokenHash,
+            acceptedAt: null,
+            declinedAt: null,
+            revokedAt: null,
+            expiresAt: { gt: now },
+          },
+          data: { revokedAt: now },
+        });
+        if (claimed.count !== 1) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+
+        const updated = await tx.planInvite.findUnique({
+          where: { id: invite.id },
+          include: this.inviteIncludes(),
+        });
+        if (!updated) {
+          throw new ConflictException("Invite is no longer pending");
+        }
+        return updated;
+      },
     );
-    if (invite.acceptedAt || invite.declinedAt || invite.revokedAt) {
-      throw new ConflictException("Invite is no longer pending");
-    }
-    const cancelled = await this.prisma.planInvite.update({
-      where: { id: invite.id },
-      data: { revokedAt: new Date() },
-      include: this.inviteIncludes(),
-    });
     return this.toInviteResponse(cancelled);
   }
 

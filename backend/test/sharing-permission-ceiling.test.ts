@@ -589,6 +589,67 @@ test('reissuing a pending invite rotates the bearer atomically and invalidates t
   assert.equal(after.token, created.id);
 });
 
+test('cancelling an invite claims only the still-pending row', async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(
+    harness.owner,
+    'plan-1',
+    { phone: '+967777000099' },
+  );
+
+  const cancelled = await harness.service.cancelInvite(
+    harness.owner,
+    'plan-1',
+    created.id,
+  );
+
+  assert.equal(cancelled.status, 'CANCELLED');
+  assert.ok(harness.db.invites[0].revokedAt instanceof Date);
+  const finalTransactionOptions =
+    harness.db.transactionOptions[harness.db.transactionOptions.length - 1];
+  assert.equal(
+    finalTransactionOptions?.isolationLevel,
+    Prisma.TransactionIsolationLevel.Serializable,
+  );
+});
+
+test('cancelling loses safely when acceptance wins between read and claim', async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(
+    harness.owner,
+    'plan-1',
+    { phone: '+967777000099' },
+  );
+  const pending = harness.db.invites[0];
+
+  (harness.db as any).$transaction = async (
+    operation: (tx: Record<string, any>) => Promise<any>,
+    options: Record<string, unknown>,
+  ) => {
+    harness.db.transactionOptions.push(options);
+    return operation({
+      __transaction: true,
+      sharedMember: harness.db.sharedMember,
+      planInvite: {
+        findFirst: async () => pending,
+        updateMany: async () => ({ count: 0 }),
+        findUnique: async () => pending,
+      },
+    });
+  };
+
+  await assert.rejects(
+    () =>
+      harness.service.cancelInvite(
+        harness.owner,
+        'plan-1',
+        created.id,
+      ),
+    /Invite is no longer pending/,
+  );
+  assert.equal(pending.revokedAt, null);
+});
+
 test('raw invite claims stay bound to the current token fingerprint', () => {
   const harness = inviteHarness();
   const rawToken = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';

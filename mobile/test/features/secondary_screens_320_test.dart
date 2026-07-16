@@ -18,6 +18,7 @@ import 'package:aarast_mobile/features/onboarding/data/local_plan_migration.dart
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/onboarding/screens/local_plan_migration_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_role_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
@@ -511,6 +512,16 @@ class _FakeSharingProvider extends SharingProvider {
 
   @override
   SharedMember? findMember(String id) => member?.id == id ? member : null;
+
+  @override
+  PlanAccessPermissions get access =>
+      const PlanAccessPermissions.owner(weddingPlanId: 'plan-1');
+
+  @override
+  Future<bool> loadAccess(String weddingPlanId) async => true;
+
+  @override
+  Future<void> loadMembers(String weddingPlanId) async {}
 
   @override
   bool get isSubmitting => _submitting;

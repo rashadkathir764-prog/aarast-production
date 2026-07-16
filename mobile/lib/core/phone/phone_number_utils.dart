@@ -27,6 +27,9 @@ class PhoneNumberAnalysis {
 class PhoneNumberUtils {
   const PhoneNumberUtils._();
 
+  static const _leftToRightIsolate = '\u2066';
+  static const _popDirectionalIsolate = '\u2069';
+
   static const invalidMessage = 'أدخل رقم جوال صحيح.';
   static const internationalWarningMessage =
       'تعذر التأكد من بلد الرقم؛ احتفظنا به كما أدخلته.';
@@ -62,14 +65,15 @@ class PhoneNumberUtils {
     final yemeniLocal = _yemeniLocalDigits(compact, digits);
     if (yemeniLocal != null) {
       final normalizedPhone = '+967$yemeniLocal';
+      final displayPhone = _formatYemeniMobile(yemeniLocal);
       return PhoneNumberAnalysis(
         rawPhone: rawPhone,
         normalizedPhone: normalizedPhone,
-        displayPhone: _formatYemeniMobile(yemeniLocal),
+        displayPhone: displayPhone,
         validationState: PhoneValidationState.valid,
         message: _sameCompactPhone(compact, normalizedPhone)
             ? null
-            : 'تم تنسيق الرقم إلى ‎$normalizedPhone',
+            : 'تم تنسيق الرقم إلى ${isolateLtr(displayPhone)}',
         isYemeniMobile: true,
       );
     }
@@ -128,6 +132,20 @@ class PhoneNumberUtils {
     final analysis = analyze(input);
     if (analysis.isEmpty) return null;
     return analysis.displayPhone ?? analysis.rawPhone;
+  }
+
+  /// يعزل النص اللاتيني داخل واجهة RTL حتى لا ينقلب ترتيب `+` أو مجموعات
+  /// الأرقام عند دمجه داخل جملة عربية.
+  static String isolateLtr(String value) {
+    return '$_leftToRightIsolate$value$_popDirectionalIsolate';
+  }
+
+  /// نسخة آمنة للدمج داخل نص عربي. للعروض المستقلة استخدم
+  /// `AarastPhoneText` حتى يكون اتجاه عنصر النص نفسه LTR أيضًا.
+  static String? directionalDisplay(String? input) {
+    final value = display(input);
+    if (value == null) return null;
+    return isolateLtr(value);
   }
 
   static String? comparisonKey(String? input) {

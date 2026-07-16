@@ -71,9 +71,8 @@ Future<void> showAccountSheet(
                             ),
                           ),
                           if (phone != null)
-                            Text(
-                              phone,
-                              textDirection: TextDirection.ltr,
+                            AarastPhoneText(
+                              phone: phone,
                               style: const TextStyle(
                                 fontSize: 14,
                                 color: AppTheme.muted,

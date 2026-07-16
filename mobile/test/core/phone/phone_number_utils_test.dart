@@ -22,8 +22,26 @@ void main() {
 
       expect(analysis.normalizedPhone, expected);
       expect(analysis.displayPhone, '+967 777 758 200');
+      expect(
+        analysis.message,
+        'تم تنسيق الرقم إلى \u2066+967 777 758 200\u2069',
+      );
       expect(analysis.isValid, isTrue);
     });
+
+    test(
+      'isolates a displayed phone before embedding it in Arabic RTL text',
+      () {
+        expect(
+          PhoneNumberUtils.directionalDisplay(expected),
+          '\u2066+967 777 758 200\u2069',
+        );
+        expect(
+          'الهاتف: ${PhoneNumberUtils.directionalDisplay(expected)}',
+          'الهاتف: \u2066+967 777 758 200\u2069',
+        );
+      },
+    );
 
     test('preserves a non-Yemen international number with warning state', () {
       final analysis = PhoneNumberUtils.analyze('+966 50 123 4567');

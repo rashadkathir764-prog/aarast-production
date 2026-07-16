@@ -153,6 +153,7 @@ class AuthTextField extends StatelessWidget {
     this.hint,
     this.validator,
     this.keyboardType,
+    this.textDirection,
     this.textInputAction,
     this.obscureText = false,
     this.maxLines = 1,
@@ -167,6 +168,7 @@ class AuthTextField extends StatelessWidget {
   final IconData icon;
   final FormFieldValidator<String>? validator;
   final TextInputType? keyboardType;
+  final TextDirection? textDirection;
   final TextInputAction? textInputAction;
   final bool obscureText;
   final int maxLines;
@@ -175,9 +177,15 @@ class AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTextDirection =
+        textDirection ??
+        (keyboardType == TextInputType.phone
+            ? TextDirection.ltr
+            : Directionality.of(context));
     return TextFormField(
       controller: controller,
       textAlign: TextAlign.right,
+      textDirection: effectiveTextDirection,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       obscureText: obscureText,

@@ -61,15 +61,26 @@ class SharedMemberCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  member.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w800,
+                if (member.displayNamePhone case final phone?)
+                  AarastPhoneText(
+                    phone: phone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
+                else
+                  Text(
+                    member.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 2),
                 Text(
                   member.permissionSummary,

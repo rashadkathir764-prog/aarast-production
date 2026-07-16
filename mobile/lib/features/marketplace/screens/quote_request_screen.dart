@@ -623,19 +623,25 @@ class _QuoteContactContext extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  displayPhone ??
-                      'سيُستخدم رقم الحساب عند إرسال الطلب بعد تسجيل الدخول.',
-                  textDirection: displayPhone == null
-                      ? TextDirection.rtl
-                      : TextDirection.ltr,
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w700,
-                    height: 1.4,
+                if (displayPhone != null)
+                  AarastPhoneText(
+                    phone: displayPhone,
+                    style: const TextStyle(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
+                  )
+                else
+                  const Text(
+                    'سيُستخدم رقم الحساب عند إرسال الطلب بعد تسجيل الدخول.',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

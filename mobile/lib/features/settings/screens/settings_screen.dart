@@ -181,23 +181,29 @@ class _AccountCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  phone?.trim().isNotEmpty == true
-                      ? phone!.trim()
-                      : email?.trim().isNotEmpty == true
-                      ? email!.trim()
-                      : 'حساب أعرست',
-                  textDirection: phone?.trim().isNotEmpty == true
-                      ? TextDirection.ltr
-                      : TextDirection.rtl,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.muted,
-                    fontWeight: FontWeight.w600,
+                if (phone?.trim().isNotEmpty == true)
+                  AarastPhoneText(
+                    phone: phone!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  Text(
+                    email?.trim().isNotEmpty == true
+                        ? email!.trim()
+                        : 'حساب أعرست',
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: AppTheme.muted,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

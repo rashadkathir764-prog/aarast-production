@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -439,7 +440,9 @@ class _CostContextCard extends StatelessWidget {
             _InfoRow(
               icon: LucideIcons.phone,
               label: 'رقم التواصل',
-              value: cost.partyPhone!,
+              value:
+                  PhoneNumberUtils.directionalDisplay(cost.partyPhone) ??
+                  cost.partyPhone!,
             ),
           if (cost.agreementDate != null)
             _InfoRow(

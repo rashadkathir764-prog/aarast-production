@@ -5,6 +5,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/utils/auth_action_guard.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
@@ -54,6 +55,7 @@ void main() {
       expect(find.text(rawAuthError), findsNothing);
       expect(fakeApi.getSharedMembersCalls, 0);
       expect(fakeApi.getPlanInvitesCalls, 0);
+      expect(fakeApi.getMyPlanPermissionsCalls, 0);
       expect(provider.members, isEmpty);
       expect(provider.invites, isEmpty);
       expect(tester.takeException(), isNull);
@@ -109,6 +111,7 @@ void main() {
     expect(find.text('resume:$sharingLocation'), findsOneWidget);
     expect(fakeApi.getSharedMembersCalls, 0);
     expect(fakeApi.getPlanInvitesCalls, 0);
+    expect(fakeApi.getMyPlanPermissionsCalls, 0);
     expect(tester.takeException(), isNull);
   });
 
@@ -157,8 +160,9 @@ void main() {
     expect(find.text('تسجيل الدخول'), findsOneWidget);
     expect(find.text('إعادة المحاولة'), findsNothing);
     expect(find.text(rawAuthError), findsNothing);
-    expect(fakeApi.getSharedMembersCalls, 1);
-    expect(fakeApi.getPlanInvitesCalls, 1);
+    expect(fakeApi.getMyPlanPermissionsCalls, 1);
+    expect(fakeApi.getSharedMembersCalls, 0);
+    expect(fakeApi.getPlanInvitesCalls, 0);
     expect(provider.members, isEmpty);
     expect(provider.invites, isEmpty);
     expect(tester.takeException(), isNull);
@@ -187,10 +191,77 @@ void main() {
     expect(find.text(AuthActionGuard.sessionExpiredTitle), findsNothing);
     expect(fakeApi.getSharedMembersCalls, 1);
     expect(fakeApi.getPlanInvitesCalls, 1);
+    expect(fakeApi.getMyPlanPermissionsCalls, 1);
     expect(provider.members, [member]);
     expect(provider.invites, isEmpty);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'member without invite permission sees a permission gate and no private list request',
+    (tester) async {
+      final fakeApi = _FakeSharingApi(
+        permissions: const PlanAccessPermissions.denied(
+          weddingPlanId: accountPlanId,
+        ),
+      );
+      final provider = SharingProvider(fakeApi);
+
+      await _pumpSharingScreen(
+        tester,
+        provider: provider,
+        screen: const SharingScreen(weddingPlanId: accountPlanId),
+        accessToken: 'valid-token',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('ليس لديك صلاحية إدارة المشاركين'), findsOneWidget);
+      expect(fakeApi.getMyPlanPermissionsCalls, 1);
+      expect(fakeApi.getSharedMembersCalls, 0);
+      expect(fakeApi.getPlanInvitesCalls, 0);
+      expect(provider.members, isEmpty);
+      expect(provider.invites, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'retrying an access failure rechecks permission and loads the sharing data',
+    (tester) async {
+      final member = _member(
+        id: 'member-after-retry',
+        weddingPlanId: accountPlanId,
+        userName: 'أمينة',
+      );
+      final fakeApi = _FakeSharingApi(
+        members: [member],
+        accessFailuresRemaining: 1,
+      );
+      final provider = SharingProvider(fakeApi);
+
+      await _pumpSharingScreen(
+        tester,
+        provider: provider,
+        screen: const SharingScreen(weddingPlanId: accountPlanId),
+        accessToken: 'valid-token',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('تعذر التحقق من الصلاحيات'), findsOneWidget);
+      expect(fakeApi.getSharedMembersCalls, 0);
+      expect(fakeApi.getPlanInvitesCalls, 0);
+
+      await tester.tap(find.text('حاول مرة أخرى'));
+      await tester.pumpAndSettle();
+
+      expect(fakeApi.getMyPlanPermissionsCalls, 2);
+      expect(fakeApi.getSharedMembersCalls, 1);
+      expect(fakeApi.getPlanInvitesCalls, 1);
+      expect(find.text('أمينة'), findsOneWidget);
+      expect(find.text('تعذر التحقق من الصلاحيات'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 Future<void> _pumpSharingScreen(
@@ -249,17 +320,41 @@ SharedMember _member({
 }
 
 class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi({this.throwUnauthorized = false, this.members = const []})
-    : super(ApiClient(tokenProvider: () async => null));
+  _FakeSharingApi({
+    this.throwUnauthorized = false,
+    this.members = const [],
+    this.permissions,
+    this.accessFailuresRemaining = 0,
+  }) : super(ApiClient(tokenProvider: () async => null));
 
   final bool throwUnauthorized;
   final List<SharedMember> members;
+  final PlanAccessPermissions? permissions;
+  int accessFailuresRemaining;
 
   int getSharedMembersCalls = 0;
   int getPlanInvitesCalls = 0;
   int lookupUserByPhoneCalls = 0;
   int createPlanInviteCalls = 0;
+  int getMyPlanPermissionsCalls = 0;
   int getSharedWeddingPlansCalls = 0;
+
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async {
+    getMyPlanPermissionsCalls += 1;
+    _throwIfUnauthorized();
+    if (accessFailuresRemaining > 0) {
+      accessFailuresRemaining -= 1;
+      throw const ApiException(
+        'تعذر التحقق من صلاحية إدارة المشاركين.',
+        statusCode: 503,
+      );
+    }
+    return permissions ??
+        PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+  }
 
   @override
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {

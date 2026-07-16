@@ -62,6 +62,14 @@ class SharedMember {
 
   bool get hasFinancialAccess => canViewMoney;
 
+  String? get displayNamePhone {
+    final name = user?.name.trim();
+    if (name != null && name.isNotEmpty) return null;
+
+    final phone = user?.phone?.trim();
+    return phone == null || phone.isEmpty ? null : phone;
+  }
+
   String get displayName {
     final name = user?.name.trim();
     if (name != null && name.isNotEmpty) {
@@ -74,6 +82,13 @@ class SharedMember {
     }
 
     return userId;
+  }
+
+  String get directionalDisplayName {
+    final phone = displayNamePhone;
+    return phone == null
+        ? displayName
+        : PhoneNumberUtils.directionalDisplay(phone) ?? displayName;
   }
 
   String? get displaySubtitle {
@@ -233,6 +248,41 @@ class PlanInvite {
   bool get isPending => status == 'PENDING';
   bool get isAccepted => status == 'ACCEPTED';
 
+  /// Returns a copy suitable for provider/list state after a one-time raw
+  /// bearer token has been handed to the share screen.
+  PlanInvite withIdentityToken() {
+    return PlanInvite(
+      id: id,
+      weddingPlanId: weddingPlanId,
+      token: id,
+      role: role,
+      status: status,
+      expiresAt: expiresAt,
+      canViewMoney: canViewMoney,
+      canEditPlan: canEditPlan,
+      canManageTasks: canManageTasks,
+      canManageGuests: canManageGuests,
+      canManageProviders: canManageProviders,
+      canInviteMembers: canInviteMembers,
+      canManageMoney: canManageMoney,
+      name: name,
+      phone: phone,
+      email: email,
+      weddingPlanTitle: weddingPlanTitle,
+      inviterName: inviterName,
+    );
+  }
+
+  String? get displayNamePhone {
+    final value = name?.trim();
+    if (value != null && value.isNotEmpty) return null;
+
+    final normalizedPhone = phone?.trim();
+    return normalizedPhone == null || normalizedPhone.isEmpty
+        ? null
+        : normalizedPhone;
+  }
+
   List<String> get permissionLabels {
     final labels = <String>['عرض الخطة'];
     if (canManageTasks) labels.add('المهام');
@@ -255,6 +305,13 @@ class PlanInvite {
       return PhoneNumberUtils.display(normalizedPhone) ?? normalizedPhone;
     }
     return email?.trim().isNotEmpty == true ? email!.trim() : 'دعوة مشاركة';
+  }
+
+  String get directionalDisplayName {
+    final normalizedPhone = displayNamePhone;
+    return normalizedPhone == null
+        ? displayName
+        : PhoneNumberUtils.directionalDisplay(normalizedPhone) ?? displayName;
   }
 }
 

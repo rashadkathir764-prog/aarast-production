@@ -142,6 +142,17 @@ class SharingApi {
     );
   }
 
+  Future<PlanInvite> reissuePlanInvite({
+    required String weddingPlanId,
+    required String inviteId,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId/reissue',
+      const {},
+    );
+    return PlanInvite.fromJson(json);
+  }
+
   Future<PlanInvite> getInvite(String token) async {
     final json = await _apiClient.getJson('/api/v1/invites/$token');
     return PlanInvite.fromJson(json);

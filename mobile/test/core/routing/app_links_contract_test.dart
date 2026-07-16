@@ -67,7 +67,7 @@ void main() {
       androidManifest,
       contains('android:host="${AppRouter.inviteCustomSchemeHost}"'),
     );
-    expect(androidManifest, contains('android:pathPrefix="/invites"'));
+    expect(androidManifest, contains('android:pathPrefix="/invites/"'));
     expect(
       androidManifest,
       contains('android:host="${AppRouter.inviteAppLinkHost}"'),

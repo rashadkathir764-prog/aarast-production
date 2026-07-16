@@ -282,19 +282,22 @@ class MoreProfileCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      phone == null || phone!.trim().isEmpty
-                          ? 'حساب أعرست'
-                          : phone!,
-                      textDirection: phone == null
-                          ? TextDirection.rtl
-                          : TextDirection.ltr,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelMedium?.copyWith(color: AppTheme.muted),
-                    ),
+                    if (phone?.trim().isNotEmpty == true)
+                      AarastPhoneText(
+                        phone: phone!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppTheme.muted),
+                      )
+                    else
+                      Text(
+                        'حساب أعرست',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(color: AppTheme.muted),
+                      ),
                   ],
                 ),
               ),

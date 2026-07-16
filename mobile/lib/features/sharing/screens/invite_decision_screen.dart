@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
@@ -619,7 +620,9 @@ class _OtpStep extends StatelessWidget {
           icon: LucideIcons.messageCircle,
           eyebrow: 'التحقق من الهوية',
           title: 'أدخل رمز التحقق',
-          message: 'أرسلنا الرمز إلى ${_maskedPhone(phone)}',
+          message:
+              'أرسلنا الرمز إلى '
+              '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}',
         ),
         const SizedBox(height: 14),
         if (otpNoticeMessage != null) ...[

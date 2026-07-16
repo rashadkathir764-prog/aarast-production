@@ -4,6 +4,7 @@ class PlanAccessPermissions {
     required this.isOwner,
     required this.canViewMoney,
     required this.canManageMoney,
+    this.canManageMembers = false,
   });
 
   const PlanAccessPermissions.owner({required String weddingPlanId})
@@ -12,6 +13,7 @@ class PlanAccessPermissions {
         isOwner: true,
         canViewMoney: true,
         canManageMoney: true,
+        canManageMembers: true,
       );
 
   const PlanAccessPermissions.denied({required String weddingPlanId})
@@ -20,6 +22,7 @@ class PlanAccessPermissions {
         isOwner: false,
         canViewMoney: false,
         canManageMoney: false,
+        canManageMembers: false,
       );
 
   factory PlanAccessPermissions.fromJson(Map<String, dynamic> json) {
@@ -29,6 +32,7 @@ class PlanAccessPermissions {
       isOwner: json['isOwner'] == true,
       canViewMoney: json['canViewMoney'] == true || canManage,
       canManageMoney: canManage,
+      canManageMembers: json['canManageMembers'] == true,
     );
   }
 
@@ -36,6 +40,7 @@ class PlanAccessPermissions {
   final bool isOwner;
   final bool canViewMoney;
   final bool canManageMoney;
+  final bool canManageMembers;
 
   bool get hasAnyFinanceAccess => canViewMoney;
 }

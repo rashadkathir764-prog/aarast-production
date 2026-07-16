@@ -212,7 +212,7 @@ class _MetaRow extends StatelessWidget {
             const SizedBox(width: 4),
             Flexible(
               child: Text(
-                'المسؤول: ${task.responsibleLabel}',
+                'المسؤول: ${task.directionalResponsibleLabel}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: metaStyle?.copyWith(
@@ -235,7 +235,7 @@ class _MetaRow extends StatelessWidget {
                 color: AarastDesignTokens.muted,
               ),
               const SizedBox(width: 4),
-              Text(phone, textDirection: TextDirection.ltr, style: metaStyle),
+              AarastPhoneText(phone: phone, style: metaStyle),
             ],
           ),
         if (task.hasResponsibleParticipant)

@@ -5,12 +5,15 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/shared_wedding_plans_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
+import 'package:aarast_mobile/features/sharing/services/invite_share_launcher.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -76,6 +79,40 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets(
+      'phone-only participants and invites stay LTR at 320px and 1.3 scale',
+      (tester) async {
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(320, 1200);
+        addTearDown(tester.view.reset);
+
+        final api = _FakeSharingApi(
+          members: [_member(id: 'phone-member', userName: '')],
+          invites: [_invite(name: null)],
+        );
+
+        await _pumpWithAuth(
+          tester,
+          provider: SharingProvider(api),
+          child: const MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(1.3)),
+            child: SharingScreen(weddingPlanId: _planId),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final phoneTexts = tester.widgetList<Text>(
+          find.text('+967 777 123 456'),
+        );
+        expect(phoneTexts, hasLength(2));
+        expect(
+          phoneTexts.every((text) => text.textDirection == TextDirection.ltr),
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testWidgets('shared plans show Arabic currency labels', (tester) async {
       _setTallView(tester);
       final api = _FakeSharingApi(sharedPlans: [_sharedPlan()]);
@@ -96,6 +133,60 @@ void main() {
       expect(api.getSharedWeddingPlansCalls, 1);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'reissuing a pending invite copies the new link before opening WhatsApp',
+      (tester) async {
+        _setTallView(tester);
+        String? clipboardText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              final arguments = call.arguments as Map<Object?, Object?>?;
+              clipboardText = arguments?['text']?.toString();
+              return null;
+            }
+            if (call.method == 'Clipboard.getData') {
+              return <String, String?>{'text': clipboardText};
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        final api = _FakeSharingApi(invites: [_invite()]);
+        final launcher = _FakeInviteShareLauncher();
+
+        await _pumpWithAuth(
+          tester,
+          provider: SharingProvider(api),
+          child: SharingScreen(
+            weddingPlanId: _planId,
+            inviteShareLauncher: launcher,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('إصدار رابط جديد وإرساله'));
+        await tester.pumpAndSettle();
+
+        expect(api.reissueCalls, 1);
+        expect(launcher.calls, 1);
+        expect(launcher.lastUri?.host, 'wa.me');
+        final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+        expect(
+          clipboard?.text,
+          'https://aarast.shadowgardn.com/invites/'
+          'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }
 
@@ -162,7 +253,7 @@ SharedMember _member({
   );
 }
 
-PlanInvite _invite() {
+PlanInvite _invite({String? name = 'خالد'}) {
   return PlanInvite(
     id: 'invite-1',
     weddingPlanId: _planId,
@@ -178,7 +269,7 @@ PlanInvite _invite() {
     canInviteMembers: false,
     canManageMoney: false,
     phone: '+967777123456',
-    name: 'خالد',
+    name: name,
   );
 }
 
@@ -208,6 +299,14 @@ class _FakeSharingApi extends SharingApi {
   int getSharedMembersCalls = 0;
   int getPlanInvitesCalls = 0;
   int getSharedWeddingPlansCalls = 0;
+  int reissueCalls = 0;
+
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async {
+    return PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+  }
 
   @override
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
@@ -225,6 +324,46 @@ class _FakeSharingApi extends SharingApi {
   Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
     getSharedWeddingPlansCalls += 1;
     return sharedPlans;
+  }
+
+  @override
+  Future<PlanInvite> reissuePlanInvite({
+    required String weddingPlanId,
+    required String inviteId,
+  }) async {
+    reissueCalls += 1;
+    final invite = invites.firstWhere((item) => item.id == inviteId);
+    return PlanInvite(
+      id: invite.id,
+      weddingPlanId: weddingPlanId,
+      token: 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
+      role: invite.role,
+      status: invite.status,
+      expiresAt: invite.expiresAt,
+      canViewMoney: invite.canViewMoney,
+      canEditPlan: invite.canEditPlan,
+      canManageTasks: invite.canManageTasks,
+      canManageGuests: invite.canManageGuests,
+      canManageProviders: invite.canManageProviders,
+      canInviteMembers: invite.canInviteMembers,
+      canManageMoney: invite.canManageMoney,
+      phone: invite.phone,
+      name: invite.name,
+      inviterName: 'رشاد',
+      weddingPlanTitle: 'خطة الاختبار',
+    );
+  }
+}
+
+class _FakeInviteShareLauncher implements InviteShareLauncher {
+  int calls = 0;
+  Uri? lastUri;
+
+  @override
+  Future<bool> openWhatsApp(Uri uri) async {
+    calls += 1;
+    lastUri = uri;
+    return true;
   }
 }
 

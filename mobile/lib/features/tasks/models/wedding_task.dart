@@ -96,6 +96,15 @@ class WeddingTask {
     return 'أنا';
   }
 
+  String get directionalResponsibleLabel {
+    final label = responsibleLabel;
+    final phone = responsiblePhone ?? assigneePhone;
+    if (phone == null || !PhoneNumberUtils.areEquivalent(label, phone)) {
+      return label;
+    }
+    return PhoneNumberUtils.directionalDisplay(phone) ?? label;
+  }
+
   String? get responsiblePhoneDisplay {
     final phone = (responsiblePhone ?? assigneePhone)?.trim();
     if (phone == null || phone.isEmpty) return null;

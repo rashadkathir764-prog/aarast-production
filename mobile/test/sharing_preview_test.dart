@@ -10,6 +10,7 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
@@ -173,6 +174,13 @@ class _FakeSharingApi extends SharingApi {
 
   final List<SharedMember> members;
   final List<PlanInvite> invites;
+
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async {
+    return PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+  }
 
   @override
   Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {

@@ -199,12 +199,11 @@ class _ContactPhoneFieldState extends State<ContactPhoneField> {
                     title: Text(
                       contact.name.isEmpty ? 'جهة اتصال' : contact.name,
                     ),
-                    subtitle: Text(
-                      contact.displayPhone ??
+                    subtitle: AarastPhoneText(
+                      phone:
+                          contact.displayPhone ??
                           contact.normalizedPhone ??
                           contact.rawPhone,
-                      textDirection: TextDirection.ltr,
-                      textAlign: TextAlign.right,
                     ),
                     onTap: () => Navigator.of(sheetContext).pop(contact),
                   ),

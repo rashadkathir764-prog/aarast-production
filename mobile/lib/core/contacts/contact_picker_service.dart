@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../shared/models/contact_phone_draft.dart';
 import '../widgets/aarast_bottom_sheet.dart';
+import '../widgets/aarast_phone_text.dart';
 
 class ContactPickerException implements Exception {
   const ContactPickerException(this.message);
@@ -81,11 +82,7 @@ class ContactPickerService {
                   for (final phone in phones)
                     ListTile(
                       leading: const Icon(LucideIcons.phone),
-                      title: Text(
-                        phone,
-                        textDirection: TextDirection.ltr,
-                        textAlign: TextAlign.right,
-                      ),
+                      title: AarastPhoneText(phone: phone),
                       onTap: () => Navigator.of(sheetContext).pop(phone),
                     ),
                 ],

@@ -3,6 +3,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/sharing_api.dart';
+import '../models/plan_access_permissions.dart';
 import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 import '../models/shared_wedding_plan.dart';
@@ -18,36 +19,51 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isSubmitting = false;
   bool _isLookingUp = false;
   String? _errorMessage;
+  String? _accessErrorMessage;
   String? _lookupErrorMessage;
   SharingAuthGateKind? _authGateKind;
   List<SharedMember> _members = const [];
   List<PlanInvite> _invites = const [];
   List<PlanInvite> _myInvites = const [];
   List<SharedWeddingPlan> _sharedPlans = const [];
+  PlanAccessPermissions _access = const PlanAccessPermissions.denied(
+    weddingPlanId: '',
+  );
   SharedMember? _selectedMember;
   SharedUserLookup? _lookupUser;
   PlanInvite? _selectedInvite;
   SharedMember? _acceptedInviteMember;
+  final Map<String, Future<PlanInvite?>> _reissueFlights = {};
+  int _memberLoadGeneration = 0;
+  String? _memberLoadWeddingPlanId;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   bool get isLookingUp => _isLookingUp;
   String? get errorMessage => _errorMessage;
+  String? get accessErrorMessage => _accessErrorMessage;
   String? get lookupErrorMessage => _lookupErrorMessage;
   SharingAuthGateKind? get authGateKind => _authGateKind;
   List<SharedMember> get members => _members;
   List<PlanInvite> get invites => _invites;
   List<PlanInvite> get myInvites => _myInvites;
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
+  PlanAccessPermissions get access => _access;
   SharedMember? get selectedMember => _selectedMember;
   SharedUserLookup? get lookupUser => _lookupUser;
   PlanInvite? get selectedInvite => _selectedInvite;
   SharedMember? get acceptedInviteMember => _acceptedInviteMember;
 
   Future<void> loadMembers(String weddingPlanId) async {
+    final generation = ++_memberLoadGeneration;
+    _memberLoadWeddingPlanId = weddingPlanId;
     _isLoading = true;
     _errorMessage = null;
     _authGateKind = null;
+    _members = const [];
+    _invites = const [];
+    _selectedMember = null;
+    _lookupUser = null;
     notifyListeners();
 
     try {
@@ -55,17 +71,50 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         _api.getSharedMembers(weddingPlanId),
         _api.getPlanInvites(weddingPlanId),
       ]);
+      if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
       _members = results[0] as List<SharedMember>;
       _invites = results[1] as List<PlanInvite>;
-      if (_selectedMember != null) {
-        _selectedMember = _findMember(_selectedMember!.id);
-      }
     } on ApiException catch (error) {
+      if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
       _handleApiError(error);
     } catch (_) {
+      if (!_isCurrentMemberLoad(generation, weddingPlanId)) return;
       _errorMessage = 'تعذر تحميل أعضاء المشاركة.';
     } finally {
-      _isLoading = false;
+      if (_isCurrentMemberLoad(generation, weddingPlanId)) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  bool _isCurrentMemberLoad(int generation, String weddingPlanId) {
+    return generation == _memberLoadGeneration &&
+        weddingPlanId == _memberLoadWeddingPlanId;
+  }
+
+  Future<bool> loadAccess(String weddingPlanId) async {
+    _accessErrorMessage = null;
+    _authGateKind = null;
+    _access = PlanAccessPermissions.denied(weddingPlanId: weddingPlanId);
+    notifyListeners();
+    try {
+      _access = await _api.getMyPlanPermissions(weddingPlanId);
+      return true;
+    } on ApiException catch (error) {
+      if (error.isUnauthorized) {
+        _handleApiError(error);
+      } else {
+        _accessErrorMessage = _sharingErrorMessage(
+          error.message,
+          fallback: 'تعذر التحقق من صلاحية إدارة المشاركين.',
+        );
+      }
+      return false;
+    } catch (_) {
+      _accessErrorMessage = 'تعذر التحقق من صلاحية إدارة المشاركين.';
+      return false;
+    } finally {
       notifyListeners();
     }
   }
@@ -180,7 +229,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
-  Future<bool> createInvite({
+  Future<PlanInvite?> createInvite({
     required String weddingPlanId,
     required String phone,
     String? name,
@@ -213,14 +262,17 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
         canManageMoney: canManageMoney,
         receiveNotifications: receiveNotifications,
       );
-      _invites = [invite, ..._invites.where((item) => item.id != invite.id)];
-      return true;
+      _invites = [
+        invite.withIdentityToken(),
+        ..._invites.where((item) => item.id != invite.id),
+      ];
+      return invite;
     } on ApiException catch (error) {
       _handleApiError(error);
-      return false;
+      return null;
     } catch (_) {
       _errorMessage = 'تعذر إرسال دعوة المشاركة.';
-      return false;
+      return null;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -249,6 +301,47 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     } catch (_) {
       _errorMessage = 'تعذر إلغاء الدعوة.';
       return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<PlanInvite?> reissueInvite(PlanInvite invite) async {
+    final active = _reissueFlights[invite.id];
+    if (active != null) return active;
+    final future = _performReissueInvite(invite);
+    _reissueFlights[invite.id] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_reissueFlights[invite.id], future)) {
+        _reissueFlights.remove(invite.id);
+      }
+    }
+  }
+
+  Future<PlanInvite?> _performReissueInvite(PlanInvite invite) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _authGateKind = null;
+    notifyListeners();
+    try {
+      final reissued = await _api.reissuePlanInvite(
+        weddingPlanId: invite.weddingPlanId,
+        inviteId: invite.id,
+      );
+      _invites = [
+        for (final item in _invites)
+          item.id == reissued.id ? reissued.withIdentityToken() : item,
+      ];
+      return reissued;
+    } on ApiException catch (error) {
+      _handleApiError(error);
+      return null;
+    } catch (_) {
+      _errorMessage = 'تعذر إصدار رابط دعوة جديد.';
+      return null;
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -400,6 +493,7 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _accessErrorMessage = null;
     _lookupErrorMessage = null;
     _authGateKind = null;
     notifyListeners();
@@ -440,12 +534,17 @@ String _sharingErrorMessage(
   if (normalized.contains('User not found for phone')) {
     return 'الرقم غير مسجل';
   }
+  if (normalized.contains('A pending invitation already exists')) {
+    return 'توجد دعوة معلقة لهذا الرقم.';
+  }
 
   return switch (normalized) {
     'User is already shared on this wedding plan' =>
       'هذا العضو مضاف مسبقاً إلى هذه الخطة',
     'No registered user found for this phone' => 'الرقم غير مسجل',
     'User not found for phone' => 'الرقم غير مسجل',
+    'A pending invitation already exists for this participant' =>
+      'توجد دعوة معلقة لهذا الرقم.',
     'Provide either userId or phone, not both' =>
       'أدخل رقم الهاتف فقط ولا ترسل معرف المستخدم معه.',
     'Provide either userId or phone' => 'رقم هاتف العضو مطلوب.',

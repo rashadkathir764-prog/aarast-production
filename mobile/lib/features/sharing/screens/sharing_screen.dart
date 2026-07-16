@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -6,16 +7,24 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/utils/auth_action_guard.dart';
+import '../models/invite_share_content.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
+import '../services/invite_share_launcher.dart';
 import '../widgets/shared_member_card.dart';
 
 class SharingScreen extends StatefulWidget {
-  const SharingScreen({required this.weddingPlanId, super.key});
+  const SharingScreen({
+    required this.weddingPlanId,
+    this.inviteShareLauncher = const UrlLauncherInviteShareLauncher(),
+    super.key,
+  });
 
   final String weddingPlanId;
+  final InviteShareLauncher inviteShareLauncher;
 
   @override
   State<SharingScreen> createState() => _SharingScreenState();
@@ -24,6 +33,8 @@ class SharingScreen extends StatefulWidget {
 class _SharingScreenState extends State<SharingScreen> {
   bool _isCheckingSharingAccess = true;
   bool _showLoginGate = false;
+  bool _showPermissionGate = false;
+  bool _showAccessError = false;
 
   @override
   void initState() {
@@ -49,6 +60,8 @@ class _SharingScreenState extends State<SharingScreen> {
     setState(() {
       _isCheckingSharingAccess = true;
       _showLoginGate = false;
+      _showPermissionGate = false;
+      _showAccessError = false;
     });
 
     final shouldGate = await AuthActionGuard.shouldGateProtectedSharing(
@@ -57,14 +70,28 @@ class _SharingScreenState extends State<SharingScreen> {
     );
     if (!mounted) return;
 
+    if (shouldGate) {
+      setState(() {
+        _isCheckingSharingAccess = false;
+        _showLoginGate = true;
+      });
+      return;
+    }
+
+    final provider = context.read<SharingProvider>();
+    final accessLoaded = await provider.loadAccess(widget.weddingPlanId);
+    if (!mounted) return;
+    final canManageMembers = accessLoaded && provider.access.canManageMembers;
+    if (canManageMembers) {
+      await provider.loadMembers(widget.weddingPlanId);
+      if (!mounted) return;
+    }
+
     setState(() {
       _isCheckingSharingAccess = false;
-      _showLoginGate = shouldGate;
+      _showPermissionGate = accessLoaded && !canManageMembers;
+      _showAccessError = !accessLoaded && provider.authGateKind == null;
     });
-
-    if (!shouldGate) {
-      await context.read<SharingProvider>().loadMembers(widget.weddingPlanId);
-    }
   }
 
   @override
@@ -77,21 +104,61 @@ class _SharingScreenState extends State<SharingScreen> {
       showBack: true,
       child: RefreshIndicator(
         color: AppTheme.burgundy,
-        onRefresh: () {
-          if (_showLoginGate ||
-              provider.authGateKind == SharingAuthGateKind.sessionExpired) {
-            return Future<void>.value();
-          }
-          return provider.loadMembers(widget.weddingPlanId);
-        },
+        onRefresh: _refreshSharingAccessAndLoad,
         child: _SharingContent(
           provider: provider,
           weddingPlanId: widget.weddingPlanId,
+          onRetryAccess: _refreshSharingAccessAndLoad,
+          onReissueInvite: _reissueInvite,
           isCheckingSharingAccess: _isCheckingSharingAccess,
           showLoginGate: _showLoginGate,
+          showPermissionGate: _showPermissionGate,
+          showAccessError: _showAccessError,
         ),
       ),
     );
+  }
+
+  Future<void> _reissueInvite(PlanInvite invite) async {
+    final provider = context.read<SharingProvider>();
+    final reissued = await provider.reissueInvite(invite);
+    if (!mounted || reissued == null) return;
+
+    try {
+      final content = InviteShareContent.fromInvite(reissued);
+      await Clipboard.setData(
+        ClipboardData(text: content.inviteLink.toString()),
+      );
+      if (!mounted) return;
+      AarastToast.showSuccess(
+        context,
+        'تم نسخ الرابط الجديد. افتح واتساب وأرسله للمدعو.',
+      );
+      try {
+        final opened = await widget.inviteShareLauncher.openWhatsApp(
+          content.whatsappUri,
+        );
+        if (!mounted || opened) return;
+        AarastToast.showInfo(
+          context,
+          'تعذر فتح واتساب، لكن رابط الدعوة الجديدة محفوظ في الحافظة.',
+        );
+      } catch (_) {
+        if (mounted) {
+          AarastToast.showInfo(
+            context,
+            'تعذر فتح واتساب، لكن رابط الدعوة الجديدة محفوظ في الحافظة.',
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          'تعذر حفظ رابط الدعوة الجديدة. حاول إعادة الإصدار مرة أخرى.',
+        );
+      }
+    }
   }
 }
 
@@ -99,14 +166,22 @@ class _SharingContent extends StatelessWidget {
   const _SharingContent({
     required this.provider,
     required this.weddingPlanId,
+    required this.onRetryAccess,
+    required this.onReissueInvite,
     required this.isCheckingSharingAccess,
     required this.showLoginGate,
+    required this.showPermissionGate,
+    required this.showAccessError,
   });
 
   final SharingProvider provider;
   final String weddingPlanId;
+  final VoidCallback onRetryAccess;
+  final ValueChanged<PlanInvite> onReissueInvite;
   final bool isCheckingSharingAccess;
   final bool showLoginGate;
+  final bool showPermissionGate;
+  final bool showAccessError;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +202,35 @@ class _SharingContent extends StatelessWidget {
         title: AuthActionGuard.sessionExpiredTitle,
         body: AuthActionGuard.sharingSessionExpiredBody,
         icon: LucideIcons.fileClock,
+      );
+    }
+
+    if (showAccessError) {
+      return ListView(
+        children: [
+          const SizedBox(height: 40),
+          AarastErrorState(
+            title: 'تعذر التحقق من الصلاحيات',
+            message:
+                provider.accessErrorMessage ??
+                'تحقق من الاتصال وحاول مرة أخرى.',
+            onRetry: onRetryAccess,
+          ),
+        ],
+      );
+    }
+
+    if (showPermissionGate) {
+      return ListView(
+        children: const [
+          SizedBox(height: 40),
+          AarastEmptyState(
+            title: 'ليس لديك صلاحية إدارة المشاركين',
+            message:
+                'يمكنك متابعة الخطة، لكن إضافة الأعضاء وتعديلهم متاحة للمصرح لهم فقط.',
+            icon: LucideIcons.shieldAlert,
+          ),
+        ],
       );
     }
 
@@ -177,6 +281,9 @@ class _SharingContent extends StatelessWidget {
           for (final invite in pendingInvites)
             _PendingInviteCard(
               invite: invite,
+              onReissue: provider.isSubmitting
+                  ? null
+                  : () => onReissueInvite(invite),
               onCancel: provider.isSubmitting
                   ? null
                   : () => provider.cancelInvite(invite),
@@ -268,9 +375,14 @@ class _PrivacyStrip extends StatelessWidget {
 }
 
 class _PendingInviteCard extends StatelessWidget {
-  const _PendingInviteCard({required this.invite, required this.onCancel});
+  const _PendingInviteCard({
+    required this.invite,
+    required this.onReissue,
+    required this.onCancel,
+  });
 
   final PlanInvite invite;
+  final VoidCallback? onReissue;
   final VoidCallback? onCancel;
 
   @override
@@ -295,15 +407,26 @@ class _PendingInviteCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  invite.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.titleSmall?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w800,
+                if (invite.displayNamePhone case final phone?)
+                  AarastPhoneText(
+                    phone: phone,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  )
+                else
+                  Text(
+                    invite.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.titleSmall?.copyWith(
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
                 const SizedBox(height: 2),
                 Text(
                   '${sharedMemberRoleLabel(invite.role)} · بانتظار القبول',
@@ -315,6 +438,15 @@ class _PendingInviteCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          IconButton(
+            tooltip: 'إصدار رابط جديد وإرساله',
+            onPressed: onReissue,
+            icon: const Icon(
+              LucideIcons.refreshCw,
+              size: 18,
+              color: AppTheme.burgundy,
             ),
           ),
           IconButton(

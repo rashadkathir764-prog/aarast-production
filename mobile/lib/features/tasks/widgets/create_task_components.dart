@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -94,6 +95,10 @@ class CreateTaskResponsibleSection extends StatelessWidget {
       participants,
       selectedAssigneeUserId,
     );
+    final responsibleNameIsPhone = PhoneNumberUtils.areEquivalent(
+      responsibleNameController.text,
+      responsiblePhoneController.text,
+    );
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -132,7 +137,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
               label: 'مشارك من الخطة',
               value: selectedParticipant == null
                   ? 'اختر مشاركاً موجوداً'
-                  : selectedParticipant.displayName,
+                  : selectedParticipant.directionalDisplayName,
               icon: LucideIcons.users,
               selected: selectedParticipant != null,
               onTap: () => onSelectParticipant(participants),
@@ -142,6 +147,9 @@ class CreateTaskResponsibleSection extends StatelessWidget {
           TextFormField(
             controller: responsibleNameController,
             textAlign: TextAlign.right,
+            textDirection: responsibleNameIsPhone
+                ? TextDirection.ltr
+                : TextDirection.rtl,
             textInputAction: TextInputAction.next,
             onChanged: (_) => onManualChanged(),
             decoration: const InputDecoration(
@@ -219,15 +227,26 @@ class CreateTaskParticipantRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      member.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.ink,
-                        fontWeight: FontWeight.w900,
+                    if (member.displayNamePhone case final phone?)
+                      AarastPhoneText(
+                        phone: phone,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      )
+                    else
+                      Text(
+                        member.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
                     Text(
                       sharedMemberRoleLabel(member.role),
                       maxLines: 1,

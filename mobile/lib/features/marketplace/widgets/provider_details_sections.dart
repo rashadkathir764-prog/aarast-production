@@ -112,7 +112,9 @@ class _AboutCardState extends State<_AboutCard> {
               if (widget.provider.phone?.trim().isNotEmpty == true)
                 AarastStatusPill(
                   label:
-                      PhoneNumberUtils.display(widget.provider.phone) ??
+                      PhoneNumberUtils.directionalDisplay(
+                        widget.provider.phone,
+                      ) ??
                       widget.provider.phone!.trim(),
                   icon: LucideIcons.phone,
                   color: AppTheme.ink,

@@ -14,6 +14,7 @@ export 'aarast_feature_header.dart';
 export 'aarast_filter_pill.dart';
 export 'aarast_loading_state.dart';
 export 'aarast_metric_tile.dart';
+export 'aarast_phone_text.dart';
 export 'aarast_pressable.dart';
 export 'aarast_skeleton.dart';
 export 'aarast_status_badge.dart';

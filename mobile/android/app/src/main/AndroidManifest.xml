@@ -38,7 +38,7 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="aarast"
                       android:host="open"
-                      android:pathPrefix="/invites"/>
+                      android:pathPrefix="/invites/"/>
             </intent-filter>
             <!-- HTTPS App Links for shared invite URLs. autoVerify requires
                  /.well-known/assetlinks.json on the domain (release phase 9). -->
@@ -48,7 +48,7 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https"
                       android:host="aarast.shadowgardn.com"
-                      android:pathPrefix="/invites"/>
+                      android:pathPrefix="/invites/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

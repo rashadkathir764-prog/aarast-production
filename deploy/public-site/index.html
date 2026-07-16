@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>أعرست — من نحن | Aarast</title>
+  <meta name="description" content="أعرست — منصة تنظيم الزفاف الذكية في اليمن. نساعدك في التخطيط لأجمل يوم في حياتك بسهولة واحترافية." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Amiri:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Floating Petals -->
+  <div class="petals-container" id="petalsContainer" aria-hidden="true"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo">
+        <svg class="logo-icon" viewBox="0 0 60 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M30 50L5 25C-2 18-2 7 5 3C12-1 20 2 25 8L30 14L35 8C40 2 48-1 55 3C62 7 62 18 55 25L30 50Z" fill="currentColor" opacity="0.9"/>
+          <path d="M30 45L10 26C4 20 4 11 10 7C16 3 22 5 26 10L30 15L34 10C38 5 44 3 50 7C56 11 56 20 50 26L30 45Z" fill="currentColor" opacity="0.5"/>
+        </svg>
+        <div class="logo-text">
+          <span class="logo-ar">أعرست</span>
+          <span class="logo-en">Aarast</span>
+        </div>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#hero" class="nav-link active">الرئيسية</a></li>
+        <li><a href="#about" class="nav-link">من نحن</a></li>
+        <li><a href="#vision" class="nav-link">رؤيتنا</a></li>
+        <li><a href="#features" class="nav-link">مميزاتنا</a></li>
+        <li><a href="#values" class="nav-link">قيمنا</a></li>
+        <li><a href="#cta" class="nav-link">تواصل معنا</a></li>
+      </ul>
+      <button class="nav-toggle" id="navToggle" aria-label="فتح القائمة">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-decoration hero-decoration--top-right" aria-hidden="true">
+      <svg viewBox="0 0 300 300" fill="none"><circle cx="150" cy="150" r="140" stroke="currentColor" stroke-width="0.5" opacity="0.15"/><circle cx="150" cy="150" r="100" stroke="currentColor" stroke-width="0.5" opacity="0.1"/><circle cx="150" cy="150" r="60" stroke="currentColor" stroke-width="0.5" opacity="0.08"/></svg>
+    </div>
+    <div class="hero-decoration hero-decoration--bottom-left" aria-hidden="true">
+      <svg viewBox="0 0 200 200" fill="none"><path d="M0 200C0 90 90 0 200 0" stroke="currentColor" stroke-width="0.5" opacity="0.12"/><path d="M0 200C0 110 60 30 160 0" stroke="currentColor" stroke-width="0.5" opacity="0.08"/></svg>
+    </div>
+    <div class="container hero-content">
+      <div class="hero-badge animate-on-scroll">
+        <span class="hero-badge-icon">♥</span>
+        <span>منصة الزفاف الذكية</span>
+      </div>
+      <h1 class="hero-title animate-on-scroll">
+        رحلتك نحو أجمل يوم
+        <span class="hero-title-accent">تبدأ من أعرست</span>
+      </h1>
+      <p class="hero-subtitle animate-on-scroll">
+        نصنع معك لحظات لا تُنسى. من التخطيط إلى التنفيذ، نرافقك في كل خطوة نحو زفاف أحلامك.
+      </p>
+      <div class="hero-stats animate-on-scroll">
+        <div class="stat-item">
+          <span class="stat-number" data-target="5000">0</span>
+          <span class="stat-label">زفاف ناجح</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="200">0</span>
+          <span class="stat-label">مزود خدمة</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item">
+          <span class="stat-number" data-target="15">0</span>
+          <span class="stat-label">مدينة يمنية</span>
+        </div>
+      </div>
+      <a href="#about" class="hero-scroll-btn animate-on-scroll" aria-label="اكتشف المزيد">
+        <span>اكتشف قصتنا</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </a>
+    </div>
+    <!-- Floral Corner SVG -->
+    <div class="hero-floral hero-floral--br" aria-hidden="true">
+      <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M200 200C180 170 160 150 120 140C140 120 150 90 140 60C130 80 110 95 85 100C100 75 105 50 95 25C85 50 65 65 40 70C60 55 70 35 65 10C50 30 30 40 10 38C30 50 40 70 35 95C20 80 5 75 0 80C15 85 25 100 25 120C10 110 0 115 0 125C15 125 30 135 40 155C30 150 15 150 5 160C20 158 35 165 50 180C40 178 30 182 28 190C40 185 55 188 75 200" stroke="currentColor" stroke-width="1" opacity="0.12"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- About Section -->
+  <section class="section about" id="about">
+    <div class="section-ornament" aria-hidden="true">✦</div>
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">تعرّف علينا</span>
+        <h2 class="section-title">من نحن</h2>
+        <div class="section-line"><span></span></div>
+      </div>
+      <div class="about-grid">
+        <div class="about-text animate-on-scroll">
+          <h3 class="about-heading">أعرست — شريكك في أجمل لحظات العمر</h3>
+          <p>
+            أعرست هي منصة يمنية متخصصة في تنظيم حفلات الزفاف، صُممت بعناية لتجمع بين التقاليد اليمنية الأصيلة والتكنولوجيا الحديثة. نؤمن بأن كل زفاف فريد ويستحق تخطيطاً مثالياً.
+          </p>
+          <p>
+            من خلال تطبيقنا الذكي، نمكّن العرسان من إدارة كل تفاصيل زفافهم — من الميزانية والمهام والموردين إلى قائمة الضيوف والدعوات — كل ذلك في مكان واحد وبلمسة واحدة.
+          </p>
+          <p>
+            انطلقنا من اليمن بحلم بسيط: أن نجعل التخطيط للزفاف تجربة ممتعة بدلاً من عبء ثقيل. واليوم، نفخر بأننا أصبحنا الوجهة الأولى لتنظيم الأعراس في المنطقة.
+          </p>
+          <div class="about-signature">
+            <div class="signature-icon">
+              <svg viewBox="0 0 40 36" fill="none"><path d="M20 34L2 16C-3 11-3 3 2 0C7-3 13 0 17 5L20 9L23 5C27 0 33-3 38 0C43 3 43 11 38 16L20 34Z" fill="currentColor"/></svg>
+            </div>
+            <div>
+              <strong>فريق أعرست</strong>
+              <span>مصمم لأجمل يوم</span>
+            </div>
+          </div>
+        </div>
+        <div class="about-visual animate-on-scroll">
+          <div class="about-card about-card--main">
+            <div class="about-card-icon">
+              <svg viewBox="0 0 48 48" fill="none"><path d="M24 44L4 24C-2 18-2 8 4 4C10 0 18 2 22 8L24 11L26 8C30 2 38 0 44 4C50 8 50 18 44 24L24 44Z" stroke="currentColor" stroke-width="2" fill="none"/><path d="M24 36L10 22C6 18 6 12 10 10C14 8 18 10 20 13L24 18L28 13C30 10 34 8 38 10C42 12 42 18 38 22L24 36Z" fill="currentColor" opacity="0.15"/></svg>
+            </div>
+            <span class="about-card-number">2024</span>
+            <span class="about-card-label">سنة التأسيس</span>
+          </div>
+          <div class="about-card about-card--secondary">
+            <div class="about-card-icon">
+              <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="8" width="40" height="32" rx="4" stroke="currentColor" stroke-width="2"/><path d="M4 16h40" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="28" r="4" fill="currentColor" opacity="0.2"/><circle cx="32" cy="28" r="4" fill="currentColor" opacity="0.2"/></svg>
+            </div>
+            <span class="about-card-number">24/7</span>
+            <span class="about-card-label">دعم متواصل</span>
+          </div>
+          <div class="about-card about-card--tertiary">
+            <div class="about-card-icon">
+              <svg viewBox="0 0 48 48" fill="none"><path d="M24 4L28 16H42L30 24L34 36L24 28L14 36L18 24L6 16H20L24 4Z" stroke="currentColor" stroke-width="2" fill="currentColor" opacity="0.15"/></svg>
+            </div>
+            <span class="about-card-number">4.9</span>
+            <span class="about-card-label">تقييم المستخدمين</span>
+          </div>
+          <div class="about-visual-ring" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vision & Mission -->
+  <section class="section vision" id="vision">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">نظرتنا للمستقبل</span>
+        <h2 class="section-title">رؤيتنا ورسالتنا</h2>
+        <div class="section-line"><span></span></div>
+      </div>
+      <div class="vision-grid">
+        <div class="vision-card animate-on-scroll">
+          <div class="vision-card-glow"></div>
+          <div class="vision-card-icon">
+            <svg viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="24" stroke="currentColor" stroke-width="1.5" opacity="0.3"/><circle cx="28" cy="28" r="16" stroke="currentColor" stroke-width="1.5" opacity="0.5"/><circle cx="28" cy="28" r="6" fill="currentColor" opacity="0.8"/><path d="M28 4v8M28 44v8M4 28h8M44 28h8" stroke="currentColor" stroke-width="1.5" opacity="0.3"/></svg>
+          </div>
+          <h3>رؤيتنا</h3>
+          <p>أن نكون المنصة الرائدة في تنظيم حفلات الزفاف في العالم العربي، ونحوّل كل حلم زفاف إلى واقع مذهل يفوق التوقعات.</p>
+          <div class="vision-card-line"></div>
+        </div>
+        <div class="vision-card animate-on-scroll">
+          <div class="vision-card-glow"></div>
+          <div class="vision-card-icon">
+            <svg viewBox="0 0 56 56" fill="none"><path d="M28 6L8 20v20l20 12 20-12V20L28 6z" stroke="currentColor" stroke-width="1.5" fill="currentColor" opacity="0.08"/><path d="M28 18l-12 8v12l12 7 12-7V26l-12-8z" stroke="currentColor" stroke-width="1.5" fill="currentColor" opacity="0.12"/><circle cx="28" cy="32" r="4" fill="currentColor" opacity="0.6"/></svg>
+          </div>
+          <h3>رسالتنا</h3>
+          <p>تمكين كل عروسين من التخطيط لزفافهم بسهولة وثقة، من خلال أدوات ذكية تجمع الميزانية والمهام والموردين والضيوف في تجربة واحدة سلسة.</p>
+          <div class="vision-card-line"></div>
+        </div>
+        <div class="vision-card animate-on-scroll">
+          <div class="vision-card-glow"></div>
+          <div class="vision-card-icon">
+            <svg viewBox="0 0 56 56" fill="none"><path d="M28 8C16 8 8 18 8 28s10 20 20 20 20-10 20-20" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.4"/><path d="M28 16c-6 0-12 6-12 12s6 12 12 12" stroke="currentColor" stroke-width="1.5" opacity="0.5"/><path d="M38 12l-4 8h8l-4 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h3>طموحنا</h3>
+          <p>التوسع لنغطي كل مدينة يمنية وكل دولة عربية، مع الحفاظ على خصوصية كل ثقافة وتقاليدها في تنظيم الأعراس.</p>
+          <div class="vision-card-line"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section features" id="features">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">لماذا أعرست؟</span>
+        <h2 class="section-title">مميزاتنا</h2>
+        <div class="section-line"><span></span></div>
+      </div>
+      <div class="features-grid">
+
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon">
+            <svg viewBox="0 0 48 48" fill="none"><rect x="6" y="10" width="36" height="28" rx="4" stroke="currentColor" stroke-width="2"/><path d="M6 18h36" stroke="currentColor" stroke-width="2"/><path d="M18 26h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M22 32h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="14" r="2" fill="currentColor" opacity="0.5"/><circle cx="20" cy="14" r="2" fill="currentColor" opacity="0.5"/></svg>
+          </div>
+          <h3>إدارة الميزانية</h3>
+          <p>تتبع مصاريفك، حدد ميزانيتك لكل فئة، وراقب الإنفاق لحظة بلحظة مع رسوم بيانية واضحة.</p>
+        </div>
+
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon">
+            <svg viewBox="0 0 48 48" fill="none"><rect x="8" y="6" width="32" height="36" rx="4" stroke="currentColor" stroke-width="2"/><path d="M16 18l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 30h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 36h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <h3>المهام والجدول الزمني</h3>
+          <p>خطط مهامك من قبل 6 أشهر حتى يوم الزفاف، عيّنها للفريق، وتابع التقدم بسهولة.</p>
+        </div>
+
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon">
+            <svg viewBox="0 0 48 48" fill="none"><circle cx="20" cy="18" r="8" stroke="currentColor" stroke-width="2"/><circle cx="34" cy="18" r="8" stroke="currentColor" stroke-width="2" opacity="0.5"/><path d="M8 40c0-8 6-14 12-14s12 6 12 14" stroke="currentColor" stroke-width="2"/><path d="M28 40c0-8 4-14 10-14" stroke="currentColor" stroke-width="2" opacity="0.5"/></svg>
+          </div>
+          <h3>إدارة الضيوف</h3>
+          <p>أضف ضيوفك، صنّفهم في مجموعات، تابع تأكيدات الحضور، واستورد من جهات الاتصال.</p>
+        </div>
+
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon">
+            <svg viewBox="0 0 48 48" fill="none"><path d="M24 6l-18 14v20h36V20L24 6z" stroke="currentColor" stroke-width="2"/><rect x="18" y="28" width="12" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M12 14h24" stroke="currentColor" stroke-width="1" opacity="0.3"/><circle cx="24" cy="22" r="4" stroke="currentColor" stroke-width="1.5" fill="currentColor" opacity="0.1"/></svg>
+          </div>
+          <h3>موردون موثوقون</h3>
+          <p>تصفح أفضل قاعات الأفراح، المصورين، الكوافيرات، وكل ما تحتاجه — واطلب عروض أسعار مباشرة.</p>
+        </div>
+
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon">
+            <svg viewBox="0 0 48 48" fill="none"><path d="M24 4C13 4 4 13 4 24s9 20 20 20 20-9 20-20S35 4 24 4z" stroke="currentColor" stroke-width="2"/><path d="M24 14v10l7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="24" cy="24" r="2" fill="currentColor"/></svg>
+          </div>
+          <h3>عد تنازلي ذكي</h3>
+          <p>شاهد العد التنازلي ليومك الكبير مع تذكيرات ذكية بالمهام المتأخرة والمواعيد القادمة.</p>
+        </div>
+
+        <div class="feature-card animate-on-scroll">
+          <div class="feature-icon">
+            <svg viewBox="0 0 48 48" fill="none"><rect x="6" y="6" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2"/><rect x="26" y="6" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2" opacity="0.6"/><rect x="6" y="26" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2" opacity="0.6"/><rect x="26" y="26" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2" opacity="0.4"/><path d="M10 14h8M30 14h8M10 34h8M30 34h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+          <h3>مشاركة الخطة</h3>
+          <p>شارك خطتك مع العائلة والأصدقاء بصلاحيات مرنة — مالك، محرر، مشاهد، أو مدير مالي.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Values -->
+  <section class="section values" id="values">
+    <div class="container">
+      <div class="section-header animate-on-scroll">
+        <span class="section-tag">ما نؤمن به</span>
+        <h2 class="section-title">قيمنا</h2>
+        <div class="section-line"><span></span></div>
+      </div>
+      <div class="values-grid">
+        <div class="value-item animate-on-scroll">
+          <div class="value-number">01</div>
+          <div class="value-content">
+            <h3>الخصوصية أولاً</h3>
+            <p>بياناتك المالية وتفاصيل زفافك خاصة بك تماماً. لا نشارك معلوماتك مع أي طرف ثالث بدون إذنك الصريح.</p>
+          </div>
+        </div>
+        <div class="value-item animate-on-scroll">
+          <div class="value-number">02</div>
+          <div class="value-content">
+            <h3>البساطة في التصميم</h3>
+            <p>نؤمن بأن التكنولوجيا يجب أن تبسّط حياتك لا تعقّدها. كل ميزة صُممت لتكون بديهية وسهلة الاستخدام.</p>
+          </div>
+        </div>
+        <div class="value-item animate-on-scroll">
+          <div class="value-number">03</div>
+          <div class="value-content">
+            <h3>احترام التقاليد</h3>
+            <p>نفهم أن كل زفاف يمني له خصوصيته وتقاليده. تطبيقنا يحترم هذا التنوع ويدعمه بمرونة كاملة.</p>
+          </div>
+        </div>
+        <div class="value-item animate-on-scroll">
+          <div class="value-number">04</div>
+          <div class="value-content">
+            <h3>الشفافية المالية</h3>
+            <p>نساعدك ترى أموالك بوضوح — كل ريال محسوب، كل دين متابع، كل قسط مجدول. لا مفاجآت غير سارة.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="section cta-section" id="cta">
+    <div class="cta-bg-pattern" aria-hidden="true"></div>
+    <div class="container">
+      <div class="cta-content animate-on-scroll">
+        <div class="cta-icon">
+          <svg viewBox="0 0 80 72" fill="none">
+            <path d="M40 68L4 32C-6 22-6 6 4 0C14-6 26 0 34 10L40 18L46 10C54 0 66-6 76 0C86 6 86 22 76 32L40 68Z" fill="currentColor" opacity="0.15"/>
+            <path d="M40 58L12 30C6 24 6 14 12 10C18 6 24 8 28 14L40 28L52 14C56 8 62 6 68 10C74 14 74 24 68 30L40 58Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+        </div>
+        <h2>ابدأ رحلتك معنا اليوم</h2>
+        <p>حمّل تطبيق أعرست وابدأ التخطيط لأجمل يوم في حياتك. مجاناً وبدون التزام.</p>
+        <div class="cta-buttons">
+          <a href="#" class="btn btn-primary">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            <span>حمّل التطبيق</span>
+          </a>
+          <a href="contact.html" class="btn btn-secondary">
+            <span>تواصل معنا</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-top-line" aria-hidden="true"></div>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="#" class="footer-logo">
+            <svg class="logo-icon" viewBox="0 0 60 55" fill="none">
+              <path d="M30 50L5 25C-2 18-2 7 5 3C12-1 20 2 25 8L30 14L35 8C40 2 48-1 55 3C62 7 62 18 55 25L30 50Z" fill="currentColor" opacity="0.9"/>
+              <path d="M30 45L10 26C4 20 4 11 10 7C16 3 22 5 26 10L30 15L34 10C38 5 44 3 50 7C56 11 56 20 50 26L30 45Z" fill="currentColor" opacity="0.5"/>
+            </svg>
+            <div class="logo-text">
+              <span class="logo-ar">أعرست</span>
+              <span class="logo-en">Aarast</span>
+            </div>
+          </a>
+          <p class="footer-desc">منصة تنظيم الزفاف الذكية — كل ما تحتاجه في مكان واحد.</p>
+        </div>
+        <div class="footer-links-group">
+          <h4>روابط سريعة</h4>
+          <ul>
+            <li><a href="#about">من نحن</a></li>
+            <li><a href="#vision">رؤيتنا</a></li>
+            <li><a href="#features">مميزاتنا</a></li>
+            <li><a href="#values">قيمنا</a></li>
+          </ul>
+        </div>
+        <div class="footer-links-group">
+          <h4>تواصل معنا</h4>
+          <ul>
+            <li><a href="mailto:info@aarast.app">info@aarast.app</a></li>
+            <li><a href="tel:+967715011549" dir="ltr">+967 715 011 549</a></li>
+            <li><a href="#">صنعاء، اليمن</a></li>
+          </ul>
+        </div>
+        <div class="footer-links-group">
+          <h4>قانوني</h4>
+          <ul>
+            <li><a href="privacy.html">سياسة الخصوصية</a></li>
+            <li><a href="contact.html">تواصل معنا</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2024–2026 أعرست. جميع الحقوق محفوظة.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="فيسبوك">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+          </a>
+          <a href="#" aria-label="انستغرام">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>
+          </a>
+          <a href="#" aria-label="تويتر">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 3a10.9 10.9 0 01-3.14 1.53A4.48 4.48 0 0012 7.5v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
+          </a>
+          <a href="#" aria-label="واتساب">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

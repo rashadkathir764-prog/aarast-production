@@ -1,0 +1,13 @@
+*
+!Dockerfile
+!.dockerignore
+!nginx.conf
+!index.html
+!contact.html
+!privacy.html
+!invite.html
+!script.js
+!invite.js
+!style.css
+!invite.css
+!invite-preview.png

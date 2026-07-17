@@ -289,6 +289,7 @@ test('OpenWA mode consumes the durable quota before delivering a code', async ()
         new Response(
           JSON.stringify({
             messageId: 'wa-message-id',
+            timestamp: 1706868000,
             deliveryStatus: 'SENT',
           }),
           {

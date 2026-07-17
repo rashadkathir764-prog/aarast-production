@@ -29,6 +29,7 @@ test('OpenWA OTP uses only the transient route and never echoes the code', async
     return new Response(
       JSON.stringify({
         messageId: 'wa-message-id',
+        timestamp: 1706868000,
         deliveryStatus: 'SENT',
       }),
       {
@@ -54,17 +55,24 @@ test('OpenWA OTP uses only the transient route and never echoes the code', async
   assert.equal('code' in result, false);
 });
 
-test('OpenWA OTP requires both messageId and SENT on every 2xx response', async () => {
-  for (const payload of [
-    { queued: true },
-    { messageId: 'wa-message-id' },
-    { deliveryStatus: 'SENT' },
-    { messageId: 'wa-message-id', deliveryStatus: 'QUEUED' },
+test('OpenWA OTP requires a complete acknowledgement on every 2xx response', async () => {
+  for (const body of [
+    JSON.stringify({ queued: true }),
+    JSON.stringify({ messageId: 'wa-message-id' }),
+    JSON.stringify({ timestamp: 1706868000, deliveryStatus: 'SENT' }),
+    JSON.stringify({ messageId: '   ', timestamp: 1706868000, deliveryStatus: 'SENT' }),
+    JSON.stringify({ messageId: 'wa-message-id', timestamp: 1706868000, deliveryStatus: 'QUEUED' }),
+    JSON.stringify({ messageId: 'wa-message-id', deliveryStatus: 'SENT' }),
+    JSON.stringify({ messageId: 'wa-message-id', timestamp: null, deliveryStatus: 'SENT' }),
+    JSON.stringify({ messageId: 'wa-message-id', timestamp: '1706868000', deliveryStatus: 'SENT' }),
+    JSON.stringify({ messageId: 'wa-message-id', timestamp: 0, deliveryStatus: 'SENT' }),
+    JSON.stringify({ messageId: 'wa-message-id', timestamp: -1, deliveryStatus: 'SENT' }),
+    '{"messageId":"wa-message-id","timestamp":1e400,"deliveryStatus":"SENT"}',
   ]) {
     const channel = new OpenWaOtpChannel(
       config,
       async () =>
-        new Response(JSON.stringify(payload), {
+        new Response(body, {
           status: 200,
           headers: { 'content-type': 'application/json' },
         }),
@@ -216,6 +224,7 @@ test('OpenWA OTP rejects oversized provider responses', async () => {
       new Response(
         JSON.stringify({
           messageId: 'x'.repeat(5_000),
+          timestamp: 1706868000,
           deliveryStatus: 'SENT',
         }),
         {

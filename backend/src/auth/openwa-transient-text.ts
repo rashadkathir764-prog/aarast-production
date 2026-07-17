@@ -26,6 +26,7 @@ export interface OpenWaTransientTextInput {
 
 interface OpenWaTransientResponse {
   messageId?: unknown;
+  timestamp?: unknown;
   deliveryStatus?: unknown;
   code?: unknown;
 }
@@ -99,6 +100,9 @@ export async function sendOpenWaTransientText(
     if (
       typeof payload.messageId !== 'string' ||
       !payload.messageId.trim() ||
+      typeof payload.timestamp !== 'number' ||
+      !Number.isFinite(payload.timestamp) ||
+      payload.timestamp <= 0 ||
       payload.deliveryStatus !== 'SENT'
     ) {
       throw new OpenWaTransientDeliveryUncertainError();

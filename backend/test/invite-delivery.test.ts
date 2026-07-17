@@ -36,6 +36,7 @@ test('Aarast sends an invite through only the hardened transient OpenWA route', 
     return new Response(
       JSON.stringify({
         messageId: 'wa-message-1',
+        timestamp: 1706868000,
         deliveryStatus: 'SENT',
       }),
       {
@@ -96,7 +97,11 @@ test('invite delivery maps explicit OpenWA outcomes without false success', asyn
 
   globalThis.fetch = (async () =>
     new Response(
-      JSON.stringify({ messageId: 'wa-message-2', deliveryStatus: 'QUEUED' }),
+      JSON.stringify({
+        messageId: 'wa-message-2',
+        timestamp: 1706868000,
+        deliveryStatus: 'QUEUED',
+      }),
       {
         status: 200,
         headers: { 'content-type': 'application/json' },

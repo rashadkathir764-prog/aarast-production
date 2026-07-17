@@ -105,8 +105,9 @@ and runtime checks override historical completion reports.
   and the routed provider experience remains `ProviderPortalScreen`.
 - Runtime health now separates dependency-free `/live` (plus `/health` alias)
   from `/ready`, which checks PostgreSQL and configured Redis/media with
-  bounded, redacted results. Production treats Redis and media as required and
-  the container healthcheck targets readiness.
+  bounded, redacted results. The container healthcheck targets readiness.
+  Redis is required in the live deployment; production media is currently an
+  explicit disabled exception until the S3-compatible target is provisioned.
 - Notification creation and chat-message commits now enqueue durable
   `OutboxEvent` rows transactionally. A cross-replica worker claims with
   `SKIP LOCKED`, retries safely, retains dead letters, and publishes recovery
@@ -192,19 +193,22 @@ mandatory before wider use.
 
 ## Verification Status
 
-For the current working tree on 2026-07-15, Flutter Analyze passes with no
-issues and all 572 Flutter tests pass. SQLCipher key-vault/fail-closed tests are
-included. A QA-signed Android Release APK (`versionCode=2`) was built against
-the staging HTTPS origin and accepted a physical-device OTP flow. These results
-do not prove store signing, deployed association files, or the target
-object-storage environment. Final AAB/store-certificate verification is
-intentionally deferred at the product owner's request.
+For revision `0c1d81c7aebb8b3f93f83238ea13219de0994344` on 2026-07-17,
+Flutter Analyze passes with no issues and all 628 Flutter tests pass.
+SQLCipher key-vault/fail-closed tests are included. A production Release APK
+(`versionCode=4`) was built against the production HTTPS origin with a
+dedicated 4096-bit upload key and APK Signature Scheme v2. It is not debuggable,
+contains Internet permission, contains no staging origin or enabled demo/login
+bypass, and its SHA-256 is
+`108210A5DEC6723915DEF3A9855B035F51A7D5FF6646B58B7066E8987A7530FE`.
+This does not prove AAB/Play signing, deployed association files, iOS signing,
+or a physical-device acceptance pass for this exact artifact.
 
-Backend TypeScript check, all 6 canonical/legacy pretests, and all 237 source
-tests pass for the OpenWA integration branch. The local Docker backend,
+Backend TypeScript check/build, all 11 canonical/legacy/identity pretests, and
+all 296 source tests pass (307 total). The local Docker backend,
 PostgreSQL, Redis, and MinIO-compatible media service are healthy, and the
-long-lived local database now has all 54 migrations applied. A disposable
-database independently applied all 54 migrations and passed the direct SQL
+long-lived local database now has all 56 migrations applied. A disposable
+database independently applied all 56 migrations and passed the direct SQL
 money integrity checks. All 28 Docker-backed smoke groups pass together against
 the migrated local runtime, including money concurrency, account deletion,
 media, sharing, provider, and OTP contracts. Dependency audit previously
@@ -224,20 +228,28 @@ staging HTTPS origin in its AOT artifact, and passes package/signature
 inspection. A physical device has not yet been connected to this workstation,
 so installation and the second-recipient request/verify flow remain unclaimed.
 
-Admin Web production build, all 30 Vitest checks, honesty checks, and all 16
+Admin Web production build, all 42 Vitest checks, honesty checks, and all 16
 route smokes pass. Production dependency audit reports zero known
 vulnerabilities.
 
 The secure-admin HTTP smoke also proves that legacy password/OTP/access/refresh
 paths cannot reach `/admin`, one concurrent MFA challenge creates one session,
 the cookie rotates, replay fails, and logout immediately invalidates both the
-active access JWT and refresh cookie. Live production OTP delivery still
-depends on the external Meta-approved channel.
+active access JWT and refresh cookie. Production revision
+`0c1d81c7aebb8b3f93f83238ea13219de0994344` is live: both new auth migrations
+are applied, API and Admin containers are healthy, `/live` and `/ready` pass,
+and the pinned OpenWA staging container kept the same ID, image, start time,
+and restart count throughout deployment. The pre-deploy production backup was
+checksum-verified, restored into an isolated PostgreSQL instance, migrated
+twice, and also stored encrypted off-host.
 
 ## Known Risks
 
 - Signed media requires valid S3-compatible configuration; the `chat-image/`
   prefix must deny anonymous/public reads, and credentials remain server-side.
+- The live production readiness report currently marks media `disabled`;
+  uploads/chat media are not a release-ready production capability until the
+  S3-compatible target is configured and the anonymous-read gate passes.
 - Conversation/media reconnect behavior still needs a signed physical-device
   acceptance pass against the release environment.
 - Final Android AAB signing/signer verification and iOS Archive/TestFlight

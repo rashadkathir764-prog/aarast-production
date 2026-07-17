@@ -1,6 +1,6 @@
 # Mobile Store Release Guide
 
-Snapshot date: 2026-07-10
+Snapshot date: 2026-07-17
 
 The mobile release path is fail-closed. Source configuration and automated
 tests now prevent a store artifact from using a local/HTTP API, development
@@ -8,16 +8,21 @@ login bypass, missing signing values, a missing keystore, or Android debug
 keys. The production upload key, store accounts, and final signed artifacts are
 external release inputs and are not stored in this repository.
 
-Current evidence from the 2026-07-10 local pass:
+Current evidence from the 2026-07-17 production-APK pass:
 
 - Android release configuration fails when `AARAST_API_BASE_URL` is missing.
 - Android release configuration fails when store signing is missing.
 - Android resources, adaptive launcher icon, and native splash compile.
 - iOS Release validates the same API/login-bypass rules through an Xcode build
   phase; the shell gate passed a public/local/IPv6/malformed-IP test matrix.
-- `flutter analyze` passed and all 418 Flutter tests passed.
-- Final AAB generation and certificate verification are intentionally deferred
-  at the product owner's request. They are not marked PASS.
+- `flutter analyze` passed and all 628 Flutter tests passed.
+- A production-origin APK (`versionCode=4`) is signed by the dedicated Aarast
+  4096-bit upload certificate through APK Signature Scheme v2, is not
+  debuggable, and has artifact SHA-256
+  `108210A5DEC6723915DEF3A9855B035F51A7D5FF6646B58B7066E8987A7530FE`.
+- The upload keystore is outside Git with a local OS-protected secret and a
+  second encrypted-keystore backup. Final AAB generation, Play App Signing,
+  and physical-device verification remain separate gates.
 
 ## 1. Generate and protect the Android upload keystore
 

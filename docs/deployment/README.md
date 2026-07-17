@@ -40,8 +40,10 @@ post-build gate if a loopback API or the current MFA login route is missing.
   OpenWA mode also checks its selected session and transient endpoint,
   returns dependency names/status/latency only, and fails with `503` without
   exposing connection strings or provider errors.
-- Redis and media default to required when `NODE_ENV=production`; Dokploy sets
-  `READINESS_REQUIRE_REDIS=true` and `READINESS_REQUIRE_MEDIA=true` explicitly.
+- Redis and media default to required when `NODE_ENV=production`. The live
+  Dokploy deployment currently requires Redis but explicitly disables media;
+  this is a tracked release exception, not proof that upload/chat media is
+  production-ready.
 - Container health and admin startup dependency use `/ready`, so traffic is not
   sent to an API whose required dependencies are down.
 

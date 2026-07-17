@@ -145,10 +145,29 @@ class SharingApi {
   Future<PlanInvite> reissuePlanInvite({
     required String weddingPlanId,
     required String inviteId,
+    String? role,
+    bool? canViewMoney,
+    bool? canEditPlan,
+    bool? canManageTasks,
+    bool? canManageGuests,
+    bool? canManageProviders,
+    bool? canInviteMembers,
+    bool? canManageMoney,
+    bool? receiveNotifications,
   }) async {
     final json = await _apiClient.postJson(
       '/api/v1/wedding-plans/$weddingPlanId/invites/$inviteId/reissue',
-      const {},
+      {
+        'role': ?role,
+        'canViewMoney': ?canViewMoney,
+        'canEditPlan': ?canEditPlan,
+        'canManageTasks': ?canManageTasks,
+        'canManageGuests': ?canManageGuests,
+        'canManageProviders': ?canManageProviders,
+        'canInviteMembers': ?canInviteMembers,
+        'canManageMoney': ?canManageMoney,
+        'receiveNotifications': ?receiveNotifications,
+      },
     );
     return PlanInvite.fromJson(json);
   }

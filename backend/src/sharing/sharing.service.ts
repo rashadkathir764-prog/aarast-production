@@ -146,6 +146,10 @@ type PlanInviteWithRelations = PlanInvite & {
 
 type PermissionFlags = PlanPermissionFlags;
 
+type StoredPermissionRecord = PermissionFlags & {
+  role: SharedMemberRole;
+};
+
 interface PresentedInvite {
   invite: PlanInviteWithRelations;
   token: string;
@@ -608,6 +612,7 @@ export class SharingService {
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
     inviteId: string,
+    dto: UpdateSharedMemberDto = {},
   ): Promise<PlanInviteResponse> {
     await this.permissions.assertMemberManageable(
       weddingPlanId,
@@ -651,6 +656,18 @@ export class SharingService {
           throw new ConflictException("Invite is no longer pending");
         }
 
+        const role = this.assignableRole(dto.role ?? invite.role);
+        const permissionData = this.permissionDataForUpdate(
+          invite,
+          dto,
+          role,
+        );
+        this.assertPermissionCeiling(
+          transactionalAccess,
+          role,
+          permissionData,
+        );
+
         const updated = await tx.planInvite.updateMany({
           where: {
             id: invite.id,
@@ -661,7 +678,11 @@ export class SharingService {
             revokedAt: null,
             expiresAt: { gt: now },
           },
-          data: { tokenHash: this.hashInviteToken(token) },
+          data: {
+            tokenHash: this.hashInviteToken(token),
+            ...(dto.role !== undefined ? { role } : {}),
+            ...permissionData,
+          },
         });
         if (updated.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
@@ -1250,7 +1271,7 @@ export class SharingService {
   }
 
   private permissionDataForUpdate(
-    existing: SharedMember,
+    existing: StoredPermissionRecord,
     dto: UpdateSharedMemberDto,
     role: SharedMemberRole,
   ): PermissionFlags {

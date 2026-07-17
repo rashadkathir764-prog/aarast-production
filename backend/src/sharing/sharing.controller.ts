@@ -136,11 +136,13 @@ export class ApiV1WeddingPlanInvitesController {
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("weddingPlanId") weddingPlanId: string,
     @Param("inviteId") inviteId: string,
+    @Body() dto: UpdateSharedMemberDto,
   ) {
     return this.sharingService.reissueInvite(
       currentUser,
       weddingPlanId,
       inviteId,
+      dto,
     );
   }
 }

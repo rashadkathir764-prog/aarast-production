@@ -819,7 +819,9 @@ deletes the pending invite or falsely reports that WhatsApp succeeded.
 
 `POST /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue`
 atomically replaces the SHA-256 fingerprint of an existing live pending invite
-and returns a new 43-character raw bearer once. The prior bearer stops working
+and may atomically replace its role and permission snapshot from the validated
+request body before returning a new 43-character raw bearer once. Omitting the
+optional role and permission fields preserves the existing snapshot. The prior bearer stops working
 as soon as the transaction commits, including an accept/decline request that
 looked it up before the rotation but has not yet claimed it. Reissue preserves the original expiry and
 is rejected for expired, accepted, declined, or revoked invitations. Owners

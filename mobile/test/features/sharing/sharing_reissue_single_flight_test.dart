@@ -35,6 +35,15 @@ class _DelayedReissueApi extends SharingApi {
   Future<PlanInvite> reissuePlanInvite({
     required String weddingPlanId,
     required String inviteId,
+    String? role,
+    bool? canViewMoney,
+    bool? canEditPlan,
+    bool? canManageTasks,
+    bool? canManageGuests,
+    bool? canManageProviders,
+    bool? canInviteMembers,
+    bool? canManageMoney,
+    bool? receiveNotifications,
   }) {
     calls += 1;
     return _completer.future;

@@ -578,9 +578,24 @@ test('reissuing a pending invite rotates the bearer atomically and invalidates t
     harness.owner,
     'plan-1',
     created.id,
+    {
+      role: SharedMemberRole.FAMILY,
+      canViewMoney: false,
+      canEditPlan: false,
+      canManageTasks: true,
+      canManageGuests: true,
+      canManageProviders: false,
+      canInviteMembers: false,
+      canManageMoney: false,
+      receiveNotifications: true,
+    },
   );
   assert.match(reissued.token, /^[A-Za-z0-9_-]{43}$/);
   assert.notEqual(reissued.token, created.token);
+  assert.equal(reissued.role, SharedMemberRole.FAMILY);
+  assert.equal(reissued.canManageTasks, true);
+  assert.equal(reissued.canManageGuests, true);
+  assert.equal(reissued.canManageMoney, false);
   assert.equal(harness.db.invites.length, 1);
   await assert.rejects(
     () =>
@@ -744,6 +759,48 @@ test('reissue rejects historical invitations and delegated authority above the i
   );
 });
 
+test('reissue cannot raise a pending invite above a delegated inviter ceiling', async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(
+    harness.owner,
+    'plan-1',
+    { phone: '+967777000099', role: SharedMemberRole.VIEWER },
+  );
+  const invite = harness.db.invites[0];
+  const delegatedUser = sharingUser(
+    'delegate-reissue',
+    '+967777000004',
+    'المفوّض',
+  );
+  invite.inviterUserId = delegatedUser.id;
+  harness.setAccess({
+    plan: harness.db.plan as any,
+    isOwner: false,
+    sharedMember: {
+      id: 'member-delegate-reissue',
+      weddingPlanId: 'plan-1',
+      userId: delegatedUser.id,
+      role: SharedMemberRole.VIEWER,
+      ...rolePermissionDefaults(SharedMemberRole.VIEWER),
+      canInviteMembers: true,
+    } as any,
+  });
+  const originalTokenHash = invite.tokenHash;
+
+  await assert.rejects(
+    () =>
+      harness.service.reissueInvite(
+        delegatedUser,
+        'plan-1',
+        created.id,
+        { canManageTasks: true },
+      ),
+    /Cannot grant permission above inviter ceiling/,
+  );
+  assert.equal(invite.tokenHash, originalTokenHash);
+  assert.equal(invite.canManageTasks, false);
+});
+
 test('invite create and reissue source contract stays transactional and authenticated', () => {
   const serviceSource = readFileSync(
     join(process.cwd(), 'src/sharing/sharing.service.ts'),
@@ -770,6 +827,8 @@ test('invite create and reissue source contract stays transactional and authenti
   assert.match(createBlock, /planInvite\.create/);
   assert.match(reissueBlock, /runSerializableTransaction/);
   assert.match(reissueBlock, /assertMemberManageableInTransaction/);
+  assert.match(reissueBlock, /permissionDataForUpdate/);
+  assert.match(reissueBlock, /assertPermissionCeiling/);
   assert.match(reissueBlock, /tokenHash:\s*invite\.tokenHash/);
   assert.match(reissueBlock, /acceptedAt:\s*null/);
   assert.match(reissueBlock, /expiresAt:\s*\{\s*gt:\s*now/);

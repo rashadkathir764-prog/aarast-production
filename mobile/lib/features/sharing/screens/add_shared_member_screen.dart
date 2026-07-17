@@ -42,6 +42,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   PlanInvite? _createdInvite;
   bool _shareHandled = false;
   bool _isCreatingInvite = false;
+  bool _isCheckingLookupAccess = false;
 
   @override
   void initState() {
@@ -75,10 +76,10 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     final createdInvite = _createdInvite;
     final foundUser = provider.lookupUser;
     final isSubmitting = provider.isSubmitting || _isCreatingInvite;
+    final isLookingUp = provider.isLookingUp || _isCheckingLookupAccess;
     final gate = _authGateFor(provider);
     final duplicateMessage =
-        _localPhoneError ??
-        _duplicateMemberMessage(provider.members, provider.invites);
+        _localPhoneError ?? _existingMemberMessage(provider.members);
 
     return PopScope<Object?>(
       canPop: createdInvite == null || _shareHandled,
@@ -124,7 +125,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                                 label: 'رقم جوال العضو',
                                 optional: false,
                                 requireYemeni: true,
-                                enabled: !provider.isLookingUp && !isSubmitting,
+                                enabled: !isLookingUp && !isSubmitting,
                                 duplicateMessage: duplicateMessage,
                                 onDraftChanged: (_) {
                                   provider.clearLookup();
@@ -136,8 +137,8 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
                               child: _LookupButton(
-                                isLookingUp: provider.isLookingUp,
-                                onTap: _lookupUser,
+                                isLookingUp: isLookingUp,
+                                onTap: isSubmitting ? null : _lookupUser,
                               ),
                             ),
                           ],
@@ -157,7 +158,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                           onRoleSelected: _applyRole,
                           onPermissionsChanged: (value) =>
                               setState(() => _permissions = value),
-                          enabled: !isSubmitting,
+                          enabled: !isSubmitting && !isLookingUp,
                         ),
                         if (provider.errorMessage != null) ...[
                           const SizedBox(height: 12),
@@ -168,7 +169,9 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                           label: 'إرسال دعوة المشاركة',
                           icon: LucideIcons.userPlus,
                           isLoading: isSubmitting,
-                          onPressed: isSubmitting ? null : _submit,
+                          onPressed: isSubmitting || isLookingUp
+                              ? null
+                              : _submit,
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -266,52 +269,72 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   void _showError(String message) => AarastToast.showError(context, message);
 
   Future<void> _lookupUser() async {
-    if (await _refreshSharingAccess()) return;
-    if (!mounted) return;
-    if (!_formKey.currentState!.validate()) return;
-    final provider = context.read<SharingProvider>();
-    final duplicateMessage = _duplicateMemberMessage(
-      provider.members,
-      provider.invites,
-    );
-    if (duplicateMessage != null) {
-      setState(() => _localPhoneError = duplicateMessage);
-      return;
-    }
-    await provider.lookupUserByPhone(
-      widget.weddingPlanId,
-      _phoneController.text,
-    );
-    if (!mounted) return;
-    final foundUserId = provider.lookupUser?.id;
-    if (foundUserId != null &&
-        provider.members.any((member) => member.userId == foundUserId)) {
-      provider.clearLookup();
-      setState(() => _localPhoneError = 'هذا الرقم مضاف مسبقًا.');
-    }
-  }
-
-  Future<void> _submit() async {
-    if (_isCreatingInvite) return;
-    setState(() => _isCreatingInvite = true);
+    if (_isCheckingLookupAccess || _isCreatingInvite) return;
+    setState(() => _isCheckingLookupAccess = true);
     try {
-      if (await _refreshSharingAccess()) return;
       if (!_formKey.currentState!.validate()) return;
+      if (await _refreshSharingAccess(showPageLoader: false)) return;
       if (!mounted) return;
-
       final provider = context.read<SharingProvider>();
-      final duplicateMessage = _duplicateMemberMessage(
-        provider.members,
-        provider.invites,
-      );
+      final duplicateMessage = _existingMemberMessage(provider.members);
       if (duplicateMessage != null) {
         setState(() => _localPhoneError = duplicateMessage);
         return;
       }
+      await provider.lookupUserByPhone(
+        widget.weddingPlanId,
+        _phoneController.text,
+      );
+      if (!mounted) return;
+      final foundUserId = provider.lookupUser?.id;
+      if (foundUserId != null &&
+          provider.members.any((member) => member.userId == foundUserId)) {
+        provider.clearLookup();
+        setState(() => _localPhoneError = 'هذا الرقم مضاف مسبقًا.');
+      }
+    } finally {
+      if (mounted) setState(() => _isCheckingLookupAccess = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    final currentProvider = context.read<SharingProvider>();
+    if (_createdInvite != null ||
+        _isCreatingInvite ||
+        _isCheckingLookupAccess ||
+        currentProvider.isLookingUp) {
+      return;
+    }
+    setState(() => _isCreatingInvite = true);
+    try {
+      if (!_formKey.currentState!.validate()) return;
+      final inviteeName = currentProvider.lookupUser?.name;
+      if (await _refreshSharingAccess(showPageLoader: false)) return;
+      if (!mounted) return;
+
+      final provider = context.read<SharingProvider>();
+      final duplicateMessage = _existingMemberMessage(provider.members);
+      if (duplicateMessage != null) {
+        setState(() => _localPhoneError = duplicateMessage);
+        return;
+      }
+
+      final pendingInvite = _pendingInvite(provider.invites);
+      if (pendingInvite != null) {
+        final reissued = await provider.reissueInvite(
+          pendingInvite,
+          role: _role,
+          permissions: _permissions,
+        );
+        if (!mounted || reissued == null) return;
+        _showInviteResult(reissued);
+        return;
+      }
+
       final created = await provider.createInvite(
         weddingPlanId: widget.weddingPlanId,
         phone: _phoneController.text,
-        name: provider.lookupUser?.name,
+        name: inviteeName,
         role: _role,
         canViewMoney: _permissions.canViewMoney,
         canEditPlan: _permissions.canEditPlan,
@@ -325,18 +348,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
       if (!mounted) return;
 
-      if (created != null) {
-        setState(() {
-          _createdInvite = created;
-          _shareHandled = created.wasDeliveredByAarast;
-        });
-        if (created.wasDeliveredByAarast) {
-          AarastToast.showSuccess(
-            context,
-            'تمت إضافة المشارك إلى الخطة بانتظار التحقق، وأُرسل الرابط عبر واتساب.',
-          );
-        }
-      }
+      if (created != null) _showInviteResult(created);
     } finally {
       if (mounted) {
         setState(() => _isCreatingInvite = false);
@@ -351,9 +363,9 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     });
   }
 
-  Future<bool> _refreshSharingAccess() async {
+  Future<bool> _refreshSharingAccess({bool showPageLoader = true}) async {
     setState(() {
-      _isCheckingSharingAccess = true;
+      _isCheckingSharingAccess = showPageLoader;
       _showLoginGate = false;
       _showPermissionGate = false;
       _showAccessError = false;
@@ -377,12 +389,19 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     final accessLoaded = await provider.loadAccess(widget.weddingPlanId);
     if (!mounted) return true;
     final canManageMembers = accessLoaded && provider.access.canManageMembers;
+    var targetsLoaded = true;
+    if (canManageMembers) {
+      await provider.loadMembers(widget.weddingPlanId);
+      if (!mounted) return true;
+      targetsLoaded =
+          provider.errorMessage == null && provider.authGateKind == null;
+    }
     setState(() {
       _isCheckingSharingAccess = false;
       _showPermissionGate = accessLoaded && !canManageMembers;
       _showAccessError = !accessLoaded && provider.authGateKind == null;
     });
-    return !canManageMembers;
+    return !canManageMembers || !targetsLoaded;
   }
 
   Widget? _authGateFor(SharingProvider provider) {
@@ -426,22 +445,38 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     return null;
   }
 
-  String? _duplicateMemberMessage(
-    List<SharedMember> members,
-    List<PlanInvite> invites,
-  ) {
+  void _showInviteResult(PlanInvite invite) {
+    setState(() {
+      _createdInvite = invite;
+      _shareHandled = invite.wasDeliveredByAarast;
+    });
+    if (invite.wasDeliveredByAarast) {
+      AarastToast.showSuccess(
+        context,
+        'تمت إضافة المشارك إلى الخطة بانتظار التحقق، وأُرسل الرابط عبر واتساب.',
+      );
+    }
+  }
+
+  String? _existingMemberMessage(List<SharedMember> members) {
     final duplicate = ContactDuplicateUtils.findByPhone(
-      members,
+      members.where((member) => member.weddingPlanId == widget.weddingPlanId),
       candidatePhone: _phoneController.text,
       phoneOf: (member) => member.user?.phone,
     );
     if (duplicate != null) return 'هذا الرقم مضاف مسبقًا.';
-    final pendingInvite = ContactDuplicateUtils.findByPhone(
-      invites.where((invite) => invite.isPending),
+    return null;
+  }
+
+  PlanInvite? _pendingInvite(List<PlanInvite> invites) {
+    return ContactDuplicateUtils.findByPhone(
+      invites.where(
+        (invite) =>
+            invite.weddingPlanId == widget.weddingPlanId && invite.isPending,
+      ),
       candidatePhone: _phoneController.text,
       phoneOf: (invite) => invite.phone,
     );
-    return pendingInvite == null ? null : 'توجد دعوة معلقة لهذا الرقم.';
   }
 }
 
@@ -591,7 +626,7 @@ class _LookupButton extends StatelessWidget {
   const _LookupButton({required this.isLookingUp, required this.onTap});
 
   final bool isLookingUp;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

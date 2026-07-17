@@ -189,6 +189,11 @@ invite and opens the contributor plan center. Android App Link association is
 generated for the current signed MVP APK; Google Play signing will require its
 store certificate fingerprint before rollout.
 
+The add-participant action refreshes members and pending invitations for the
+current plan before sending. If the phone already has a live pending invitation,
+the same row is reissued instead of duplicated, and the selected role and
+permissions are replaced atomically with the new token fingerprint.
+
 The isolated server acceptance environment is now live at
 `https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its
 PostgreSQL, OpenWA session, and scoped credentials live on a separately keyed

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -69,6 +71,120 @@ void main() {
   );
 
   testWidgets(
+    'an existing pending invite is reissued instead of blocking submit',
+    (tester) async {
+      final existingInvite = _invite(
+        weddingPlanId: 'plan-1',
+        role: 'FAMILY',
+        deliveryStatus: 'UNAVAILABLE',
+        canManageTasks: true,
+      );
+      final api = _FakeSharingApi(
+        createDeliveryStatus: 'SENT',
+        existingInvites: [existingInvite],
+      );
+      final provider = SharingProvider(api);
+      await _pumpScreen(tester, provider: provider);
+
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال دعوة المشاركة'));
+      await tester.pumpAndSettle();
+
+      expect(api.createCalls, 0);
+      expect(api.reissueCalls, 1);
+      expect(api.lastReissueRole, 'VIEWER');
+      expect(api.lastReissueCanManageTasks, isFalse);
+      expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
+      expect(find.text('تمت إضافة المشارك وإرسال الرابط'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'direct navigation refreshes invite state for the current plan only',
+    (tester) async {
+      final api = _FakeSharingApi(
+        createDeliveryStatus: 'SENT',
+        invitesByPlan: {
+          'plan-old': [
+            _invite(
+              id: 'invite-old',
+              weddingPlanId: 'plan-old',
+              role: 'VIEWER',
+              deliveryStatus: 'NOT_REQUESTED',
+            ),
+          ],
+          'plan-new': [
+            _invite(
+              id: 'invite-new',
+              weddingPlanId: 'plan-new',
+              role: 'VIEWER',
+              deliveryStatus: 'NOT_REQUESTED',
+            ),
+          ],
+        },
+      );
+      final provider = SharingProvider(api);
+      await provider.loadMembers('plan-old');
+
+      await _pumpScreen(tester, provider: provider, weddingPlanId: 'plan-new');
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال دعوة المشاركة'));
+      await tester.pumpAndSettle();
+
+      expect(api.createCalls, 0);
+      expect(api.reissueCalls, 1);
+      expect(api.lastReissueInviteId, 'invite-new');
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a delayed permission refresh keeps the form alive and submits once',
+    (tester) async {
+      final permissionBarrier = Completer<void>();
+      final api = _FakeSharingApi(
+        createDeliveryStatus: 'SENT',
+        secondPermissionBarrier: permissionBarrier,
+      );
+      await _pumpScreen(tester, provider: SharingProvider(api));
+
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال دعوة المشاركة'));
+      await tester.pump();
+
+      permissionBarrier.complete();
+      await tester.pumpAndSettle();
+
+      expect(api.createCalls, 1);
+      expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('a delayed permission refresh keeps the lookup form alive', (
+    tester,
+  ) async {
+    final permissionBarrier = Completer<void>();
+    final api = _FakeSharingApi(
+      createDeliveryStatus: 'SENT',
+      secondPermissionBarrier: permissionBarrier,
+    );
+    await _pumpScreen(tester, provider: SharingProvider(api));
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.bySemanticsLabel('بحث عن المستخدم'));
+    await tester.pump();
+
+    permissionBarrier.complete();
+    await tester.pumpAndSettle();
+
+    expect(api.lookupCalls, 1);
+    expect(find.text('أمينة'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
     'clipboard failure keeps an unsent one-time link unacknowledged',
     (tester) async {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -112,6 +228,7 @@ void main() {
 Future<void> _pumpScreen(
   WidgetTester tester, {
   required SharingProvider provider,
+  String weddingPlanId = 'plan-1',
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -134,7 +251,7 @@ Future<void> _pumpScreen(
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: const AddSharedMemberScreen(weddingPlanId: 'plan-1'),
+        home: AddSharedMemberScreen(weddingPlanId: weddingPlanId),
       ),
     ),
   );
@@ -142,18 +259,55 @@ Future<void> _pumpScreen(
 }
 
 class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi({required this.createDeliveryStatus})
-    : super(ApiClient(tokenProvider: () async => null));
+  _FakeSharingApi({
+    required this.createDeliveryStatus,
+    this.existingInvites = const [],
+    this.invitesByPlan = const {},
+    this.secondPermissionBarrier,
+  }) : super(ApiClient(tokenProvider: () async => null));
 
   final String createDeliveryStatus;
+  final List<PlanInvite> existingInvites;
+  final Map<String, List<PlanInvite>> invitesByPlan;
+  final Completer<void>? secondPermissionBarrier;
   int createCalls = 0;
   int reissueCalls = 0;
+  int permissionCalls = 0;
+  int lookupCalls = 0;
+  String? lastReissueInviteId;
+  String? lastReissueRole;
+  bool? lastReissueCanManageTasks;
+
+  @override
+  Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async {
+    return const [];
+  }
+
+  @override
+  Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async {
+    return invitesByPlan[weddingPlanId] ?? existingInvites;
+  }
 
   @override
   Future<PlanAccessPermissions> getMyPlanPermissions(
     String weddingPlanId,
   ) async {
+    permissionCalls += 1;
+    if (permissionCalls == 2) await secondPermissionBarrier?.future;
     return PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+  }
+
+  @override
+  Future<SharedUserLookup> lookupUserByPhone(
+    String weddingPlanId,
+    String phone,
+  ) async {
+    lookupCalls += 1;
+    return const SharedUserLookup(
+      id: 'invitee-1',
+      name: 'أمينة',
+      phone: '+967777123456',
+    );
   }
 
   @override
@@ -190,17 +344,38 @@ class _FakeSharingApi extends SharingApi {
   Future<PlanInvite> reissuePlanInvite({
     required String weddingPlanId,
     required String inviteId,
+    String? role,
+    bool? canViewMoney,
+    bool? canEditPlan,
+    bool? canManageTasks,
+    bool? canManageGuests,
+    bool? canManageProviders,
+    bool? canInviteMembers,
+    bool? canManageMoney,
+    bool? receiveNotifications,
   }) async {
     reissueCalls += 1;
+    lastReissueInviteId = inviteId;
+    lastReissueRole = role;
+    lastReissueCanManageTasks = canManageTasks;
     return _invite(
+      id: inviteId,
       weddingPlanId: weddingPlanId,
-      role: 'VIEWER',
+      role: role ?? 'VIEWER',
       deliveryStatus: 'SENT',
+      canViewMoney: canViewMoney ?? false,
+      canEditPlan: canEditPlan ?? false,
+      canManageTasks: canManageTasks ?? false,
+      canManageGuests: canManageGuests ?? false,
+      canManageProviders: canManageProviders ?? false,
+      canInviteMembers: canInviteMembers ?? false,
+      canManageMoney: canManageMoney ?? false,
     );
   }
 }
 
 PlanInvite _invite({
+  String id = 'invite-1',
   required String weddingPlanId,
   required String role,
   required String deliveryStatus,
@@ -213,7 +388,7 @@ PlanInvite _invite({
   bool canManageMoney = false,
 }) {
   return PlanInvite(
-    id: 'invite-1',
+    id: id,
     weddingPlanId: weddingPlanId,
     token: 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
     role: role,

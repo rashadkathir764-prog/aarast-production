@@ -307,10 +307,18 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
-  Future<PlanInvite?> reissueInvite(PlanInvite invite) async {
+  Future<PlanInvite?> reissueInvite(
+    PlanInvite invite, {
+    String? role,
+    PlanRolePermissions? permissions,
+  }) async {
     final active = _reissueFlights[invite.id];
     if (active != null) return active;
-    final future = _performReissueInvite(invite);
+    final future = _performReissueInvite(
+      invite,
+      role: role,
+      permissions: permissions,
+    );
     _reissueFlights[invite.id] = future;
     try {
       return await future;
@@ -321,7 +329,11 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
-  Future<PlanInvite?> _performReissueInvite(PlanInvite invite) async {
+  Future<PlanInvite?> _performReissueInvite(
+    PlanInvite invite, {
+    String? role,
+    PlanRolePermissions? permissions,
+  }) async {
     _isSubmitting = true;
     _errorMessage = null;
     _authGateKind = null;
@@ -330,6 +342,15 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       final reissued = await _api.reissuePlanInvite(
         weddingPlanId: invite.weddingPlanId,
         inviteId: invite.id,
+        role: role,
+        canViewMoney: permissions?.canViewMoney,
+        canEditPlan: permissions?.canEditPlan,
+        canManageTasks: permissions?.canManageTasks,
+        canManageGuests: permissions?.canManageGuests,
+        canManageProviders: permissions?.canManageProviders,
+        canInviteMembers: permissions?.canInviteMembers,
+        canManageMoney: permissions?.canManageMoney,
+        receiveNotifications: permissions?.receiveNotifications,
       );
       _invites = [
         for (final item in _invites)

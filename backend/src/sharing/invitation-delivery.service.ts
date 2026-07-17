@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  OpenWaTransientDeliveryRejectedError,
   OpenWaTransientDeliveryUncertainError,
   sendOpenWaTransientText,
 } from '../auth/openwa-transient-text';
@@ -32,6 +33,9 @@ export class InvitationDeliveryService {
     } catch (error) {
       if (error instanceof OpenWaTransientDeliveryUncertainError) {
         return { channel: 'WHATSAPP', status: 'UNCERTAIN' };
+      }
+      if (error instanceof OpenWaTransientDeliveryRejectedError) {
+        return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };
       }
       return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };
     }

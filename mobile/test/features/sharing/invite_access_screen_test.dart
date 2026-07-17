@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/session/session_boundary.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
@@ -19,6 +21,53 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test(
+    'private invite resume tokens are validated, memory-only, and one-shot',
+    () async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+
+      expect(
+        await harness.controller.verifyOtp(
+          phone: '777123456',
+          purpose: 'LOGIN',
+          code: '123456',
+          resumeInviteToken: 'not-a-private-token',
+        ),
+        isTrue,
+      );
+      expect(harness.controller.hasPendingInviteResume, isFalse);
+
+      expect(
+        await harness.controller.verifyOtp(
+          phone: '777123456',
+          purpose: 'LOGIN',
+          code: '123456',
+          resumeInviteToken: token,
+        ),
+        isTrue,
+      );
+      expect(harness.controller.claimPendingInviteResumeRoute(), token);
+      expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
+      expect(
+        harness.controller.consumePendingInviteResume('${token}x'),
+        isFalse,
+      );
+      expect(harness.controller.consumePendingInviteResume(token), isTrue);
+      expect(harness.controller.consumePendingInviteResume(token), isFalse);
+
+      await harness.controller.verifyOtp(
+        phone: '777123456',
+        purpose: 'LOGIN',
+        code: '123456',
+        resumeInviteToken: token,
+      );
+      await harness.controller.logout();
+      expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
+    },
+  );
+
   testWidgets(
     'invite access starts with phone verification and no plan creation',
     (tester) async {
@@ -172,14 +221,26 @@ void main() {
   });
 
   testWidgets(
-    'a private invite link checks its phone, verifies OTP, accepts, and opens contributor dashboard',
+    'a private invite survives a real account boundary switch and opens the contributor dashboard',
     (tester) async {
       const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
-      final sharingApi = _FakeSharingApi(invites: [_invite(token: token)]);
+      expect(
+        await harness.controller.verifyOtp(
+          phone: '777000000',
+          purpose: 'LOGIN',
+          code: '123456',
+        ),
+        isTrue,
+      );
+      expect(harness.controller.user?.id, 'old-account');
+      final sharingApi = _FakeSharingApi(
+        invites: [_invite(token: token)],
+        currentUserId: () => harness.controller.user?.id,
+      );
 
-      await _pumpLinkedInviteScreen(
+      await _pumpBoundaryLinkedInviteScreen(
         tester,
         harness,
         token: token,
@@ -198,9 +259,42 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1100));
       await tester.pumpAndSettle();
 
+      expect(harness.controller.user?.id, 'invitee-1');
+      expect(sharingApi.inviteLookupUserIds, isNot(contains('old-account')));
+      expect(sharingApi.inviteLookupUserIds, contains('invitee-1'));
+      expect(sharingApi.acceptUserIds, ['invitee-1']);
       expect(sharingApi.acceptCalls, 1);
       expect(find.byKey(const Key('contributor-dashboard')), findsOneWidget);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'a private invite link verifies its phone even when another account is signed in',
+    (tester) async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      expect(
+        await harness.controller.verifyOtp(
+          phone: '777000000',
+          purpose: 'LOGIN',
+          code: '123456',
+        ),
+        isTrue,
+      );
+      expect(harness.controller.status, AuthStatus.authenticated);
+
+      await _pumpLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: _FakeSharingApi(invites: [_invite(token: token)]),
+      );
+
+      expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
+      expect(harness.repository.inviteRequestCalls, 0);
+      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
     },
   );
 
@@ -376,6 +470,114 @@ Future<void> _pumpLinkedInviteScreen(
   await tester.pumpAndSettle();
 }
 
+Future<void> _pumpBoundaryLinkedInviteScreen(
+  WidgetTester tester,
+  _AuthHarness harness, {
+  required String token,
+  required SharingApi sharingApi,
+}) async {
+  await tester.pumpWidget(
+    ChangeNotifierProvider<AuthController>.value(
+      value: harness.controller,
+      child: _AccountBoundaryInviteHarness(
+        token: token,
+        sharingApi: sharingApi,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+class _AccountBoundaryInviteHarness extends StatelessWidget {
+  const _AccountBoundaryInviteHarness({
+    required this.token,
+    required this.sharingApi,
+  });
+
+  final String token;
+  final SharingApi sharingApi;
+
+  @override
+  Widget build(BuildContext context) {
+    final userId = context.select<AuthController, String?>(
+      (auth) => auth.user?.id,
+    );
+    return AarastSessionBoundary(
+      identity: 'account:${userId ?? 'guest'}',
+      builder: (_) => _BoundaryInviteRouterApp(
+        token: token,
+        sharingApi: sharingApi,
+        initialLocation: userId == 'old-account'
+            ? '/invites/$token'
+            : '/holding',
+      ),
+    );
+  }
+}
+
+class _BoundaryInviteRouterApp extends StatefulWidget {
+  const _BoundaryInviteRouterApp({
+    required this.token,
+    required this.sharingApi,
+    required this.initialLocation,
+  });
+
+  final String token;
+  final SharingApi sharingApi;
+  final String initialLocation;
+
+  @override
+  State<_BoundaryInviteRouterApp> createState() =>
+      _BoundaryInviteRouterAppState();
+}
+
+class _BoundaryInviteRouterAppState extends State<_BoundaryInviteRouterApp> {
+  late final GoRouter _router = GoRouter(
+    initialLocation: widget.initialLocation,
+    routes: [
+      GoRoute(
+        path: '/holding',
+        builder: (context, state) => const Scaffold(
+          body: SizedBox(key: Key('new-account-holding-route')),
+        ),
+      ),
+      GoRoute(
+        path: '/invites/:token',
+        builder: (context, state) =>
+            InviteDecisionScreen(token: state.pathParameters['token']),
+      ),
+      GoRoute(
+        path: '/wedding-plans/:id/plan-center',
+        builder: (context, state) => const Scaffold(
+          key: Key('contributor-dashboard'),
+          body: Text('مساحة المساهم'),
+        ),
+      ),
+    ],
+  );
+
+  @override
+  void dispose() {
+    _router.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider<SharingProvider>(
+      create: (_) => SharingProvider(widget.sharingApi),
+      child: MaterialApp.router(
+        theme: AppTheme.light(),
+        routerConfig: _router,
+        builder: (context, child) => AarastAuthFlowRedirector(
+          router: _router,
+          child: child ?? const SizedBox.shrink(),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _openVerifiedInvite(WidgetTester tester) async {
   await _openOtpStep(tester);
   await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
@@ -512,13 +714,21 @@ class _FakeAuthRepository extends AuthRepository {
       phone: phone,
       purpose: purpose,
       user: authenticateOnVerify
-          ? const SafeUser(
-              id: 'invitee-1',
-              name: 'أحمد',
-              phone: '+967777123456',
-              role: 'USER',
-              status: 'ACTIVE',
-            )
+          ? phone.replaceAll(RegExp(r'\D'), '').endsWith('000000')
+                ? const SafeUser(
+                    id: 'old-account',
+                    name: 'الحساب السابق',
+                    phone: '+967777000000',
+                    role: 'USER',
+                    status: 'ACTIVE',
+                  )
+                : const SafeUser(
+                    id: 'invitee-1',
+                    name: 'أحمد',
+                    phone: '+967777123456',
+                    role: 'USER',
+                    status: 'ACTIVE',
+                  )
           : null,
       accessToken: authenticateOnVerify ? 'verified-access-token' : null,
     );
@@ -526,24 +736,29 @@ class _FakeAuthRepository extends AuthRepository {
 }
 
 class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi({this.invites = const []})
+  _FakeSharingApi({this.invites = const [], this.currentUserId})
     : super(ApiClient(tokenProvider: () async => null));
 
   final List<PlanInvite> invites;
+  final String? Function()? currentUserId;
   int acceptCalls = 0;
   int declineCalls = 0;
+  final List<String?> inviteLookupUserIds = [];
+  final List<String?> acceptUserIds = [];
 
   @override
   Future<List<PlanInvite>> getMyInvites() async => invites;
 
   @override
   Future<PlanInvite> getInvite(String token) async {
+    inviteLookupUserIds.add(currentUserId?.call());
     return invites.singleWhere((invite) => invite.token == token);
   }
 
   @override
   Future<AcceptedPlanInvite> acceptInvite(String token) async {
     acceptCalls += 1;
+    acceptUserIds.add(currentUserId?.call());
     final invite = _withStatus(
       invites.singleWhere((item) => item.token == token),
       'ACCEPTED',

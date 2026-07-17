@@ -286,10 +286,16 @@ test('OpenWA mode consumes the durable quota before delivering a code', async ()
     },
     async () => {
       globalThis.fetch = async () =>
-        new Response(JSON.stringify({ messageId: 'wa-message-id' }), {
-          status: 201,
-          headers: { 'content-type': 'application/json' },
-        });
+        new Response(
+          JSON.stringify({
+            messageId: 'wa-message-id',
+            deliveryStatus: 'SENT',
+          }),
+          {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          },
+        );
       const service = createService({
         consume: async (phone: string, context: { ip?: string | null }) => {
           consumed.push({ phone, ip: context.ip });
@@ -324,7 +330,11 @@ test('OpenWA uncertain delivery keeps the OTP active and returns a safe notice',
       NODE_ENV: 'test',
     },
     async () => {
-      globalThis.fetch = async () => new Response('', { status: 503 });
+      globalThis.fetch = async () =>
+        new Response(JSON.stringify({ code: 'DELIVERY_UNCERTAIN' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        });
       const service = createService({ consume: async () => undefined });
 
       try {
@@ -351,7 +361,7 @@ test('OpenWA uncertain delivery keeps the OTP active and returns a safe notice',
   );
 });
 
-test('OpenWA definitive delivery failure consumes the OTP and returns 503', async () => {
+test('OpenWA gateway failures without a definitive code keep the OTP active', async () => {
   const originalFetch = globalThis.fetch;
   await withEnv(
     {
@@ -362,18 +372,20 @@ test('OpenWA definitive delivery failure consumes the OTP and returns 503', asyn
       NODE_ENV: 'test',
     },
     async () => {
-      globalThis.fetch = async () => new Response('', { status: 401 });
+      globalThis.fetch = async () =>
+        new Response('<html>bad gateway</html>', {
+          status: 502,
+          headers: { 'content-type': 'text/html' },
+        });
       const service = createService({ consume: async () => undefined });
 
       try {
-        await assert.rejects(
-          () =>
-            service.requestOtp({
-              phone: '777123456',
-              purpose: OtpPurpose.RESET_PASSWORD,
-            }),
-          (error: any) => error.message === safeOtpUnavailableMessage,
-        );
+        const response = await service.requestOtp({
+          phone: '777123456',
+          purpose: OtpPurpose.RESET_PASSWORD,
+        });
+        assert.equal(response.delivery, 'WHATSAPP');
+        assert.equal(response.code, undefined);
         const activeOtp = await (service as any).prisma.otpCode.findFirst({
           where: {
             phone: '+967777123456',
@@ -381,7 +393,50 @@ test('OpenWA definitive delivery failure consumes the OTP and returns 503', asyn
             consumedAt: null,
           },
         });
-        assert.equal(activeOtp, undefined);
+        assert.ok(activeOtp, 'an OTP behind an unknown gateway failure must remain active');
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    },
+  );
+});
+
+test('OpenWA definitive 5xx delivery failures consume the OTP and return 503', async () => {
+  const originalFetch = globalThis.fetch;
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'openwa',
+      OPENWA_BASE_URL: 'http://openwa:3000',
+      OPENWA_SESSION_ID: 'aarast-otp',
+      OPENWA_API_KEY: 'a-secure-openwa-api-key-for-tests-only',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      try {
+        for (const code of ['NOT_ATTEMPTED', 'REJECTED']) {
+          globalThis.fetch = async () =>
+            new Response(JSON.stringify({ code }), {
+              status: 503,
+              headers: { 'content-type': 'application/json' },
+            });
+          const service = createService({ consume: async () => undefined });
+          await assert.rejects(
+            () =>
+              service.requestOtp({
+                phone: '777123456',
+                purpose: OtpPurpose.RESET_PASSWORD,
+              }),
+            (error: any) => error.message === safeOtpUnavailableMessage,
+          );
+          const activeOtp = await (service as any).prisma.otpCode.findFirst({
+            where: {
+              phone: '+967777123456',
+              purpose: OtpPurpose.RESET_PASSWORD,
+              consumedAt: null,
+            },
+          });
+          assert.equal(activeOtp, undefined);
+        }
       } finally {
         globalThis.fetch = originalFetch;
       }

@@ -53,7 +53,18 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      if (auth.status == AuthStatus.authenticated) {
+      // A private link may be opened on a phone that is still signed in as
+      // the inviter (or another family member).  Never resolve that token
+      // against the stale session: the invitee must prove the phone that the
+      // link was issued to first.  The OTP verification will then replace the
+      // application session with the verified invitee account.
+      final token = _token;
+      final resumesVerifiedLink =
+          token != null &&
+          auth.status == AuthStatus.authenticated &&
+          auth.consumePendingInviteResume(token);
+      if (resumesVerifiedLink ||
+          (token == null && auth.status == AuthStatus.authenticated)) {
         _loadVerifiedInvites();
       }
     });
@@ -105,11 +116,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     if (_isVerifying) return;
 
     final auth = context.read<AuthController>();
+    final previousUserId = auth.user?.id;
+    final token = _token;
     setState(() => _isVerifying = true);
     final success = await auth.verifyOtp(
       phone: _phoneController.text.trim(),
       purpose: _otpPurpose,
       code: code,
+      resumeInviteToken: token,
     );
     if (!mounted) return;
     if (!success) {
@@ -120,6 +134,13 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       return;
     }
     _resendTimer?.cancel();
+    if (token != null && previousUserId != auth.user?.id) {
+      // The account boundary is about to dispose this State. The in-memory
+      // resume token is claimed by the newly mounted router, which continues
+      // the verified invite without exposing it to the previous account.
+      return;
+    }
+    if (token != null) auth.consumePendingInviteResume(token);
     setState(() => _otpFieldState = AarastOtpFieldState.success);
     await Future<void>.delayed(AarastOtpField.successHold(context));
     if (!mounted) return;

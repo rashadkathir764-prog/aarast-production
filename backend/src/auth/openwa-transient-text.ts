@@ -24,6 +24,12 @@ export interface OpenWaTransientTextInput {
   text: string;
 }
 
+interface OpenWaTransientResponse {
+  messageId?: unknown;
+  deliveryStatus?: unknown;
+  code?: unknown;
+}
+
 /**
  * Sends one individual, short-lived machine message through Aarast's hardened
  * OpenWA contract. The recipient and body never enter the normal OpenWA
@@ -72,21 +78,41 @@ export async function sendOpenWaTransientText(
 
     if (!response.ok) {
       if (response.status >= 500) {
+        const code = await readSafeDeliveryCode(response);
+        if (code === 'NOT_ATTEMPTED' || code === 'REJECTED') {
+          throw new OpenWaTransientDeliveryRejectedError(response.status);
+        }
+        // A proxy/transport 5xx can arrive after OpenWA accepted the message.
+        // Only OpenWA's two explicit definitive codes are safe to reject;
+        // unknown, malformed, and DELIVERY_UNCERTAIN responses retain the OTP.
         throw new OpenWaTransientDeliveryUncertainError();
       }
       throw new OpenWaTransientDeliveryRejectedError(response.status);
     }
 
-    let payload: { messageId?: unknown };
+    let payload: OpenWaTransientResponse;
     try {
-      payload = await readBoundedJson<{ messageId?: unknown }>(response);
+      payload = await readBoundedJson<OpenWaTransientResponse>(response);
     } catch {
       throw new OpenWaTransientDeliveryUncertainError();
     }
-    if (typeof payload.messageId !== 'string' || !payload.messageId.trim()) {
+    if (
+      typeof payload.messageId !== 'string' ||
+      !payload.messageId.trim() ||
+      payload.deliveryStatus !== 'SENT'
+    ) {
       throw new OpenWaTransientDeliveryUncertainError();
     }
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function readSafeDeliveryCode(response: Response): Promise<string | null> {
+  try {
+    const payload = await readBoundedJson<OpenWaTransientResponse>(response);
+    return typeof payload.code === 'string' ? payload.code : null;
+  } catch {
+    return null;
   }
 }

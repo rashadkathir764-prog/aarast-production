@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-07-17 - Confirmed WhatsApp OTP And Invite Handoff
+
+- Hardened the private OpenWA delivery contract so Aarast accepts a send only when the transport returns both a non-empty message ID and `deliveryStatus: SENT`; explicit pre-send rejection is separated from an uncertain post-send outcome so valid OTPs are neither consumed early nor reported as definitely delivered.
+- Added invite-delivery handling for the same definitive-versus-uncertain contract, keeping user-facing retry states truthful when WhatsApp acceptance cannot be proven.
+- Preserved a private invite token in memory across the verified OTP account-boundary switch, then resumes it exactly once under the invited account. A previously signed-in account can no longer query or accept that invite before phone verification.
+- Added backend and Flutter regression coverage for malformed or unknown gateway responses, incomplete acknowledgements, two-account invite handoff, logout cleanup, and one-time token consumption. No screen layout, visual identity, database schema, or public route was changed.
+
 ## 2026-07-08 - Launch Readiness Wave 3 (10/10 Push)
 
 - Financial data now has database-level CHECK constraints (non-negative amounts, paid ≤ total, positive payment records) on every money table as a last line of defense below the application layer; `Debt.create` was fixed to clamp `paidAmount` to `[0, total]` and derive status, closing a path that could persist `paid > total` with a caller-chosen status. Constraint rejection verified live against Postgres.

@@ -21,6 +21,16 @@ zero-risk replacement for Meta.
 - Transient delivery must bypass database/message-history persistence, plugins,
   webhooks, request-body logs, audit bodies, and failure payloads. It must also
   suppress any engine event that would re-persist the same outgoing message.
+- A successful transient response must contain a non-empty `messageId` and
+  `deliveryStatus: "SENT"` only after the adapter awaits WhatsApp Web's send
+  result. A 503 body may expose only the stable codes `NOT_ATTEMPTED`,
+  `REJECTED`, or `DELIVERY_UNCERTAIN`; it must never expose the recipient, body,
+  Chromium error, or WhatsApp internals.
+- The hardened adapter must retry once through the canonical `@lid` returned by
+  `getNumberId` when whatsapp-web.js cannot address a migrated `@c.us`
+  recipient. It must use `waitUntilMsgSent`, bound every wait, and force-recover
+  Chromium only after a real timeout/unresponsive signal, not an ordinary
+  resolver rejection.
 - Source tests and a live history query must prove a unique OTP marker is absent
   after delivery. Deleting a stored row after sending does not satisfy this
   requirement.
@@ -93,7 +103,10 @@ The operator must scan the QR with the dedicated number, then verify:
    manual session-start request;
 5. OpenWA database, history, logs, hooks, webhooks, and crash output contain
    neither the marker, recipient, nor API key;
-6. reconnect/relink behavior is stable for 24 hours.
+6. source tests prove `SENT`, all three 503 codes, missing/invalid 2xx
+   acknowledgements, the `@c.us` to `@lid` retry, and timeout-versus-rejection
+   classification;
+7. reconnect/relink behavior is stable for 24 hours.
 
 The optional `npm run smoke:openwa-otp` gate requires
 `OPENWA_SMOKE_CONFIRM=I_ACCEPT_REAL_WHATSAPP_SEND`, the transient sender key in

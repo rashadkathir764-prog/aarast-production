@@ -33,10 +33,16 @@ test('Aarast sends an invite through only the hardened transient OpenWA route', 
         unknown
       >,
     });
-    return new Response(JSON.stringify({ messageId: 'wa-message-1' }), {
-      status: 201,
-      headers: { 'content-type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({
+        messageId: 'wa-message-1',
+        deliveryStatus: 'SENT',
+      }),
+      {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      },
+    );
   }) as typeof fetch;
 
   const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
@@ -57,6 +63,53 @@ test('Aarast sends an invite through only the hardened transient OpenWA route', 
     new RegExp(`https://aarast\\.shadowgardn\\.com/invites/${token}`),
   );
   assert.doesNotMatch(requests[0].body.text as string, /رشاد|سارة|اسم الخطة/);
+});
+
+test('invite delivery maps explicit OpenWA outcomes without false success', async () => {
+  process.env.AUTH_OTP_MODE = 'openwa';
+  process.env.OPENWA_BASE_URL = 'http://openwa:2785';
+  process.env.OPENWA_SESSION_ID = 'aarast-otp';
+  process.env.OPENWA_API_KEY = 'a-secure-openwa-api-key-for-tests-only';
+  const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+
+  for (const [payload, expectedStatus] of [
+    [{ code: 'NOT_ATTEMPTED' }, 'UNAVAILABLE'],
+    [{ code: 'REJECTED' }, 'UNAVAILABLE'],
+    [{ code: 'DELIVERY_UNCERTAIN' }, 'UNCERTAIN'],
+    [{ code: 'UNKNOWN' }, 'UNCERTAIN'],
+  ] as const) {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify(payload), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch;
+
+    const result = await new InvitationDeliveryService().deliver(
+      '+967777123456',
+      token,
+    );
+    assert.deepEqual(result, {
+      channel: 'WHATSAPP',
+      status: expectedStatus,
+    });
+  }
+
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({ messageId: 'wa-message-2', deliveryStatus: 'QUEUED' }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    )) as typeof fetch;
+  const ambiguousSuccess = await new InvitationDeliveryService().deliver(
+    '+967777123456',
+    token,
+  );
+  assert.deepEqual(ambiguousSuccess, {
+    channel: 'WHATSAPP',
+    status: 'UNCERTAIN',
+  });
 });
 
 test('invite message is generic, private, and rejects an unsafe public origin', () => {

@@ -82,6 +82,11 @@ The release gate is not complete until the pinned hardened fork itself passes
 its tests and a real QR-linked session proves the sent OTP marker is absent
 from message history, database rows, logs, hooks, and webhooks. A mocked Aarast
 adapter test is necessary but not sufficient.
+The fork contract tests must require `messageId` plus `deliveryStatus: SENT`,
+exercise `NOT_ATTEMPTED`, `REJECTED`, and `DELIVERY_UNCERTAIN`, reject an
+otherwise successful `QUEUED` or incomplete acknowledgement, prove the
+`@c.us`-to-`@lid` fallback, and ensure only a true timeout triggers Chromium
+force recovery.
 
 After QR linking, run `npm run smoke:openwa-otp` only with a dedicated test
 recipient and the explicit `OPENWA_SMOKE_CONFIRM=I_ACCEPT_REAL_WHATSAPP_SEND`
@@ -94,7 +99,10 @@ Participant invitation tests must also prove that create/reissue uses only the
 hardened transient endpoint, the WhatsApp text contains one private HTTPS link
 and no plan details, delivery uncertainty is not reported as success, a
 token-phone mismatch sends no OTP, and a matching phone can verify, accept, and
-open the contributor plan without creating an owner plan.
+open the contributor plan without creating an owner plan. Opening a private
+link while another account is signed in must not query the token as that
+account; after OTP changes the account boundary, the in-memory token must resume
+through acceptance to the contributor plan.
 
 For private chat media, additionally verify that a non-participant receives no
 attachment metadata or signed URL, message/list responses contain no
@@ -144,10 +152,12 @@ offline queue preserves dependency and idempotency rules.
 
 OTP UI changes must prove the resend action remains actually disabled for the
 full 60-second server cooldown and becomes enabled at the same boundary.
-OpenWA tests must also distinguish definitive delivery rejection from an
-ambiguous post-send outcome: an ambiguous result keeps the OTP active, returns
-no code in the HTTP response, advances the mobile UI to code entry, and shows a
-safe notice instead of a false unavailable error.
+OpenWA tests must also distinguish explicit definitive delivery rejection from
+an ambiguous post-send outcome. Only `NOT_ATTEMPTED` and `REJECTED` consume the
+new OTP; `DELIVERY_UNCERTAIN`, an unknown/malformed 5xx, a transport break, or
+an incomplete 2xx acknowledgement keeps it active, returns no code in the HTTP
+response, advances the mobile UI to code entry, and shows a safe notice instead
+of a false unavailable error.
 
 Session/privacy changes must include a two-account same-device regression:
 logout must dispose the first account's providers before network logout

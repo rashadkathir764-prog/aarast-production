@@ -276,14 +276,17 @@ row it issued, so a public app request cannot replace, consume, or satisfy an
 administrator challenge. Expired OTP/login/reset security rows are retained for
 one day, then removed by one advisory-lock-elected replica.
 
-OpenWA delivery has an explicit ambiguous-outcome contract. A definitive
-client/configuration rejection invalidates the newly created code and returns
-the generic unavailable response. A timeout, transport break, provider 5xx, or
-missing acknowledgement may occur after WhatsApp accepted the message; in that
-case the code remains active and the request returns `200`, `delivery:
-"WHATSAPP"`, and a safe `message` asking the user to enter the code if it
-arrives. The response still never echoes the OTP. This prevents an already
-delivered code from being invalidated and avoids an immediate duplicate send.
+OpenWA delivery has an explicit acknowledgement contract. Success requires a
+2xx response containing both a non-empty `messageId` and
+`deliveryStatus: "SENT"`. A 503 is definitive only when its safe body code is
+`NOT_ATTEMPTED` or `REJECTED`; those outcomes invalidate the newly created code
+and return the generic unavailable response. `DELIVERY_UNCERTAIN`, an unknown or
+malformed 5xx, a timeout/transport break, or a 2xx acknowledgement missing the
+required fields may occur after WhatsApp accepted the message. In those cases
+the code remains active and the request returns `200`, `delivery: "WHATSAPP"`,
+and a safe `message` asking the user to enter the code if it arrives. The
+response never echoes the OTP. This prevents an already delivered code from
+being invalidated and avoids an immediate duplicate send.
 
 ### Profile image upload
 
@@ -813,8 +816,10 @@ After the transaction commits, a phone invitation is sent by the backend
 through the same hardened OpenWA `send-transient-text` transport used by the
 temporary MVP OTP channel. The message is generic and contains only the private
 HTTPS invitation link; plan title, inviter identity, permissions, and phone are
-not included. The create response reports `delivery.status` as `SENT`,
-`UNCERTAIN`, or `UNAVAILABLE`. An uncertain or unavailable delivery never
+not included. The create response reports `delivery.status` as `SENT` only after
+the complete OpenWA acknowledgement above. `DELIVERY_UNCERTAIN`, transport
+failures, and missing/unknown acknowledgements map to `UNCERTAIN`; explicit
+`NOT_ATTEMPTED`/`REJECTED` outcomes map to `UNAVAILABLE`. Neither outcome
 deletes the pending invite or falsely reports that WhatsApp succeeded.
 
 `POST /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue`
@@ -833,9 +838,13 @@ current delegation ceiling.
 It sends a `LOGIN` OTP only when the 43-character raw token fingerprints a live
 pending invitation and the canonical phone matches that exact invitation. A
 mismatch returns stable code `INVITE_NOT_FOUND_FOR_PHONE` without plan details
-and without dispatching an OTP. After OTP verification the mobile client may
-accept that exact invite and enter the shared plan; the server still performs
-the normal verified-phone and atomic pending-invite claim checks.
+and without dispatching an OTP. A private token link always starts verification
+for the invited phone, even when the device still has another application
+account signed in; it must not query the token through that stale account. After
+OTP verification the application session is replaced by the verified invitee,
+the exact token flow resumes in memory, and the client may accept the invite and
+enter the shared plan. The server still performs the normal verified-phone and
+atomic pending-invite claim checks.
 
 Create shared member request:
 

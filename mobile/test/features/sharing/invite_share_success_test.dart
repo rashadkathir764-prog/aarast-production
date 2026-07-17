@@ -7,7 +7,6 @@ import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.da
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
-import 'package:aarast_mobile/features/sharing/services/invite_share_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,16 +15,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets(
-    'keeps the one-time invite on the same screen and opens WhatsApp once',
+    'creates one pending participant and confirms server-side WhatsApp delivery',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 900);
       addTearDown(tester.view.reset);
 
-      final api = _FakeSharingApi();
-      final launcher = _FakeInviteShareLauncher();
+      final api = _FakeSharingApi(createDeliveryStatus: 'SENT');
       final provider = SharingProvider(api);
-      await _pumpScreen(tester, provider: provider, launcher: launcher);
+      await _pumpScreen(tester, provider: provider);
 
       await tester.enterText(find.byType(TextFormField).first, '777123456');
       await tester.tap(find.text('إرسال دعوة المشاركة'));
@@ -33,102 +31,87 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.text('تم إنشاء الدعوة بأمان'), findsOneWidget);
+      expect(find.text('تمت إضافة المشارك وإرسال الرابط'), findsOneWidget);
+      expect(find.textContaining('بانتظار التحقق'), findsWidgets);
       expect(find.text('+967 777 123 456'), findsOneWidget);
+      expect(find.byKey(const Key('invite-share-whatsapp')), findsNothing);
+      expect(find.byKey(const Key('invite-retry-delivery')), findsNothing);
       expect(api.createCalls, 1);
       expect(provider.invites.single.token, provider.invites.single.id);
-
-      await tester.tap(find.byKey(const Key('invite-share-whatsapp')));
-      await tester.pumpAndSettle();
-
-      expect(launcher.calls, 1);
-      expect(launcher.lastUri?.host, 'wa.me');
-      expect(launcher.lastUri?.path, '/967777123456');
-      expect(
-        launcher.lastUri?.queryParameters['text'],
-        contains('https://aarast.shadowgardn.com/invites/'),
-      );
-      expect(api.createCalls, 1);
-
-      await tester.tap(find.byKey(const Key('invite-done')));
-      await tester.pumpAndSettle();
-      expect(find.text('هل حفظت رابط الدعوة؟'), findsOneWidget);
-      await tester.tap(find.text('البقاء'));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'WhatsApp failure keeps the invite available without creating it again',
+    'failed delivery keeps one invite and retries by rotating and sending it from Aarast',
     (tester) async {
-      final api = _FakeSharingApi();
-      final launcher = _FakeInviteShareLauncher(result: false);
+      final api = _FakeSharingApi(createDeliveryStatus: 'UNAVAILABLE');
+      await _pumpScreen(tester, provider: SharingProvider(api));
+
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال دعوة المشاركة'));
+      await tester.pumpAndSettle();
+
+      expect(api.createCalls, 1);
+      expect(find.byKey(const Key('invite-retry-delivery')), findsOneWidget);
+      expect(find.textContaining('تعذر إرسال رابطها'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('invite-retry-delivery')));
+      await tester.pumpAndSettle();
+
+      expect(api.createCalls, 1);
+      expect(api.reissueCalls, 1);
+      expect(find.text('تمت إضافة المشارك وإرسال الرابط'), findsOneWidget);
+      expect(find.byKey(const Key('invite-retry-delivery')), findsNothing);
+      expect(find.textContaining('تم إرسال رابط المشاركة'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'clipboard failure keeps an unsent one-time link unacknowledged',
+    (tester) async {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            throw PlatformException(code: 'clipboard_unavailable');
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
       await _pumpScreen(
         tester,
-        provider: SharingProvider(api),
-        launcher: launcher,
+        provider: SharingProvider(
+          _FakeSharingApi(createDeliveryStatus: 'UNAVAILABLE'),
+        ),
       );
 
       await tester.enterText(find.byType(TextFormField).first, '777123456');
       await tester.tap(find.text('إرسال دعوة المشاركة'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('invite-share-whatsapp')));
+      await tester.tap(find.byKey(const Key('invite-copy-link')));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.textContaining('تعذر فتح واتساب'), findsOneWidget);
-      expect(api.createCalls, 1);
-      expect(launcher.calls, 1);
+      expect(find.textContaining('تعذر نسخ الرابط'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('invite-done')));
+      await tester.pumpAndSettle();
+      expect(find.text('هل حفظت رابط الدعوة؟'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
-
-  testWidgets('clipboard failure keeps the one-time link unacknowledged', (
-    tester,
-  ) async {
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-      SystemChannels.platform,
-      (call) async {
-        if (call.method == 'Clipboard.setData') {
-          throw PlatformException(code: 'clipboard_unavailable');
-        }
-        return null;
-      },
-    );
-    addTearDown(
-      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-        SystemChannels.platform,
-        null,
-      ),
-    );
-
-    final api = _FakeSharingApi();
-    await _pumpScreen(
-      tester,
-      provider: SharingProvider(api),
-      launcher: _FakeInviteShareLauncher(),
-    );
-
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال دعوة المشاركة'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('invite-copy-link')));
-    await tester.pumpAndSettle();
-
-    expect(find.textContaining('تعذر نسخ الرابط'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('invite-done')));
-    await tester.pumpAndSettle();
-    expect(find.text('هل حفظت رابط الدعوة؟'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
 }
 
 Future<void> _pumpScreen(
   WidgetTester tester, {
   required SharingProvider provider,
-  required InviteShareLauncher launcher,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -151,35 +134,20 @@ Future<void> _pumpScreen(
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: AddSharedMemberScreen(
-          weddingPlanId: 'plan-1',
-          inviteShareLauncher: launcher,
-        ),
+        home: const AddSharedMemberScreen(weddingPlanId: 'plan-1'),
       ),
     ),
   );
   await tester.pumpAndSettle();
 }
 
-class _FakeInviteShareLauncher implements InviteShareLauncher {
-  _FakeInviteShareLauncher({this.result = true});
-
-  final bool result;
-  int calls = 0;
-  Uri? lastUri;
-
-  @override
-  Future<bool> openWhatsApp(Uri uri) async {
-    calls += 1;
-    lastUri = uri;
-    return result;
-  }
-}
-
 class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi() : super(ApiClient(tokenProvider: () async => null));
+  _FakeSharingApi({required this.createDeliveryStatus})
+    : super(ApiClient(tokenProvider: () async => null));
 
+  final String createDeliveryStatus;
   int createCalls = 0;
+  int reissueCalls = 0;
 
   @override
   Future<PlanAccessPermissions> getMyPlanPermissions(
@@ -204,13 +172,10 @@ class _FakeSharingApi extends SharingApi {
     required bool receiveNotifications,
   }) async {
     createCalls += 1;
-    return PlanInvite(
-      id: 'invite-1',
+    return _invite(
       weddingPlanId: weddingPlanId,
-      token: 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
       role: role,
-      status: 'PENDING',
-      expiresAt: DateTime(2026, 8),
+      deliveryStatus: createDeliveryStatus,
       canViewMoney: canViewMoney,
       canEditPlan: canEditPlan,
       canManageTasks: canManageTasks,
@@ -218,10 +183,53 @@ class _FakeSharingApi extends SharingApi {
       canManageProviders: canManageProviders,
       canInviteMembers: canInviteMembers,
       canManageMoney: canManageMoney,
-      phone: '+967777123456',
-      name: 'أمينة',
-      inviterName: 'رشاد',
-      weddingPlanTitle: 'عرس رشاد وسارة',
     );
   }
+
+  @override
+  Future<PlanInvite> reissuePlanInvite({
+    required String weddingPlanId,
+    required String inviteId,
+  }) async {
+    reissueCalls += 1;
+    return _invite(
+      weddingPlanId: weddingPlanId,
+      role: 'VIEWER',
+      deliveryStatus: 'SENT',
+    );
+  }
+}
+
+PlanInvite _invite({
+  required String weddingPlanId,
+  required String role,
+  required String deliveryStatus,
+  bool canViewMoney = false,
+  bool canEditPlan = false,
+  bool canManageTasks = false,
+  bool canManageGuests = false,
+  bool canManageProviders = false,
+  bool canInviteMembers = false,
+  bool canManageMoney = false,
+}) {
+  return PlanInvite(
+    id: 'invite-1',
+    weddingPlanId: weddingPlanId,
+    token: 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
+    role: role,
+    status: 'PENDING',
+    expiresAt: DateTime(2026, 8),
+    canViewMoney: canViewMoney,
+    canEditPlan: canEditPlan,
+    canManageTasks: canManageTasks,
+    canManageGuests: canManageGuests,
+    canManageProviders: canManageProviders,
+    canInviteMembers: canInviteMembers,
+    canManageMoney: canManageMoney,
+    deliveryStatus: deliveryStatus,
+    phone: '+967777123456',
+    name: 'أمينة',
+    inviterName: 'رشاد',
+    weddingPlanTitle: 'عرس رشاد وسارة',
+  );
 }

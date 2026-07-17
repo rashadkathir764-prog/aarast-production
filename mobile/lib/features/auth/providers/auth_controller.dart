@@ -163,6 +163,25 @@ class AuthController extends ChangeNotifier {
     return success ? result : null;
   }
 
+  Future<OtpRequestResult?> requestInviteOtp({
+    required String token,
+    required String phone,
+  }) async {
+    OtpRequestResult? result;
+    final success = await _submit(
+      () async {
+        result = await _authRepository.requestInviteOtp(
+          token: token.trim(),
+          phone: phone.trim(),
+        );
+        _otpRequest = result;
+      },
+      networkFailureMessage:
+          'تعذر التحقق من الدعوة الآن. تحقق من الاتصال وحاول مرة أخرى.',
+    );
+    return success ? result : null;
+  }
+
   Future<bool> verifyOtp({
     required String phone,
     required String purpose,
@@ -350,6 +369,8 @@ class AuthController extends ChangeNotifier {
         'تم التحقق من الرقم، ولا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.',
       'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
         'تم التحقق من الرقم، لكن الحساب معطل حاليًا. تواصل مع الدعم.',
+      'INVITE_NOT_FOUND_FOR_PHONE' =>
+        'لا توجد دعوة فعّالة مرتبطة بهذا الرقم. تأكد من الرقم أو اطلب دعوة جديدة.',
       _ => null,
     };
   }

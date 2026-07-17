@@ -13,7 +13,12 @@ import { rolePermissionDefaults } from '../src/sharing/plan-permissions';
 import { SharingService } from '../src/sharing/sharing.service';
 
 const permissions = new PermissionService({} as any);
-const sharing = new SharingService({} as any, permissions, {} as any);
+const sharing = new SharingService(
+  {} as any,
+  permissions,
+  {} as any,
+  {} as any,
+);
 
 function memberContext(
   role: SharedMemberRole,
@@ -399,6 +404,7 @@ function inviteHarness(options: { notificationFailure?: Error } = {}) {
     db as any,
     permissionService,
     notificationService,
+    { deliver: async () => ({ channel: 'WHATSAPP', status: 'SENT' }) } as any,
   );
 
   return {

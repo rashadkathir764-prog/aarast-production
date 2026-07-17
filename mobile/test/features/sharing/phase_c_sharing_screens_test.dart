@@ -11,9 +11,7 @@ import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/shared_wedding_plans_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
-import 'package:aarast_mobile/features/sharing/services/invite_share_launcher.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -135,55 +133,23 @@ void main() {
     });
 
     testWidgets(
-      'reissuing a pending invite copies the new link before opening WhatsApp',
+      'reissuing a pending invite sends the rotated link from Aarast',
       (tester) async {
         _setTallView(tester);
-        String? clipboardText;
-        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-          SystemChannels.platform,
-          (call) async {
-            if (call.method == 'Clipboard.setData') {
-              final arguments = call.arguments as Map<Object?, Object?>?;
-              clipboardText = arguments?['text']?.toString();
-              return null;
-            }
-            if (call.method == 'Clipboard.getData') {
-              return <String, String?>{'text': clipboardText};
-            }
-            return null;
-          },
-        );
-        addTearDown(
-          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
-            SystemChannels.platform,
-            null,
-          ),
-        );
         final api = _FakeSharingApi(invites: [_invite()]);
-        final launcher = _FakeInviteShareLauncher();
 
         await _pumpWithAuth(
           tester,
           provider: SharingProvider(api),
-          child: SharingScreen(
-            weddingPlanId: _planId,
-            inviteShareLauncher: launcher,
-          ),
+          child: const SharingScreen(weddingPlanId: _planId),
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byTooltip('إصدار رابط جديد وإرساله'));
+        await tester.tap(find.byTooltip('إعادة إرسال الرابط من أعرست'));
         await tester.pumpAndSettle();
 
         expect(api.reissueCalls, 1);
-        expect(launcher.calls, 1);
-        expect(launcher.lastUri?.host, 'wa.me');
-        final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
-        expect(
-          clipboard?.text,
-          'https://aarast.shadowgardn.com/invites/'
-          'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
-        );
+        expect(find.textContaining('تم إرسال رابط دعوة جديد'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
@@ -347,23 +313,12 @@ class _FakeSharingApi extends SharingApi {
       canManageProviders: invite.canManageProviders,
       canInviteMembers: invite.canInviteMembers,
       canManageMoney: invite.canManageMoney,
+      deliveryStatus: 'SENT',
       phone: invite.phone,
       name: invite.name,
       inviterName: 'رشاد',
       weddingPlanTitle: 'خطة الاختبار',
     );
-  }
-}
-
-class _FakeInviteShareLauncher implements InviteShareLauncher {
-  int calls = 0;
-  Uri? lastUri;
-
-  @override
-  Future<bool> openWhatsApp(Uri uri) async {
-    calls += 1;
-    lastUri = uri;
-    return true;
   }
 }
 

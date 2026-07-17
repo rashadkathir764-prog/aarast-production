@@ -179,6 +179,16 @@ was deployed to staging. A real handset OTP request, confirmation, and the
 following login all returned `200`; the required fresh 24-hour stability
 observation remains an operational gate before a wider MVP rollout.
 
+Participant invite delivery now uses the same non-persisting transient OpenWA
+boundary without broad messaging access. The owner creates one pending invite;
+the backend sends its generic private HTTPS link and returns an explicit sent,
+uncertain, or unavailable result. A link-specific public gate matches the raw
+token and canonical phone before dispatching OTP and exposes no plan details on
+mismatch. After successful OTP, the mobile link flow atomically accepts the
+invite and opens the contributor plan center. Android App Link association is
+generated for the current signed MVP APK; Google Play signing will require its
+store certificate fingerprint before rollout.
+
 The isolated server acceptance environment is now live at
 `https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its
 PostgreSQL, OpenWA session, and scoped credentials live on a separately keyed

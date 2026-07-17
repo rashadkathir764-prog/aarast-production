@@ -49,6 +49,12 @@
 | --- | --- | --- |
 | Keep payment schedules non-reserving and use one payment-reminder date. | Accepted and implemented | `WeddingCost` has no due date; `PaymentSchedule.dueDate` is the only payment-reminder date. A pending schedule neither deducts nor reserves money and cannot block a direct payment. Each reminder amount is checked independently against the row-locked outstanding cost on create/update, and any payment that completes the cost cancels the remaining pending reminders. |
 
+## Current Decisions Addendum - 2026-07-17
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| Send participant invitation links from Aarast and bind access to token plus verified phone. | Accepted and implemented in source | Invite creation remains pending until the recipient proves the exact invited phone. The backend sends a generic private link through the hardened transient OpenWA contract, reports uncertain delivery honestly, sends OTP only after token-phone matching, and the mobile client accepts and opens the shared plan after successful OTP. Manual `wa.me` composition was removed so the owner is not responsible for delivering the link. |
+
 ## Initial Project Decisions
 
 | Decision | Status | Rationale |

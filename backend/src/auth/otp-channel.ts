@@ -4,6 +4,10 @@ import {
   WhatsAppOtpConfig,
 } from './whatsapp-otp-config';
 import { loadOpenWaOtpConfig, OpenWaOtpConfig } from './openwa-otp-config';
+import {
+  OpenWaTransientDeliveryUncertainError,
+  sendOpenWaTransientText,
+} from './openwa-transient-text';
 import { readBoundedJson } from '../common/http/bounded-json-response';
 
 export interface OtpDeliveryResult {
@@ -153,56 +157,21 @@ export class OpenWaOtpChannel implements OtpChannel {
     code: string,
     _purpose: string,
   ): Promise<OtpDeliveryResult> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
-    const sessionId = encodeURIComponent(this.config.sessionId);
-
     try {
-      let response: Response;
-      try {
-        response = await this.fetchImplementation(
-          `${this.config.baseUrl}/api/sessions/${sessionId}/messages/send-transient-text`,
-          {
-            method: 'POST',
-            headers: {
-              'X-API-Key': this.config.apiKey,
-              'Content-Type': 'application/json',
-            },
-            redirect: 'error',
-            signal: controller.signal,
-            body: JSON.stringify({
-              chatId: `${phone.replace(/\D/g, '')}@c.us`,
-              text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
-            }),
-          },
-        );
-      } catch {
-        // A connection can fail after OpenWA accepted the send. Treating that
-        // as a definite failure would invalidate a code already on the phone.
-        throw new OtpDeliveryUncertainError();
-      }
-
-      if (!response.ok) {
-        if (response.status >= 500) {
-          throw new OtpDeliveryUncertainError();
-        }
-        throw new Error(
-          `OpenWA OTP delivery failed with HTTP ${response.status}`,
-        );
-      }
-      let payload: { messageId?: unknown };
-      try {
-        payload = await readBoundedJson<{ messageId?: unknown }>(response);
-      } catch {
-        throw new OtpDeliveryUncertainError();
-      }
-      if (typeof payload.messageId !== 'string' || !payload.messageId.trim()) {
-        throw new OtpDeliveryUncertainError();
-      }
-
+      await sendOpenWaTransientText(
+        {
+          phone,
+          text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
+        },
+        this.config,
+        this.fetchImplementation,
+      );
       return { delivery: 'WHATSAPP' };
-    } finally {
-      clearTimeout(timeout);
+    } catch (error) {
+      if (error instanceof OpenWaTransientDeliveryUncertainError) {
+        throw new OtpDeliveryUncertainError();
+      }
+      throw error;
     }
   }
 }

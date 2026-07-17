@@ -11,6 +11,7 @@ const dockerignore = read(".dockerignore");
 const nginx = read("nginx.conf");
 const inviteHtml = read("invite.html");
 const inviteJs = read("invite.js");
+const assetLinks = JSON.parse(read("assetlinks.json"));
 
 assert.match(
   dockerfile,
@@ -25,6 +26,7 @@ for (const asset of [
   "invite.js",
   "invite.css",
   "invite-preview.png",
+  "assetlinks.json",
 ]) {
   const escaped = asset.replaceAll(".", "\\.");
   assert.match(dockerfile, new RegExp(escaped), `${asset} must be copied explicitly.`);
@@ -42,16 +44,20 @@ assert.match(nginx, /X-Robots-Tag "noindex, nofollow, noarchive"/);
 assert.match(nginx, /try_files \/invite\.html =404;/);
 assert.match(nginx, /location ~ \/\\\.\(\?!well-known/);
 assert.match(nginx, /Dockerfile\|docker-compose/);
-assert.match(
-  nginx,
-  /location = \/\.well-known\/assetlinks\.json\s*\{\s*return 404;/,
-);
+assert.match(nginx, /location = \/\.well-known\/assetlinks\.json/);
+assert.match(nginx, /try_files \/assetlinks\.json =404;/);
 assert.match(
   nginx,
   /location = \/\.well-known\/apple-app-site-association\s*\{\s*return 404;/,
 );
 assert.match(nginx, /invite-preview\.png[\s\S]*?max-age=86400/);
 assert.doesNotMatch(nginx, /invite-preview\.png[\s\S]*?immutable/);
+assert.equal(assetLinks[0].target.namespace, "android_app");
+assert.equal(assetLinks[0].target.package_name, "com.aarast.aarast_mobile");
+assert.match(
+  assetLinks[0].target.sha256_cert_fingerprints[0],
+  /^(?:[A-F0-9]{2}:){31}[A-F0-9]{2}$/,
+);
 
 assert.match(inviteHtml, /<html lang="ar" dir="rtl">/);
 assert.match(inviteHtml, /noindex,nofollow,noarchive/);

@@ -809,6 +809,14 @@ variant.
 The generic idempotency response store is not used for this route because it
 must never persist or replay the raw bearer token.
 
+After the transaction commits, a phone invitation is sent by the backend
+through the same hardened OpenWA `send-transient-text` transport used by the
+temporary MVP OTP channel. The message is generic and contains only the private
+HTTPS invitation link; plan title, inviter identity, permissions, and phone are
+not included. The create response reports `delivery.status` as `SENT`,
+`UNCERTAIN`, or `UNAVAILABLE`. An uncertain or unavailable delivery never
+deletes the pending invite or falsely reports that WhatsApp succeeded.
+
 `POST /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue`
 atomically replaces the SHA-256 fingerprint of an existing live pending invite
 and returns a new 43-character raw bearer once. The prior bearer stops working
@@ -818,6 +826,14 @@ is rejected for expired, accepted, declined, or revoked invitations. Owners
 may reissue any manageable invite; a delegated inviter may reissue only their
 own invite and only while its effective permissions remain within their
 current delegation ceiling.
+
+`POST /api/v1/invites/:token/request-otp` is public but bearer-and-phone bound.
+It sends a `LOGIN` OTP only when the 43-character raw token fingerprints a live
+pending invitation and the canonical phone matches that exact invitation. A
+mismatch returns stable code `INVITE_NOT_FOUND_FOR_PHONE` without plan details
+and without dispatching an OTP. After OTP verification the mobile client may
+accept that exact invite and enter the shared plan; the server still performs
+the normal verified-phone and atomic pending-invite claim checks.
 
 Create shared member request:
 
@@ -1320,6 +1336,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/invites/:token` | `sharing.getInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/accept` | `sharing.acceptInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/decline` | `sharing.declineInvite` | 🔒 |
+| POST | `/api/v1/invites/:token/request-otp` | `sharing.requestOtp` |  |
 | GET | `/api/v1/invites/mine` | `sharing.findMyInvites` | 🔒 |
 | GET | `/api/v1/me` | `me.me` | 🔒 |
 | GET | `/api/v1/me/favorite-providers` | `marketplace.findMyFavoriteProviders` | 🔒 |

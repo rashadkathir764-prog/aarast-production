@@ -12,15 +12,17 @@ files, or runtime secrets into the image.
 - `/healthz` - container health probe only.
 - `/invites/:token` - generic participant-invite landing page.
 - `/invite-preview.png` - generic social preview used by the landing page.
+- `/.well-known/assetlinks.json` - Android App Link association for the signed
+  MVP APK.
 
 Every other path returns `404`. Marketing, contact, legal, account, and API
 surfaces do not belong in this narrowly scoped image.
 
-The final Android and Apple association files are deliberately not generated
-from temporary QA identities. Until the store-signing phase supplies the real
-certificate fingerprint and Apple Team ID, both `/.well-known` association
-paths return `404` instead of falling back to a misleading HTML `200`. The MVP
-landing remains usable through its explicit `aarast://` open-app button.
+Android association uses the current signed MVP APK certificate so an installed
+build can open invitation links directly. If Google Play App Signing replaces
+that certificate, this file must be updated before store rollout. Apple
+association remains fail-closed until a real Apple Team ID exists. The landing
+also keeps its explicit `aarast://` open-app button as a browser fallback.
 
 The participant-invite route disables access logs, browser caching, and search
 indexing. Its JavaScript keeps the token in memory for the current page lifetime

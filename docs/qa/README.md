@@ -90,6 +90,12 @@ in the OpenWA message-history API. Database/log/hook/webhook inspection remains
 a separate manual gate because the public history response cannot prove those
 stores are empty.
 
+Participant invitation tests must also prove that create/reissue uses only the
+hardened transient endpoint, the WhatsApp text contains one private HTTPS link
+and no plan details, delivery uncertainty is not reported as success, a
+token-phone mismatch sends no OTP, and a matching phone can verify, accept, and
+open the contributor plan without creating an owner plan.
+
 For private chat media, additionally verify that a non-participant receives no
 attachment metadata or signed URL, message/list responses contain no
 `storageKey`, links expire after 120 seconds, and the object-store

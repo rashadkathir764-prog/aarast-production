@@ -14,7 +14,7 @@
 | `backend` | `npm run build` | `node scripts/clean-dist.cjs && tsc -p tsconfig.build.json` |
 | `backend` | `npm run check` | `tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json --noEmit` |
 | `backend` | `npm run dev:create-admin` | `node scripts/dev/create-admin.cjs` |
-| `backend` | `npm run pretest` | `node --test -r ts-node/register test/legacy-finance-removal.test.ts test/canonical-api-routes.test.ts test/admin-app-identity.test.ts` |
+| `backend` | `npm run pretest` | `node --test -r ts-node/register test/legacy-finance-removal.test.ts test/canonical-api-routes.test.ts test/admin-app-identity.test.ts test/invite-delivery.test.ts` |
 | `backend` | `npm run prisma:generate` | `prisma generate` |
 | `backend` | `npm run prod:bootstrap-marketplace` | `node scripts/prod/bootstrap-marketplace.cjs` |
 | `backend` | `npm run prod:provision-admin` | `node scripts/prod/provision-admin.cjs` |

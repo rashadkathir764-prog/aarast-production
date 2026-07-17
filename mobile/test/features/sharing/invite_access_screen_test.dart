@@ -14,6 +14,7 @@ import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/invite_decision_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -170,6 +171,68 @@ void main() {
     expect(find.byKey(const Key('invite-open-plan-button')), findsOneWidget);
   });
 
+  testWidgets(
+    'a private invite link checks its phone, verifies OTP, accepts, and opens contributor dashboard',
+    (tester) async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      final sharingApi = _FakeSharingApi(invites: [_invite(token: token)]);
+
+      await _pumpLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+      );
+      await _openOtpStep(tester);
+
+      expect(harness.repository.inviteRequestCalls, 1);
+      expect(harness.repository.lastInviteToken, token);
+      expect(find.text('تأكيد الرمز والانضمام'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const Key('invite-otp-field')),
+        '123456',
+      );
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pumpAndSettle();
+
+      expect(sharingApi.acceptCalls, 1);
+      expect(find.byKey(const Key('contributor-dashboard')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('a private invite link rejects a non-invited phone before OTP', (
+    tester,
+  ) async {
+    const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+    final harness = await _authHarness();
+    harness.repository.failInviteRequest = true;
+    await _pumpLinkedInviteScreen(
+      tester,
+      harness,
+      token: token,
+      sharingApi: _FakeSharingApi(invites: [_invite(token: token)]),
+    );
+
+    await tester.enterText(
+      find.byKey(const Key('invite-phone-field')),
+      '777999999',
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const Key('invite-request-otp-button')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.inviteRequestCalls, 1);
+    expect(harness.repository.verifyCalls, 0);
+    expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
+    expect(find.textContaining('لا توجد دعوة فعّالة'), findsOneWidget);
+  });
+
   testWidgets('declining an invite requires explicit confirmation', (
     tester,
   ) async {
@@ -276,6 +339,43 @@ Future<void> _pumpInviteScreen(
   );
 }
 
+Future<void> _pumpLinkedInviteScreen(
+  WidgetTester tester,
+  _AuthHarness harness, {
+  required String token,
+  required SharingApi sharingApi,
+}) async {
+  final sharing = SharingProvider(sharingApi);
+  final router = GoRouter(
+    initialLocation: '/invites/$token',
+    routes: [
+      GoRoute(
+        path: '/invites/:token',
+        builder: (context, state) =>
+            InviteDecisionScreen(token: state.pathParameters['token']),
+      ),
+      GoRoute(
+        path: '/wedding-plans/:id/plan-center',
+        builder: (context, state) => const Scaffold(
+          key: Key('contributor-dashboard'),
+          body: Text('مساحة المساهم'),
+        ),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthController>.value(value: harness.controller),
+        ChangeNotifierProvider<SharingProvider>.value(value: sharing),
+      ],
+      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _openVerifiedInvite(WidgetTester tester) async {
   await _openOtpStep(tester);
   await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
@@ -318,6 +418,7 @@ class _AuthHarness {
 }
 
 PlanInvite _invite({
+  String token = 'token-1',
   bool canViewMoney = false,
   bool canEditPlan = false,
   bool canManageTasks = false,
@@ -329,7 +430,7 @@ PlanInvite _invite({
   return PlanInvite(
     id: 'invite-1',
     weddingPlanId: 'plan-1',
-    token: 'token-1',
+    token: token,
     role: 'HELPER',
     status: 'PENDING',
     expiresAt: DateTime(2026),
@@ -350,8 +451,11 @@ class _FakeAuthRepository extends AuthRepository {
     : super(ApiClient(tokenProvider: () async => null), storage);
 
   int requestCalls = 0;
+  int inviteRequestCalls = 0;
   int verifyCalls = 0;
+  String? lastInviteToken;
   bool failVerify = false;
+  bool failInviteRequest = false;
   bool authenticateOnVerify = false;
   Completer<void>? verifyGate;
 
@@ -364,6 +468,29 @@ class _FakeAuthRepository extends AuthRepository {
     return OtpRequestResult(
       phone: phone,
       purpose: purpose,
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      delivery: 'WHATSAPP',
+    );
+  }
+
+  @override
+  Future<OtpRequestResult> requestInviteOtp({
+    required String token,
+    required String phone,
+  }) async {
+    requestCalls += 1;
+    inviteRequestCalls += 1;
+    lastInviteToken = token;
+    if (failInviteRequest) {
+      throw const ApiException(
+        'No active invitation matches this phone',
+        statusCode: 404,
+        serverCode: 'INVITE_NOT_FOUND_FOR_PHONE',
+      );
+    }
+    return OtpRequestResult(
+      phone: phone,
+      purpose: 'LOGIN',
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
       delivery: 'WHATSAPP',
     );

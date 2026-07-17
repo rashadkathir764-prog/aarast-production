@@ -191,6 +191,7 @@ class PlanInvite {
     required this.canManageProviders,
     required this.canInviteMembers,
     required this.canManageMoney,
+    this.deliveryStatus = 'NOT_REQUESTED',
     this.name,
     this.phone,
     this.email,
@@ -223,6 +224,9 @@ class PlanInvite {
       email: json['email']?.toString(),
       weddingPlanTitle: plan is Map ? plan['title']?.toString() : null,
       inviterName: inviter is Map ? inviter['name']?.toString() : null,
+      deliveryStatus: json['delivery'] is Map
+          ? (json['delivery'] as Map)['status']?.toString() ?? 'NOT_REQUESTED'
+          : 'NOT_REQUESTED',
     );
   }
 
@@ -239,6 +243,7 @@ class PlanInvite {
   final bool canManageProviders;
   final bool canInviteMembers;
   final bool canManageMoney;
+  final String deliveryStatus;
   final String? name;
   final String? phone;
   final String? email;
@@ -247,6 +252,8 @@ class PlanInvite {
 
   bool get isPending => status == 'PENDING';
   bool get isAccepted => status == 'ACCEPTED';
+  bool get wasDeliveredByAarast => deliveryStatus == 'SENT';
+  bool get hasUncertainDelivery => deliveryStatus == 'UNCERTAIN';
 
   /// Returns a copy suitable for provider/list state after a one-time raw
   /// bearer token has been handed to the share screen.
@@ -265,6 +272,7 @@ class PlanInvite {
       canManageProviders: canManageProviders,
       canInviteMembers: canInviteMembers,
       canManageMoney: canManageMoney,
+      deliveryStatus: deliveryStatus,
       name: name,
       phone: phone,
       email: email,

@@ -6,15 +6,33 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from "@nestjs/common";
+import { Request } from "express";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
+import { RequestInviteOtpDto } from "./dto/request-invite-otp.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
+import { InviteAccessService } from "./invite-access.service";
 import { SharingService } from "./sharing.service";
+
+@Controller("api/v1/invites")
+export class ApiV1InviteAccessController {
+  constructor(private readonly inviteAccess: InviteAccessService) {}
+
+  @Post(":token/request-otp")
+  requestOtp(
+    @Param("token") token: string,
+    @Body() dto: RequestInviteOtpDto,
+    @Req() request: Request,
+  ) {
+    return this.inviteAccess.requestOtp(token, dto, { ip: request.ip });
+  }
+}
 
 @Controller("api/v1/shared")
 @UseGuards(JwtAuthGuard)

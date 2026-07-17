@@ -5,17 +5,21 @@ import { PrismaModule } from "../prisma/prisma.module";
 import { PermissionService } from "./permission.service";
 import {
   ApiV1InviteAcceptController,
+  ApiV1InviteAccessController,
   ApiV1InvitesController,
   ApiV1WeddingPlanInvitesController,
   ApiV1WeddingPlanMembersController,
   ApiV1WeddingPlanPermissionsController,
   SharedWeddingPlansController,
 } from "./sharing.controller";
+import { InvitationDeliveryService } from "./invitation-delivery.service";
+import { InviteAccessService } from "./invite-access.service";
 import { SharingService } from "./sharing.service";
 
 @Module({
   imports: [AuthModule, PrismaModule, NotificationsModule],
   controllers: [
+    ApiV1InviteAccessController,
     SharedWeddingPlansController,
     ApiV1WeddingPlanMembersController,
     ApiV1WeddingPlanInvitesController,
@@ -23,7 +27,12 @@ import { SharingService } from "./sharing.service";
     ApiV1InviteAcceptController,
     ApiV1WeddingPlanPermissionsController,
   ],
-  providers: [PermissionService, SharingService],
+  providers: [
+    PermissionService,
+    SharingService,
+    InvitationDeliveryService,
+    InviteAccessService,
+  ],
   exports: [PermissionService],
 })
 export class SharingModule {}

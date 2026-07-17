@@ -93,6 +93,19 @@ class AuthRepository {
     return OtpRequestResult.fromJson(json);
   }
 
+  Future<OtpRequestResult> requestInviteOtp({
+    required String token,
+    required String phone,
+  }) async {
+    final normalizedPhone = normalizeYemeniPhone(phone);
+    final json = await _apiClient.postJsonWithReceiveTimeout(
+      '/api/v1/invites/${Uri.encodeComponent(token)}/request-otp',
+      {'phone': normalizedPhone},
+      receiveTimeout: _otpDeliveryReceiveTimeout,
+    );
+    return OtpRequestResult.fromJson(json);
+  }
+
   Future<OtpVerifyResult> verifyOtp({
     required String phone,
     required String purpose,

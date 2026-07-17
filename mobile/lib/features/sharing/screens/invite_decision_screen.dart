@@ -76,7 +76,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       return;
     }
 
-    final result = await auth.requestOtp(phone: phone, purpose: _otpPurpose);
+    final token = _token;
+    final result = token == null
+        ? await auth.requestOtp(phone: phone, purpose: _otpPurpose)
+        : await auth.requestInviteOtp(token: token, phone: phone);
     if (!mounted || result == null) return;
     _otpController.clear();
     setState(() {
@@ -136,11 +139,51 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final provider = context.read<SharingProvider>();
     await provider.loadMyInvites(token: _token);
     if (!mounted) return;
+    final linkedInvite = _token == null ? null : provider.selectedInvite;
+    if (linkedInvite != null &&
+        await _enterLinkedInvite(provider, linkedInvite)) {
+      return;
+    }
     setState(() {
       _isVerifying = false;
       _step = _InviteAccessStep.invites;
       _openedInvite = provider.selectedInvite;
     });
+  }
+
+  Future<bool> _enterLinkedInvite(
+    SharingProvider provider,
+    PlanInvite invite,
+  ) async {
+    var resolvedInvite = invite;
+    SharedMember? member;
+    if (invite.isPending) {
+      final accepted = await provider.respondToInvite(
+        invite.token,
+        accept: true,
+      );
+      if (!mounted || !accepted) return false;
+      resolvedInvite = provider.selectedInvite ?? invite;
+      member = provider.acceptedInviteMember;
+    } else if (invite.isAccepted) {
+      await provider.loadSharedPlans();
+      if (!mounted) return false;
+      for (final plan in provider.sharedPlans) {
+        if (plan.id == invite.weddingPlanId) {
+          member = plan.sharedMember;
+          break;
+        }
+      }
+    } else {
+      return false;
+    }
+
+    if (!resolvedInvite.isAccepted) return false;
+    context.go(
+      AppRouter.planCenter(resolvedInvite.weddingPlanId),
+      extra: member,
+    );
+    return true;
   }
 
   void _onOtpChanged(String value) {
@@ -276,6 +319,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
                 onVerify: _verifyOtp,
                 onResend: _resendOtp,
                 onChangePhone: _returnToPhone,
+                autoJoin: _token != null,
               ),
               _InviteAccessStep.invites => _InvitesStep(
                 openedInvite: _openedInvite,
@@ -598,6 +642,7 @@ class _OtpStep extends StatelessWidget {
     required this.onVerify,
     required this.onResend,
     required this.onChangePhone,
+    required this.autoJoin,
     this.otpNoticeMessage,
   });
 
@@ -609,6 +654,7 @@ class _OtpStep extends StatelessWidget {
   final VoidCallback onVerify;
   final VoidCallback onResend;
   final VoidCallback onChangePhone;
+  final bool autoJoin;
   final String? otpNoticeMessage;
 
   @override
@@ -641,7 +687,7 @@ class _OtpStep extends StatelessWidget {
                 : const Duration(milliseconds: 280),
             child: state == AarastOtpFieldState.success
                 ? const AarastOtpSuccessPanel(
-                    subtitle: 'تم توثيق رقمك — جارٍ فتح دعواتك.',
+                    subtitle: 'تم توثيق رقمك — جارٍ فتح مساحة المساهمة.',
                   )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -662,7 +708,9 @@ class _OtpStep extends StatelessWidget {
                       const SizedBox(height: 18),
                       AarastButton(
                         key: const Key('invite-verify-otp-button'),
-                        label: 'تأكيد الرمز',
+                        label: autoJoin
+                            ? 'تأكيد الرمز والانضمام'
+                            : 'تأكيد الرمز',
                         icon: LucideIcons.checkCircle2,
                         isLoading: auth.isSubmitting,
                         onPressed: auth.isSubmitting ? null : onVerify,

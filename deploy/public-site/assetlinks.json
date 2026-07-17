@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.aarast.aarast_mobile",
+      "sha256_cert_fingerprints": [
+        "4D:9F:97:8C:D6:47:A7:CF:A1:65:83:5C:55:12:93:BD:CB:8E:5E:4E:55:6C:E0:DD:94:54:6F:FB:9B:D3:87:B2"
+      ]
+    }
+  }
+]

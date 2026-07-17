@@ -26,50 +26,21 @@ void main() {
     );
   }
 
-  test(
-    'builds one private HTTPS link and a correctly encoded WhatsApp URI',
-    () {
-      final content = InviteShareContent.fromInvite(invite());
-      final link = content.inviteLink.toString();
-
-      expect(link, 'https://aarast.shadowgardn.com/invites/$rawToken');
-      expect(rawToken.allMatches(content.message), hasLength(1));
-      expect(content.message, contains('رشاد'));
-      expect(content.message, contains('عرس رشاد وسارة'));
-      expect(content.message, contains('هذا الرابط خاص بك'));
-
-      final whatsapp = content.whatsappUri;
-      expect(whatsapp.scheme, 'https');
-      expect(whatsapp.host, 'wa.me');
-      expect(whatsapp.path, '/967777123456');
-      expect(whatsapp.queryParameters['text'], content.message);
-    },
-  );
-
-  test('uses safe generic wording when optional invite labels are absent', () {
-    final content = InviteShareContent(
-      token: rawToken,
-      recipientPhone: '777123456',
+  test('builds the one private HTTPS link handed to the recipient', () {
+    final content = InviteShareContent.fromInvite(invite());
+    expect(
+      content.inviteLink.toString(),
+      'https://aarast.shadowgardn.com/invites/$rawToken',
     );
-
-    expect(content.message, contains('صاحب الخطة'));
-    expect(content.message, contains('خطة الزفاف'));
-    expect(content.whatsappUri.path, '/967777123456');
   });
 
   test('rejects malformed or missing bearer tokens in release code', () {
     expect(
-      () => InviteShareContent(
-        token: 'invite-id-not-a-bearer-token',
-        recipientPhone: '777123456',
-      ),
+      () => InviteShareContent(token: 'invite-id-not-a-bearer-token'),
       throwsFormatException,
     );
     expect(
-      () => InviteShareContent(
-        token: '$rawToken!',
-        recipientPhone: '777123456',
-      ),
+      () => InviteShareContent(token: '$rawToken!'),
       throwsFormatException,
     );
   });

@@ -15,21 +15,15 @@ import '../models/invite_share_content.dart';
 import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
-import '../services/invite_share_launcher.dart';
 import '../widgets/permission_editor.dart';
 
 /// أدوار الدعوة المعروضة — اختيار الدور يضبط الصلاحيات الافتراضية تلقائيًا.
 const _addMemberRoles = ['VIEWER', 'GROOM', 'BRIDE', 'FAMILY', 'HELPER'];
 
 class AddSharedMemberScreen extends StatefulWidget {
-  const AddSharedMemberScreen({
-    required this.weddingPlanId,
-    this.inviteShareLauncher = const UrlLauncherInviteShareLauncher(),
-    super.key,
-  });
+  const AddSharedMemberScreen({required this.weddingPlanId, super.key});
 
   final String weddingPlanId;
-  final InviteShareLauncher inviteShareLauncher;
 
   @override
   State<AddSharedMemberScreen> createState() => _AddSharedMemberScreenState();
@@ -92,10 +86,12 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         if (!didPop) _handleBack();
       },
       child: AarastPageScaffold(
-        title: createdInvite == null ? 'إضافة عضو' : 'دعوة المشاركة جاهزة',
+        title: createdInvite == null ? 'إضافة عضو' : 'تمت إضافة المشارك',
         subtitle: createdInvite == null
             ? 'ابحث بالرقم ثم اختر الدور — الصلاحيات تُضبط تلقائيًا.'
-            : 'أرسل الرابط الآن عبر واتساب أو انسخه بأمان.',
+            : createdInvite.wasDeliveredByAarast
+            ? 'أرسل أعرست رابط الدعوة عبر واتساب. العضوية بانتظار التحقق.'
+            : 'تم حفظ الدعوة، لكن إرسال واتساب يحتاج إعادة محاولة.',
         resizeToAvoidBottomInset: true,
         actions: [
           IconButton(
@@ -107,9 +103,10 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         child: createdInvite != null
             ? _InviteCreatedView(
                 invite: createdInvite,
-                onWhatsApp: _openWhatsApp,
+                onRetry: _retryDelivery,
                 onCopy: _copyInviteLink,
                 onDone: _handleBack,
+                isRetrying: isSubmitting,
               )
             : gate ??
                   Form(
@@ -221,29 +218,28 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     }
   }
 
-  Future<void> _openWhatsApp() async {
+  Future<void> _retryDelivery() async {
     final invite = _createdInvite;
     if (invite == null) return;
-    try {
-      final content = InviteShareContent.fromInvite(invite);
-      final opened = await widget.inviteShareLauncher.openWhatsApp(
-        content.whatsappUri,
+    final reissued = await context.read<SharingProvider>().reissueInvite(
+      invite,
+    );
+    if (!mounted || reissued == null) return;
+    setState(() {
+      _createdInvite = reissued;
+      _shareHandled = reissued.wasDeliveredByAarast;
+    });
+    if (reissued.wasDeliveredByAarast) {
+      AarastToast.showSuccess(
+        context,
+        'تم إرسال رابط المشاركة عبر واتساب من أعرست.',
       );
-      if (!mounted) return;
-      if (!opened) {
-        _showError('تعذر فتح واتساب. انسخ الرابط وأرسله يدويًا.');
-        return;
-      }
-    } on FormatException {
-      if (mounted) {
-        _showError(
-          'رقم المدعو غير صالح لفتح واتساب. انسخ الرابط بدلًا من ذلك.',
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        _showError('تعذر فتح واتساب. انسخ الرابط وأرسله يدويًا.');
-      }
+    } else {
+      _showError(
+        reissued.hasUncertainDelivery
+            ? 'لم نتأكد من وصول الرابط. لا تكرر الإرسال الآن؛ انسخ الرابط كخيار آمن.'
+            : 'تعذر إرسال الرابط من أعرست. يمكنك نسخه وإرساله يدويًا.',
+      );
     }
   }
 
@@ -332,8 +328,14 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       if (created != null) {
         setState(() {
           _createdInvite = created;
-          _shareHandled = false;
+          _shareHandled = created.wasDeliveredByAarast;
         });
+        if (created.wasDeliveredByAarast) {
+          AarastToast.showSuccess(
+            context,
+            'تمت إضافة المشارك إلى الخطة بانتظار التحقق، وأُرسل الرابط عبر واتساب.',
+          );
+        }
       }
     } finally {
       if (mounted) {
@@ -446,15 +448,17 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 class _InviteCreatedView extends StatelessWidget {
   const _InviteCreatedView({
     required this.invite,
-    required this.onWhatsApp,
+    required this.onRetry,
     required this.onCopy,
     required this.onDone,
+    required this.isRetrying,
   });
 
   final PlanInvite invite;
-  final VoidCallback onWhatsApp;
+  final VoidCallback onRetry;
   final VoidCallback onCopy;
   final VoidCallback onDone;
+  final bool isRetrying;
 
   @override
   Widget build(BuildContext context) {
@@ -485,7 +489,9 @@ class _InviteCreatedView extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'تم إنشاء الدعوة بأمان',
+                invite.wasDeliveredByAarast
+                    ? 'تمت إضافة المشارك وإرسال الرابط'
+                    : 'تمت إضافة دعوة المشارك',
                 textAlign: TextAlign.center,
                 style: textTheme.titleLarge?.copyWith(
                   color: AppTheme.ink,
@@ -494,9 +500,13 @@ class _InviteCreatedView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                recipientName == null || recipientName.isEmpty
-                    ? 'الرابط جاهز للإرسال إلى العضو.'
-                    : 'الرابط جاهز للإرسال إلى $recipientName.',
+                invite.wasDeliveredByAarast
+                    ? recipientName == null || recipientName.isEmpty
+                          ? 'أرسل أعرست الرابط عبر واتساب. بانتظار تحقق العضو.'
+                          : 'أرسل أعرست الرابط إلى $recipientName. بانتظار التحقق.'
+                    : invite.hasUncertainDelivery
+                    ? 'الدعوة محفوظة، لكن لم نتأكد من وصول رسالة واتساب.'
+                    : 'الدعوة محفوظة، وتعذر إرسال رابطها عبر واتساب.',
                 textAlign: TextAlign.center,
                 style: textTheme.bodyMedium?.copyWith(
                   color: AppTheme.muted,
@@ -546,13 +556,16 @@ class _InviteCreatedView extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        AarastButton(
-          key: const Key('invite-share-whatsapp'),
-          label: 'إرسال عبر واتساب',
-          icon: LucideIcons.messageCircle,
-          onPressed: onWhatsApp,
-        ),
-        const SizedBox(height: 10),
+        if (!invite.wasDeliveredByAarast) ...[
+          AarastButton(
+            key: const Key('invite-retry-delivery'),
+            label: 'إعادة الإرسال من أعرست',
+            icon: LucideIcons.refreshCw,
+            isLoading: isRetrying,
+            onPressed: isRetrying ? null : onRetry,
+          ),
+          const SizedBox(height: 10),
+        ],
         AarastButton(
           key: const Key('invite-copy-link'),
           label: 'نسخ رابط الدعوة',

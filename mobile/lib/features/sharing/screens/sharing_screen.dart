@@ -13,18 +13,12 @@ import '../../auth/utils/auth_action_guard.dart';
 import '../models/invite_share_content.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
-import '../services/invite_share_launcher.dart';
 import '../widgets/shared_member_card.dart';
 
 class SharingScreen extends StatefulWidget {
-  const SharingScreen({
-    required this.weddingPlanId,
-    this.inviteShareLauncher = const UrlLauncherInviteShareLauncher(),
-    super.key,
-  });
+  const SharingScreen({required this.weddingPlanId, super.key});
 
   final String weddingPlanId;
-  final InviteShareLauncher inviteShareLauncher;
 
   @override
   State<SharingScreen> createState() => _SharingScreenState();
@@ -124,6 +118,14 @@ class _SharingScreenState extends State<SharingScreen> {
     final reissued = await provider.reissueInvite(invite);
     if (!mounted || reissued == null) return;
 
+    if (reissued.wasDeliveredByAarast) {
+      AarastToast.showSuccess(
+        context,
+        'تم إرسال رابط دعوة جديد عبر واتساب من أعرست.',
+      );
+      return;
+    }
+
     try {
       final content = InviteShareContent.fromInvite(reissued);
       await Clipboard.setData(
@@ -132,25 +134,10 @@ class _SharingScreenState extends State<SharingScreen> {
       if (!mounted) return;
       AarastToast.showSuccess(
         context,
-        'تم نسخ الرابط الجديد. افتح واتساب وأرسله للمدعو.',
+        reissued.hasUncertainDelivery
+            ? 'لم نتأكد من وصول واتساب. تم نسخ الرابط دون إرسال رسالة ثانية.'
+            : 'تعذر إرسال واتساب من أعرست، وتم نسخ الرابط كخيار احتياطي.',
       );
-      try {
-        final opened = await widget.inviteShareLauncher.openWhatsApp(
-          content.whatsappUri,
-        );
-        if (!mounted || opened) return;
-        AarastToast.showInfo(
-          context,
-          'تعذر فتح واتساب، لكن رابط الدعوة الجديدة محفوظ في الحافظة.',
-        );
-      } catch (_) {
-        if (mounted) {
-          AarastToast.showInfo(
-            context,
-            'تعذر فتح واتساب، لكن رابط الدعوة الجديدة محفوظ في الحافظة.',
-          );
-        }
-      }
     } catch (_) {
       if (mounted) {
         AarastToast.showError(
@@ -441,7 +428,7 @@ class _PendingInviteCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'إصدار رابط جديد وإرساله',
+            tooltip: 'إعادة إرسال الرابط من أعرست',
             onPressed: onReissue,
             icon: const Icon(
               LucideIcons.refreshCw,

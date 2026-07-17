@@ -57,12 +57,16 @@ conversations, signed image uploads, and rotating refresh sessions.
 - Canonical invitation links are
   `https://aarast.shadowgardn.com/invites/TOKEN` and
   `aarast://open/invites/TOKEN`. The create-invite flow keeps the one-time raw
-  token in screen memory only and offers manual WhatsApp delivery or copy-link
-  without routing invitations through the OTP/OpenWA service. The public HTTPS
-  landing exposes generic Open Graph metadata only; names, dates, permissions,
-  and plan details remain hidden until authenticated phone verification.
-  Deployed association files and physical-device validation remain release
-  requirements.
+  token in screen memory only and asks the backend to deliver a generic private
+  link through the hardened transient OpenWA contract. Delivery uncertainty is
+  reported honestly and the owner may copy the link as a fallback. A linked
+  invite requests OTP only after the bearer and entered phone match the same
+  live pending invitation; successful phone proof accepts the invitation and
+  opens the contributor plan space. The public HTTPS landing and WhatsApp
+  message expose no names, dates, permissions, or plan details before phone
+  verification. Android App Link association is part of the public-site image;
+  its certificate fingerprint and the physical-device flow must be revalidated
+  whenever release signing changes.
 - Native Android/iOS launcher and splash assets use the current Aarast brand
   mark rather than Flutter defaults.
 

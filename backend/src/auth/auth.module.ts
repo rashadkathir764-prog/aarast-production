@@ -41,6 +41,6 @@ import { AuthChallengeCleanupScheduler } from './auth-challenge-cleanup.schedule
     OtpDispatchQuotaCleanupScheduler,
     AuthChallengeCleanupScheduler,
   ],
-  exports: [OwnershipContextService, JwtModule],
+  exports: [AuthService, OwnershipContextService, JwtModule],
 })
 export class AuthModule {}

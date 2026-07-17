@@ -29,6 +29,10 @@ import {
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
+import {
+  InvitationDeliveryResult,
+  InvitationDeliveryService,
+} from "./invitation-delivery.service";
 import { PermissionService, PlanAccessContext } from "./permission.service";
 import {
   PlanPermissionFlags,
@@ -113,6 +117,7 @@ export interface PlanInviteResponse {
   };
   inviter?: SafeSharedMemberUser;
   invitee?: SafeSharedMemberUser | null;
+  delivery?: InvitationDeliveryResult;
 }
 
 export interface PermissionSummaryResponse {
@@ -152,6 +157,7 @@ export class SharingService {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
     private readonly notifications: NotificationsService,
+    private readonly invitationDelivery: InvitationDeliveryService,
   ) {}
 
   async create(
@@ -475,7 +481,14 @@ export class SharingService {
       }),
     );
 
-    return this.toInviteResponse(created.invite, created.token);
+    const delivery = await this.invitationDelivery.deliver(
+      created.invite.normalizedPhone,
+      created.token,
+    );
+    return {
+      ...this.toInviteResponse(created.invite, created.token),
+      delivery,
+    };
   }
 
   async findInvitesForCurrentUser(
@@ -665,7 +678,14 @@ export class SharingService {
       }),
     );
 
-    return this.toInviteResponse(reissued.invite, reissued.token);
+    const delivery = await this.invitationDelivery.deliver(
+      reissued.invite.normalizedPhone,
+      reissued.token,
+    );
+    return {
+      ...this.toInviteResponse(reissued.invite, reissued.token),
+      delivery,
+    };
   }
 
   async acceptInvite(

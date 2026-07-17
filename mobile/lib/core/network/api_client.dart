@@ -333,33 +333,33 @@ class ApiException implements Exception {
     this.message, {
     this.isNetworkFailure = false,
     this.statusCode,
+    this.serverCode,
   });
 
   factory ApiException.fromDio(DioException error) {
     final statusCode = error.response?.statusCode;
     final data = error.response?.data;
+    final serverCode = _extractServerCode(data);
+    final serverMessage = _extractServerMessage(data);
 
-    if (statusCode == 401) {
-      return const ApiException(
-        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
-        statusCode: 401,
+    // Stable authentication codes are translated at the network boundary so
+    // screens that call repositories directly never leak backend English.
+    // Keep the code as well so the auth UI can offer the correct safe action.
+    final localizedAuthMessage = _localizedAuthMessage(serverCode);
+    if (localizedAuthMessage != null) {
+      return ApiException(
+        localizedAuthMessage,
+        statusCode: statusCode,
+        serverCode: serverCode,
       );
     }
 
-    if (data is Map && data['message'] != null) {
-      final message = data['message'];
-      if (message is String) {
-        return ApiException(
-          _cleanServerMessage(message),
-          statusCode: statusCode,
-        );
-      }
-      if (message is List && message.isNotEmpty) {
-        return ApiException(
-          _cleanServerMessage(message.first.toString()),
-          statusCode: statusCode,
-        );
-      }
+    if (statusCode == 401) {
+      return ApiException(
+        'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
+        statusCode: 401,
+        serverCode: serverCode,
+      );
     }
 
     if (error.type == DioExceptionType.connectionTimeout ||
@@ -372,15 +372,36 @@ class ApiException implements Exception {
       );
     }
 
+    // Framework validation and provider failures may carry English details.
+    // Stable codes above are translated precisely; every other auth failure
+    // stays deliberately generic and Arabic-only at the network boundary.
+    if (_isAuthRequest(error.requestOptions.path)) {
+      return ApiException(
+        _genericAuthMessage(statusCode),
+        statusCode: statusCode,
+        serverCode: serverCode,
+      );
+    }
+
+    if (serverMessage != null) {
+      return ApiException(
+        _cleanServerMessage(serverMessage),
+        statusCode: statusCode,
+        serverCode: serverCode,
+      );
+    }
+
     return ApiException(
       'حدث خطأ، يرجى المحاولة مرة أخرى.',
       statusCode: statusCode,
+      serverCode: serverCode,
     );
   }
 
   final String message;
   final bool isNetworkFailure;
   final int? statusCode;
+  final String? serverCode;
 
   bool get isUnauthorized {
     return statusCode == 401 || message.contains('بيانات الدخول');
@@ -409,5 +430,73 @@ class ApiException implements Exception {
       return aarastBackendConnectionErrorMessage;
     }
     return normalized;
+  }
+
+  static String? _extractServerCode(Object? data) {
+    if (data is! Map) return null;
+    final directCode = data['code'];
+    if (directCode is String && directCode.trim().isNotEmpty) {
+      return directCode.trim();
+    }
+    final nestedMessage = data['message'];
+    if (nestedMessage is Map) {
+      final nestedCode = nestedMessage['code'];
+      if (nestedCode is String && nestedCode.trim().isNotEmpty) {
+        return nestedCode.trim();
+      }
+    }
+    return null;
+  }
+
+  static String? _extractServerMessage(Object? data) {
+    if (data is! Map) return null;
+    final message = data['message'];
+    if (message is String && message.trim().isNotEmpty) return message;
+    if (message is List && message.isNotEmpty) {
+      return message.first.toString();
+    }
+    if (message is Map) {
+      final nestedMessage = message['message'];
+      if (nestedMessage is String && nestedMessage.trim().isNotEmpty) {
+        return nestedMessage;
+      }
+    }
+    return null;
+  }
+
+  static String? _localizedAuthMessage(String? code) {
+    return switch (code) {
+      'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
+      'PHONE_VERIFICATION_REQUIRED' =>
+        'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف.',
+      'ACCOUNT_ALREADY_EXISTS' =>
+        'هذا الرقم مسجل بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة المرور.',
+      'ADMIN_APP_PASSWORD_ALREADY_SET' =>
+        'تم إعداد حساب التطبيق لهذا الرقم بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة مرور التطبيق.',
+      'OTP_INVALID_OR_EXPIRED' =>
+        'رمز التحقق غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا وحاول مرة أخرى.',
+      'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
+        'تم التحقق من الرقم، لكن لا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.',
+      'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
+        'تم التحقق من الرقم، لكن الحساب معطل حاليًا. تواصل مع الدعم.',
+      _ => null,
+    };
+  }
+
+  static bool _isAuthRequest(String path) {
+    return path == '/api/v1/auth' || path.startsWith('/api/v1/auth/');
+  }
+
+  static String _genericAuthMessage(int? statusCode) {
+    if (statusCode == 400 || statusCode == 422) {
+      return 'تعذر إكمال طلب المصادقة. تحقق من البيانات وحاول مرة أخرى.';
+    }
+    if (statusCode == 429) {
+      return 'طلبات كثيرة خلال وقت قصير. انتظر قليلًا ثم حاول مرة أخرى.';
+    }
+    if (statusCode != null && statusCode >= 500) {
+      return 'تعذر إكمال طلب المصادقة الآن. حاول مرة أخرى بعد قليل.';
+    }
+    return 'تعذر إكمال طلب المصادقة. حاول مرة أخرى.';
   }
 }

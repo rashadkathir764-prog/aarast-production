@@ -1,10 +1,15 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { NotificationPreference, Prisma } from "@prisma/client";
+import {
+  NotificationPreference,
+  Prisma,
+  UserRole,
+} from "@prisma/client";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
 import { SafeUser, toSafeUser } from "../auth/safe-user";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
@@ -12,6 +17,10 @@ import { runRetryableTransaction } from "../common/prisma/serializable-transacti
 import { MediaStorageService } from "../media/media-storage.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { PermissionService } from "../sharing/permission.service";
+import {
+  applicationNameFields,
+  toApplicationUserContact,
+} from "./application-user-identity";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
@@ -52,13 +61,6 @@ export class UsersService {
     dto: UpdateProfileDto,
   ): Promise<SafeUser> {
     const email = this.optionalText(dto.email);
-
-    if (email) {
-      const existing = await this.prisma.user.findUnique({ where: { email } });
-      if (existing && existing.id !== currentUser.id) {
-        throw new ConflictException("Email is already registered");
-      }
-    }
     const avatarUrl =
       dto.avatarUrl !== undefined
         ? await this.mediaStorage.verifyPublicMediaUrl(
@@ -71,13 +73,40 @@ export class UsersService {
     const user = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.user.findUniqueOrThrow({
         where: { id: currentUser.id },
-        select: { avatarUrl: true },
+        select: {
+          role: true,
+          avatarUrl: true,
+          appAvatarUrl: true,
+        },
       });
+      const applicationAdmin =
+        existing.role === UserRole.ADMIN && currentUser.adminMfa !== true;
+      if (email) {
+        const duplicateEmail = await tx.user.findFirst({
+          where: {
+            id: { not: currentUser.id },
+            OR: [{ email }, { appEmail: email }],
+          },
+          select: { id: true },
+        });
+        if (duplicateEmail) {
+          throw new ConflictException("Email is already registered");
+        }
+      }
+      const currentAvatar = applicationAdmin
+        ? existing.appAvatarUrl
+        : existing.avatarUrl;
+      const avatarTarget = {
+        type: applicationAdmin
+          ? ("USER_APP_AVATAR" as const)
+          : ("USER_AVATAR" as const),
+        id: currentUser.id,
+      };
       const avatarChanged =
-        dto.avatarUrl !== undefined && avatarUrl !== existing.avatarUrl;
+        dto.avatarUrl !== undefined && avatarUrl !== currentAvatar;
       if (avatarChanged) {
         await this.mediaStorage.scheduleTargetDeletion(
-          { type: "USER_AVATAR", id: currentUser.id },
+          avatarTarget,
           tx,
         );
       }
@@ -86,7 +115,7 @@ export class UsersService {
           currentUser,
           avatarUrl,
           "user-avatar",
-          { type: "USER_AVATAR", id: currentUser.id },
+          avatarTarget,
           tx,
         );
       }
@@ -94,10 +123,20 @@ export class UsersService {
         where: { id: currentUser.id },
         data: {
           ...(dto.name !== undefined
-            ? { name: this.requiredText(dto.name, "name") }
+            ? applicationAdmin
+              ? { appName: this.requiredText(dto.name, "name") }
+              : { name: this.requiredText(dto.name, "name") }
             : {}),
-          ...(dto.email !== undefined ? { email } : {}),
-          ...(dto.avatarUrl !== undefined ? { avatarUrl } : {}),
+          ...(dto.email !== undefined
+            ? applicationAdmin
+              ? { appEmail: email }
+              : { email }
+            : {}),
+          ...(dto.avatarUrl !== undefined
+            ? applicationAdmin
+              ? { appAvatarUrl: avatarUrl }
+              : { avatarUrl }
+            : {}),
           ...(dto.locale !== undefined
             ? { locale: this.requiredText(dto.locale, "locale") }
             : {}),
@@ -125,6 +164,16 @@ export class UsersService {
   async deleteMe(currentUser: AuthenticatedUser): Promise<{ deleted: true }> {
     const userId = currentUser.id;
 
+    const account = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (account?.role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        "Administrator identity cannot be deleted from the application",
+      );
+    }
+
     await runRetryableTransaction(
       this.prisma,
       async (tx) => {
@@ -136,9 +185,11 @@ export class UsersService {
         // Lock the account before enumerating its plans. A concurrent plan
         // create needs a foreign-key key-share lock on this row and therefore
         // cannot slip a new owned plan past the deletion snapshot.
-        const lockedUsers = await tx.$queryRaw<Array<{ id: string }>>(
+        const lockedUsers = await tx.$queryRaw<
+          Array<{ id: string; role: UserRole }>
+        >(
           Prisma.sql`
-            SELECT "id"
+            SELECT "id", "role"
             FROM "User"
             WHERE "id" = ${userId}
             FOR UPDATE
@@ -146,6 +197,11 @@ export class UsersService {
         );
         if (lockedUsers.length === 0) {
           throw new NotFoundException("User not found");
+        }
+        if (lockedUsers[0].role === UserRole.ADMIN) {
+          throw new ForbiddenException(
+            "Administrator identity cannot be deleted from the application",
+          );
         }
 
         // Parent rows are locked in a deterministic order before any child is
@@ -281,8 +337,8 @@ export class UsersService {
       },
       select: {
         id: true,
-        name: true,
         phone: true,
+        ...applicationNameFields,
       },
     });
 
@@ -290,7 +346,7 @@ export class UsersService {
       throw new NotFoundException("User not found for phone");
     }
 
-    return user;
+    return toApplicationUserContact(user);
   }
 
   async getSettings(

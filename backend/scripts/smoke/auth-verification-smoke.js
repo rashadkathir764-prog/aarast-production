@@ -63,7 +63,10 @@ async function run() {
     phone: TEST_PHONE,
     password: TEST_PASSWORD,
   };
-  const pending = await request('POST', '/api/v1/auth/register', details);
+  const pending = await request('POST', '/api/v1/auth/register', {
+    name: details.name,
+    phone: details.phone,
+  });
   check('registration request is accepted as pending', pending.status === 201);
   check('pending response is explicit', pending.body?.registrationPending === true);
   check('pending response has no access token', pending.body?.accessToken === undefined);
@@ -104,7 +107,10 @@ async function run() {
   const concurrentPending = await request(
     'POST',
     '/api/v1/auth/register',
-    concurrentDetails,
+    {
+      name: concurrentDetails.name,
+      phone: concurrentDetails.phone,
+    },
   );
   const concurrentRegistrationCode =
     process.env.SMOKE_OTP_CODE ?? concurrentPending.body?.code;

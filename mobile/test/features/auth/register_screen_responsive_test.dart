@@ -1,7 +1,9 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/widgets/aarast_button.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/screens/register_screen.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
@@ -50,6 +52,7 @@ void main() {
 
       expect(find.byType(RegisterScreen), findsOneWidget);
       expect(find.byType(TextFormField), findsAtLeastNWidgets(3));
+      expect(find.text('البريد الإلكتروني اختياري'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
@@ -111,6 +114,63 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'customer registration blocks passwords above 72 UTF-8 bytes at 320px',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 800);
+      addTearDown(tester.view.reset);
+
+      SharedPreferences.setMockInitialValues({});
+      final preferences = await SharedPreferences.getInstance();
+      final storage = AuthStorage(preferences);
+      final repository = _RecordingRegistrationRepository(
+        ApiClient(tokenProvider: storage.readAccessToken),
+        storage,
+      );
+      final auth = AuthController(repository);
+      final marketplace = _ReferenceDataMarketplaceProvider();
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthController>.value(value: auth),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: marketplace,
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            locale: const Locale('ar'),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.3)),
+              child: child!,
+            ),
+            home: const Directionality(
+              textDirection: TextDirection.rtl,
+              child: RegisterScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final fields = find.byType(TextFormField);
+      await tester.enterText(fields.at(0), 'مستخدم جديد');
+      await tester.enterText(fields.at(1), '777123456');
+      await tester.enterText(fields.at(2), 'ك' * 37);
+      final submit = find.widgetWithText(AarastButton, 'إنشاء حساب');
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('كلمة المرور طويلة جدًا'), findsOneWidget);
+      expect(repository.startCalls, 0);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 Future<AuthController> _authController() async {
@@ -150,5 +210,21 @@ class _RetryingReferenceDataApi extends MarketplaceApi {
   @override
   Future<List<ProviderCategory>> getCategories() async {
     return const [ProviderCategory(id: 'category-halls', nameAr: 'الصالات')];
+  }
+}
+
+class _RecordingRegistrationRepository extends AuthRepository {
+  _RecordingRegistrationRepository(super.apiClient, super.authStorage);
+
+  int startCalls = 0;
+
+  @override
+  Future<OtpRequestResult> startRegistration({
+    required String name,
+    required String phone,
+    required String password,
+  }) async {
+    startCalls += 1;
+    throw const ApiException('تعذر إرسال رمز إنشاء الحساب للاختبار.');
   }
 }

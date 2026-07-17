@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   completeAdminLogin,
+  confirmAdminPasswordReset,
   logoutAdmin,
+  requestAdminPasswordReset,
   restoreAdminSession,
   startAdminLogin,
 } from './auth';
@@ -142,6 +144,78 @@ describe('secure admin browser session', () => {
 
     await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
       'تعذر الاتصال بالخادم',
+    );
+  });
+
+  it('starts password recovery through a neutral opaque challenge', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        accepted: true,
+        challengeToken: 'c'.repeat(64),
+        expiresAt: '2026-07-17T12:10:00.000Z',
+        retryAfterSeconds: 60,
+      }),
+    );
+
+    const challenge = await requestAdminPasswordReset('+967700000003');
+
+    expect(challenge.accepted).toBe(true);
+    expect(challenge.challengeToken).toHaveLength(64);
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      '/api/v1/auth/admin/password-reset/request',
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      phone: '+967700000003',
+    });
+  });
+
+  it('rejects a malformed recovery response instead of retaining a fake challenge', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        accepted: true,
+        challengeToken: 'not-opaque',
+        expiresAt: 'invalid',
+        retryAfterSeconds: 60,
+      }),
+    );
+
+    await expect(requestAdminPasswordReset('+967700000003')).rejects.toThrow(
+      'تعذر بدء استعادة كلمة المرور',
+    );
+  });
+
+  it('confirms recovery without creating a session and clears any memory token', async () => {
+    setAdminAccessToken('stale-admin-token');
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { reset: true }));
+
+    await confirmAdminPasswordReset(
+      'd'.repeat(64),
+      '123456',
+      'Aarast-admin-2026',
+    );
+
+    expect(getAdminAccessToken()).toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      '/api/v1/auth/admin/password-reset/confirm',
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      challengeToken: 'd'.repeat(64),
+      code: '123456',
+      newPassword: 'Aarast-admin-2026',
+    });
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
+  });
+
+  it('maps every invalid recovery challenge to one generic message', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(401, { message: 'Unknown administrator' }),
+    );
+
+    await expect(
+      confirmAdminPasswordReset('e'.repeat(64), '123456', 'Aarast-admin-2026'),
+    ).rejects.toThrow(
+      'رمز التحقق غير صحيح أو انتهت صلاحية طلب الاستعادة.',
     );
   });
 });

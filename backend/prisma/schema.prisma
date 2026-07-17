@@ -123,8 +123,15 @@ enum SharedMemberRole {
 enum OtpPurpose {
   REGISTER
   LOGIN
+  ADMIN_LOGIN
   VERIFY_PHONE
   RESET_PASSWORD
+  ADMIN_RESET_PASSWORD
+}
+
+enum AuthSessionScope {
+  APPLICATION
+  ADMIN
 }
 
 enum ProviderStatus {
@@ -243,45 +250,50 @@ enum GuestAttendanceStatus {
 }
 
 model User {
-  id                       String                    @id @default(cuid())
-  name                     String
-  phone                    String?                   @unique
-  email                    String?                   @unique
-  passwordHash             String
-  role                     UserRole                  @default(USER)
-  adminRole                AdminRole?
-  appRole                  AppRole                   @default(WEDDING_USER)
-  status                   UserStatus                @default(ACTIVE)
-  phoneVerifiedAt          DateTime?
-  lastLoginAt              DateTime?
-  avatarUrl                String?
-  locale                   String                    @default("ar")
-  activeWeddingPlanId      String?
-  onboardingPath           OnboardingPath?
-  persona                  WeddingPersona?
-  onboardingCompletedAt    DateTime?
-  createdAt                DateTime                  @default(now())
-  updatedAt                DateTime                  @updatedAt
-  weddingPlans             WeddingPlan[]             @relation("OwnedWeddingPlans")
-  activeWeddingPlan        WeddingPlan?              @relation("ActiveWeddingPlan", fields: [activeWeddingPlanId], references: [id], onDelete: SetNull)
-  sharedWeddingPlans       SharedMember[]
-  notificationPreference   NotificationPreference?
-  notifications            Notification[]
-  providerProfile          Provider?
-  favoriteProviders        FavoriteProvider[]
-  providerReviews          ProviderReview[]
-  quoteRequests            QuoteRequest[]
-  bookingLeads             BookingLead[]
-  reviewedProviders        Provider[]                @relation("ProviderReviewedBy")
-  assignedWeddingTasks     WeddingTask[]             @relation("AssignedWeddingTasks")
-  sentPlanInvites          PlanInvite[]              @relation("PlanInviteInviter")
-  receivedPlanInvites      PlanInvite[]              @relation("PlanInviteInvitee")
-  refreshTokens            RefreshToken[]
-  adminLoginChallenges     AdminLoginChallenge[]
-  conversationParticipants ConversationParticipant[]
-  chatMessages             ChatMessage[]             @relation("ChatMessageSender")
-  conversationReports      ConversationReport[]      @relation("ConversationReporter")
-  mediaUploadTickets       MediaUploadTicket[]
+  id                           String                        @id @default(cuid())
+  name                         String
+  phone                        String?                       @unique
+  email                        String?                       @unique
+  passwordHash                 String
+  appPasswordHash              String?
+  appName                      String?
+  appEmail                     String?                       @unique
+  appAvatarUrl                 String?
+  role                         UserRole                      @default(USER)
+  adminRole                    AdminRole?
+  appRole                      AppRole                       @default(WEDDING_USER)
+  status                       UserStatus                    @default(ACTIVE)
+  phoneVerifiedAt              DateTime?
+  lastLoginAt                  DateTime?
+  avatarUrl                    String?
+  locale                       String                        @default("ar")
+  activeWeddingPlanId          String?
+  onboardingPath               OnboardingPath?
+  persona                      WeddingPersona?
+  onboardingCompletedAt        DateTime?
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  weddingPlans                 WeddingPlan[]                 @relation("OwnedWeddingPlans")
+  activeWeddingPlan            WeddingPlan?                  @relation("ActiveWeddingPlan", fields: [activeWeddingPlanId], references: [id], onDelete: SetNull)
+  sharedWeddingPlans           SharedMember[]
+  notificationPreference       NotificationPreference?
+  notifications                Notification[]
+  providerProfile              Provider?
+  favoriteProviders            FavoriteProvider[]
+  providerReviews              ProviderReview[]
+  quoteRequests                QuoteRequest[]
+  bookingLeads                 BookingLead[]
+  reviewedProviders            Provider[]                    @relation("ProviderReviewedBy")
+  assignedWeddingTasks         WeddingTask[]                 @relation("AssignedWeddingTasks")
+  sentPlanInvites              PlanInvite[]                  @relation("PlanInviteInviter")
+  receivedPlanInvites          PlanInvite[]                  @relation("PlanInviteInvitee")
+  refreshTokens                RefreshToken[]
+  adminLoginChallenges         AdminLoginChallenge[]
+  adminPasswordResetChallenges AdminPasswordResetChallenge[]
+  conversationParticipants     ConversationParticipant[]
+  chatMessages                 ChatMessage[]                 @relation("ChatMessageSender")
+  conversationReports          ConversationReport[]          @relation("ConversationReporter")
+  mediaUploadTickets           MediaUploadTicket[]
 }
 
 /// Durable ownership and lifecycle record for every signed media upload.
@@ -317,13 +329,34 @@ model MediaUploadTicket {
 model AdminLoginChallenge {
   id         String    @id @default(cuid())
   userId     String
+  otpId      String    @unique
   tokenHash  String    @unique
   expiresAt  DateTime
   consumedAt DateTime?
   createdAt  DateTime  @default(now())
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otp        OtpCode   @relation(fields: [otpId], references: [id], onDelete: Cascade)
 
   @@index([userId, consumedAt])
+  @@index([expiresAt])
+}
+
+model AdminPasswordResetChallenge {
+  id          String    @id @default(cuid())
+  userId      String?
+  otpId       String    @unique
+  tokenHash   String    @unique
+  subjectHash String    @db.Char(64)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  createdAt   DateTime  @default(now())
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  otp         OtpCode   @relation(fields: [otpId], references: [id], onDelete: Cascade)
+
+  @@index([userId, consumedAt])
+  @@index([subjectHash, consumedAt])
   @@index([expiresAt])
 }
 
@@ -349,19 +382,20 @@ model AdminAuditLog {
 }
 
 model RefreshToken {
-  id           String    @id @default(cuid())
+  id           String           @id @default(cuid())
   userId       String
-  tokenHash    String    @unique
+  tokenHash    String           @unique
+  scope        AuthSessionScope @default(APPLICATION)
   userAgent    String?
   ip           String?
   expiresAt    DateTime
   revokedAt    DateTime?
-  replacedById String?   @unique
-  createdAt    DateTime  @default(now())
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedById String?          @unique
+  createdAt    DateTime         @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([userId, revokedAt])
+  @@index([userId, scope, revokedAt])
   @@index([expiresAt])
 }
 
@@ -602,16 +636,18 @@ model PlanInvite {
 }
 
 model OtpCode {
-  id          String     @id @default(uuid())
-  phone       String
-  codeHash    String
-  purpose     OtpPurpose
-  expiresAt   DateTime
-  consumedAt  DateTime?
-  attempts    Int        @default(0)
-  maxAttempts Int        @default(5)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id                          String                       @id @default(uuid())
+  phone                       String
+  codeHash                    String
+  purpose                     OtpPurpose
+  expiresAt                   DateTime
+  consumedAt                  DateTime?
+  attempts                    Int                          @default(0)
+  maxAttempts                 Int                          @default(5)
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
+  adminLoginChallenge         AdminLoginChallenge?
+  adminPasswordResetChallenge AdminPasswordResetChallenge?
 
   @@index([phone, purpose, consumedAt])
   @@index([phone, purpose, expiresAt])

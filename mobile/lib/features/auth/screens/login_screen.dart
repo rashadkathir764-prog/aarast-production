@@ -14,7 +14,9 @@ import '../widgets/auth_wedding_widgets.dart';
 import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({this.initialPhone, super.key});
+
+  final String? initialPhone;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -26,6 +28,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.text = widget.initialPhone?.trim() ?? '';
+  }
 
   @override
   void dispose() {
@@ -128,6 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text('الدخول برمز تحقق'),
                         ),
                         InkWell(
+                          key: const ValueKey('login-forgot-password-action'),
                           onTap: _openResetPassword,
                           borderRadius: BorderRadius.circular(8),
                           child: Padding(
@@ -192,11 +201,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _openResetPassword() {
     final phone = _phoneController.text.trim();
-    final location = phone.isEmpty
-        ? AppRouter.resetPassword
-        : Uri.parse(
-            AppRouter.resetPassword,
-          ).replace(queryParameters: {'phone': phone}).toString();
+    final resume = _safeResumeLocation(context);
+    final location = Uri.parse(AppRouter.resetPassword)
+        .replace(
+          queryParameters: {
+            if (phone.isNotEmpty) 'phone': phone,
+            'resume': ?resume,
+          },
+        )
+        .toString();
     context.push(location);
   }
 

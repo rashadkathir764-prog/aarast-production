@@ -8,6 +8,8 @@ import {
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
+export type LoginThrottleRealm = "application" | "admin";
+
 @Injectable()
 export class LoginThrottleService {
   static readonly maxFailures = 5;
@@ -15,9 +17,12 @@ export class LoginThrottleService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async assertAllowed(phone: string): Promise<void> {
+  async assertAllowed(
+    phone: string,
+    realm: LoginThrottleRealm = "application",
+  ): Promise<void> {
     const record = await this.prisma.loginThrottle.findUnique({
-      where: { subjectHash: LoginThrottleService.subjectHash(phone) },
+      where: { subjectHash: LoginThrottleService.subjectHash(phone, realm) },
       select: { lockedUntil: true },
     });
     if (record?.lockedUntil && record.lockedUntil > new Date()) {
@@ -28,8 +33,11 @@ export class LoginThrottleService {
     }
   }
 
-  async recordFailure(phone: string): Promise<void> {
-    const subjectHash = LoginThrottleService.subjectHash(phone);
+  async recordFailure(
+    phone: string,
+    realm: LoginThrottleRealm = "application",
+  ): Promise<void> {
+    const subjectHash = LoginThrottleService.subjectHash(phone, realm);
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         await this.prisma.$transaction(
@@ -81,13 +89,19 @@ export class LoginThrottleService {
     }
   }
 
-  async clear(phone: string): Promise<void> {
+  async clear(
+    phone: string,
+    realm: LoginThrottleRealm = "application",
+  ): Promise<void> {
     await this.prisma.loginThrottle.deleteMany({
-      where: { subjectHash: LoginThrottleService.subjectHash(phone) },
+      where: { subjectHash: LoginThrottleService.subjectHash(phone, realm) },
     });
   }
 
-  static subjectHash(phone: string): string {
+  static subjectHash(
+    phone: string,
+    realm: LoginThrottleRealm = "application",
+  ): string {
     const configured = process.env.AUTH_LOGIN_THROTTLE_PEPPER?.trim();
     if (!configured && process.env.NODE_ENV === "production") {
       throw new ServiceUnavailableException(
@@ -96,7 +110,7 @@ export class LoginThrottleService {
     }
     const pepper = configured || "aarast-local-login-throttle-pepper-v1";
     return createHmac("sha256", pepper)
-      .update(`v1:${phone}`, "utf8")
+      .update(`v2:${realm}:${phone}`, "utf8")
       .digest("hex");
   }
 }

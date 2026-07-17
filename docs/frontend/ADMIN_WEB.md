@@ -1,6 +1,6 @@
 # Admin Web
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-17
 
 The admin web app is a React/Vite dashboard under `admin-web/`. It supports
 admin-facing management for dashboard stats, users, catalog references,
@@ -36,6 +36,14 @@ contains session material. Reload recovery and one guarded `401` retry use the
 rotating path-scoped HttpOnly refresh cookie. Logout calls the backend before
 clearing memory. Production therefore requires HTTPS, the configured admin/API
 same-site origins, and a working WhatsApp OTP channel.
+
+The login page also provides an enumeration-safe administrator recovery flow.
+It always shows the same neutral request result, accepts the six-digit WhatsApp
+code and a strong password containing an English letter and digit (12
+characters, at most 72 UTF-8 bytes), clears secrets on cancel/success,
+does not create a session automatically, and returns to normal password + OTP
+login after the backend revokes prior sessions. This recovery changes only the
+browser-administration password; it cannot overwrite the wedding-app password.
 
 ## Rules
 
@@ -77,3 +85,6 @@ Changing a filter or submitting a new search returns to page 1. If an action
 removes the last row on the current page, the screen clamps to the last valid
 page instead of showing a stranded empty result. Catalog city/category lists
 remain intentionally unpaginated reference sets.
+
+Provider moderation is independently reviewed: an administrator cannot perform
+any review transition on a provider profile owned by that same account.

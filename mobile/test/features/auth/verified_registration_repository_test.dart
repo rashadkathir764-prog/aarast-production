@@ -27,6 +27,8 @@ void main() {
     expect(pending.purpose, 'REGISTER');
     expect(adapter.requests.single.path, '/api/v1/auth/register');
     expect(adapter.requests.single.data, isNot(contains('otpCode')));
+    expect(adapter.requests.single.data, isNot(contains('email')));
+    expect(adapter.requests.single.data, isNot(contains('password')));
     expect(await storage.readAccessToken(), isNull);
     expect(await storage.readRefreshToken(), isNull);
 
@@ -39,6 +41,7 @@ void main() {
 
     expect(adapter.requests.last.path, '/api/v1/auth/register/complete');
     expect(adapter.requests.last.data['otpCode'], '123456');
+    expect(adapter.requests.last.data, isNot(contains('email')));
     expect(completed.user.phoneVerifiedAt, isNotNull);
     expect(await storage.readAccessToken(), 'access-token');
     expect(await storage.readRefreshToken(), 'refresh-token');

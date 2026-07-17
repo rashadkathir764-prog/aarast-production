@@ -230,7 +230,11 @@ export class MarketplaceService {
     await this.findActiveProviderOrThrow(providerId);
     const reviews = await this.prisma.providerReview.findMany({
       where: { providerId, status: ReviewStatus.PUBLISHED },
-      include: { user: { select: { id: true, name: true } } },
+      include: {
+        user: {
+          select: { id: true, name: true, appName: true, role: true },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
 
@@ -740,7 +744,11 @@ export class MarketplaceService {
         rating: dto.rating,
         comment: MarketplaceQuery.optionalText(dto.comment),
       },
-      include: { user: { select: { id: true, name: true } } },
+      include: {
+        user: {
+          select: { id: true, name: true, appName: true, role: true },
+        },
+      },
     });
 
     await this.recalculateProviderRating(providerId);
@@ -769,7 +777,11 @@ export class MarketplaceService {
           ? { comment: MarketplaceQuery.optionalText(dto.comment) }
           : {}),
       },
-      include: { user: { select: { id: true, name: true } } },
+      include: {
+        user: {
+          select: { id: true, name: true, appName: true, role: true },
+        },
+      },
     });
 
     await this.recalculateProviderRating(existing.providerId);

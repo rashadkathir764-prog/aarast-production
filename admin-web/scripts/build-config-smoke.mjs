@@ -24,5 +24,11 @@ if (!javascript.includes(productionApiOrigin)) {
 if (!javascript.includes('/api/v1/auth/admin/login')) {
   throw new Error('Production admin build is missing the current MFA login route.');
 }
+if (
+  !javascript.includes('/api/v1/auth/admin/password-reset/request') ||
+  !javascript.includes('/api/v1/auth/admin/password-reset/confirm')
+) {
+  throw new Error('Production admin build is missing password recovery routes.');
+}
 
 console.log(`Admin build config PASS apiOrigin=${productionApiOrigin}`);

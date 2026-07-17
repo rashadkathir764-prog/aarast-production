@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
+import { AuthSessionScope } from "@prisma/client";
 import {
   createOpaqueTokenValue,
   createRefreshTokenValue,
@@ -109,6 +110,7 @@ test("admin MFA refresh rotates only into another admin-scoped session", async (
     id: "refresh-admin-old",
     userId: admin.id,
     tokenHash: hashRefreshToken(adminToken),
+    scope: AuthSessionScope.ADMIN,
     revokedAt: null,
     replacedById: null,
     expiresAt: new Date(now.getTime() + 60_000),

@@ -31,6 +31,17 @@ export type AdminLoginChallenge = {
   code?: string;
 };
 
+export type AdminPasswordResetChallenge = {
+  accepted: true;
+  challengeToken: string;
+  expiresAt: string;
+  retryAfterSeconds: number;
+};
+
+type AdminPasswordResetResult = {
+  reset: true;
+};
+
 type AdminSession = AdminBrowserSession<AdminUser>;
 
 export async function startAdminLogin(phone: string, password: string) {
@@ -65,6 +76,56 @@ export async function completeAdminLogin(challengeToken: string, code: string) {
   }
 
   return acceptAdminSession(response);
+}
+
+export async function requestAdminPasswordReset(
+  phone: string,
+): Promise<AdminPasswordResetChallenge> {
+  try {
+    const response = await apiRequest<AdminPasswordResetChallenge>(
+      '/api/v1/auth/admin/password-reset/request',
+      {
+        method: 'POST',
+        auth: false,
+        body: { phone },
+      },
+    );
+    if (
+      response.accepted !== true ||
+      !/^[a-f0-9]{64}$/.test(response.challengeToken) ||
+      !Number.isFinite(Date.parse(response.expiresAt)) ||
+      !Number.isInteger(response.retryAfterSeconds) ||
+      response.retryAfterSeconds < 0
+    ) {
+      throw new Error('تعذر بدء استعادة كلمة المرور');
+    }
+    return response;
+  } catch (error) {
+    throw mapPasswordResetRequestError(error);
+  }
+}
+
+export async function confirmAdminPasswordReset(
+  challengeToken: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  try {
+    const response = await apiRequest<AdminPasswordResetResult>(
+      '/api/v1/auth/admin/password-reset/confirm',
+      {
+        method: 'POST',
+        auth: false,
+        body: { challengeToken, code, newPassword },
+      },
+    );
+    if (response.reset !== true) {
+      throw new Error('تعذر تغيير كلمة المرور');
+    }
+    clearAdminAccessToken();
+  } catch (error) {
+    throw mapPasswordResetConfirmError(error);
+  }
 }
 
 export async function restoreAdminSession(): Promise<AdminUser> {
@@ -123,4 +184,51 @@ function mapMfaError(error: unknown): Error {
     return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
   }
   return new Error('تعذر إكمال التحقق. حاول مرة أخرى.');
+}
+
+function mapPasswordResetRequestError(error: unknown): Error {
+  if (error instanceof ApiError && error.status === 429) {
+    return new Error('طلبات استعادة كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
+  }
+  if (error instanceof ApiError && error.status === 400) {
+    return new Error('تحقق من رقم الهاتف ثم حاول مرة أخرى.');
+  }
+  if (error instanceof ApiError && error.status === 503) {
+    return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
+  }
+  if (error instanceof ApiError) {
+    return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
+  }
+  if (
+    error instanceof Error &&
+    error.message === 'تعذر بدء استعادة كلمة المرور'
+  ) {
+    return error;
+  }
+  return new Error('تعذر الاتصال بالخادم');
+}
+
+function mapPasswordResetConfirmError(error: unknown): Error {
+  if (
+    error instanceof ApiError &&
+    [400, 401, 409].includes(error.status ?? 0)
+  ) {
+    return new Error('رمز التحقق غير صحيح أو انتهت صلاحية طلب الاستعادة.');
+  }
+  if (error instanceof ApiError && error.status === 429) {
+    return new Error('محاولات تحقق كثيرة. انتظر قليلًا ثم ابدأ طلبًا جديدًا.');
+  }
+  if (error instanceof ApiError && error.status === 503) {
+    return new Error('تعذر إكمال الاستعادة حاليًا. حاول بعد قليل.');
+  }
+  if (error instanceof ApiError) {
+    return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
+  }
+  if (
+    error instanceof Error &&
+    error.message === 'تعذر تغيير كلمة المرور'
+  ) {
+    return error;
+  }
+  return new Error('تعذر الاتصال بالخادم');
 }

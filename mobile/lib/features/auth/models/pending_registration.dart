@@ -21,13 +21,11 @@ class PendingRegistration {
     required this.name,
     required this.phone,
     required this.password,
-    this.email,
     this.providerApplication,
   });
 
   final String name;
   final String phone;
   final String password;
-  final String? email;
   final PendingProviderApplication? providerApplication;
 }

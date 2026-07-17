@@ -74,6 +74,21 @@ test("login failures are stored under a one-way account hash", async () => {
     "test-only-login-throttle-pepper-with-32-bytes";
 });
 
+test("application failures never lock the administrator realm", async () => {
+  const { service } = harness();
+  const phone = "+967777123456";
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await service.recordFailure(phone, "application");
+  }
+
+  await assert.rejects(() => service.assertAllowed(phone, "application"));
+  await assert.doesNotReject(() => service.assertAllowed(phone, "admin"));
+  assert.notEqual(
+    LoginThrottleService.subjectHash(phone, "application"),
+    LoginThrottleService.subjectHash(phone, "admin"),
+  );
+});
+
 test("one replica cleans expired and inactive throttle windows", async () => {
   let where: unknown;
   const scheduler = new LoginThrottleCleanupScheduler({

@@ -20,6 +20,12 @@ import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { NotificationsService } from "../notifications/notifications.service";
 import { PrismaService } from "../prisma/prisma.service";
+import {
+  ApplicationNameSource,
+  applicationDisplayName,
+  applicationNameFields,
+  toApplicationUserContact,
+} from "../users/application-user-identity";
 import { CreatePlanInviteDto } from "./dto/create-plan-invite.dto";
 import { CreateSharedMemberDto } from "./dto/create-shared-member.dto";
 import { UpdateSharedMemberDto } from "./dto/update-shared-member.dto";
@@ -56,6 +62,11 @@ export interface SafeSharedMemberUser {
   name: string;
   phone: string | null;
 }
+
+type ApplicationContactRecord = ApplicationNameSource & {
+  id: string;
+  phone: string | null;
+};
 
 export interface SharedWeddingPlanResponse {
   id: string;
@@ -124,8 +135,8 @@ type PlanInviteWithRelations = PlanInvite & {
     WeddingPlan,
     "id" | "title" | "city" | "weddingDate" | "status"
   >;
-  inviter?: SafeSharedMemberUser;
-  invitee?: SafeSharedMemberUser | null;
+  inviter?: ApplicationContactRecord;
+  invitee?: ApplicationContactRecord | null;
 };
 
 type PermissionFlags = PlanPermissionFlags;
@@ -180,7 +191,9 @@ export class SharingService {
         ...permissionData,
       },
       include: {
-        user: { select: { id: true, name: true, phone: true } },
+        user: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
       },
     });
 
@@ -214,7 +227,9 @@ export class SharingService {
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
       include: {
-        user: { select: { id: true, name: true, phone: true } },
+        user: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
       },
       orderBy: { createdAt: "asc" },
     });
@@ -248,7 +263,9 @@ export class SharingService {
         ...permissionData,
       },
       include: {
-        user: { select: { id: true, name: true, phone: true } },
+        user: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
       },
     });
 
@@ -302,7 +319,9 @@ export class SharingService {
       where: { userId: currentUser.id },
       include: {
         weddingPlan: true,
-        user: { select: { id: true, name: true, phone: true } },
+        user: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -320,7 +339,11 @@ export class SharingService {
     const plan = await this.findPlanWithOwnerOrThrow(weddingPlanId);
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: {
+        user: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
+      },
       orderBy: { createdAt: "asc" },
     });
 
@@ -414,7 +437,9 @@ export class SharingService {
             weddingPlanId,
             inviterUserId: currentUser.id,
             inviteeUserId: target.user?.id ?? null,
-            name: this.optionalText(dto.name) ?? target.user?.name ?? null,
+            name:
+              this.optionalText(dto.name) ??
+              (target.user ? applicationDisplayName(target.user) : null),
             phone: target.phone,
             normalizedPhone: target.normalizedPhone,
             email: target.email,
@@ -702,7 +727,9 @@ export class SharingService {
           receiveNotifications: invite.receiveNotifications,
         },
         include: {
-          user: { select: { id: true, name: true, phone: true } },
+          user: {
+            select: { id: true, phone: true, ...applicationNameFields },
+          },
         },
       });
 
@@ -838,7 +865,11 @@ export class SharingService {
           ...(dto.role !== undefined ? { role } : {}),
           ...permissionData,
         },
-        include: { user: { select: { id: true, name: true, phone: true } } },
+        include: {
+          user: {
+            select: { id: true, phone: true, ...applicationNameFields },
+          },
+        },
       });
       if (hadFinancialAccess && !keepsFinancialAccess) {
         await this.notifications.purgeMoneyForMember(
@@ -921,10 +952,14 @@ export class SharingService {
 
   private async findPlanWithOwnerOrThrow(
     weddingPlanId: string,
-  ): Promise<WeddingPlan & { owner: SafeSharedMemberUser }> {
+  ): Promise<WeddingPlan & { owner: ApplicationContactRecord }> {
     const plan = await this.prisma.weddingPlan.findUnique({
       where: { id: weddingPlanId },
-      include: { owner: { select: { id: true, name: true, phone: true } } },
+      include: {
+        owner: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
+      },
     });
     if (!plan) {
       throw new NotFoundException("Wedding plan not found");
@@ -1101,8 +1136,12 @@ export class SharingService {
           status: true,
         },
       },
-      inviter: { select: { id: true, name: true, phone: true } },
-      invitee: { select: { id: true, name: true, phone: true } },
+      inviter: {
+        select: { id: true, phone: true, ...applicationNameFields },
+      },
+      invitee: {
+        select: { id: true, phone: true, ...applicationNameFields },
+      },
     } satisfies Prisma.PlanInviteInclude;
   }
 
@@ -1327,13 +1366,15 @@ export class SharingService {
   }
 
   private toMemberResponse(
-    member: SharedMember & { user?: SafeSharedMemberUser },
+    member: SharedMember & { user?: ApplicationContactRecord },
   ): SharedMemberResponse {
     return {
       id: member.id,
       weddingPlanId: member.weddingPlanId,
       userId: member.userId,
-      ...(member.user ? { user: member.user } : {}),
+      ...(member.user
+        ? { user: toApplicationUserContact(member.user) }
+        : {}),
       role: member.role,
       canViewMoney: member.canViewMoney,
       canEditPlan: member.canEditPlan,
@@ -1349,7 +1390,7 @@ export class SharingService {
   }
 
   private toPlanMemberResponse(
-    member: SharedMember & { user?: SafeSharedMemberUser },
+    member: SharedMember & { user?: ApplicationContactRecord },
   ): PlanMemberResponse {
     return {
       ...this.toMemberResponse(member),
@@ -1358,13 +1399,13 @@ export class SharingService {
   }
 
   private toOwnerMemberResponse(
-    plan: WeddingPlan & { owner: SafeSharedMemberUser },
+    plan: WeddingPlan & { owner: ApplicationContactRecord },
   ): PlanMemberResponse {
     return {
       id: `owner:${plan.ownerUserId}`,
       weddingPlanId: plan.id,
       userId: plan.ownerUserId,
-      user: plan.owner,
+      user: toApplicationUserContact(plan.owner),
       role: SharedMemberRole.OWNER,
       canViewMoney: true,
       canEditPlan: true,
@@ -1426,8 +1467,16 @@ export class SharingService {
       createdAt: invite.createdAt,
       updatedAt: invite.updatedAt,
       ...(invite.weddingPlan ? { weddingPlan: invite.weddingPlan } : {}),
-      ...(invite.inviter ? { inviter: invite.inviter } : {}),
-      ...(invite.invitee !== undefined ? { invitee: invite.invitee } : {}),
+      ...(invite.inviter
+        ? { inviter: toApplicationUserContact(invite.inviter) }
+        : {}),
+      ...(invite.invitee !== undefined
+        ? {
+            invitee: invite.invitee
+              ? toApplicationUserContact(invite.invitee)
+              : null,
+          }
+        : {}),
     };
   }
 

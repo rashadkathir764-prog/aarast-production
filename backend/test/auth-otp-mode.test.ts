@@ -23,6 +23,28 @@ type StoredOtp = {
 function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise<void> }) {
   const otps: StoredOtp[] = [];
   let sequence = 0;
+  const verifiedUser: any = {
+    id: 'user-1',
+    name: 'Verified User',
+    phone: '+967777123456',
+    email: null,
+    passwordHash: 'unused',
+    appPasswordHash: null,
+    role: 'USER',
+    adminRole: null,
+    appRole: 'WEDDING_USER',
+    status: 'ACTIVE',
+    phoneVerifiedAt: new Date(),
+    lastLoginAt: null,
+    avatarUrl: null,
+    locale: 'ar',
+    activeWeddingPlanId: null,
+    onboardingPath: null,
+    persona: null,
+    onboardingCompletedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
   const prisma = {
     otpCode: {
       updateMany: async ({ where, data }: any) => {
@@ -80,9 +102,16 @@ function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise
       },
     },
     user: {
-      findFirst: async () => null,
-      update: async () => {
-        throw new Error('user.update should not be called in this test');
+      findFirst: async ({ where }: any) => {
+        const direct = typeof where.phone === 'string' ? where.phone : null;
+        const variants: string[] = where.phone?.in ?? [];
+        return direct === verifiedUser.phone || variants.includes(verifiedUser.phone)
+          ? verifiedUser
+          : null;
+      },
+      update: async ({ data }: any) => {
+        Object.assign(verifiedUser, data);
+        return verifiedUser;
       },
     },
     $transaction: async (action: any) => action(prisma),

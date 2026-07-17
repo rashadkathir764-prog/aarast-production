@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { AuthSessionScope } from '@prisma/client';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -27,6 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             where: {
               id: payload.sid,
               userId: payload.sub,
+              scope: AuthSessionScope.ADMIN,
               revokedAt: null,
               expiresAt: { gt: new Date() },
             },
@@ -45,7 +47,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     return {
-      ...toAuthenticatedUser(user),
+      ...toAuthenticatedUser(user, payload.amr === 'admin_mfa'),
       adminMfa: payload.amr === 'admin_mfa',
     };
   }

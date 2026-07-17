@@ -28,6 +28,7 @@ class AuthController extends ChangeNotifier {
   SafeUser? _user;
   bool _isSubmitting = false;
   String? _errorMessage;
+  String? _errorCode;
   OtpRequestResult? _otpRequest;
   bool _sessionExpired = false;
 
@@ -35,6 +36,7 @@ class AuthController extends ChangeNotifier {
   SafeUser? get user => _user;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get errorCode => _errorCode;
   OtpRequestResult? get otpRequest => _otpRequest;
 
   /// True right after a mid-session 401 invalidated the session. The UI
@@ -96,7 +98,7 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
       unawaited(_offlineSyncService?.syncPendingChanges());
-    }, unauthorizedMessage: 'رقم الهاتف أو كلمة المرور غير صحيحة');
+    }, unauthorizedMessage: _safeLoginFailureMessage);
   }
 
   Future<bool> register({
@@ -104,13 +106,11 @@ class AuthController extends ChangeNotifier {
     required String phone,
     required String password,
     required String otpCode,
-    String? email,
   }) async {
     return _submit(() async {
       final response = await _authRepository.register(
         name: name.trim(),
         phone: phone.trim(),
-        email: email,
         password: password,
         otpCode: otpCode,
       );
@@ -127,7 +127,6 @@ class AuthController extends ChangeNotifier {
     required String name,
     required String phone,
     required String password,
-    String? email,
   }) async {
     OtpRequestResult? result;
     final success = await _submit(
@@ -135,7 +134,6 @@ class AuthController extends ChangeNotifier {
         result = await _authRepository.startRegistration(
           name: name.trim(),
           phone: phone.trim(),
-          email: email,
           password: password,
         );
         _otpRequest = result;
@@ -245,6 +243,7 @@ class AuthController extends ChangeNotifier {
       await _authRepository.deleteAccount();
     } on ApiException catch (error) {
       _errorMessage = error.message;
+      _errorCode = error.serverCode;
       notifyListeners();
       return false;
     } catch (_) {
@@ -272,6 +271,7 @@ class AuthController extends ChangeNotifier {
     _status = AuthStatus.unauthenticated;
     _sessionExpired = true;
     _errorMessage = 'انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.';
+    _errorCode = null;
     notifyListeners();
     await _authRepository.logout();
   }
@@ -282,6 +282,7 @@ class AuthController extends ChangeNotifier {
 
   void clearError() {
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
   }
 
@@ -292,6 +293,7 @@ class AuthController extends ChangeNotifier {
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
@@ -304,7 +306,11 @@ class AuthController extends ChangeNotifier {
       _errorMessage = 'رقم الهاتف غير صحيح';
       return false;
     } on ApiException catch (error) {
-      if (error.isUnauthorized && unauthorizedMessage != null) {
+      _errorCode = error.serverCode;
+      final translatedMessage = _messageForServerCode(error.serverCode);
+      if (translatedMessage != null) {
+        _errorMessage = translatedMessage;
+      } else if (error.isUnauthorized && unauthorizedMessage != null) {
         _errorMessage = unauthorizedMessage;
       } else if (error.isNetworkFailure) {
         _errorMessage =
@@ -324,5 +330,27 @@ class AuthController extends ChangeNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  static const _safeLoginFailureMessage =
+      'تعذر تسجيل الدخول بهذه البيانات. تأكد منها، أو استخدم «نسيت كلمة المرور؟» أو أنشئ حسابًا جديدًا.';
+
+  static String? _messageForServerCode(String? code) {
+    return switch (code) {
+      'INVALID_CREDENTIALS' => _safeLoginFailureMessage,
+      'PHONE_VERIFICATION_REQUIRED' =>
+        'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف. استخدم «الدخول برمز تحقق» للمتابعة.',
+      'ACCOUNT_ALREADY_EXISTS' =>
+        'هذا الرقم مسجل بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة المرور.',
+      'ADMIN_APP_PASSWORD_ALREADY_SET' =>
+        'تم إعداد حساب التطبيق لهذا الرقم بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة مرور التطبيق.',
+      'OTP_INVALID_OR_EXPIRED' =>
+        'رمز التحقق غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا وحاول مرة أخرى.',
+      'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
+        'تم التحقق من الرقم، ولا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.',
+      'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>
+        'تم التحقق من الرقم، لكن الحساب معطل حاليًا. تواصل مع الدعم.',
+      _ => null,
+    };
   }
 }

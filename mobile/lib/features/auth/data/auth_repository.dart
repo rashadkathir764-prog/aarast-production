@@ -41,16 +41,13 @@ class AuthRepository {
     required String name,
     required String phone,
     required String password,
-    String? email,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
-    final json = await _apiClient
-        .postJsonWithReceiveTimeout('/api/v1/auth/register', {
-          'name': name,
-          'phone': normalizedPhone,
-          if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
-          'password': password,
-        }, receiveTimeout: _otpDeliveryReceiveTimeout);
+    final json = await _apiClient.postJsonWithReceiveTimeout(
+      '/api/v1/auth/register',
+      {'name': name, 'phone': normalizedPhone},
+      receiveTimeout: _otpDeliveryReceiveTimeout,
+    );
     return OtpRequestResult.fromJson(json);
   }
 
@@ -59,13 +56,11 @@ class AuthRepository {
     required String phone,
     required String password,
     required String otpCode,
-    String? email,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
     final json = await _apiClient.postJson('/api/v1/auth/register/complete', {
       'name': name,
       'phone': normalizedPhone,
-      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
       'password': password,
       'otpCode': otpCode,
     });

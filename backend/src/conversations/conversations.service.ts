@@ -14,6 +14,11 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { OutboxEventTypes } from '../outbox/outbox.constants';
 import { OutboxService } from '../outbox/outbox.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  ApplicationAvatarSource,
+  applicationAvatarFields,
+  toApplicationUserSummary,
+} from '../users/application-user-identity';
 import { MediaStorageService } from '../media/media-storage.service';
 import {
   assertConversationParticipant,
@@ -120,7 +125,7 @@ export class ConversationsService {
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
-        sender: { select: { id: true, name: true, avatarUrl: true } },
+        sender: { select: { id: true, ...applicationAvatarFields } },
         attachments: { orderBy: { createdAt: 'asc' } },
       },
     });
@@ -180,7 +185,7 @@ export class ConversationsService {
           },
         },
         include: {
-          sender: { select: { id: true, name: true, avatarUrl: true } },
+          sender: { select: { id: true, ...applicationAvatarFields } },
           attachments: true,
         },
       });
@@ -401,13 +406,13 @@ export class ConversationsService {
           },
           service: { select: { id: true, title: true } },
           weddingPlan: { select: { id: true, title: true } },
-          user: { select: { id: true, name: true, avatarUrl: true } },
+          user: { select: { id: true, ...applicationAvatarFields } },
         },
       },
       participants: {
         include: {
           user: {
-            select: { id: true, name: true, avatarUrl: true, appRole: true },
+            select: { id: true, appRole: true, ...applicationAvatarFields },
           },
         },
       },
@@ -443,11 +448,21 @@ export class ConversationsService {
     const lastMessage = conversation.messages[0]
       ? await this.toMessageResponse(conversation.messages[0])
       : null;
+    const quoteRequest = {
+      ...conversation.quoteRequest,
+      user: toApplicationUserSummary(conversation.quoteRequest.user),
+    };
+    const counterpartUser = counterpart?.user
+      ? {
+          ...toApplicationUserSummary(counterpart.user),
+          appRole: counterpart.user.appRole,
+        }
+      : null;
     return {
       id: conversation.id,
       quoteRequestId: conversation.quoteRequestId,
-      quoteRequest: conversation.quoteRequest,
-      counterpart: counterpart?.user ?? null,
+      quoteRequest,
+      counterpart: counterpartUser,
       lastMessage,
       unreadCount,
       muted: membership?.mutedAt != null,
@@ -461,6 +476,7 @@ export class ConversationsService {
 
   private async toMessageResponse<
     T extends {
+      sender?: ApplicationAvatarSource & { id: string };
       attachments: Array<{
         id: string;
         storageKey: string;
@@ -473,6 +489,7 @@ export class ConversationsService {
     message: T,
     signedDownloads?: Map<string, Awaited<ReturnType<MediaStorageService['createDownloadUrl']>>>,
   ) {
+    const { sender, ...messageWithoutSender } = message;
     const attachments = await Promise.all(
       message.attachments.map(async (attachment) => {
         const access =
@@ -488,7 +505,11 @@ export class ConversationsService {
         };
       }),
     );
-    return { ...message, attachments };
+    return {
+      ...messageWithoutSender,
+      ...(sender ? { sender: toApplicationUserSummary(sender) } : {}),
+      attachments,
+    };
   }
 
   private conversationRecord() {

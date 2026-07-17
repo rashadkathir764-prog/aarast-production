@@ -11,15 +11,21 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/providers/marketplace_provider.dart';
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
+import '../utils/application_password_policy.dart';
 import 'otp_screen.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 enum _AccountType { customer, provider }
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({this.startAsProvider = false, super.key});
+  const RegisterScreen({
+    this.startAsProvider = false,
+    this.initialPhone,
+    super.key,
+  });
 
   final bool startAsProvider;
+  final String? initialPhone;
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -29,7 +35,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _descriptionController = TextEditingController();
 
@@ -44,6 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (widget.startAsProvider) {
       _accountType = _AccountType.provider;
     }
+    _phoneController.text = widget.initialPhone?.trim() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
@@ -54,7 +60,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -161,14 +166,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 14),
-                  AuthTextField(
-                    controller: _emailController,
-                    label: 'البريد الإلكتروني اختياري',
-                    icon: LucideIcons.mail,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                  ),
                   if (providerMode) ...[
                     const SizedBox(height: 14),
                     _ProviderReferenceFields(
@@ -209,6 +206,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                       if (value.length < 6) {
                         return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+                      }
+                      if (!isApplicationPasswordWithinByteLimit(value)) {
+                        return 'كلمة المرور طويلة جدًا. اختصرها ثم حاول مرة أخرى';
                       }
                       return null;
                     },
@@ -266,12 +266,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthController>();
-    final email = _emailController.text.trim();
     final normalizedPhone = normalizeYemeniPhone(_phoneController.text);
     final otp = await auth.startRegistration(
       name: _nameController.text.trim(),
       phone: normalizedPhone,
-      email: email.isEmpty ? null : email,
       password: _passwordController.text,
     );
 
@@ -293,10 +291,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: normalizedPhone,
         purpose: 'REGISTER',
         otpNoticeMessage: otp.noticeMessage,
+        successLocation: _safeResumeLocation(context),
         registration: PendingRegistration(
           name: _nameController.text.trim(),
           phone: normalizedPhone,
-          email: email.isEmpty ? null : email,
           password: _passwordController.text,
           providerApplication: providerApplication,
         ),
@@ -410,11 +408,15 @@ class _SegmentOption extends StatelessWidget {
               color: selected ? Colors.white : AppTheme.muted,
             ),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? Colors.white : AppTheme.muted,
-                fontWeight: FontWeight.w900,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppTheme.muted,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ],

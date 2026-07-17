@@ -3,6 +3,7 @@ import {
   AdminPermission,
   permissionsForAdminRole,
 } from '../common/admin/admin-permissions';
+import { UserRole } from '@prisma/client';
 
 export interface SafeUser {
   id: string;
@@ -30,7 +31,7 @@ export function toSafeUser(
   user: AuthenticatedUser,
   includeAdminMetadata = user.adminMfa === true,
 ): SafeUser {
-  const authenticated = toAuthenticatedUser(user);
+  const authenticated = toAuthenticatedUser(user, includeAdminMetadata);
   const adminRole = includeAdminMetadata ? authenticated.adminRole : null;
   return {
     ...authenticated,
@@ -39,19 +40,24 @@ export function toSafeUser(
   };
 }
 
-export function toAuthenticatedUser(user: AuthenticatedUser): AuthenticatedUser {
+export function toAuthenticatedUser(
+  user: AuthenticatedUser,
+  includeAdminMetadata = user.adminMfa === true,
+): AuthenticatedUser {
+  const applicationAdmin =
+    user.role === UserRole.ADMIN && !includeAdminMetadata;
   return {
     id: user.id,
-    name: user.name,
+    name: applicationAdmin ? user.appName ?? user.name : user.name,
     phone: user.phone,
-    email: user.email,
-    role: user.role,
-    adminRole: user.adminRole ?? null,
+    email: applicationAdmin ? user.appEmail ?? null : user.email,
+    role: applicationAdmin ? UserRole.USER : user.role,
+    adminRole: includeAdminMetadata ? user.adminRole ?? null : null,
     appRole: user.appRole,
     status: user.status,
     phoneVerifiedAt: user.phoneVerifiedAt,
     lastLoginAt: user.lastLoginAt,
-    avatarUrl: user.avatarUrl,
+    avatarUrl: applicationAdmin ? user.appAvatarUrl ?? null : user.avatarUrl,
     locale: user.locale,
     activeWeddingPlanId: user.activeWeddingPlanId,
     onboardingPath: user.onboardingPath,

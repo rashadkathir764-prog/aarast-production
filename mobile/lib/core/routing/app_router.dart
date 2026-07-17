@@ -298,11 +298,16 @@ class AppRouter {
           redirect: (context, state) => welcome,
           builder: (context, state) => const SmartWelcomeScreen(),
         ),
-        GoRoute(path: login, builder: (context, state) => const LoginScreen()),
+        GoRoute(
+          path: login,
+          builder: (context, state) =>
+              LoginScreen(initialPhone: state.uri.queryParameters['phone']),
+        ),
         GoRoute(
           path: register,
           builder: (context, state) => RegisterScreen(
             startAsProvider: state.uri.queryParameters['type'] == 'provider',
+            initialPhone: state.uri.queryParameters['phone'],
           ),
         ),
         GoRoute(

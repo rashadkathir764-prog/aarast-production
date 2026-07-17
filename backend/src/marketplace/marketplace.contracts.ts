@@ -46,7 +46,7 @@ export type PackageWithService = ProviderPackage & {
 };
 
 export type ReviewWithUser = ProviderReview & {
-  user: Pick<User, "id" | "name">;
+  user: Pick<User, "id" | "name" | "appName" | "role">;
 };
 
 export type FavoriteWithProvider = FavoriteProvider & {

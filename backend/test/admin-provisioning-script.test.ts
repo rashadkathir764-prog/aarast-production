@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const {
+  applicationIdentityForProvisioning,
   normalizeYemeniPhone,
   phoneVariants,
   selectProvisioningIdentity,
@@ -52,9 +54,10 @@ test('admin provisioning checks every phone variant before mutating in a seriali
 });
 
 test('admin provisioning rejects weak or bcrypt-truncated passwords', () => {
-  assert.throws(() => validatePassword('short123'), /12 to 72/);
+  assert.throws(() => validatePassword('short123'), /at least 12/);
   assert.throws(() => validatePassword('letters-only-password'), /letters and digits/);
-  assert.throws(() => validatePassword(`A1${'x'.repeat(71)}`), /12 to 72/);
+  assert.throws(() => validatePassword(`A1${'x'.repeat(71)}`), /72 UTF-8 bytes/);
+  assert.throws(() => validatePassword(`A1${'ش'.repeat(36)}`), /72 UTF-8 bytes/);
   assert.doesNotThrow(() => validatePassword('Aarast-admin-2026'));
 });
 
@@ -64,10 +67,40 @@ test('admin provisioning throttle hash is deterministic and peppered', () => {
   const other = throttleSubjectHash('+967777123456', 'pepper-b');
   assert.equal(first, second);
   assert.notEqual(first, other);
+  assert.equal(
+    first,
+    createHmac('sha256', 'pepper-a')
+      .update('v2:admin:+967777123456', 'utf8')
+      .digest('hex'),
+  );
   assert.equal(first.length, 64);
   assert.throws(
     () => throttleSubjectHash('+967777123456', ''),
     /AUTH_LOGIN_THROTTLE_PEPPER/,
+  );
+});
+
+test('promoting an application user preserves a separate application identity', () => {
+  const application = applicationIdentityForProvisioning({
+    role: 'USER',
+    passwordHash: 'application-password-hash',
+    appPasswordHash: null,
+    name: 'Wedding User',
+    appName: null,
+    email: 'wedding@example.test',
+    appEmail: null,
+    avatarUrl: 'https://media.test/wedding.webp',
+    appAvatarUrl: null,
+  });
+  assert.deepEqual(application, {
+    appPasswordHash: 'application-password-hash',
+    appName: 'Wedding User',
+    appEmail: 'wedding@example.test',
+    appAvatarUrl: 'https://media.test/wedding.webp',
+  });
+  assert.deepEqual(
+    applicationIdentityForProvisioning({ role: 'ADMIN' }),
+    {},
   );
 });
 
@@ -81,4 +114,15 @@ test('production backend image includes the admin provisioning operation', () =>
     dockerfile,
     /COPY --from=build \/app\/scripts\/prod\/provision-admin\.cjs \.\/scripts\/prod\/provision-admin\.cjs/,
   );
+});
+
+test('admin provisioning revokes every administrator recovery artifact', () => {
+  const source = readFileSync('scripts/prod/provision-admin.cjs', 'utf8');
+  assert.match(source, /adminLoginChallenge\.deleteMany/);
+  assert.match(source, /adminPasswordResetChallenge\.deleteMany/);
+  assert.match(
+    source,
+    /purpose:\s*\{\s*in:\s*\['ADMIN_LOGIN',\s*'ADMIN_RESET_PASSWORD'\]/,
+  );
+  assert.match(source, /otpCode\.updateMany/);
 });

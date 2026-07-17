@@ -1,6 +1,6 @@
 # Mobile
 
-Snapshot date: 2026-07-14
+Snapshot date: 2026-07-17
 
 The mobile app is a Flutter Arabic-first Wedding Financial OS client. Current
 product scope includes auth, onboarding, home/dashboard, one money system,
@@ -32,7 +32,23 @@ conversations, signed image uploads, and rotating refresh sessions.
   profile, contact, or financial payload.
 - Registration keeps the pending draft in navigation memory only. No account
   or local session exists until `REGISTER` OTP completion succeeds; password
-  and OTP login remain available for verified or legacy accounts.
+  and OTP login remain available for verified or legacy accounts. Registration
+  contains only phone-owned fields; email is not accepted from a phone-only
+  proof. A valid OTP can safely claim an old unverified user/provider row
+  without losing its role or relations.
+- The first registration request sends only name and phone. The password stays
+  in in-memory navigation state until the verified completion request and is
+  rejected above bcrypt's 72-byte UTF-8 boundary.
+- Stable auth error codes are translated to Arabic at the network boundary.
+  Before phone proof, login remains enumeration-safe and always offers recovery
+  and account creation. After a correct OTP, a missing app account is stated
+  explicitly and the user can open registration with the verified phone
+  prefilled. An administrator may enroll a separate application password;
+  mobile login/reset/profile never reads or changes the browser-admin password,
+  identity, sessions, or MFA challenges. Application-facing names and avatars
+  also come only from the separate app profile. Choosing the provider path may
+  create an app-side provider profile but never converts or removes the
+  browser-administrator role.
 - Guest/local planning can exist, but protected cloud/share/provider writes must
   remain account-gated.
 - Premium-screen work is active and tracked in `docs/frontend/PREMIUM_ROADMAP.md`.

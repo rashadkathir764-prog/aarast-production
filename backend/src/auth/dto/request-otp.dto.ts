@@ -1,5 +1,5 @@
 import { OtpPurpose } from '@prisma/client';
-import { IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class RequestOtpDto {
   @IsString()
@@ -7,6 +7,11 @@ export class RequestOtpDto {
   @MaxLength(40)
   phone!: string;
 
-  @IsEnum(OtpPurpose)
+  @IsIn([
+    OtpPurpose.REGISTER,
+    OtpPurpose.LOGIN,
+    OtpPurpose.VERIFY_PHONE,
+    OtpPurpose.RESET_PASSWORD,
+  ])
   purpose!: OtpPurpose;
 }

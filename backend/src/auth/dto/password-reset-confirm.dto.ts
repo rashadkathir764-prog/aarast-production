@@ -4,6 +4,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { MaxUtf8Bytes } from './max-utf8-bytes.decorator';
 
 export class PasswordResetConfirmDto {
   @IsString()
@@ -17,5 +18,6 @@ export class PasswordResetConfirmDto {
 
   @IsString()
   @MinLength(6)
+  @MaxUtf8Bytes(72)
   newPassword!: string;
 }

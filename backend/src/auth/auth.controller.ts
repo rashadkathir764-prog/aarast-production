@@ -29,6 +29,8 @@ import { RefreshDto } from "./dto/refresh.dto";
 import { PasswordResetRequestDto } from "./dto/password-reset-request.dto";
 import { PasswordResetConfirmDto } from "./dto/password-reset-confirm.dto";
 import { CompleteAdminLoginDto } from "./dto/complete-admin-login.dto";
+import { AdminPasswordResetRequestDto } from "./dto/admin-password-reset-request.dto";
+import { AdminPasswordResetConfirmDto } from "./dto/admin-password-reset-confirm.dto";
 
 const ADMIN_REFRESH_COOKIE = "aarast_admin_refresh";
 
@@ -83,6 +85,23 @@ export class AuthController {
       accessToken: auth.accessToken,
       accessTokenExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
     };
+  }
+
+  @Post("admin/password-reset/request")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  requestAdminPasswordReset(
+    @Body() dto: AdminPasswordResetRequestDto,
+    @Req() request: Request,
+  ) {
+    return this.authService.requestAdminPasswordReset(dto, { ip: request.ip });
+  }
+
+  @Post("admin/password-reset/confirm")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  confirmAdminPasswordReset(@Body() dto: AdminPasswordResetConfirmDto) {
+    return this.authService.confirmAdminPasswordReset(dto);
   }
 
   @Post("admin/refresh")

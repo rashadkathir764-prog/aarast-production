@@ -80,7 +80,7 @@ export type AdminServiceWithDetails = ProviderService & {
 };
 
 export type AdminReviewWithDetails = ProviderReview & {
-  user: Pick<User, 'id' | 'name'>;
+  user: Pick<User, 'id' | 'name' | 'appName' | 'role'>;
   provider: Provider & {
     city?: City | null;
     primaryCategory?: ProviderCategory | null;

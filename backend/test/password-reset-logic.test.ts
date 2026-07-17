@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { OtpPurpose } from '@prisma/client';
+import { AuthSessionScope, OtpPurpose } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from '../src/auth/auth.service';
 
@@ -22,6 +22,8 @@ type StoredUser = {
   id: string;
   phone: string;
   passwordHash: string;
+  appPasswordHash: string | null;
+  role: string;
   status: string;
   phoneVerifiedAt: Date | null;
 };
@@ -29,14 +31,25 @@ type StoredUser = {
 type StoredRefreshToken = {
   id: string;
   userId: string;
+  scope: AuthSessionScope;
   revokedAt: Date | null;
 };
 
 function createHarness(options?: { user?: Partial<StoredUser> | null }) {
   const otps: StoredOtp[] = [];
   const refreshTokens: StoredRefreshToken[] = [
-    { id: 'rt-1', userId: 'user-1', revokedAt: null },
-    { id: 'rt-2', userId: 'user-1', revokedAt: null },
+    {
+      id: 'rt-app',
+      userId: 'user-1',
+      scope: AuthSessionScope.APPLICATION,
+      revokedAt: null,
+    },
+    {
+      id: 'rt-admin',
+      userId: 'user-1',
+      scope: AuthSessionScope.ADMIN,
+      revokedAt: null,
+    },
   ];
   const user: StoredUser | null =
     options?.user === null
@@ -45,6 +58,8 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
           id: 'user-1',
           phone: '',
           passwordHash: 'old-hash',
+          appPasswordHash: null,
+          role: 'USER',
           status: 'ACTIVE',
           phoneVerifiedAt: null,
           ...options?.user,
@@ -127,7 +142,11 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
       updateMany: ({ where, data }: any) => {
         let count = 0;
         for (const token of refreshTokens) {
-          if (token.userId === where.userId && token.revokedAt === null) {
+          if (
+            token.userId === where.userId &&
+            token.scope === where.scope &&
+            token.revokedAt === null
+          ) {
             Object.assign(token, data);
             count += 1;
           }
@@ -183,7 +202,7 @@ test('reset request issues a RESET_PASSWORD OTP without probing accounts', async
   });
 });
 
-test('reset confirm sets the new password and revokes all sessions', async () => {
+test('reset confirm sets the new password and revokes only app sessions', async () => {
   await withDevOtpEnv(async () => {
     const { service, otps, refreshTokens, user } = createHarness();
 
@@ -198,12 +217,20 @@ test('reset confirm sets the new password and revokes all sessions', async () =>
     assert.ok(user);
     assert.notEqual(user.passwordHash, 'old-hash');
     assert.ok(await bcryptjs.compare('new-secret-1', user.passwordHash));
-    assert.ok(refreshTokens.every((token) => token.revokedAt !== null));
+    assert.ok(
+      refreshTokens.find((token) => token.scope === AuthSessionScope.APPLICATION)
+        ?.revokedAt,
+    );
+    assert.equal(
+      refreshTokens.find((token) => token.scope === AuthSessionScope.ADMIN)
+        ?.revokedAt,
+      null,
+    );
     assert.ok(otps[0].consumedAt, 'OTP must be consumed after the reset');
   });
 });
 
-test('reset confirm with an unknown phone fails with the generic OTP error', async () => {
+test('reset confirm reveals a missing app account only after phone proof', async () => {
   await withDevOtpEnv(async () => {
     const { service } = createHarness({ user: null });
 
@@ -215,7 +242,8 @@ test('reset confirm with an unknown phone fails with the generic OTP error', asy
           code: '123456',
           newPassword: 'new-secret-1',
         }),
-      /OTP code is invalid or expired/,
+      (error: any) =>
+        error.getResponse?.().code === 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
     );
   });
 });
@@ -241,7 +269,7 @@ test('reset confirm with a wrong code keeps the old password', async () => {
   });
 });
 
-test('reset confirm for a disabled account fails with the generic OTP error', async () => {
+test('reset confirm identifies a disabled account only after phone proof', async () => {
   await withDevOtpEnv(async () => {
     const { service, user } = createHarness({ user: { status: 'DISABLED' } });
 
@@ -253,10 +281,69 @@ test('reset confirm for a disabled account fails with the generic OTP error', as
           code: '123456',
           newPassword: 'new-secret-1',
         }),
-      /OTP code is invalid or expired/,
+      (error: any) =>
+        error.getResponse?.().code === 'ACCOUNT_DISABLED_AFTER_PHONE_PROOF',
     );
 
     assert.ok(user);
     assert.equal(user.passwordHash, 'old-hash');
+  });
+});
+
+test('general reset never changes an admin password when no app password exists', async () => {
+  await withDevOtpEnv(async () => {
+    const { service, user } = createHarness({
+      user: { role: 'ADMIN', appPasswordHash: null },
+    });
+
+    await service.requestPasswordReset({ phone: '777123456' });
+    await assert.rejects(
+      () =>
+        service.confirmPasswordReset({
+          phone: '777123456',
+          code: '123456',
+          newPassword: 'new-application-secret',
+        }),
+      (error: any) =>
+        error.getResponse?.().code === 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
+    );
+
+    assert.ok(user);
+    assert.equal(user.passwordHash, 'old-hash');
+    assert.equal(user.appPasswordHash, null);
+  });
+});
+
+test('general reset changes only an enrolled admin app password', async () => {
+  await withDevOtpEnv(async () => {
+    const { service, user, refreshTokens } = createHarness({
+      user: { role: 'ADMIN', appPasswordHash: 'old-app-hash' },
+    });
+
+    await service.requestPasswordReset({ phone: '777123456' });
+    const response = await service.confirmPasswordReset({
+      phone: '777123456',
+      code: '123456',
+      newPassword: 'new-application-secret',
+    });
+
+    assert.equal(response.reset, true);
+    assert.ok(user);
+    assert.equal(user.passwordHash, 'old-hash');
+    assert.ok(
+      await bcryptjs.compare(
+        'new-application-secret',
+        user.appPasswordHash!,
+      ),
+    );
+    assert.ok(
+      refreshTokens.find((token) => token.scope === AuthSessionScope.APPLICATION)
+        ?.revokedAt,
+    );
+    assert.equal(
+      refreshTokens.find((token) => token.scope === AuthSessionScope.ADMIN)
+        ?.revokedAt,
+      null,
+    );
   });
 });

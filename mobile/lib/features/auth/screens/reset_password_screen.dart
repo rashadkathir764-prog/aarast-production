@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/auth_repository.dart';
+import '../utils/application_password_policy.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
 enum _ResetStep { phone, confirm, done }
@@ -43,6 +44,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _obscurePassword = true;
   AarastOtpFieldState _codeFieldState = AarastOtpFieldState.idle;
   String? _errorMessage;
+  String? _errorCode;
   String? _otpNoticeMessage;
   Timer? _resendTimer;
   int _resendSeconds = 0;
@@ -109,7 +111,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             AuthFooterLink(
               prefix: 'تذكرت كلمة المرور؟',
               action: 'تسجيل الدخول',
-              onTap: _isSubmitting ? () {} : () => context.go(AppRouter.login),
+              onTap: _isSubmitting
+                  ? () {}
+                  : () => context.go(_authLocation(AppRouter.login)),
             ),
         ],
       ),
@@ -206,6 +210,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 setState(() {
                   _codeFieldState = AarastOtpFieldState.idle;
                   _errorMessage = null;
+                  _errorCode = null;
                 });
               }
             },
@@ -230,6 +235,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               if (value.length < 6) {
                 return 'كلمة المرور 6 أحرف على الأقل';
               }
+              if (!isApplicationPasswordWithinByteLimit(value)) {
+                return 'كلمة المرور طويلة جدًا. اختصرها ثم حاول مرة أخرى';
+              }
               return null;
             },
           ),
@@ -251,6 +259,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           if (_errorMessage != null) ...[
             const SizedBox(height: 14),
             AuthInlineError(message: _errorMessage!),
+          ],
+          if (_errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF') ...[
+            const SizedBox(height: 10),
+            TextButton.icon(
+              key: const ValueKey('reset-create-account-action'),
+              onPressed: _isSubmitting
+                  ? null
+                  : () => context.go(_authLocation(AppRouter.register)),
+              icon: const Icon(LucideIcons.userPlus, size: 18),
+              label: const Text('إنشاء حساب جديد بهذا الرقم'),
+            ),
           ],
           const SizedBox(height: 20),
           AarastButton(
@@ -319,7 +338,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           AarastButton(
             label: 'تسجيل الدخول',
             icon: LucideIcons.logIn,
-            onPressed: () => context.go(AppRouter.login),
+            onPressed: () => context.go(_authLocation(AppRouter.login)),
           ),
         ],
       ),
@@ -334,6 +353,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         setState(() {
           _step = _ResetStep.confirm;
           _errorMessage = null;
+          _errorCode = null;
         });
       },
     );
@@ -347,6 +367,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         setState(() {
           _codeFieldState = AarastOtpFieldState.idle;
           _errorMessage = null;
+          _errorCode = null;
         });
       },
     );
@@ -357,6 +378,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
+      _errorCode = null;
     });
     try {
       final result = await context.read<AuthRepository>().requestPasswordReset(
@@ -372,6 +394,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         _errorMessage = error.isNetworkFailure
             ? 'تعذر إرسال رمز الاستعادة الآن. تحقق من الاتصال وحاول مجددًا.'
             : error.message;
+        _errorCode = error.serverCode;
       });
     } on Object {
       if (!mounted) return;
@@ -396,6 +419,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
+      _errorCode = null;
       _codeFieldState = AarastOtpFieldState.idle;
     });
     try {
@@ -414,6 +438,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
+        _errorCode = error.serverCode;
         _codeFieldState = AarastOtpFieldState.error;
       });
     } on Object {
@@ -442,6 +467,27 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       }
       setState(() => _resendSeconds -= 1);
     });
+  }
+
+  String _authLocation(String path) {
+    final rawPhone = _phoneController.text.trim();
+    final resume = _safeResumeLocation();
+    return Uri.parse(path)
+        .replace(
+          queryParameters: {
+            if (isValidYemeniPhoneInput(rawPhone))
+              'phone': normalizeYemeniPhone(rawPhone),
+            'resume': ?resume,
+          },
+        )
+        .toString();
+  }
+
+  String? _safeResumeLocation() {
+    final resume = GoRouterState.of(context).uri.queryParameters['resume'];
+    if (resume == null || resume.trim().isEmpty) return null;
+    if (!resume.startsWith('/') || resume.startsWith('//')) return null;
+    return resume;
   }
 }
 

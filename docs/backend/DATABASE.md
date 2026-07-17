@@ -2,14 +2,14 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-15. Route-level behavior belongs in
+Current documentation snapshot: 2026-07-17. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
 
 | Entity | Purpose |
 | --- | --- |
-| User | Represents a person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` must store hashed passwords only, never plaintext passwords. Current roles include `USER`, `ADMIN`, and `PROVIDER`; provider flows are implemented as planning/reference and quote-lead flows, not paid marketplace or confirmed booking flows. |
+| User | Represents a person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. Current roles include `USER`, `ADMIN`, and `PROVIDER`; provider flows are implemented as planning/reference and quote-lead flows, not paid marketplace or confirmed booking flows. |
 | Provider | Represents a vendor or business that offers wedding-related services. |
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
 | Category | Groups services into discoverable wedding-service categories. |
@@ -45,9 +45,10 @@ Current documentation snapshot: 2026-07-15. Route-level behavior belongs in
 
 | Entity | Purpose |
 | --- | --- |
-| RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation and replacement tracking. |
-| AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login. It never stores the raw challenge or OTP. |
-| LoginThrottle | Durable cross-replica password-attempt window keyed only by an HMAC-SHA-256 account-identifier digest using a deployment-only pepper. Five failures lock the identifier for fifteen minutes; successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
+| RefreshToken | Hashed, expiring, revocable refresh session with transactional rotation, replacement tracking, and persisted `APPLICATION`/`ADMIN` scope. |
+| AdminLoginChallenge | Hashed, short-lived, one-time password-bound MFA challenge for browser admin login, bound by `otpId` to the exact private `ADMIN_LOGIN` OTP. It never stores the raw challenge or OTP. |
+| AdminPasswordResetChallenge | Hashed, short-lived, one-time administrator password-recovery challenge bound to one exact OTP. It stores a token hash and HMAC phone digest, not the raw token or phone, and is invalidated on retry, expiry, failure ceiling, or success. |
+| LoginThrottle | Durable cross-replica password-attempt window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Five failures lock one realm for fifteen minutes; successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
 | OtpDispatchQuota | Atomic cross-replica OTP delivery windows for phone, IP, and global scopes. Subjects are HMAC-SHA-256 digests; no raw phone or IP is persisted. Failed deliveries still consume quota and an hourly advisory-lock cleanup removes expired rows. |
 | MediaUploadTicket | Durable owner, purpose, declared/verified byte size, expiry, verification state, and consumption state for every signed upload. It enforces a rolling per-account quota and allows bounded cleanup of abandoned objects without trusting a client-supplied URL. |
 | Conversation | One quote-scoped thread joining the requester, provider, quote request, and WeddingPlan context, with a composite inbox-order index for cursor pagination. |
@@ -112,11 +113,22 @@ The backend now includes the approved provider-reference and quote-lead foundati
   adds its table and cleanup index.
 - Existing accounts with null `phoneVerifiedAt` keep their data but all active
   refresh sessions are revoked; they must prove phone ownership before a new
-  session can be issued.
-- `AdminLoginChallenge` binds a successful admin password check to one LOGIN
+  session can be issued. Verified registration claims an existing unverified
+  user/provider row in place instead of creating a duplicate or discarding its
+  role and relations.
+- `AdminLoginChallenge` binds a successful admin password check to one private
+  `ADMIN_LOGIN`
   OTP for at most ten minutes. Deployment revokes legacy admin refresh rows;
   new admin access JWTs are bound to the live refresh-session row so rotation
   and logout invalidate access immediately.
+- `AdminPasswordResetChallenge` separates administrator recovery from general
+  application password reset. An administrator may use one phone identity in
+  both products, but the app password and browser-admin password remain
+  independent and neither recovery route can overwrite the other.
+- Refresh rows persist their application/administrator scope; logout, reset,
+  rotation, and token-family compromise revocation stay inside that scope.
+- Expired OTP and authentication challenge rows are retained for one day and
+  then removed by a distinct advisory-lock cleanup job.
 - User profile additions: `phoneVerifiedAt`, `lastLoginAt`, `avatarUrl`, and `locale`.
 - `NotificationPreference` for safe default account settings.
 - `Notification` for persisted task, payment-schedule, sharing, and quote alerts with deduplication.
@@ -156,11 +168,12 @@ rewrite as permission to restore a removed live model.
 | Model | Field count | Notable fields |
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
-| `User` | 39 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `User` | 44 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
-| `AdminLoginChallenge` | 7 | `id`, `userId`, `expiresAt`, `consumedAt`, `createdAt` |
+| `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
+| `AdminPasswordResetChallenge` | 12 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
-| `RefreshToken` | 10 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
+| `RefreshToken` | 11 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `WeddingPlan` | 29 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
@@ -172,7 +185,7 @@ rewrite as permission to restore a removed live model.
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 16 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
 | `PlanInvite` | 27 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
-| `OtpCode` | 10 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt` |
+| `OtpCode` | 12 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |
 | `OutboxEvent` | 14 | `id`, `aggregateId`, `nextAttemptAt`, `lockedAt`, `processedAt`, `createdAt`, `updatedAt` |
@@ -196,5 +209,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 40
+Total models: 41
 <!-- DOCS-SYNC:END -->

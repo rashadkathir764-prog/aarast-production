@@ -10,8 +10,11 @@ import {
 export interface AuthenticatedUser {
   id: string;
   name: string;
+  /** Application-only identity fields used when an administrator enrolls. */
+  appName?: string | null;
   phone: string | null;
   email: string | null;
+  appEmail?: string | null;
   role: UserRole;
   adminRole: AdminRole | null;
   appRole: AppRole;
@@ -19,6 +22,7 @@ export interface AuthenticatedUser {
   phoneVerifiedAt: Date | null;
   lastLoginAt: Date | null;
   avatarUrl: string | null;
+  appAvatarUrl?: string | null;
   locale: string;
   activeWeddingPlanId: string | null;
   onboardingPath: OnboardingPath | null;

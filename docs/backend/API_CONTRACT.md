@@ -2,7 +2,7 @@
 
 This document is the route-level source of truth for the current Aarast backend contract. Other Markdown files should link here instead of copying endpoint lists.
 
-Current documentation snapshot: 2026-07-15.
+Current documentation snapshot: 2026-07-17.
 
 Source status:
 
@@ -63,9 +63,7 @@ Initial request:
 ```json
 {
   "name": "Rashad",
-  "phone": "+967700000000",
-  "email": "optional@example.com",
-  "password": "secret123"
+  "phone": "+967700000000"
 }
 ```
 
@@ -81,7 +79,8 @@ Pending response:
 }
 ```
 
-The mobile client keeps the registration draft in memory and sends it to
+The mobile client keeps the name and password draft in memory; the password is
+not sent before phone proof. It sends the complete draft to
 `POST /api/v1/auth/register/complete` with the six-digit `otpCode`. Production
 responses never echo the code.
 
@@ -91,7 +90,6 @@ Completion request:
 {
   "name": "Rashad",
   "phone": "+967700000000",
-  "email": "optional@example.com",
   "password": "secret123",
   "otpCode": "123456"
 }
@@ -106,7 +104,7 @@ Verified response:
     "id": "user_id",
     "name": "Rashad",
     "phone": "+967700000000",
-    "email": "optional@example.com",
+    "email": null,
     "role": "USER",
     "status": "ACTIVE",
     "createdAt": "2026-06-04T00:00:00.000Z",
@@ -117,9 +115,21 @@ Verified response:
 
 The OTP is consumed atomically in the same serializable transaction that
 creates the verified User. A wrong, expired, already-consumed, or concurrently
-replayed code creates no account and issues no access or refresh token.
-The initial response is generic; phone/email conflicts are checked only after
-valid phone proof so the start endpoint is not an account-enumeration oracle.
+replayed code creates no account and issues no access or refresh token. Email is
+intentionally absent because a phone OTP cannot prove ownership of an email
+address. The initial response is generic; phone conflicts are checked only
+after valid phone proof so the start endpoint is not an account-enumeration
+oracle.
+
+After valid phone proof, an existing unverified `USER` or `PROVIDER` row is
+claimed in place: its id, role, relations, and provider data are preserved while
+the application password, display name, canonical phone, and verification time
+are set atomically. A verified existing application account returns the stable
+`ACCOUNT_ALREADY_EXISTS` code. For an `ADMIN` row, registration sets only the
+separate `appPasswordHash`; it never changes the administrator password, role,
+name, or MFA contract. The app display name/profile is stored separately and
+the app response is projected as a normal `USER`. A second app enrollment returns
+`ADMIN_APP_PASSWORD_ALREADY_SET`.
 
 ### `POST /api/v1/auth/login`
 
@@ -134,20 +144,28 @@ Request:
 
 Response shape matches register.
 
-An administrator may use the wedding application only through the general
-phone-OTP login. Password-only application login is rejected for administrator
-accounts so a leaked administrator password cannot authorize destructive user
-APIs. The resulting OTP access token is still an ordinary application session
-without the `admin_mfa` assurance. Every administration route requires the
-dedicated admin password-plus-OTP flow and rejects the ordinary token through
-`AdminGuard`; the application response also omits the administrator-role
-metadata and permission list.
+An administrator may also use the wedding application after enrolling a
+separate application password through the verified registration flow. General
+application login reads `appPasswordHash` for an administrator; browser admin
+login reads only `passwordHash`. Application password or OTP sessions never
+carry the `admin_mfa` assurance. Every administration route requires the
+dedicated admin password-plus-OTP flow and rejects an ordinary application
+token through `AdminGuard`; the application response also omits the
+administrator-role metadata and permission list.
+
+Every application-facing relation (members, invitations, conversations,
+reviews, quotes, and dashboard summaries) resolves an administrator through
+`appName`/`appAvatarUrl` and never through the browser-admin profile. An
+enrolled administrator may also create a provider application identity: that
+changes only `appRole` and the provider profile, while the database security
+role remains `ADMIN`.
 
 Password login, refresh, and protected JWT routes reject accounts whose
 `phoneVerifiedAt` is null. Existing unverified accounts must prove phone
 ownership through OTP (or a password-reset OTP) before receiving a session.
 Five failed password attempts within fifteen minutes lock that normalized
-account identifier for fifteen minutes. PostgreSQL stores only an
+account identifier for fifteen minutes. Application and administrator lock
+realms are independent, so one surface cannot lock the other. PostgreSQL stores only an
 HMAC-SHA-256 digest keyed by the deployment-only
 `AUTH_LOGIN_THROTTLE_PEPPER`, not the phone number, so the lock is shared by
 every backend replica and survives restarts. Production fails closed when the
@@ -161,17 +179,18 @@ Register, password login, and OTP login return an access token, opaque refresh
 token, and refresh expiry. Access JWTs default to 15 minutes; refresh sessions
 expire after 30 days and are stored as hashes.
 
-- Application and administration refresh tokens are separately scoped.
+- Application and administration refresh tokens are separately scoped in both
+  their opaque prefix and the persisted `RefreshToken.scope` column.
   `/api/v1/auth/refresh` rejects administration tokens, and
   `/api/v1/auth/admin/refresh` rejects application tokens. A general
   application session can never be upgraded into an MFA-assured administrator
   session through refresh.
 - `POST /api/v1/auth/refresh` rotates one valid refresh token and returns a new access
   and refresh pair. Reuse of a revoked/expired token is rejected.
-- `POST /api/v1/auth/logout` revokes the supplied refresh token; when omitted for an
-  authenticated user it revokes all of that user's sessions.
-- `POST /api/v1/auth/logout-all` revokes all active refresh sessions for the
-  authenticated user.
+- `POST /api/v1/auth/logout` revokes the supplied application refresh token;
+  when omitted it revokes all application sessions for that user.
+- `POST /api/v1/auth/logout-all` revokes all active application refresh
+  sessions. Administrator logout/recovery affects only administrator sessions.
 
 The mobile client stores both tokens in secure storage and retries one failed
 request once after a successful refresh. Auth endpoints do not recursively
@@ -188,16 +207,46 @@ Requires JWT. Returns the safe current user object without `passwordHash`.
   `/api/v1/auth/otp/request`. The response never reveals whether the phone belongs
   to an account.
 - `POST /api/v1/auth/password-reset/confirm` — body `{ phone, code, newPassword }`.
-  Consumes the OTP, sets the new password (min 6 chars), and revokes every
-  refresh token for the account so old sessions die with the old password.
-  Unknown phones and wrong codes return the same generic
-  `OTP code is invalid or expired` error.
+  Consumes the OTP, sets the new password (min 6 chars, max 72 UTF-8 bytes),
+  and revokes every application refresh token so app sessions die with the old
+  password without logging out the independent administrator realm.
+  Before valid phone proof, unknown phones and wrong codes are indistinguishable.
+  After a correct OTP, a missing application account returns
+  `ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF` and a disabled account returns
+  `ACCOUNT_DISABLED_AFTER_PHONE_PROOF`, allowing the mobile UI to offer a safe
+  create-account or support action. For an administrator, this route changes
+  only an already-enrolled `appPasswordHash`; it never changes `passwordHash`.
+
+### Administrator password recovery
+
+- `POST /api/v1/auth/admin/password-reset/request` — body `{ phone }`. Returns
+  one neutral, opaque challenge for active admins, non-admins, disabled users,
+  and unknown phones. Every well-formed request executes the same quota,
+  bcrypt, and WhatsApp delivery path; only an active administrator can complete
+  the reset. The challenge stores an HMAC subject digest, token hash, and exact
+  OTP relation, never the raw token or phone.
+- `POST /api/v1/auth/admin/password-reset/confirm` — body
+  `{ challengeToken, code, newPassword }`. Requires a 12-72 character password
+  containing an English letter and a digit, with a hard maximum of 72 UTF-8
+  bytes. Success changes only the browser-admin `passwordHash`, revokes only
+  administrator refresh sessions and login/recovery challenges, consumes active
+  administrator OTPs, and does not create a session. Invalid, expired,
+  replayed, unknown, and non-admin challenges return
+  the same `ADMIN_RESET_INVALID_OR_EXPIRED` code.
+
+A definitive WhatsApp delivery failure returns the same `503` for every phone
+and leaves no usable challenge. This preserves honest transport feedback
+without disclosing administrator account existence through body or timing.
 
 Additional current auth/profile routes:
 
 - `POST /api/v1/auth/otp/request`
 - `POST /api/v1/auth/otp/verify`
 - `PATCH /api/v1/users/me`
+- `DELETE /api/v1/users/me`
+  - deletes an ordinary wedding-app account and its owned data;
+  - refuses deletion when the database identity is an administrator, so an
+    application bearer can never erase the separate administrator identity.
 - `GET /api/v1/users/lookup?weddingPlanId=<planId>&phone=<phone>`
   - requires an authenticated owner/member with permission to invite members
 - `GET /api/v1/users/me/settings`
@@ -220,6 +269,12 @@ delivery: 60-second phone cooldown, bounded phone/IP windows, and an
 `AUTH_LOGIN_THROTTLE_PEPPER`; raw phone numbers and IP addresses are not stored.
 Provider delivery failures also consume quota so a failing transport cannot be
 used to bypass the safety ceiling.
+
+Administrator MFA uses the private `ADMIN_LOGIN` purpose, never the public
+`LOGIN` purpose. Each password-bound login challenge references the exact OTP
+row it issued, so a public app request cannot replace, consume, or satisfy an
+administrator challenge. Expired OTP/login/reset security rows are retained for
+one day, then removed by one advisory-lock-elected replica.
 
 OpenWA delivery has an explicit ambiguous-outcome contract. A definitive
 client/configuration rejection invalidates the newly created code and returns
@@ -1091,6 +1146,11 @@ returns the admin refresh token.
 - `PATCH /admin/users/:id/disable`
 - `GET /admin/users/:id`
 
+Provider review actions require an independent administrator: an administrator
+who owns the application-side provider profile cannot approve, reject, request
+changes, suspend, or reactivate that same profile. The check is enforced inside
+the review transaction before any status or reviewer field is written.
+
 The admin user, provider application, provider, service, review, conversation
 report, and notification list routes accept positive `page` and `limit` query
 parameters (`limit` is capped server-side). They return
@@ -1214,6 +1274,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/auth/admin/login` | `auth.startAdminLogin` |  |
 | POST | `/api/v1/auth/admin/login/complete` | `auth.completeAdminLogin` |  |
 | POST | `/api/v1/auth/admin/logout` | `auth.logoutAdmin` |  |
+| POST | `/api/v1/auth/admin/password-reset/confirm` | `auth.confirmAdminPasswordReset` |  |
+| POST | `/api/v1/auth/admin/password-reset/request` | `auth.requestAdminPasswordReset` |  |
 | POST | `/api/v1/auth/admin/refresh` | `auth.refreshAdmin` |  |
 | POST | `/api/v1/auth/login` | `auth.login` |  |
 | POST | `/api/v1/auth/logout` | `auth.logout` | 🔒 |

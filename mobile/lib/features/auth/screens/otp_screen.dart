@@ -148,7 +148,6 @@ class _OtpScreenState extends State<OtpScreen> {
         : await auth.register(
             name: registration.name,
             phone: registration.phone,
-            email: registration.email,
             password: registration.password,
             otpCode: code,
           );
@@ -198,11 +197,80 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   void _goBack() {
+    final auth = context.read<AuthController>();
+    final phone = widget.phone ?? auth.otpRequest?.phone ?? '';
+    final purpose =
+        widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
+    auth.clearError();
     if (context.canPop()) {
       context.pop();
       return;
     }
-    context.go(AppRouter.register);
+    final destination = widget.registration != null || purpose == 'REGISTER'
+        ? AppRouter.register
+        : AppRouter.login;
+    context.go(
+      _authLocation(
+        destination,
+        phone: phone,
+        resumeLocation: widget.successLocation,
+      ),
+    );
+  }
+
+  void _goToLogin(String phone) {
+    context.read<AuthController>().clearError();
+    context.go(
+      _authLocation(
+        AppRouter.login,
+        phone: phone,
+        resumeLocation: widget.successLocation,
+      ),
+    );
+  }
+
+  void _goToPasswordReset(String phone) {
+    context.read<AuthController>().clearError();
+    context.go(
+      _authLocation(
+        AppRouter.resetPassword,
+        phone: phone,
+        resumeLocation: widget.successLocation,
+      ),
+    );
+  }
+
+  void _goToRegistration(String phone) {
+    context.read<AuthController>().clearError();
+    context.go(
+      _authLocation(
+        AppRouter.register,
+        phone: phone,
+        resumeLocation: widget.successLocation,
+      ),
+    );
+  }
+
+  String _authLocation(
+    String location, {
+    required String phone,
+    String? resumeLocation,
+  }) {
+    return Uri.parse(location)
+        .replace(
+          queryParameters: {
+            if (phone.isNotEmpty) 'phone': phone,
+            if (_isSafeInternalLocation(resumeLocation))
+              'resume': resumeLocation,
+          },
+        )
+        .toString();
+  }
+
+  bool _isSafeInternalLocation(String? location) {
+    return location != null &&
+        location.startsWith('/') &&
+        !location.startsWith('//');
   }
 
   @override
@@ -211,6 +279,27 @@ class _OtpScreenState extends State<OtpScreen> {
     final auth = context.watch<AuthController>();
     final otpNoticeMessage =
         _otpNoticeMessage ?? auth.otpRequest?.noticeMessage;
+    final phone = widget.phone ?? auth.otpRequest?.phone ?? '';
+    final purpose =
+        widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
+    final isRegistration = widget.registration != null || purpose == 'REGISTER';
+    final heading = isRegistration
+        ? 'تأكيد رقم الهاتف'
+        : purpose == 'LOGIN'
+        ? 'تسجيل الدخول برمز التحقق'
+        : 'تأكيد ملكية رقم الهاتف';
+    final subtitle = isRegistration
+        ? 'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.'
+        : purpose == 'LOGIN'
+        ? 'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلتسجيل الدخول إلى حسابك.'
+        : 'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلتأكيد ملكية الرقم.';
+    final existingAccount =
+        auth.errorCode == 'ACCOUNT_ALREADY_EXISTS' ||
+        auth.errorCode == 'ADMIN_APP_PASSWORD_ALREADY_SET';
+    final missingAccountAfterProof =
+        auth.errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
+    final disabledAccountAfterProof =
+        auth.errorCode == 'ACCOUNT_DISABLED_AFTER_PHONE_PROOF';
 
     return AuthWeddingScaffold(
       leading: AuthBackButton(onPressed: _goBack),
@@ -219,7 +308,7 @@ class _OtpScreenState extends State<OtpScreen> {
         children: [
           const SizedBox(height: 32),
           Text(
-            'تأكيد رقم الهاتف',
+            heading,
             textAlign: TextAlign.center,
             style: textTheme.headlineSmall?.copyWith(
               color: AppTheme.ink,
@@ -229,7 +318,7 @@ class _OtpScreenState extends State<OtpScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.',
+            subtitle,
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
               color: AppTheme.muted,
@@ -267,12 +356,50 @@ class _OtpScreenState extends State<OtpScreen> {
                           AuthInlineError(message: auth.errorMessage!),
                           const SizedBox(height: 14),
                         ],
-                        AarastButton(
-                          label: 'تأكيد الرمز',
-                          icon: LucideIcons.badgeCheck,
-                          isLoading: _isVerifying || auth.isSubmitting,
-                          onPressed: _verifyOtp,
-                        ),
+                        if (existingAccount) ...[
+                          AarastButton(
+                            key: const ValueKey('otp-go-to-login'),
+                            label: 'الانتقال إلى تسجيل الدخول',
+                            icon: LucideIcons.logIn,
+                            onPressed: phone.isEmpty
+                                ? null
+                                : () => _goToLogin(phone),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            key: const ValueKey('otp-go-to-password-reset'),
+                            onPressed: phone.isEmpty
+                                ? null
+                                : () => _goToPasswordReset(phone),
+                            icon: const Icon(LucideIcons.keyRound, size: 18),
+                            label: const Text('نسيت كلمة المرور؟'),
+                          ),
+                        ] else if (missingAccountAfterProof) ...[
+                          AarastButton(
+                            key: const ValueKey('otp-go-to-register'),
+                            label: 'إنشاء حساب',
+                            icon: LucideIcons.userPlus,
+                            onPressed: phone.isEmpty
+                                ? null
+                                : () => _goToRegistration(phone),
+                          ),
+                        ] else if (disabledAccountAfterProof) ...[
+                          AarastButton(
+                            key: const ValueKey('otp-disabled-go-to-login'),
+                            label: 'العودة إلى تسجيل الدخول',
+                            icon: LucideIcons.arrowRight,
+                            onPressed: phone.isEmpty
+                                ? null
+                                : () => _goToLogin(phone),
+                          ),
+                        ] else ...[
+                          AarastButton(
+                            label: 'تأكيد الرمز',
+                            icon: LucideIcons.badgeCheck,
+                            isLoading: _isVerifying || auth.isSubmitting,
+                            onPressed: _verifyOtp,
+                          ),
+                        ],
                       ],
                     ),
             ),

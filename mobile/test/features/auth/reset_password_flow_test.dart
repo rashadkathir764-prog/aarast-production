@@ -6,6 +6,7 @@ import 'package:aarast_mobile/features/auth/screens/reset_password_screen.dart';
 import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,6 +18,7 @@ class _FakeAuthRepository extends AuthRepository {
   String? lastConfirmCode;
   String? lastConfirmPassword;
   bool failConfirm = false;
+  String? confirmFailureCode;
   bool failRequestWithNetworkError = false;
   String delivery = 'LOCAL_DEV';
   String? deliveryMessage = 'رمز التحقق مؤقت للتجربة المحلية: 123456';
@@ -47,7 +49,12 @@ class _FakeAuthRepository extends AuthRepository {
     required String newPassword,
   }) async {
     if (failConfirm) {
-      throw const ApiException('OTP code is invalid or expired');
+      throw ApiException(
+        confirmFailureCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF'
+            ? 'تم التحقق من الرقم، لكن لا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.'
+            : 'رمز التحقق غير صحيح أو انتهت صلاحيته.',
+        serverCode: confirmFailureCode ?? 'OTP_INVALID_OR_EXPIRED',
+      );
     }
     lastConfirmPhone = phone;
     lastConfirmCode = code;
@@ -166,12 +173,41 @@ void main() {
     await tester.tap(find.text('تغيير كلمة المرور'));
     await tester.pumpAndSettle();
 
-    expect(find.text('OTP code is invalid or expired'), findsOneWidget);
+    expect(find.text('رمز التحقق غير صحيح أو انتهت صلاحيته.'), findsOneWidget);
     expect(find.text('تم تغيير كلمة المرور'), findsNothing);
 
     await tester.enterText(find.byKey(const Key('reset-otp-field')), '1');
     await tester.pump();
-    expect(find.text('OTP code is invalid or expired'), findsNothing);
+    expect(find.text('رمز التحقق غير صحيح أو انتهت صلاحيته.'), findsNothing);
+  });
+
+  testWidgets('verified missing account offers account creation in Arabic', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository()
+      ..failConfirm = true
+      ..confirmFailureCode = 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
+    await _pumpResetScreen(tester, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '123456');
+    await tester.enterText(fields.at(1), 'new-secret');
+    await tester.enterText(fields.at(2), 'new-secret');
+    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('لا يوجد حساب تطبيق'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('reset-create-account-action')),
+      findsOneWidget,
+    );
+    expect(find.text('إنشاء حساب جديد بهذا الرقم'), findsOneWidget);
+    expect(find.textContaining('No account'), findsNothing);
   });
 
   testWidgets('reset request timeout names the operation instead of login', (
@@ -263,5 +299,111 @@ void main() {
 
     expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'reset blocks passwords above 72 UTF-8 bytes at 320px and 1.3 scale',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final repository = await _fakeRepository();
+      await _pumpResetScreen(tester, repository, textScale: 1.3);
+
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال رمز الاستعادة'));
+      await tester.pumpAndSettle();
+
+      final fields = find.byType(TextFormField);
+      final tooLongArabicPassword = 'ك' * 37;
+      await tester.enterText(fields.at(0), '123456');
+      await tester.enterText(fields.at(1), tooLongArabicPassword);
+      await tester.enterText(fields.at(2), tooLongArabicPassword);
+      await tester.ensureVisible(find.text('تغيير كلمة المرور'));
+      await tester.tap(find.text('تغيير كلمة المرور'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('كلمة المرور طويلة جدًا'), findsOneWidget);
+      expect(repository.lastConfirmPassword, isNull);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('reset accepts a password exactly 72 UTF-8 bytes', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    await _pumpResetScreen(tester, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextFormField);
+    final boundaryArabicPassword = 'ك' * 36;
+    await tester.enterText(fields.at(0), '123456');
+    await tester.enterText(fields.at(1), boundaryArabicPassword);
+    await tester.enterText(fields.at(2), boundaryArabicPassword);
+    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pump();
+
+    expect(repository.lastConfirmPassword, boundaryArabicPassword);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('reset success returns to login with phone and invite resume', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    final router = GoRouter(
+      initialLocation:
+          '/reset-password?phone=%2B967777123456&resume=%2Finvite%2Fexample',
+      routes: [
+        GoRoute(
+          path: '/reset-password',
+          builder: (context, state) => ResetPasswordScreen(
+            initialPhone: state.uri.queryParameters['phone'],
+          ),
+        ),
+        GoRoute(
+          path: '/login',
+          builder: (context, state) => Text(
+            'login:${state.uri.queryParameters['phone']}:'
+            '${state.uri.queryParameters['resume']}',
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      Provider<AuthRepository>.value(
+        value: repository,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '123456');
+    await tester.enterText(fields.at(1), 'new-secret');
+    await tester.enterText(fields.at(2), 'new-secret');
+    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('تسجيل الدخول'));
+    await tester.pumpAndSettle();
+
+    final uri = router.routeInformationProvider.value.uri;
+    expect(uri.path, '/login');
+    expect(uri.queryParameters['phone'], '+967777123456');
+    expect(uri.queryParameters['resume'], '/invite/example');
   });
 }

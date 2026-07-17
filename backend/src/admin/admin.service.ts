@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  AppRole,
   ConversationReportStatus,
   NotificationPriority,
   NotificationType,
@@ -624,12 +625,15 @@ export class AdminService {
     status: ProviderStatus,
     reviewNote: string | null,
   ) {
-    const existing = await this.prisma.provider.findUnique({ where: { id } });
-    if (!existing) {
-      throw new NotFoundException('Provider application not found');
-    }
-
     const provider = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.provider.findUnique({ where: { id }, select: { userId: true } });
+      if (!existing) {
+        throw new NotFoundException('Provider application not found');
+      }
+      if (existing.userId === currentUser.id) {
+        throw new BadRequestException('Provider owners cannot review their own application');
+      }
+
       const updated = await tx.provider.update({
         where: { id },
         data: {
@@ -642,10 +646,31 @@ export class AdminService {
       });
 
       if (updated.userId && status === ProviderStatus.ACTIVE) {
-        await tx.user.update({
-          where: { id: updated.userId },
-          data: { role: UserRole.PROVIDER },
+        let promoted = await tx.user.updateMany({
+          where: {
+            id: updated.userId,
+            role: { in: [UserRole.USER, UserRole.PROVIDER] },
+          },
+          data: {
+            role: UserRole.PROVIDER,
+            appRole: AppRole.PROVIDER,
+          },
         });
+        if (promoted.count === 0) {
+          promoted = await tx.user.updateMany({
+            where: {
+              id: updated.userId,
+              role: UserRole.ADMIN,
+              appPasswordHash: { not: null },
+            },
+            data: { appRole: AppRole.PROVIDER },
+          });
+        }
+        if (promoted.count !== 1) {
+          throw new BadRequestException(
+            'The application identity is not eligible for provider approval',
+          );
+        }
       }
 
       return updated;
@@ -744,7 +769,9 @@ export class AdminService {
 
   private adminReviewInclude() {
     return {
-      user: { select: { id: true, name: true } },
+      user: {
+        select: { id: true, name: true, appName: true, role: true },
+      },
       provider: { include: { city: true, primaryCategory: true } },
     } satisfies Prisma.ProviderReviewInclude;
   }

@@ -20,6 +20,10 @@ import {
 } from "../sharing/permission.service";
 import { weddingLocationResponse } from "../wedding-plans/wedding-location";
 import {
+  applicationNameFields,
+  toApplicationUserContact,
+} from "../users/application-user-identity";
+import {
   DashboardPermissionSummary,
   WeddingPlanDashboardSummaryResponse,
 } from "./dashboard.contracts";
@@ -597,7 +601,11 @@ export class DashboardService {
   private async getSharedMembers(weddingPlanId: string) {
     const members = await this.prisma.sharedMember.findMany({
       where: { weddingPlanId },
-      include: { user: { select: { id: true, name: true, phone: true } } },
+      include: {
+        user: {
+          select: { id: true, phone: true, ...applicationNameFields },
+        },
+      },
       orderBy: { createdAt: "asc" },
     });
 
@@ -605,7 +613,7 @@ export class DashboardService {
       id: member.id,
       weddingPlanId: member.weddingPlanId,
       userId: member.userId,
-      user: member.user,
+      user: toApplicationUserContact(member.user),
       role: member.role,
       canViewMoney: member.canViewMoney || member.canManageMoney,
       canEditPlan: member.canEditPlan,

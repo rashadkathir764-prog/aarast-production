@@ -53,6 +53,7 @@ const sidebar = read(join(srcRoot, 'layout', 'Sidebar.tsx'));
 const dashboard = read(join(srcRoot, 'pages', 'DashboardPage.tsx'));
 const adminApi = read(join(srcRoot, 'api', 'admin.ts'));
 const authApi = read(join(srcRoot, 'api', 'auth.ts'));
+const loginPage = read(join(srcRoot, 'pages', 'LoginPage.tsx'));
 const apiClient = read(join(srcRoot, 'api', 'client.ts'));
 const adminRuntimeSmoke = read(join(process.cwd(), 'scripts', 'admin-runtime-smoke.mjs'));
 const conversationReportsPagePath = join(
@@ -108,6 +109,17 @@ addCheck(
     !apiClient.includes('sessionStorage') &&
     authApi.includes('/auth/admin/login/complete') &&
     apiClient.includes("credentials: 'include'"),
+);
+
+addCheck(
+  'Admin password recovery is real and keeps its challenge in memory only',
+  authApi.includes('/auth/admin/password-reset/request') &&
+    authApi.includes('/auth/admin/password-reset/confirm') &&
+    loginPage.includes('requestAdminPasswordReset') &&
+    loginPage.includes('confirmAdminPasswordReset') &&
+    loginPage.includes('نسيت كلمة المرور؟') &&
+    !loginPage.includes('localStorage') &&
+    !loginPage.includes('sessionStorage'),
 );
 
 for (const check of checks) {

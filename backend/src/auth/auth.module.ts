@@ -14,6 +14,7 @@ import {
   OtpDispatchQuotaService,
 } from './otp-dispatch-quota.service';
 import { OtpDispatchQuotaCleanupScheduler } from './otp-dispatch-quota-cleanup.scheduler';
+import { AuthChallengeCleanupScheduler } from './auth-challenge-cleanup.scheduler';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { OtpDispatchQuotaCleanupScheduler } from './otp-dispatch-quota-cleanup.s
     { provide: OTP_DISPATCH_NOW, useValue: () => new Date() },
     OtpDispatchQuotaService,
     OtpDispatchQuotaCleanupScheduler,
+    AuthChallengeCleanupScheduler,
   ],
   exports: [OwnershipContextService, JwtModule],
 })

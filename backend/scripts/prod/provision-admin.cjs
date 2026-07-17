@@ -25,8 +25,10 @@ function selectProvisioningIdentity(users) {
 }
 
 function validatePassword(value) {
-  if (value.length < 12 || value.length > 72) {
-    throw new Error('PROVISION_ADMIN_PASSWORD must contain 12 to 72 characters.');
+  if (value.length < 12 || Buffer.byteLength(value, 'utf8') > 72) {
+    throw new Error(
+      'PROVISION_ADMIN_PASSWORD must contain at least 12 characters and at most 72 UTF-8 bytes.',
+    );
   }
   if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
     throw new Error('PROVISION_ADMIN_PASSWORD must contain letters and digits.');
@@ -38,8 +40,18 @@ function throttleSubjectHash(phone, pepper) {
     throw new Error('AUTH_LOGIN_THROTTLE_PEPPER is required.');
   }
   return createHmac('sha256', pepper)
-    .update(`v1:${phone}`, 'utf8')
+    .update(`v2:admin:${phone}`, 'utf8')
     .digest('hex');
+}
+
+function applicationIdentityForProvisioning(existing) {
+  if (!existing || existing.role === 'ADMIN') return {};
+  return {
+    appPasswordHash: existing.appPasswordHash ?? existing.passwordHash,
+    appName: existing.appName ?? existing.name,
+    appEmail: existing.appEmail ?? existing.email,
+    appAvatarUrl: existing.appAvatarUrl ?? existing.avatarUrl,
+  };
 }
 
 async function provisionAdmin(environment = process.env) {
@@ -76,6 +88,7 @@ async function provisionAdmin(environment = process.env) {
           ? await tx.user.update({
               where: { id: existing.id },
               data: {
+                ...applicationIdentityForProvisioning(existing),
                 phone: canonicalPhone,
                 name,
                 role: 'ADMIN',
@@ -101,11 +114,24 @@ async function provisionAdmin(environment = process.env) {
           data: { revokedAt: now },
         });
         await tx.adminLoginChallenge.deleteMany({ where: { userId: user.id } });
+        await tx.adminPasswordResetChallenge.deleteMany({
+          where: { userId: user.id },
+        });
+        await tx.otpCode.updateMany({
+          where: {
+            phone: canonicalPhone,
+            purpose: { in: ['ADMIN_LOGIN', 'ADMIN_RESET_PASSWORD'] },
+            consumedAt: null,
+          },
+          data: { consumedAt: now },
+        });
         await tx.loginThrottle.deleteMany({ where: { subjectHash } });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
-    console.log('SUPER_ADMIN provisioned; previous sessions and challenges were revoked.');
+    console.log(
+      'SUPER_ADMIN provisioned; previous sessions, challenges, and administrator OTPs were revoked.',
+    );
   } catch (error) {
     if (error?.code === 'P2002' || error?.code === 'P2034') {
       throw new Error(
@@ -126,6 +152,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  applicationIdentityForProvisioning,
   normalizeYemeniPhone,
   phoneVariants,
   provisionAdmin,

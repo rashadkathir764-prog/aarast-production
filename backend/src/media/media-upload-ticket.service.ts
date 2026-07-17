@@ -17,6 +17,7 @@ export interface MediaUploadVerificationClaim {
 export interface MediaConsumptionTarget {
   type:
     | 'USER_AVATAR'
+    | 'USER_APP_AVATAR'
     | 'PROVIDER_LOGO'
     | 'PROVIDER_COVER'
     | 'SERVICE_IMAGE'

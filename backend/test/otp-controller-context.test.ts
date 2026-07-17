@@ -18,12 +18,18 @@ test('every OTP-producing auth route forwards the trusted request IP', async () 
     requestPasswordReset: async (_dto: unknown, context: { ip?: string }) => {
       calls.push({ method: 'password-reset', ip: context.ip });
     },
+    requestAdminPasswordReset: async (
+      _dto: unknown,
+      context: { ip?: string },
+    ) => {
+      calls.push({ method: 'admin-password-reset', ip: context.ip });
+    },
   };
   const controller = new AuthController(authService as any);
   const request = { ip: '203.0.113.10' } as any;
 
   await controller.register(
-    { name: 'Test', phone: '777123456', password: 'secret123' },
+    { name: 'Test', phone: '777123456' },
     request,
   );
   await controller.startAdminLogin(
@@ -35,11 +41,16 @@ test('every OTP-producing auth route forwards the trusted request IP', async () 
     request,
   );
   await controller.requestPasswordReset({ phone: '777123456' }, request);
+  await controller.requestAdminPasswordReset(
+    { phone: '777123456' },
+    request,
+  );
 
   assert.deepEqual(calls, [
     { method: 'register', ip: '203.0.113.10' },
     { method: 'admin-login', ip: '203.0.113.10' },
     { method: 'otp', ip: '203.0.113.10' },
     { method: 'password-reset', ip: '203.0.113.10' },
+    { method: 'admin-password-reset', ip: '203.0.113.10' },
   ]);
 });

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NotificationType } from "@prisma/client";
+import { NotificationType, UserRole } from "@prisma/client";
 import {
   maskPhone,
   toAdminNotificationPrivacyView,
@@ -10,16 +10,30 @@ import { safeTelemetryException } from "../src/common/filters/global-exception.f
 import { UsersService } from "../src/users/users.service";
 
 test("review identity uses an allowlist that excludes contact details", () => {
-  const response = toReviewIdentity({
+  const rawReviewer = {
     id: "user-1",
     name: "Reviewer",
+    appName: null,
+    role: UserRole.USER,
     phone: "+967777123456",
     email: "private@example.com",
-  } as { id: string; name: string; phone: string; email: string });
+  };
+  const response = toReviewIdentity(rawReviewer);
 
   assert.deepEqual(response, { id: "user-1", name: "Reviewer" });
   assert.equal("phone" in response, false);
   assert.equal("email" in response, false);
+});
+
+test("public review identity uses an administrator application name", () => {
+  const response = toReviewIdentity({
+    id: "admin-1",
+    name: "Private Admin Identity",
+    appName: "Wedding User",
+    role: UserRole.ADMIN,
+  });
+
+  assert.deepEqual(response, { id: "admin-1", name: "Wedding User" });
 });
 
 test("known financial admin notifications disclose no amount or creditor", () => {

@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-15
+Snapshot date: 2026-07-17
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -45,8 +45,9 @@ and runtime checks override historical completion reports.
 
 ## Active Implemented Scope
 
-- Verified-phone registration, atomic OTP consumption, password/OTP login,
-  profile, and settings.
+- Verified-phone registration, atomic OTP consumption, legacy unverified-row
+  recovery, stable Arabic auth errors, password/OTP login, separate app/admin
+  credentials, administrator password recovery, profile, and settings.
 - Wedding plans, onboarding, dashboard summaries, the canonical money domain
   (general budget, categories, costs, payments, and payment schedules), tasks,
   guests, sharing, permissions, notifications, and offline/cache support.
@@ -128,6 +129,14 @@ and runtime checks override historical completion reports.
   short-lived hashed challenge. General login/OTP/refresh paths cannot bypass
   MFA; access tokens are memory-only, refresh tokens are rotating HttpOnly
   cookies, and every admin JWT is bound to a live revocable server session.
+- The same phone identity may use both the wedding app and administration
+  without sharing credentials, profile presentation, session scope, login
+  throttle, or OTP purpose. App sessions never gain admin MFA, cannot mutate or
+  delete the administrator identity, and app recovery never changes or revokes
+  the admin realm. Admin recovery revokes only admin sessions without changing
+  the app password. App-facing relations resolve only the separate app name and
+  avatar; an app-side provider profile changes `appRole` without overwriting an
+  administrator database role.
 - Mobile and admin surfaces listed by the generated route references.
 
 ## Completed Prelaunch Money Reset

@@ -1,6 +1,6 @@
 # QA And Testing
 
-Snapshot date: 2026-07-15
+Snapshot date: 2026-07-17
 
 This folder owns current testing expectations. Older QA files were archived
 during the 2026-07 docs consolidation.
@@ -70,7 +70,14 @@ Money-domain changes additionally fail unless tests prove:
 - removed finance endpoints return `404` with an authenticated request.
 
 For temporary OpenWA OTP work, additionally run the OpenWA channel, durable
-quota, readiness, registration, admin MFA, and password-reset source tests.
+quota, readiness, registration, admin MFA, admin password-recovery, and
+application password-reset tests. Auth gates must prove legacy unverified-row
+claiming, separate app/admin hashes, stable post-proof error codes, neutral
+admin recovery responses and transport timing, persisted session scopes,
+separate login throttle realms, private `ADMIN_LOGIN` OTP binding, a 72-byte
+bcrypt boundary, one-time concurrent challenge consumption, protected admin
+identity deletion/profile updates, and no raw phone or challenge token
+persistence.
 The release gate is not complete until the pinned hardened fork itself passes
 its tests and a real QR-linked session proves the sent OTP marker is absent
 from message history, database rows, logs, hooks, and webhooks. A mocked Aarast

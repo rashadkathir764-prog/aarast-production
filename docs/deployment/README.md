@@ -52,11 +52,13 @@ idempotent operation: `npm run prod:provision-admin` from the backend runtime.
 The operator must provide `PROVISION_ADMIN_PHONE`, `PROVISION_ADMIN_PASSWORD`,
 `PROVISION_ADMIN_NAME`, and
 `PROVISION_ADMIN_CONFIRM=PROVISION_AARAST_ADMIN` through the private runtime
-environment. The operation requires a 12-to-72-character password containing
-letters and digits, never prints the phone or password, promotes only the
-target account, and revokes its previous sessions, MFA challenges, and login
-lock before completion. These variables are one-time operator inputs and must
-not be committed or left in the persistent deployment environment.
+environment. The operation requires at least 12 characters containing an
+English letter and a digit, with a hard maximum of 72 UTF-8 bytes. It never
+prints the phone or password, promotes only the target account, preserves an
+existing wedding-application credential/profile as the separate app identity,
+and revokes previous sessions, MFA challenges, and the administrator-realm
+login lock before completion. These variables are one-time operator inputs and
+must not be committed or left in the persistent deployment environment.
 
 ## OTP Release Gate
 

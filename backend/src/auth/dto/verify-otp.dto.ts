@@ -1,6 +1,6 @@
 import { OtpPurpose } from '@prisma/client';
 import {
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsString,
   Length,
@@ -20,6 +20,6 @@ export class VerifyOtpDto {
   @Matches(/^\d{6}$/)
   code!: string;
 
-  @IsEnum(OtpPurpose)
+  @IsIn([OtpPurpose.LOGIN, OtpPurpose.VERIFY_PHONE])
   purpose!: OtpPurpose;
 }

@@ -1,7 +1,10 @@
 'use strict';
 
 async function registerVerified(request, details) {
-  const pending = await request('POST', '/api/v1/auth/register', details);
+  const pending = await request('POST', '/api/v1/auth/register', {
+    name: details.name,
+    phone: details.phone,
+  });
   if (
     pending.status !== 201 ||
     pending.body?.registrationPending !== true

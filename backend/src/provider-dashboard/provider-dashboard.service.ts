@@ -35,6 +35,10 @@ import {
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  applicationNameFields,
+  toApplicationUserContact,
+} from '../users/application-user-identity';
 import { weddingLocationResponse } from '../wedding-plans/wedding-location';
 import { ApplyProviderDto } from './dto/apply-provider.dto';
 import { CreateProviderPackageDto } from './dto/create-provider-package.dto';
@@ -63,13 +67,13 @@ type ProviderPackageRecord = ProviderPackage & {
   service: ProviderService | null;
 };
 type ProviderQuoteRecord = QuoteRequest & {
-  user: Pick<User, 'id' | 'name' | 'phone'>;
+  user: Pick<User, 'id' | 'name' | 'appName' | 'phone' | 'role'>;
   service?: (ProviderService & { category: ProviderCategory }) | null;
   weddingPlan?: Pick<WeddingPlan, 'id' | 'title' | 'city' | 'weddingDate'> | null;
   offers?: QuoteOffer[];
 };
 type ProviderReviewRecord = ProviderReview & {
-  user: Pick<User, 'id' | 'name'>;
+  user: Pick<User, 'id' | 'name' | 'appName' | 'role'>;
 };
 
 @Injectable()
@@ -93,6 +97,32 @@ export class ProviderDashboardService {
     const primaryCategoryId = dto.categoryIds?.[0] ?? null;
 
     const provider = await this.prisma.$transaction(async (tx) => {
+      let applicationIdentity = await tx.user.updateMany({
+        where: {
+          id: currentUser.id,
+          role: { in: [UserRole.USER, UserRole.PROVIDER] },
+        },
+        data: {
+          role: UserRole.PROVIDER,
+          appRole: AppRole.PROVIDER,
+        },
+      });
+      if (applicationIdentity.count === 0) {
+        applicationIdentity = await tx.user.updateMany({
+          where: {
+            id: currentUser.id,
+            role: UserRole.ADMIN,
+            appPasswordHash: { not: null },
+          },
+          data: { appRole: AppRole.PROVIDER },
+        });
+      }
+      if (applicationIdentity.count !== 1) {
+        throw new ConflictException(
+          'The application identity is not eligible for a provider account',
+        );
+      }
+
       const created = await tx.provider.create({
         data: {
           userId: currentUser.id,
@@ -104,14 +134,6 @@ export class ProviderDashboardService {
           status: ProviderStatus.PENDING,
         },
         include: { city: true, primaryCategory: true },
-      });
-
-      await tx.user.update({
-        where: { id: currentUser.id },
-        data: {
-          role: UserRole.PROVIDER,
-          appRole: AppRole.PROVIDER,
-        },
       });
 
       return created;
@@ -723,7 +745,9 @@ export class ProviderDashboardService {
     const provider = await this.findOwnedProviderOrThrow(currentUser.id);
     const reviews = await this.prisma.providerReview.findMany({
       where: { providerId: provider.id },
-      include: { user: { select: { id: true, name: true } } },
+      include: {
+        user: { select: { id: true, ...applicationNameFields } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -831,7 +855,9 @@ export class ProviderDashboardService {
 
   private quoteInclude() {
     return {
-      user: { select: { id: true, name: true, phone: true } },
+      user: {
+        select: { id: true, phone: true, ...applicationNameFields },
+      },
       service: { include: { category: true } },
       weddingPlan: {
         select: { id: true, title: true, city: true, weddingDate: true },
@@ -1011,7 +1037,7 @@ export class ProviderDashboardService {
     return {
       id: quote.id,
       userId: quote.userId,
-      user: quote.user,
+      user: toApplicationUserContact(quote.user),
       weddingPlanId: quote.weddingPlanId,
       weddingPlan: quote.weddingPlan ?? null,
       providerId: quote.providerId,

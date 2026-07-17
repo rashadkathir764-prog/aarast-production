@@ -16,12 +16,13 @@ test("admin login requires a persisted password-bound MFA challenge", () => {
   const controller = read("src/auth/auth.controller.ts");
 
   assert.match(schema, /model AdminLoginChallenge/);
+  assert.match(schema, /otpId\s+String\s+@unique/);
   assert.match(schema, /tokenHash\s+String\s+@unique/);
   assert.match(schema, /expiresAt\s+DateTime/);
   assert.match(schema, /consumedAt\s+DateTime\?/);
   assert.match(service, /UserRole\.ADMIN/);
   assert.match(service, /adminLoginChallenge\.create/);
-  assert.match(service, /OtpPurpose\.LOGIN/);
+  assert.match(service, /OtpPurpose\.ADMIN_LOGIN/);
   assert.match(controller, /@Post\(["']admin\/login["']\)/);
   assert.match(controller, /@Post\(["']admin\/login\/complete["']\)/);
 });
@@ -42,7 +43,7 @@ test("admin MFA can securely verify a pre-MFA administrator phone", () => {
   );
 
   assert.match(startBlock, /allowUnverifiedPhone:\s*true/);
-  assert.match(completeBlock, /assertOtpCodeMatches/);
+  assert.match(completeBlock, /assertSpecificOtpCodeMatches/);
   assert.match(
     completeBlock,
     /phoneVerifiedAt:\s*challenge\.user\.phoneVerifiedAt\s*\?\?\s*now/,
@@ -93,8 +94,12 @@ test("admin guard requires both the ADMIN role and MFA assurance", () => {
   );
 });
 
-test("general admin password login is rejected and OTP never mints admin MFA", () => {
+test("application and admin credentials stay separated and only admin MFA mints admin access", () => {
   const service = read("src/auth/auth.service.ts");
+  const credentialsBlock = service.slice(
+    service.indexOf("private async validatePasswordCredentials("),
+    service.indexOf("async refresh("),
+  );
   const loginBlock = service.slice(
     service.indexOf("async login(dto:"),
     service.indexOf("async startAdminLogin("),
@@ -104,10 +109,8 @@ test("general admin password login is rejected and OTP never mints admin MFA", (
     service.indexOf("async requestPasswordReset("),
   );
 
-  assert.match(
-    loginBlock,
-    /user\.role === UserRole\.ADMIN[\s\S]*?Admin accounts must use OTP login/,
-  );
+  assert.match(credentialsBlock, /requiredRole === UserRole\.ADMIN/);
+  assert.match(credentialsBlock, /user\.appPasswordHash/);
   assert.doesNotMatch(loginBlock, /createAuthResponse\([^)]*,\s*true/);
   assert.doesNotMatch(otpBlock, /createAuthResponse\([^)]*,\s*true/);
   assert.match(read("src/admin/admin.guard.ts"), /adminMfa !== true/);
@@ -115,6 +118,26 @@ test("general admin password login is rejected and OTP never mints admin MFA", (
     read("src/auth/jwt.strategy.ts"),
     /payload\.amr === 'admin_mfa'/,
   );
+});
+
+test("application and administrator sessions are persisted and revoked by scope", () => {
+  const schema = read("prisma/schema.prisma");
+  const service = read("src/auth/auth.service.ts");
+  const strategy = read("src/auth/jwt.strategy.ts");
+
+  assert.match(schema, /enum AuthSessionScope/);
+  assert.match(schema, /scope\s+AuthSessionScope\s+@default\(APPLICATION\)/);
+  assert.match(service, /scope:\s*AuthSessionScope\.APPLICATION/);
+  assert.match(service, /scope:\s*AuthSessionScope\.ADMIN/);
+  assert.match(strategy, /scope:\s*AuthSessionScope\.ADMIN/);
+});
+
+test("public OTP cannot mint or invalidate an administrator MFA code", () => {
+  const requestDto = read("src/auth/dto/request-otp.dto.ts");
+  const verifyDto = read("src/auth/dto/verify-otp.dto.ts");
+
+  assert.doesNotMatch(requestDto, /OtpPurpose\.ADMIN_LOGIN/);
+  assert.doesNotMatch(verifyDto, /OtpPurpose\.ADMIN_LOGIN/);
 });
 
 test("admin access JWTs are bound to a live revocable server session", () => {

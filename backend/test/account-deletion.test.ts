@@ -2,7 +2,8 @@ import "reflect-metadata";
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Prisma } from "@prisma/client";
+import { ForbiddenException } from "@nestjs/common";
+import { Prisma, UserRole } from "@prisma/client";
 import { UsersService } from "../src/users/users.service";
 
 const PLAN_CHILDREN = [
@@ -37,7 +38,7 @@ function recordingTx(planIds: string[]) {
       queries.push({ text, values });
       if (text.includes('FROM "User"')) {
         calls.push("lockUser");
-        return [{ id: "u1" }];
+        return [{ id: "u1", role: UserRole.USER }];
       }
       if (text.includes('FROM "WeddingPlan"')) {
         calls.push("lockPlans");
@@ -87,10 +88,39 @@ const serviceFor = (
   },
 ) =>
   new UsersService(
-    { $transaction: async (fn: any) => fn(tx) } as any,
+    {
+      user: { findUnique: async () => ({ role: UserRole.USER }) },
+      $transaction: async (fn: any) => fn(tx),
+    } as any,
     {} as any,
     mediaStorage,
   );
+
+test("application account deletion can never erase an administrator identity", async () => {
+  let transactions = 0;
+  let mediaDeletes = 0;
+  const service = new UsersService(
+    {
+      user: { findUnique: async () => ({ role: UserRole.ADMIN }) },
+      $transaction: async () => {
+        transactions += 1;
+      },
+    } as any,
+    {} as any,
+    {
+      scheduleAllOwnedMediaDeletion: async () => {
+        mediaDeletes += 1;
+      },
+    } as any,
+  );
+
+  await assert.rejects(
+    () => service.deleteMe({ id: "admin", phone: null } as any),
+    ForbiddenException,
+  );
+  assert.equal(transactions, 0);
+  assert.equal(mediaDeletes, 0);
+});
 
 test("account deletion rolls back when durable media scheduling fails", async () => {
   const { tx, calls } = recordingTx([]);
@@ -183,6 +213,7 @@ test("account deletion retries a deadlock without changing its read-committed me
   const transactionOptions: unknown[] = [];
   let attempts = 0;
   const prisma = {
+    user: { findUnique: async () => ({ role: UserRole.USER }) },
     $transaction: async (
       operation: (value: any) => Promise<unknown>,
       options: unknown,

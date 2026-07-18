@@ -20,6 +20,7 @@ class _FakeAuthRepository extends AuthRepository {
   bool failConfirm = false;
   String? confirmFailureCode;
   bool failRequestWithNetworkError = false;
+  ApiException? requestFailure;
   String delivery = 'LOCAL_DEV';
   String? deliveryMessage = 'رمز التحقق مؤقت للتجربة المحلية: 123456';
 
@@ -32,6 +33,7 @@ class _FakeAuthRepository extends AuthRepository {
         isNetworkFailure: true,
       );
     }
+    if (requestFailure != null) throw requestFailure!;
     return OtpRequestResult(
       phone: phone,
       purpose: 'RESET_PASSWORD',
@@ -227,6 +229,29 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('تعذر تسجيل الدخول'), findsNothing);
+  });
+
+  testWidgets('reset request reports unavailable OTP as a service failure', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository()
+      ..requestFailure = const ApiException(
+        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+        statusCode: 503,
+        serverCode: 'OTP_DELIVERY_UNAVAILABLE',
+      );
+    await _pumpResetScreen(tester, repository);
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+
+    expect(repository.requestCalls, 1);
+    expect(
+      find.text('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('كلمة المرور غير صحيحة'), findsNothing);
   });
 
   testWidgets(

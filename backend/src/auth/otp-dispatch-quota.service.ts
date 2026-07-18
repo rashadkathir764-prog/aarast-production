@@ -5,10 +5,10 @@ import {
   Inject,
   Injectable,
   Optional,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { otpDeliveryUnavailableError } from './auth-error';
 
 export interface OtpDispatchContext {
   ip?: string | null;
@@ -95,9 +95,7 @@ export class OtpDispatchQuotaService {
         ) {
           continue;
         }
-        throw new ServiceUnavailableException(
-          'حماية رمز التحقق غير متاحة مؤقتًا. حاول لاحقًا.',
-        );
+        throw otpDeliveryUnavailableError();
       }
     }
   }
@@ -132,9 +130,7 @@ export class OtpDispatchQuotaService {
   private globalDailyLimit(): number {
     const configured = Number(process.env.OTP_GLOBAL_DAILY_LIMIT ?? 150);
     if (!Number.isInteger(configured) || configured < 1 || configured > 10_000) {
-      throw new ServiceUnavailableException(
-        'حماية رمز التحقق غير متاحة مؤقتًا. حاول لاحقًا.',
-      );
+      throw otpDeliveryUnavailableError();
     }
     return configured;
   }
@@ -142,9 +138,7 @@ export class OtpDispatchQuotaService {
   static subjectHash(scope: string, subject: string): string {
     const configured = process.env.AUTH_LOGIN_THROTTLE_PEPPER?.trim();
     if (!configured && process.env.NODE_ENV === 'production') {
-      throw new ServiceUnavailableException(
-        'حماية رمز التحقق غير متاحة مؤقتًا. حاول لاحقًا.',
-      );
+      throw otpDeliveryUnavailableError();
     }
     const pepper = configured || 'aarast-local-login-throttle-pepper-v1';
     return createHmac('sha256', pepper)

@@ -52,6 +52,28 @@ void main() {
     },
   );
 
+  test('OTP service failure is not collapsed into wrong password', () async {
+    final harness = await _AuthHarness.create();
+    harness.repository.loginFailure = const ApiException(
+      'OTP delivery is temporarily unavailable',
+      statusCode: 503,
+      serverCode: 'OTP_DELIVERY_UNAVAILABLE',
+    );
+
+    final success = await harness.controller.login(
+      phone: '777123456',
+      password: 'correct-password',
+    );
+
+    expect(success, isFalse);
+    expect(harness.controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
+    expect(
+      harness.controller.errorMessage,
+      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+    );
+    expect(harness.controller.errorMessage, isNot(contains('كلمة المرور')));
+  });
+
   test(
     'registration conflict is translated after phone ownership proof',
     () async {

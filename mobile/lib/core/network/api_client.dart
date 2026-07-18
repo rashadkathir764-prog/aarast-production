@@ -8,6 +8,8 @@ typedef SessionRefresher = Future<bool> Function();
 
 const aarastBackendConnectionErrorMessage =
     'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
+const aarastOtpDeliveryUnavailableMessage =
+    'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.';
 
 class ApiClient {
   ApiClient({required TokenProvider tokenProvider, Dio? uploadDio})
@@ -467,6 +469,7 @@ class ApiException implements Exception {
   static String? _localizedAuthMessage(String? code) {
     return switch (code) {
       'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
+      'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
         'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف.',
       'ACCOUNT_ALREADY_EXISTS' =>

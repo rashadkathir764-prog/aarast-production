@@ -160,7 +160,9 @@ test('OTP quota rejects an invalid global ceiling instead of silently disabling 
       const harness = createHarness();
       await assert.rejects(
         () => harness.service.consume('+967777000001'),
-        /حماية رمز التحقق غير متاحة مؤقتًا/,
+        (error: any) =>
+          error.getStatus?.() === 503 &&
+          error.getResponse?.().code === 'OTP_DELIVERY_UNAVAILABLE',
       );
     },
   );

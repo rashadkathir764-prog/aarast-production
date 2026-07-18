@@ -24,6 +24,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
+    public readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -119,7 +120,11 @@ function send(
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await readJson(response);
   if (!response.ok) {
-    throw new ApiError(cleanMessage(payload), response.status);
+    throw new ApiError(
+      cleanMessage(payload),
+      response.status,
+      extractErrorCode(payload),
+    );
   }
 
   return payload as T;
@@ -140,9 +145,29 @@ function cleanMessage(payload: unknown): string {
     const message = (payload as { message?: unknown }).message;
     if (Array.isArray(message)) return message[0]?.toString() ?? fallbackError;
     if (typeof message === 'string') return message;
+    if (message && typeof message === 'object' && 'message' in message) {
+      const nestedMessage = (message as { message?: unknown }).message;
+      if (typeof nestedMessage === 'string' && nestedMessage.trim()) {
+        return nestedMessage;
+      }
+    }
   }
   if (typeof payload === 'string' && payload.trim()) return payload;
   return fallbackError;
+}
+
+function extractErrorCode(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const directCode = (payload as { code?: unknown }).code;
+  if (typeof directCode === 'string' && directCode.trim()) {
+    return directCode.trim();
+  }
+  const message = (payload as { message?: unknown }).message;
+  if (!message || typeof message !== 'object') return undefined;
+  const nestedCode = (message as { code?: unknown }).code;
+  return typeof nestedCode === 'string' && nestedCode.trim()
+    ? nestedCode.trim()
+    : undefined;
 }
 
 const fallbackError = 'تعذر تنفيذ الطلب. تأكد من تشغيل الخادم ثم حاول مرة أخرى.';

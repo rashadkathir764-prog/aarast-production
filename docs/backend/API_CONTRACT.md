@@ -53,6 +53,23 @@ Health endpoints have distinct orchestration semantics:
 
 ## Auth
 
+Every OTP-producing endpoint uses one retryable availability contract. A
+disabled or invalid channel configuration, an unavailable quota dependency,
+or a definitive provider delivery failure returns HTTP `503` with:
+
+```json
+{
+  "statusCode": 503,
+  "code": "OTP_DELIVERY_UNAVAILABLE",
+  "message": "خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا."
+}
+```
+
+The response never exposes channel configuration or provider details. Quota
+exhaustion remains HTTP `429`, and an explicitly uncertain delivery keeps the
+issued code active and follows the separate `200` notice contract documented
+below.
+
 ### `POST /api/v1/auth/register`
 
 Registration is a two-call verified-phone flow. The first call sends a
@@ -234,9 +251,10 @@ Requires JWT. Returns the safe current user object without `passwordHash`.
   replayed, unknown, and non-admin challenges return
   the same `ADMIN_RESET_INVALID_OR_EXPIRED` code.
 
-A definitive WhatsApp delivery failure returns the same `503` for every phone
-and leaves no usable challenge. This preserves honest transport feedback
-without disclosing administrator account existence through body or timing.
+A definitive WhatsApp delivery failure returns the same
+`503`/`OTP_DELIVERY_UNAVAILABLE` contract for every phone and leaves no usable
+challenge. This preserves honest transport feedback without disclosing
+administrator account existence through body or timing.
 
 Additional current auth/profile routes:
 

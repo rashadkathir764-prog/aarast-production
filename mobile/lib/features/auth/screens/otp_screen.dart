@@ -150,6 +150,9 @@ class _OtpScreenState extends State<OtpScreen> {
             phone: registration.phone,
             password: registration.password,
             otpCode: code,
+            resumeInviteToken: _privateInviteTokenFromLocation(
+              widget.successLocation,
+            ),
           );
 
     if (!mounted) return;
@@ -271,6 +274,19 @@ class _OtpScreenState extends State<OtpScreen> {
     return location != null &&
         location.startsWith('/') &&
         !location.startsWith('//');
+  }
+
+  String? _privateInviteTokenFromLocation(String? location) {
+    if (!_isSafeInternalLocation(location)) return null;
+    final uri = Uri.tryParse(location!);
+    if (uri == null ||
+        uri.hasAuthority ||
+        uri.pathSegments.length != 2 ||
+        uri.pathSegments.first != 'invites') {
+      return null;
+    }
+    final token = uri.pathSegments.last.trim();
+    return token.isEmpty ? null : token;
   }
 
   @override

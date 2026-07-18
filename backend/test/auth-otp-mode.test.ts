@@ -2,11 +2,21 @@ import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { OtpPurpose } from '@prisma/client';
+import { OtpPurpose, Prisma } from '@prisma/client';
 import { AuthService } from '../src/auth/auth.service';
 
 const safeOtpUnavailableMessage =
-  'خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.';
+  'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';
+
+function isOtpDeliveryUnavailable(error: any): boolean {
+  const response = error.getResponse?.();
+  return (
+    error.getStatus?.() === 503 &&
+    response?.statusCode === 503 &&
+    response?.code === 'OTP_DELIVERY_UNAVAILABLE' &&
+    response?.message === safeOtpUnavailableMessage
+  );
+}
 
 type StoredOtp = {
   id: string;
@@ -246,7 +256,7 @@ test('production with unconfigured OTP returns a safe user-facing error', async 
             phone: '777123456',
             purpose: OtpPurpose.VERIFY_PHONE,
           }),
-        (error: any) => error.message === safeOtpUnavailableMessage,
+        isOtpDeliveryUnavailable,
       );
     },
   );
@@ -267,7 +277,30 @@ test('production does not enable dev OTP even if AUTH_OTP_MODE is dev', async ()
             phone: '777123456',
             purpose: OtpPurpose.VERIFY_PHONE,
           }),
-        (error: any) => error.message === safeOtpUnavailableMessage,
+        isOtpDeliveryUnavailable,
+      );
+    },
+  );
+});
+
+test('an unavailable OTP channel configuration returns the stable 503 contract', async () => {
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'openwa',
+      OPENWA_BASE_URL: undefined,
+      OPENWA_SESSION_ID: undefined,
+      OPENWA_API_KEY: undefined,
+      NODE_ENV: 'test',
+    },
+    async () => {
+      const service = createService({ consume: async () => undefined });
+      await assert.rejects(
+        () =>
+          service.requestOtp({
+            phone: '777123456',
+            purpose: OtpPurpose.VERIFY_PHONE,
+          }),
+        isOtpDeliveryUnavailable,
       );
     },
   );
@@ -427,7 +460,7 @@ test('OpenWA definitive 5xx delivery failures consume the OTP and return 503', a
                 phone: '777123456',
                 purpose: OtpPurpose.RESET_PASSWORD,
               }),
-            (error: any) => error.message === safeOtpUnavailableMessage,
+            isOtpDeliveryUnavailable,
           );
           const activeOtp = await (service as any).prisma.otpCode.findFirst({
             where: {
@@ -464,6 +497,37 @@ test('dev OTP mode never consumes the production delivery quota', async () => {
         purpose: OtpPurpose.VERIFY_PHONE,
       });
       assert.equal(consumed, false);
+    },
+  );
+});
+
+test('exhausted OTP write retries return the stable availability contract', async () => {
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'dev',
+      AUTH_DEV_OTP_CODE: '123456',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      const service = createService({ consume: async () => undefined });
+      let attempts = 0;
+      (service as any).prisma.$transaction = async () => {
+        attempts += 1;
+        throw new Prisma.PrismaClientKnownRequestError(
+          'serialization conflict',
+          { code: 'P2034', clientVersion: 'test' },
+        );
+      };
+
+      await assert.rejects(
+        () =>
+          service.requestOtp({
+            phone: '777123456',
+            purpose: OtpPurpose.LOGIN,
+          }),
+        isOtpDeliveryUnavailable,
+      );
+      assert.equal(attempts, 3);
     },
   );
 });

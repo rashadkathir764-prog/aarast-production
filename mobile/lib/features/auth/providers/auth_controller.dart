@@ -116,7 +116,9 @@ class AuthController extends ChangeNotifier {
     required String phone,
     required String password,
     required String otpCode,
+    String? resumeInviteToken,
   }) async {
+    final cleanResumeToken = _validInviteToken(resumeInviteToken);
     return _submit(() async {
       final response = await _authRepository.register(
         name: name.trim(),
@@ -129,6 +131,12 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
+      if (cleanResumeToken != null) {
+        _pendingInviteResumeToken = cleanResumeToken;
+        _pendingInviteRouteClaimed = false;
+      } else {
+        _clearPendingInviteResume();
+      }
       unawaited(_offlineSyncService?.syncPendingChanges());
     });
   }
@@ -412,6 +420,7 @@ class AuthController extends ChangeNotifier {
   static String? _messageForServerCode(String? code) {
     return switch (code) {
       'INVALID_CREDENTIALS' => _safeLoginFailureMessage,
+      'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
         'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف. استخدم «الدخول برمز تحقق» للمتابعة.',
       'ACCOUNT_ALREADY_EXISTS' =>

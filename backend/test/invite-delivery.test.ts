@@ -179,3 +179,89 @@ test('invite OTP is sent only when the bearer token and canonical phone match', 
   );
   assert.equal(authCalls.length, 1);
 });
+
+test('invite OTP never dispatches for accepted, declined, cancelled, or expired links', async () => {
+  const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+  const expectedHash = createHash('sha256').update(token).digest('hex');
+  const activeExpiry = new Date(Date.now() + 60_000);
+  const terminalRows = [
+    {
+      label: 'accepted',
+      acceptedAt: new Date(),
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: activeExpiry,
+    },
+    {
+      label: 'declined',
+      acceptedAt: null,
+      declinedAt: new Date(),
+      revokedAt: null,
+      expiresAt: activeExpiry,
+    },
+    {
+      label: 'cancelled',
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: new Date(),
+      expiresAt: activeExpiry,
+    },
+    {
+      label: 'expired',
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() - 60_000),
+    },
+  ] as const;
+
+  for (const row of terminalRows) {
+    let authCalls = 0;
+    const service = new InviteAccessService(
+      {
+        planInvite: {
+          findFirst: async ({ where }: any) => {
+            const matches =
+              where.tokenHash === expectedHash &&
+              where.normalizedPhone === '+967777123456' &&
+              (where.acceptedAt === undefined ||
+                row.acceptedAt === where.acceptedAt) &&
+              (where.declinedAt === undefined ||
+                row.declinedAt === where.declinedAt) &&
+              (where.revokedAt === undefined ||
+                row.revokedAt === where.revokedAt) &&
+              (where.expiresAt?.gt === undefined ||
+                row.expiresAt.getTime() > where.expiresAt.gt.getTime());
+            return matches ? { id: 'invite-1' } : null;
+          },
+        },
+      } as any,
+      {
+        requestOtp: async () => {
+          authCalls += 1;
+          return { delivery: 'WHATSAPP' };
+        },
+      } as any,
+    );
+
+    await assert.rejects(
+      () =>
+        service.requestOtp(
+          token,
+          { phone: '777 123 456' },
+          { ip: '127.0.0.1' },
+        ),
+      (error: unknown) => {
+        assert.ok(error instanceof HttpException, row.label);
+        const response = error.getResponse() as { code?: string };
+        assert.equal(
+          response.code,
+          AuthErrorCode.INVITE_NOT_FOUND_FOR_PHONE,
+          row.label,
+        );
+        return true;
+      },
+    );
+    assert.equal(authCalls, 0, row.label);
+  }
+});

@@ -2,7 +2,6 @@ import {
   BadRequestException,
   HttpStatus,
   Injectable,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -59,7 +58,11 @@ import {
   OtpDispatchContext,
   OtpDispatchQuotaService,
 } from "./otp-dispatch-quota.service";
-import { authError, AuthErrorCode } from "./auth-error";
+import {
+  authError,
+  AuthErrorCode,
+  otpDeliveryUnavailableError,
+} from "./auth-error";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -120,8 +123,6 @@ type PasswordResetResult =
 
 @Injectable()
 export class AuthService {
-  private static readonly otpUnavailableMessage =
-    "خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.";
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   private static readonly dummyPasswordHash =
@@ -688,11 +689,7 @@ export class AuthService {
     quotaAlreadyConsumed = false,
   ): Promise<IssuedOtpResponse> {
     const mode = this.getOtpMode();
-    const channel = this.resolveOtpChannel(mode);
-
-    if (!channel) {
-      throw new BadRequestException(AuthService.otpUnavailableMessage);
-    }
+    const channel = this.requireOtpChannel(mode);
     if (mode !== "dev" && !quotaAlreadyConsumed) {
       await this.otpDispatchQuota.consume(phone, context);
     }
@@ -726,7 +723,7 @@ export class AuthService {
           where: { id: otp.id, consumedAt: null },
           data: { consumedAt: new Date() },
         });
-        throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+        throw otpDeliveryUnavailableError();
       }
     }
     otpRequestsTotal.inc({ delivery: delivered.delivery });
@@ -758,6 +755,17 @@ export class AuthService {
       return new OpenWaOtpChannel();
     }
     return null;
+  }
+
+  private requireOtpChannel(mode: string): OtpChannel {
+    try {
+      const channel = this.resolveOtpChannel(mode);
+      if (channel) return channel;
+    } catch {
+      // Channel configuration details are operational secrets and must never
+      // escape through a public authentication response.
+    }
+    throw otpDeliveryUnavailableError();
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<OtpVerifyResponse> {
@@ -993,9 +1001,7 @@ export class AuthService {
   ): Promise<AdminPasswordResetPendingResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const mode = this.getOtpMode();
-    if (!this.resolveOtpChannel(mode)) {
-      throw new BadRequestException(AuthService.otpUnavailableMessage);
-    }
+    this.requireOtpChannel(mode);
     if (mode !== "dev") {
       await this.otpDispatchQuota.consume(phone, context);
     }
@@ -1316,13 +1322,16 @@ export class AuthService {
         const retryable =
           error instanceof Prisma.PrismaClientKnownRequestError &&
           (error.code === "P2002" || error.code === "P2034");
-        if (!retryable || attempt === 2) {
+        if (!retryable) {
           throw error;
+        }
+        if (attempt === 2) {
+          throw otpDeliveryUnavailableError();
         }
       }
     }
 
-    throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+    throw otpDeliveryUnavailableError();
   }
 
   private async assertOtpCodeMatches(

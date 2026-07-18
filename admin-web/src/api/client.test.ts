@@ -127,6 +127,44 @@ describe('apiRequest', () => {
     });
   });
 
+  it('preserves a stable backend error code from the response envelope', async () => {
+    fetchMock.mockResolvedValueOnce(
+      response(
+        503,
+        JSON.stringify({
+          statusCode: 503,
+          code: 'OTP_DELIVERY_UNAVAILABLE',
+          message: 'OTP delivery is temporarily unavailable',
+        }),
+      ),
+    );
+
+    await expect(apiRequest('/api/v1/auth/admin/login')).rejects.toMatchObject({
+      status: 503,
+      code: 'OTP_DELIVERY_UNAVAILABLE',
+    });
+  });
+
+  it('preserves a stable backend error code from a nested message envelope', async () => {
+    fetchMock.mockResolvedValueOnce(
+      response(
+        503,
+        JSON.stringify({
+          statusCode: 503,
+          message: {
+            code: 'OTP_DELIVERY_UNAVAILABLE',
+            message: 'OTP delivery is temporarily unavailable',
+          },
+        }),
+      ),
+    );
+
+    await expect(apiRequest('/api/v1/auth/admin/login')).rejects.toMatchObject({
+      status: 503,
+      code: 'OTP_DELIVERY_UNAVAILABLE',
+    });
+  });
+
   it('falls back to a generic Arabic message when body has none', async () => {
     fetchMock.mockResolvedValueOnce(response(500, ''));
     await expect(apiRequest('/x')).rejects.toBeInstanceOf(ApiError);

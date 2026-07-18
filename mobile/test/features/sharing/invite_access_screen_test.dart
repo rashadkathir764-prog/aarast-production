@@ -8,6 +8,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
+import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
@@ -65,6 +66,42 @@ void main() {
       );
       await harness.controller.logout();
       expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
+    },
+  );
+
+  test(
+    'completed app registration preserves a valid private invite for the new account boundary',
+    () async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final harness = await _authHarness();
+      harness.repository.authenticateOnRegister = true;
+
+      expect(
+        await harness.controller.register(
+          name: 'أحمد',
+          phone: '777123456',
+          password: 'secret123',
+          otpCode: '123456',
+          resumeInviteToken: 'not-a-private-token',
+        ),
+        isTrue,
+      );
+      expect(harness.controller.hasPendingInviteResume, isFalse);
+
+      expect(
+        await harness.controller.register(
+          name: 'أحمد',
+          phone: '777123456',
+          password: 'secret123',
+          otpCode: '123456',
+          resumeInviteToken: token,
+        ),
+        isTrue,
+      );
+      expect(harness.controller.status, AuthStatus.authenticated);
+      expect(harness.controller.claimPendingInviteResumeRoute(), token);
+      expect(harness.controller.claimPendingInviteResumeRoute(), isNull);
+      expect(harness.controller.consumePendingInviteResume(token), isTrue);
     },
   );
 
@@ -270,6 +307,47 @@ void main() {
   );
 
   testWidgets(
+    'new app registration resumes the verified invite, accepts it once, and opens the contributor dashboard',
+    (tester) async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final harness = await _authHarness();
+      harness.repository.authenticateOnRegister = true;
+      final sharingApi = _FakeSharingApi(
+        invites: [_invite(token: token)],
+        currentUserId: () => harness.controller.user?.id,
+      );
+
+      await _pumpBoundaryLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+        startGuestAtInvite: true,
+      );
+      expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
+
+      expect(
+        await harness.controller.register(
+          name: 'أحمد',
+          phone: '777123456',
+          password: 'secret123',
+          otpCode: '123456',
+          resumeInviteToken: token,
+        ),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+
+      expect(harness.controller.user?.id, 'invitee-1');
+      expect(sharingApi.inviteLookupUserIds, ['invitee-1']);
+      expect(sharingApi.acceptUserIds, ['invitee-1']);
+      expect(sharingApi.acceptCalls, 1);
+      expect(find.byKey(const Key('contributor-dashboard')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'a private invite link verifies its phone even when another account is signed in',
     (tester) async {
       const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
@@ -326,6 +404,45 @@ void main() {
     expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
     expect(find.textContaining('لا توجد دعوة فعّالة'), findsOneWidget);
   });
+
+  testWidgets(
+    'verified invite phone without an app account offers registration and preserves the private resume route',
+    (tester) async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final harness = await _authHarness();
+      harness.repository.verifyErrorCode =
+          'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
+      final router = await _pumpLinkedInviteScreen(
+        tester,
+        harness,
+        token: token,
+        sharingApi: _FakeSharingApi(invites: [_invite(token: token)]),
+      );
+
+      await _openOtpStep(tester);
+      await tester.enterText(
+        find.byKey(const Key('invite-otp-field')),
+        '123456',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('تم التحقق من الرقم'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('invite-create-app-account')),
+        findsOneWidget,
+      );
+      expect(find.text('عرس رشاد وسارة'), findsNothing);
+      expect(find.text('صلاحياتك في الخطة'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('invite-create-app-account')));
+      await tester.pumpAndSettle();
+
+      final registerUri = router.routeInformationProvider.value.uri;
+      expect(registerUri.path, '/register');
+      expect(registerUri.queryParameters['phone'], '777123456');
+      expect(registerUri.queryParameters['resume'], '/invites/$token');
+    },
+  );
 
   testWidgets('declining an invite requires explicit confirmation', (
     tester,
@@ -433,7 +550,7 @@ Future<void> _pumpInviteScreen(
   );
 }
 
-Future<void> _pumpLinkedInviteScreen(
+Future<GoRouter> _pumpLinkedInviteScreen(
   WidgetTester tester,
   _AuthHarness harness, {
   required String token,
@@ -455,6 +572,12 @@ Future<void> _pumpLinkedInviteScreen(
           body: Text('مساحة المساهم'),
         ),
       ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const Scaffold(
+          body: SizedBox(key: Key('invite-registration-route')),
+        ),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -468,6 +591,7 @@ Future<void> _pumpLinkedInviteScreen(
     ),
   );
   await tester.pumpAndSettle();
+  return router;
 }
 
 Future<void> _pumpBoundaryLinkedInviteScreen(
@@ -475,6 +599,7 @@ Future<void> _pumpBoundaryLinkedInviteScreen(
   _AuthHarness harness, {
   required String token,
   required SharingApi sharingApi,
+  bool startGuestAtInvite = false,
 }) async {
   await tester.pumpWidget(
     ChangeNotifierProvider<AuthController>.value(
@@ -482,6 +607,7 @@ Future<void> _pumpBoundaryLinkedInviteScreen(
       child: _AccountBoundaryInviteHarness(
         token: token,
         sharingApi: sharingApi,
+        startGuestAtInvite: startGuestAtInvite,
       ),
     ),
   );
@@ -492,10 +618,12 @@ class _AccountBoundaryInviteHarness extends StatelessWidget {
   const _AccountBoundaryInviteHarness({
     required this.token,
     required this.sharingApi,
+    this.startGuestAtInvite = false,
   });
 
   final String token;
   final SharingApi sharingApi;
+  final bool startGuestAtInvite;
 
   @override
   Widget build(BuildContext context) {
@@ -507,7 +635,8 @@ class _AccountBoundaryInviteHarness extends StatelessWidget {
       builder: (_) => _BoundaryInviteRouterApp(
         token: token,
         sharingApi: sharingApi,
-        initialLocation: userId == 'old-account'
+        initialLocation:
+            userId == 'old-account' || (userId == null && startGuestAtInvite)
             ? '/invites/$token'
             : '/holding',
       ),
@@ -658,8 +787,34 @@ class _FakeAuthRepository extends AuthRepository {
   String? lastInviteToken;
   bool failVerify = false;
   bool failInviteRequest = false;
+  String? verifyErrorCode;
   bool authenticateOnVerify = false;
+  bool authenticateOnRegister = false;
   Completer<void>? verifyGate;
+
+  @override
+  Future<AuthResponse> register({
+    required String name,
+    required String phone,
+    required String password,
+    required String otpCode,
+  }) async {
+    if (!authenticateOnRegister) {
+      throw const ApiException('Unexpected registration');
+    }
+    return AuthResponse(
+      accessToken: 'registered-access-token',
+      refreshToken: 'registered-refresh-token',
+      refreshTokenExpiresAt: DateTime.now().add(const Duration(days: 30)),
+      user: const SafeUser(
+        id: 'invitee-1',
+        name: 'أحمد',
+        phone: '+967777123456',
+        role: 'USER',
+        status: 'ACTIVE',
+      ),
+    );
+  }
 
   @override
   Future<OtpRequestResult> requestOtp({
@@ -706,6 +861,13 @@ class _FakeAuthRepository extends AuthRepository {
   }) async {
     verifyCalls += 1;
     await verifyGate?.future;
+    if (verifyErrorCode != null) {
+      throw ApiException(
+        'Account not found after phone proof',
+        statusCode: 404,
+        serverCode: verifyErrorCode,
+      );
+    }
     if (failVerify) {
       throw const ApiException('OTP code is invalid or expired');
     }

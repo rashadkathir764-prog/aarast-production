@@ -77,6 +77,41 @@ void main() {
       'تعذر إرسال رمز التحقق الآن. تحقق من الاتصال وحاول مرة أخرى.',
     );
   });
+
+  test('registration reports an unavailable OTP service precisely', () async {
+    final harness = await _AuthHarness.create(_OtpUnavailableAdapter());
+    final controller = AuthController(harness.repository);
+
+    final result = await controller.startRegistration(
+      name: 'مستخدم جديد',
+      phone: '777123456',
+      password: 'secret123',
+    );
+
+    expect(result, isNull);
+    expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
+    expect(
+      controller.errorMessage,
+      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+    );
+  });
+
+  test('OTP login request reports an unavailable service precisely', () async {
+    final harness = await _AuthHarness.create(_OtpUnavailableAdapter());
+    final controller = AuthController(harness.repository);
+
+    final result = await controller.requestOtp(
+      phone: '777123456',
+      purpose: 'LOGIN',
+    );
+
+    expect(result, isNull);
+    expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
+    expect(
+      controller.errorMessage,
+      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+    );
+  });
 }
 
 class _AuthHarness {
@@ -150,6 +185,30 @@ class _ReceiveTimeoutAdapter implements HttpClientAdapter {
     throw DioException(
       requestOptions: options,
       type: DioExceptionType.receiveTimeout,
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _OtpUnavailableAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'statusCode': 503,
+        'code': 'OTP_DELIVERY_UNAVAILABLE',
+        'message': 'OTP delivery is temporarily unavailable',
+      }),
+      503,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
     );
   }
 

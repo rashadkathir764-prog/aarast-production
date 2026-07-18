@@ -117,6 +117,62 @@ void main() {
       expect(exception.statusCode, 401);
     });
 
+    test('OTP transport failure keeps its code and uses product Arabic', () {
+      final requestOptions = RequestOptions(path: '/api/v1/auth/login');
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 503,
+            data: const {
+              'statusCode': 503,
+              'code': 'OTP_DELIVERY_UNAVAILABLE',
+              'message': 'OTP delivery is temporarily unavailable',
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
+      expect(exception.statusCode, 503);
+      expect(
+        exception.message,
+        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      );
+      expect(exception.message, isNot(contains('OTP delivery')));
+    });
+
+    test('OTP transport failure code is read from a nested envelope', () {
+      final requestOptions = RequestOptions(
+        path: '/api/v1/auth/password-reset/request',
+      );
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 503,
+            data: const {
+              'statusCode': 503,
+              'message': {
+                'code': 'OTP_DELIVERY_UNAVAILABLE',
+                'message': 'OTP delivery is temporarily unavailable',
+              },
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
+      expect(
+        exception.message,
+        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      );
+    });
+
     test('untyped English 401 copy is replaced by generic Arabic', () {
       final requestOptions = RequestOptions(path: '/api/v1/auth/login');
       final exception = ApiException.fromDio(

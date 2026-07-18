@@ -257,7 +257,7 @@ function createHarness(candidate: StoredUser | null) {
 }
 
 async function withOtpEnv(
-  mode: 'dev' | 'openwa',
+  mode: 'dev' | 'openwa' | 'disabled',
   action: () => Promise<void>,
 ) {
   const keys = [
@@ -395,7 +395,9 @@ test('a definitive transport failure is identical for admin and unknown phones',
             harness.service.requestAdminPasswordReset({
               phone: '777123456',
             }),
-          (error: any) => error.getStatus?.() === 503,
+          (error: any) =>
+            error.getStatus?.() === 503 &&
+            error.getResponse?.().code === 'OTP_DELIVERY_UNAVAILABLE',
         );
         assert.equal(harness.resetChallenges.length, 0);
         assert.equal(
@@ -406,6 +408,23 @@ test('a definitive transport failure is identical for admin and unknown phones',
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+test('disabled OTP delivery returns the same stable 503 contract for admin recovery', async () => {
+  await withOtpEnv('disabled', async () => {
+    const harness = createHarness(userFixture());
+    await assert.rejects(
+      () =>
+        harness.service.requestAdminPasswordReset({
+          phone: '777123456',
+        }),
+      (error: any) =>
+        error.getStatus?.() === 503 &&
+        error.getResponse?.().code === 'OTP_DELIVERY_UNAVAILABLE',
+    );
+    assert.equal(harness.resetChallenges.length, 0);
+    assert.equal(harness.otps.length, 0);
   });
 });
 

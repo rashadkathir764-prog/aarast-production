@@ -156,14 +156,14 @@ function acceptAdminSession(response: AdminSession): AdminUser {
 
 function mapLoginError(error: unknown): Error {
   if (error instanceof ApiError) {
+    if (isOtpDeliveryUnavailable(error)) {
+      return new Error(otpDeliveryUnavailableMessage);
+    }
     if (error.status === 401 || error.status === 400) {
       return new Error('بيانات الدخول غير صحيحة');
     }
     if (error.status === 429) {
       return new Error('محاولات دخول كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
-    }
-    if (error.status === 503) {
-      return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
     }
     return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
   }
@@ -174,27 +174,27 @@ function mapLoginError(error: unknown): Error {
 }
 
 function mapMfaError(error: unknown): Error {
+  if (error instanceof ApiError && isOtpDeliveryUnavailable(error)) {
+    return new Error(otpDeliveryUnavailableMessage);
+  }
   if (error instanceof ApiError && [400, 401, 409].includes(error.status ?? 0)) {
     return new Error('رمز التحقق غير صحيح أو انتهت صلاحيته');
   }
   if (error instanceof ApiError && error.status === 429) {
     return new Error('محاولات تحقق كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
   }
-  if (error instanceof ApiError && error.status === 503) {
-    return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
-  }
   return new Error('تعذر إكمال التحقق. حاول مرة أخرى.');
 }
 
 function mapPasswordResetRequestError(error: unknown): Error {
+  if (error instanceof ApiError && isOtpDeliveryUnavailable(error)) {
+    return new Error(otpDeliveryUnavailableMessage);
+  }
   if (error instanceof ApiError && error.status === 429) {
     return new Error('طلبات استعادة كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
   }
   if (error instanceof ApiError && error.status === 400) {
     return new Error('تحقق من رقم الهاتف ثم حاول مرة أخرى.');
-  }
-  if (error instanceof ApiError && error.status === 503) {
-    return new Error('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
   }
   if (error instanceof ApiError) {
     return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
@@ -209,6 +209,9 @@ function mapPasswordResetRequestError(error: unknown): Error {
 }
 
 function mapPasswordResetConfirmError(error: unknown): Error {
+  if (error instanceof ApiError && isOtpDeliveryUnavailable(error)) {
+    return new Error(otpDeliveryUnavailableMessage);
+  }
   if (
     error instanceof ApiError &&
     [400, 401, 409].includes(error.status ?? 0)
@@ -217,9 +220,6 @@ function mapPasswordResetConfirmError(error: unknown): Error {
   }
   if (error instanceof ApiError && error.status === 429) {
     return new Error('محاولات تحقق كثيرة. انتظر قليلًا ثم ابدأ طلبًا جديدًا.');
-  }
-  if (error instanceof ApiError && error.status === 503) {
-    return new Error('تعذر إكمال الاستعادة حاليًا. حاول بعد قليل.');
   }
   if (error instanceof ApiError) {
     return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
@@ -231,4 +231,11 @@ function mapPasswordResetConfirmError(error: unknown): Error {
     return error;
   }
   return new Error('تعذر الاتصال بالخادم');
+}
+
+const otpDeliveryUnavailableMessage =
+  'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.';
+
+function isOtpDeliveryUnavailable(error: ApiError): boolean {
+  return error.code === 'OTP_DELIVERY_UNAVAILABLE';
 }

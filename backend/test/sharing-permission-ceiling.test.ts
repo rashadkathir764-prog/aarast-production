@@ -1,16 +1,24 @@
-import 'reflect-metadata';
+import "reflect-metadata";
 
-import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { test } from 'node:test';
-import { Prisma, SharedMemberRole } from '@prisma/client';
-import { AuthenticatedUser } from '../src/auth/authenticated-user.interface';
-import { NotificationsService } from '../src/notifications/notifications.service';
-import { PermissionService, PlanAccessContext } from '../src/sharing/permission.service';
-import { rolePermissionDefaults } from '../src/sharing/plan-permissions';
-import { SharingService } from '../src/sharing/sharing.service';
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { test } from "node:test";
+import { HttpException } from "@nestjs/common";
+import {
+  PlanInviteDeliveryStatus,
+  Prisma,
+  SharedMemberRole,
+} from "@prisma/client";
+import { AuthenticatedUser } from "../src/auth/authenticated-user.interface";
+import { NotificationsService } from "../src/notifications/notifications.service";
+import {
+  PermissionService,
+  PlanAccessContext,
+} from "../src/sharing/permission.service";
+import { rolePermissionDefaults } from "../src/sharing/plan-permissions";
+import { SharingService } from "../src/sharing/sharing.service";
 
 const permissions = new PermissionService({} as any);
 const sharing = new SharingService(
@@ -25,7 +33,7 @@ function memberContext(
   overrides: Record<string, boolean> = {},
 ): PlanAccessContext {
   return {
-    plan: { id: 'plan-1', ownerUserId: 'owner-1' } as any,
+    plan: { id: "plan-1", ownerUserId: "owner-1" } as any,
     isOwner: false,
     sharedMember: {
       role,
@@ -46,11 +54,11 @@ function assertCeiling(
   });
 }
 
-test('owner may delegate every non-owner role', () => {
+test("owner may delegate every non-owner role", () => {
   assert.doesNotThrow(() =>
     assertCeiling(
       {
-        plan: { id: 'plan-1', ownerUserId: 'owner-1' } as any,
+        plan: { id: "plan-1", ownerUserId: "owner-1" } as any,
         isOwner: true,
         sharedMember: null,
       },
@@ -59,7 +67,7 @@ test('owner may delegate every non-owner role', () => {
   );
 });
 
-test('manager and helper cannot mint finance authority they do not own', () => {
+test("manager and helper cannot mint finance authority they do not own", () => {
   for (const role of [SharedMemberRole.MANAGER, SharedMemberRole.HELPER]) {
     assert.throws(
       () =>
@@ -72,7 +80,7 @@ test('manager and helper cannot mint finance authority they do not own', () => {
   }
 });
 
-test('manager may delegate an editor role inside the manager ceiling', () => {
+test("manager may delegate an editor role inside the manager ceiling", () => {
   assert.doesNotThrow(() =>
     assertCeiling(
       memberContext(SharedMemberRole.MANAGER, { canInviteMembers: true }),
@@ -81,7 +89,7 @@ test('manager may delegate an editor role inside the manager ceiling', () => {
   );
 });
 
-test('explicit finance plus invite delegation may be passed on but not enlarged', () => {
+test("explicit finance plus invite delegation may be passed on but not enlarged", () => {
   assert.doesNotThrow(() =>
     assertCeiling(
       memberContext(SharedMemberRole.FINANCE_MANAGER, {
@@ -103,7 +111,7 @@ test('explicit finance plus invite delegation may be passed on but not enlarged'
   );
 });
 
-test('viewer with invite delegation can only create another viewer', () => {
+test("viewer with invite delegation can only create another viewer", () => {
   const inviter = memberContext(SharedMemberRole.VIEWER, {
     canInviteMembers: true,
   });
@@ -118,21 +126,23 @@ type StoredInvite = Record<string, any>;
 
 class MemorySharingPrisma {
   readonly plan = {
-    id: 'plan-1',
-    ownerUserId: 'owner-1',
-    title: 'خطة الاختبار',
-    city: 'صنعاء',
-    weddingDate: new Date('2026-12-01T00:00:00.000Z'),
+    id: "plan-1",
+    ownerUserId: "owner-1",
+    title: "خطة الاختبار",
+    city: "صنعاء",
+    weddingDate: new Date("2026-12-01T00:00:00.000Z"),
     estimatedBudget: null,
-    currency: 'YER',
-    status: 'PLANNING',
-    createdAt: new Date('2026-07-01T00:00:00.000Z'),
-    updatedAt: new Date('2026-07-01T00:00:00.000Z'),
+    currency: "YER",
+    status: "PLANNING",
+    createdAt: new Date("2026-07-01T00:00:00.000Z"),
+    updatedAt: new Date("2026-07-01T00:00:00.000Z"),
   };
   readonly users: Array<Record<string, any>>;
   invites: StoredInvite[] = [];
   transactionOptions: Array<Record<string, unknown>> = [];
   serializationFailuresRemaining = 0;
+  finalDeliveryPersistenceFailuresRemaining = 0;
+  finalDeliveryPersistenceError: unknown = null;
   private inviteSequence = 0;
   private transactionTail = Promise.resolve();
 
@@ -142,10 +152,10 @@ class MemorySharingPrisma {
 
   user = {
     findUnique: async ({ where }: any) => {
-      if (typeof where.id === 'string') {
+      if (typeof where.id === "string") {
         return this.users.find((user) => user.id === where.id) ?? null;
       }
-      if (typeof where.phone === 'string') {
+      if (typeof where.phone === "string") {
         return this.users.find((user) => user.phone === where.phone) ?? null;
       }
       return null;
@@ -157,9 +167,7 @@ class MemorySharingPrisma {
         );
       }
       if (where.email) {
-        return (
-          this.users.find((user) => user.email === where.email) ?? null
-        );
+        return this.users.find((user) => user.email === where.email) ?? null;
       }
       return null;
     },
@@ -174,6 +182,8 @@ class MemorySharingPrisma {
       this.invites.filter((invite) => this.matchesListWhere(invite, where)),
     findUnique: async ({ where }: any) => this.findUniqueInvite(where),
     findFirst: async ({ where }: any) => this.findFirstInvite(where),
+    updateMany: async ({ where, data }: any) =>
+      this.updatePlanInvites(where, data),
   };
 
   $transaction = async (
@@ -193,10 +203,10 @@ class MemorySharingPrisma {
       if (this.serializationFailuresRemaining > 0) {
         this.serializationFailuresRemaining -= 1;
         throw new Prisma.PrismaClientKnownRequestError(
-          'serialization conflict',
+          "serialization conflict",
           {
-            code: 'P2034',
-            clientVersion: 'test',
+            code: "P2034",
+            clientVersion: "test",
           },
         );
       }
@@ -208,7 +218,7 @@ class MemorySharingPrisma {
           findUnique: async ({ where }: any) => this.findUniqueInvite(where),
           create: async ({ data }: any) => this.createInvite(data),
           updateMany: async ({ where, data }: any) =>
-            this.updateInvites(where, data),
+            this.updatePlanInvites(where, data),
         },
       });
     } catch (error) {
@@ -220,10 +230,10 @@ class MemorySharingPrisma {
   };
 
   private findUniqueInvite(where: Record<string, unknown>) {
-    if (typeof where.id === 'string') {
+    if (typeof where.id === "string") {
       return this.invites.find((invite) => invite.id === where.id) ?? null;
     }
-    if (typeof where.tokenHash === 'string') {
+    if (typeof where.tokenHash === "string") {
       return (
         this.invites.find((invite) => invite.tokenHash === where.tokenHash) ??
         null
@@ -246,8 +256,10 @@ class MemorySharingPrisma {
     return (
       this.invites.find((invite) => {
         if (invite.weddingPlanId !== where.weddingPlanId) return false;
-        if (where.acceptedAt === null && invite.acceptedAt !== null) return false;
-        if (where.declinedAt === null && invite.declinedAt !== null) return false;
+        if (where.acceptedAt === null && invite.acceptedAt !== null)
+          return false;
+        if (where.declinedAt === null && invite.declinedAt !== null)
+          return false;
         if (where.revokedAt === null && invite.revokedAt !== null) return false;
         if (
           where.expiresAt?.gt &&
@@ -304,6 +316,19 @@ class MemorySharingPrisma {
       if (invite.id !== where.id) return false;
       if (invite.weddingPlanId !== where.weddingPlanId) return false;
       if (where.tokenHash && invite.tokenHash !== where.tokenHash) return false;
+      if (
+        where.deliveryAttemptedAt instanceof Date &&
+        invite.deliveryAttemptedAt?.getTime() !==
+          where.deliveryAttemptedAt.getTime()
+      ) {
+        return false;
+      }
+      if (
+        where.deliveryStatus !== undefined &&
+        invite.deliveryStatus !== where.deliveryStatus
+      ) {
+        return false;
+      }
       if (where.acceptedAt === null && invite.acceptedAt !== null) return false;
       if (where.declinedAt === null && invite.declinedAt !== null) return false;
       if (where.revokedAt === null && invite.revokedAt !== null) return false;
@@ -321,11 +346,28 @@ class MemorySharingPrisma {
     return { count: matching.length };
   }
 
-  private matchesListWhere(invite: StoredInvite, where: Record<string, any>) {
+  private updatePlanInvites(
+    where: Record<string, any>,
+    data: Record<string, unknown>,
+  ) {
     if (
-      where.weddingPlanId &&
-      invite.weddingPlanId !== where.weddingPlanId
+      data.deliveryStatus !== PlanInviteDeliveryStatus.PENDING &&
+      this.finalDeliveryPersistenceFailuresRemaining > 0
     ) {
+      this.finalDeliveryPersistenceFailuresRemaining -= 1;
+      throw (
+        this.finalDeliveryPersistenceError ??
+        new Prisma.PrismaClientKnownRequestError(
+          "delivery persistence unavailable",
+          { code: "P2024", clientVersion: "test" },
+        )
+      );
+    }
+    return this.updateInvites(where, data);
+  }
+
+  private matchesListWhere(invite: StoredInvite, where: Record<string, any>) {
+    if (where.weddingPlanId && invite.weddingPlanId !== where.weddingPlanId) {
       return false;
     }
     if (where.inviterUserId && invite.inviterUserId !== where.inviterUserId) {
@@ -342,26 +384,22 @@ class MemorySharingPrisma {
   }
 }
 
-function sharingUser(
-  id: string,
-  phone: string,
-  name = id,
-): AuthenticatedUser {
+function sharingUser(id: string, phone: string, name = id): AuthenticatedUser {
   const now = new Date();
   return {
     id,
     name,
     phone,
     email: null,
-    role: 'USER',
+    role: "USER",
     adminRole: null,
-    appRole: 'WEDDING_USER',
-    status: 'ACTIVE',
+    appRole: "WEDDING_USER",
+    status: "ACTIVE",
     phoneVerifiedAt: now,
     lastLoginAt: now,
     avatarUrl: null,
-    locale: 'ar',
-    activeWeddingPlanId: 'plan-1',
+    locale: "ar",
+    activeWeddingPlanId: "plan-1",
     onboardingPath: null,
     persona: null,
     onboardingCompletedAt: now,
@@ -370,9 +408,28 @@ function sharingUser(
   } as AuthenticatedUser;
 }
 
-function inviteHarness(options: { notificationFailure?: Error } = {}) {
-  const owner = sharingUser('owner-1', '+967777000001', 'المالك');
-  const target = sharingUser('target-1', '+967777000002', 'المشارك');
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
+function inviteHarness(
+  options: {
+    notificationFailure?: Error;
+    delivery?: () => Promise<{
+      channel: "WHATSAPP";
+      status: "DELIVERED" | "UNCERTAIN" | "UNAVAILABLE";
+    }>;
+    finalDeliveryPersistenceFailures?: number;
+  } = {},
+) {
+  const owner = sharingUser("owner-1", "+967777000001", "المالك");
+  const target = sharingUser("target-1", "+967777000002", "المشارك");
   const db = new MemorySharingPrisma([owner, target]);
   let currentAccess: PlanAccessContext = {
     plan: db.plan as any,
@@ -384,11 +441,13 @@ function inviteHarness(options: { notificationFailure?: Error } = {}) {
   (permissionService as any).assertMemberManageable = async () => currentAccess;
   (permissionService as any).assertMemberManageableInTransaction = async () => {
     if (!permissionService.canManageMembers(transactionalAccess)) {
-      throw new Error('Wedding plan not found');
+      throw new Error("Wedding plan not found");
     }
     return transactionalAccess;
   };
   const notificationInputs: Array<Record<string, any>> = [];
+  db.finalDeliveryPersistenceFailuresRemaining =
+    options.finalDeliveryPersistenceFailures ?? 0;
   const notificationService = {
     createNotificationInTransaction: async (
       tx: Record<string, any>,
@@ -397,14 +456,18 @@ function inviteHarness(options: { notificationFailure?: Error } = {}) {
       assert.equal(tx.__transaction, true);
       if (options.notificationFailure) throw options.notificationFailure;
       notificationInputs.push(input);
-      return { id: 'notification-1' };
+      return { id: "notification-1" };
     },
   } as unknown as NotificationsService;
   const service = new SharingService(
     db as any,
     permissionService,
     notificationService,
-    { deliver: async () => ({ channel: 'WHATSAPP', status: 'SENT' }) } as any,
+    {
+      deliver:
+        options.delivery ??
+        (async () => ({ channel: "WHATSAPP", status: "DELIVERED" })),
+    } as any,
   );
 
   return {
@@ -423,14 +486,13 @@ function inviteHarness(options: { notificationFailure?: Error } = {}) {
   };
 }
 
-test('invite creation returns one raw bearer while storage and lists expose no raw token', async () => {
+test("invite creation returns one raw bearer while storage and lists expose no raw token", async () => {
   const harness = inviteHarness();
 
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: harness.target.phone!, role: SharedMemberRole.VIEWER },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+    role: SharedMemberRole.VIEWER,
+  });
 
   assert.match(created.token, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(created.weddingPlan?.title, harness.db.plan.title);
@@ -439,32 +501,49 @@ test('invite creation returns one raw bearer while storage and lists expose no r
   assert.equal(harness.db.invites.length, 1);
   assert.equal(
     harness.db.invites[0].tokenHash,
-    createHash('sha256').update(created.token).digest('hex'),
+    createHash("sha256").update(created.token).digest("hex"),
   );
-  assert.equal(JSON.stringify(harness.db.invites[0]).includes(created.token), false);
+  assert.equal(
+    JSON.stringify(harness.db.invites[0]).includes(created.token),
+    false,
+  );
   assert.equal(harness.notificationInputs.length, 1);
+  assert.equal(created.delivery.status, PlanInviteDeliveryStatus.DELIVERED);
+  assert.ok(created.delivery.attemptedAt instanceof Date);
+  assert.ok(created.delivery.retryAfterSeconds > 0);
+  assert.ok(created.delivery.retryAfterSeconds <= 60);
+  assert.equal(
+    harness.db.invites[0].deliveryStatus,
+    PlanInviteDeliveryStatus.DELIVERED,
+  );
 
   const listed = await harness.service.findInvitesForPlan(
     harness.owner,
-    'plan-1',
+    "plan-1",
   );
   assert.equal(listed.length, 1);
   assert.equal(listed[0].token, listed[0].id);
   assert.notEqual(listed[0].token, created.token);
+  assert.equal(listed[0].delivery.status, created.delivery.status);
+  assert.deepEqual(
+    listed[0].delivery.attemptedAt,
+    created.delivery.attemptedAt,
+  );
+  assert.ok(listed[0].delivery.retryAfterSeconds > 0);
   assert.equal(
     harness.db.transactionOptions[0].isolationLevel,
     Prisma.TransactionIsolationLevel.Serializable,
   );
 });
 
-test('invite notification failure rolls back the invite and token fingerprint', async () => {
+test("invite notification failure rolls back the invite and token fingerprint", async () => {
   const harness = inviteHarness({
-    notificationFailure: new Error('outbox unavailable'),
+    notificationFailure: new Error("outbox unavailable"),
   });
 
   await assert.rejects(
     () =>
-      harness.service.createInvite(harness.owner, 'plan-1', {
+      harness.service.createInvite(harness.owner, "plan-1", {
         phone: harness.target.phone!,
       }),
     /outbox unavailable/,
@@ -472,7 +551,106 @@ test('invite notification failure rolls back the invite and token fingerprint', 
   assert.equal(harness.db.invites.length, 0);
 });
 
-test('invite creation fails closed when delegation is revoked before commit', async () => {
+test("a failed final delivery write returns the raw link while the durable invite remains PENDING", async () => {
+  const harness = inviteHarness({ finalDeliveryPersistenceFailures: 1 });
+
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+  });
+
+  assert.match(created.token, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(created.delivery.status, PlanInviteDeliveryStatus.PENDING);
+  assert.equal(harness.db.invites.length, 1);
+  assert.equal(
+    harness.db.invites[0].deliveryStatus,
+    PlanInviteDeliveryStatus.PENDING,
+  );
+  const listed = await harness.service.findInvitesForPlan(
+    harness.owner,
+    "plan-1",
+  );
+  assert.equal(listed[0].delivery.status, PlanInviteDeliveryStatus.PENDING);
+  assert.ok(listed[0].delivery.attemptedAt instanceof Date);
+});
+
+test("a failed final reissue write preserves the rotated raw link and PENDING recovery state", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+  });
+  harness.db.invites[0].deliveryAttemptedAt = new Date(Date.now() - 61_000);
+  harness.db.finalDeliveryPersistenceFailuresRemaining = 1;
+
+  const reissued = await harness.service.reissueInvite(
+    harness.owner,
+    "plan-1",
+    created.id,
+  );
+
+  assert.match(reissued.token, /^[A-Za-z0-9_-]{43}$/);
+  assert.notEqual(reissued.token, created.token);
+  assert.equal(reissued.delivery.status, PlanInviteDeliveryStatus.PENDING);
+  assert.equal(
+    harness.db.invites[0].deliveryStatus,
+    PlanInviteDeliveryStatus.PENDING,
+  );
+  await assert.rejects(
+    () => (harness.service as any).findInviteByTokenOrThrow(created.token),
+    /Invite not found/,
+  );
+  const recovered = await (harness.service as any).findInviteByTokenOrThrow(
+    reissued.token,
+  );
+  assert.equal(recovered.id, created.id);
+});
+
+for (const deliveryStatus of ["UNCERTAIN", "UNAVAILABLE"] as const) {
+  test(`invite creation persists ${deliveryStatus} without claiming delivery`, async () => {
+    const harness = inviteHarness({
+      delivery: async () => ({
+        channel: "WHATSAPP",
+        status: deliveryStatus,
+      }),
+    });
+
+    const created = await harness.service.createInvite(
+      harness.owner,
+      "plan-1",
+      { phone: harness.target.phone! },
+    );
+
+    assert.equal(created.delivery.status, deliveryStatus);
+    assert.equal(harness.db.invites[0].deliveryStatus, deliveryStatus);
+  });
+}
+
+for (const persistenceError of [
+  new Error("delivery persistence logic error"),
+  new Prisma.PrismaClientKnownRequestError("delivery constraint mismatch", {
+    code: "P2003",
+    clientVersion: "test",
+  }),
+]) {
+  test(`final delivery persistence does not hide ${persistenceError.constructor.name}`, async () => {
+    const harness = inviteHarness();
+    harness.db.finalDeliveryPersistenceFailuresRemaining = 1;
+    harness.db.finalDeliveryPersistenceError = persistenceError;
+
+    await assert.rejects(
+      () =>
+        harness.service.createInvite(harness.owner, "plan-1", {
+          phone: harness.target.phone!,
+        }),
+      (error) => error === persistenceError,
+    );
+    assert.equal(
+      harness.db.invites[0].deliveryStatus,
+      PlanInviteDeliveryStatus.PENDING,
+    );
+  });
+}
+
+test("invite creation fails closed when delegation is revoked before commit", async () => {
   const harness = inviteHarness();
   harness.setTransactionalAccess(
     memberContext(SharedMemberRole.VIEWER, { canInviteMembers: false }),
@@ -480,7 +658,7 @@ test('invite creation fails closed when delegation is revoked before commit', as
 
   await assert.rejects(
     () =>
-      harness.service.createInvite(harness.owner, 'plan-1', {
+      harness.service.createInvite(harness.owner, "plan-1", {
         phone: harness.target.phone!,
       }),
     /Wedding plan not found/,
@@ -489,58 +667,64 @@ test('invite creation fails closed when delegation is revoked before commit', as
   assert.equal(harness.notificationInputs.length, 0);
 });
 
-test('invite target lookup prefers the exact canonical phone identity', async () => {
+test("invite target lookup prefers the exact canonical phone identity", async () => {
   const harness = inviteHarness();
-  const legacy = sharingUser('legacy-target', '777000099');
-  const canonical = sharingUser('canonical-target', '+967777000099');
+  const legacy = sharingUser("legacy-target", "777000099");
+  const canonical = sharingUser("canonical-target", "+967777000099");
   harness.db.users.push(legacy, canonical);
 
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: '777000099' },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "777000099",
+  });
 
   assert.equal(created.invitee?.id, canonical.id);
   assert.notEqual(created.invitee?.id, legacy.id);
 });
 
-test('invite creation retries a serialization abort without duplicating its notification', async () => {
+test("invite creation retries a serialization abort without duplicating its notification", async () => {
   const harness = inviteHarness();
   harness.db.serializationFailuresRemaining = 1;
 
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: harness.target.phone! },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: harness.target.phone!,
+  });
 
   assert.match(created.token, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(harness.db.invites.length, 1);
   assert.equal(harness.notificationInputs.length, 1);
-  assert.equal(harness.db.transactionOptions.length, 2);
+  assert.equal(harness.db.transactionOptions.length, 3);
+  assert.ok(
+    harness.db.transactionOptions.every(
+      (options) =>
+        options.isolationLevel ===
+        Prisma.TransactionIsolationLevel.Serializable,
+    ),
+  );
 });
 
-test('concurrent creates for the same target leave exactly one pending invite', async () => {
+test("concurrent creates for the same target leave exactly one pending invite", async () => {
   const harness = inviteHarness();
   const create = () =>
-    harness.service.createInvite(harness.owner, 'plan-1', {
-      phone: '+967777000099',
+    harness.service.createInvite(harness.owner, "plan-1", {
+      phone: "+967777000099",
     });
 
   const results = await Promise.allSettled([create(), create()]);
   assert.equal(
-    results.filter((result) => result.status === 'fulfilled').length,
+    results.filter((result) => result.status === "fulfilled").length,
     1,
   );
   assert.equal(
-    results.filter((result) => result.status === 'rejected').length,
+    results.filter((result) => result.status === "rejected").length,
     1,
   );
   assert.match(
     String(
-      (results.find((result) => result.status === 'rejected') as PromiseRejectedResult)
-        .reason?.message,
+      (
+        results.find(
+          (result) => result.status === "rejected",
+        ) as PromiseRejectedResult
+      ).reason?.message,
     ),
     /pending invitation already exists/,
   );
@@ -555,28 +739,53 @@ test('concurrent creates for the same target leave exactly one pending invite', 
   );
 });
 
-test('reissuing a pending invite rotates the bearer atomically and invalidates the old token', async () => {
+test("reissue returns a stable 429 contract during the sixty-second delivery cooldown", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+  });
+
+  await assert.rejects(
+    () => harness.service.reissueInvite(harness.owner, "plan-1", created.id),
+    (error: unknown) => {
+      assert.ok(error instanceof HttpException);
+      assert.equal(error.getStatus(), 429);
+      const body = error.getResponse() as Record<string, unknown>;
+      assert.equal(body.statusCode, 429);
+      assert.equal(body.code, "INVITE_REISSUE_COOLDOWN");
+      assert.equal(
+        body.message,
+        "Invite delivery was attempted recently. Try again later.",
+      );
+      assert.equal(typeof body.retryAfterSeconds, "number");
+      assert.ok(Number(body.retryAfterSeconds) > 0);
+      assert.ok(Number(body.retryAfterSeconds) <= 60);
+      return true;
+    },
+  );
+});
+
+test("reissuing a pending invite rotates the bearer atomically and invalidates the old token", async () => {
   const harness = inviteHarness();
   const participant = sharingUser(
-    'future-participant',
-    '+967777000099',
-    'مشارك جديد',
+    "future-participant",
+    "+967777000099",
+    "مشارك جديد",
   );
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: participant.phone! },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: participant.phone!,
+  });
 
   const before = await harness.service.getInviteForCurrentUser(
     participant,
     created.token,
   );
   assert.equal(before.id, created.id);
+  harness.db.invites[0].deliveryAttemptedAt = new Date(Date.now() - 61_000);
 
   const reissued = await harness.service.reissueInvite(
     harness.owner,
-    'plan-1',
+    "plan-1",
     created.id,
     {
       role: SharedMemberRole.FAMILY,
@@ -598,8 +807,7 @@ test('reissuing a pending invite rotates the bearer atomically and invalidates t
   assert.equal(reissued.canManageMoney, false);
   assert.equal(harness.db.invites.length, 1);
   await assert.rejects(
-    () =>
-      harness.service.getInviteForCurrentUser(participant, created.token),
+    () => harness.service.getInviteForCurrentUser(participant, created.token),
     /Invite not found/,
   );
   const after = await harness.service.getInviteForCurrentUser(
@@ -610,21 +818,96 @@ test('reissuing a pending invite rotates the bearer atomically and invalidates t
   assert.equal(after.token, created.id);
 });
 
-test('cancelling an invite claims only the still-pending row', async () => {
+test("concurrent reissues rotate once and throttle the losing request", async () => {
   const harness = inviteHarness();
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: '+967777000099' },
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+  });
+  harness.db.invites[0].deliveryAttemptedAt = new Date(Date.now() - 61_000);
+
+  const reissue = () =>
+    harness.service.reissueInvite(harness.owner, "plan-1", created.id);
+  const results = await Promise.allSettled([reissue(), reissue()]);
+
+  assert.equal(
+    results.filter((result) => result.status === "fulfilled").length,
+    1,
   );
+  const rejected = results.find(
+    (result) => result.status === "rejected",
+  ) as PromiseRejectedResult;
+  assert.ok(rejected.reason instanceof HttpException);
+  assert.equal(rejected.reason.getStatus(), 429);
+  assert.equal(
+    (rejected.reason.getResponse() as Record<string, unknown>).code,
+    "INVITE_REISSUE_COOLDOWN",
+  );
+  assert.equal(
+    harness.db.invites[0].deliveryStatus,
+    PlanInviteDeliveryStatus.DELIVERED,
+  );
+});
+
+test("an old delivery completion cannot overwrite a newer rotated token attempt", async () => {
+  const firstDelivery = deferred<{
+    channel: "WHATSAPP";
+    status: "UNCERTAIN";
+  }>();
+  let deliveryCalls = 0;
+  const harness = inviteHarness({
+    delivery: async () => {
+      deliveryCalls += 1;
+      if (deliveryCalls === 1) return firstDelivery.promise;
+      return { channel: "WHATSAPP", status: "DELIVERED" };
+    },
+  });
+
+  const creating = harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+  });
+  while (harness.db.invites.length === 0 || deliveryCalls === 0) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+
+  const stored = harness.db.invites[0];
+  stored.deliveryAttemptedAt = new Date(Date.now() - 61_000);
+  const reissued = await harness.service.reissueInvite(
+    harness.owner,
+    "plan-1",
+    stored.id,
+  );
+  assert.equal(reissued.delivery.status, PlanInviteDeliveryStatus.DELIVERED);
+
+  firstDelivery.resolve({ channel: "WHATSAPP", status: "UNCERTAIN" });
+  await assert.rejects(creating, (error: unknown) => {
+    assert.ok(error instanceof HttpException);
+    assert.equal(error.getStatus(), 409);
+    assert.equal(
+      (error.getResponse() as Record<string, unknown>).code,
+      "INVITE_DELIVERY_ATTEMPT_SUPERSEDED",
+    );
+    return true;
+  });
+
+  assert.equal(
+    harness.db.invites[0].deliveryStatus,
+    PlanInviteDeliveryStatus.DELIVERED,
+  );
+});
+
+test("cancelling an invite claims only the still-pending row", async () => {
+  const harness = inviteHarness();
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+  });
 
   const cancelled = await harness.service.cancelInvite(
     harness.owner,
-    'plan-1',
+    "plan-1",
     created.id,
   );
 
-  assert.equal(cancelled.status, 'CANCELLED');
+  assert.equal(cancelled.status, "CANCELLED");
   assert.ok(harness.db.invites[0].revokedAt instanceof Date);
   const finalTransactionOptions =
     harness.db.transactionOptions[harness.db.transactionOptions.length - 1];
@@ -634,13 +917,11 @@ test('cancelling an invite claims only the still-pending row', async () => {
   );
 });
 
-test('cancelling loses safely when acceptance wins between read and claim', async () => {
+test("cancelling loses safely when acceptance wins between read and claim", async () => {
   const harness = inviteHarness();
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: '+967777000099' },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+  });
   const pending = harness.db.invites[0];
 
   (harness.db as any).$transaction = async (
@@ -660,25 +941,20 @@ test('cancelling loses safely when acceptance wins between read and claim', asyn
   };
 
   await assert.rejects(
-    () =>
-      harness.service.cancelInvite(
-        harness.owner,
-        'plan-1',
-        created.id,
-      ),
+    () => harness.service.cancelInvite(harness.owner, "plan-1", created.id),
     /Invite is no longer pending/,
   );
   assert.equal(pending.revokedAt, null);
 });
 
-test('raw invite claims stay bound to the current token fingerprint', () => {
+test("raw invite claims stay bound to the current token fingerprint", () => {
   const harness = inviteHarness();
-  const rawToken = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
-  const invite = { id: 'invite-1' } as any;
+  const rawToken = "abcdefghijklmnopqrstuvwxyzABCDEFGH123456789";
+  const invite = { id: "invite-1" } as any;
 
   assert.deepEqual(
     (harness.service as any).inviteClaimTokenFilter(invite, rawToken),
-    { tokenHash: createHash('sha256').update(rawToken).digest('hex') },
+    { tokenHash: createHash("sha256").update(rawToken).digest("hex") },
   );
   assert.deepEqual(
     (harness.service as any).inviteClaimTokenFilter(invite, invite.id),
@@ -686,51 +962,38 @@ test('raw invite claims stay bound to the current token fingerprint', () => {
   );
 });
 
-test('reissue rejects historical invitations and delegated authority above the inviter ceiling', async () => {
-  for (const state of ['acceptedAt', 'declinedAt', 'revokedAt', 'expired']) {
+test("reissue rejects historical invitations and delegated authority above the inviter ceiling", async () => {
+  for (const state of ["acceptedAt", "declinedAt", "revokedAt", "expired"]) {
     const harness = inviteHarness();
     const created = await harness.service.createInvite(
       harness.owner,
-      'plan-1',
-      { phone: '+967777000099' },
+      "plan-1",
+      { phone: "+967777000099" },
     );
     const invite = harness.db.invites[0];
-    if (state === 'expired') {
+    if (state === "expired") {
       invite.expiresAt = new Date(Date.now() - 1);
     } else {
       invite[state] = new Date();
     }
     await assert.rejects(
-      () =>
-        harness.service.reissueInvite(
-          harness.owner,
-          'plan-1',
-          created.id,
-        ),
+      () => harness.service.reissueInvite(harness.owner, "plan-1", created.id),
       /Invite is no longer pending/,
     );
   }
 
   const harness = inviteHarness();
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    {
-      phone: '+967777000099',
-      role: SharedMemberRole.FINANCE_MANAGER,
-    },
-  );
-  const delegatedUser = sharingUser(
-    'delegate-1',
-    '+967777000003',
-    'المفوّض',
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+    role: SharedMemberRole.FINANCE_MANAGER,
+  });
+  const delegatedUser = sharingUser("delegate-1", "+967777000003", "المفوّض");
   harness.setAccess({
     plan: harness.db.plan as any,
     isOwner: false,
     sharedMember: {
-      id: 'member-delegate',
-      weddingPlanId: 'plan-1',
+      id: "member-delegate",
+      weddingPlanId: "plan-1",
       userId: delegatedUser.id,
       role: SharedMemberRole.VIEWER,
       ...rolePermissionDefaults(SharedMemberRole.VIEWER),
@@ -738,47 +1001,36 @@ test('reissue rejects historical invitations and delegated authority above the i
     } as any,
   });
   await assert.rejects(
-    () =>
-      harness.service.reissueInvite(
-        delegatedUser,
-        'plan-1',
-        created.id,
-      ),
+    () => harness.service.reissueInvite(delegatedUser, "plan-1", created.id),
     /Invite not found/,
   );
 
   harness.db.invites[0].inviterUserId = delegatedUser.id;
   await assert.rejects(
-    () =>
-      harness.service.reissueInvite(
-        delegatedUser,
-        'plan-1',
-        created.id,
-      ),
+    () => harness.service.reissueInvite(delegatedUser, "plan-1", created.id),
     /Cannot grant permission above inviter ceiling/,
   );
 });
 
-test('reissue cannot raise a pending invite above a delegated inviter ceiling', async () => {
+test("reissue cannot raise a pending invite above a delegated inviter ceiling", async () => {
   const harness = inviteHarness();
-  const created = await harness.service.createInvite(
-    harness.owner,
-    'plan-1',
-    { phone: '+967777000099', role: SharedMemberRole.VIEWER },
-  );
+  const created = await harness.service.createInvite(harness.owner, "plan-1", {
+    phone: "+967777000099",
+    role: SharedMemberRole.VIEWER,
+  });
   const invite = harness.db.invites[0];
   const delegatedUser = sharingUser(
-    'delegate-reissue',
-    '+967777000004',
-    'المفوّض',
+    "delegate-reissue",
+    "+967777000004",
+    "المفوّض",
   );
   invite.inviterUserId = delegatedUser.id;
   harness.setAccess({
     plan: harness.db.plan as any,
     isOwner: false,
     sharedMember: {
-      id: 'member-delegate-reissue',
-      weddingPlanId: 'plan-1',
+      id: "member-delegate-reissue",
+      weddingPlanId: "plan-1",
       userId: delegatedUser.id,
       role: SharedMemberRole.VIEWER,
       ...rolePermissionDefaults(SharedMemberRole.VIEWER),
@@ -789,34 +1041,31 @@ test('reissue cannot raise a pending invite above a delegated inviter ceiling', 
 
   await assert.rejects(
     () =>
-      harness.service.reissueInvite(
-        delegatedUser,
-        'plan-1',
-        created.id,
-        { canManageTasks: true },
-      ),
+      harness.service.reissueInvite(delegatedUser, "plan-1", created.id, {
+        canManageTasks: true,
+      }),
     /Cannot grant permission above inviter ceiling/,
   );
   assert.equal(invite.tokenHash, originalTokenHash);
   assert.equal(invite.canManageTasks, false);
 });
 
-test('invite create and reissue source contract stays transactional and authenticated', () => {
+test("invite create and reissue source contract stays transactional and authenticated", () => {
   const serviceSource = readFileSync(
-    join(process.cwd(), 'src/sharing/sharing.service.ts'),
-    'utf8',
+    join(process.cwd(), "src/sharing/sharing.service.ts"),
+    "utf8",
   );
   const controllerSource = readFileSync(
-    join(process.cwd(), 'src/sharing/sharing.controller.ts'),
-    'utf8',
+    join(process.cwd(), "src/sharing/sharing.controller.ts"),
+    "utf8",
   );
   const createBlock = serviceSource.slice(
-    serviceSource.indexOf('async createInvite('),
-    serviceSource.indexOf('async findInvitesForCurrentUser('),
+    serviceSource.indexOf("async createInvite("),
+    serviceSource.indexOf("async findInvitesForCurrentUser("),
   );
   const reissueBlock = serviceSource.slice(
-    serviceSource.indexOf('async reissueInvite('),
-    serviceSource.indexOf('async acceptInvite('),
+    serviceSource.indexOf("async reissueInvite("),
+    serviceSource.indexOf("async acceptInvite("),
   );
 
   assert.match(createBlock, /runSerializableTransaction/);
@@ -840,4 +1089,17 @@ test('invite create and reissue source contract stays transactional and authenti
     controllerSource,
     /@Controller\("api\/v1\/wedding-plans\/:weddingPlanId\/invites"\)[\s\S]*?@UseGuards\(JwtAuthGuard\)/,
   );
+});
+
+test("invite delivery migration preserves unknown historical outcomes", () => {
+  const migration = readFileSync(
+    join(
+      process.cwd(),
+      "prisma/migrations/20260718120000_persist_plan_invite_delivery/migration.sql",
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /'UNKNOWN'/);
+  assert.match(migration, /deliveryStatus"[^;]+NOT NULL DEFAULT 'UNKNOWN'/s);
 });

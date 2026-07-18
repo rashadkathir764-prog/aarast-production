@@ -56,6 +56,57 @@ void main() {
     expect(find.byType(AuthBrandMark), findsNothing);
   });
 
+  testWidgets('OTP copy never claims delivery for an uncertain request', (
+    tester,
+  ) async {
+    final authController = await _authController(
+      otpDeliveryStatus: 'UNCERTAIN',
+    );
+    await authController.requestOtp(phone: '+967777123456', purpose: 'LOGIN');
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthController>.value(
+        value: authController,
+        child: const MaterialApp(
+          home: OtpScreen(phone: '+967777123456', purpose: 'LOGIN'),
+        ),
+      ),
+    );
+
+    expect(
+      find.text(
+        'أدخل رمز التحقق إذا وصلك عبر واتساب\nلتسجيل الدخول إلى حسابك.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('تم تسليمه'), findsNothing);
+  });
+
+  testWidgets('OTP copy says delivered only for a DELIVERED response', (
+    tester,
+  ) async {
+    final authController = await _authController(
+      otpDeliveryStatus: 'DELIVERED',
+    );
+    await authController.requestOtp(phone: '+967777123456', purpose: 'LOGIN');
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AuthController>.value(
+        value: authController,
+        child: const MaterialApp(
+          home: OtpScreen(phone: '+967777123456', purpose: 'LOGIN'),
+        ),
+      ),
+    );
+
+    expect(
+      find.text(
+        'أدخل رمز التحقق الذي تم تسليمه إلى واتساب\nلتسجيل الدخول إلى حسابك.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('OTP clears the stale server error when retry input starts', (
     tester,
   ) async {
@@ -134,7 +185,10 @@ void main() {
   });
 }
 
-Future<AuthController> _authController({bool failVerify = false}) async {
+Future<AuthController> _authController({
+  bool failVerify = false,
+  String otpDeliveryStatus = 'PENDING',
+}) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
   final authStorage = AuthStorage(preferences);
@@ -143,6 +197,7 @@ Future<AuthController> _authController({bool failVerify = false}) async {
     apiClient,
     authStorage,
     failVerify: failVerify,
+    otpDeliveryStatus: otpDeliveryStatus,
   );
   return AuthController(authRepository);
 }
@@ -152,9 +207,25 @@ class _TestAuthRepository extends AuthRepository {
     super.apiClient,
     super.authStorage, {
     required this.failVerify,
+    required this.otpDeliveryStatus,
   });
 
   final bool failVerify;
+  final String otpDeliveryStatus;
+
+  @override
+  Future<OtpRequestResult> requestOtp({
+    required String phone,
+    required String purpose,
+  }) async {
+    return OtpRequestResult(
+      phone: phone,
+      purpose: purpose,
+      expiresAt: DateTime.now().add(const Duration(minutes: 5)),
+      delivery: 'WHATSAPP',
+      deliveryStatus: otpDeliveryStatus,
+    );
+  }
 
   @override
   Future<OtpVerifyResult> verifyOtp({

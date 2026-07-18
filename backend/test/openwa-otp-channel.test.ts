@@ -30,7 +30,7 @@ test('OpenWA OTP uses only the transient route and never echoes the code', async
       JSON.stringify({
         messageId: 'wa-message-id',
         timestamp: 1706868000,
-        deliveryStatus: 'SENT',
+        deliveryStatus: 'DELIVERED',
       }),
       {
         status: 201,
@@ -40,7 +40,10 @@ test('OpenWA OTP uses only the transient route and never echoes the code', async
   });
 
   const result = await channel.deliver('+967777123456', '654321', 'REGISTER');
-  assert.deepEqual(result, { delivery: 'WHATSAPP' });
+  assert.deepEqual(result, {
+    delivery: 'WHATSAPP',
+    deliveryStatus: 'DELIVERED',
+  });
   assert.equal(
     capturedUrl,
     'http://openwa:3000/api/sessions/aarast-otp/messages/send-transient-text',
@@ -141,6 +144,19 @@ test('OpenWA OTP keeps definitive provider 4xx failures distinct', async () => {
       /HTTP 401/.test(error.message),
   );
 });
+
+for (const status of [408, 425, 499]) {
+  test(`OpenWA OTP HTTP ${status} transport response is uncertain`, async () => {
+    const channel = new OpenWaOtpChannel(
+      config,
+      async () => new Response(null, { status }),
+    );
+    await assert.rejects(
+      () => channel.deliver('+967777123456', '654321', 'REGISTER'),
+      (error: unknown) => error instanceof OtpDeliveryUncertainError,
+    );
+  });
+}
 
 test('OpenWA config accepts internal HTTP and rejects unsafe public HTTP', () => {
   assert.equal(

@@ -140,10 +140,48 @@ void main() {
     expect(find.text('إعادة إرسال الرمز'), findsOneWidget);
     expect(tester.widget<AarastButton>(resend).onPressed, isNotNull);
 
-    await tester.tap(resend);
+    await _tapVisible(tester, resend);
     await tester.pump();
     expect(harness.repository.requestCalls, 2);
     expect(find.text('إعادة الإرسال خلال 60 ث'), findsOneWidget);
+  });
+
+  testWidgets('pending invite OTP request never claims WhatsApp delivery', (
+    tester,
+  ) async {
+    final harness = await _authHarness();
+    harness.repository.otpDeliveryStatus = 'PENDING';
+    await _pumpInviteScreen(tester, harness);
+    await _openOtpStep(tester);
+
+    expect(find.textContaining('طلبنا إرسال الرمز إلى'), findsOneWidget);
+    expect(find.textContaining('لم نتأكد من وصوله'), findsWidgets);
+    expect(find.textContaining('تم تسليم الرمز'), findsNothing);
+  });
+
+  testWidgets('uncertain invite OTP request stays explicitly unconfirmed', (
+    tester,
+  ) async {
+    final harness = await _authHarness();
+    harness.repository.otpDeliveryStatus = 'UNCERTAIN';
+    await _pumpInviteScreen(tester, harness);
+    await _openOtpStep(tester);
+
+    expect(find.textContaining('طلبنا إرسال الرمز إلى'), findsOneWidget);
+    expect(find.textContaining('لم نتأكد من وصوله'), findsWidgets);
+    expect(find.textContaining('تم تسليم الرمز'), findsNothing);
+  });
+
+  testWidgets('delivered invite OTP request may confirm WhatsApp delivery', (
+    tester,
+  ) async {
+    final harness = await _authHarness();
+    harness.repository.otpDeliveryStatus = 'DELIVERED';
+    await _pumpInviteScreen(tester, harness);
+    await _openOtpStep(tester);
+
+    expect(find.textContaining('تم تسليم الرمز إلى واتساب'), findsOneWidget);
+    expect(find.textContaining('لم نتأكد من وصوله'), findsNothing);
   });
 
   testWidgets('invite OTP clears stale errors when a new attempt starts', (
@@ -196,6 +234,11 @@ void main() {
     await _pumpInviteScreen(tester, harness, textScale: 1.3);
     await _openOtpStep(tester);
 
+    expect(harness.repository.requestCalls, 1);
+    await _scrollUntilVisible(
+      tester,
+      find.byKey(const Key('invite-otp-field')),
+    );
     expect(find.byKey(const Key('invite-otp-field')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -434,7 +477,10 @@ void main() {
       expect(find.text('عرس رشاد وسارة'), findsNothing);
       expect(find.text('صلاحياتك في الخطة'), findsNothing);
 
-      await tester.tap(find.byKey(const ValueKey('invite-create-app-account')));
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('invite-create-app-account')),
+      );
       await tester.pumpAndSettle();
 
       final registerUri = router.routeInformationProvider.value.uri;
@@ -709,6 +755,7 @@ class _BoundaryInviteRouterAppState extends State<_BoundaryInviteRouterApp> {
 
 Future<void> _openVerifiedInvite(WidgetTester tester) async {
   await _openOtpStep(tester);
+  await _scrollUntilVisible(tester, find.byKey(const Key('invite-otp-field')));
   await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
   await tester.pump(const Duration(milliseconds: 1100));
   await tester.pumpAndSettle();
@@ -791,6 +838,7 @@ class _FakeAuthRepository extends AuthRepository {
   bool authenticateOnVerify = false;
   bool authenticateOnRegister = false;
   Completer<void>? verifyGate;
+  String otpDeliveryStatus = 'PENDING';
 
   @override
   Future<AuthResponse> register({
@@ -827,6 +875,7 @@ class _FakeAuthRepository extends AuthRepository {
       purpose: purpose,
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
       delivery: 'WHATSAPP',
+      deliveryStatus: otpDeliveryStatus,
     );
   }
 
@@ -850,6 +899,7 @@ class _FakeAuthRepository extends AuthRepository {
       purpose: 'LOGIN',
       expiresAt: DateTime.now().add(const Duration(minutes: 5)),
       delivery: 'WHATSAPP',
+      deliveryStatus: otpDeliveryStatus,
     );
   }
 

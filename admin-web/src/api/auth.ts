@@ -22,11 +22,18 @@ export type AdminUser = {
   updatedAt?: string;
 };
 
+export type OtpDeliveryStatus =
+  | 'LOCAL_DEV'
+  | 'DELIVERED'
+  | 'PENDING'
+  | 'UNCERTAIN';
+
 export type AdminLoginChallenge = {
   mfaRequired: true;
   challengeToken: string;
   expiresAt: string;
   delivery: 'LOCAL_DEV' | 'WHATSAPP';
+  deliveryStatus: OtpDeliveryStatus;
   /** Present only when the backend itself is in local development OTP mode. */
   code?: string;
 };
@@ -36,6 +43,7 @@ export type AdminPasswordResetChallenge = {
   challengeToken: string;
   expiresAt: string;
   retryAfterSeconds: number;
+  deliveryStatus: OtpDeliveryStatus;
 };
 
 type AdminPasswordResetResult = {
@@ -53,7 +61,8 @@ export async function startAdminLogin(phone: string, password: string) {
     });
     if (
       response.mfaRequired !== true ||
-      !/^[a-f0-9]{64}$/.test(response.challengeToken)
+      !/^[a-f0-9]{64}$/.test(response.challengeToken) ||
+      !isOtpDeliveryStatus(response.deliveryStatus)
     ) {
       throw new Error('تعذر بدء التحقق بخطوتين');
     }
@@ -95,7 +104,8 @@ export async function requestAdminPasswordReset(
       !/^[a-f0-9]{64}$/.test(response.challengeToken) ||
       !Number.isFinite(Date.parse(response.expiresAt)) ||
       !Number.isInteger(response.retryAfterSeconds) ||
-      response.retryAfterSeconds < 0
+      response.retryAfterSeconds < 0 ||
+      !isOtpDeliveryStatus(response.deliveryStatus)
     ) {
       throw new Error('تعذر بدء استعادة كلمة المرور');
     }
@@ -103,6 +113,15 @@ export async function requestAdminPasswordReset(
   } catch (error) {
     throw mapPasswordResetRequestError(error);
   }
+}
+
+function isOtpDeliveryStatus(value: unknown): value is OtpDeliveryStatus {
+  return (
+    value === 'LOCAL_DEV' ||
+    value === 'DELIVERED' ||
+    value === 'PENDING' ||
+    value === 'UNCERTAIN'
+  );
 }
 
 export async function confirmAdminPasswordReset(

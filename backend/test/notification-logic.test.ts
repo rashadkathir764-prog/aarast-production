@@ -381,7 +381,7 @@ test('revoking financial access purges stored financial notifications atomically
     prisma,
     permissions,
     notifications as unknown as NotificationsService,
-    { deliver: async () => ({ channel: 'WHATSAPP', status: 'SENT' }) } as any,
+    { deliver: async () => ({ channel: 'WHATSAPP', status: 'DELIVERED' }) } as any,
   );
 
   await sharing.updateMemberForPlan({ id: 'owner-1' } as AuthenticatedUser, 'plan-1', existing.id, {

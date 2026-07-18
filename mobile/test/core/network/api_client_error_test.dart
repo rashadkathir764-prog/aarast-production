@@ -71,6 +71,32 @@ void main() {
       expect(CachePolicy.shouldQueueReplay(exception), isFalse);
     });
 
+    test('typed cooldown errors preserve the server retry window', () {
+      final requestOptions = RequestOptions(
+        path: '/api/v1/wedding-plans/plan-1/invites/invite-1/reissue',
+      );
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 429,
+            data: const {
+              'statusCode': 429,
+              'code': 'INVITE_REISSUE_COOLDOWN',
+              'message': 'Invite delivery was attempted recently.',
+              'retryAfterSeconds': 37,
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.serverCode, 'INVITE_REISSUE_COOLDOWN');
+      expect(exception.retryAfterSeconds, 37);
+      expect(exception.isAmbiguousMutationFailure, isFalse);
+    });
+
     test('401 keeps the typed server code and hides credential details', () {
       final requestOptions = RequestOptions(path: '/api/v1/auth/login');
       final exception = ApiException.fromDio(

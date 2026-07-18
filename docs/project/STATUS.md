@@ -181,8 +181,9 @@ observation remains an operational gate before a wider MVP rollout.
 
 Participant invite delivery now uses the same non-persisting transient OpenWA
 boundary without broad messaging access. The owner creates one pending invite;
-the backend sends its generic private HTTPS link and returns an explicit sent,
-uncertain, or unavailable result. A link-specific public gate matches the raw
+the backend sends its generic private HTTPS link and returns an explicit
+device-delivered, uncertain, or unavailable result. A link-specific public gate
+matches the raw
 token and canonical phone before dispatching OTP and exposes no plan details on
 mismatch. After successful OTP, the mobile link flow atomically accepts the
 invite and opens the contributor plan center. Android App Link association is
@@ -193,6 +194,11 @@ The add-participant action refreshes members and pending invitations for the
 current plan before sending. If the phone already has a live pending invitation,
 the same row is reissued instead of duplicated, and the selected role and
 permissions are replaced atomically with the new token fingerprint.
+Invite delivery state is now persisted with its attempt time and returned on
+every read. Mobile refresh therefore preserves the cooldown instead of sending
+twice or disabling uncertain delivery forever. Old rows are explicitly
+`UNKNOWN`; late superseded attempts fail with a typed conflict and cannot
+overwrite a newer result or produce an invalid invite link.
 
 The isolated server acceptance environment is now live at
 `https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its

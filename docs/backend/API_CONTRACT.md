@@ -241,7 +241,9 @@ Requires JWT. Returns the safe current user object without `passwordHash`.
   and unknown phones. Every well-formed request executes the same quota,
   bcrypt, and WhatsApp delivery path; only an active administrator can complete
   the reset. The challenge stores an HMAC subject digest, token hash, and exact
-  OTP relation, never the raw token or phone.
+  OTP relation, never the raw token or phone. The response includes the same
+  bounded `deliveryStatus` used by other OTP requests so the browser never
+  claims delivery from provider acceptance alone.
 - `POST /api/v1/auth/admin/password-reset/confirm` — body
   `{ challengeToken, code, newPassword }`. Requires a 12-72 character password
   containing an English letter and a digit, with a hard maximum of 72 UTF-8
@@ -281,12 +283,29 @@ only the Aarast-hardened `send-transient-text` contract; it never falls back to
 upstream `send-text`. Both modes refuse to boot when their selected channel is
 incompletely configured, and production responses never echo the code.
 
+Every successful OTP request response includes a machine-readable
+`deliveryStatus`: `DELIVERED` only after a device acknowledgement, `PENDING`
+when an official provider has only accepted the request, `UNCERTAIN` when
+OpenWA may have sent it but delivery was not confirmed, and `LOCAL_DEV` only
+for the explicit development channel. Mobile clients must not present
+`PENDING` or `UNCERTAIN` as delivered.
+
 Every non-development OTP request consumes atomic PostgreSQL quotas before
 delivery: 60-second phone cooldown, bounded phone/IP windows, and an
 `OTP_GLOBAL_DAILY_LIMIT` ceiling. Quota keys are HMAC digests made with
 `AUTH_LOGIN_THROTTLE_PEPPER`; raw phone numbers and IP addresses are not stored.
 Provider delivery failures also consume quota so a failing transport cannot be
 used to bypass the safety ceiling.
+
+For the official Meta channel, a valid 2xx response containing a message id
+means API acceptance only and returns `deliveryStatus: "PENDING"`; it does not
+claim device delivery. After the outbound request begins, a timeout/abort,
+connection failure, 5xx response, unreadable response, or malformed 2xx
+acknowledgement has an ambiguous outcome. The OTP remains active and the API
+returns the bounded `UNCERTAIN` result without exposing the provider body or
+OTP. An explicit Meta 4xx response is treated as a definitive rejection and
+invalidates the newly-created code, except transport-ambiguous `408`, `425`,
+and `499`, which remain `UNCERTAIN`.
 
 Administrator MFA uses the private `ADMIN_LOGIN` purpose, never the public
 `LOGIN` purpose. Each password-bound login challenge references the exact OTP
@@ -296,14 +315,17 @@ one day, then removed by one advisory-lock-elected replica.
 
 OpenWA delivery has an explicit acknowledgement contract. Success requires a
 2xx response containing both a non-empty `messageId` and
-`deliveryStatus: "SENT"`. A 503 is definitive only when its safe body code is
+`deliveryStatus: "DELIVERED"`, emitted only after a WhatsApp device-delivery
+acknowledgement. A send result or server-side `SENT` acknowledgement is not
+delivery success. HTTP `408`, `425`, and `499` remain transport-uncertain. A
+503 is definitive only when its safe body code is
 `NOT_ATTEMPTED` or `REJECTED`; those outcomes invalidate the newly created code
 and return the generic unavailable response. `DELIVERY_UNCERTAIN`, an unknown or
 malformed 5xx, a timeout/transport break, or a 2xx acknowledgement missing the
 required fields may occur after WhatsApp accepted the message. In those cases
 the code remains active and the request returns `200`, `delivery: "WHATSAPP"`,
-and a safe `message` asking the user to enter the code if it arrives. The
-response never echoes the OTP. This prevents an already delivered code from
+`deliveryStatus: "UNCERTAIN"`, and a safe `message` asking the user to enter the
+code if it arrives. The response never echoes the OTP. This prevents an already delivered code from
 being invalidated and avoids an immediate duplicate send.
 
 ### Profile image upload
@@ -834,11 +856,35 @@ After the transaction commits, a phone invitation is sent by the backend
 through the same hardened OpenWA `send-transient-text` transport used by the
 temporary MVP OTP channel. The message is generic and contains only the private
 HTTPS invitation link; plan title, inviter identity, permissions, and phone are
-not included. The create response reports `delivery.status` as `SENT` only after
-the complete OpenWA acknowledgement above. `DELIVERY_UNCERTAIN`, transport
+not included. The create response reports `delivery.status` as `DELIVERED` only
+after the device-delivery acknowledgement above. `DELIVERY_UNCERTAIN`, transport
 failures, and missing/unknown acknowledgements map to `UNCERTAIN`; explicit
 `NOT_ATTEMPTED`/`REJECTED` outcomes map to `UNAVAILABLE`. Neither outcome
 deletes the pending invite or falsely reports that WhatsApp succeeded.
+
+Every invite response contains a durable delivery snapshot:
+
+```json
+{
+  "delivery": {
+    "channel": "WHATSAPP",
+    "status": "UNCERTAIN",
+    "attemptedAt": "2026-07-18T12:00:00.000Z",
+    "retryAfterSeconds": 42
+  }
+}
+```
+
+`status` is one of `UNKNOWN`, `PENDING`, `DELIVERED`, `UNCERTAIN`, or
+`UNAVAILABLE`. `UNKNOWN` is reserved for invitations created before durable
+delivery tracking; it never claims a historical failure. `PENDING` means a
+delivery attempt was durably claimed but its final outcome was not stored yet.
+If the transport attempt finishes but its final database update is temporarily
+unavailable, the API conservatively returns the one-time link with `PENDING`
+instead of losing the link or claiming delivery; the bounded persistence-failure
+metric records the incident for operations.
+The snapshot is returned by create, list, detail, and reissue, so refreshing a
+client cannot erase delivery truth or bypass the retry window.
 
 `POST /api/v1/wedding-plans/:weddingPlanId/invites/:inviteId/reissue`
 atomically replaces the SHA-256 fingerprint of an existing live pending invite
@@ -851,6 +897,11 @@ is rejected for expired, accepted, declined, or revoked invitations. Owners
 may reissue any manageable invite; a delegated inviter may reissue only their
 own invite and only while its effective permissions remain within their
 current delegation ceiling.
+Reissue is blocked for 60 seconds after every delivery attempt. The stable
+response is HTTP `429`, code `INVITE_REISSUE_COOLDOWN`, and a positive
+`retryAfterSeconds`. A completion from an older superseded token attempt can
+never overwrite or borrow the newer attempt's result; it returns HTTP `409`
+with code `INVITE_DELIVERY_ATTEMPT_SUPERSEDED` and no raw bearer.
 
 `POST /api/v1/invites/:token/request-otp` is public but bearer-and-phone bound.
 It sends a `LOGIN` OTP only when the 43-character raw token fingerprints a live

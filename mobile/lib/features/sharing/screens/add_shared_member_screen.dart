@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -43,6 +45,8 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   bool _shareHandled = false;
   bool _isCreatingInvite = false;
   bool _isCheckingLookupAccess = false;
+  Timer? _deliveryRetryTimer;
+  bool _deliveryRetryUnlocked = false;
 
   @override
   void initState() {
@@ -57,6 +61,12 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   void didUpdateWidget(covariant AddSharedMemberScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      _deliveryRetryTimer?.cancel();
+      _createdInvite = null;
+      _shareHandled = false;
+      _deliveryRetryUnlocked = false;
+      _localPhoneError = null;
+      _phoneController.clear();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _refreshSharingAccess();
@@ -66,6 +76,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   @override
   void dispose() {
+    _deliveryRetryTimer?.cancel();
     _phoneController.dispose();
     super.dispose();
   }
@@ -74,6 +85,8 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
     final createdInvite = _createdInvite;
+    final canRetryDelivery =
+        _deliveryRetryUnlocked || createdInvite?.canRetryDelivery == true;
     final foundUser = provider.lookupUser;
     final isSubmitting = provider.isSubmitting || _isCreatingInvite;
     final isLookingUp = provider.isLookingUp || _isCheckingLookupAccess;
@@ -91,8 +104,16 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         subtitle: createdInvite == null
             ? 'ابحث بالرقم ثم اختر الدور — الصلاحيات تُضبط تلقائيًا.'
             : createdInvite.wasDeliveredByAarast
-            ? 'أرسل أعرست رابط الدعوة عبر واتساب. العضوية بانتظار التحقق.'
-            : 'تم حفظ الدعوة، لكن إرسال واتساب يحتاج إعادة محاولة.',
+            ? 'سلّم أعرست رابط الدعوة عبر واتساب. العضوية بانتظار التحقق.'
+            : createdInvite.hasUncertainDelivery
+            ? canRetryDelivery
+                  ? 'تم حفظ الدعوة، لكن لم نتأكد من وصول واتساب. يمكنك إعادة المحاولة الآن.'
+                  : 'تم حفظ الدعوة، لكن لم نتأكد من وصول واتساب. انتظر قبل إعادة الإرسال.'
+            : createdInvite.hasPendingDelivery
+            ? 'تم حفظ الدعوة، وما زلنا نثبت حالة تسليمها. انتظر قبل إعادة الإرسال.'
+            : createdInvite.hasUnknownDelivery
+            ? 'الدعوة محفوظة، لكن حالة تسليمها القديمة غير معروفة.'
+            : 'تم حفظ الدعوة، وتعذر تسليم رابطها عبر واتساب.',
         resizeToAvoidBottomInset: true,
         actions: [
           IconButton(
@@ -108,6 +129,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
                 onCopy: _copyInviteLink,
                 onDone: _handleBack,
                 isRetrying: isSubmitting,
+                canRetryDelivery: canRetryDelivery,
               )
             : gate ??
                   Form(
@@ -223,19 +245,32 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
   Future<void> _retryDelivery() async {
     final invite = _createdInvite;
-    if (invite == null) return;
-    final reissued = await context.read<SharingProvider>().reissueInvite(
-      invite,
-    );
-    if (!mounted || reissued == null) return;
+    if (invite == null ||
+        !(_deliveryRetryUnlocked || invite.canRetryDelivery)) {
+      return;
+    }
+    final provider = context.read<SharingProvider>();
+    final reissued = await provider.reissueInvite(invite);
+    if (!mounted) return;
+    if (reissued == null) {
+      final stored = provider.inviteById(invite.id);
+      final retryAt = stored?.deliveryRetryAvailableAt;
+      if (retryAt != null) {
+        final cooledInvite = invite.withDeliveryRetryAvailableAt(retryAt);
+        setState(() => _createdInvite = cooledInvite);
+        _scheduleDeliveryRetryUnlock(cooledInvite);
+      }
+      return;
+    }
     setState(() {
       _createdInvite = reissued;
       _shareHandled = reissued.wasDeliveredByAarast;
     });
+    _scheduleDeliveryRetryUnlock(reissued);
     if (reissued.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تم إرسال رابط المشاركة عبر واتساب من أعرست.',
+        'تم تسليم رابط المشاركة إلى واتساب من أعرست.',
       );
     } else {
       _showError(
@@ -321,6 +356,14 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
 
       final pendingInvite = _pendingInvite(provider.invites);
       if (pendingInvite != null) {
+        if (!pendingInvite.canRetryDelivery) {
+          AarastToast.showInfo(
+            context,
+            'الدعوة محفوظة لهذا الرقم. يمكنك إعادة الإرسال بعد '
+            '${pendingInvite.deliveryRetryRemainingSeconds} ثانية.',
+          );
+          return;
+        }
         final reissued = await provider.reissueInvite(
           pendingInvite,
           role: _role,
@@ -450,12 +493,26 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
       _createdInvite = invite;
       _shareHandled = invite.wasDeliveredByAarast;
     });
+    _scheduleDeliveryRetryUnlock(invite);
     if (invite.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تمت إضافة المشارك إلى الخطة بانتظار التحقق، وأُرسل الرابط عبر واتساب.',
+        'تمت إضافة المشارك إلى الخطة بانتظار التحقق، وتسلّم واتساب الرابط.',
       );
     }
+  }
+
+  void _scheduleDeliveryRetryUnlock(PlanInvite invite) {
+    _deliveryRetryTimer?.cancel();
+    final remaining = invite.deliveryRetryRemaining;
+    _deliveryRetryUnlocked = remaining == Duration.zero;
+    if (_deliveryRetryUnlocked) return;
+    _deliveryRetryTimer = Timer(
+      remaining + const Duration(milliseconds: 50),
+      () {
+        if (mounted) setState(() => _deliveryRetryUnlocked = true);
+      },
+    );
   }
 
   String? _existingMemberMessage(List<SharedMember> members) {
@@ -487,6 +544,7 @@ class _InviteCreatedView extends StatelessWidget {
     required this.onCopy,
     required this.onDone,
     required this.isRetrying,
+    required this.canRetryDelivery,
   });
 
   final PlanInvite invite;
@@ -494,6 +552,7 @@ class _InviteCreatedView extends StatelessWidget {
   final VoidCallback onCopy;
   final VoidCallback onDone;
   final bool isRetrying;
+  final bool canRetryDelivery;
 
   @override
   Widget build(BuildContext context) {
@@ -525,7 +584,7 @@ class _InviteCreatedView extends StatelessWidget {
               const SizedBox(height: 14),
               Text(
                 invite.wasDeliveredByAarast
-                    ? 'تمت إضافة المشارك وإرسال الرابط'
+                    ? 'تمت إضافة المشارك وتسليم الرابط'
                     : 'تمت إضافة دعوة المشارك',
                 textAlign: TextAlign.center,
                 style: textTheme.titleLarge?.copyWith(
@@ -537,10 +596,14 @@ class _InviteCreatedView extends StatelessWidget {
               Text(
                 invite.wasDeliveredByAarast
                     ? recipientName == null || recipientName.isEmpty
-                          ? 'أرسل أعرست الرابط عبر واتساب. بانتظار تحقق العضو.'
-                          : 'أرسل أعرست الرابط إلى $recipientName. بانتظار التحقق.'
+                          ? 'تم تسليم الرابط إلى واتساب. بانتظار تحقق العضو.'
+                          : 'تم تسليم الرابط إلى واتساب الخاص بـ $recipientName. بانتظار التحقق.'
                     : invite.hasUncertainDelivery
                     ? 'الدعوة محفوظة، لكن لم نتأكد من وصول رسالة واتساب.'
+                    : invite.hasPendingDelivery
+                    ? 'الدعوة محفوظة، وما زلنا نثبت حالة تسليمها.'
+                    : invite.hasUnknownDelivery
+                    ? 'الدعوة محفوظة، لكن حالة التسليم القديمة غير معروفة.'
                     : 'الدعوة محفوظة، وتعذر إرسال رابطها عبر واتساب.',
                 textAlign: TextAlign.center,
                 style: textTheme.bodyMedium?.copyWith(
@@ -594,10 +657,12 @@ class _InviteCreatedView extends StatelessWidget {
         if (!invite.wasDeliveredByAarast) ...[
           AarastButton(
             key: const Key('invite-retry-delivery'),
-            label: 'إعادة الإرسال من أعرست',
+            label: canRetryDelivery
+                ? 'إعادة الإرسال من أعرست'
+                : 'إعادة الإرسال متاحة بعد انتهاء مهلة الحماية',
             icon: LucideIcons.refreshCw,
             isLoading: isRetrying,
-            onPressed: isRetrying ? null : onRetry,
+            onPressed: isRetrying || !canRetryDelivery ? null : onRetry,
           ),
           const SizedBox(height: 10),
         ],

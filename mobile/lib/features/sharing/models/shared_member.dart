@@ -191,7 +191,9 @@ class PlanInvite {
     required this.canManageProviders,
     required this.canInviteMembers,
     required this.canManageMoney,
-    this.deliveryStatus = 'NOT_REQUESTED',
+    this.deliveryStatus = 'UNKNOWN',
+    this.deliveryAttemptedAt,
+    this.deliveryRetryAvailableAt,
     this.name,
     this.phone,
     this.email,
@@ -202,6 +204,10 @@ class PlanInvite {
   factory PlanInvite.fromJson(Map<String, dynamic> json) {
     final plan = json['weddingPlan'];
     final inviter = json['inviter'];
+    final delivery = json['delivery'];
+    final retryAfterSeconds = delivery is Map
+        ? int.tryParse(delivery['retryAfterSeconds']?.toString() ?? '') ?? 0
+        : 0;
     return PlanInvite(
       id: json['id'].toString(),
       weddingPlanId: json['weddingPlanId'].toString(),
@@ -224,9 +230,15 @@ class PlanInvite {
       email: json['email']?.toString(),
       weddingPlanTitle: plan is Map ? plan['title']?.toString() : null,
       inviterName: inviter is Map ? inviter['name']?.toString() : null,
-      deliveryStatus: json['delivery'] is Map
-          ? (json['delivery'] as Map)['status']?.toString() ?? 'NOT_REQUESTED'
-          : 'NOT_REQUESTED',
+      deliveryStatus: delivery is Map
+          ? delivery['status']?.toString() ?? 'UNKNOWN'
+          : 'UNKNOWN',
+      deliveryAttemptedAt: delivery is Map
+          ? _dateTimeOrNull(delivery['attemptedAt'])
+          : null,
+      deliveryRetryAvailableAt: retryAfterSeconds > 0
+          ? DateTime.now().add(Duration(seconds: retryAfterSeconds))
+          : null,
     );
   }
 
@@ -244,6 +256,8 @@ class PlanInvite {
   final bool canInviteMembers;
   final bool canManageMoney;
   final String deliveryStatus;
+  final DateTime? deliveryAttemptedAt;
+  final DateTime? deliveryRetryAvailableAt;
   final String? name;
   final String? phone;
   final String? email;
@@ -252,8 +266,33 @@ class PlanInvite {
 
   bool get isPending => status == 'PENDING';
   bool get isAccepted => status == 'ACCEPTED';
-  bool get wasDeliveredByAarast => deliveryStatus == 'SENT';
+  bool get wasDeliveredByAarast => deliveryStatus == 'DELIVERED';
   bool get hasUncertainDelivery => deliveryStatus == 'UNCERTAIN';
+  bool get hasPendingDelivery => deliveryStatus == 'PENDING';
+  bool get hasUnknownDelivery => deliveryStatus == 'UNKNOWN';
+
+  String? get deliverySummaryLabel => switch (deliveryStatus) {
+    'DELIVERED' => 'تم تسليم الرابط',
+    'UNCERTAIN' => 'الوصول غير مؤكد',
+    'UNAVAILABLE' => 'تعذر الإرسال',
+    'PENDING' => 'جارٍ تثبيت التسليم',
+    'UNKNOWN' => 'حالة الإرسال غير معروفة',
+    _ => null,
+  };
+
+  Duration get deliveryRetryRemaining {
+    final availableAt = deliveryRetryAvailableAt;
+    if (availableAt == null) return Duration.zero;
+    final remaining = availableAt.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  int get deliveryRetryRemainingSeconds {
+    final milliseconds = deliveryRetryRemaining.inMilliseconds;
+    return milliseconds == 0 ? 0 : (milliseconds / 1000).ceil();
+  }
+
+  bool get canRetryDelivery => deliveryRetryRemainingSeconds == 0;
 
   /// Returns a copy suitable for provider/list state after a one-time raw
   /// bearer token has been handed to the share screen.
@@ -273,6 +312,34 @@ class PlanInvite {
       canInviteMembers: canInviteMembers,
       canManageMoney: canManageMoney,
       deliveryStatus: deliveryStatus,
+      deliveryAttemptedAt: deliveryAttemptedAt,
+      deliveryRetryAvailableAt: deliveryRetryAvailableAt,
+      name: name,
+      phone: phone,
+      email: email,
+      weddingPlanTitle: weddingPlanTitle,
+      inviterName: inviterName,
+    );
+  }
+
+  PlanInvite withDeliveryRetryAvailableAt(DateTime availableAt) {
+    return PlanInvite(
+      id: id,
+      weddingPlanId: weddingPlanId,
+      token: token,
+      role: role,
+      status: status,
+      expiresAt: expiresAt,
+      canViewMoney: canViewMoney,
+      canEditPlan: canEditPlan,
+      canManageTasks: canManageTasks,
+      canManageGuests: canManageGuests,
+      canManageProviders: canManageProviders,
+      canInviteMembers: canInviteMembers,
+      canManageMoney: canManageMoney,
+      deliveryStatus: deliveryStatus,
+      deliveryAttemptedAt: deliveryAttemptedAt,
+      deliveryRetryAvailableAt: availableAt,
       name: name,
       phone: phone,
       email: email,

@@ -22,8 +22,9 @@ zero-risk replacement for Meta.
   webhooks, request-body logs, audit bodies, and failure payloads. It must also
   suppress any engine event that would re-persist the same outgoing message.
 - A successful transient response must contain a non-empty `messageId` and
-  `deliveryStatus: "SENT"` only after the adapter awaits WhatsApp Web's send
-  result. A 503 body may expose only the stable codes `NOT_ATTEMPTED`,
+  `deliveryStatus: "DELIVERED"` only after WhatsApp reports the device-delivery
+  acknowledgement. A send result or `SENT` acknowledgement alone is not
+  success. A 503 body may expose only the stable codes `NOT_ATTEMPTED`,
   `REJECTED`, or `DELIVERY_UNCERTAIN`; it must never expose the recipient, body,
   Chromium error, or WhatsApp internals.
 - The hardened adapter must retry once through the canonical `@lid` returned by
@@ -103,9 +104,10 @@ The operator must scan the QR with the dedicated number, then verify:
    manual session-start request;
 5. OpenWA database, history, logs, hooks, webhooks, and crash output contain
    neither the marker, recipient, nor API key;
-6. source tests prove `SENT`, all three 503 codes, missing/invalid 2xx
-   acknowledgements, the `@c.us` to `@lid` retry, and timeout-versus-rejection
-   classification;
+6. source tests prove that `DELIVERED` requires the device-delivery
+   acknowledgement, that sent-only acknowledgement times out as uncertain, all
+   three 503 codes, missing/invalid 2xx acknowledgements, the `@c.us` to `@lid`
+   retry, and timeout-versus-rejection classification;
 7. reconnect/relink behavior is stable for 24 hours.
 
 The optional `npm run smoke:openwa-otp` gate requires

@@ -52,6 +52,7 @@ beforeEach(() => {
     challengeToken: 'a'.repeat(64),
     expiresAt: '2026-07-17T12:10:00.000Z',
     retryAfterSeconds: 60,
+    deliveryStatus: 'DELIVERED',
   });
   mocks.confirmReset.mockResolvedValue(undefined);
 });
@@ -92,7 +93,12 @@ describe('admin password recovery', () => {
     expect(mocks.requestReset).toHaveBeenCalledWith('777123456');
     expect(
       screen.getByText(
-        'إذا كان الرقم مرتبطًا بحساب إدارة نشط، فسيصل رمز الاستعادة إلى واتساب.',
+        'إذا كان الرقم مرتبطًا بحساب إدارة نشط، فقد تم تسليم رمز الاستعادة إلى واتساب.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'أدخل الرمز الذي تم تسليمه إلى واتساب، ثم اختر كلمة مرور إدارية قوية.',
       ),
     ).toBeInTheDocument();
 
@@ -122,6 +128,31 @@ describe('admin password recovery', () => {
     expect(screen.getByLabelText('رقم الهاتف')).toHaveValue('777123456');
     expect(screen.queryByLabelText('رمز الاستعادة')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('كلمة المرور الجديدة')).not.toBeInTheDocument();
+  });
+
+  it('does not claim WhatsApp delivery when the transport is uncertain', async () => {
+    mocks.requestReset.mockResolvedValueOnce({
+      accepted: true,
+      challengeToken: 'b'.repeat(64),
+      expiresAt: '2026-07-17T12:10:00.000Z',
+      retryAfterSeconds: 60,
+      deliveryStatus: 'UNCERTAIN',
+    });
+
+    renderPage();
+    await openRecoveryConfirmation();
+
+    expect(
+      screen.getByText(
+        'تم قبول طلب الاستعادة، لكن لم نتأكد من وصول الرمز إلى واتساب بعد.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'أدخل الرمز إذا وصلك عبر واتساب، ثم اختر كلمة مرور إدارية قوية.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/تم تسليم رمز الاستعادة/)).not.toBeInTheDocument();
   });
 
   it('does not submit a weak or mismatched administrator password', async () => {

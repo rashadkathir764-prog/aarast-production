@@ -31,6 +31,8 @@ interface OpenWaTransientResponse {
   code?: unknown;
 }
 
+const ambiguousTransportStatuses = new Set([408, 425, 499]);
+
 /**
  * Sends one individual, short-lived machine message through Aarast's hardened
  * OpenWA contract. The recipient and body never enter the normal OpenWA
@@ -78,6 +80,9 @@ export async function sendOpenWaTransientText(
     }
 
     if (!response.ok) {
+      if (ambiguousTransportStatuses.has(response.status)) {
+        throw new OpenWaTransientDeliveryUncertainError();
+      }
       if (response.status >= 500) {
         const code = await readSafeDeliveryCode(response);
         if (code === 'NOT_ATTEMPTED' || code === 'REJECTED') {
@@ -103,7 +108,7 @@ export async function sendOpenWaTransientText(
       typeof payload.timestamp !== 'number' ||
       !Number.isFinite(payload.timestamp) ||
       payload.timestamp <= 0 ||
-      payload.deliveryStatus !== 'SENT'
+      payload.deliveryStatus !== 'DELIVERED'
     ) {
       throw new OpenWaTransientDeliveryUncertainError();
     }

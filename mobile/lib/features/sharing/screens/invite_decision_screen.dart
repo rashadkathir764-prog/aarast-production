@@ -38,6 +38,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
   bool _isVerifying = false;
   String? _otpNoticeMessage;
+  bool _otpDeliveryConfirmed = false;
   PlanInvite? _openedInvite;
   Timer? _resendTimer;
   int _resendSeconds = 0;
@@ -97,6 +98,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _step = _InviteAccessStep.otp;
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
+      _otpDeliveryConfirmed = result.isDeliveryConfirmed;
     });
     _startResendCooldown();
   }
@@ -226,6 +228,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpFieldState = AarastOtpFieldState.idle;
       _isVerifying = false;
       _resendSeconds = 0;
+      _otpNoticeMessage = null;
+      _otpDeliveryConfirmed = false;
       _step = _InviteAccessStep.phone;
     });
   }
@@ -356,6 +360,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
                 state: _otpFieldState,
                 resendSeconds: _resendSeconds,
                 otpNoticeMessage: _otpNoticeMessage,
+                deliveryConfirmed: _otpDeliveryConfirmed,
                 onCodeChanged: _onOtpChanged,
                 onVerify: _verifyOtp,
                 onResend: _resendOtp,
@@ -686,6 +691,7 @@ class _OtpStep extends StatelessWidget {
     required this.onChangePhone,
     required this.onCreateAppAccount,
     required this.autoJoin,
+    required this.deliveryConfirmed,
     this.otpNoticeMessage,
   });
 
@@ -699,6 +705,7 @@ class _OtpStep extends StatelessWidget {
   final VoidCallback onChangePhone;
   final VoidCallback onCreateAppAccount;
   final bool autoJoin;
+  final bool deliveryConfirmed;
   final String? otpNoticeMessage;
 
   @override
@@ -712,9 +719,12 @@ class _OtpStep extends StatelessWidget {
           icon: LucideIcons.messageCircle,
           eyebrow: 'التحقق من الهوية',
           title: 'أدخل رمز التحقق',
-          message:
-              'أرسلنا الرمز إلى '
-              '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}',
+          message: deliveryConfirmed
+              ? 'تم تسليم الرمز إلى واتساب على '
+                    '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}'
+              : 'طلبنا إرسال الرمز إلى '
+                    '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}، '
+                    'لكن لم نتأكد من وصوله بعد.',
         ),
         const SizedBox(height: 14),
         if (otpNoticeMessage != null) ...[

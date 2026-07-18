@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { afterEach, test } from 'node:test';
 import { HttpException } from '@nestjs/common';
 import { AuthErrorCode } from '../src/auth/auth-error';
+import { invitationDeliveryOutcomesTotal } from '../src/common/observability/metrics';
 import { InviteAccessService } from '../src/sharing/invite-access.service';
 import {
   buildInvitationMessage,
@@ -13,6 +14,13 @@ import {
 
 const originalEnvironment = { ...process.env };
 const originalFetch = globalThis.fetch;
+
+async function invitationDeliveryMetricValue(outcome: string): Promise<number> {
+  const metric = await invitationDeliveryOutcomesTotal.get();
+  return (
+    metric.values.find((value) => value.labels.outcome === outcome)?.value ?? 0
+  );
+}
 
 afterEach(() => {
   process.env = { ...originalEnvironment };
@@ -37,7 +45,7 @@ test('Aarast sends an invite through only the hardened transient OpenWA route', 
       JSON.stringify({
         messageId: 'wa-message-1',
         timestamp: 1706868000,
-        deliveryStatus: 'SENT',
+        deliveryStatus: 'DELIVERED',
       }),
       {
         status: 201,
@@ -46,13 +54,18 @@ test('Aarast sends an invite through only the hardened transient OpenWA route', 
     );
   }) as typeof fetch;
 
+  const deliveredBefore = await invitationDeliveryMetricValue('delivered');
   const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
   const result = await new InvitationDeliveryService().deliver(
     '+967777123456',
     token,
   );
 
-  assert.deepEqual(result, { channel: 'WHATSAPP', status: 'SENT' });
+  assert.deepEqual(result, { channel: 'WHATSAPP', status: 'DELIVERED' });
+  assert.equal(
+    await invitationDeliveryMetricValue('delivered'),
+    deliveredBefore + 1,
+  );
   assert.equal(requests.length, 1);
   assert.equal(
     requests[0].url,
@@ -72,6 +85,8 @@ test('invite delivery maps explicit OpenWA outcomes without false success', asyn
   process.env.OPENWA_SESSION_ID = 'aarast-otp';
   process.env.OPENWA_API_KEY = 'a-secure-openwa-api-key-for-tests-only';
   const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+  const rejectedBefore = await invitationDeliveryMetricValue('rejected');
+  const uncertainBefore = await invitationDeliveryMetricValue('uncertain');
 
   for (const [payload, expectedStatus] of [
     [{ code: 'NOT_ATTEMPTED' }, 'UNAVAILABLE'],
@@ -115,6 +130,67 @@ test('invite delivery maps explicit OpenWA outcomes without false success', asyn
     channel: 'WHATSAPP',
     status: 'UNCERTAIN',
   });
+  assert.equal(
+    await invitationDeliveryMetricValue('rejected'),
+    rejectedBefore + 2,
+  );
+  assert.equal(
+    await invitationDeliveryMetricValue('uncertain'),
+    uncertainBefore + 3,
+  );
+});
+
+test('invite delivery records an unexpected failure without logging private fields', async () => {
+  process.env.AUTH_OTP_MODE = 'openwa';
+  process.env.OPENWA_BASE_URL = 'http://openwa:2785';
+  process.env.OPENWA_SESSION_ID = 'aarast-otp';
+  process.env.OPENWA_API_KEY = 'a-secure-openwa-api-key-for-tests-only';
+  const failedBefore = await invitationDeliveryMetricValue('failed');
+  const warningEntries: unknown[] = [];
+  const service = new InvitationDeliveryService();
+  (service as any).logger = {
+    warn: (entry: unknown) => warningEntries.push(entry),
+  };
+  const result = await service.deliver(
+    '+967777123456',
+    'private-invalid-invite-token',
+  );
+
+  assert.deepEqual(result, { channel: 'WHATSAPP', status: 'UNAVAILABLE' });
+  assert.deepEqual(warningEntries, [
+    { event: 'invitation_delivery_failed', outcome: 'failed' },
+  ]);
+  const serializedWarnings = JSON.stringify(warningEntries);
+  assert.doesNotMatch(serializedWarnings, /967777123456/);
+  assert.doesNotMatch(
+    serializedWarnings,
+    /private-invalid-invite-token/,
+  );
+  assert.doesNotMatch(serializedWarnings, /Invalid invitation token/);
+  assert.equal(
+    await invitationDeliveryMetricValue('failed'),
+    failedBefore + 1,
+  );
+});
+
+test('invite delivery records a bounded not-attempted outcome without private labels', async () => {
+  process.env.AUTH_OTP_MODE = 'openwa';
+  const before = await invitationDeliveryMetricValue('not_attempted');
+
+  const result = await new InvitationDeliveryService().deliver(
+    null,
+    'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789',
+  );
+
+  assert.deepEqual(result, { channel: 'WHATSAPP', status: 'UNAVAILABLE' });
+  assert.equal(
+    await invitationDeliveryMetricValue('not_attempted'),
+    before + 1,
+  );
+  const metric = await invitationDeliveryOutcomesTotal.get();
+  for (const value of metric.values) {
+    assert.deepEqual(Object.keys(value.labels), ['outcome']);
+  }
 });
 
 test('invite message is generic, private, and rejects an unsafe public origin', () => {

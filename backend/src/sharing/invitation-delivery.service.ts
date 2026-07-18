@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   OpenWaTransientDeliveryRejectedError,
   OpenWaTransientDeliveryUncertainError,
   sendOpenWaTransientText,
 } from '../auth/openwa-transient-text';
+import { invitationDeliveryOutcomesTotal } from '../common/observability/metrics';
 
 export type InvitationDeliveryStatus =
-  | 'SENT'
+  | 'DELIVERED'
   | 'UNCERTAIN'
   | 'UNAVAILABLE';
 
@@ -19,8 +20,11 @@ const defaultInviteOrigin = 'https://aarast.shadowgardn.com';
 
 @Injectable()
 export class InvitationDeliveryService {
+  private readonly logger = new Logger(InvitationDeliveryService.name);
+
   async deliver(phone: string | null, token: string): Promise<InvitationDeliveryResult> {
     if (!phone || process.env.AUTH_OTP_MODE?.trim().toLowerCase() !== 'openwa') {
+      invitationDeliveryOutcomesTotal.inc({ outcome: 'not_attempted' });
       return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };
     }
 
@@ -29,16 +33,34 @@ export class InvitationDeliveryService {
         phone,
         text: buildInvitationMessage(token),
       });
-      return { channel: 'WHATSAPP', status: 'SENT' };
+      invitationDeliveryOutcomesTotal.inc({ outcome: 'delivered' });
+      return { channel: 'WHATSAPP', status: 'DELIVERED' };
     } catch (error) {
       if (error instanceof OpenWaTransientDeliveryUncertainError) {
+        invitationDeliveryOutcomesTotal.inc({ outcome: 'uncertain' });
+        this.logFailure('uncertain');
         return { channel: 'WHATSAPP', status: 'UNCERTAIN' };
       }
       if (error instanceof OpenWaTransientDeliveryRejectedError) {
+        invitationDeliveryOutcomesTotal.inc({ outcome: 'rejected' });
+        this.logFailure('rejected');
         return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };
       }
+      invitationDeliveryOutcomesTotal.inc({ outcome: 'failed' });
+      this.logFailure('failed');
       return { channel: 'WHATSAPP', status: 'UNAVAILABLE' };
     }
+  }
+
+  /**
+   * Never attach the thrown error, phone, token, or generated message. Provider
+   * errors can contain request targets and transport payloads.
+   */
+  private logFailure(outcome: 'uncertain' | 'rejected' | 'failed'): void {
+    this.logger.warn({
+      event: 'invitation_delivery_failed',
+      outcome,
+    });
   }
 }
 

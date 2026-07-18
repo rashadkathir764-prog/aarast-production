@@ -336,6 +336,7 @@ class ApiException implements Exception {
     this.isNetworkFailure = false,
     this.statusCode,
     this.serverCode,
+    this.retryAfterSeconds,
   });
 
   factory ApiException.fromDio(DioException error) {
@@ -343,6 +344,7 @@ class ApiException implements Exception {
     final data = error.response?.data;
     final serverCode = _extractServerCode(data);
     final serverMessage = _extractServerMessage(data);
+    final retryAfterSeconds = _extractRetryAfterSeconds(data);
 
     // Stable authentication codes are translated at the network boundary so
     // screens that call repositories directly never leak backend English.
@@ -353,6 +355,7 @@ class ApiException implements Exception {
         localizedAuthMessage,
         statusCode: statusCode,
         serverCode: serverCode,
+        retryAfterSeconds: retryAfterSeconds,
       );
     }
 
@@ -361,6 +364,7 @@ class ApiException implements Exception {
         'بيانات الدخول غير صحيحة أو انتهت الجلسة.',
         statusCode: 401,
         serverCode: serverCode,
+        retryAfterSeconds: retryAfterSeconds,
       );
     }
 
@@ -382,6 +386,7 @@ class ApiException implements Exception {
         _genericAuthMessage(statusCode),
         statusCode: statusCode,
         serverCode: serverCode,
+        retryAfterSeconds: retryAfterSeconds,
       );
     }
 
@@ -390,6 +395,7 @@ class ApiException implements Exception {
         _cleanServerMessage(serverMessage),
         statusCode: statusCode,
         serverCode: serverCode,
+        retryAfterSeconds: retryAfterSeconds,
       );
     }
 
@@ -397,6 +403,7 @@ class ApiException implements Exception {
       'حدث خطأ، يرجى المحاولة مرة أخرى.',
       statusCode: statusCode,
       serverCode: serverCode,
+      retryAfterSeconds: retryAfterSeconds,
     );
   }
 
@@ -404,6 +411,7 @@ class ApiException implements Exception {
   final bool isNetworkFailure;
   final int? statusCode;
   final String? serverCode;
+  final int? retryAfterSeconds;
 
   bool get isUnauthorized {
     return statusCode == 401 || message.contains('بيانات الدخول');
@@ -462,6 +470,23 @@ class ApiException implements Exception {
       if (nestedMessage is String && nestedMessage.trim().isNotEmpty) {
         return nestedMessage;
       }
+    }
+    return null;
+  }
+
+  static int? _extractRetryAfterSeconds(Object? data) {
+    if (data is! Map) return null;
+    final raw = data['retryAfterSeconds'];
+    final parsed = raw is int ? raw : int.tryParse(raw?.toString() ?? '');
+    if (parsed != null && parsed > 0) return parsed;
+
+    final nestedMessage = data['message'];
+    if (nestedMessage is Map) {
+      final nestedRaw = nestedMessage['retryAfterSeconds'];
+      final nested = nestedRaw is int
+          ? nestedRaw
+          : int.tryParse(nestedRaw?.toString() ?? '');
+      if (nested != null && nested > 0) return nested;
     }
     return null;
   }

@@ -1,13 +1,17 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import {
   NotificationPriority,
   NotificationType,
   PlanInvite,
+  PlanInviteDeliveryStatus,
   Prisma,
   SharedMember,
   SharedMemberRole,
@@ -16,6 +20,7 @@ import {
 } from "@prisma/client";
 import { createHash, randomBytes } from "crypto";
 import { AuthenticatedUser } from "../auth/authenticated-user.interface";
+import { invitationDeliveryPersistenceFailuresTotal } from "../common/observability/metrics";
 import { PhoneNormalizer } from "../common/phone/phone-normalizer";
 import { runSerializableTransaction } from "../common/prisma/serializable-transaction";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -117,7 +122,12 @@ export interface PlanInviteResponse {
   };
   inviter?: SafeSharedMemberUser;
   invitee?: SafeSharedMemberUser | null;
-  delivery?: InvitationDeliveryResult;
+  delivery: {
+    channel: "WHATSAPP";
+    status: PlanInviteDeliveryStatus;
+    attemptedAt: Date | null;
+    retryAfterSeconds: number;
+  };
 }
 
 export interface PermissionSummaryResponse {
@@ -155,8 +165,21 @@ interface PresentedInvite {
   token: string;
 }
 
+interface InviteDeliveryAttempt {
+  inviteId: string;
+  weddingPlanId: string;
+  tokenHash: string;
+  attemptedAt: Date;
+}
+
+const inviteReissueCooldownMs = 60_000;
+const inviteReissueCooldownCode = "INVITE_REISSUE_COOLDOWN";
+const inviteDeliverySupersededCode = "INVITE_DELIVERY_ATTEMPT_SUPERSEDED";
+
 @Injectable()
 export class SharingService {
+  private readonly logger = new Logger(SharingService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
@@ -392,11 +415,7 @@ export class SharingService {
             weddingPlanId,
             currentUser,
           );
-        this.assertPermissionCeiling(
-          transactionalAccess,
-          role,
-          permissionData,
-        );
+        this.assertPermissionCeiling(transactionalAccess, role, permissionData);
         if (target.user?.id === transactionalAccess.plan.ownerUserId) {
           throw new BadRequestException(
             "Owner cannot be invited to own wedding plan",
@@ -457,6 +476,8 @@ export class SharingService {
             ...permissionData,
             expiresAt: this.expiresAt(dto.expiresInDays),
             tokenHash: this.hashInviteToken(token),
+            deliveryStatus: PlanInviteDeliveryStatus.PENDING,
+            deliveryAttemptedAt: now,
           },
           include: this.inviteIncludes(),
         });
@@ -489,10 +510,14 @@ export class SharingService {
       created.invite.normalizedPhone,
       created.token,
     );
-    return {
-      ...this.toInviteResponse(created.invite, created.token),
+    const { invite: finalized, attempt } = await this.finalizeInviteDelivery(
+      created,
       delivery,
-    };
+    );
+    return this.toInviteResponse(
+      finalized,
+      finalized.tokenHash === attempt.tokenHash ? created.token : undefined,
+    );
   }
 
   async findInvitesForCurrentUser(
@@ -547,10 +572,7 @@ export class SharingService {
     weddingPlanId: string,
     inviteId: string,
   ): Promise<PlanInviteResponse> {
-    await this.permissions.assertMemberManageable(
-      weddingPlanId,
-      currentUser,
-    );
+    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
 
     const cancelled = await runSerializableTransaction(
       this.prisma,
@@ -614,10 +636,7 @@ export class SharingService {
     inviteId: string,
     dto: UpdateSharedMemberDto = {},
   ): Promise<PlanInviteResponse> {
-    await this.permissions.assertMemberManageable(
-      weddingPlanId,
-      currentUser,
-    );
+    await this.permissions.assertMemberManageable(weddingPlanId, currentUser);
 
     const reissued = await this.withUniqueInviteToken(async (token) =>
       runSerializableTransaction(this.prisma, async (tx) => {
@@ -655,17 +674,12 @@ export class SharingService {
         ) {
           throw new ConflictException("Invite is no longer pending");
         }
-
         const role = this.assignableRole(dto.role ?? invite.role);
-        const permissionData = this.permissionDataForUpdate(
-          invite,
-          dto,
-          role,
-        );
-        this.assertPermissionCeiling(
-          transactionalAccess,
-          role,
-          permissionData,
+        const permissionData = this.permissionDataForUpdate(invite, dto, role);
+        this.assertPermissionCeiling(transactionalAccess, role, permissionData);
+        this.assertInviteReissueCooldownElapsed(
+          invite.deliveryAttemptedAt,
+          now,
         );
 
         const updated = await tx.planInvite.updateMany({
@@ -680,6 +694,8 @@ export class SharingService {
           },
           data: {
             tokenHash: this.hashInviteToken(token),
+            deliveryStatus: PlanInviteDeliveryStatus.PENDING,
+            deliveryAttemptedAt: now,
             ...(dto.role !== undefined ? { role } : {}),
             ...permissionData,
           },
@@ -703,10 +719,14 @@ export class SharingService {
       reissued.invite.normalizedPhone,
       reissued.token,
     );
-    return {
-      ...this.toInviteResponse(reissued.invite, reissued.token),
+    const { invite: finalized, attempt } = await this.finalizeInviteDelivery(
+      reissued,
       delivery,
-    };
+    );
+    return this.toInviteResponse(
+      finalized,
+      finalized.tokenHash === attempt.tokenHash ? reissued.token : undefined,
+    );
   }
 
   async acceptInvite(
@@ -1130,6 +1150,127 @@ export class SharingService {
     throw new ConflictException("Could not create a unique invite token");
   }
 
+  private deliveryAttemptFor(
+    presented: PresentedInvite,
+  ): InviteDeliveryAttempt {
+    const attemptedAt = presented.invite.deliveryAttemptedAt;
+    if (!attemptedAt) {
+      throw new Error("Invite delivery attempt was not initialized");
+    }
+    return {
+      inviteId: presented.invite.id,
+      weddingPlanId: presented.invite.weddingPlanId,
+      tokenHash: this.hashInviteToken(presented.token),
+      attemptedAt,
+    };
+  }
+
+  private async persistInviteDelivery(
+    attempt: InviteDeliveryAttempt,
+    delivery: InvitationDeliveryResult,
+  ): Promise<PlanInviteWithRelations> {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const stored = await tx.planInvite.updateMany({
+        where: {
+          id: attempt.inviteId,
+          weddingPlanId: attempt.weddingPlanId,
+          tokenHash: attempt.tokenHash,
+          deliveryAttemptedAt: attempt.attemptedAt,
+          deliveryStatus: PlanInviteDeliveryStatus.PENDING,
+        },
+        data: {
+          deliveryStatus: this.toStoredDeliveryStatus(delivery.status),
+        },
+      });
+      if (stored.count !== 1) {
+        throw new HttpException(
+          {
+            statusCode: HttpStatus.CONFLICT,
+            code: inviteDeliverySupersededCode,
+            message: "Invite delivery attempt was superseded.",
+          },
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const finalized = await tx.planInvite.findUnique({
+        where: { id: attempt.inviteId },
+        include: this.inviteIncludes(),
+      });
+      if (!finalized) {
+        throw new NotFoundException("Invite not found");
+      }
+      return finalized;
+    });
+  }
+
+  private async finalizeInviteDelivery(
+    presented: PresentedInvite,
+    delivery: InvitationDeliveryResult,
+  ): Promise<{
+    invite: PlanInviteWithRelations;
+    attempt: InviteDeliveryAttempt;
+  }> {
+    const attempt = this.deliveryAttemptFor(presented);
+    try {
+      return {
+        invite: await this.persistInviteDelivery(attempt, delivery),
+        attempt,
+      };
+    } catch (error) {
+      if (error instanceof HttpException || !isPrismaPersistenceError(error)) {
+        throw error;
+      }
+
+      invitationDeliveryPersistenceFailuresTotal.inc();
+      this.logger.error({
+        event: "invitation_delivery_persistence_failed",
+      });
+      return { invite: presented.invite, attempt };
+    }
+  }
+
+  private toStoredDeliveryStatus(
+    status: InvitationDeliveryResult["status"],
+  ): PlanInviteDeliveryStatus {
+    switch (status) {
+      case "DELIVERED":
+        return PlanInviteDeliveryStatus.DELIVERED;
+      case "UNCERTAIN":
+        return PlanInviteDeliveryStatus.UNCERTAIN;
+      case "UNAVAILABLE":
+        return PlanInviteDeliveryStatus.UNAVAILABLE;
+    }
+  }
+
+  private assertInviteReissueCooldownElapsed(
+    attemptedAt: Date | null,
+    now: Date,
+  ): void {
+    const retryAfterSeconds = this.inviteRetryAfterSeconds(attemptedAt, now);
+    if (retryAfterSeconds === 0) return;
+
+    throw new HttpException(
+      {
+        statusCode: HttpStatus.TOO_MANY_REQUESTS,
+        code: inviteReissueCooldownCode,
+        message: "Invite delivery was attempted recently. Try again later.",
+        retryAfterSeconds,
+      },
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
+  }
+
+  private inviteRetryAfterSeconds(
+    attemptedAt: Date | null,
+    now = new Date(),
+  ): number {
+    if (!attemptedAt) return 0;
+    const remainingMs =
+      attemptedAt.getTime() + inviteReissueCooldownMs - now.getTime();
+    return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 0;
+  }
+
   private async findInviteByTokenOrThrow(
     token: string,
   ): Promise<PlanInviteWithRelations> {
@@ -1413,9 +1554,7 @@ export class SharingService {
       id: member.id,
       weddingPlanId: member.weddingPlanId,
       userId: member.userId,
-      ...(member.user
-        ? { user: toApplicationUserContact(member.user) }
-        : {}),
+      ...(member.user ? { user: toApplicationUserContact(member.user) } : {}),
       role: member.role,
       canViewMoney: member.canViewMoney,
       canEditPlan: member.canEditPlan,
@@ -1507,6 +1646,14 @@ export class SharingService {
       revokedAt: invite.revokedAt,
       createdAt: invite.createdAt,
       updatedAt: invite.updatedAt,
+      delivery: {
+        channel: "WHATSAPP",
+        status: invite.deliveryStatus,
+        attemptedAt: invite.deliveryAttemptedAt,
+        retryAfterSeconds: this.inviteRetryAfterSeconds(
+          invite.deliveryAttemptedAt,
+        ),
+      },
       ...(invite.weddingPlan ? { weddingPlan: invite.weddingPlan } : {}),
       ...(invite.inviter
         ? { inviter: toApplicationUserContact(invite.inviter) }
@@ -1556,4 +1703,35 @@ export class SharingService {
         context.isOwner || context.sharedMember?.receiveNotifications === true,
     };
   }
+}
+
+function isPrismaPersistenceError(error: unknown): boolean {
+  if (
+    error instanceof Prisma.PrismaClientUnknownRequestError ||
+    error instanceof Prisma.PrismaClientRustPanicError ||
+    error instanceof Prisma.PrismaClientInitializationError
+  ) {
+    return true;
+  }
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (["P2024", "P2028", "P2034"].includes(error.code)) return true;
+  if (error.code !== "P2010") return false;
+
+  const databaseCode = String(
+    (error.meta as Record<string, unknown> | undefined)?.code ?? "",
+  );
+  return [
+    "40001",
+    "40P01",
+    "08000",
+    "08001",
+    "08003",
+    "08004",
+    "08006",
+    "08007",
+    "08P01",
+    "57P01",
+    "57P02",
+    "57P03",
+  ].includes(databaseCode);
 }

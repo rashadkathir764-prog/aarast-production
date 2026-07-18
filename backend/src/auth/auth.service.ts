@@ -16,6 +16,7 @@ import {
 import * as bcryptjs from "bcryptjs";
 import { randomBytes } from "crypto";
 import {
+  otpDeliveryOutcomesTotal,
   otpRequestsTotal,
   otpVerificationsTotal,
 } from "../common/observability/metrics";
@@ -76,6 +77,7 @@ export interface OtpRequestResponse {
   purpose: OtpPurpose;
   expiresAt: Date;
   delivery: "LOCAL_DEV" | "WHATSAPP";
+  deliveryStatus: "LOCAL_DEV" | "DELIVERED" | "PENDING" | "UNCERTAIN";
   code?: string;
   message?: string;
 }
@@ -103,6 +105,7 @@ export interface AdminLoginPendingResponse {
   challengeToken: string;
   expiresAt: Date;
   delivery: "LOCAL_DEV" | "WHATSAPP";
+  deliveryStatus: "LOCAL_DEV" | "DELIVERED" | "PENDING" | "UNCERTAIN";
   code?: string;
 }
 
@@ -111,6 +114,7 @@ export interface AdminPasswordResetPendingResponse {
   challengeToken: string;
   expiresAt: Date;
   retryAfterSeconds: number;
+  deliveryStatus: "LOCAL_DEV" | "DELIVERED" | "PENDING" | "UNCERTAIN";
 }
 
 type RegistrationResult =
@@ -372,6 +376,7 @@ export class AuthService {
       challengeToken,
       expiresAt,
       delivery: otp.delivery,
+      deliveryStatus: otp.deliveryStatus,
       ...(otp.code ? { code: otp.code } : {}),
     };
   }
@@ -689,7 +694,13 @@ export class AuthService {
     quotaAlreadyConsumed = false,
   ): Promise<IssuedOtpResponse> {
     const mode = this.getOtpMode();
-    const channel = this.requireOtpChannel(mode);
+    let channel: OtpChannel;
+    try {
+      channel = this.requireOtpChannel(mode);
+    } catch (error) {
+      otpDeliveryOutcomesTotal.inc({ purpose, outcome: "unavailable" });
+      throw error;
+    }
     if (mode !== "dev" && !quotaAlreadyConsumed) {
       await this.otpDispatchQuota.consume(phone, context);
     }
@@ -714,8 +725,10 @@ export class AuthService {
       delivered = await channel.deliver(phone, code, purpose);
     } catch (error) {
       if (error instanceof OtpDeliveryUncertainError) {
+        otpDeliveryOutcomesTotal.inc({ purpose, outcome: "uncertain" });
         delivered = {
           delivery: "WHATSAPP" as const,
+          deliveryStatus: "UNCERTAIN" as const,
           message: AuthService.otpDeliveryUncertainMessage,
         };
       } else {
@@ -723,8 +736,15 @@ export class AuthService {
           where: { id: otp.id, consumedAt: null },
           data: { consumedAt: new Date() },
         });
+        otpDeliveryOutcomesTotal.inc({ purpose, outcome: "rejected" });
         throw otpDeliveryUnavailableError();
       }
+    }
+    if (delivered.deliveryStatus !== "UNCERTAIN") {
+      otpDeliveryOutcomesTotal.inc({
+        purpose,
+        outcome: delivered.deliveryStatus.toLowerCase(),
+      });
     }
     otpRequestsTotal.inc({ delivery: delivered.delivery });
 
@@ -734,6 +754,7 @@ export class AuthService {
       purpose,
       expiresAt,
       delivery: delivered.delivery,
+      deliveryStatus: delivered.deliveryStatus,
       ...(delivered.echoCode ? { code: delivered.echoCode } : {}),
       ...(delivered.message ? { message: delivered.message } : {}),
     };
@@ -1060,6 +1081,7 @@ export class AuthService {
       challengeToken,
       expiresAt,
       retryAfterSeconds: 60,
+      deliveryStatus: issued.deliveryStatus,
     };
   }
 

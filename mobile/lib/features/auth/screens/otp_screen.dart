@@ -117,7 +117,14 @@ class _OtpScreenState extends State<OtpScreen> {
       _otpNoticeMessage = result.noticeMessage;
     });
     _startResendCooldown(notify: true);
-    AarastToast.showSuccess(context, 'تم إعادة إرسال الرمز');
+    if (result.isDeliveryConfirmed) {
+      AarastToast.showSuccess(context, 'تم تسليم الرمز إلى واتساب');
+    } else {
+      AarastToast.showInfo(
+        context,
+        'طلبنا إعادة الإرسال، لكن لم نتأكد من وصول الرمز بعد.',
+      );
+    }
   }
 
   void _onCodeChanged(String value) {
@@ -299,16 +306,21 @@ class _OtpScreenState extends State<OtpScreen> {
     final purpose =
         widget.purpose ?? auth.otpRequest?.purpose ?? 'VERIFY_PHONE';
     final isRegistration = widget.registration != null || purpose == 'REGISTER';
+    final deliveryLead = auth.otpRequest?.isLocalDev == true
+        ? 'أدخل رمز التجربة الظاهر أدناه'
+        : auth.otpRequest?.isDeliveryConfirmed == true
+        ? 'أدخل رمز التحقق الذي تم تسليمه إلى واتساب'
+        : 'أدخل رمز التحقق إذا وصلك عبر واتساب';
     final heading = isRegistration
         ? 'تأكيد رقم الهاتف'
         : purpose == 'LOGIN'
         ? 'تسجيل الدخول برمز التحقق'
         : 'تأكيد ملكية رقم الهاتف';
     final subtitle = isRegistration
-        ? 'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.'
+        ? '$deliveryLead\nلإكمال إعداد الحساب.'
         : purpose == 'LOGIN'
-        ? 'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلتسجيل الدخول إلى حسابك.'
-        : 'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلتأكيد ملكية الرقم.';
+        ? '$deliveryLead\nلتسجيل الدخول إلى حسابك.'
+        : '$deliveryLead\nلتأكيد ملكية الرقم.';
     final existingAccount =
         auth.errorCode == 'ACCOUNT_ALREADY_EXISTS' ||
         auth.errorCode == 'ADMIN_APP_PASSWORD_ALREADY_SET';

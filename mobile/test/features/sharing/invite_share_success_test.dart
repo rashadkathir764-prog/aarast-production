@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
@@ -23,7 +24,7 @@ void main() {
       tester.view.physicalSize = const Size(320, 900);
       addTearDown(tester.view.reset);
 
-      final api = _FakeSharingApi(createDeliveryStatus: 'SENT');
+      final api = _FakeSharingApi(createDeliveryStatus: 'DELIVERED');
       final provider = SharingProvider(api);
       await _pumpScreen(tester, provider: provider);
 
@@ -33,7 +34,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.text('تمت إضافة المشارك وإرسال الرابط'), findsOneWidget);
+      expect(find.text('تمت إضافة المشارك وتسليم الرابط'), findsOneWidget);
       expect(find.textContaining('بانتظار التحقق'), findsWidgets);
       expect(find.text('+967 777 123 456'), findsOneWidget);
       expect(find.byKey(const Key('invite-share-whatsapp')), findsNothing);
@@ -55,17 +56,48 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.createCalls, 1);
-      expect(find.byKey(const Key('invite-retry-delivery')), findsOneWidget);
+      final retryFinder = find.byKey(const Key('invite-retry-delivery'));
+      expect(retryFinder, findsOneWidget);
+      expect(tester.widget<AarastButton>(retryFinder).onPressed, isNull);
       expect(find.textContaining('تعذر إرسال رابطها'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('invite-retry-delivery')));
+      await tester.pump(const Duration(seconds: 60, milliseconds: 100));
+      await tester.pump();
+      expect(tester.widget<AarastButton>(retryFinder).onPressed, isNotNull);
+      await tester.tap(retryFinder);
       await tester.pumpAndSettle();
 
       expect(api.createCalls, 1);
       expect(api.reissueCalls, 1);
-      expect(find.text('تمت إضافة المشارك وإرسال الرابط'), findsOneWidget);
+      expect(find.text('تمت إضافة المشارك وتسليم الرابط'), findsOneWidget);
       expect(find.byKey(const Key('invite-retry-delivery')), findsNothing);
-      expect(find.textContaining('تم إرسال رابط المشاركة'), findsOneWidget);
+      expect(find.textContaining('تم تسليم رابط المشاركة'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'uncertain delivery keeps the invite without claiming success or offering an immediate duplicate send',
+    (tester) async {
+      final api = _FakeSharingApi(createDeliveryStatus: 'UNCERTAIN');
+      await _pumpScreen(tester, provider: SharingProvider(api));
+
+      await tester.enterText(find.byType(TextFormField).first, '777123456');
+      await tester.tap(find.text('إرسال دعوة المشاركة'));
+      await tester.pumpAndSettle();
+
+      expect(api.createCalls, 1);
+      expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
+      expect(find.text('تمت إضافة دعوة المشارك'), findsOneWidget);
+      expect(
+        find.textContaining('لم نتأكد من وصول رسالة واتساب'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('تسليم الرابط'), findsNothing);
+      final retryFinder = find.byKey(const Key('invite-retry-delivery'));
+      expect(retryFinder, findsOneWidget);
+      expect(tester.widget<AarastButton>(retryFinder).onPressed, isNull);
+      expect(find.byKey(const Key('invite-copy-link')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -80,7 +112,7 @@ void main() {
         canManageTasks: true,
       );
       final api = _FakeSharingApi(
-        createDeliveryStatus: 'SENT',
+        createDeliveryStatus: 'DELIVERED',
         existingInvites: [existingInvite],
       );
       final provider = SharingProvider(api);
@@ -95,16 +127,41 @@ void main() {
       expect(api.lastReissueRole, 'VIEWER');
       expect(api.lastReissueCanManageTasks, isFalse);
       expect(find.byKey(const Key('invite-created-view')), findsOneWidget);
-      expect(find.text('تمت إضافة المشارك وإرسال الرابط'), findsOneWidget);
+      expect(find.text('تمت إضافة المشارك وتسليم الرابط'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('an existing pending invite honors its persisted cooldown', (
+    tester,
+  ) async {
+    final existingInvite = _invite(
+      weddingPlanId: 'plan-1',
+      role: 'VIEWER',
+      deliveryStatus: 'UNCERTAIN',
+      deliveryRetryAvailableAt: DateTime.now().add(const Duration(seconds: 60)),
+    );
+    final api = _FakeSharingApi(
+      createDeliveryStatus: 'DELIVERED',
+      existingInvites: [existingInvite],
+    );
+    await _pumpScreen(tester, provider: SharingProvider(api));
+
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال دعوة المشاركة'));
+    await tester.pump();
+
+    expect(api.createCalls, 0);
+    expect(api.reissueCalls, 0);
+    expect(find.textContaining('الدعوة محفوظة لهذا الرقم'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'direct navigation refreshes invite state for the current plan only',
     (tester) async {
       final api = _FakeSharingApi(
-        createDeliveryStatus: 'SENT',
+        createDeliveryStatus: 'DELIVERED',
         invitesByPlan: {
           'plan-old': [
             _invite(
@@ -144,7 +201,7 @@ void main() {
     (tester) async {
       final permissionBarrier = Completer<void>();
       final api = _FakeSharingApi(
-        createDeliveryStatus: 'SENT',
+        createDeliveryStatus: 'DELIVERED',
         secondPermissionBarrier: permissionBarrier,
       );
       await _pumpScreen(tester, provider: SharingProvider(api));
@@ -167,7 +224,7 @@ void main() {
   ) async {
     final permissionBarrier = Completer<void>();
     final api = _FakeSharingApi(
-      createDeliveryStatus: 'SENT',
+      createDeliveryStatus: 'DELIVERED',
       secondPermissionBarrier: permissionBarrier,
     );
     await _pumpScreen(tester, provider: SharingProvider(api));
@@ -337,6 +394,9 @@ class _FakeSharingApi extends SharingApi {
       canManageProviders: canManageProviders,
       canInviteMembers: canInviteMembers,
       canManageMoney: canManageMoney,
+      deliveryRetryAvailableAt: createDeliveryStatus == 'DELIVERED'
+          ? null
+          : DateTime.now().add(const Duration(seconds: 60)),
     );
   }
 
@@ -362,7 +422,7 @@ class _FakeSharingApi extends SharingApi {
       id: inviteId,
       weddingPlanId: weddingPlanId,
       role: role ?? 'VIEWER',
-      deliveryStatus: 'SENT',
+      deliveryStatus: 'DELIVERED',
       canViewMoney: canViewMoney ?? false,
       canEditPlan: canEditPlan ?? false,
       canManageTasks: canManageTasks ?? false,
@@ -386,6 +446,7 @@ PlanInvite _invite({
   bool canManageProviders = false,
   bool canInviteMembers = false,
   bool canManageMoney = false,
+  DateTime? deliveryRetryAvailableAt,
 }) {
   return PlanInvite(
     id: id,
@@ -402,6 +463,7 @@ PlanInvite _invite({
     canInviteMembers: canInviteMembers,
     canManageMoney: canManageMoney,
     deliveryStatus: deliveryStatus,
+    deliveryRetryAvailableAt: deliveryRetryAvailableAt,
     phone: '+967777123456',
     name: 'أمينة',
     inviterName: 'رشاد',

@@ -43,6 +43,7 @@ describe('secure admin browser session', () => {
         challengeToken: 'a'.repeat(64),
         expiresAt: '2026-07-10T12:00:00.000Z',
         delivery: 'WHATSAPP',
+        deliveryStatus: 'DELIVERED',
       }),
     );
 
@@ -52,6 +53,21 @@ describe('secure admin browser session', () => {
     expect(getAdminAccessToken()).toBeNull();
     expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/auth/admin/login');
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  });
+
+  it('rejects an MFA challenge that omits the delivery outcome', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        mfaRequired: true,
+        challengeToken: 'a'.repeat(64),
+        expiresAt: '2026-07-10T12:00:00.000Z',
+        delivery: 'WHATSAPP',
+      }),
+    );
+
+    await expect(
+      startAdminLogin('+967700000000', 'secret'),
+    ).rejects.toThrow('تعذر بدء التحقق بخطوتين');
   });
 
   it('stores the MFA-completed access token in memory only', async () => {
@@ -206,6 +222,7 @@ describe('secure admin browser session', () => {
         challengeToken: 'c'.repeat(64),
         expiresAt: '2026-07-17T12:10:00.000Z',
         retryAfterSeconds: 60,
+        deliveryStatus: 'DELIVERED',
       }),
     );
 

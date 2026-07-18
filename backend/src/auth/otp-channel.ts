@@ -174,22 +174,33 @@ export class WhatsAppOtpChannel implements OtpChannel {
  */
 export class OpenWaOtpChannel implements OtpChannel {
   constructor(
-    private readonly config: OpenWaOtpConfig = loadOpenWaOtpConfig(),
+    private readonly configSource: OpenWaOtpConfig | (() => OpenWaOtpConfig) =
+      loadOpenWaOtpConfig,
     private readonly fetchImplementation: typeof fetch = fetch,
-  ) {}
+  ) {
+    // Fail fast so AuthService classifies a missing/invalid credential as an
+    // unavailable channel before it creates and consumes an OTP record. The
+    // source is still resolved again for every delivery so an atomic rotation
+    // is adopted without restarting the backend.
+    this.resolveConfig();
+  }
 
   generateCode(): string {
     return randomInt(0, 1_000_000).toString().padStart(6, '0');
   }
 
   async deliver(phone: string, code: string, _purpose: string): Promise<OtpDeliveryResult> {
+    // The bootstrap replaces a directory-mounted credential file atomically.
+    // Resolve it for every operation so a long-running backend adopts the new
+    // key without a restart or a stale environment copy.
+    const config = this.resolveConfig();
     try {
       await sendOpenWaTransientText(
         {
           phone,
           text: `رمز التحقق في اعّرست: ${code}\nلا تشارك هذا الرمز مع أي شخص.`,
         },
-        this.config,
+        config,
         this.fetchImplementation,
       );
       return { delivery: 'WHATSAPP', deliveryStatus: 'DELIVERED' };
@@ -199,5 +210,11 @@ export class OpenWaOtpChannel implements OtpChannel {
       }
       throw error;
     }
+  }
+
+  private resolveConfig(): OpenWaOtpConfig {
+    return typeof this.configSource === 'function'
+      ? this.configSource()
+      : this.configSource;
   }
 }

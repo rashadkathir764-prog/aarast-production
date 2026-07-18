@@ -115,14 +115,15 @@ services:
       WHATSAPP_OTP_TIMEOUT_MS: ${WHATSAPP_OTP_TIMEOUT_MS:-10000}
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN:-}
       OPENWA_BASE_URL: ${OPENWA_BASE_URL:-}
-      OPENWA_SESSION_ID: ${OPENWA_SESSION_ID:-}
-      OPENWA_API_KEY: ${OPENWA_API_KEY:-}
+      OPENWA_CREDENTIAL_FILE: /run/aarast/openwa.env
       OPENWA_OTP_TIMEOUT_MS: ${OPENWA_OTP_TIMEOUT_MS:-15000}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+    volumes:
+      - ${OPENWA_PRODUCTION_CREDENTIAL_DIR:-aarast_openwa_production_credential}:/run/aarast:ro
     command: sh -c "npx prisma migrate deploy && node dist/main.js"
     ports:
       - "8093:3000"
@@ -176,6 +177,7 @@ services:
 volumes:
   aarast_postgres_data:
   aarast_postgres_backups:
+  aarast_openwa_production_credential:
 
 networks:
   aarast_internal:

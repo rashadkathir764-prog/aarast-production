@@ -27,11 +27,12 @@ zero-risk replacement for Meta.
   success. A 503 body may expose only the stable codes `NOT_ATTEMPTED`,
   `REJECTED`, or `DELIVERY_UNCERTAIN`; it must never expose the recipient, body,
   Chromium error, or WhatsApp internals.
-- The hardened adapter must retry once through the canonical `@lid` returned by
-  `getNumberId` when whatsapp-web.js cannot address a migrated `@c.us`
-  recipient. It must use `waitUntilMsgSent`, bound every wait, and force-recover
-  Chromium only after a real timeout/unresponsive signal, not an ordinary
-  resolver rejection.
+- The hardened adapter must address the normalized phone `@c.us` identifier
+  first so a new recipient does not depend on an existing local contact/LID
+  mapping. It may retry once through the canonical `@lid` only for the explicit
+  `No LID for user` rejection. Ambiguous delivery outcomes must never trigger a
+  second send. It must use `waitUntilMsgSent`, bound every wait, and
+  force-recover Chromium only after a real timeout/unresponsive signal.
 - Source tests and a live history query must prove a unique OTP marker is absent
   after delivery. Deleting a stored row after sending does not satisfy this
   requirement.
@@ -46,8 +47,9 @@ Set secrets only in the deployment secret store:
 
 - `AUTH_OTP_MODE=openwa`
 - `OPENWA_BASE_URL` — private service URL; internal HTTP or public HTTPS only.
-- `OPENWA_SESSION_ID` — dedicated OTP session.
-- `OPENWA_API_KEY` — random value of at least 32 characters.
+- `OPENWA_CREDENTIAL_FILE` — absolute path to the backend-specific,
+  session-scoped credential file. The file contains the session id, key id,
+  key, and expiry, is mounted read-only, and is re-read for every delivery.
 - `OPENWA_AUDIT_API_KEY` — operator-only key used solely by the explicit
   real-send smoke to prove that no message row was persisted. Never give this
   key to the Aarast backend container; it keeps only its session-scoped
@@ -88,9 +90,11 @@ Compose/Dokploy deployment untouched.
 After the local laboratory passes, `deploy/openwa-otp-staging/` is the only
 approved server acceptance manifest. It exposes only the Aarast backend through
 `otp-lab-api.shadowgardn.com`, keeps the OpenWA operator surface on loopback,
-uses separate transient and operator credentials, and shares no resource with
-production. A passing local run does not authorize pointing a release APK at an
-ephemeral tunnel.
+and issues distinct expiring transport credentials for acceptance and
+production plus a separate audit credential. A scheduled reconciler validates
+new credentials before atomically replacing the mounted files and retains at
+most one safe previous key until expiry. A passing local run does not authorize
+pointing a release APK at an ephemeral tunnel.
 
 ## Manual Acceptance Gate
 
@@ -106,9 +110,13 @@ The operator must scan the QR with the dedicated number, then verify:
    neither the marker, recipient, nor API key;
 6. source tests prove that `DELIVERED` requires the device-delivery
    acknowledgement, that sent-only acknowledgement times out as uncertain, all
-   three 503 codes, missing/invalid 2xx acknowledgements, the `@c.us` to `@lid`
-   retry, and timeout-versus-rejection classification;
+   three 503 codes, missing/invalid 2xx acknowledgements, direct `@c.us`
+   delivery with explicit-only `@lid` fallback, and timeout-versus-rejection
+   classification;
 7. reconnect/relink behavior is stable for 24 hours.
+8. an accelerated rotation proves both backends adopt new, distinct files
+   without restart, the previous correctly-scoped key remains temporarily
+   valid, and no third active transport key accumulates.
 
 The optional `npm run smoke:openwa-otp` gate requires
 `OPENWA_SMOKE_CONFIRM=I_ACCEPT_REAL_WHATSAPP_SEND`, the transient sender key in

@@ -1,8 +1,12 @@
 # OpenWA OTP Staging
 
-This is the isolated acceptance environment for the risk-accepted OpenWA OTP
-MVP. It is not production and shares no database, Redis instance, volume, or
-internal network with production.
+This is the acceptance environment for the risk-accepted OpenWA OTP MVP. Its
+database and Redis are isolated from production. During this temporary MVP,
+production and acceptance deliberately share the one dedicated WhatsApp
+session and OpenWA service so the account is not repeatedly paired; they use
+different session-scoped transport credentials and different backend data.
+An OpenWA outage therefore affects both environments and remains an explicit
+MVP risk until the approved Meta transport replaces it.
 
 The only public route is:
 
@@ -72,10 +76,15 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
 10. Require the public `/health` and `/ready` endpoints to return 200 before
    building the QA APK.
 
-The bootstrap stores the transient key in a backend-only encrypted bind path
-and a separate encrypted operator path that the backend never mounts. Never
-print, commit, or include either key or the OpenWA session path in ordinary
-backups.
+The bootstrap stores three independent, expiring credentials inside the
+encrypted mount: one for the acceptance backend, one for the production
+backend, and a viewer key for operator audits. Each backend mounts only its own
+directory read-only and reloads `openwa.env` for every delivery. The scheduled
+rotator creates and validates a replacement before atomically switching the
+file; the previous correctly-scoped key remains usable only until its expiry.
+The bootstrap and rotator share an exclusive, stale-recoverable lock so two
+reconciliations cannot create competing sessions or keys. Never print, commit,
+or include any key or the OpenWA session path in ordinary backups.
 
 Before a database-changing backend release, create a custom-format `pg_dump`
 inside the encrypted staging mount with mode `0600`, record its SHA-256, and
@@ -93,7 +102,8 @@ The verifier must pass the restore, migration, second migration pass, and
 canonical schema checks before the live database is touched. Record all
 container IDs and restart counts, then
 recreate only `backend` with `--no-deps`. Do not restart `db`, `redis`,
-`openwa`, or `openwa-bootstrap` during a backend-only release.
+`openwa`, `openwa-bootstrap`, or `openwa-credential-rotator` during a
+backend-only release.
 
 ## Acceptance and rollback
 
@@ -111,6 +121,7 @@ then pin the previous immutable image and recreate only `backend`. Require
 before restoring traffic. Never roll back or recreate `openwa`, `db`, or `redis`
 as part of a backend-only rollback.
 
-If the session is irrecoverable, remove the staging OpenWA data, backend-secret,
-and operator-secret volumes together and pair again. Never delete staging
-PostgreSQL during a messaging-session reset.
+If the session is proven irrecoverable, stop both OTP backends before removing
+the OpenWA data plus `backend-secret`, `production-secret`, and
+`operator-secret`, then pair once and bootstrap all credentials again. Never
+delete staging PostgreSQL during a messaging-session reset.

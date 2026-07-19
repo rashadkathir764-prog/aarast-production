@@ -303,18 +303,19 @@ class _MarketplaceSkeleton extends StatelessWidget {
 }
 
 class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message, required this.onRetry});
+  const _ErrorCard({
+    required this.message,
+    required this.onRetry,
+    this.title = 'تعذر تحميل الموردين',
+  });
 
+  final String title;
   final String message;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return AarastErrorState(
-      title: 'تعذر تحميل الموردين',
-      message: message,
-      onRetry: onRetry,
-    );
+    return AarastErrorState(title: title, message: message, onRetry: onRetry);
   }
 }
 

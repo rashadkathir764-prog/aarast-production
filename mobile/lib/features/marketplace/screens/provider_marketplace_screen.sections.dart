@@ -15,49 +15,81 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
     final offersReceived = _offersReceivedCount(quotes);
     final acceptedProviders = _acceptedProviderCount(quotes);
 
+    Widget title() => Expanded(
+      child: Text(
+        'الموردون والعروض',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(
+          context,
+        ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
+      ),
+    );
+
+    Widget accountStatus() => AarastStatusPill(
+      label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
+      color: AppTheme.gold,
+      backgroundColor: AppTheme.goldSoft,
+      icon: provider.includesAccountData
+          ? LucideIcons.shieldCheck
+          : LucideIcons.eye,
+    );
+
+    Widget conversationsAction() => IconButton(
+      key: const Key('user-conversations-action'),
+      onPressed: () => context.push(AppRouter.conversations),
+      icon: const Icon(LucideIcons.messagesSquare),
+      tooltip: 'المحادثات',
+    );
+
     // ترويسة مكشوفة موحدة مع بقية التبويبات: عنوان + شارة + إجراءات.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (!embedded) ...[
-              _CircleButton(
-                icon: LucideIcons.chevronRight,
-                onTap: () {
-                  if (context.canPop()) context.pop();
-                },
-              ),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              child: Text(
-                'الموردون والعروض',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.headlineMedium?.copyWith(color: AppTheme.title),
-              ),
-            ),
-            const SizedBox(width: 10),
-            AarastStatusPill(
-              label: provider.includesAccountData ? 'حساب محفوظ' : 'تصفح عام',
-              color: AppTheme.gold,
-              backgroundColor: AppTheme.goldSoft,
-              icon: provider.includesAccountData
-                  ? LucideIcons.shieldCheck
-                  : LucideIcons.eye,
-            ),
-            if (provider.includesAccountData)
-              IconButton(
-                key: const Key('user-conversations-action'),
-                onPressed: () => context.push(AppRouter.conversations),
-                icon: const Icon(LucideIcons.messagesSquare),
-                tooltip: 'المحادثات',
-              ),
-          ],
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final compactHeader = constraints.maxWidth < 360;
+            final leading = <Widget>[
+              if (!embedded) ...[
+                _CircleButton(
+                  icon: LucideIcons.chevronRight,
+                  onTap: () {
+                    if (context.canPop()) context.pop();
+                  },
+                ),
+                const SizedBox(width: 10),
+              ],
+            ];
+            if (compactHeader) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      ...leading,
+                      title(),
+                      if (provider.includesAccountData) conversationsAction(),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: accountStatus(),
+                  ),
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ...leading,
+                title(),
+                const SizedBox(width: 10),
+                accountStatus(),
+                if (provider.includesAccountData) conversationsAction(),
+              ],
+            );
+          },
         ),
         if (provider.includesAccountData) ...[
           const SizedBox(height: 12),
@@ -364,8 +396,7 @@ class _CityFilterChip extends StatelessWidget {
                       key: const ValueKey('city-pill-all'),
                       label: 'كل المدن',
                       selected: provider.cityId == null,
-                      onTap: () =>
-                          Navigator.pop(context, _allCitiesSentinel),
+                      onTap: () => Navigator.pop(context, _allCitiesSentinel),
                     ),
                     for (final city in provider.cities)
                       AarastFilterPill(

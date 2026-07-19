@@ -356,19 +356,8 @@ class _AarastSessionProviders extends StatelessWidget {
               () => GuestsProvider(guestsApi),
             ),
           ),
-          ChangeNotifierProxyProvider<
-            WeddingPlansProvider,
-            ProviderMarketplaceProvider
-          >(
-            create: (_) => _bindPlanScope(
-              ProviderMarketplaceProvider(marketplaceApi),
-              _unselectedPlanScope,
-            ),
-            update: (_, plans, current) => _forPlanScope(
-              current,
-              _planScope(plans),
-              () => ProviderMarketplaceProvider(marketplaceApi),
-            ),
+          ChangeNotifierProvider(
+            create: (_) => ProviderMarketplaceProvider(marketplaceApi),
           ),
         ],
         child: const AarastApp(),

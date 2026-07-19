@@ -57,6 +57,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       if (!mounted) return;
       await provider.loadMarketplace(includeAccountData: includeAccountData);
       if (!mounted) return;
+      await _loadRequestedQuote(provider, hasAccount: includeAccountData);
+      if (!mounted) return;
       await _loadWeddingLocationContext(
         hasAccount: includeAccountData,
         marketplace: provider,
@@ -71,6 +73,17 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   @override
   void didUpdateWidget(covariant ProviderMarketplaceScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialQuoteId != widget.initialQuoteId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final hasAccount = await AuthActionGuard.hasAccount(context);
+        if (!mounted) return;
+        await _loadRequestedQuote(
+          context.read<ProviderMarketplaceProvider>(),
+          hasAccount: hasAccount,
+        );
+      });
+    }
     if (oldWidget.initialBudgetIntent != widget.initialBudgetIntent) {
       final budgetIntent = widget.initialBudgetIntent;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -147,6 +160,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     onAccept: _acceptQuote,
                     onReject: _rejectQuote,
                     onCreateCost: _createCostFromAcceptedQuote,
+                  ),
+                ],
+                if (provider.includesAccountData &&
+                    provider.quoteRequestsErrorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  _ErrorCard(
+                    title: 'تعذر تحميل عروض الأسعار',
+                    message: provider.quoteRequestsErrorMessage!,
+                    onRetry: provider.loadMyQuoteRequests,
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -287,6 +309,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     if (matchingCityId != null && marketplace.cityId == null) {
       await marketplace.setCity(matchingCityId);
     }
+  }
+
+  Future<void> _loadRequestedQuote(
+    ProviderMarketplaceProvider marketplace, {
+    required bool hasAccount,
+  }) async {
+    final quoteId = widget.initialQuoteId?.trim();
+    if (!hasAccount || quoteId == null || quoteId.isEmpty) return;
+    await marketplace.loadQuoteRequest(quoteId);
   }
 
   String? _matchingCityId(

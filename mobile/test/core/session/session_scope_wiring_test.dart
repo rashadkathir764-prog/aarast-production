@@ -70,7 +70,6 @@ void main() {
       'SharingProvider',
       'NotificationsProvider',
       'GuestsProvider',
-      'ProviderMarketplaceProvider',
     ]) {
       expect(
         sessionWiring,
@@ -82,5 +81,24 @@ void main() {
         reason: '$provider must be replaced when the selected plan changes',
       );
     }
+
+    expect(
+      sessionWiring,
+      contains('create: (_) => ProviderMarketplaceProvider(marketplaceApi)'),
+      reason:
+          'marketplace quotes belong to the account and must survive selected-plan changes',
+    );
+    expect(
+      sessionWiring,
+      isNot(
+        matches(
+          RegExp(
+            'ChangeNotifierProxyProvider<\\s*WeddingPlansProvider,\\s*ProviderMarketplaceProvider\\s*>',
+          ),
+        ),
+      ),
+      reason:
+          'replacing the marketplace on a plan change drops the already-loaded offers inbox',
+    );
   });
 }

@@ -195,6 +195,69 @@ void main() {
     expect(find.byKey(const Key('quote-conversation-quote-6')), findsOneWidget);
     expect(find.byKey(const Key('quote-plan-center-quote-6')), findsNothing);
   });
+
+  testWidgets(
+    'notification deep link fetches a missing quote before rendering',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        quoteOnDirectLoad: _receivedQuote(),
+      );
+
+      await _pump(tester, state, initialQuoteId: 'quote-1');
+
+      expect(state.directlyLoadedQuoteIds, ['quote-1']);
+      expect(find.text('عروض وصلتك'), findsOneWidget);
+      expect(
+        find.byKey(const Key('quote-offer-details-quote-1')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('quote-offer-details-quote-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('تفاصيل العرض'), findsOneWidget);
+      expect(find.textContaining('تغطية كاملة ليوم الزفاف'), findsOneWidget);
+    },
+  );
+
+  testWidgets('offers loading failure is visible instead of hiding silently', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequestsError: aarastBackendConnectionErrorMessage,
+    );
+
+    await _pump(tester, state);
+
+    expect(find.text('تعذر تحميل عروض الأسعار'), findsOneWidget);
+    expect(find.text(aarastBackendConnectionErrorMessage), findsOneWidget);
+  });
+
+  testWidgets('offer card and details remain safe at 320px and 1.3 text', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 900);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+    final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
+
+    await _pump(tester, state);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('quote-offer-details-quote-1')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byKey(const Key('quote-offer-details-quote-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تفاصيل العرض'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _pump(
@@ -236,13 +299,19 @@ Future<void> _pump(
 }
 
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
-  _FakeMarketplaceProvider({List<QuoteRequest> quoteRequests = const []})
-    : quoteRequestsData = List.of(quoteRequests),
-      super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+  _FakeMarketplaceProvider({
+    List<QuoteRequest> quoteRequests = const [],
+    this.quoteOnDirectLoad,
+    this.quoteRequestsError,
+  }) : quoteRequestsData = List.of(quoteRequests),
+       super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<QuoteRequest> quoteRequestsData;
+  final QuoteRequest? quoteOnDirectLoad;
+  final String? quoteRequestsError;
   final acceptedQuoteIds = <String>[];
   final rejectedQuoteIds = <String>[];
+  final directlyLoadedQuoteIds = <String>[];
 
   @override
   bool get isLoading => false;
@@ -252,6 +321,9 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   String? get errorMessage => null;
+
+  @override
+  String? get quoteRequestsErrorMessage => quoteRequestsError;
 
   @override
   String get search => '';
@@ -282,6 +354,18 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   Future<void> loadMarketplace({bool? includeAccountData}) async {}
+
+  @override
+  Future<bool> loadQuoteRequest(String quoteRequestId) async {
+    directlyLoadedQuoteIds.add(quoteRequestId);
+    final quote = quoteOnDirectLoad;
+    if (quote == null || quote.id != quoteRequestId) return false;
+    quoteRequestsData
+      ..removeWhere((item) => item.id == quote.id)
+      ..insert(0, quote);
+    notifyListeners();
+    return true;
+  }
 
   @override
   Future<void> setCity(String? id) async {}

@@ -18,6 +18,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? _errorMessage;
   String? _referenceDataErrorMessage;
   String? _quoteSubmitErrorMessage;
+  String? _quoteRequestsErrorMessage;
   String? _noticeMessage;
   String _search = '';
   String? _cityId;
@@ -43,6 +44,7 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   String? get errorMessage => _errorMessage;
   String? get referenceDataErrorMessage => _referenceDataErrorMessage;
   String? get quoteSubmitErrorMessage => _quoteSubmitErrorMessage;
+  String? get quoteRequestsErrorMessage => _quoteRequestsErrorMessage;
   String? get noticeMessage => _noticeMessage;
   String get search => _search;
   String? get cityId => _cityId;
@@ -71,6 +73,9 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   Future<void> loadMarketplace({bool? includeAccountData}) async {
     if (includeAccountData != null) {
       _includeAccountData = includeAccountData;
+    }
+    if (!_includeAccountData) {
+      _quoteRequestsErrorMessage = null;
     }
     _isLoading = true;
     _errorMessage = null;
@@ -359,19 +364,51 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   }
 
   Future<List<QuoteRequest>> _safeQuoteRequests() async {
+    _quoteRequestsErrorMessage = null;
     try {
       return await _api.getMyQuoteRequests();
+    } on ApiException catch (error) {
+      _quoteRequestsErrorMessage = marketplaceErrorMessage(error.message);
+      return _quoteRequests;
     } catch (_) {
+      _quoteRequestsErrorMessage = aarastBackendConnectionErrorMessage;
       return _quoteRequests;
     }
   }
 
   Future<void> loadMyQuoteRequests() async {
+    _quoteRequestsErrorMessage = null;
     try {
       _quoteRequests = await _api.getMyQuoteRequests();
-      notifyListeners();
+    } on ApiException catch (error) {
+      _quoteRequestsErrorMessage = marketplaceErrorMessage(error.message);
     } catch (_) {
-      // Plan Center and provider browsing remain usable with cached/current data.
+      _quoteRequestsErrorMessage = aarastBackendConnectionErrorMessage;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  Future<bool> loadQuoteRequest(String quoteRequestId) async {
+    final normalizedId = quoteRequestId.trim();
+    if (normalizedId.isEmpty) return false;
+
+    _quoteRequestsErrorMessage = null;
+    try {
+      final quote = await _api.getQuoteRequest(normalizedId);
+      _quoteRequests = [
+        quote,
+        ..._quoteRequests.where((item) => item.id != quote.id),
+      ];
+      return true;
+    } on ApiException catch (error) {
+      _quoteRequestsErrorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _quoteRequestsErrorMessage = aarastBackendConnectionErrorMessage;
+      return false;
+    } finally {
+      notifyListeners();
     }
   }
 

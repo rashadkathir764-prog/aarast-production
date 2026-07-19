@@ -30,7 +30,7 @@ The first private acceptance run may load those exact images over authenticated
 SSH. Before a wider rollout, publish to a project-owned registry and pin by
 registry digest. Never deploy `latest` or the upstream OpenWA image.
 
-- OpenWA: `c3b67952c046f0fc71c2e6bebe4ad4437ab299ce`
+- OpenWA: `b7696b82c3b655d2c4ddb87a66a1d4adb3c1b5bd`
 - Aarast: `e2d0c1ab792fc1431d9a7d0be38c12f4ca3da47e`
 
 ## First deployment
@@ -85,6 +85,19 @@ file; the previous correctly-scoped key remains usable only until its expiry.
 The bootstrap and rotator share an exclusive, stale-recoverable lock so two
 reconciliations cannot create competing sessions or keys. Never print, commit,
 or include any key or the OpenWA session path in ordinary backups.
+
+Rotating `OPENWA_API_KEY_PEPPER` is a two-recreate operation and does not
+require pairing WhatsApp again. First take an encrypted, stopped-state backup
+of the OpenWA database and the three credential directories. Put only the new
+pepper in `.env`; provide the old value to the first OpenWA recreate through
+the operator shell as `OPENWA_API_KEY_PREVIOUS_PEPPER`. The reviewed OpenWA
+startup atomically re-hashes only `API_MASTER_KEY`; ordinary keys never fall
+back to the previous pepper. Run the bootstrap to issue and validate new
+staging, production, and audit keys, then immediately recreate OpenWA again
+without `OPENWA_API_KEY_PREVIOUS_PEPPER`. Require one `ready` session, both
+backend `/ready` endpoints at 200, distinct credential ids, and zero unexpected
+restarts. Never persist the previous pepper or solve a pepper rotation by
+deleting/re-pairing the WhatsApp session.
 
 Before a database-changing backend release, create a custom-format `pg_dump`
 inside the encrypted staging mount with mode `0600`, record its SHA-256, and

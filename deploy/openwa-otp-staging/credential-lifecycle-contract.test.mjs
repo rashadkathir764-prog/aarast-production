@@ -21,6 +21,10 @@ test('staging owns scheduled atomic rotation with separate consumer files', asyn
   assert.match(compose, /restart: on-failure/);
   assert.match(compose, /OPENWA_ROTATION_RETRY_SECONDS/);
   assert.match(compose, /OPENWA_BOOTSTRAP_LOCK_PATH/);
+  assert.match(
+    compose,
+    /API_KEY_PREVIOUS_PEPPER: \$\{OPENWA_API_KEY_PREVIOUS_PEPPER:-\}/,
+  );
   assert.match(compose, /backend-secret:\/run\/aarast\/staging/);
   assert.match(compose, /production-secret:\/run\/aarast\/production/);
   assert.match(compose, /OPENWA_CREDENTIAL_FILE: \/run\/aarast\/openwa\.env/);
@@ -28,6 +32,7 @@ test('staging owns scheduled atomic rotation with separate consumer files', asyn
   assert.match(example, /^OPENWA_ROTATION_CHECK_SECONDS=/m);
   assert.match(example, /^OPENWA_ROTATION_RETRY_SECONDS=/m);
   assert.match(example, /^OPENWA_BOOTSTRAP_LOCK_STALE_SECONDS=/m);
+  assert.doesNotMatch(example, /^OPENWA_API_KEY_PREVIOUS_PEPPER=/m);
 });
 
 test('production consumes only its encrypted dynamic credential directory', async () => {

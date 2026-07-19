@@ -65,6 +65,9 @@ services:
       PORT: "2785"
       API_MASTER_KEY: ${OPENWA_MASTER_KEY:?set OPENWA_MASTER_KEY}
       API_KEY_PEPPER: ${OPENWA_API_KEY_PEPPER:?set OPENWA_API_KEY_PEPPER}
+      # One-recreate migration input only. Supply it from the operator shell
+      # while rotating the pepper; never persist it in .env.
+      API_KEY_PREVIOUS_PEPPER: ${OPENWA_API_KEY_PREVIOUS_PEPPER:-}
       DATABASE_TYPE: sqlite
       DATABASE_NAME: /app/data/openwa.sqlite
       DATABASE_SYNCHRONIZE: "false"

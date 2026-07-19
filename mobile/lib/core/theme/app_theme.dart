@@ -288,6 +288,22 @@ class AppTheme {
           ),
         ),
       ),
+      // القوائم المنبثقة: سطح أبيض نظيف بحد رفيع — يلغي التلوين الوردي
+      // القادم من M3 surface tint (fromSeed) الذي كان يشوّه فلتر المدن.
+      popupMenuTheme: PopupMenuThemeData(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 6,
+        shadowColor: const Color(0x1F2D1A1E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(radiusMd),
+          side: const BorderSide(color: border),
+        ),
+        textStyle: textTheme.bodyMedium?.copyWith(
+          color: ink,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceElevated,

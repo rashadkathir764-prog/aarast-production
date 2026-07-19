@@ -182,148 +182,6 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-class _ImportantNowCard extends StatelessWidget {
-  const _ImportantNowCard({
-    required this.quotes,
-    required this.includesAccountData,
-    required this.onOpenPlanCenter,
-  });
-
-  final List<QuoteRequest> quotes;
-  final bool includesAccountData;
-  final void Function(QuoteRequest quote) onOpenPlanCenter;
-
-  @override
-  Widget build(BuildContext context) {
-    final important = _importantQuotes(quotes);
-    if (important.isEmpty) return const SizedBox.shrink();
-
-    final title = 'أهم ما يحتاج قرار الآن';
-    final message = !includesAccountData
-        ? 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود.'
-        : 'راجع العروض الواصلة أو الطلبات المنتظرة بناءً على بيانات حسابك.';
-
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      color: AppTheme.surface,
-      border: Border.all(color: AppTheme.border),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(LucideIcons.alertCircle, color: AppTheme.burgundy),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.ink,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w700,
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 12),
-          for (final quote in important) ...[
-            _ImportantQuoteRow(
-              quote: quote,
-              onOpenPlanCenter: () => onOpenPlanCenter(quote),
-            ),
-            if (quote != important.last)
-              const Divider(height: 18, color: AppTheme.border),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ImportantQuoteRow extends StatelessWidget {
-  const _ImportantQuoteRow({
-    required this.quote,
-    required this.onOpenPlanCenter,
-  });
-
-  final QuoteRequest quote;
-  final VoidCallback onOpenPlanCenter;
-
-  @override
-  Widget build(BuildContext context) {
-    final action = _quoteNextActionLabel(quote);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: const Icon(
-            LucideIcons.fileText,
-            color: AppTheme.burgundy,
-            size: 20,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _quoteProviderLabel(quote),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTheme.ink,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  QuoteStatusChip(status: quote.lifecycleStatus, compact: true),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                action,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.muted,
-                  fontWeight: FontWeight.w800,
-                  height: 1.35,
-                ),
-              ),
-              if (quote.weddingPlanId?.trim().isNotEmpty == true) ...[
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: onOpenPlanCenter,
-                  icon: const Icon(LucideIcons.calendarDays, size: 18),
-                  label: const Text('فتح مركز الخطة'),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _MarketplaceSearch extends StatelessWidget {
   const _MarketplaceSearch({
     required this.controller,
@@ -409,6 +267,9 @@ class _CityFilterChip extends StatelessWidget {
 
   final ProviderMarketplaceProvider provider;
 
+  // معرّفات المدن UUIDs من الخادم — لا تصادم مع هذا الحارس.
+  static const _allCitiesSentinel = '__all_cities__';
+
   @override
   Widget build(BuildContext context) {
     final selectedCity = provider.cityId;
@@ -422,15 +283,10 @@ class _CityFilterChip extends StatelessWidget {
               .nameAr
         : null;
 
-    return PopupMenuButton<String?>(
-      onSelected: provider.setCity,
-      tooltip: 'تصفية حسب المدينة',
-      position: PopupMenuPosition.under,
-      itemBuilder: (context) => [
-        const PopupMenuItem<String?>(value: null, child: Text('كل المدن')),
-        for (final city in provider.cities)
-          PopupMenuItem<String?>(value: city.id, child: Text(city.nameAr)),
-      ],
+    return InkWell(
+      key: const Key('city-filter-trigger'),
+      onTap: () => _showCityPicker(context),
+      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
       child: Container(
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -444,25 +300,91 @@ class _CityFilterChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Icon(LucideIcons.mapPin, size: 15, color: AppTheme.burgundy),
+            const SizedBox(width: 6),
+            Text(
+              cityLabel ?? 'المدينة',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: AppTheme.burgundy,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 4),
             const Icon(
-              LucideIcons.slidersHorizontal,
-              size: 16,
+              LucideIcons.chevronDown,
+              size: 14,
               color: AppTheme.burgundy,
             ),
-            if (cityLabel != null) ...[
-              const SizedBox(width: 6),
-              Text(
-                cityLabel,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.burgundy,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
           ],
         ),
       ),
     );
+  }
+
+  /// لوحة صغيرة أنيقة مثبتة من اليمين: المدن حبوب مرصوصة في صفّين-ثلاثة
+  /// بهوية شرائح الفلترة الموحدة — بدل القائمة الطويلة الوردية السابقة.
+  Future<void> _showCityPicker(BuildContext context) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final trigger = context.findRenderObject()! as RenderBox;
+    final anchor = trigger.localToGlobal(Offset.zero, ancestor: overlay);
+
+    final result = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        overlay.size.width,
+        anchor.dy + trigger.size.height + 8,
+        16,
+        0,
+      ),
+      constraints: const BoxConstraints(minWidth: 220, maxWidth: 268),
+      items: [
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'المدينة',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    AarastFilterPill(
+                      key: const ValueKey('city-pill-all'),
+                      label: 'كل المدن',
+                      selected: provider.cityId == null,
+                      onTap: () =>
+                          Navigator.pop(context, _allCitiesSentinel),
+                    ),
+                    for (final city in provider.cities)
+                      AarastFilterPill(
+                        key: ValueKey('city-pill-${city.id}'),
+                        label: city.nameAr,
+                        selected: provider.cityId == city.id,
+                        onTap: () => Navigator.pop(context, city.id),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (result == null) return;
+    await provider.setCity(result == _allCitiesSentinel ? null : result);
   }
 }
 

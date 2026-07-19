@@ -31,6 +31,44 @@ void main() {
     expect(isSafeNotificationRouteTarget('/admin/users'), isFalse);
   });
 
+  test('provider portal is a safe target, other provider paths are not', () {
+    expect(isSafeNotificationRouteTarget('/provider/dashboard'), isTrue);
+    expect(isSafeNotificationRouteTarget('/provider/apply'), isFalse);
+    expect(isSafeNotificationRouteTarget('/provider/dashboard/x'), isFalse);
+  });
+
+  test('marketplace quote deep links allow only one bounded quote id', () {
+    expect(
+      isSafeNotificationRouteTarget('/providers?quoteId=quote-123'),
+      isTrue,
+    );
+    expect(isSafeNotificationRouteTarget('/providers?quoteId='), isFalse);
+    expect(
+      isSafeNotificationRouteTarget('/providers?quoteId=quote-1&next=/admin'),
+      isFalse,
+    );
+  });
+
+  test('legacy requester quote notifications stay out of plan center', () {
+    final notification = AarastNotification(
+      id: 'notification-quote',
+      userId: 'user-1',
+      type: 'QUOTE_OFFER_RECEIVED',
+      title: 'offer',
+      body: 'offer received',
+      entityType: 'quote_request',
+      entityId: 'quote-123',
+      routeTarget: '/wedding-plans/plan-1/plan-center',
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    expect(
+      resolveNotificationRouteTarget(notification),
+      '/providers?quoteId=quote-123',
+    );
+  });
+
   test('payment schedule notification resolves to canonical money details', () {
     final notification = AarastNotification(
       id: 'notification-1',

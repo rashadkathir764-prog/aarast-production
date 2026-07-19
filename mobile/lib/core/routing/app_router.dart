@@ -340,7 +340,9 @@ class AppRouter {
         // routes stay behind ProviderAuthGate.
         GoRoute(
           path: providerMarketplace,
-          builder: (context, state) => const ProviderMarketplaceScreen(),
+          builder: (context, state) => ProviderMarketplaceScreen(
+            initialQuoteId: state.uri.queryParameters['quoteId'],
+          ),
         ),
         GoRoute(
           path: favoriteProviders,

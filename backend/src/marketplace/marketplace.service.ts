@@ -46,6 +46,13 @@ import {
   assertQuoteRequestTransition,
   quoteLifecycleStatus,
 } from "./quote-lifecycle";
+import {
+  offerAcceptedProviderNotification,
+  offerAcceptedRequesterNotification,
+  quoteSubmittedProviderNotification,
+  quoteSubmittedRequesterNotification,
+  requesterQuoteRoute,
+} from "./quote-notifications";
 
 import {
   FULL_QUOTE_VISIBILITY,
@@ -375,25 +382,28 @@ export class MarketplaceService {
       include: MARKETPLACE_QUOTE_INCLUDE,
     });
 
-    await this.notifications.createNotification({
-      userId: currentUser.id,
-      weddingPlanId: quote.weddingPlanId,
-      type: NotificationType.QUOTE_REQUEST_SUBMITTED,
-      priority: NotificationPriority.NORMAL,
-      title: "تم إرسال طلب عرض السعر",
-      body: `تم إرسال طلبك إلى ${quote.provider.businessName}. سنعرض الرد عند وصول عرض حقيقي من المورد.`,
-      entityType: "quote_request",
-      entityId: quote.id,
-      routeTarget: quote.weddingPlanId
-        ? `/wedding-plans/${quote.weddingPlanId}/plan-center`
-        : `/providers/${quote.providerId}`,
-      data: {
-        quoteRequestId: quote.id,
-        providerId: quote.providerId,
+    await this.notifications.createNotification(
+      quoteSubmittedRequesterNotification({
+        requesterId: currentUser.id,
         weddingPlanId: quote.weddingPlanId,
-      },
-      dedupeKey: `${currentUser.id}:quote-submitted:${quote.id}`,
-    });
+        quoteId: quote.id,
+        providerId: quote.providerId,
+        providerName: quote.provider.businessName,
+      }),
+    );
+
+    // تنبيه المورد نفسه — قبل هذا كان الطلب يصل صامتًا ولا يعلم به المورد.
+    const providerUserId = quote.provider.userId;
+    if (providerUserId && providerUserId !== currentUser.id) {
+      await this.notifications.createNotification(
+        quoteSubmittedProviderNotification({
+          providerUserId,
+          quoteId: quote.id,
+          providerId: quote.providerId,
+          contactName,
+        }),
+      );
+    }
 
     return MarketplacePresenter.toQuoteResponse(quote);
   }
@@ -561,23 +571,31 @@ export class MarketplaceService {
       return { offer: acceptedOffer, link };
     });
 
-    await this.notifications.createNotification({
-      userId: offer.quoteRequest.userId,
-      weddingPlanId,
-      type: NotificationType.QUOTE_ACCEPTED,
-      priority: NotificationPriority.HIGH,
-      title: "تم قبول عرض السعر",
-      body: "أصبح المزود ضمن مزودي الخطة المقبولين. لم يتم إنشاء تكلفة أو دفعة تلقائيًا.",
-      entityType: "quote_request",
-      entityId: offer.quoteRequestId,
-      routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
-      data: {
+    await this.notifications.createNotification(
+      offerAcceptedRequesterNotification({
+        requesterId: offer.quoteRequest.userId,
+        weddingPlanId,
         quoteRequestId: offer.quoteRequestId,
         quoteOfferId: offer.id,
         providerId: offer.providerId,
-      },
-      dedupeKey: `${offer.quoteRequest.userId}:quote-accepted:${offer.quoteRequestId}`,
+      }),
+    );
+
+    // تنبيه المورد بقبول عرضه — الطرف الثاني في الاتفاق يستحق أن يعرف فورًا.
+    const providerAccount = await this.prisma.provider.findUnique({
+      where: { id: offer.providerId },
+      select: { userId: true },
     });
+    if (providerAccount?.userId && providerAccount.userId !== currentUser.id) {
+      await this.notifications.createNotification(
+        offerAcceptedProviderNotification({
+          providerUserId: providerAccount.userId,
+          quoteRequestId: offer.quoteRequestId,
+          quoteOfferId: offer.id,
+          providerId: offer.providerId,
+        }),
+      );
+    }
 
     return {
       offer: MarketplacePresenter.toQuoteOfferResponse(result.offer),
@@ -648,9 +666,7 @@ export class MarketplaceService {
       body: "تم إغلاق عرض السعر دون إنشاء حجز أو التزام مالي.",
       entityType: "quote_request",
       entityId: offer.quoteRequestId,
-      routeTarget: offer.quoteRequest.weddingPlanId
-        ? `/wedding-plans/${offer.quoteRequest.weddingPlanId}/plan-center`
-        : `/providers/${offer.providerId}`,
+      routeTarget: requesterQuoteRoute(offer.quoteRequestId),
       data: {
         quoteRequestId: offer.quoteRequestId,
         quoteOfferId: offer.id,

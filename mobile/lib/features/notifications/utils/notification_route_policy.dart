@@ -23,16 +23,60 @@ String? resolveNotificationRouteTarget(AarastNotification notification) {
     }
   }
 
-  return _nonEmpty(notification.routeTarget);
+  final originalTarget = _nonEmpty(notification.routeTarget);
+  if (notification.entityType == 'quote_request' &&
+      _isLegacyRequesterQuoteTarget(originalTarget)) {
+    final quoteId = _nonEmpty(
+      notification.entityId ?? notification.data?['quoteRequestId'],
+    );
+    if (quoteId != null && _safeRouteId.hasMatch(quoteId)) {
+      return Uri(
+        path: '/providers',
+        queryParameters: {'quoteId': quoteId},
+      ).toString();
+    }
+  }
+
+  return originalTarget;
+}
+
+final RegExp _safeRouteId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
+
+bool _isLegacyRequesterQuoteTarget(String? target) {
+  if (target == null) return false;
+  final uri = Uri.tryParse(target);
+  if (uri == null) return false;
+  return uri.path.startsWith('/providers/') ||
+      uri.path.endsWith('/plan-center');
 }
 
 bool isSafeNotificationRouteTarget(String target) {
   if (!target.startsWith('/') || target.contains('://')) return false;
-  return target == '/providers' ||
-      target.startsWith('/providers/') ||
-      target.startsWith('/conversations/') ||
-      target.startsWith('/invites/') ||
-      target.startsWith('/wedding-plans/');
+  final uri = Uri.tryParse(target);
+  if (uri == null ||
+      uri.hasScheme ||
+      uri.hasAuthority ||
+      uri.fragment.isNotEmpty) {
+    return false;
+  }
+
+  if (uri.path == '/providers') {
+    if (!uri.hasQuery) return true;
+    final parameters = uri.queryParametersAll;
+    final quoteIds = parameters['quoteId'];
+    return parameters.length == 1 &&
+        quoteIds != null &&
+        quoteIds.length == 1 &&
+        _safeRouteId.hasMatch(quoteIds.single);
+  }
+
+  return
+  // بوابة المورد: وجهة تنبيهات "طلب جديد" و"تم قبول عرضك" للمورد.
+  target == '/provider/dashboard' ||
+      uri.path.startsWith('/providers/') ||
+      uri.path.startsWith('/conversations/') ||
+      uri.path.startsWith('/invites/') ||
+      uri.path.startsWith('/wedding-plans/');
 }
 
 bool isPlanShellNotificationRouteTarget(String target) {

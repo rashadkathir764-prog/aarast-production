@@ -13,6 +13,7 @@ import '../../auth/utils/auth_action_guard.dart';
 import '../../onboarding/data/guest_onboarding_storage.dart';
 import '../../onboarding/models/wedding_location_draft.dart';
 import '../../wedding_plans/providers/wedding_plans_provider.dart';
+import '../models/accepted_quote_cost_draft.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
@@ -26,11 +27,13 @@ class ProviderMarketplaceScreen extends StatefulWidget {
   const ProviderMarketplaceScreen({
     this.embedded = false,
     this.initialBudgetIntent,
+    this.initialQuoteId,
     super.key,
   });
 
   final bool embedded;
   final ProviderBudgetMatchIntent? initialBudgetIntent;
+  final String? initialQuoteId;
 
   @override
   State<ProviderMarketplaceScreen> createState() =>
@@ -137,10 +140,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 ],
                 if (provider.quoteRequests.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  _ImportantNowCard(
+                  _OffersInboxCard(
                     quotes: provider.quoteRequests,
-                    includesAccountData: provider.includesAccountData,
-                    onOpenPlanCenter: _openPlanCenterForQuote,
+                    initialQuoteId: widget.initialQuoteId,
+                    isSubmitting: provider.isSubmitting,
+                    onAccept: _acceptQuote,
+                    onReject: _rejectQuote,
+                    onCreateCost: _createCostFromAcceptedQuote,
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -217,12 +223,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     const SizedBox(height: 12),
                   ],
                 ],
-                const SizedBox(height: 8),
-                _QuoteRequestsOverview(
-                  quotes: provider.quoteRequests,
-                  includesAccountData: provider.includesAccountData,
-                  onOpenPlanCenter: _openPlanCenterForQuote,
-                ),
               ],
             ),
           );
@@ -319,15 +319,64 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     context.push(AppRouter.onboarding);
   }
 
-  void _openPlanCenterForQuote(QuoteRequest quote) {
-    final planId = quote.weddingPlanId;
-    if (planId == null || planId.trim().isEmpty) {
-      AarastToast.showInfo(
+  // القبول من مكانه — الخادم يفحص الصلاحيات، ونحن نعرض النتيجة بصدق.
+  Future<void> _acceptQuote(QuoteRequest quote) async {
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final accepted = await marketplace.acceptQuote(quote);
+    if (!mounted) return;
+    if (!accepted) {
+      AarastToast.showError(
         context,
-        'افتح مركز الخطة بعد ربط طلب العرض بخطة زفاف.',
+        marketplace.errorMessage ?? 'تعذر قبول عرض السعر.',
       );
       return;
     }
-    context.push(AppRouter.planCenter(planId));
+    AarastToast.showSuccess(
+      context,
+      'تم قبول العرض وربط المورد بالخطة. لم تُنشأ تكلفة أو دفعة تلقائيًا.',
+    );
+  }
+
+  Future<void> _rejectQuote(QuoteRequest quote) async {
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final rejected = await marketplace.rejectQuote(quote);
+    if (!mounted) return;
+    if (!rejected) {
+      AarastToast.showError(
+        context,
+        marketplace.errorMessage ?? 'تعذر رفض عرض السعر.',
+      );
+      return;
+    }
+    AarastToast.showSuccess(context, 'تم رفض العرض.');
+  }
+
+  // تسجيل التكلفة بنقرة: نموذج المال يفتح مملوءًا بمبلغ العرض المقبول.
+  Future<void> _createCostFromAcceptedQuote(QuoteRequest quote) async {
+    final planId = quote.weddingPlanId?.trim();
+    if (planId == null || planId.isEmpty) {
+      AarastToast.showInfo(
+        context,
+        'اربط طلب العرض بخطة زفاف أولًا لتسجيل التكلفة.',
+      );
+      return;
+    }
+    final intent = costDraftIntentFromAcceptedQuote(
+      quote,
+      fallbackCurrency: defaultCurrencyCode,
+    );
+    if (intent == null) {
+      AarastToast.showError(context, 'لا يمكن إنشاء تكلفة من هذا العرض الآن.');
+      return;
+    }
+    final result = await context.push<bool>(
+      AppRouter.moneyCostCreate(planId),
+      extra: intent,
+    );
+    if (result != true || !mounted) return;
+    await context.read<ProviderMarketplaceProvider>().loadMyQuoteRequests();
+    if (mounted) {
+      AarastToast.showSuccess(context, 'تمت إضافة التكلفة إلى تبويب المال.');
+    }
   }
 }

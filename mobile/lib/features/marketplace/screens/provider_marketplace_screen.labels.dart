@@ -13,16 +13,38 @@ int _acceptedProviderCount(List<QuoteRequest> quotes) {
   return quotes.where((quote) => quote.lifecycleStatus == 'ACCEPTED').length;
 }
 
-List<QuoteRequest> _importantQuotes(List<QuoteRequest> quotes) {
-  return quotes
-      .where(
-        (quote) =>
-            quote.canAcceptOrReject ||
-            quote.lifecycleStatus == 'RECEIVED' ||
-            quote.lifecycleStatus == 'PENDING_PROVIDER',
-      )
-      .take(2)
-      .toList();
+/// ترتيب كرت "عروض وصلتك": ما يحتاج قرارًا أولًا، ثم المنتظر، ثم المقبول.
+List<QuoteRequest> _inboxQuotes(
+  List<QuoteRequest> quotes, {
+  String? prioritizedQuoteId,
+}) {
+  QuoteRequest? prioritized;
+  final actionable = <QuoteRequest>[];
+  final waiting = <QuoteRequest>[];
+  final accepted = <QuoteRequest>[];
+  final rest = <QuoteRequest>[];
+  for (final quote in quotes) {
+    if (prioritizedQuoteId != null && quote.id == prioritizedQuoteId) {
+      prioritized = quote;
+      continue;
+    }
+    if (quote.canAcceptOrReject) {
+      actionable.add(quote);
+    } else if (quote.lifecycleStatus == 'PENDING_PROVIDER') {
+      waiting.add(quote);
+    } else if (quote.lifecycleStatus == 'ACCEPTED') {
+      accepted.add(quote);
+    } else {
+      rest.add(quote);
+    }
+  }
+  return [
+    ?prioritized,
+    ...actionable,
+    ...waiting,
+    ...accepted,
+    ...rest,
+  ].take(4).toList();
 }
 
 String? _activeCategoryName(ProviderMarketplaceProvider provider) {
@@ -172,10 +194,7 @@ String? _quoteAmountLabel(QuoteRequest quote) {
 
 String _quoteNextActionLabel(QuoteRequest quote) {
   if (quote.canAcceptOrReject) {
-    return 'افتح مركز الخطة لقبول أو رفض العرض. لا يوجد حجز أو دفع داخل التطبيق.';
-  }
-  if (quote.lifecycleStatus == 'ACCEPTED') {
-    return 'العرض مقبول. يمكنك إضافة تكلفته من مركز الخطة إن أردت، ثم تسجيل الدفعات الفعلية من تبويب المال. لن يُنشأ أي سجل تلقائيًا.';
+    return 'وصلك عرض حقيقي — راجعه واقبله أو ارفضه من هنا مباشرة. لا يوجد حجز أو دفع داخل التطبيق.';
   }
   if (quote.lifecycleStatus == 'PENDING_PROVIDER') {
     return 'بانتظار رد المورد. لا توجد إجراءات مالية حتى يصل عرض حقيقي.';
@@ -183,8 +202,55 @@ String _quoteNextActionLabel(QuoteRequest quote) {
   if (quote.lifecycleStatus == 'READY_TO_SEND') {
     return 'هذا طلب قديم غير مرسل. أعد الإرسال عند توفر الاتصال والخادم.';
   }
-  return 'تابع حالة الطلب من مركز الخطة عند الحاجة.';
+  return 'تابع حالة الطلب من هنا في أي وقت.';
 }
+
+/// مبلغ العرض للعرض البارز: مُنسّق بفواصل مع اسم العملة العربي، أو النص الخام.
+String? _quoteOfferAmountDisplay(QuoteOffer? offer) {
+  final raw = offer?.amount?.trim();
+  if (raw == null || raw.isEmpty) return null;
+  final value = _moneyValueOrNull(raw);
+  final unit = currencyLabelAr(offer?.currency);
+  if (value == null) return '$raw $unit';
+  return '${_formatMoney(value)} $unit';
+}
+
+class _QuoteFact {
+  const _QuoteFact(this.label, this.value);
+  final String label;
+  final String value;
+}
+
+/// ملخص طلب العريس داخل نافذة "تفاصيل العرض" — حقائق حقيقية فقط، لا اختراع.
+List<_QuoteFact> _quoteRequestFacts(QuoteRequest quote) {
+  final facts = <_QuoteFact>[];
+  final eventDate = quote.eventDate;
+  if (eventDate != null) {
+    facts.add(_QuoteFact('تاريخ المناسبة', _shortDate(eventDate)));
+  }
+  final guests = quote.guestCount;
+  if (guests != null && guests > 0) {
+    facts.add(_QuoteFact('عدد الضيوف', guests.toString()));
+  }
+  final location = quote.location?.shortLabel?.trim();
+  if (location != null && location.isNotEmpty) {
+    facts.add(_QuoteFact('الموقع', location));
+  }
+  final min = _moneyValueOrNull(quote.budgetMin);
+  final max = _moneyValueOrNull(quote.budgetMax);
+  if (min != null && max != null) {
+    facts.add(
+      _QuoteFact('ميزانيتك', '${_formatMoney(min)} - ${_formatMoney(max)}'),
+    );
+  } else if (min != null) {
+    facts.add(_QuoteFact('ميزانيتك', 'من ${_formatMoney(min)}'));
+  } else if (max != null) {
+    facts.add(_QuoteFact('ميزانيتك', 'حتى ${_formatMoney(max)}'));
+  }
+  return facts;
+}
+
+String _shortDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
 
 String? _providerLocationLabel(MarketplaceProvider provider) {
   final city = provider.city?.nameAr.trim();

@@ -32,6 +32,7 @@ import {
   assertQuoteRequestTransition,
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
+import { requesterQuoteRoute } from '../marketplace/quote-notifications';
 import { MediaStorageService } from '../media/media-storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -690,9 +691,7 @@ export class ProviderDashboardService {
       body: `${provider.businessName} sent an offer for your quote request.`,
       entityType: 'quote_request',
       entityId: quoteRequestId,
-      routeTarget: quote.weddingPlanId
-        ? `/wedding-plans/${quote.weddingPlanId}/plan-center`
-        : `/providers/${provider.id}`,
+      routeTarget: requesterQuoteRoute(quoteRequestId),
       data: {
         quoteRequestId,
         quoteOfferId: offer.id,

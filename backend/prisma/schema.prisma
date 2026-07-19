@@ -169,14 +169,6 @@ enum PlanProviderLinkStatus {
   ARCHIVED
 }
 
-enum BookingLeadStatus {
-  NEW
-  IN_PROGRESS
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-}
-
 enum NotificationType {
   QUOTE_REQUEST_SUBMITTED
   TASK_DUE_SOON
@@ -290,7 +282,6 @@ model User {
   favoriteProviders            FavoriteProvider[]
   providerReviews              ProviderReview[]
   quoteRequests                QuoteRequest[]
-  bookingLeads                 BookingLead[]
   reviewedProviders            Provider[]                    @relation("ProviderReviewedBy")
   assignedWeddingTasks         WeddingTask[]                 @relation("AssignedWeddingTasks")
   sentPlanInvites              PlanInvite[]                  @relation("PlanInviteInviter")
@@ -394,8 +385,6 @@ model RefreshToken {
   userId       String
   tokenHash    String           @unique
   scope        AuthSessionScope @default(APPLICATION)
-  userAgent    String?
-  ip           String?
   expiresAt    DateTime
   revokedAt    DateTime?
   replacedById String?          @unique
@@ -454,7 +443,6 @@ model WeddingPlan {
   sharedMembers         SharedMember[]
   planInvites           PlanInvite[]
   quoteRequests         QuoteRequest[]
-  bookingLeads          BookingLead[]
   notifications         Notification[]
   guests                Guest[]
   guestGroups           GuestGroup[]
@@ -836,7 +824,6 @@ model Provider {
   reviews           ProviderReview[]
   quoteRequests     QuoteRequest[]
   quoteOffers       QuoteOffer[]
-  bookingLeads      BookingLead[]
   planLinks         PlanProviderLink[]
   weddingCosts      WeddingCost[]
 
@@ -957,7 +944,6 @@ model QuoteRequest {
   provider               Provider           @relation(fields: [providerId], references: [id], onDelete: Cascade)
   service                ProviderService?   @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   city                   City?              @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  bookingLeads           BookingLead[]
   offers                 QuoteOffer[]
   providerLinks          PlanProviderLink[]
   conversation           Conversation?
@@ -1007,27 +993,6 @@ model PlanProviderLink {
   @@index([providerId, status])
   @@index([quoteRequestId])
   @@index([quoteOfferId])
-}
-
-model BookingLead {
-  id             String            @id @default(uuid())
-  userId         String
-  weddingPlanId  String?
-  providerId     String
-  quoteRequestId String?
-  title          String
-  eventDate      DateTime?
-  status         BookingLeadStatus @default(NEW)
-  notes          String?           @db.Text
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weddingPlan    WeddingPlan?      @relation(fields: [weddingPlanId], references: [id], onDelete: SetNull)
-  provider       Provider          @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  quoteRequest   QuoteRequest?     @relation(fields: [quoteRequestId], references: [id], onDelete: SetNull)
-
-  @@index([userId, status])
-  @@index([providerId, status])
 }
 
 model Conversation {

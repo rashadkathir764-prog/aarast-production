@@ -2,7 +2,7 @@
 
 This document describes the product data model at a planning/status level. It does not replace `backend/prisma/schema.prisma` as the schema source of truth.
 
-Current documentation snapshot: 2026-07-17. Route-level behavior belongs in
+Current documentation snapshot: 2026-07-19. Route-level behavior belongs in
 `docs/backend/API_CONTRACT.md`.
 
 ## Current And Marketplace Entities
@@ -14,7 +14,6 @@ Current documentation snapshot: 2026-07-17. Route-level behavior belongs in
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
 | Category | Groups services into discoverable wedding-service categories. |
 | City | Supports Yemen-specific location filtering and local availability. |
-| BookingLead | Represents a non-binding planning lead tied to an accepted provider offer on a WeddingPlan. In the MVP, this means interest or lead tracking only, not paid booking, confirmed reservation, or deposit. Lifecycle is tracked via `BookingLeadStatus` (NEW, IN_PROGRESS, CONFIRMED, CANCELLED, COMPLETED). |
 | Favorite | Lets users save providers or services for later comparison. |
 | Review | Captures user feedback about a provider/service reference. Reviews are implemented as provider-reference support, not as paid marketplace monetization. |
 | Package | Represents bundled provider offerings, such as full hall packages or photography packages. |
@@ -149,7 +148,10 @@ The backend now includes the approved provider-reference and quote-lead foundati
   `20260714100000_seed_provider_reference_catalog`; existing admin-managed rows
   are preserved without forced rename, reactivation, or deletion.
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage` for public planning references.
-- `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, `PlanProviderLink`, and `BookingLead` for saved providers, reviews, quote leads, accepted planning provider links, and non-paid lead context.
+- `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, and
+  `PlanProviderLink` for saved providers, reviews, quote leads, and accepted
+  planning provider links. The unused prelaunch `BookingLead` model was removed;
+  accepting an offer remains a planning decision and never creates a booking.
 - `WeddingCost`, `CostPayment`, and `PaymentSchedule` for category-first costs,
   actual money-out records, and dated payment reminders.
 - `WeddingTaskChecklistItem` plus task assignment support.
@@ -168,15 +170,15 @@ rewrite as permission to restore a removed live model.
 | Model | Field count | Notable fields |
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
-| `User` | 44 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `User` | 43 | `id`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 12 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
-| `RefreshToken` | 11 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
+| `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
-| `WeddingPlan` | 29 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 28 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 21 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
@@ -193,21 +195,20 @@ rewrite as permission to restore a removed live model.
 | `GuestGroup` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `City` | 11 | `id`, `createdAt`, `updatedAt` |
 | `ProviderCategory` | 11 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 37 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
+| `Provider` | 36 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `createdAt`, `updatedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
-| `QuoteRequest` | 30 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteRequest` | 29 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
 | `QuoteOffer` | 15 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
-| `BookingLead` | 15 | `id`, `userId`, `weddingPlanId`, `providerId`, `quoteRequestId`, `createdAt`, `updatedAt` |
 | `Conversation` | 10 | `id`, `quoteRequestId`, `lastMessageAt`, `closedAt`, `createdAt`, `updatedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `lastReadAt`, `mutedAt`, `blockedAt`, `createdAt`, `updatedAt` |
 | `ChatMessage` | 11 | `id`, `conversationId`, `senderUserId`, `editedAt`, `deletedAt`, `createdAt`, `updatedAt` |
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 41
+Total models: 40
 <!-- DOCS-SYNC:END -->

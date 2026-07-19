@@ -42,6 +42,63 @@ services:
     networks:
       - aarast_internal
 
+  media:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: aarast-media-prod
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${AARAST_MEDIA_ACCESS_KEY_ID:?AARAST_MEDIA_ACCESS_KEY_ID is required}
+      MINIO_ROOT_PASSWORD: ${AARAST_MEDIA_SECRET_ACCESS_KEY:?AARAST_MEDIA_SECRET_ACCESS_KEY is required}
+    volumes:
+      - aarast_media_data:/data
+    expose:
+      - "9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: ${MEDIA_MEMORY_LIMIT:-768m}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.aarast-media-web.rule=Host(`${AARAST_MEDIA_HOST:-aarast-media.shadowgardn.com}`)"
+      - "traefik.http.routers.aarast-media-web.entrypoints=web"
+      - "traefik.http.routers.aarast-media-web.middlewares=redirect-to-https@file"
+      - "traefik.http.routers.aarast-media-web.service=aarast-media"
+      - "traefik.http.routers.aarast-media-secure.rule=Host(`${AARAST_MEDIA_HOST:-aarast-media.shadowgardn.com}`)"
+      - "traefik.http.routers.aarast-media-secure.entrypoints=websecure"
+      - "traefik.http.routers.aarast-media-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.aarast-media-secure.service=aarast-media"
+      - "traefik.http.services.aarast-media.loadbalancer.server.port=9000"
+    networks:
+      - aarast_internal
+
+  media-init:
+    image: minio/mc:RELEASE.2025-07-21T05-28-08Z
+    container_name: aarast-media-init-prod
+    depends_on:
+      media:
+        condition: service_healthy
+    environment:
+      AARAST_MEDIA_BUCKET: ${AARAST_MEDIA_BUCKET:?AARAST_MEDIA_BUCKET is required}
+      AARAST_MEDIA_ACCESS_KEY_ID: ${AARAST_MEDIA_ACCESS_KEY_ID:?AARAST_MEDIA_ACCESS_KEY_ID is required}
+      AARAST_MEDIA_SECRET_ACCESS_KEY: ${AARAST_MEDIA_SECRET_ACCESS_KEY:?AARAST_MEDIA_SECRET_ACCESS_KEY is required}
+    entrypoint: >-
+      /bin/sh -ec '
+      mc alias set local http://media:9000 "$${AARAST_MEDIA_ACCESS_KEY_ID}" "$${AARAST_MEDIA_SECRET_ACCESS_KEY}";
+      mc mb --ignore-existing "local/$${AARAST_MEDIA_BUCKET}";
+      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/user-avatar";
+      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/provider-logo";
+      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/provider-cover";
+      mc anonymous set download "local/$${AARAST_MEDIA_BUCKET}/service-image";
+      '
+    networks:
+      - aarast_internal
+
   postgres-backup:
     image: prodrigestivill/postgres-backup-local:16
     container_name: aarast-postgres-backup-prod
@@ -80,6 +137,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      media-init:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
@@ -91,13 +150,14 @@ services:
       READINESS_REQUIRE_MEDIA: ${READINESS_REQUIRE_MEDIA:-true}
       SENTRY_DSN: ${SENTRY_DSN:-}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
-      AARAST_MEDIA_ENDPOINT: ${AARAST_MEDIA_ENDPOINT:-}
-      AARAST_MEDIA_REGION: ${AARAST_MEDIA_REGION:-auto}
+      AARAST_MEDIA_ENDPOINT: ${AARAST_MEDIA_ENDPOINT:-http://media:9000}
+      AARAST_MEDIA_SIGNED_ENDPOINT: ${AARAST_MEDIA_SIGNED_ENDPOINT:?AARAST_MEDIA_SIGNED_ENDPOINT is required}
+      AARAST_MEDIA_REGION: ${AARAST_MEDIA_REGION:-us-east-1}
       AARAST_MEDIA_BUCKET: ${AARAST_MEDIA_BUCKET:-}
       AARAST_MEDIA_PUBLIC_BASE_URL: ${AARAST_MEDIA_PUBLIC_BASE_URL:-}
       AARAST_MEDIA_ACCESS_KEY_ID: ${AARAST_MEDIA_ACCESS_KEY_ID:-}
       AARAST_MEDIA_SECRET_ACCESS_KEY: ${AARAST_MEDIA_SECRET_ACCESS_KEY:-}
-      AARAST_MEDIA_FORCE_PATH_STYLE: ${AARAST_MEDIA_FORCE_PATH_STYLE:-false}
+      AARAST_MEDIA_FORCE_PATH_STYLE: ${AARAST_MEDIA_FORCE_PATH_STYLE:-true}
       AUTH_OTP_MODE: ${AUTH_OTP_MODE:?AUTH_OTP_MODE is required}
       AUTH_LOGIN_THROTTLE_PEPPER: ${AUTH_LOGIN_THROTTLE_PEPPER:?AUTH_LOGIN_THROTTLE_PEPPER is required}
       OTP_EXPIRES_MINUTES: ${OTP_EXPIRES_MINUTES:-5}
@@ -177,6 +237,7 @@ services:
 volumes:
   aarast_postgres_data:
   aarast_postgres_backups:
+  aarast_media_data:
   aarast_openwa_production_credential:
 
 networks:

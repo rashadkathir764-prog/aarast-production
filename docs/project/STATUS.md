@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-17
+Snapshot date: 2026-07-19
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -106,8 +106,9 @@ and runtime checks override historical completion reports.
 - Runtime health now separates dependency-free `/live` (plus `/health` alias)
   from `/ready`, which checks PostgreSQL and configured Redis/media with
   bounded, redacted results. The container healthcheck targets readiness.
-  Redis is required in the live deployment; production media is currently an
-  explicit disabled exception until the S3-compatible target is provisioned.
+  Redis and S3-compatible media are required in the live deployment. Public
+  avatar/provider/service prefixes are phone-reachable over HTTPS, while chat
+  images remain private and require membership-authorized signed reads.
 - Notification creation and chat-message commits now enqueue durable
   `OutboxEvent` rows transactionally. A cross-replica worker claims with
   `SKIP LOCKED`, retries safely, retains dead letters, and publishes recovery
@@ -268,9 +269,11 @@ twice, and also stored encrypted off-host.
 
 - Signed media requires valid S3-compatible configuration; the `chat-image/`
   prefix must deny anonymous/public reads, and credentials remain server-side.
-- The live production readiness report currently marks media `disabled`;
-  uploads/chat media are not a release-ready production capability until the
-  S3-compatible target is configured and the anonymous-read gate passes.
+- The production media target, durable volume, HTTPS origin, signed upload,
+  verification, public avatar/provider/service reads, and provider image
+  binding passed live end-to-end checks on 2026-07-19. A clean redeploy must
+  preserve the private media credentials and persistent volume; chat objects
+  must continue to deny anonymous reads.
 - Conversation/media reconnect behavior still needs a signed physical-device
   acceptance pass against the release environment.
 - Final Android AAB signing/signer verification and iOS Archive/TestFlight

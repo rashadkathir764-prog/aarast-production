@@ -1,6 +1,6 @@
 # Deployment
 
-Snapshot date: 2026-07-05
+Snapshot date: 2026-07-19
 
 Deployment source files live under `deploy/dokploy/`. This folder is the compact
 documentation entry point for deployment.
@@ -21,6 +21,7 @@ Public domains documented for the current deployment path:
 
 - Backend API: `https://aarast-api.shadowgardn.com`
 - Admin web: `https://aarast-admin.shadowgardn.com`
+- Public/signed media origin: `https://aarast-media.shadowgardn.com`
 
 Admin production builds default to the public backend origin and fail their
 post-build gate if a loopback API or the current MFA login route is missing.
@@ -40,10 +41,10 @@ post-build gate if a loopback API or the current MFA login route is missing.
   OpenWA mode also checks its selected session and transient endpoint,
   returns dependency names/status/latency only, and fails with `503` without
   exposing connection strings or provider errors.
-- Redis and media default to required when `NODE_ENV=production`. The live
-  Dokploy deployment currently requires Redis but explicitly disables media;
-  this is a tracked release exception, not proof that upload/chat media is
-  production-ready.
+- Redis and media default to required when `NODE_ENV=production`. The Dokploy
+  deployment provisions durable S3-compatible media and requires an explicit
+  phone-reachable HTTPS signed endpoint; readiness fails closed when that
+  target is unavailable.
 - Container health and admin startup dependency use `/ready`, so traffic is not
   sent to an API whose required dependencies are down.
 
@@ -96,6 +97,15 @@ the CDN/public media base is only for public avatar and provider assets. Before
 release, verify an unsigned chat-object GET is denied, a participant-signed URL
 works for 120 seconds, a non-participant cannot mint one, and expired links no
 longer work. Object-storage credentials remain server-side.
+
+## Public Provider Media
+
+The Dokploy Compose stack provisions a persistent MinIO volume and a one-shot
+bucket initializer. Anonymous downloads are limited to the `user-avatar/`,
+`provider-logo/`, `provider-cover/`, and `service-image/` prefixes. The
+`chat-image/` prefix is never public. Provider services may own multiple image
+rows; Flutter uploads and verifies each selected image before binding it to the
+service, and the public provider profile exposes the ordered gallery.
 
 ## Mobile Store Release Gate
 

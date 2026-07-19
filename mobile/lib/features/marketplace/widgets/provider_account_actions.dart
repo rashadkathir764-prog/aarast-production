@@ -9,12 +9,14 @@ class ProviderAccountActions extends StatefulWidget {
     required this.onOpenSettings,
     required this.onSync,
     required this.onLogout,
+    required this.onDeleteAccount,
     super.key,
   });
 
   final VoidCallback onOpenSettings;
   final Future<void> Function() onSync;
   final Future<void> Function() onLogout;
+  final Future<String?> Function() onDeleteAccount;
 
   @override
   State<ProviderAccountActions> createState() => _ProviderAccountActionsState();
@@ -23,10 +25,11 @@ class ProviderAccountActions extends StatefulWidget {
 class _ProviderAccountActionsState extends State<ProviderAccountActions> {
   bool _isSyncing = false;
   bool _isLoggingOut = false;
+  bool _isDeleting = false;
   String? _statusMessage;
   bool _statusIsError = false;
 
-  bool get _isBusy => _isSyncing || _isLoggingOut;
+  bool get _isBusy => _isSyncing || _isLoggingOut || _isDeleting;
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +75,20 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
                     ? const AarastInlineSpinner(dimension: 20)
                     : null,
                 onTap: _isBusy ? null : _confirmLogout,
+              ),
+              const Divider(height: 1),
+              _ProviderAccountTile(
+                key: const Key('provider-delete-account-action'),
+                title: _isDeleting
+                    ? 'جارٍ حذف الحساب...'
+                    : 'حذف الحساب نهائيًا',
+                subtitle: 'حذف حسابك وملف المزوّد وكل البيانات المرتبطة به',
+                icon: LucideIcons.trash2,
+                color: AppTheme.danger,
+                trailing: _isDeleting
+                    ? const AarastInlineSpinner(dimension: 20)
+                    : null,
+                onTap: _isBusy ? null : _confirmDeleteAccount,
               ),
             ],
           ),
@@ -201,6 +218,121 @@ class _ProviderAccountActionsState extends State<ProviderAccountActions> {
       });
     } finally {
       if (mounted) setState(() => _isLoggingOut = false);
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    if (_isBusy) return;
+    var confirmationText = '';
+    final confirmed =
+        await showAarastBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          builder: (sheetContext) => StatefulBuilder(
+            builder: (sheetContext, setSheetState) => Directionality(
+              textDirection: TextDirection.rtl,
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    18,
+                    20,
+                    20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        LucideIcons.trash2,
+                        size: 36,
+                        color: AppTheme.danger,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'حذف حسابك نهائيًا؟',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(sheetContext).textTheme.titleLarge
+                            ?.copyWith(
+                              color: AppTheme.ink,
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'سيُحذف الحساب وملف المزوّد والخدمات والصور وكل بياناتك نهائيًا. لا يمكن التراجع بعد الحذف.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppTheme.muted,
+                          fontWeight: FontWeight.w700,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        key: const Key('provider-delete-account-input'),
+                        textAlign: TextAlign.center,
+                        decoration: const InputDecoration(
+                          labelText: 'اكتب «حذف» للتأكيد',
+                        ),
+                        onChanged: (value) =>
+                            setSheetState(() => confirmationText = value),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () =>
+                                  Navigator.pop(sheetContext, false),
+                              child: const Text('إلغاء'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton.icon(
+                              key: const Key('provider-delete-account-confirm'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppTheme.danger,
+                              ),
+                              onPressed: confirmationText.trim() == 'حذف'
+                                  ? () => Navigator.pop(sheetContext, true)
+                                  : null,
+                              icon: const Icon(LucideIcons.trash2),
+                              label: const Text('حذف نهائي'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ) ==
+        true;
+    if (!confirmed || !mounted) return;
+
+    setState(() {
+      _isDeleting = true;
+      _statusMessage = null;
+      _statusIsError = false;
+    });
+    try {
+      final errorMessage = await widget.onDeleteAccount();
+      if (!mounted || errorMessage == null) return;
+      setState(() {
+        _statusIsError = true;
+        _statusMessage = errorMessage;
+      });
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _statusIsError = true;
+        _statusMessage = 'تعذر حذف الحساب. حاول مرة أخرى.';
+      });
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
     }
   }
 }

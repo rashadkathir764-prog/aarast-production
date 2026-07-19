@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../network/api_client.dart';
@@ -35,56 +34,64 @@ class MediaUploadTicket {
 }
 
 class MediaUploadApi {
-  MediaUploadApi(this._apiClient, {Dio? uploadClient})
-    : _uploadClient = uploadClient ?? Dio();
+  const MediaUploadApi(this._apiClient);
 
   final ApiClient _apiClient;
-  final Dio _uploadClient;
 
   Future<MediaUploadTicket> uploadImage({
     required XFile file,
     required String purpose,
   }) async {
-    final byteSize = await file.length();
-    final contentType = file.mimeType ?? _contentType(file.name);
-    final ticketJson = await _apiClient
-        .postJson('/api/v1/media/uploads/presign', {
-          'purpose': purpose,
-          'fileName': file.name,
-          'contentType': contentType,
-          'byteSize': byteSize,
-        });
-    final ticket = MediaUploadTicket.fromJson(ticketJson);
-    if (ticket.key.isEmpty || ticket.uploadUrl.isEmpty) {
-      throw const ApiException('تعذر تجهيز رفع الصورة.');
+    try {
+      final byteSize = await file.length();
+      final contentType = file.mimeType ?? _contentType(file.name);
+      final ticketJson = await _apiClient
+          .postJson('/api/v1/media/uploads/presign', {
+            'purpose': purpose,
+            'fileName': file.name,
+            'contentType': contentType,
+            'byteSize': byteSize,
+          });
+      final ticket = MediaUploadTicket.fromJson(ticketJson);
+      if (ticket.key.isEmpty || ticket.uploadUrl.isEmpty) {
+        throw const ApiException('تعذر تجهيز رفع الصورة.');
+      }
+      final bytes = await file.readAsBytes();
+      if (bytes.length != ticket.byteSize) {
+        throw const ApiException(
+          'تغيّر حجم الصورة أثناء تجهيزها. اختر الصورة مرة أخرى.',
+        );
+      }
+      await _apiClient.putBytes(
+        ticket.uploadUrl,
+        bytes,
+        contentType: ticket.contentType,
+      );
+      final verifiedJson = await _apiClient.postJson(
+        '/api/v1/media/uploads/verify',
+        {'key': ticket.key, 'purpose': purpose},
+      );
+      final verifiedTicket = MediaUploadTicket.fromJson({
+        ...ticketJson,
+        ...verifiedJson,
+      });
+      final hasVerifiedReference = purpose == 'chat-image'
+          ? verifiedTicket.attachmentRef.isNotEmpty
+          : verifiedTicket.publicUrl.isNotEmpty;
+      if (!hasVerifiedReference) {
+        throw const ApiException('تعذر التحقق من الصورة المرفوعة.');
+      }
+      return verifiedTicket;
+    } on ApiException catch (error) {
+      if (error.statusCode == 503 ||
+          error.message.toLowerCase().contains('media storage')) {
+        throw const ApiException(
+          'خدمة رفع الصور غير متاحة الآن. يرجى المحاولة مرة أخرى لاحقًا.',
+          statusCode: 503,
+        );
+      }
+      rethrow;
     }
-    final bytes = await file.readAsBytes();
-    await _uploadClient.put<void>(
-      ticket.uploadUrl,
-      data: Stream.fromIterable([bytes]),
-      options: Options(
-        headers: {
-          Headers.contentTypeHeader: ticket.contentType,
-          Headers.contentLengthHeader: ticket.byteSize,
-          'If-None-Match': '*',
-        },
-      ),
-    );
-    final verifiedJson = await _apiClient.postJson(
-      '/api/v1/media/uploads/verify',
-      {'key': ticket.key, 'purpose': purpose},
-    );
-    final verifiedTicket = MediaUploadTicket.fromJson({
-      ...ticketJson,
-      ...verifiedJson,
-    });
-    final hasVerifiedReference = purpose == 'chat-image'
-        ? verifiedTicket.attachmentRef.isNotEmpty
-        : verifiedTicket.publicUrl.isNotEmpty;
-    if (!hasVerifiedReference) {
-      throw const ApiException('تعذر التحقق من الصورة المرفوعة.');
-    }
-    return verifiedTicket;
   }
 
   String _contentType(String name) {

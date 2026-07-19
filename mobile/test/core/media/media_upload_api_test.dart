@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -11,20 +10,7 @@ void main() {
     'image upload is verified before its storage reference is returned',
     () async {
       final api = _MediaApiClient();
-      final uploadClient = Dio();
-      uploadClient.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            api.calls.add(
-              'PUT ${options.uri} ${options.headers[Headers.contentTypeHeader]} ${options.headers['If-None-Match']}',
-            );
-            handler.resolve(
-              Response<void>(requestOptions: options, statusCode: 200),
-            );
-          },
-        ),
-      );
-      final media = MediaUploadApi(api, uploadClient: uploadClient);
+      final media = MediaUploadApi(api);
 
       final ticket = await media.uploadImage(
         file: XFile.fromData(
@@ -37,7 +23,7 @@ void main() {
 
       expect(api.calls, [
         'POST /api/v1/media/uploads/presign chat-image',
-        'PUT https://uploads.example.test/signed image/jpeg *',
+        'PUT https://uploads.example.test/signed image/jpeg 4',
         'POST /api/v1/media/uploads/verify chat-image',
       ]);
       expect(ticket.attachmentRef, 'chat-image/user-1/image.jpg');
@@ -48,15 +34,7 @@ void main() {
 
   test('public provider image returns its verified public URL', () async {
     final api = _MediaApiClient();
-    final uploadClient = Dio();
-    uploadClient.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) => handler.resolve(
-          Response<void>(requestOptions: options, statusCode: 200),
-        ),
-      ),
-    );
-    final media = MediaUploadApi(api, uploadClient: uploadClient);
+    final media = MediaUploadApi(api);
 
     final ticket = await media.uploadImage(
       file: XFile.fromData(
@@ -71,6 +49,28 @@ void main() {
     expect(
       ticket.publicUrl,
       'https://cdn.example.test/provider-logo/user-1/image.jpg',
+    );
+  });
+
+  test('unavailable media storage is always reported in Arabic', () async {
+    final media = MediaUploadApi(_UnavailableMediaApiClient());
+
+    expect(
+      () => media.uploadImage(
+        file: XFile.fromData(
+          Uint8List.fromList([0xff, 0xd8]),
+          name: 'photo.jpg',
+          mimeType: 'image/jpeg',
+        ),
+        purpose: 'provider-logo',
+      ),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'message',
+          'خدمة رفع الصور غير متاحة الآن. يرجى المحاولة مرة أخرى لاحقًا.',
+        ),
+      ),
     );
   });
 }
@@ -107,5 +107,29 @@ class _MediaApiClient extends ApiClient {
       'contentType': 'image/jpeg',
       'byteSize': 4,
     };
+  }
+
+  @override
+  Future<void> putBytes(
+    String url,
+    Uint8List bytes, {
+    required String contentType,
+  }) async {
+    calls.add('PUT $url $contentType ${bytes.length}');
+  }
+}
+
+class _UnavailableMediaApiClient extends ApiClient {
+  _UnavailableMediaApiClient() : super(tokenProvider: () async => 'token');
+
+  @override
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> data,
+  ) {
+    throw const ApiException(
+      'Media storage is not configured',
+      statusCode: 503,
+    );
   }
 }

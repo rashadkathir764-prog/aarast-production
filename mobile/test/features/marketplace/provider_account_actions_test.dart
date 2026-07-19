@@ -18,6 +18,7 @@ void main() {
           onOpenSettings: () => settingsCalls += 1,
           onSync: () async {},
           onLogout: () async {},
+          onDeleteAccount: () async => null,
         ),
       ),
     );
@@ -46,6 +47,7 @@ void main() {
             return syncCompleter.future;
           },
           onLogout: () async {},
+          onDeleteAccount: () async => null,
         ),
       ),
     );
@@ -73,6 +75,7 @@ void main() {
           onOpenSettings: () {},
           onSync: () async => throw StateError('offline'),
           onLogout: () async {},
+          onDeleteAccount: () async => null,
         ),
       ),
     );
@@ -94,6 +97,7 @@ void main() {
           onOpenSettings: () {},
           onSync: () async {},
           onLogout: () async => logoutCalls += 1,
+          onDeleteAccount: () async => null,
         ),
       ),
     );
@@ -112,6 +116,43 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(logoutCalls, 1);
+  });
+
+  testWidgets('account deletion requires typing the explicit confirmation', (
+    tester,
+  ) async {
+    var deleteCalls = 0;
+    await tester.pumpWidget(
+      _TestApp(
+        child: ProviderAccountActions(
+          onOpenSettings: () {},
+          onSync: () async {},
+          onLogout: () async {},
+          onDeleteAccount: () async {
+            deleteCalls += 1;
+            return null;
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('provider-delete-account-action')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('حذف حسابك نهائيًا؟'), findsOneWidget);
+    final confirm = find.byKey(const Key('provider-delete-account-confirm'));
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+
+    await tester.enterText(
+      find.byKey(const Key('provider-delete-account-input')),
+      'حذف',
+    );
+    await tester.pump();
+    expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(deleteCalls, 1);
   });
 }
 

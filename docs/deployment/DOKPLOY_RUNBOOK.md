@@ -50,8 +50,12 @@ Current backend note: the backend code reads `JWT_SECRET`. The compose file maps
 Channel-dependent required values:
 
 - `AUTH_OTP_MODE=whatsapp`: configure the `WHATSAPP_*` Graph API/template values.
-- `AUTH_OTP_MODE=openwa`: configure `OPENWA_BASE_URL`, `OPENWA_SESSION_ID`,
-  `OPENWA_API_KEY`, and the existing private `OPENWA_DOCKER_NETWORK`.
+- `AUTH_OTP_MODE=openwa`: configure `OPENWA_BASE_URL`,
+  `OPENWA_PRODUCTION_CREDENTIAL_DIR`, and the existing private
+  `OPENWA_DOCKER_NETWORK`. The directory must be the production-only encrypted
+  output of `deploy/openwa-otp-staging/bootstrap-openwa.mjs`; never copy a raw
+  session id or API key into Dokploy. The backend mounts it read-only and
+  reloads the credential for every send.
 
 Optional:
 

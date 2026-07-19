@@ -13,6 +13,10 @@ import '../models/safe_user.dart';
 enum AuthStatus { checking, authenticated, unauthenticated }
 
 class AuthController extends ChangeNotifier {
+  static final RegExp _privateInviteTokenPattern = RegExp(
+    r'^[A-Za-z0-9_-]{43}$',
+  );
+
   AuthController(
     this._authRepository, {
     OfflineSyncService? offlineSyncService,
@@ -31,6 +35,8 @@ class AuthController extends ChangeNotifier {
   String? _errorCode;
   OtpRequestResult? _otpRequest;
   bool _sessionExpired = false;
+  String? _pendingInviteResumeToken;
+  bool _pendingInviteRouteClaimed = false;
 
   AuthStatus get status => _status;
   SafeUser? get user => _user;
@@ -38,6 +44,10 @@ class AuthController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   String? get errorCode => _errorCode;
   OtpRequestResult? get otpRequest => _otpRequest;
+  bool get hasPendingInviteResume =>
+      _status == AuthStatus.authenticated &&
+      _pendingInviteResumeToken != null &&
+      !_pendingInviteRouteClaimed;
 
   /// True right after a mid-session 401 invalidated the session. The UI
   /// redirects to login once, then acknowledges.
@@ -106,7 +116,9 @@ class AuthController extends ChangeNotifier {
     required String phone,
     required String password,
     required String otpCode,
+    String? resumeInviteToken,
   }) async {
+    final cleanResumeToken = _validInviteToken(resumeInviteToken);
     return _submit(() async {
       final response = await _authRepository.register(
         name: name.trim(),
@@ -119,6 +131,12 @@ class AuthController extends ChangeNotifier {
       await _offlineSyncService?.ensureCacheOwner(response.user.id);
       await _offlineSyncService?.cacheCurrentUser(response.user);
       _status = AuthStatus.authenticated;
+      if (cleanResumeToken != null) {
+        _pendingInviteResumeToken = cleanResumeToken;
+        _pendingInviteRouteClaimed = false;
+      } else {
+        _clearPendingInviteResume();
+      }
       unawaited(_offlineSyncService?.syncPendingChanges());
     });
   }
@@ -186,7 +204,9 @@ class AuthController extends ChangeNotifier {
     required String phone,
     required String purpose,
     required String code,
+    String? resumeInviteToken,
   }) async {
+    final cleanResumeToken = _validInviteToken(resumeInviteToken);
     return _submit(() async {
       final response = await _authRepository.verifyOtp(
         phone: phone.trim(),
@@ -201,9 +221,35 @@ class AuthController extends ChangeNotifier {
       }
       if (response.accessToken != null) {
         _status = AuthStatus.authenticated;
+        if (purpose == 'LOGIN' && cleanResumeToken != null) {
+          _pendingInviteResumeToken = cleanResumeToken;
+          _pendingInviteRouteClaimed = false;
+        } else {
+          _clearPendingInviteResume();
+        }
         unawaited(_offlineSyncService?.syncPendingChanges());
       }
     });
+  }
+
+  /// Returns a verified private invite exactly once to the router that lives
+  /// inside the newly-created account boundary. The token remains memory-only
+  /// and is consumed by the matching invite screen after navigation.
+  String? claimPendingInviteResumeRoute() {
+    if (!hasPendingInviteResume) return null;
+    _pendingInviteRouteClaimed = true;
+    return _pendingInviteResumeToken;
+  }
+
+  /// Allows only the route carrying the same private token to resume. A stale
+  /// or unrelated route cannot consume another invite's phone proof.
+  bool consumePendingInviteResume(String token) {
+    final cleanToken = _validInviteToken(token);
+    if (cleanToken == null || cleanToken != _pendingInviteResumeToken) {
+      return false;
+    }
+    _clearPendingInviteResume();
+    return true;
   }
 
   Future<bool> updateAvatar({
@@ -242,6 +288,7 @@ class AuthController extends ChangeNotifier {
 
   Future<void> logout() async {
     _authRepository.bindClientSession(null);
+    _clearPendingInviteResume();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -271,6 +318,7 @@ class AuthController extends ChangeNotifier {
       return false;
     }
     _authRepository.bindClientSession(null);
+    _clearPendingInviteResume();
     _user = null;
     _status = AuthStatus.unauthenticated;
     notifyListeners();
@@ -286,6 +334,7 @@ class AuthController extends ChangeNotifier {
   Future<void> handleSessionExpired() async {
     if (_status != AuthStatus.authenticated) return;
     _authRepository.bindClientSession(null);
+    _clearPendingInviteResume();
     _user = null;
     _status = AuthStatus.unauthenticated;
     _sessionExpired = true;
@@ -303,6 +352,20 @@ class AuthController extends ChangeNotifier {
     _errorMessage = null;
     _errorCode = null;
     notifyListeners();
+  }
+
+  static String? _validInviteToken(String? token) {
+    final cleanToken = token?.trim();
+    if (cleanToken == null ||
+        !_privateInviteTokenPattern.hasMatch(cleanToken)) {
+      return null;
+    }
+    return cleanToken;
+  }
+
+  void _clearPendingInviteResume() {
+    _pendingInviteResumeToken = null;
+    _pendingInviteRouteClaimed = false;
   }
 
   Future<bool> _submit(
@@ -357,6 +420,7 @@ class AuthController extends ChangeNotifier {
   static String? _messageForServerCode(String? code) {
     return switch (code) {
       'INVALID_CREDENTIALS' => _safeLoginFailureMessage,
+      'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>
         'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف. استخدم «الدخول برمز تحقق» للمتابعة.',
       'ACCOUNT_ALREADY_EXISTS' =>

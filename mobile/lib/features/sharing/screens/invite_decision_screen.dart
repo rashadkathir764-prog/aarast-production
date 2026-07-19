@@ -38,6 +38,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
   bool _isVerifying = false;
   String? _otpNoticeMessage;
+  bool _otpDeliveryConfirmed = false;
   PlanInvite? _openedInvite;
   Timer? _resendTimer;
   int _resendSeconds = 0;
@@ -53,7 +54,18 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final auth = context.read<AuthController>();
-      if (auth.status == AuthStatus.authenticated) {
+      // A private link may be opened on a phone that is still signed in as
+      // the inviter (or another family member).  Never resolve that token
+      // against the stale session: the invitee must prove the phone that the
+      // link was issued to first.  The OTP verification will then replace the
+      // application session with the verified invitee account.
+      final token = _token;
+      final resumesVerifiedLink =
+          token != null &&
+          auth.status == AuthStatus.authenticated &&
+          auth.consumePendingInviteResume(token);
+      if (resumesVerifiedLink ||
+          (token == null && auth.status == AuthStatus.authenticated)) {
         _loadVerifiedInvites();
       }
     });
@@ -86,6 +98,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _step = _InviteAccessStep.otp;
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
+      _otpDeliveryConfirmed = result.isDeliveryConfirmed;
     });
     _startResendCooldown();
   }
@@ -105,11 +118,14 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     if (_isVerifying) return;
 
     final auth = context.read<AuthController>();
+    final previousUserId = auth.user?.id;
+    final token = _token;
     setState(() => _isVerifying = true);
     final success = await auth.verifyOtp(
       phone: _phoneController.text.trim(),
       purpose: _otpPurpose,
       code: code,
+      resumeInviteToken: token,
     );
     if (!mounted) return;
     if (!success) {
@@ -120,6 +136,13 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       return;
     }
     _resendTimer?.cancel();
+    if (token != null && previousUserId != auth.user?.id) {
+      // The account boundary is about to dispose this State. The in-memory
+      // resume token is claimed by the newly mounted router, which continues
+      // the verified invite without exposing it to the previous account.
+      return;
+    }
+    if (token != null) auth.consumePendingInviteResume(token);
     setState(() => _otpFieldState = AarastOtpFieldState.success);
     await Future<void>.delayed(AarastOtpField.successHold(context));
     if (!mounted) return;
@@ -205,8 +228,30 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpFieldState = AarastOtpFieldState.idle;
       _isVerifying = false;
       _resendSeconds = 0;
+      _otpNoticeMessage = null;
+      _otpDeliveryConfirmed = false;
       _step = _InviteAccessStep.phone;
     });
+  }
+
+  void _openRegistration() {
+    final auth = context.read<AuthController>();
+    final phone = _phoneController.text.trim();
+    final token = _token;
+    final resumeLocation = token == null
+        ? AppRouter.inviteAccess
+        : AppRouter.inviteDecision(token);
+    auth.clearError();
+    context.go(
+      Uri.parse(AppRouter.register)
+          .replace(
+            queryParameters: {
+              if (phone.isNotEmpty) 'phone': phone,
+              'resume': resumeLocation,
+            },
+          )
+          .toString(),
+    );
   }
 
   void _startResendCooldown() {
@@ -315,10 +360,12 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
                 state: _otpFieldState,
                 resendSeconds: _resendSeconds,
                 otpNoticeMessage: _otpNoticeMessage,
+                deliveryConfirmed: _otpDeliveryConfirmed,
                 onCodeChanged: _onOtpChanged,
                 onVerify: _verifyOtp,
                 onResend: _resendOtp,
                 onChangePhone: _returnToPhone,
+                onCreateAppAccount: _openRegistration,
                 autoJoin: _token != null,
               ),
               _InviteAccessStep.invites => _InvitesStep(
@@ -642,7 +689,9 @@ class _OtpStep extends StatelessWidget {
     required this.onVerify,
     required this.onResend,
     required this.onChangePhone,
+    required this.onCreateAppAccount,
     required this.autoJoin,
+    required this.deliveryConfirmed,
     this.otpNoticeMessage,
   });
 
@@ -654,21 +703,28 @@ class _OtpStep extends StatelessWidget {
   final VoidCallback onVerify;
   final VoidCallback onResend;
   final VoidCallback onChangePhone;
+  final VoidCallback onCreateAppAccount;
   final bool autoJoin;
+  final bool deliveryConfirmed;
   final String? otpNoticeMessage;
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
+    final missingAppAccount =
+        auth.errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
     return ListView(
       children: [
         _InviteWelcomeHero(
           icon: LucideIcons.messageCircle,
           eyebrow: 'التحقق من الهوية',
           title: 'أدخل رمز التحقق',
-          message:
-              'أرسلنا الرمز إلى '
-              '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}',
+          message: deliveryConfirmed
+              ? 'تم تسليم الرمز إلى واتساب على '
+                    '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}'
+              : 'طلبنا إرسال الرمز إلى '
+                    '${PhoneNumberUtils.isolateLtr(_maskedPhone(phone))}، '
+                    'لكن لم نتأكد من وصوله بعد.',
         ),
         const SizedBox(height: 14),
         if (otpNoticeMessage != null) ...[
@@ -703,45 +759,61 @@ class _OtpStep extends StatelessWidget {
                       ),
                       if (auth.errorMessage != null) ...[
                         const SizedBox(height: 12),
-                        const _InlineError('رمز التحقق غير صحيح.'),
+                        _InlineError(auth.errorMessage!),
                       ],
                       const SizedBox(height: 18),
-                      AarastButton(
-                        key: const Key('invite-verify-otp-button'),
-                        label: autoJoin
-                            ? 'تأكيد الرمز والانضمام'
-                            : 'تأكيد الرمز',
-                        icon: LucideIcons.checkCircle2,
-                        isLoading: auth.isSubmitting,
-                        onPressed: auth.isSubmitting ? null : onVerify,
-                      ),
+                      if (missingAppAccount)
+                        AarastButton(
+                          key: const ValueKey('invite-create-app-account'),
+                          label: 'إنشاء حساب التطبيق والمتابعة',
+                          icon: LucideIcons.userPlus,
+                          onPressed: phone.isEmpty ? null : onCreateAppAccount,
+                        )
+                      else
+                        AarastButton(
+                          key: const Key('invite-verify-otp-button'),
+                          label: autoJoin
+                              ? 'تأكيد الرمز والانضمام'
+                              : 'تأكيد الرمز',
+                          icon: LucideIcons.checkCircle2,
+                          isLoading: auth.isSubmitting,
+                          onPressed: auth.isSubmitting ? null : onVerify,
+                        ),
                       const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AarastButton(
-                              key: const ValueKey('invite-otp-resend-button'),
-                              label: resendSeconds > 0
-                                  ? 'إعادة الإرسال خلال $resendSeconds ث'
-                                  : 'إعادة إرسال الرمز',
-                              variant: AarastButtonVariant.secondary,
-                              onPressed: auth.isSubmitting || resendSeconds > 0
-                                  ? null
-                                  : onResend,
+                      if (missingAppAccount)
+                        AarastButton(
+                          label: 'تغيير الرقم',
+                          variant: AarastButtonVariant.ghost,
+                          onPressed: auth.isSubmitting ? null : onChangePhone,
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AarastButton(
+                                key: const ValueKey('invite-otp-resend-button'),
+                                label: resendSeconds > 0
+                                    ? 'إعادة الإرسال خلال $resendSeconds ث'
+                                    : 'إعادة إرسال الرمز',
+                                variant: AarastButtonVariant.secondary,
+                                onPressed:
+                                    auth.isSubmitting || resendSeconds > 0
+                                    ? null
+                                    : onResend,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: AarastButton(
-                              label: 'تغيير الرقم',
-                              variant: AarastButtonVariant.ghost,
-                              onPressed: auth.isSubmitting
-                                  ? null
-                                  : onChangePhone,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: AarastButton(
+                                label: 'تغيير الرقم',
+                                variant: AarastButtonVariant.ghost,
+                                onPressed: auth.isSubmitting
+                                    ? null
+                                    : onChangePhone,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
                     ],
                   ),
           ),

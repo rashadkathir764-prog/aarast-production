@@ -649,6 +649,30 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  Future<bool> updateProfileMedia({String? logoUrl, String? coverUrl}) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      _profile = await _api.updateProfileMedia(
+        logoUrl: logoUrl,
+        coverUrl: coverUrl,
+      );
+      _hasProviderProfile = true;
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر حفظ صورة ملف المزوّد الآن.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> addServiceImage({
     required String serviceId,
     required String imageUrl,

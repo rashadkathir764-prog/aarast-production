@@ -280,15 +280,33 @@ test('registration stays pending and sessionless until the REGISTER OTP is consu
   });
 });
 
-test('password login never issues a session to an unverified legacy account', async () => {
+test('correct password exposes only the verification challenge and LOGIN OTP recovers the legacy account', async () => {
   await withDevOtp(async () => {
     const { service, refreshTokens, addUser } = createHarness();
-    await addUser('+967777123456', false);
+    const legacy = await addUser('+967777123456', false);
     await assert.rejects(
       () => service.login({ phone: '777123456', password: 'secret123' }),
-      /Phone verification is required/,
+      (error: any) =>
+        error.getStatus?.() === 401 &&
+        error.getResponse?.().code === 'PHONE_VERIFICATION_REQUIRED',
     );
     assert.equal(refreshTokens.length, 0);
+
+    await service.requestOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+    });
+    const recovered = await service.verifyOtp({
+      phone: '777123456',
+      purpose: OtpPurpose.LOGIN,
+      code: '123456',
+    });
+
+    assert.ok(legacy.phoneVerifiedAt);
+    assert.ok(recovered.accessToken);
+    assert.ok(recovered.refreshToken);
+    assert.equal(recovered.user?.id, legacy.id);
+    assert.equal(refreshTokens.length, 1);
   });
 });
 

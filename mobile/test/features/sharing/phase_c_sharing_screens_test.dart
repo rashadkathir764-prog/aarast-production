@@ -12,6 +12,7 @@ import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/shared_wedding_plans_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -149,10 +150,94 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(api.reissueCalls, 1);
-        expect(find.textContaining('تم إرسال رابط دعوة جديد'), findsOneWidget);
+        expect(find.textContaining('تم تسليم رابط دعوة جديد'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets('a persisted invite cooldown blocks then unlocks reissue', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final api = _FakeSharingApi(
+        invites: [
+          _invite(
+            deliveryStatus: 'UNCERTAIN',
+            deliveryRetryAvailableAt: DateTime.now().add(
+              const Duration(seconds: 2),
+            ),
+          ),
+        ],
+      );
+
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(weddingPlanId: _planId),
+      );
+      await tester.pumpAndSettle();
+
+      final retryFinder = find.byKey(
+        const Key('pending-invite-reissue-invite-1'),
+      );
+      expect(tester.widget<IconButton>(retryFinder).onPressed, isNull);
+      expect(api.reissueCalls, 0);
+
+      await tester.pump(const Duration(seconds: 2, milliseconds: 100));
+      await tester.pump();
+
+      expect(tester.widget<IconButton>(retryFinder).onPressed, isNotNull);
+      await tester.tap(retryFinder);
+      await tester.pumpAndSettle();
+      expect(api.reissueCalls, 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('clipboard failure keeps the rotated bearer visible', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            throw PlatformException(code: 'clipboard_unavailable');
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+      final api = _FakeSharingApi(
+        invites: [_invite()],
+        reissueDeliveryStatus: 'UNAVAILABLE',
+      );
+
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(weddingPlanId: _planId),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('إعادة إرسال الرابط من أعرست'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('invite-link-manual-copy-fallback')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('abcdefghijklmnopqrstuvwxyzABCDEFGH123456789'),
+        findsOneWidget,
+      );
+      expect(api.reissueCalls, 1);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -219,7 +304,11 @@ SharedMember _member({
   );
 }
 
-PlanInvite _invite({String? name = 'خالد'}) {
+PlanInvite _invite({
+  String? name = 'خالد',
+  String deliveryStatus = 'NOT_REQUESTED',
+  DateTime? deliveryRetryAvailableAt,
+}) {
   return PlanInvite(
     id: 'invite-1',
     weddingPlanId: _planId,
@@ -234,6 +323,8 @@ PlanInvite _invite({String? name = 'خالد'}) {
     canManageProviders: false,
     canInviteMembers: false,
     canManageMoney: false,
+    deliveryStatus: deliveryStatus,
+    deliveryRetryAvailableAt: deliveryRetryAvailableAt,
     phone: '+967777123456',
     name: name,
   );
@@ -256,11 +347,13 @@ class _FakeSharingApi extends SharingApi {
     this.members = const [],
     this.invites = const [],
     this.sharedPlans = const [],
+    this.reissueDeliveryStatus = 'DELIVERED',
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final List<SharedMember> members;
   final List<PlanInvite> invites;
   final List<SharedWeddingPlan> sharedPlans;
+  final String reissueDeliveryStatus;
 
   int getSharedMembersCalls = 0;
   int getPlanInvitesCalls = 0;
@@ -322,7 +415,7 @@ class _FakeSharingApi extends SharingApi {
       canManageProviders: canManageProviders ?? invite.canManageProviders,
       canInviteMembers: canInviteMembers ?? invite.canInviteMembers,
       canManageMoney: canManageMoney ?? invite.canManageMoney,
-      deliveryStatus: 'SENT',
+      deliveryStatus: reissueDeliveryStatus,
       phone: invite.phone,
       name: invite.name,
       inviterName: 'رشاد',

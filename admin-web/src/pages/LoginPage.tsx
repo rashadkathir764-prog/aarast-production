@@ -3,14 +3,18 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   confirmAdminPasswordReset,
   requestAdminPasswordReset,
+  type OtpDeliveryStatus,
 } from '../api/auth';
 import { useAuth } from '../auth/AuthProvider';
 import { FormField } from '../components/FormField';
 
 type RecoveryStep = 'phone' | 'confirm' | null;
 
-const neutralRecoveryNotice =
-  'إذا كان الرقم مرتبطًا بحساب إدارة نشط، فسيصل رمز الاستعادة إلى واتساب.';
+function neutralRecoveryNotice(deliveryStatus: OtpDeliveryStatus): string {
+  return deliveryStatus === 'DELIVERED'
+    ? 'إذا كان الرقم مرتبطًا بحساب إدارة نشط، فقد تم تسليم رمز الاستعادة إلى واتساب.'
+    : 'تم قبول طلب الاستعادة، لكن لم نتأكد من وصول الرمز إلى واتساب بعد.';
+}
 
 function isStrongAdminPassword(value: string): boolean {
   return (
@@ -42,6 +46,9 @@ export function LoginPage() {
   const [newPasswordConfirmation, setNewPasswordConfirmation] = useState('');
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
+  const [recoveryDeliveryStatus, setRecoveryDeliveryStatus] = useState<
+    OtpDeliveryStatus | null
+  >(null);
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const [isRecoveryLoading, setIsRecoveryLoading] = useState(false);
   const [retryRemaining, setRetryRemaining] = useState(0);
@@ -91,13 +98,15 @@ export function LoginPage() {
     setIsRecoveryLoading(true);
     setRecoveryError(null);
     setRecoveryNotice(null);
+    setRecoveryDeliveryStatus(null);
     try {
       const nextChallenge = await requestAdminPasswordReset(normalizedPhone);
       setRecoveryPhone(normalizedPhone);
       setRecoveryChallengeToken(nextChallenge.challengeToken);
       setRecoveryCode('');
       setRetryRemaining(nextChallenge.retryAfterSeconds);
-      setRecoveryNotice(neutralRecoveryNotice);
+      setRecoveryDeliveryStatus(nextChallenge.deliveryStatus);
+      setRecoveryNotice(neutralRecoveryNotice(nextChallenge.deliveryStatus));
       setRecoveryStep('confirm');
     } catch (err) {
       setRecoveryError(
@@ -176,6 +185,7 @@ export function LoginPage() {
     setRecoveryPhone('');
     setRecoveryError(null);
     setRecoveryNotice(null);
+    setRecoveryDeliveryStatus(null);
     setRecoveryStep(null);
   }
 
@@ -188,11 +198,15 @@ export function LoginPage() {
         ? 'تعيين كلمة مرور جديدة'
         : 'مرحبا بك';
   const description = challenge
-    ? 'أدخل الرمز المرسل إلى هاتف المسؤول لإكمال الجلسة الآمنة.'
+    ? challenge.deliveryStatus === 'DELIVERED'
+      ? 'تم تسليم الرمز إلى واتساب المسؤول. أدخله لإكمال الجلسة الآمنة.'
+      : 'طُلب إرسال الرمز، لكن لم نتأكد من وصوله بعد. أدخله إذا وصلك.'
     : recoveryStep === 'phone'
       ? 'أدخل رقم هاتف المسؤول. لن نكشف ما إذا كان الرقم مرتبطًا بحساب.'
       : recoveryStep === 'confirm'
-        ? 'أدخل الرمز المرسل إلى واتساب، ثم اختر كلمة مرور إدارية قوية.'
+        ? recoveryDeliveryStatus === 'DELIVERED'
+          ? 'أدخل الرمز الذي تم تسليمه إلى واتساب، ثم اختر كلمة مرور إدارية قوية.'
+          : 'أدخل الرمز إذا وصلك عبر واتساب، ثم اختر كلمة مرور إدارية قوية.'
         : 'أدخل كلمة المرور، ثم أكمل رمز التحقق للوصول إلى لوحة الإدارة.';
   const primaryLabel = isBusy
     ? 'جاري التحقق...'

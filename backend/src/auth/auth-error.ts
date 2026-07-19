@@ -10,6 +10,7 @@ export const AuthErrorCode = {
   ACCOUNT_DISABLED_AFTER_PHONE_PROOF: 'ACCOUNT_DISABLED_AFTER_PHONE_PROOF',
   INVITE_NOT_FOUND_FOR_PHONE: 'INVITE_NOT_FOUND_FOR_PHONE',
   ADMIN_RESET_INVALID_OR_EXPIRED: 'ADMIN_RESET_INVALID_OR_EXPIRED',
+  OTP_DELIVERY_UNAVAILABLE: 'OTP_DELIVERY_UNAVAILABLE',
 } as const;
 
 export type AuthErrorCode =
@@ -21,4 +22,15 @@ export function authError(
   message: string,
 ): HttpException {
   return new HttpException({ statusCode, code, message }, statusCode);
+}
+
+export const OTP_DELIVERY_UNAVAILABLE_MESSAGE =
+  'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';
+
+export function otpDeliveryUnavailableError(): HttpException {
+  return authError(
+    HttpStatus.SERVICE_UNAVAILABLE,
+    AuthErrorCode.OTP_DELIVERY_UNAVAILABLE,
+    OTP_DELIVERY_UNAVAILABLE_MESSAGE,
+  );
 }

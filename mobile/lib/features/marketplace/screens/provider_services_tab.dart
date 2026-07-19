@@ -5,21 +5,32 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/media/media_upload_api.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 
+typedef ProviderServiceImagePicker = Future<List<XFile>> Function();
+typedef ProviderServiceImageUploader =
+    Future<MediaUploadTicket> Function(XFile file);
+
 class ProviderServicesTab extends StatefulWidget {
-  const ProviderServicesTab({super.key});
+  const ProviderServicesTab({super.key, this.pickImages, this.uploadImage});
+
+  final ProviderServiceImagePicker? pickImages;
+  final ProviderServiceImageUploader? uploadImage;
 
   @override
   State<ProviderServicesTab> createState() => _ProviderServicesTabState();
 }
 
 class _ProviderServicesTabState extends State<ProviderServicesTab> {
+  static const _maximumImagesPerSelection = 10;
+
   bool _showServices = true;
   String? _busyServiceId;
 
@@ -76,7 +87,7 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
                 _ServiceManagementCard(
                   service: service,
                   busy: _busyServiceId == service.id,
-                  onAddImage: () => _addImage(service),
+                  onAddImages: () => _addImages(service),
                   onDeleteImage: (image) => _deleteImage(service, image),
                 ),
                 const SizedBox(height: 12),
@@ -97,25 +108,84 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
     );
   }
 
-  Future<void> _addImage(MarketplaceService service) async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 84,
-      maxWidth: 2000,
-    );
-    if (file == null || !mounted) return;
-    setState(() => _busyServiceId = service.id);
+  Future<void> _addImages(MarketplaceService service) async {
+    late final List<XFile> files;
     try {
-      final ticket = await context.read<MediaUploadApi>().uploadImage(
-        file: file,
-        purpose: 'service-image',
-      );
+      files =
+          await (widget.pickImages?.call() ??
+              ImagePicker().pickMultiImage(
+                imageQuality: 84,
+                maxWidth: 2000,
+                limit: _maximumImagesPerSelection,
+              ));
+    } catch (_) {
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          'تعذر فتح معرض الصور. تحقق من الإذن وحاول مرة أخرى.',
+        );
+      }
+      return;
+    }
+    if (files.isEmpty || !mounted) return;
+
+    setState(() => _busyServiceId = service.id);
+    var savedCount = 0;
+    String? lastError;
+    try {
+      final dashboard = context.read<ProviderDashboardProvider>();
+      final uploader =
+          widget.uploadImage ??
+          (XFile file) => context.read<MediaUploadApi>().uploadImage(
+            file: file,
+            purpose: 'service-image',
+          );
+
+      for (final file in files.take(_maximumImagesPerSelection)) {
+        if (!mounted) return;
+        try {
+          final ticket = await uploader(file);
+          if (!mounted) return;
+          final saved = await dashboard.addServiceImage(
+            serviceId: service.id,
+            imageUrl: ticket.publicUrl,
+            altText: service.title,
+          );
+          if (saved) {
+            savedCount++;
+          } else {
+            lastError =
+                dashboard.errorMessage ?? 'تعذر إضافة إحدى الصور إلى الخدمة.';
+          }
+        } on ApiException catch (error) {
+          lastError = error.message;
+          if (error.statusCode != null && error.statusCode! >= 500) break;
+        } catch (_) {
+          lastError = 'تعذر رفع إحدى الصور.';
+        }
+      }
+
       if (!mounted) return;
-      await context.read<ProviderDashboardProvider>().addServiceImage(
-        serviceId: service.id,
-        imageUrl: ticket.publicUrl,
-        altText: service.title,
-      );
+      final selectedCount = files.take(_maximumImagesPerSelection).length;
+      if (savedCount == selectedCount) {
+        AarastToast.showSuccess(
+          context,
+          savedCount == 1
+              ? 'تمت إضافة الصورة إلى الخدمة.'
+              : 'تمت إضافة $savedCount صور إلى الخدمة.',
+        );
+      } else if (savedCount > 0) {
+        AarastToast.showInfo(
+          context,
+          'تمت إضافة $savedCount من $selectedCount صور. '
+          '${lastError ?? 'حاول إضافة الصور المتبقية مرة أخرى.'}',
+        );
+      } else {
+        AarastToast.showError(
+          context,
+          lastError ?? 'تعذر رفع الصور الآن. حاول مرة أخرى.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busyServiceId = null);
     }
@@ -126,11 +196,24 @@ class _ProviderServicesTabState extends State<ProviderServicesTab> {
     ProviderServiceImage image,
   ) async {
     setState(() => _busyServiceId = service.id);
-    await context.read<ProviderDashboardProvider>().deleteServiceImage(
-      serviceId: service.id,
-      imageId: image.id,
-    );
-    if (mounted) setState(() => _busyServiceId = null);
+    try {
+      final dashboard = context.read<ProviderDashboardProvider>();
+      final deleted = await dashboard.deleteServiceImage(
+        serviceId: service.id,
+        imageId: image.id,
+      );
+      if (!mounted) return;
+      if (deleted) {
+        AarastToast.showSuccess(context, 'تم حذف الصورة من الخدمة.');
+      } else {
+        AarastToast.showError(
+          context,
+          dashboard.errorMessage ?? 'تعذر حذف الصورة من الخدمة.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyServiceId = null);
+    }
   }
 }
 
@@ -138,13 +221,13 @@ class _ServiceManagementCard extends StatelessWidget {
   const _ServiceManagementCard({
     required this.service,
     required this.busy,
-    required this.onAddImage,
+    required this.onAddImages,
     required this.onDeleteImage,
   });
 
   final MarketplaceService service;
   final bool busy;
-  final VoidCallback onAddImage;
+  final VoidCallback onAddImages;
   final ValueChanged<ProviderServiceImage> onDeleteImage;
 
   @override
@@ -185,6 +268,16 @@ class _ServiceManagementCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
+          Text(
+            service.images.isEmpty
+                ? 'لا توجد صور لهذه الخدمة بعد.'
+                : 'صور الخدمة (${service.images.length})',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
           if (service.images.isNotEmpty)
             SizedBox(
               height: 92,
@@ -222,11 +315,11 @@ class _ServiceManagementCard extends StatelessWidget {
             ),
           const SizedBox(height: 10),
           OutlinedButton.icon(
-            onPressed: busy ? null : onAddImage,
+            onPressed: busy ? null : onAddImages,
             icon: busy
                 ? const AarastInlineSpinner()
                 : const Icon(LucideIcons.imagePlus),
-            label: const Text('إضافة صورة للعمل'),
+            label: Text(busy ? 'جاري رفع الصور...' : 'إضافة صور للأعمال'),
           ),
         ],
       ),

@@ -77,6 +77,25 @@ test("production rejects client-facing media endpoints without HTTPS", () => {
     }),
   );
 });
+
+test("production requires an explicit client-reachable signed media endpoint", () => {
+  assert.throws(
+    () =>
+      validateRuntimeEnvironment({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgresql://example",
+        JWT_SECRET: "test-secret",
+        AUTH_LOGIN_THROTTLE_PEPPER: "separate-test-pepper",
+        AUTH_OTP_MODE: "disabled",
+        READINESS_REQUIRE_MEDIA: "true",
+        AARAST_MEDIA_ENDPOINT: "https://media.internal.example.test",
+        AARAST_MEDIA_BUCKET: "aarast-media",
+        AARAST_MEDIA_PUBLIC_BASE_URL:
+          "https://cdn.example.test/aarast-media",
+      }),
+    /AARAST_MEDIA_SIGNED_ENDPOINT/,
+  );
+});
 const owned = (purpose: string, userId: string) =>
   `${BASE}/${purpose}/${userId}/asset.webp`;
 

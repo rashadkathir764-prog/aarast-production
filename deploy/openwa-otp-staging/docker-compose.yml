@@ -65,6 +65,9 @@ services:
       PORT: "2785"
       API_MASTER_KEY: ${OPENWA_MASTER_KEY:?set OPENWA_MASTER_KEY}
       API_KEY_PEPPER: ${OPENWA_API_KEY_PEPPER:?set OPENWA_API_KEY_PEPPER}
+      # One-recreate migration input only. Supply it from the operator shell
+      # while rotating the pepper; never persist it in .env.
+      API_KEY_PREVIOUS_PEPPER: ${OPENWA_API_KEY_PREVIOUS_PEPPER:-}
       DATABASE_TYPE: sqlite
       DATABASE_NAME: /app/data/openwa.sqlite
       DATABASE_SYNCHRONIZE: "false"
@@ -119,11 +122,68 @@ services:
       OPENWA_MASTER_KEY: ${OPENWA_MASTER_KEY:?set OPENWA_MASTER_KEY}
       OPENWA_SESSION_NAME: ${OPENWA_SESSION_NAME:-aarast-otp-staging}
       OPENWA_KEY_TTL_DAYS: ${OPENWA_KEY_TTL_DAYS:-7}
+      OPENWA_ROTATE_BEFORE_HOURS: ${OPENWA_ROTATE_BEFORE_HOURS:-48}
+      OPENWA_BOOTSTRAP_LOCK_PATH: /run/aarast/operator/bootstrap.lock
+      OPENWA_BOOTSTRAP_LOCK_STALE_SECONDS: ${OPENWA_BOOTSTRAP_LOCK_STALE_SECONDS:-1800}
     volumes:
       - ./bootstrap-openwa.mjs:/opt/bootstrap-openwa.mjs:ro
-      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/backend-secret:/run/aarast/backend
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/backend-secret:/run/aarast/staging
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/production-secret:/run/aarast/production
       - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/operator-secret:/run/aarast/operator
     command: ["node", "/opt/bootstrap-openwa.mjs"]
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    logging: *bounded-logging
+    networks: [transport]
+
+  openwa-credential-rotator:
+    image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    restart: on-failure
+    init: true
+    depends_on:
+      openwa:
+        condition: service_healthy
+      openwa-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      OPENWA_BASE_URL: http://openwa:2785
+      OPENWA_MASTER_KEY: ${OPENWA_MASTER_KEY:?set OPENWA_MASTER_KEY}
+      OPENWA_SESSION_NAME: ${OPENWA_SESSION_NAME:-aarast-otp-staging}
+      OPENWA_KEY_TTL_DAYS: ${OPENWA_KEY_TTL_DAYS:-7}
+      OPENWA_ROTATE_BEFORE_HOURS: ${OPENWA_ROTATE_BEFORE_HOURS:-48}
+      OPENWA_ROTATION_CHECK_SECONDS: ${OPENWA_ROTATION_CHECK_SECONDS:-21600}
+      OPENWA_ROTATION_RETRY_SECONDS: ${OPENWA_ROTATION_RETRY_SECONDS:-300}
+      OPENWA_BOOTSTRAP_LOCK_PATH: /run/aarast/operator/bootstrap.lock
+      OPENWA_BOOTSTRAP_LOCK_STALE_SECONDS: ${OPENWA_BOOTSTRAP_LOCK_STALE_SECONDS:-1800}
+    volumes:
+      - ./bootstrap-openwa.mjs:/opt/bootstrap-openwa.mjs:ro
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/backend-secret:/run/aarast/staging
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/production-secret:/run/aarast/production
+      - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}/operator-secret:/run/aarast/operator
+    command:
+      - sh
+      - -ec
+      - |
+        case "$$OPENWA_ROTATION_CHECK_SECONDS" in *[!0-9]*|'') exit 64;; esac
+        case "$$OPENWA_ROTATION_RETRY_SECONDS" in *[!0-9]*|'') exit 64;; esac
+        test "$$OPENWA_ROTATION_CHECK_SECONDS" -ge 60
+        test "$$OPENWA_ROTATION_CHECK_SECONDS" -le 86400
+        test "$$OPENWA_ROTATION_RETRY_SECONDS" -ge 30
+        test "$$OPENWA_ROTATION_RETRY_SECONDS" -le 3600
+        sleep "$$OPENWA_ROTATION_CHECK_SECONDS"
+        while :; do
+          if node /opt/bootstrap-openwa.mjs; then
+            sleep "$$OPENWA_ROTATION_CHECK_SECONDS"
+          else
+            sleep "$$OPENWA_ROTATION_RETRY_SECONDS"
+          fi
+        done
     user: "1000:1000"
     read_only: true
     tmpfs:
@@ -144,13 +204,13 @@ services:
       - -ec
       - |
         test -f /secure/.aarast-otp-encrypted
-        mkdir -p /secure/postgres /secure/openwa /secure/backend-secret /secure/operator-secret
+        mkdir -p /secure/postgres /secure/openwa /secure/backend-secret /secure/production-secret /secure/operator-secret
         chown 70:70 /secure/postgres
         # The pinned OpenWA image drops its Node/Chromium processes to UID 996.
         # Preserve that ownership on every idempotent init/recreate.
         chown 996:996 /secure/openwa
-        chown 1000:1000 /secure/backend-secret /secure/operator-secret
-        chmod 0700 /secure/postgres /secure/openwa /secure/backend-secret /secure/operator-secret
+        chown 1000:1000 /secure/backend-secret /secure/production-secret /secure/operator-secret
+        chmod 0700 /secure/postgres /secure/openwa /secure/backend-secret /secure/production-secret /secure/operator-secret
     volumes:
       - ${STAGING_SECURE_DATA_PATH:?set STAGING_SECURE_DATA_PATH}:/secure
     network_mode: none
@@ -185,6 +245,7 @@ services:
       READINESS_REQUIRE_MEDIA: "false"
       AUTH_OTP_MODE: openwa
       OPENWA_BASE_URL: http://aarast-openwa-otp:2785
+      OPENWA_CREDENTIAL_FILE: /run/aarast/openwa.env
       OPENWA_OTP_TIMEOUT_MS: "15000"
       OTP_GLOBAL_DAILY_LIMIT: ${OTP_GLOBAL_DAILY_LIMIT:-50}
       OTP_EXPIRES_MINUTES: "5"
@@ -195,9 +256,6 @@ services:
       - sh
       - -ec
       - |
-        set -a
-        . /run/aarast/openwa.env
-        set +a
         ./node_modules/.bin/prisma migrate deploy
         exec node dist/main.js
     read_only: true

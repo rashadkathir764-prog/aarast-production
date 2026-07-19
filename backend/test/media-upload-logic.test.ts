@@ -303,3 +303,18 @@ test("media storage creates a short-lived signed upload without network access",
     restore("AARAST_MEDIA_SECRET_ACCESS_KEY", previous.secretKey);
   }
 });
+
+test("production compose provisions durable public media and passes the signed endpoint", () => {
+  const compose = readFileSync(
+    join(process.cwd(), "../deploy/dokploy/docker-compose.yml"),
+    "utf8",
+  );
+  assert.match(compose, /^\s{2}media:\s*$/m);
+  assert.match(compose, /^\s{2}media-init:\s*$/m);
+  assert.match(compose, /aarast_media_data:\s*$/m);
+  assert.match(
+    compose,
+    /AARAST_MEDIA_SIGNED_ENDPOINT:\s*\$\{AARAST_MEDIA_SIGNED_ENDPOINT/,
+  );
+  assert.match(compose, /aarast-media\.shadowgardn\.com/);
+});

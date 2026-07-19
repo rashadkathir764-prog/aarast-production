@@ -74,6 +74,7 @@ function validateProductionMediaEndpoints(
 
   const missing = [
     'AARAST_MEDIA_ENDPOINT',
+    'AARAST_MEDIA_SIGNED_ENDPOINT',
     'AARAST_MEDIA_BUCKET',
     'AARAST_MEDIA_PUBLIC_BASE_URL',
   ].filter((name) => !environment[name]?.trim());
@@ -83,9 +84,7 @@ function validateProductionMediaEndpoints(
     );
   }
 
-  const signedEndpoint =
-    environment.AARAST_MEDIA_SIGNED_ENDPOINT?.trim() ||
-    environment.AARAST_MEDIA_ENDPOINT!.trim();
+  const signedEndpoint = environment.AARAST_MEDIA_SIGNED_ENDPOINT!.trim();
   for (const [name, rawValue] of [
     ['AARAST_MEDIA_SIGNED_ENDPOINT', signedEndpoint],
     [

@@ -243,6 +243,14 @@ enum GuestInvitationStatus {
   DELIVERED
 }
 
+enum PlanInviteDeliveryStatus {
+  UNKNOWN
+  PENDING
+  DELIVERED
+  UNCERTAIN
+  UNAVAILABLE
+}
+
 enum GuestAttendanceStatus {
   PENDING
   CONFIRMED
@@ -621,6 +629,8 @@ model PlanInvite {
   acceptedAt           DateTime?
   declinedAt           DateTime?
   revokedAt            DateTime?
+  deliveryStatus       PlanInviteDeliveryStatus @default(UNKNOWN)
+  deliveryAttemptedAt  DateTime?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   weddingPlan          WeddingPlan      @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)

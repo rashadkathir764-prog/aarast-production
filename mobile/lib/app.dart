@@ -57,7 +57,7 @@ class _AarastAppState extends State<AarastApp> {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: _SessionExpiryRedirector(
+          child: AarastAuthFlowRedirector(
             router: _router,
             child: child ?? const SizedBox.shrink(),
           ),
@@ -67,31 +67,51 @@ class _AarastAppState extends State<AarastApp> {
   }
 }
 
-/// Watches for a mid-session 401 (session invalidated server-side) and
-/// redirects to the login screen exactly once, so the user gets a clean
-/// re-login path instead of stale screens full of errors.
-class _SessionExpiryRedirector extends StatelessWidget {
-  const _SessionExpiryRedirector({required this.router, required this.child});
+/// Handles navigation that must survive the account-scoped subtree being
+/// recreated. In particular, a phone-verified private invite resumes only
+/// after the new account boundary is mounted.
+@visibleForTesting
+class AarastAuthFlowRedirector extends StatelessWidget {
+  const AarastAuthFlowRedirector({
+    required this.router,
+    required this.child,
+    super.key,
+  });
 
   final GoRouter router;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    bool expired;
+    ({bool sessionExpired, bool hasPendingInvite}) flow;
     try {
-      expired = context.select<AuthController, bool>(
-        (controller) => controller.sessionExpired,
-      );
+      flow = context
+          .select<
+            AuthController,
+            ({bool sessionExpired, bool hasPendingInvite})
+          >(
+            (controller) => (
+              sessionExpired: controller.sessionExpired,
+              hasPendingInvite: controller.hasPendingInviteResume,
+            ),
+          );
     } on ProviderNotFoundException {
       return child;
     }
 
-    if (expired) {
+    if (flow.sessionExpired) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         context.read<AuthController>().acknowledgeSessionExpiry();
         router.go(AppRouter.login);
+      });
+    } else if (flow.hasPendingInvite) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        final token = context
+            .read<AuthController>()
+            .claimPendingInviteResumeRoute();
+        if (token != null) router.go(AppRouter.inviteDecision(token));
       });
     }
 

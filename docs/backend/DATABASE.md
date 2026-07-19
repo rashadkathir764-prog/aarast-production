@@ -184,7 +184,7 @@ rewrite as permission to restore a removed live model.
 | `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 16 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
-| `PlanInvite` | 27 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
+| `PlanInvite` | 29 | `id`, `weddingPlanId`, `inviterUserId`, `inviteeUserId`, `expiresAt`, `acceptedAt`, `declinedAt`, `revokedAt` |
 | `OtpCode` | 12 | `id`, `expiresAt`, `consumedAt`, `createdAt`, `updatedAt` |
 | `NotificationPreference` | 12 | `id`, `userId`, `createdAt`, `updatedAt` |
 | `Notification` | 18 | `id`, `userId`, `weddingPlanId`, `entityId`, `readAt`, `archivedAt`, `createdAt`, `updatedAt` |

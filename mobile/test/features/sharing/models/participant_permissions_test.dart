@@ -59,4 +59,53 @@ void main() {
     expect(sharedMemberRoleLabel(invite.role), 'مساعد');
     expect(invite.weddingPlanTitle, 'خطة الزفاف');
   });
+
+  test('only DELIVERED confirms an Aarast invitation delivery', () {
+    PlanInvite parse(String deliveryStatus) => PlanInvite.fromJson({
+      'id': 'invite-$deliveryStatus',
+      'weddingPlanId': 'plan-1',
+      'token': 'safe-token',
+      'role': 'HELPER',
+      'status': 'PENDING',
+      'expiresAt': '2026-07-20T00:00:00.000Z',
+      'delivery': {'status': deliveryStatus},
+    });
+
+    expect(parse('DELIVERED').wasDeliveredByAarast, isTrue);
+    expect(parse('PENDING').wasDeliveredByAarast, isFalse);
+    expect(parse('UNCERTAIN').wasDeliveredByAarast, isFalse);
+    expect(parse('SENT').wasDeliveredByAarast, isFalse);
+    expect(parse('UNCERTAIN').hasUncertainDelivery, isTrue);
+    expect(parse('UNKNOWN').hasUnknownDelivery, isTrue);
+    expect(parse('UNKNOWN').deliverySummaryLabel, 'حالة الإرسال غير معروفة');
+  });
+
+  test('invitation delivery cooldown survives parsing and identity copies', () {
+    final invite = PlanInvite.fromJson({
+      'id': 'invite-cooldown',
+      'weddingPlanId': 'plan-1',
+      'token': 'one-time-token',
+      'role': 'HELPER',
+      'status': 'PENDING',
+      'expiresAt': '2026-07-20T00:00:00.000Z',
+      'delivery': {
+        'status': 'UNCERTAIN',
+        'attemptedAt': '2026-07-18T10:00:00.000Z',
+        'retryAfterSeconds': 60,
+      },
+    });
+
+    expect(invite.deliveryAttemptedAt, DateTime.utc(2026, 7, 18, 10));
+    expect(invite.deliveryRetryRemainingSeconds, inInclusiveRange(59, 60));
+    expect(invite.canRetryDelivery, isFalse);
+
+    final listedCopy = invite.withIdentityToken();
+    expect(listedCopy.token, invite.id);
+    expect(listedCopy.deliveryAttemptedAt, invite.deliveryAttemptedAt);
+    expect(
+      listedCopy.deliveryRetryAvailableAt,
+      invite.deliveryRetryAvailableAt,
+    );
+    expect(listedCopy.canRetryDelivery, isFalse);
+  });
 }

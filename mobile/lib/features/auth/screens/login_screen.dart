@@ -222,11 +222,21 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text,
     );
 
-    if (success && mounted) {
+    if (!mounted) return;
+
+    if (success) {
       final defaultLocation = auth.user?.isProviderAccount == true
           ? AppRouter.providerDashboard
           : AppRouter.home;
       context.go(_safeResumeLocation(context) ?? defaultLocation);
+      return;
+    }
+
+    // The backend emits this code only after the application password matched
+    // an active account. Continue the same login attempt through phone proof;
+    // invalid credentials must never trigger an OTP or reveal account state.
+    if (auth.errorCode == 'PHONE_VERIFICATION_REQUIRED') {
+      await _requestLoginOtp();
     }
   }
 

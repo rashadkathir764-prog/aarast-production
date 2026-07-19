@@ -23,6 +23,22 @@ void main() {
     expect(results[1]?.token, 'new-raw-token');
     expect(api.calls, 1);
   });
+
+  test('server cooldown refreshes the stored invite retry deadline', () async {
+    final api = _CooldownReissueApi();
+    final provider = SharingProvider(api);
+    await provider.loadMembers('plan-1');
+
+    final result = await provider.reissueInvite(provider.invites.single);
+
+    expect(result, isNull);
+    expect(provider.invites.single.canRetryDelivery, isFalse);
+    expect(
+      provider.invites.single.deliveryRetryRemainingSeconds,
+      inInclusiveRange(36, 37),
+    );
+    expect(provider.errorMessage, contains('37 ثانية'));
+  });
 }
 
 class _DelayedReissueApi extends SharingApi {
@@ -52,6 +68,41 @@ class _DelayedReissueApi extends SharingApi {
   void complete(PlanInvite invite) {
     _completer.complete(invite);
     _completer = Completer<PlanInvite>();
+  }
+}
+
+class _CooldownReissueApi extends SharingApi {
+  _CooldownReissueApi() : super(ApiClient(tokenProvider: () async => 'token'));
+
+  @override
+  Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async =>
+      const [];
+
+  @override
+  Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async => [
+    _invite(token: 'identity-token'),
+  ];
+
+  @override
+  Future<PlanInvite> reissuePlanInvite({
+    required String weddingPlanId,
+    required String inviteId,
+    String? role,
+    bool? canViewMoney,
+    bool? canEditPlan,
+    bool? canManageTasks,
+    bool? canManageGuests,
+    bool? canManageProviders,
+    bool? canInviteMembers,
+    bool? canManageMoney,
+    bool? receiveNotifications,
+  }) {
+    throw const ApiException(
+      'Invite delivery was attempted recently.',
+      statusCode: 429,
+      serverCode: 'INVITE_REISSUE_COOLDOWN',
+      retryAfterSeconds: 37,
+    );
   }
 }
 

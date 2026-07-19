@@ -5,6 +5,7 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:aarast_mobile/features/auth/models/pending_registration.dart';
+import 'package:aarast_mobile/features/auth/models/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';
@@ -177,10 +178,7 @@ void main() {
     await tester.tap(resetAction);
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('reset:+967777123456:/invite/example'),
-      findsOneWidget,
-    );
+    expect(find.text('reset:+967777123456:/invite/example'), findsOneWidget);
   });
 
   testWidgets(
@@ -210,6 +208,33 @@ void main() {
       expect(registerUri.path, '/register');
       expect(registerUri.queryParameters['phone'], '+967777123456');
       expect(registerUri.queryParameters['resume'], '/invite/example');
+    },
+  );
+
+  testWidgets(
+    'successful registration returns to the private invite with a one-shot resume token',
+    (tester) async {
+      const token = 'abcdefghijklmnopqrstuvwxyzABCDEFGH123456789';
+      final controller = await _controller(registrationSucceeds: true);
+      final router = _router(
+        registration: const PendingRegistration(
+          name: 'مستخدم',
+          phone: '+967777123456',
+          password: 'secret123',
+        ),
+        successLocation: '/invites/$token',
+      );
+      addTearDown(router.dispose);
+
+      await _pump(tester, controller: controller, router: router);
+      await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pumpAndSettle();
+
+      expect(router.state.uri.path, '/invites/$token');
+      expect(controller.status, AuthStatus.authenticated);
+      expect(controller.claimPendingInviteResumeRoute(), token);
+      expect(controller.claimPendingInviteResumeRoute(), isNull);
     },
   );
 }
@@ -242,7 +267,10 @@ Future<void> _pump(
   await tester.pump();
 }
 
-GoRouter _router({PendingRegistration? registration}) {
+GoRouter _router({
+  PendingRegistration? registration,
+  String successLocation = '/invite/example',
+}) {
   return GoRouter(
     initialLocation: '/otp',
     routes: [
@@ -252,7 +280,7 @@ GoRouter _router({PendingRegistration? registration}) {
           phone: '+967777123456',
           purpose: registration == null ? 'LOGIN' : 'REGISTER',
           registration: registration,
-          successLocation: '/invite/example',
+          successLocation: successLocation,
         ),
       ),
       GoRoute(
@@ -276,6 +304,11 @@ GoRouter _router({PendingRegistration? registration}) {
           '${state.uri.queryParameters['resume']}',
         ),
       ),
+      GoRoute(
+        path: '/invites/:token',
+        builder: (context, state) =>
+            const SizedBox(key: ValueKey('private-invite-resume-destination')),
+      ),
     ],
   );
 }
@@ -283,6 +316,7 @@ GoRouter _router({PendingRegistration? registration}) {
 Future<AuthController> _controller({
   String? registerErrorCode,
   String? verifyErrorCode,
+  bool registrationSucceeds = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -294,6 +328,7 @@ Future<AuthController> _controller({
       storage,
       registerErrorCode: registerErrorCode,
       verifyErrorCode: verifyErrorCode,
+      registrationSucceeds: registrationSucceeds,
     ),
   );
 }
@@ -304,10 +339,12 @@ class _RecoveryRepository extends AuthRepository {
     super.authStorage, {
     this.registerErrorCode,
     this.verifyErrorCode,
+    this.registrationSucceeds = false,
   });
 
   final String? registerErrorCode;
   final String? verifyErrorCode;
+  final bool registrationSucceeds;
 
   @override
   Future<AuthResponse> register({
@@ -316,6 +353,19 @@ class _RecoveryRepository extends AuthRepository {
     required String password,
     required String otpCode,
   }) async {
+    if (registrationSucceeds) {
+      return const AuthResponse(
+        accessToken: 'registered-access-token',
+        refreshToken: 'registered-refresh-token',
+        user: SafeUser(
+          id: 'invitee-1',
+          name: 'مستخدم',
+          phone: '+967777123456',
+          role: 'USER',
+          status: 'ACTIVE',
+        ),
+      );
+    }
     throw ApiException(
       'backend registration error',
       statusCode: 409,

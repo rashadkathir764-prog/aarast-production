@@ -146,7 +146,7 @@ Widget _otpBody() {
           ),
           const SizedBox(height: 10),
           Text(
-            'أدخل رمز التحقق المرسل إلى رقم هاتفك\nلإكمال إعداد الحساب.',
+            'أدخل رمز التحقق إذا وصلك عبر واتساب\nلإكمال إعداد الحساب.',
             textAlign: TextAlign.center,
             style: textTheme.bodyMedium?.copyWith(
               color: AppTheme.muted,

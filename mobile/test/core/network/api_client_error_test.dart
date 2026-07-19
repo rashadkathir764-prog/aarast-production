@@ -71,6 +71,32 @@ void main() {
       expect(CachePolicy.shouldQueueReplay(exception), isFalse);
     });
 
+    test('typed cooldown errors preserve the server retry window', () {
+      final requestOptions = RequestOptions(
+        path: '/api/v1/wedding-plans/plan-1/invites/invite-1/reissue',
+      );
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 429,
+            data: const {
+              'statusCode': 429,
+              'code': 'INVITE_REISSUE_COOLDOWN',
+              'message': 'Invite delivery was attempted recently.',
+              'retryAfterSeconds': 37,
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.serverCode, 'INVITE_REISSUE_COOLDOWN');
+      expect(exception.retryAfterSeconds, 37);
+      expect(exception.isAmbiguousMutationFailure, isFalse);
+    });
+
     test('401 keeps the typed server code and hides credential details', () {
       final requestOptions = RequestOptions(path: '/api/v1/auth/login');
       final exception = ApiException.fromDio(
@@ -115,6 +141,62 @@ void main() {
 
       expect(exception.serverCode, 'PHONE_VERIFICATION_REQUIRED');
       expect(exception.statusCode, 401);
+    });
+
+    test('OTP transport failure keeps its code and uses product Arabic', () {
+      final requestOptions = RequestOptions(path: '/api/v1/auth/login');
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 503,
+            data: const {
+              'statusCode': 503,
+              'code': 'OTP_DELIVERY_UNAVAILABLE',
+              'message': 'OTP delivery is temporarily unavailable',
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
+      expect(exception.statusCode, 503);
+      expect(
+        exception.message,
+        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      );
+      expect(exception.message, isNot(contains('OTP delivery')));
+    });
+
+    test('OTP transport failure code is read from a nested envelope', () {
+      final requestOptions = RequestOptions(
+        path: '/api/v1/auth/password-reset/request',
+      );
+      final exception = ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: 503,
+            data: const {
+              'statusCode': 503,
+              'message': {
+                'code': 'OTP_DELIVERY_UNAVAILABLE',
+                'message': 'OTP delivery is temporarily unavailable',
+              },
+            },
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+
+      expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
+      expect(
+        exception.message,
+        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      );
     });
 
     test('untyped English 401 copy is replaced by generic Arabic', () {

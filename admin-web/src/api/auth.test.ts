@@ -43,6 +43,7 @@ describe('secure admin browser session', () => {
         challengeToken: 'a'.repeat(64),
         expiresAt: '2026-07-10T12:00:00.000Z',
         delivery: 'WHATSAPP',
+        deliveryStatus: 'DELIVERED',
       }),
     );
 
@@ -52,6 +53,21 @@ describe('secure admin browser session', () => {
     expect(getAdminAccessToken()).toBeNull();
     expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/auth/admin/login');
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  });
+
+  it('rejects an MFA challenge that omits the delivery outcome', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        mfaRequired: true,
+        challengeToken: 'a'.repeat(64),
+        expiresAt: '2026-07-10T12:00:00.000Z',
+        delivery: 'WHATSAPP',
+      }),
+    );
+
+    await expect(
+      startAdminLogin('+967700000000', 'secret'),
+    ).rejects.toThrow('تعذر بدء التحقق بخطوتين');
   });
 
   it('stores the MFA-completed access token in memory only', async () => {
@@ -131,12 +147,64 @@ describe('secure admin browser session', () => {
 
   it('distinguishes an unavailable OTP transport from a network failure', async () => {
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(503, { message: 'OTP delivery is temporarily unavailable' }),
+      jsonResponse(503, {
+        code: 'OTP_DELIVERY_UNAVAILABLE',
+        message: 'OTP delivery is temporarily unavailable',
+      }),
     );
 
     await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
       'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
     );
+  });
+
+  it('does not mislabel a generic service outage as an OTP failure', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(503, { message: 'Database unavailable' }),
+    );
+
+    await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
+      'حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.',
+    );
+  });
+
+  it('uses the stable OTP code before a legacy login status mapping', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(400, {
+        code: 'OTP_DELIVERY_UNAVAILABLE',
+        message: 'OTP delivery is temporarily unavailable',
+      }),
+    );
+
+    await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
+      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+    );
+  });
+
+  it('reports unavailable OTP during admin recovery as a service failure', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(503, {
+        code: 'OTP_DELIVERY_UNAVAILABLE',
+        message: 'OTP delivery is temporarily unavailable',
+      }),
+    );
+
+    await expect(requestAdminPasswordReset('+967700000003')).rejects.toThrow(
+      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+    );
+  });
+
+  it('reports unavailable OTP while completing MFA as a service failure', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(503, {
+        code: 'OTP_DELIVERY_UNAVAILABLE',
+        message: 'OTP delivery is temporarily unavailable',
+      }),
+    );
+
+    await expect(
+      completeAdminLogin('a'.repeat(64), '123456'),
+    ).rejects.toThrow('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.');
   });
 
   it('keeps an actual fetch failure as a connection error', async () => {
@@ -154,6 +222,7 @@ describe('secure admin browser session', () => {
         challengeToken: 'c'.repeat(64),
         expiresAt: '2026-07-17T12:10:00.000Z',
         retryAfterSeconds: 60,
+        deliveryStatus: 'DELIVERED',
       }),
     );
 

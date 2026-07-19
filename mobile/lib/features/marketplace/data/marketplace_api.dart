@@ -574,6 +574,25 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  Future<ProviderDashboardProfile> updateProfileMedia({
+    String? logoUrl,
+    String? coverUrl,
+  }) async {
+    final normalizedLogo = logoUrl?.trim();
+    final normalizedCover = coverUrl?.trim();
+    if ((normalizedLogo == null || normalizedLogo.isEmpty) &&
+        (normalizedCover == null || normalizedCover.isEmpty)) {
+      throw ArgumentError('A provider logo or cover URL is required');
+    }
+    final json = await _apiClient.patchJson('/api/v1/provider/me/profile', {
+      if (normalizedLogo != null && normalizedLogo.isNotEmpty)
+        'logoUrl': normalizedLogo,
+      if (normalizedCover != null && normalizedCover.isNotEmpty)
+        'coverUrl': normalizedCover,
+    });
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
   Future<ProviderServiceImage> addServiceImage({
     required String serviceId,
     required String imageUrl,

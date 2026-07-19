@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -121,16 +123,15 @@ class _SharingScreenState extends State<SharingScreen> {
     if (reissued.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تم إرسال رابط دعوة جديد عبر واتساب من أعرست.',
+        'تم تسليم رابط دعوة جديد إلى واتساب من أعرست.',
       );
       return;
     }
 
+    final content = InviteShareContent.fromInvite(reissued);
+    final inviteLink = content.inviteLink.toString();
     try {
-      final content = InviteShareContent.fromInvite(reissued);
-      await Clipboard.setData(
-        ClipboardData(text: content.inviteLink.toString()),
-      );
+      await Clipboard.setData(ClipboardData(text: inviteLink));
       if (!mounted) return;
       AarastToast.showSuccess(
         context,
@@ -139,13 +140,41 @@ class _SharingScreenState extends State<SharingScreen> {
             : 'تعذر إرسال واتساب من أعرست، وتم نسخ الرابط كخيار احتياطي.',
       );
     } catch (_) {
-      if (mounted) {
-        AarastToast.showError(
-          context,
-          'تعذر حفظ رابط الدعوة الجديدة. حاول إعادة الإصدار مرة أخرى.',
-        );
-      }
+      if (!mounted) return;
+      await _showInviteLinkFallback(inviteLink);
     }
+  }
+
+  Future<void> _showInviteLinkFallback(String inviteLink) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AarastDialog(
+        title: const Text('رابط الدعوة الجديدة'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'تعذر النسخ تلقائيًا. احتفظ بهذا الرابط قبل إغلاق النافذة.',
+            ),
+            const SizedBox(height: 12),
+            SelectableText(
+              inviteLink,
+              key: const Key('invite-link-manual-copy-fallback'),
+              textDirection: TextDirection.ltr,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            key: const Key('invite-link-fallback-done'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('تم'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -361,7 +390,7 @@ class _PrivacyStrip extends StatelessWidget {
   }
 }
 
-class _PendingInviteCard extends StatelessWidget {
+class _PendingInviteCard extends StatefulWidget {
   const _PendingInviteCard({
     required this.invite,
     required this.onReissue,
@@ -373,7 +402,48 @@ class _PendingInviteCard extends StatelessWidget {
   final VoidCallback? onCancel;
 
   @override
+  State<_PendingInviteCard> createState() => _PendingInviteCardState();
+}
+
+class _PendingInviteCardState extends State<_PendingInviteCard> {
+  Timer? _retryTimer;
+  bool _retryUnlocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleRetryUnlock();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PendingInviteCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.invite.deliveryRetryAvailableAt !=
+        widget.invite.deliveryRetryAvailableAt) {
+      _scheduleRetryUnlock();
+    }
+  }
+
+  @override
+  void dispose() {
+    _retryTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleRetryUnlock() {
+    _retryTimer?.cancel();
+    final remaining = widget.invite.deliveryRetryRemaining;
+    _retryUnlocked = remaining == Duration.zero;
+    if (_retryUnlocked) return;
+    _retryTimer = Timer(remaining + const Duration(milliseconds: 50), () {
+      if (mounted) setState(() => _retryUnlocked = true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final invite = widget.invite;
+    final canRetry = _retryUnlocked || invite.canRetryDelivery;
     final textTheme = Theme.of(context).textTheme;
     return AarastCard(
       margin: const EdgeInsets.only(bottom: 8),
@@ -416,7 +486,11 @@ class _PendingInviteCard extends StatelessWidget {
                   ),
                 const SizedBox(height: 2),
                 Text(
-                  '${sharedMemberRoleLabel(invite.role)} · بانتظار القبول',
+                  [
+                    sharedMemberRoleLabel(invite.role),
+                    'بانتظار القبول',
+                    ?invite.deliverySummaryLabel,
+                  ].join(' · '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.labelSmall?.copyWith(
@@ -428,8 +502,11 @@ class _PendingInviteCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: 'إعادة إرسال الرابط من أعرست',
-            onPressed: onReissue,
+            key: Key('pending-invite-reissue-${invite.id}'),
+            tooltip: canRetry
+                ? 'إعادة إرسال الرابط من أعرست'
+                : 'إعادة الإرسال متاحة بعد انتهاء مهلة الحماية',
+            onPressed: canRetry ? widget.onReissue : null,
             icon: const Icon(
               LucideIcons.refreshCw,
               size: 18,
@@ -438,7 +515,7 @@ class _PendingInviteCard extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'إلغاء الدعوة',
-            onPressed: onCancel,
+            onPressed: widget.onCancel,
             icon: const Icon(LucideIcons.x, size: 18, color: AppTheme.muted),
           ),
         ],

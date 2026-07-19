@@ -6,6 +6,7 @@ class OtpRequestResult {
     required this.purpose,
     required this.expiresAt,
     required this.delivery,
+    this.deliveryStatus = 'PENDING',
     this.code,
     this.message,
   });
@@ -16,6 +17,9 @@ class OtpRequestResult {
       purpose: json['purpose']?.toString() ?? '',
       expiresAt: DateTime.parse(json['expiresAt'].toString()),
       delivery: json['delivery']?.toString() ?? '',
+      deliveryStatus:
+          json['deliveryStatus']?.toString() ??
+          (json['delivery'] == 'LOCAL_DEV' ? 'LOCAL_DEV' : 'PENDING'),
       code: json['code']?.toString(),
       message: json['message']?.toString(),
     );
@@ -25,18 +29,42 @@ class OtpRequestResult {
   final String purpose;
   final DateTime expiresAt;
   final String delivery;
+  final String deliveryStatus;
   final String? code;
   final String? message;
 
   bool get isLocalDev => delivery == 'LOCAL_DEV' && code != null;
+  bool get isDeliveryConfirmed => deliveryStatus == 'DELIVERED';
 
   String? get noticeMessage {
     if (isLocalDev) {
       return message ?? 'رمز التحقق مؤقت للتجربة المحلية: $code';
     }
     final normalized = message?.trim();
-    return normalized == null || normalized.isEmpty ? null : normalized;
+    if (!isDeliveryConfirmed) {
+      if (normalized != null &&
+          normalized.isNotEmpty &&
+          !_containsUnconfirmedDeliveryClaim(normalized)) {
+        return normalized;
+      }
+      return 'طلبنا إرسال الرمز عبر واتساب، لكن لم نتأكد من وصوله. '
+          'أدخله إذا وصلك، أو أعد المحاولة بعد انتهاء المهلة.';
+    }
+    if (normalized != null && normalized.isNotEmpty) return normalized;
+    return null;
   }
+}
+
+bool _containsUnconfirmedDeliveryClaim(String message) {
+  final normalized = message.toLowerCase();
+  return const [
+    'تم إرسال',
+    'تم الإرسال',
+    'تم تسليم',
+    'أرسلنا',
+    'sent',
+    'delivered',
+  ].any(normalized.contains);
 }
 
 class OtpVerifyResult {

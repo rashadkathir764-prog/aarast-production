@@ -5,9 +5,11 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/media/media_upload_api.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../auth/providers/auth_controller.dart';
 import '../../chat/providers/chat_provider.dart';
 import '../models/marketplace_models.dart';
@@ -47,8 +49,8 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           _ProfileMediaCard(
             profile: profile,
             busy: _busy,
-            onLogo: () => _upload(profile, 'provider-logo'),
-            onCover: () => _upload(profile, 'provider-cover'),
+            onLogo: () => _upload('provider-logo'),
+            onCover: () => _upload('provider-cover'),
           ),
           const SizedBox(height: 14),
           AarastCard(
@@ -97,6 +99,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           onOpenSettings: () => context.push(AppRouter.settings),
           onSync: _syncProviderData,
           onLogout: _logout,
+          onDeleteAccount: _deleteAccount,
         ),
       ],
     );
@@ -116,7 +119,18 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
     if (mounted) context.go(AppRouter.login);
   }
 
-  Future<void> _upload(ProviderDashboardProfile profile, String purpose) async {
+  Future<String?> _deleteAccount() async {
+    final auth = context.read<AuthController>();
+    final deleted = await auth.deleteAccount();
+    if (!mounted) return deleted ? null : 'تعذر حذف الحساب.';
+    if (deleted) {
+      context.go(AppRouter.login);
+      return null;
+    }
+    return auth.errorMessage ?? 'تعذر حذف الحساب. حاول مرة أخرى.';
+  }
+
+  Future<void> _upload(String purpose) async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 84,
@@ -130,17 +144,31 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         purpose: purpose,
       );
       if (!mounted) return;
-      final cityId = profile.cityId;
-      final phone = profile.phone;
-      if (cityId == null || phone == null) return;
-      await context.read<ProviderDashboardProvider>().updateProfile(
-        businessName: profile.businessName,
-        phone: phone,
-        cityId: cityId,
-        description: profile.description,
+      final dashboard = context.read<ProviderDashboardProvider>();
+      final saved = await dashboard.updateProfileMedia(
         logoUrl: purpose == 'provider-logo' ? ticket.publicUrl : null,
         coverUrl: purpose == 'provider-cover' ? ticket.publicUrl : null,
       );
+      if (!mounted) return;
+      if (!saved) {
+        AarastToast.showError(
+          context,
+          dashboard.errorMessage ?? 'تعذر حفظ الصورة في ملف المزوّد.',
+        );
+        return;
+      }
+      AarastToast.showSuccess(
+        context,
+        purpose == 'provider-logo'
+            ? 'تم تحديث شعار ملفك التجاري.'
+            : 'تم تحديث غلاف ملفك التجاري.',
+      );
+    } on ApiException catch (error) {
+      if (mounted) AarastToast.showError(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AarastToast.showError(context, 'تعذر رفع الصورة الآن. حاول مرة أخرى.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

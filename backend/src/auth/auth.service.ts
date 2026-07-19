@@ -2,7 +2,6 @@ import {
   BadRequestException,
   HttpStatus,
   Injectable,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
@@ -17,6 +16,7 @@ import {
 import * as bcryptjs from "bcryptjs";
 import { randomBytes } from "crypto";
 import {
+  otpDeliveryOutcomesTotal,
   otpRequestsTotal,
   otpVerificationsTotal,
 } from "../common/observability/metrics";
@@ -59,7 +59,11 @@ import {
   OtpDispatchContext,
   OtpDispatchQuotaService,
 } from "./otp-dispatch-quota.service";
-import { authError, AuthErrorCode } from "./auth-error";
+import {
+  authError,
+  AuthErrorCode,
+  otpDeliveryUnavailableError,
+} from "./auth-error";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -73,6 +77,7 @@ export interface OtpRequestResponse {
   purpose: OtpPurpose;
   expiresAt: Date;
   delivery: "LOCAL_DEV" | "WHATSAPP";
+  deliveryStatus: "LOCAL_DEV" | "DELIVERED" | "PENDING" | "UNCERTAIN";
   code?: string;
   message?: string;
 }
@@ -100,6 +105,7 @@ export interface AdminLoginPendingResponse {
   challengeToken: string;
   expiresAt: Date;
   delivery: "LOCAL_DEV" | "WHATSAPP";
+  deliveryStatus: "LOCAL_DEV" | "DELIVERED" | "PENDING" | "UNCERTAIN";
   code?: string;
 }
 
@@ -108,6 +114,7 @@ export interface AdminPasswordResetPendingResponse {
   challengeToken: string;
   expiresAt: Date;
   retryAfterSeconds: number;
+  deliveryStatus: "LOCAL_DEV" | "DELIVERED" | "PENDING" | "UNCERTAIN";
 }
 
 type RegistrationResult =
@@ -120,8 +127,6 @@ type PasswordResetResult =
 
 @Injectable()
 export class AuthService {
-  private static readonly otpUnavailableMessage =
-    "خدمة التحقق غير مفعلة حاليًا. حاول لاحقًا.";
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   private static readonly dummyPasswordHash =
@@ -371,6 +376,7 @@ export class AuthService {
       challengeToken,
       expiresAt,
       delivery: otp.delivery,
+      deliveryStatus: otp.deliveryStatus,
       ...(otp.code ? { code: otp.code } : {}),
     };
   }
@@ -688,10 +694,12 @@ export class AuthService {
     quotaAlreadyConsumed = false,
   ): Promise<IssuedOtpResponse> {
     const mode = this.getOtpMode();
-    const channel = this.resolveOtpChannel(mode);
-
-    if (!channel) {
-      throw new BadRequestException(AuthService.otpUnavailableMessage);
+    let channel: OtpChannel;
+    try {
+      channel = this.requireOtpChannel(mode);
+    } catch (error) {
+      otpDeliveryOutcomesTotal.inc({ purpose, outcome: "unavailable" });
+      throw error;
     }
     if (mode !== "dev" && !quotaAlreadyConsumed) {
       await this.otpDispatchQuota.consume(phone, context);
@@ -717,8 +725,10 @@ export class AuthService {
       delivered = await channel.deliver(phone, code, purpose);
     } catch (error) {
       if (error instanceof OtpDeliveryUncertainError) {
+        otpDeliveryOutcomesTotal.inc({ purpose, outcome: "uncertain" });
         delivered = {
           delivery: "WHATSAPP" as const,
+          deliveryStatus: "UNCERTAIN" as const,
           message: AuthService.otpDeliveryUncertainMessage,
         };
       } else {
@@ -726,8 +736,15 @@ export class AuthService {
           where: { id: otp.id, consumedAt: null },
           data: { consumedAt: new Date() },
         });
-        throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+        otpDeliveryOutcomesTotal.inc({ purpose, outcome: "rejected" });
+        throw otpDeliveryUnavailableError();
       }
+    }
+    if (delivered.deliveryStatus !== "UNCERTAIN") {
+      otpDeliveryOutcomesTotal.inc({
+        purpose,
+        outcome: delivered.deliveryStatus.toLowerCase(),
+      });
     }
     otpRequestsTotal.inc({ delivery: delivered.delivery });
 
@@ -737,6 +754,7 @@ export class AuthService {
       purpose,
       expiresAt,
       delivery: delivered.delivery,
+      deliveryStatus: delivered.deliveryStatus,
       ...(delivered.echoCode ? { code: delivered.echoCode } : {}),
       ...(delivered.message ? { message: delivered.message } : {}),
     };
@@ -758,6 +776,17 @@ export class AuthService {
       return new OpenWaOtpChannel();
     }
     return null;
+  }
+
+  private requireOtpChannel(mode: string): OtpChannel {
+    try {
+      const channel = this.resolveOtpChannel(mode);
+      if (channel) return channel;
+    } catch {
+      // Channel configuration details are operational secrets and must never
+      // escape through a public authentication response.
+    }
+    throw otpDeliveryUnavailableError();
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<OtpVerifyResponse> {
@@ -993,9 +1022,7 @@ export class AuthService {
   ): Promise<AdminPasswordResetPendingResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const mode = this.getOtpMode();
-    if (!this.resolveOtpChannel(mode)) {
-      throw new BadRequestException(AuthService.otpUnavailableMessage);
-    }
+    this.requireOtpChannel(mode);
     if (mode !== "dev") {
       await this.otpDispatchQuota.consume(phone, context);
     }
@@ -1054,6 +1081,7 @@ export class AuthService {
       challengeToken,
       expiresAt,
       retryAfterSeconds: 60,
+      deliveryStatus: issued.deliveryStatus,
     };
   }
 
@@ -1316,13 +1344,16 @@ export class AuthService {
         const retryable =
           error instanceof Prisma.PrismaClientKnownRequestError &&
           (error.code === "P2002" || error.code === "P2034");
-        if (!retryable || attempt === 2) {
+        if (!retryable) {
           throw error;
+        }
+        if (attempt === 2) {
+          throw otpDeliveryUnavailableError();
         }
       }
     }
 
-    throw new ServiceUnavailableException(AuthService.otpUnavailableMessage);
+    throw otpDeliveryUnavailableError();
   }
 
   private async assertOtpCodeMatches(

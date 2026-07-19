@@ -59,6 +59,39 @@ void main() {
     expect(find.textContaining('YER'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('show all opens the complete swipeable provider gallery', (
+    tester,
+  ) async {
+    final galleryService = _service.copyWith(
+      images: const [
+        ProviderServiceImage(id: 'image-1', imageUrl: 'https://img.test/1.jpg'),
+        ProviderServiceImage(id: 'image-2', imageUrl: 'https://img.test/2.jpg'),
+        ProviderServiceImage(id: 'image-3', imageUrl: 'https://img.test/3.jpg'),
+        ProviderServiceImage(id: 'image-4', imageUrl: 'https://img.test/4.jpg'),
+        ProviderServiceImage(id: 'image-5', imageUrl: 'https://img.test/5.jpg'),
+        ProviderServiceImage(id: 'image-6', imageUrl: 'https://img.test/6.jpg'),
+      ],
+    );
+
+    await _pumpView(
+      tester,
+      services: [galleryService],
+      width: 320,
+      height: 1200,
+      textScale: 1.3,
+    );
+
+    final showAll = find.text('عرض الكل');
+    await tester.ensureVisible(showAll);
+    await tester.tap(showAll);
+    await tester.pump();
+
+    expect(find.byType(PageView), findsOneWidget);
+    expect(find.text('3 / 6'), findsOneWidget);
+    expect(find.byTooltip('إغلاق معرض الصور'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 Future<void> _pumpView(

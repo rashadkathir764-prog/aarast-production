@@ -1,6 +1,6 @@
 # Current Status
 
-Snapshot date: 2026-07-17
+Snapshot date: 2026-07-19
 
 This is the compact project status source. Current code, schema, module imports,
 and runtime checks override historical completion reports.
@@ -106,8 +106,9 @@ and runtime checks override historical completion reports.
 - Runtime health now separates dependency-free `/live` (plus `/health` alias)
   from `/ready`, which checks PostgreSQL and configured Redis/media with
   bounded, redacted results. The container healthcheck targets readiness.
-  Redis is required in the live deployment; production media is currently an
-  explicit disabled exception until the S3-compatible target is provisioned.
+  Redis and S3-compatible media are required in the live deployment. Public
+  avatar/provider/service prefixes are phone-reachable over HTTPS, while chat
+  images remain private and require membership-authorized signed reads.
 - Notification creation and chat-message commits now enqueue durable
   `OutboxEvent` rows transactionally. A cross-replica worker claims with
   `SKIP LOCKED`, retries safely, retains dead letters, and publishes recovery
@@ -181,8 +182,9 @@ observation remains an operational gate before a wider MVP rollout.
 
 Participant invite delivery now uses the same non-persisting transient OpenWA
 boundary without broad messaging access. The owner creates one pending invite;
-the backend sends its generic private HTTPS link and returns an explicit sent,
-uncertain, or unavailable result. A link-specific public gate matches the raw
+the backend sends its generic private HTTPS link and returns an explicit
+device-delivered, uncertain, or unavailable result. A link-specific public gate
+matches the raw
 token and canonical phone before dispatching OTP and exposes no plan details on
 mismatch. After successful OTP, the mobile link flow atomically accepts the
 invite and opens the contributor plan center. Android App Link association is
@@ -193,6 +195,11 @@ The add-participant action refreshes members and pending invitations for the
 current plan before sending. If the phone already has a live pending invitation,
 the same row is reissued instead of duplicated, and the selected role and
 permissions are replaced atomically with the new token fingerprint.
+Invite delivery state is now persisted with its attempt time and returned on
+every read. Mobile refresh therefore preserves the cooldown instead of sending
+twice or disabling uncertain delivery forever. Old rows are explicitly
+`UNKNOWN`; late superseded attempts fail with a typed conflict and cannot
+overwrite a newer result or produce an invalid invite link.
 
 The isolated server acceptance environment is now live at
 `https://otp-lab-api.shadowgardn.com` from committed, SHA-pinned images. Its
@@ -262,9 +269,11 @@ twice, and also stored encrypted off-host.
 
 - Signed media requires valid S3-compatible configuration; the `chat-image/`
   prefix must deny anonymous/public reads, and credentials remain server-side.
-- The live production readiness report currently marks media `disabled`;
-  uploads/chat media are not a release-ready production capability until the
-  S3-compatible target is configured and the anonymous-read gate passes.
+- The production media target, durable volume, HTTPS origin, signed upload,
+  verification, public avatar/provider/service reads, and provider image
+  binding passed live end-to-end checks on 2026-07-19. A clean redeploy must
+  preserve the private media credentials and persistent volume; chat objects
+  must continue to deny anonymous reads.
 - Conversation/media reconnect behavior still needs a signed physical-device
   acceptance pass against the release environment.
 - Final Android AAB signing/signer verification and iOS Archive/TestFlight

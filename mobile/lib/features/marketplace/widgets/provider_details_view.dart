@@ -6,6 +6,7 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/marketplace_models.dart';
 import 'provider_details_sections.dart';
+import 'provider_photo_gallery.dart';
 
 class ProviderDetailsView extends StatelessWidget {
   const ProviderDetailsView({
@@ -393,9 +394,9 @@ class _PriceBlock extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'الأسعار تقديرية وتتأكد عند طلب العرض',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.muted,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppTheme.muted),
                 ),
               ],
             ),
@@ -413,7 +414,8 @@ class _GallerySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visible = images.take(4).toList();
+    final maximumVisible = MediaQuery.sizeOf(context).width < 360 ? 3 : 4;
+    final visible = images.take(maximumVisible).toList();
     final extra = images.length - visible.length;
 
     return AarastCard(
@@ -435,7 +437,11 @@ class _GallerySection extends StatelessWidget {
                     overlayCount: (i == visible.length - 1 && extra > 0)
                         ? extra
                         : 0,
-                    onTap: () => _openPhoto(context, visible[i]),
+                    onTap: () => showProviderPhotoGallery(
+                      context,
+                      images: images,
+                      initialIndex: i,
+                    ),
                   ),
                 ),
               ],
@@ -514,49 +520,6 @@ class _GalleryThumb extends StatelessWidget {
       ),
     );
   }
-}
-
-void _openPhoto(BuildContext context, String url) {
-  showDialog<void>(
-    context: context,
-    barrierColor: AppTheme.ink.withValues(alpha: 0.92),
-    builder: (dialogContext) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
-      child: Stack(
-        children: [
-          InteractiveViewer(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              child: Image.network(
-                url,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stack) => const SizedBox(
-                  height: 200,
-                  child: Center(
-                    child: Icon(LucideIcons.image, color: AppTheme.gold),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          PositionedDirectional(
-            top: 8,
-            end: 8,
-            child: Material(
-              color: AppTheme.surface,
-              shape: const CircleBorder(),
-              child: IconButton(
-                tooltip: 'إغلاق الصورة',
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                icon: const Icon(LucideIcons.x, color: AppTheme.burgundy),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 List<String> _galleryUrls(List<MarketplaceService> services) {

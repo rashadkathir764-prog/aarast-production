@@ -54,6 +54,13 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   PlanInvite? get selectedInvite => _selectedInvite;
   SharedMember? get acceptedInviteMember => _acceptedInviteMember;
 
+  PlanInvite? inviteById(String id) {
+    for (final invite in _invites) {
+      if (invite.id == id) return invite;
+    }
+    return null;
+  }
+
   Future<void> loadMembers(String weddingPlanId) async {
     final generation = ++_memberLoadGeneration;
     _memberLoadWeddingPlanId = weddingPlanId;
@@ -358,6 +365,19 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       ];
       return reissued;
     } on ApiException catch (error) {
+      final retryAfterSeconds = error.retryAfterSeconds;
+      if (error.serverCode == 'INVITE_REISSUE_COOLDOWN' &&
+          retryAfterSeconds != null) {
+        final availableAt = DateTime.now().add(
+          Duration(seconds: retryAfterSeconds),
+        );
+        _invites = [
+          for (final item in _invites)
+            item.id == invite.id
+                ? item.withDeliveryRetryAvailableAt(availableAt)
+                : item,
+        ];
+      }
       _handleApiError(error);
       return null;
     } catch (_) {
@@ -537,6 +557,14 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       return;
     }
     _authGateKind = null;
+    if (error.serverCode == 'INVITE_REISSUE_COOLDOWN') {
+      final retryAfterSeconds = error.retryAfterSeconds;
+      _errorMessage = retryAfterSeconds == null
+          ? 'تمت محاولة إرسال الدعوة مؤخرًا. انتظر قليلًا ثم أعد المحاولة.'
+          : 'تمت محاولة إرسال الدعوة مؤخرًا. أعد المحاولة بعد '
+                '$retryAfterSeconds ثانية.';
+      return;
+    }
     _errorMessage = _sharingErrorMessage(error.message);
   }
 }

@@ -1,8 +1,12 @@
 # OpenWA OTP Staging
 
-This is the isolated acceptance environment for the risk-accepted OpenWA OTP
-MVP. It is not production and shares no database, Redis instance, volume, or
-internal network with production.
+This is the acceptance environment for the risk-accepted OpenWA OTP MVP. Its
+database and Redis are isolated from production. During this temporary MVP,
+production and acceptance deliberately share the one dedicated WhatsApp
+session and OpenWA service so the account is not repeatedly paired; they use
+different session-scoped transport credentials and different backend data.
+An OpenWA outage therefore affects both environments and remains an explicit
+MVP risk until the approved Meta transport replaces it.
 
 The only public route is:
 
@@ -26,7 +30,7 @@ The first private acceptance run may load those exact images over authenticated
 SSH. Before a wider rollout, publish to a project-owned registry and pin by
 registry digest. Never deploy `latest` or the upstream OpenWA image.
 
-- OpenWA: `c3b67952c046f0fc71c2e6bebe4ad4437ab299ce`
+- OpenWA: `b7696b82c3b655d2c4ddb87a66a1d4adb3c1b5bd`
 - Aarast: `e2d0c1ab792fc1431d9a7d0be38c12f4ca3da47e`
 
 ## First deployment
@@ -72,10 +76,28 @@ registry digest. Never deploy `latest` or the upstream OpenWA image.
 10. Require the public `/health` and `/ready` endpoints to return 200 before
    building the QA APK.
 
-The bootstrap stores the transient key in a backend-only encrypted bind path
-and a separate encrypted operator path that the backend never mounts. Never
-print, commit, or include either key or the OpenWA session path in ordinary
-backups.
+The bootstrap stores three independent, expiring credentials inside the
+encrypted mount: one for the acceptance backend, one for the production
+backend, and a viewer key for operator audits. Each backend mounts only its own
+directory read-only and reloads `openwa.env` for every delivery. The scheduled
+rotator creates and validates a replacement before atomically switching the
+file; the previous correctly-scoped key remains usable only until its expiry.
+The bootstrap and rotator share an exclusive, stale-recoverable lock so two
+reconciliations cannot create competing sessions or keys. Never print, commit,
+or include any key or the OpenWA session path in ordinary backups.
+
+Rotating `OPENWA_API_KEY_PEPPER` is a two-recreate operation and does not
+require pairing WhatsApp again. First take an encrypted, stopped-state backup
+of the OpenWA database and the three credential directories. Put only the new
+pepper in `.env`; provide the old value to the first OpenWA recreate through
+the operator shell as `OPENWA_API_KEY_PREVIOUS_PEPPER`. The reviewed OpenWA
+startup atomically re-hashes only `API_MASTER_KEY`; ordinary keys never fall
+back to the previous pepper. Run the bootstrap to issue and validate new
+staging, production, and audit keys, then immediately recreate OpenWA again
+without `OPENWA_API_KEY_PREVIOUS_PEPPER`. Require one `ready` session, both
+backend `/ready` endpoints at 200, distinct credential ids, and zero unexpected
+restarts. Never persist the previous pepper or solve a pepper rotation by
+deleting/re-pairing the WhatsApp session.
 
 Before a database-changing backend release, create a custom-format `pg_dump`
 inside the encrypted staging mount with mode `0600`, record its SHA-256, and
@@ -93,7 +115,8 @@ The verifier must pass the restore, migration, second migration pass, and
 canonical schema checks before the live database is touched. Record all
 container IDs and restart counts, then
 recreate only `backend` with `--no-deps`. Do not restart `db`, `redis`,
-`openwa`, or `openwa-bootstrap` during a backend-only release.
+`openwa`, `openwa-bootstrap`, or `openwa-credential-rotator` during a
+backend-only release.
 
 ## Acceptance and rollback
 
@@ -111,6 +134,7 @@ then pin the previous immutable image and recreate only `backend`. Require
 before restoring traffic. Never roll back or recreate `openwa`, `db`, or `redis`
 as part of a backend-only rollback.
 
-If the session is irrecoverable, remove the staging OpenWA data, backend-secret,
-and operator-secret volumes together and pair again. Never delete staging
-PostgreSQL during a messaging-session reset.
+If the session is proven irrecoverable, stop both OTP backends before removing
+the OpenWA data plus `backend-secret`, `production-secret`, and
+`operator-secret`, then pair once and bootstrap all credentials again. Never
+delete staging PostgreSQL during a messaging-session reset.

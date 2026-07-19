@@ -183,28 +183,6 @@ String _quoteServiceLabel(QuoteRequest quote) {
   return 'خدمة غير محددة';
 }
 
-String? _quoteAmountLabel(QuoteRequest quote) {
-  final offer = quote.acceptedOffer ?? quote.pendingOffer;
-  final amount = offer?.amount?.trim();
-  if (amount == null || amount.isEmpty) return null;
-  final currency = offer?.currency?.trim();
-  if (currency == null || currency.isEmpty) return amount;
-  return '$amount $currency';
-}
-
-String _quoteNextActionLabel(QuoteRequest quote) {
-  if (quote.canAcceptOrReject) {
-    return 'وصلك عرض حقيقي — راجعه واقبله أو ارفضه من هنا مباشرة. لا يوجد حجز أو دفع داخل التطبيق.';
-  }
-  if (quote.lifecycleStatus == 'PENDING_PROVIDER') {
-    return 'بانتظار رد المورد. لا توجد إجراءات مالية حتى يصل عرض حقيقي.';
-  }
-  if (quote.lifecycleStatus == 'READY_TO_SEND') {
-    return 'هذا طلب قديم غير مرسل. أعد الإرسال عند توفر الاتصال والخادم.';
-  }
-  return 'تابع حالة الطلب من هنا في أي وقت.';
-}
-
 /// مبلغ العرض للعرض البارز: مُنسّق بفواصل مع اسم العملة العربي، أو النص الخام.
 String? _quoteOfferAmountDisplay(QuoteOffer? offer) {
   final raw = offer?.amount?.trim();

@@ -63,10 +63,10 @@ class ProviderMarketplaceProvider extends ChangeNotifier
   List<MarketplaceService> servicesFor(String id) => _services[id] ?? const [];
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
   List<ProviderReview> reviewsFor(String id) => _reviews[id] ?? const [];
-  List<QuoteRequest> quotesForProvider(String providerId) => _quoteRequests
+  List<QuoteRequest> quotesForProvider(String providerId) => quoteRequests
       .where((quote) => quote.providerId == providerId)
       .toList(growable: false);
-  List<QuoteRequest> quotesForPlan(String weddingPlanId) => _quoteRequests
+  List<QuoteRequest> quotesForPlan(String weddingPlanId) => quoteRequests
       .where((quote) => quote.weddingPlanId == weddingPlanId)
       .toList(growable: false);
 

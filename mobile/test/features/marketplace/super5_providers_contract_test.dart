@@ -45,6 +45,7 @@ void main() {
           QuoteRequest(
             id: 'quote-user-1',
             providerId: 'provider-1',
+            weddingPlanId: 'plan-1',
             status: 'SENT',
             lifecycleStatus: 'PENDING_PROVIDER',
             provider: ProviderSummary(
@@ -276,7 +277,8 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
 
-      expect(find.textContaining('250000 YER'), findsOneWidget);
+      expect(find.textContaining('250,000 ر.ي'), findsOneWidget);
+      expect(find.textContaining('250000 YER'), findsNothing);
       expect(find.textContaining('لن يُنشأ أي سجل تلقائيًا'), findsOneWidget);
       expect(find.textContaining('تم إنشاء مصروف'), findsNothing);
       expect(find.textContaining('تم إنشاء دين'), findsNothing);
@@ -367,7 +369,9 @@ Future<void> _pumpMarketplace(
               ),
               GoRoute(
                 path: AppRouter.providerMarketplace,
-                builder: (context, state) => const ProviderMarketplaceScreen(),
+                builder: (context, state) => ProviderMarketplaceScreen(
+                  weddingPlanId: authenticated ? 'plan-1' : null,
+                ),
               ),
               GoRoute(
                 path: '/conversations',
@@ -397,7 +401,9 @@ Future<void> _pumpMarketplace(
         )
       : MaterialApp(
           theme: AppTheme.light(),
-          home: const ProviderMarketplaceScreen(),
+          home: ProviderMarketplaceScreen(
+            weddingPlanId: authenticated ? 'plan-1' : null,
+          ),
         );
 
   await tester.pumpWidget(MultiProvider(providers: providers, child: child));

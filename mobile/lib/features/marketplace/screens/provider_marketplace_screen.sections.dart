@@ -4,14 +4,15 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
   const _TopMarketplaceCommandCard({
     required this.embedded,
     required this.provider,
+    required this.quotes,
   });
 
   final bool embedded;
   final ProviderMarketplaceProvider provider;
+  final List<QuoteRequest> quotes;
 
   @override
   Widget build(BuildContext context) {
-    final quotes = provider.quoteRequests;
     final offersReceived = _offersReceivedCount(quotes);
     final acceptedProviders = _acceptedProviderCount(quotes);
 

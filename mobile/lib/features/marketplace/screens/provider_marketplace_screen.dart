@@ -26,12 +26,14 @@ part 'provider_marketplace_screen.labels.dart';
 class ProviderMarketplaceScreen extends StatefulWidget {
   const ProviderMarketplaceScreen({
     this.embedded = false,
+    this.weddingPlanId,
     this.initialBudgetIntent,
     this.initialQuoteId,
     super.key,
   });
 
   final bool embedded;
+  final String? weddingPlanId;
   final ProviderBudgetMatchIntent? initialBudgetIntent;
   final String? initialQuoteId;
 
@@ -45,10 +47,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   final _searchFocusNode = FocusNode();
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
+  bool _planContextResolved = false;
 
   @override
   void initState() {
     super.initState();
+    _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
+    _planContextResolved = _weddingLocationPlanId != null;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
@@ -73,6 +78,19 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   @override
   void didUpdateWidget(covariant ProviderMarketplaceScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      _weddingLocationPlanId = _normalizedPlanId(widget.weddingPlanId);
+      _planContextResolved = _weddingLocationPlanId != null;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final hasAccount = await AuthActionGuard.hasAccount(context);
+        if (!mounted) return;
+        await _loadWeddingLocationContext(
+          hasAccount: hasAccount,
+          marketplace: context.read<ProviderMarketplaceProvider>(),
+        );
+      });
+    }
     if (oldWidget.initialQuoteId != widget.initialQuoteId) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
@@ -109,6 +127,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       safeAreaBottom: false,
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, provider, _) {
+          final quoteRequests = _visibleQuoteRequests(provider);
           return RefreshIndicator(
             color: AppTheme.burgundy,
             onRefresh: provider.loadMarketplace,
@@ -123,6 +142,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 _TopMarketplaceCommandCard(
                   embedded: widget.embedded,
                   provider: provider,
+                  quotes: quoteRequests,
                 ),
                 if (!provider.includesAccountData) ...[
                   const SizedBox(height: 12),
@@ -151,10 +171,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     onClear: provider.clearBudgetMatch,
                   ),
                 ],
-                if (provider.quoteRequests.isNotEmpty) ...[
+                if (quoteRequests.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   _OffersInboxCard(
-                    quotes: provider.quoteRequests,
+                    quotes: quoteRequests,
                     initialQuoteId: widget.initialQuoteId,
                     isSubmitting: provider.isSubmitting,
                     onAccept: _acceptQuote,
@@ -259,41 +279,66 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }) async {
     WeddingLocationDraft? location;
     String? planId;
+    final requestedPlanId = _normalizedPlanId(widget.weddingPlanId);
     GuestOnboardingStorage? guestStorage;
     WeddingPlansProvider? weddingPlans;
 
-    try {
-      guestStorage = context.read<GuestOnboardingStorage>();
-    } on ProviderNotFoundException {
-      // Some isolated widget tests mount the marketplace without app-level providers.
-    }
     if (hasAccount) {
       try {
         weddingPlans = context.read<WeddingPlansProvider>();
       } on ProviderNotFoundException {
         // Marketplace browsing can still work without plan context.
       }
-    }
-
-    if (guestStorage != null) {
-      final guestPlan = await guestStorage.loadGuestPlan();
-      final guestLocation = guestPlan?.weddingLocation;
-      if (guestLocation?.hasAnyLocation == true) {
-        location = guestLocation;
-        planId = guestPlan?.guestPlanId;
-      }
-    }
-
-    if (location?.hasAnyLocation != true && hasAccount) {
       if (weddingPlans != null) {
         if (weddingPlans.activePlan == null) {
           await weddingPlans.loadActiveWeddingPlan();
         }
         final activePlan = weddingPlans.activePlan;
-        final activeLocation = activePlan?.weddingLocation;
-        if (activeLocation?.hasAnyLocation == true) {
-          location = activeLocation;
-          planId = activePlan?.id;
+        if (activePlan != null &&
+            activePlan.status.toUpperCase() != 'ARCHIVED' &&
+            (requestedPlanId == null || requestedPlanId == activePlan.id)) {
+          location = activePlan.weddingLocation;
+          planId = activePlan.id;
+        } else if (requestedPlanId != null) {
+          var requestedPlan = weddingPlans.selectedPlan?.id == requestedPlanId
+              ? weddingPlans.selectedPlan
+              : null;
+          if (requestedPlan == null) {
+            for (final candidate in weddingPlans.plans) {
+              if (candidate.id == requestedPlanId) {
+                requestedPlan = candidate;
+                break;
+              }
+            }
+          }
+          if (requestedPlan == null) {
+            await weddingPlans.loadWeddingPlan(requestedPlanId);
+            if (weddingPlans.selectedPlan?.id == requestedPlanId) {
+              requestedPlan = weddingPlans.selectedPlan;
+            }
+          }
+          if (requestedPlan != null &&
+              requestedPlan.status.toUpperCase() != 'ARCHIVED') {
+            location = requestedPlan.weddingLocation;
+            planId = requestedPlan.id;
+          }
+        }
+      } else {
+        // Isolated widgets may provide an explicit already-scoped plan id.
+        planId = requestedPlanId;
+      }
+    } else {
+      try {
+        guestStorage = context.read<GuestOnboardingStorage>();
+      } on ProviderNotFoundException {
+        // Public browsing can work without a local guest-plan context.
+      }
+      if (guestStorage != null) {
+        final guestPlan = await guestStorage.loadGuestPlan();
+        final guestLocation = guestPlan?.weddingLocation;
+        if (guestLocation?.hasAnyLocation == true) {
+          location = guestLocation;
+          planId = guestPlan?.guestPlanId;
         }
       }
     }
@@ -305,10 +350,30 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     setState(() {
       _weddingLocation = location;
       _weddingLocationPlanId = planId;
+      _planContextResolved = true;
     });
     if (matchingCityId != null && marketplace.cityId == null) {
       await marketplace.setCity(matchingCityId);
     }
+  }
+
+  List<QuoteRequest> _visibleQuoteRequests(
+    ProviderMarketplaceProvider marketplace,
+  ) {
+    final planId = _weddingLocationPlanId;
+    if (planId != null) return marketplace.quotesForPlan(planId);
+    if (!_planContextResolved) return const [];
+
+    final prioritizedId = widget.initialQuoteId?.trim();
+    if (prioritizedId == null || prioritizedId.isEmpty) return const [];
+    return marketplace.quoteRequests
+        .where((quote) => quote.id == prioritizedId)
+        .toList(growable: false);
+  }
+
+  String? _normalizedPlanId(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
   }
 
   Future<void> _loadRequestedQuote(

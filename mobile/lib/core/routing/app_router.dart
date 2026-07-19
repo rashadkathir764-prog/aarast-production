@@ -729,11 +729,13 @@ class AppRouter {
             GoRoute(
               path: '/wedding-plans/:id/providers',
               builder: (context, state) {
+                final id = state.pathParameters['id'] ?? '';
                 final budgetIntent = state.extra is ProviderBudgetMatchIntent
                     ? state.extra! as ProviderBudgetMatchIntent
                     : null;
                 return ProviderMarketplaceScreen(
                   embedded: state.uri.queryParameters['view'] != 'contributor',
+                  weddingPlanId: id,
                   initialBudgetIntent: budgetIntent,
                 );
               },

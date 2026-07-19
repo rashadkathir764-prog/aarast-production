@@ -334,10 +334,18 @@ class _OfferQuoteTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final serviceName = _quoteServiceLabel(quote);
-    final amount = _quoteAmountLabel(quote);
     final isAccepted = quote.lifecycleStatus == 'ACCEPTED';
+    final acceptedAmount =
+        isAccepted && quote.costSuggestion?.canCreateCost != true
+        ? _quoteOfferAmountDisplay(quote.acceptedOffer)
+        : null;
+
+    if (!quote.canAcceptOrReject && !isAccepted) {
+      return _CompactQuoteStatusRow(quote: quote);
+    }
 
     return Column(
+      key: Key('received-offer-${quote.id}'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
@@ -358,7 +366,9 @@ class _OfferQuoteTile extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          amount == null ? serviceName : '$serviceName · $amount',
+          acceptedAmount == null
+              ? serviceName
+              : '$serviceName · $acceptedAmount',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -373,32 +383,104 @@ class _OfferQuoteTile extends StatelessWidget {
             onAccept: onAccept,
             onReject: onReject,
           )
-        else if (isAccepted)
+        else
           _OfferAcceptedArea(
             quote: quote,
             isSubmitting: isSubmitting,
             onCreateCost: onCreateCost,
-          )
-        else ...[
-          const SizedBox(height: 6),
-          Text(
-            _quoteNextActionLabel(quote),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.muted,
-              fontWeight: FontWeight.w800,
-              height: 1.4,
+          ),
+      ],
+    );
+  }
+}
+
+/// الطلب الذي لم يصله عرض بعد يبقى سطر متابعة، لا بطاقة قرار كاملة.
+class _CompactQuoteStatusRow extends StatelessWidget {
+  const _CompactQuoteStatusRow({required this.quote});
+
+  final QuoteRequest quote;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final isWaiting = quote.lifecycleStatus == 'PENDING_PROVIDER';
+
+    return Container(
+      key: Key('compact-quote-status-${quote.id}'),
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: AppTheme.ivory.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isWaiting ? AppTheme.goldSoft : AppTheme.burgundySoft,
+              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
+            ),
+            child: Icon(
+              isWaiting ? LucideIcons.clock3 : LucideIcons.fileClock,
+              size: 18,
+              color: isWaiting ? AppTheme.gold : AppTheme.burgundy,
             ),
           ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _quoteProviderLabel(quote),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.ink,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    QuoteStatusChip(
+                      status: quote.lifecycleStatus,
+                      compact: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _quoteServiceLabel(quote),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: AppTheme.muted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
             key: Key('quote-conversation-${quote.id}'),
             onPressed: () =>
                 context.push(AppRouter.quoteConversation(quote.id)),
-            icon: const Icon(LucideIcons.messageCircle, size: 18),
-            label: const Text('محادثة المزوّد'),
+            tooltip: 'محادثة المزوّد',
+            style: IconButton.styleFrom(
+              foregroundColor: AppTheme.burgundy,
+              backgroundColor: AppTheme.burgundySoft,
+              minimumSize: const Size(44, 44),
+            ),
+            icon: const Icon(LucideIcons.messageCircle, size: 19),
           ),
         ],
-      ],
+      ),
     );
   }
 }
@@ -439,7 +521,7 @@ class _OfferDecisionArea extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'عرض المورد',
+                      'السعر',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: AppTheme.muted,
                         fontWeight: FontWeight.w700,
@@ -476,7 +558,7 @@ class _OfferDecisionArea extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Align(
-          alignment: AlignmentDirectional.centerStart,
+          alignment: AlignmentDirectional.center,
           child: TextButton.icon(
             key: Key('quote-offer-details-${quote.id}'),
             onPressed: () => _showOfferDetailsSheet(
@@ -486,7 +568,7 @@ class _OfferDecisionArea extends StatelessWidget {
               onAccept: onAccept,
               onReject: onReject,
             ),
-            icon: const Icon(LucideIcons.info, size: 17),
+            icon: const Icon(LucideIcons.listChecks, size: 17),
             label: const Text('عرض تفاصيل العرض'),
           ),
         ),
@@ -498,7 +580,7 @@ class _OfferDecisionArea extends StatelessWidget {
                 key: Key('quote-accept-${quote.id}'),
                 onPressed: isSubmitting ? null : onAccept,
                 icon: const Icon(LucideIcons.check, size: 18),
-                label: const Text('قبول العرض'),
+                label: const Text('قبول'),
               ),
             ),
             const SizedBox(width: 8),
@@ -604,6 +686,10 @@ Future<void> _showOfferDetailsSheet(
       final offerMessage = offer?.message?.trim();
       final validUntil = offer?.validUntil;
       final requestFacts = _quoteRequestFacts(quote);
+      final detailFacts = [
+        ...requestFacts,
+        const _QuoteFact('الحالة', 'وصلك عرض'),
+      ];
       final userMessage = quote.message?.trim();
       final textTheme = Theme.of(sheetContext).textTheme;
 
@@ -723,7 +809,7 @@ Future<void> _showOfferDetailsSheet(
                     ),
                   ),
                 ],
-                if (requestFacts.isNotEmpty) ...[
+                if (detailFacts.isNotEmpty) ...[
                   const SizedBox(height: 14),
                   Text(
                     'ملخص طلبك',
@@ -733,34 +819,25 @@ Future<void> _showOfferDetailsSheet(
                     ),
                   ),
                   const SizedBox(height: 6),
-                  for (final fact in requestFacts)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Row(
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final twoColumns = constraints.maxWidth >= 360;
+                      final itemWidth = twoColumns
+                          ? (constraints.maxWidth - 8) / 2
+                          : constraints.maxWidth;
+                      return Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          Expanded(
-                            child: Text(
-                              fact.label,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: AppTheme.muted,
-                                fontWeight: FontWeight.w700,
-                              ),
+                          for (final fact in detailFacts)
+                            SizedBox(
+                              width: itemWidth,
+                              child: _OfferFactCard(fact: fact),
                             ),
-                          ),
-                          Flexible(
-                            child: Text(
-                              fact.value,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: AppTheme.ink,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
                         ],
-                      ),
-                    ),
+                      );
+                    },
+                  ),
                 ],
                 if (userMessage?.isNotEmpty == true) ...[
                   const SizedBox(height: 8),
@@ -822,6 +899,55 @@ Future<void> _showOfferDetailsSheet(
       );
     },
   );
+}
+
+class _OfferFactCard extends StatelessWidget {
+  const _OfferFactCard({required this.fact});
+
+  final _QuoteFact fact;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final isStatus = fact.label == 'الحالة';
+
+    return Container(
+      key: ValueKey('offer-fact-${fact.label}'),
+      constraints: const BoxConstraints(minHeight: 70),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+        border: Border.all(color: AppTheme.border.withValues(alpha: 0.75)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            fact.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodySmall?.copyWith(
+              color: AppTheme.muted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            fact.value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodyMedium?.copyWith(
+              color: isStatus ? AppTheme.gold : AppTheme.ink,
+              fontWeight: FontWeight.w900,
+              height: 1.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ResultsHeader extends StatelessWidget {

@@ -8,18 +8,23 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
+import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-QuoteRequest _receivedQuote() => const QuoteRequest(
+import '../../support/preview_fonts.dart';
+
+QuoteRequest _receivedQuote() => QuoteRequest(
   id: 'quote-1',
   providerId: 'provider-1',
   weddingPlanId: 'plan-1',
   status: 'RESPONDED',
   lifecycleStatus: 'RECEIVED',
   guestCount: 400,
+  eventDate: DateTime(2026, 8, 31),
+  location: const WeddingLocationDraft(cityOrDistrict: 'صنعاء'),
   message: 'نحتاج تغطية يوم كامل.',
   provider: ProviderSummary(
     id: 'provider-1',
@@ -91,7 +96,23 @@ QuoteRequest _waitingQuote(String id) => QuoteRequest(
   ),
 );
 
+QuoteRequest _archivedPlanQuote() => const QuoteRequest(
+  id: 'quote-archived',
+  providerId: 'provider-archived',
+  weddingPlanId: 'plan-archived',
+  status: 'SENT',
+  lifecycleStatus: 'PENDING_PROVIDER',
+  provider: ProviderSummary(
+    id: 'provider-archived',
+    businessName: 'مورد الخطة المؤرشفة',
+    ratingAverage: 0,
+    ratingCount: 0,
+  ),
+);
+
 void main() {
+  setUpAll(loadPreviewAppFonts);
+
   testWidgets('merged offers card decides inline without the legacy cards', (
     tester,
   ) async {
@@ -104,6 +125,8 @@ void main() {
     expect(find.text('طلبات العروض والردود'), findsNothing);
     expect(find.text('فتح مركز الخطة'), findsNothing);
     expect(find.textContaining('280,000'), findsOneWidget);
+    expect(find.text('السعر'), findsOneWidget);
+    expect(find.text('قبول'), findsOneWidget);
     expect(find.text('تفاصيل أعمق في مركز الخطة'), findsNothing);
 
     await tester.scrollUntilVisible(
@@ -119,6 +142,24 @@ void main() {
     await tester.pump(const Duration(seconds: 8));
     await tester.pump(const Duration(seconds: 1));
   });
+
+  testWidgets(
+    'offers inbox excludes quotes from an archived or different plan',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        quoteRequests: [_receivedQuote(), _archivedPlanQuote()],
+      );
+
+      await _pump(tester, state);
+
+      expect(find.text('قاعة الثريا'), findsOneWidget);
+      expect(find.text('مورد الخطة المؤرشفة'), findsNothing);
+      expect(
+        find.byKey(const Key('compact-quote-status-quote-archived')),
+        findsNothing,
+      );
+    },
+  );
 
   testWidgets('reject works inline from the offers card', (tester) async {
     final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
@@ -155,6 +196,12 @@ void main() {
     expect(find.textContaining('تغطية كاملة ليوم الزفاف'), findsOneWidget);
     expect(find.text('ملخص طلبك'), findsOneWidget);
     expect(find.text('400'), findsOneWidget);
+    expect(find.text('تاريخ المناسبة'), findsOneWidget);
+    expect(find.text('31/8/2026'), findsOneWidget);
+    expect(find.text('الموقع'), findsOneWidget);
+    expect(find.text('صنعاء'), findsOneWidget);
+    expect(find.text('الحالة'), findsOneWidget);
+    expect(find.text('وصلك عرض'), findsOneWidget);
     expect(find.byKey(const Key('sheet-quote-accept-quote-1')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('sheet-quote-accept-quote-1')));
@@ -193,6 +240,11 @@ void main() {
     await _pump(tester, state, initialQuoteId: 'quote-6');
 
     expect(find.byKey(const Key('quote-conversation-quote-6')), findsOneWidget);
+    expect(
+      find.byKey(const Key('compact-quote-status-quote-6')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('لا توجد إجراءات مالية'), findsNothing);
     expect(find.byKey(const Key('quote-plan-center-quote-6')), findsNothing);
   });
 
@@ -258,6 +310,31 @@ void main() {
     expect(find.text('تفاصيل العرض'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('received offer card keeps the approved compact visual', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 900);
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+    });
+    final state = _FakeMarketplaceProvider(quoteRequests: [_receivedQuote()]);
+
+    await _pump(tester, state);
+    final card = find.byKey(const Key('received-offer-quote-1'));
+    await tester.scrollUntilVisible(
+      card,
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    await expectLater(
+      card,
+      matchesGoldenFile('goldens/provider_received_offer.png'),
+    );
+  });
 }
 
 Future<void> _pump(
@@ -291,7 +368,10 @@ Future<void> _pump(
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
-        home: ProviderMarketplaceScreen(initialQuoteId: initialQuoteId),
+        home: ProviderMarketplaceScreen(
+          weddingPlanId: 'plan-1',
+          initialQuoteId: initialQuoteId,
+        ),
       ),
     ),
   );

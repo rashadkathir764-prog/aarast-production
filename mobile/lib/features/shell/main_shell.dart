@@ -34,7 +34,6 @@ class _MainShellState extends State<MainShell> {
   // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: الموردون.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
-  String? _activePlanId;
   int _guestAddRequest = 0;
 
   @override
@@ -46,15 +45,11 @@ class _MainShellState extends State<MainShell> {
       final activePlan = await BackendDashboardSummarySource(
         provider,
       ).loadActivePlan();
-      if (!mounted || _activePlanId != null) return;
+      if (!mounted) return;
       if (activePlan == null && provider.errorMessage == null) {
         context.go(AppRouter.onboarding);
         return;
       }
-      if (activePlan == null) return;
-      setState(() {
-        _activePlanId = activePlan.id;
-      });
     });
   }
 
@@ -66,7 +61,8 @@ class _MainShellState extends State<MainShell> {
   }
 
   void _showQuickAdd() {
-    if (_activePlanId == null) {
+    final activePlanId = context.read<WeddingPlansProvider>().activePlan?.id;
+    if (activePlanId == null) {
       AarastToast.showInfo(context, 'اختر أو أنشئ خطة زفاف أولًا.');
       return;
     }
@@ -77,7 +73,7 @@ class _MainShellState extends State<MainShell> {
       });
       return;
     }
-    showRoyalHomeActionSheet(context, actions: _quickActions(_activePlanId!));
+    showRoyalHomeActionSheet(context, actions: _quickActions(activePlanId));
   }
 
   List<RoyalHomeAction> _quickActions(String planId) {
@@ -123,15 +119,16 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
+    final activePlanId = context.watch<WeddingPlansProvider>().activePlan?.id;
     final finance = context.watch<FinanceProvider?>();
     final canManageCurrentMoney =
-        finance?.loadedPlanId == _activePlanId &&
+        finance?.loadedPlanId == activePlanId &&
         (finance?.canManageMoney ?? false);
     final hasConfiguredCurrentMoney =
-        finance?.loadedPlanId == _activePlanId &&
+        finance?.loadedPlanId == activePlanId &&
         (finance?.summary.hasBudget ?? false);
     final showQuickFab =
-        _activePlanId != null &&
+        activePlanId != null &&
         shouldShowPlanQuickAdd(
           tabIndex: _index,
           canManageMoney: _index != 1 || canManageCurrentMoney,
@@ -155,10 +152,10 @@ class _MainShellState extends State<MainShell> {
               // Index 0: Home overview. Plan lists are explicit routes.
               _buildLazyTab(
                 0,
-                _activePlanId != null
+                activePlanId != null
                     ? WeddingPlanDashboardScreen(
-                        key: ValueKey('home-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
+                        key: ValueKey('home-$activePlanId'),
+                        weddingPlanId: activePlanId,
                         embedded: true,
                       )
                     : const HomeScreen(embedded: true),
@@ -167,10 +164,10 @@ class _MainShellState extends State<MainShell> {
               // Index 1: Money
               _buildLazyTab(
                 1,
-                _activePlanId != null
+                activePlanId != null
                     ? MoneyOverviewScreen(
-                        key: ValueKey('money-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
+                        key: ValueKey('money-$activePlanId'),
+                        weddingPlanId: activePlanId,
                         embedded: true,
                       )
                     : _buildNoPlanFallback('المال'),
@@ -179,10 +176,10 @@ class _MainShellState extends State<MainShell> {
               // Index 2: Tasks
               _buildLazyTab(
                 2,
-                _activePlanId != null
+                activePlanId != null
                     ? TaskTimelineScreen(
-                        key: ValueKey('tasks-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
+                        key: ValueKey('tasks-$activePlanId'),
+                        weddingPlanId: activePlanId,
                       )
                     : _buildNoPlanFallback('المهام'),
               ),
@@ -190,10 +187,10 @@ class _MainShellState extends State<MainShell> {
               // Index 3: Guests
               _buildLazyTab(
                 3,
-                _activePlanId != null
+                activePlanId != null
                     ? GuestListScreen(
-                        key: ValueKey('guests-$_activePlanId'),
-                        weddingPlanId: _activePlanId!,
+                        key: ValueKey('guests-$activePlanId'),
+                        weddingPlanId: activePlanId,
                         showLocalFab: false,
                         openAddRequest: _guestAddRequest,
                       )
@@ -201,7 +198,14 @@ class _MainShellState extends State<MainShell> {
               ),
 
               // Index 4: Vendors marketplace
-              _buildLazyTab(4, const ProviderMarketplaceScreen(embedded: true)),
+              _buildLazyTab(
+                4,
+                ProviderMarketplaceScreen(
+                  key: ValueKey('providers-${activePlanId ?? 'no-plan'}'),
+                  embedded: true,
+                  weddingPlanId: activePlanId,
+                ),
+              ),
             ],
           ),
         ),

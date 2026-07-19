@@ -83,7 +83,9 @@ void main() {
         isFalse,
         reason:
             'The 3,611-line legacy dashboard bundle must stay deleted. '
-            'My Plans imports the extracted account_sheet.dart directly.',
+            'PremiumDashboardView owns this surface; the account_sheet.dart '
+            'that was once extracted from the bundle had no callers left and '
+            'was removed too.',
       );
 
       final legacyProviderDashboard = File(

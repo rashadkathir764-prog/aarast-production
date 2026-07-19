@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const srcRoot = join(process.cwd(), 'src');
@@ -42,10 +42,9 @@ addCheck(
   statusBadge.includes("REJECTED: { label: 'مرفوض'"),
 );
 
-const miniLineChart = read(join(srcRoot, 'components', 'MiniLineChart.tsx'));
 addCheck(
-  'Legacy chart copy does not imply bookings',
-  !miniLineChart.includes('bookings') && !miniLineChart.includes('الحجوزات'),
+  'Unused legacy chart is removed',
+  !existsSync(join(srcRoot, 'components', 'MiniLineChart.tsx')),
 );
 
 const appRoutes = read(join(srcRoot, 'App.tsx'));

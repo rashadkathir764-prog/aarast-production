@@ -57,17 +57,6 @@ export class PermissionService {
     return { plan, isOwner, sharedMember };
   }
 
-  async assertPlanOwner(
-    weddingPlanId: string,
-    currentUser: AuthenticatedUser,
-  ): Promise<WeddingPlan> {
-    const context = await this.getPlanAccessContext(weddingPlanId, currentUser);
-    if (!context.isOwner) {
-      throw new NotFoundException("Wedding plan not found");
-    }
-    return context.plan;
-  }
-
   async assertPlanReadable(
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
@@ -97,7 +86,6 @@ export class PermissionService {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (context.isOwner) return context;
 
-    const member = context.sharedMember;
     if (this.canManageTasks(context)) {
       return context;
     }
@@ -131,7 +119,6 @@ export class PermissionService {
     const context = await this.assertPlanReadable(weddingPlanId, currentUser);
     if (context.isOwner) return context;
 
-    const member = context.sharedMember;
     if (this.canManageMoney(context)) {
       return context;
     }

@@ -251,100 +251,6 @@ export class SharingService {
     return this.toMemberResponse(member);
   }
 
-  async findForPlan(
-    currentUser: AuthenticatedUser,
-    weddingPlanId: string,
-  ): Promise<SharedMemberResponse[]> {
-    await this.permissions.assertPlanReadable(weddingPlanId, currentUser);
-
-    const members = await this.prisma.sharedMember.findMany({
-      where: { weddingPlanId },
-      include: {
-        user: {
-          select: { id: true, phone: true, ...applicationNameFields },
-        },
-      },
-      orderBy: { createdAt: "asc" },
-    });
-
-    return members.map((member) => this.toMemberResponse(member));
-  }
-
-  async update(
-    currentUser: AuthenticatedUser,
-    id: string,
-    dto: UpdateSharedMemberDto,
-  ): Promise<SharedMemberResponse> {
-    const existing = await this.findMemberOrThrow(id);
-    const access = await this.permissions.assertMemberManageable(
-      existing.weddingPlanId,
-      currentUser,
-    );
-    this.assertPermissionCeiling(
-      access,
-      existing.role,
-      this.permissionFlagsForRecord(existing),
-    );
-    const role = this.assignableRole(dto.role ?? existing.role);
-    const permissionData = this.permissionDataForUpdate(existing, dto, role);
-    this.assertPermissionCeiling(access, role, permissionData);
-
-    const member = await this.prisma.sharedMember.update({
-      where: { id },
-      data: {
-        ...(dto.role !== undefined ? { role } : {}),
-        ...permissionData,
-      },
-      include: {
-        user: {
-          select: { id: true, phone: true, ...applicationNameFields },
-        },
-      },
-    });
-
-    const plan = await this.prisma.weddingPlan.findUnique({
-      where: { id: member.weddingPlanId },
-      select: { title: true },
-    });
-
-    await this.notifications.createNotification({
-      userId: member.userId,
-      weddingPlanId: member.weddingPlanId,
-      type: NotificationType.SHARING_UPDATED,
-      title: "تم تحديث صلاحياتك",
-      body: `تغيرت صلاحياتك في "${plan?.title ?? "خطة الزفاف"}".`,
-      entityType: "shared_member",
-      entityId: member.id,
-      routeTarget: `/wedding-plans/${member.weddingPlanId}/plan-center`,
-      data: {
-        sharedMemberId: member.id,
-        weddingPlanId: member.weddingPlanId,
-        role: member.role,
-      },
-      dedupeKey: `${member.userId}:sharing:${member.id}:updated:${member.updatedAt.getTime()}`,
-    });
-
-    return this.toMemberResponse(member);
-  }
-
-  async remove(
-    currentUser: AuthenticatedUser,
-    id: string,
-  ): Promise<{ id: string; deleted: true }> {
-    const existing = await this.findMemberOrThrow(id);
-    const access = await this.permissions.assertMemberManageable(
-      existing.weddingPlanId,
-      currentUser,
-    );
-    this.assertPermissionCeiling(
-      access,
-      existing.role,
-      this.permissionFlagsForRecord(existing),
-    );
-    await this.prisma.sharedMember.delete({ where: { id } });
-    return { id, deleted: true };
-  }
-
   async findSharedPlans(
     currentUser: AuthenticatedUser,
   ): Promise<SharedWeddingPlanResponse[]> {
@@ -988,14 +894,6 @@ export class SharingService {
       currentUser,
     );
     return this.toPermissionSummary(context, currentUser.id);
-  }
-
-  private async findMemberOrThrow(id: string): Promise<SharedMember> {
-    const member = await this.prisma.sharedMember.findUnique({ where: { id } });
-    if (!member) {
-      throw new NotFoundException("Shared member not found");
-    }
-    return member;
   }
 
   private async findMemberForPlanOrThrow(

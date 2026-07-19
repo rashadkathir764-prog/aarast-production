@@ -46,6 +46,27 @@ test("application password inputs reject bcrypt truncation beyond 72 UTF-8 bytes
   );
 });
 
+test("password reset confirm rejects a non six-digit code before it burns an attempt", async () => {
+  for (const code of ["12345", "1234567", "12 456", "abcdef", " 123456"]) {
+    assert.ok(
+      (await errorsFor(PasswordResetConfirmDto, {
+        phone: "777123456",
+        code,
+        newPassword: "abcdef",
+      })).some((error) => error.property === "code"),
+      `expected code "${code}" to be rejected`,
+    );
+  }
+  assert.equal(
+    (await errorsFor(PasswordResetConfirmDto, {
+      phone: "777123456",
+      code: "123456",
+      newPassword: "abcdef",
+    })).some((error) => error.property === "code"),
+    false,
+  );
+});
+
 test("administrator recovery uses the same byte-safe bcrypt boundary", async () => {
   const errors = await errorsFor(AdminPasswordResetConfirmDto, {
     challengeToken: "a".repeat(64),

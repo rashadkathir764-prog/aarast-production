@@ -49,6 +49,8 @@ test("an application refresh token can never be upgraded into an admin session",
     } as any,
     {} as any,
     {} as any,
+    { consume: async () => undefined } as any,
+    { disconnectUser: () => undefined } as any,
   );
 
   await assert.rejects(
@@ -69,6 +71,8 @@ test("an admin refresh token cannot cross into the application refresh flow", as
     } as any,
     {} as any,
     {} as any,
+    { consume: async () => undefined } as any,
+    { disconnectUser: () => undefined } as any,
   );
 
   await assert.rejects(
@@ -137,6 +141,8 @@ test("admin MFA refresh rotates only into another admin-scoped session", async (
       },
     } as any,
     {} as any,
+    { consume: async () => undefined } as any,
+    { disconnectUser: () => undefined } as any,
   );
 
   const response = await service.refreshAdmin(adminToken);
@@ -175,6 +181,8 @@ test("changing an application token prefix cannot recover its database session",
     } as any,
     {} as any,
     {} as any,
+    { consume: async () => undefined } as any,
+    { disconnectUser: () => undefined } as any,
   );
 
   await assert.rejects(
@@ -273,6 +281,8 @@ test("reusing a rotated refresh token revokes the account token family", async (
     { $transaction: async (fn: any) => fn(tx) } as any,
     {} as any,
     {} as any,
+    { consume: async () => undefined } as any,
+    { disconnectUser: () => undefined } as any,
   );
 
   await assert.rejects(() =>

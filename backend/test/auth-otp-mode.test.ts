@@ -133,7 +133,13 @@ function createService(otpDispatchQuota?: { consume: (...args: any[]) => Promise
     $transaction: async (action: any) => action(prisma),
   };
   const jwtService = { sign: () => 'test-token' };
-  return new AuthService(prisma as any, jwtService as any, {} as any, otpDispatchQuota as any);
+  return new AuthService(
+    prisma as any,
+    jwtService as any,
+    {} as any,
+    otpDispatchQuota as any,
+    { disconnectUser: () => undefined } as any,
+  );
 }
 
 async function withEnv(env: Record<string, string | undefined>, action: () => Promise<void>) {

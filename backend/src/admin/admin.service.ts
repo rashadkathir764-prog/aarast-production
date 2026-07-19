@@ -14,6 +14,7 @@ import {
 import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { requiredMoneyAmount } from '../common/validation/money';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConversationRealtimePublisher } from '../conversations/conversation-realtime.publisher';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
@@ -44,7 +45,10 @@ interface Pagination {
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: ConversationRealtimePublisher,
+  ) {}
 
   async getDashboardStats() {
     const [
@@ -616,6 +620,9 @@ export class AdminService {
         data: { revokedAt: now },
       }),
     ]);
+    // Sessions were just revoked; sever any live realtime channel the now
+    // disabled account still holds open.
+    this.realtime.disconnectUser(id);
     return toUserResponse(user);
   }
 

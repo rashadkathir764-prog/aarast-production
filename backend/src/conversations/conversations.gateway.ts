@@ -15,12 +15,17 @@ import { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { toAuthenticatedUser } from '../auth/safe-user';
 import { getCorsOrigins } from '../common/config/cors-origins';
 import { PrismaService } from '../prisma/prisma.service';
+import { conversationRoom, userRoom } from './conversation-rooms';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ConversationsService } from './conversations.service';
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
 
 type AuthenticatedSocket = Socket & {
-  data: { user?: AuthenticatedUser; messageTimestamps?: number[] };
+  data: {
+    user?: AuthenticatedUser;
+    messageTimestamps?: number[];
+    expiryTimer?: NodeJS.Timeout;
+  };
 };
 
 interface ConversationEvent {
@@ -32,13 +37,7 @@ interface SendConversationMessageEvent extends ConversationEvent {
   attachments?: SendMessageDto['attachments'];
 }
 
-export function conversationRoom(conversationId: string) {
-  return `conversation:${conversationId}`;
-}
-
-export function userRoom(userId: string) {
-  return `user:${userId}`;
-}
+export { conversationRoom, userRoom };
 
 @WebSocketGateway({
   namespace: '/chat',
@@ -64,19 +63,57 @@ export class ConversationsGateway implements OnGatewayConnection, OnGatewayInit 
   async handleConnection(socket: AuthenticatedSocket) {
     try {
       const token = this.socketToken(socket);
-      const payload = await this.jwt.verifyAsync<{ sub?: string }>(token);
-      if (!payload.sub) throw new Error('Missing subject');
+      const payload = await this.jwt.verifyAsync<{ sub?: string; exp?: number }>(
+        token,
+      );
+      if (
+        !payload.sub ||
+        typeof payload.exp !== 'number' ||
+        !Number.isFinite(payload.exp)
+      ) {
+        throw new Error('Missing required token claims');
+      }
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
-      if (!user || user.status === 'DISABLED') throw new Error('Disabled user');
+      // Mirror the HTTP JwtStrategy exactly: a disabled or phone-unverified
+      // account must never hold a realtime channel either.
+      if (!user || user.status === 'DISABLED' || !user.phoneVerifiedAt) {
+        throw new Error('Ineligible user');
+      }
       socket.data.user = toAuthenticatedUser(user);
       await socket.join(userRoom(user.id));
+      this.scheduleTokenExpiryDisconnect(socket, payload.exp);
       socket.emit('chat:ready', { userId: user.id });
     } catch (error) {
       this.logger.warn(`Rejected chat socket ${socket.id}`);
       socket.disconnect(true);
     }
+  }
+
+  /**
+   * Bind the socket's lifetime to the access token that authorized it. The
+   * token was already validated as unexpired; once it lapses the client must
+   * reconnect with a freshly minted token, so a revoked or aged session can no
+   * longer keep an authenticated channel open indefinitely.
+   */
+  private scheduleTokenExpiryDisconnect(
+    socket: AuthenticatedSocket,
+    exp: number,
+  ): void {
+    const millisUntilExpiry = exp * 1000 - Date.now();
+    const timer = setTimeout(
+      () => socket.disconnect(true),
+      // Access tokens are currently fifteen minutes. Capping an unexpectedly
+      // long signed token avoids the Node 32-bit timeout overflow without ever
+      // granting an unbounded realtime session.
+      Math.min(Math.max(0, millisUntilExpiry), 2_147_483_647),
+    );
+    // A pending expiry timer must never keep the Node process alive on its own
+    // (e.g. during graceful shutdown); the socket server holds the loop open.
+    timer.unref?.();
+    socket.data.expiryTimer = timer;
+    socket.on('disconnect', () => clearTimeout(timer));
   }
 
   @SubscribeMessage('conversation:join')

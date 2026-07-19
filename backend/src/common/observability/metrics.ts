@@ -68,7 +68,7 @@ export const invitationDeliveryPersistenceFailuresTotal = new Counter({
 
 export const otpVerificationsTotal = new Counter({
   name: "aarast_otp_verifications_total",
-  help: "OTP verification attempts by outcome (success|failure).",
+  help: "OTP verification attempts by outcome (success|failure|verified_then_rejected).",
   labelNames: ["outcome"] as const,
   registers: [metricsRegistry],
 });

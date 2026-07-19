@@ -4,7 +4,6 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
-import { OwnershipContextService } from './ownership-context.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { getJwtSecret } from './jwt-secret';
 import { LoginThrottleService } from './login-throttle.service';
@@ -15,10 +14,12 @@ import {
 } from './otp-dispatch-quota.service';
 import { OtpDispatchQuotaCleanupScheduler } from './otp-dispatch-quota-cleanup.scheduler';
 import { AuthChallengeCleanupScheduler } from './auth-challenge-cleanup.scheduler';
+import { ConversationRealtimeModule } from '../conversations/conversation-realtime.module';
 
 @Module({
   imports: [
     PrismaModule,
+    ConversationRealtimeModule,
     PassportModule,
     JwtModule.registerAsync({
       useFactory: () => ({
@@ -33,7 +34,6 @@ import { AuthChallengeCleanupScheduler } from './auth-challenge-cleanup.schedule
   providers: [
     AuthService,
     JwtStrategy,
-    OwnershipContextService,
     LoginThrottleService,
     LoginThrottleCleanupScheduler,
     { provide: OTP_DISPATCH_NOW, useValue: () => new Date() },
@@ -41,6 +41,6 @@ import { AuthChallengeCleanupScheduler } from './auth-challenge-cleanup.schedule
     OtpDispatchQuotaCleanupScheduler,
     AuthChallengeCleanupScheduler,
   ],
-  exports: [AuthService, OwnershipContextService, JwtModule],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

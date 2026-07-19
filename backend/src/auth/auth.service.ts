@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { ConversationRealtimePublisher } from "../conversations/conversation-realtime.publisher";
 import {
   AuthSessionScope,
   OtpCode,
@@ -122,7 +123,7 @@ type RegistrationResult =
   | { error: ReturnType<typeof authError> };
 
 type PasswordResetResult =
-  | { reset: true }
+  | { reset: true; userId: string }
   | { error: ReturnType<typeof authError> };
 
 @Injectable()
@@ -138,8 +139,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly loginThrottle: LoginThrottleService,
-    private readonly otpDispatchQuota: OtpDispatchQuotaService =
-      new OtpDispatchQuotaService(prisma),
+    private readonly otpDispatchQuota: OtpDispatchQuotaService,
+    private readonly realtime: ConversationRealtimePublisher,
   ) {}
 
   async startRegistration(
@@ -310,8 +311,14 @@ export class AuthService {
       throw error;
     }
 
+    if ("error" in result) {
+      // The code was proven and consumed, but the account outcome was
+      // rejected (already exists / disabled / no app account). This is a
+      // distinct signal from a genuine end-to-end success.
+      otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
+      throw result.error;
+    }
     otpVerificationsTotal.inc({ outcome: "success" });
-    if ("error" in result) throw result.error;
     return result.auth;
   }
 
@@ -664,6 +671,11 @@ export class AuthService {
       where: { userId, scope, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+    // Chat sockets belong to the application session; only revoking that scope
+    // should tear them down (an admin-scope logout must not kill app chat).
+    if (scope === AuthSessionScope.APPLICATION) {
+      this.realtime.disconnectUser(userId);
+    }
     return { revoked: result.count };
   }
 
@@ -901,8 +913,14 @@ export class AuthService {
         }
         throw error;
       });
+    if ("error" in result) {
+      // The code was proven and consumed, but the account outcome was
+      // rejected (already exists / disabled / no app account). This is a
+      // distinct signal from a genuine end-to-end success.
+      otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
+      throw result.error;
+    }
     otpVerificationsTotal.inc({ outcome: "success" });
-    if ("error" in result) throw result.error;
     const { user, auth } = result;
 
     return {
@@ -1005,13 +1023,22 @@ export class AuthService {
           },
           data: { revokedAt: now },
         });
-        return { reset: true as const };
+        return { reset: true as const, userId: user.id };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
+    if ("error" in result) {
+      // The code was proven and consumed, but the account outcome was
+      // rejected (already exists / disabled / no app account). This is a
+      // distinct signal from a genuine end-to-end success.
+      otpVerificationsTotal.inc({ outcome: "verified_then_rejected" });
+      throw result.error;
+    }
     otpVerificationsTotal.inc({ outcome: "success" });
-    if ("error" in result) throw result.error;
+    // The old password's sessions were just revoked; sever any live realtime
+    // channel a lost/stolen device might still hold open.
+    this.realtime.disconnectUser(result.userId);
     await this.loginThrottle.clear(phone, "application");
     return { reset: true, phone };
   }

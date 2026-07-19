@@ -204,7 +204,10 @@ test("a provider owner cannot review their own provider application", async () =
         },
       }),
   };
-  const service = new AdminService(prisma as any);
+  const service = new AdminService(
+    prisma as any,
+    { disconnectUser: () => undefined } as any,
+  );
   const currentUser = {
     id: "admin-1",
     role: UserRole.ADMIN,
@@ -274,7 +277,10 @@ test("a different administrator can review a provider application", async () => 
         },
       }),
   };
-  const service = new AdminService(prisma as any);
+  const service = new AdminService(
+    prisma as any,
+    { disconnectUser: () => undefined } as any,
+  );
 
   const response = await service.rejectProvider(
     { id: "reviewer-admin", role: UserRole.ADMIN, adminMfa: true } as any,

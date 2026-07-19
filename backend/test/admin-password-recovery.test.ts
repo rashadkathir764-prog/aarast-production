@@ -244,6 +244,7 @@ function createHarness(candidate: StoredUser | null) {
     { sign: () => 'unused-token' } as any,
     { clear: async () => undefined } as any,
     { consume: async () => undefined } as any,
+    { disconnectUser: () => undefined } as any,
   );
   return {
     service,

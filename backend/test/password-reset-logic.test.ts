@@ -5,6 +5,14 @@ import { test } from 'node:test';
 import { AuthSessionScope, OtpPurpose } from '@prisma/client';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from '../src/auth/auth.service';
+import { otpVerificationsTotal } from '../src/common/observability/metrics';
+
+async function otpOutcomeCount(outcome: string): Promise<number> {
+  const metric = await otpVerificationsTotal.get();
+  return (
+    metric.values.find((row) => row.labels.outcome === outcome)?.value ?? 0
+  );
+}
 
 type StoredOtp = {
   id: string;
@@ -159,10 +167,15 @@ function createHarness(options?: { user?: Partial<StoredUser> | null }) {
   };
 
   const jwtService = { sign: () => 'test-token' };
+  const realtimeDisconnects: string[] = [];
   const service = new AuthService(prisma as any, jwtService as any, {
     clear: async () => undefined,
+  } as any, { consume: async () => undefined } as any, {
+    disconnectUser: (userId: string) => {
+      realtimeDisconnects.push(userId);
+    },
   } as any);
-  return { service, otps, refreshTokens, user };
+  return { service, otps, refreshTokens, user, realtimeDisconnects };
 }
 
 async function withDevOtpEnv(action: () => Promise<void>) {
@@ -204,7 +217,8 @@ test('reset request issues a RESET_PASSWORD OTP without probing accounts', async
 
 test('reset confirm sets the new password and revokes only app sessions', async () => {
   await withDevOtpEnv(async () => {
-    const { service, otps, refreshTokens, user } = createHarness();
+    const { service, otps, refreshTokens, user, realtimeDisconnects } =
+      createHarness();
 
     await service.requestPasswordReset({ phone: '777123456' });
     const response = await service.confirmPasswordReset({
@@ -214,6 +228,11 @@ test('reset confirm sets the new password and revokes only app sessions', async 
     });
 
     assert.equal(response.reset, true);
+    assert.deepEqual(
+      realtimeDisconnects,
+      ['user-1'],
+      'a successful reset must sever the live realtime session',
+    );
     assert.ok(user);
     assert.notEqual(user.passwordHash, 'old-hash');
     assert.ok(await bcryptjs.compare('new-secret-1', user.passwordHash));
@@ -232,7 +251,10 @@ test('reset confirm sets the new password and revokes only app sessions', async 
 
 test('reset confirm reveals a missing app account only after phone proof', async () => {
   await withDevOtpEnv(async () => {
-    const { service } = createHarness({ user: null });
+    const { service, realtimeDisconnects } = createHarness({ user: null });
+
+    const successBefore = await otpOutcomeCount('success');
+    const rejectedBefore = await otpOutcomeCount('verified_then_rejected');
 
     await service.requestPasswordReset({ phone: '777123456' });
     await assert.rejects(
@@ -245,6 +267,28 @@ test('reset confirm reveals a missing app account only after phone proof', async
       (error: any) =>
         error.getResponse?.().code === 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
     );
+
+    // A proven-but-rejected reset must never inflate the success metric.
+    assert.equal(await otpOutcomeCount('success'), successBefore);
+    assert.equal(
+      await otpOutcomeCount('verified_then_rejected'),
+      rejectedBefore + 1,
+    );
+    // No password changed, so no live session may be torn down.
+    assert.deepEqual(realtimeDisconnects, []);
+  });
+});
+
+test('logging out everywhere severs the application realtime session', async () => {
+  await withDevOtpEnv(async () => {
+    const { service, realtimeDisconnects } = createHarness();
+
+    await service.logoutAll('user-1');
+    assert.deepEqual(realtimeDisconnects, ['user-1']);
+
+    // An admin-scope logout must not tear down the user's application chat.
+    await service.logoutAll('user-1', AuthSessionScope.ADMIN);
+    assert.deepEqual(realtimeDisconnects, ['user-1']);
   });
 });
 

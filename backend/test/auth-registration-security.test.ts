@@ -174,6 +174,8 @@ function createHarness() {
         recordFailure: async () => undefined,
         clear: async () => undefined,
       } as any,
+      { consume: async () => undefined } as any,
+      { disconnectUser: () => undefined } as any,
     ),
     users,
     otps,

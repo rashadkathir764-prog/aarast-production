@@ -124,15 +124,11 @@ class _MainShellState extends State<MainShell> {
     final canManageCurrentMoney =
         finance?.loadedPlanId == activePlanId &&
         (finance?.canManageMoney ?? false);
-    final hasConfiguredCurrentMoney =
-        finance?.loadedPlanId == activePlanId &&
-        (finance?.summary.hasBudget ?? false);
     final showQuickFab =
         activePlanId != null &&
         shouldShowPlanQuickAdd(
           tabIndex: _index,
           canManageMoney: _index != 1 || canManageCurrentMoney,
-          hasConfiguredMoney: _index != 1 || hasConfiguredCurrentMoney,
         );
 
     return RootTabBackScope(

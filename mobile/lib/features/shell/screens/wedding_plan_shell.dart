@@ -121,16 +121,12 @@ class WeddingPlanShell extends StatelessWidget {
     final canManageCurrentMoney =
         finance?.loadedPlanId == weddingPlanId &&
         (finance?.canManageMoney ?? false);
-    final hasConfiguredCurrentMoney =
-        finance?.loadedPlanId == weddingPlanId &&
-        (finance?.summary.hasBudget ?? false);
 
     final isMoneyRoot = location.endsWith('/money');
     final showQuickFab = shouldShowPlanQuickAdd(
       tabIndex: currentIndex,
       isRootDestination: currentIndex != 1 || isMoneyRoot,
       canManageMoney: currentIndex != 1 || canManageCurrentMoney,
-      hasConfiguredMoney: currentIndex != 1 || hasConfiguredCurrentMoney,
     );
 
     return PlanShellChrome(

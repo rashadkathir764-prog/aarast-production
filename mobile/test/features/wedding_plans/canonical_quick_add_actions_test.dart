@@ -26,14 +26,7 @@ void main() {
       expect(shouldShowPlanQuickAdd(tabIndex: 0), isTrue);
       expect(shouldShowPlanQuickAdd(tabIndex: 1), isFalse);
       expect(shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: true), isTrue);
-      expect(
-        shouldShowPlanQuickAdd(
-          tabIndex: 1,
-          canManageMoney: true,
-          hasConfiguredMoney: false,
-        ),
-        isFalse,
-      );
+      expect(shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: true), isTrue);
       expect(
         shouldShowPlanQuickAdd(tabIndex: 1, canManageMoney: false),
         isFalse,
@@ -117,19 +110,13 @@ void main() {
           openRoute: open,
         );
 
-        expect(actions.map((a) => a.label).toList(), <String>[
-          'إضافة تكلفة',
-          'إضافة تصنيف',
-        ]);
+        expect(actions.map((a) => a.label).toList(), <String>['إضافة تكلفة']);
 
         for (final action in actions) {
           action.onTap();
         }
 
-        expect(calls, <String>[
-          AppRouter.moneyCostCreate('plan-money'),
-          AppRouter.moneyCategoryCreate('plan-money'),
-        ]);
+        expect(calls, <String>[AppRouter.moneyCostCreate('plan-money')]);
       },
     );
 
@@ -276,7 +263,7 @@ void main() {
     });
 
     testWidgets(
-      'money root has one setup entry before budget and add-only FAB after it',
+      'money root keeps the add-cost FAB available before and after budget setup',
       (tester) async {
         Future<void> pumpWith({required bool hasBudget}) async {
           final router = _buildPlanShellRouter(
@@ -293,17 +280,17 @@ void main() {
         }
 
         await pumpWith(hasBudget: false);
-        expect(find.byKey(const ValueKey('royal-smart-fab')), findsNothing);
-
-        await pumpWith(hasBudget: true);
-        final fab = find.byKey(const ValueKey('royal-smart-fab'));
+        var fab = find.byKey(const ValueKey('royal-smart-fab'));
         expect(fab, findsOneWidget);
         await tester.tap(fab);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
         expect(find.text('إضافة تكلفة'), findsOneWidget);
-        expect(find.text('إضافة تصنيف'), findsOneWidget);
-        expect(find.text('إدارة الميزانية'), findsNothing);
+        expect(find.text('إضافة تصنيف'), findsNothing);
+
+        await pumpWith(hasBudget: true);
+        fab = find.byKey(const ValueKey('royal-smart-fab'));
+        expect(fab, findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

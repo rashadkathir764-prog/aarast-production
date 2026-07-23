@@ -24,13 +24,11 @@ bool shouldShowPlanQuickAdd({
   required int tabIndex,
   bool isRootDestination = true,
   bool canManageMoney = false,
-  bool hasConfiguredMoney = true,
 }) {
   const moneyTabIndex = 1;
   const providersTabIndex = 4;
   return tabIndex != providersTabIndex &&
       (tabIndex != moneyTabIndex || canManageMoney) &&
-      (tabIndex != moneyTabIndex || hasConfiguredMoney) &&
       (tabIndex != moneyTabIndex || isRootDestination);
 }
 
@@ -60,14 +58,6 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
       refreshDashboard: refreshDashboardOnMoney,
     ),
   );
-  final category = RoyalHomeAction(
-    icon: LucideIcons.folderPlus,
-    label: 'إضافة تصنيف',
-    onTap: () => openRoute(
-      AppRouter.moneyCategoryCreate(planId),
-      refreshDashboard: refreshDashboardOnMoney,
-    ),
-  );
   final task = RoyalHomeAction(
     icon: LucideIcons.listPlus,
     label: 'إضافة مهمة',
@@ -85,7 +75,7 @@ List<RoyalHomeAction> buildCanonicalQuickAddActions(
   );
 
   final financialActions = canManageMoney
-      ? <RoyalHomeAction>[cost, category]
+      ? <RoyalHomeAction>[cost]
       : const <RoyalHomeAction>[];
 
   return switch (contextOrder) {

@@ -306,14 +306,23 @@ test("database migration enforces one live verified upload per domain target", (
   assert.match(migration, /"consumedAt" IS NOT NULL/);
 });
 
-test("GitHub media fixture overrides the minio mc entrypoint before using a shell", () => {
+test("GitHub media fixture runs the compose media initializer with a shell entrypoint", () => {
   const workflow = readFileSync(
     join(process.cwd(), "../.github/workflows/ci.yml"),
     "utf8",
   );
+  const compose = readFileSync(
+    join(process.cwd(), "../docker-compose.yml"),
+    "utf8",
+  );
+
   assert.match(
     workflow,
-    /docker run --rm --network host --entrypoint sh\s+\\\s+minio\/mc:[^\s]+\s+\\\s+-c "/,
+    /docker compose run --rm --no-deps media-init/,
+  );
+  assert.match(
+    compose,
+    /  media-init:\r?\n    image: minio\/mc:[^\s]+\r?\n[\s\S]*?    entrypoint: >-\r?\n      \/bin\/sh -c "/,
   );
 });
 
